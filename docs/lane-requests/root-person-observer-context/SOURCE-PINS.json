@@ -1,0 +1,51 @@
+{
+  "base": "b8954ef2b31c70be64196dd37f1bff72b51e021f",
+  "patchSha256": "9a0a0e023ef6cf1ec1cee5cf64c9fb3bbf43f35dd61f92e3bff3d211e7f85982",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux/egress_controller.h",
+      "beforeSha256": "7cbf8a46f0489741156aae7838a369a75a628c1c23a68f5b8b6fd8ef54f5b91b",
+      "afterSha256": "1f0cf1455720a69d1889d596d45df606adc135d2b15aa72466d624e2f98523cf"
+    },
+    {
+      "path": "chrome/browser/ui/aux/method_registry.cc",
+      "beforeSha256": "5f95c092780e30cb6b491db8fda6b0ce0535cf75dbd419eb927c4eea4e51aff6",
+      "afterSha256": "5c222286b489930397cdbd1c5e0b9c49c8a934853cdf30222555b16ccb223ad1"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_person_observer_controller.cc",
+      "beforeSha256": "457c5e39cf17bd4b72dea31100d950a43564e8b04ca8cbbe31897b2533d6e9ca",
+      "afterSha256": "87d687dd5176e0b246e17f6c51ce4147d191077bc8eed42df2d185f8f8379962"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_person_observer_controller.h",
+      "beforeSha256": "876cc97f9d9e880b65e3b2517ae1b46a1141ff76b06ef820b4c4aee281f7a83a",
+      "afterSha256": "cfc76e119cc05b55c78ca78860cc7367e9765e71bd25c95dabd2391ef3b790ef"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_person_observer_controller_browsertest.cc",
+      "beforeSha256": "456e328f0972865e281e4b0b63f4f8c2e2864566aee3d22bebb362f9900b8008",
+      "afterSha256": "499e3ea695837e1b2e4ea5c5d01ac13f8d12232cb45d07b47992b9d4dc818f4a"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.cc",
+      "beforeSha256": "0e9f728a61301798ee908af5da1e3e4aec5f7f850da9b4d0e8cdcbcc06999a3d",
+      "afterSha256": "24dd270eeabe569dde3e27aea7ec9b4620441a428633a64b9c579eccf70dccae"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.h",
+      "beforeSha256": "d75bd5c2be8b684c99bbc535792a675c414324c96e1f429e9c4fc833f6ed9658",
+      "afterSha256": "f00c4a210e43ce9fc34316ad0f65dc3d680d3d6c2ba603eb7e5219b49497c135"
+    },
+    {
+      "path": "chrome/common/native_person_observer_script.h",
+      "beforeSha256": "7a3948436d16b227f740c881921116c5643be56b83684f1c1ba6826784c8b785",
+      "afterSha256": "98e62e0f83e4f512789153692c45aed8c793782856c19be47fbe9de22b8cbd0b"
+    }
+  ],
+  "exactForwardReverse": "PASS",
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "stageReady": false
+}

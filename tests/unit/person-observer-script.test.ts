@@ -58,6 +58,29 @@ it("keeps original refs stable across repeated reads and never reissues removed 
   expect(f.read(observe).elements[0].ref).not.toBe(original);
   f.dom.window.close();
 });
+it("reads exact original subtrees, including their open shadow children, without leaking siblings", () => {
+  const f = page('<section id="inside"><h1>Inside</h1><button>Original</button><div id="shadow"></div></section><p>Outside sibling</p>');
+  f.window.document.getElementById("shadow")!.attachShadow({ mode: "open" }).innerHTML = "<button>Shadow child</button>";
+  const scoped = f.read({ ...observe, subtreeRef: "#inside" });
+  expect(scoped.text).toContain("Inside");
+  expect(scoped.text).toContain("Shadow child");
+  expect(scoped.text).not.toContain("Outside sibling");
+  const ref = scoped.elements.find((element: { name: string }) => element.name === "Original").ref;
+  expect(f.read({ ...observe, subtreeRef: ref }).text).toBe("Original");
+  f.window.document.querySelector("button")!.remove();
+  expect(() => f.read({ ...observe, subtreeRef: ref })).toThrow("This page cannot be read safely.");
+  expect(() => f.read({ ...observe, subtreeRef: "button" })).not.toThrow();
+  f.dom.window.close();
+});
+it("supports all-element and viewport filters with actual geometry", () => {
+  const f = page('<p>Plain paragraph</p><button id="offscreen">Outside</button><button>Inside</button>');
+  const offscreen = f.window.document.getElementById("offscreen")!;
+  offscreen.getBoundingClientRect = () => ({ x: 0, y: 2000, width: 40, height: 20, top: 2000, bottom: 2020, left: 0, right: 40, toJSON: () => ({}) });
+  expect(f.read({ ...observe, filter: "all" }).elements.some((element: { tag: string }) => element.tag === "p")).toBe(true);
+  expect(f.read({ ...observe, filter: "viewport" }).elements.map((element: { name: string }) => element.name)).toEqual(["Inside"]);
+  expect(() => f.read({ ...observe, filter: "eval" })).toThrow("This page cannot be read safely.");
+  f.dom.window.close();
+});
 it("refuses secret-bearing destination metadata and excessive tree or extraction output", () => {
   const f = page('<a href="/next?access_token=synthetic">Next</a>');
   expect(() => f.read(observe)).toThrow("This page cannot be read safely.");

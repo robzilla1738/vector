@@ -11,6 +11,7 @@ export * from "./method-feature.js";
 export * from "./host-methods.js";
 export * from "./runtime-method-policy.js";
 export * from "./observation.js";
+export * from "./native-person-read.js";
 export * from "./program.js";
 export * from "./plan.js";
 export * from "./state.js";

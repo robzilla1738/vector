@@ -1,7 +1,8 @@
-import { AuxError, type ElementRef, EventTypes, type Observation, type ObservationContent, type ObservationDelta, newObservationId } from "@aux/contracts";
+import { AuxError, type ElementRef, EventTypes, type Observation, type ObservationContent, type ObservationDelta, newObservationId, PersonReadRequestSchema } from "@aux/contracts";
 import type { PageLanes } from "./lanes.js";
 import type { PageRegistry } from "./registry.js";
 import { type LivePage, OBSERVATION_HISTORY, type ObserveReq, type ObservedRevision } from "./types.js";
+import { NativePersonReader } from "../native-person-reader.js";
 
 /** Element fields a client sees; selectors and geometry stay in the ref registry. */
 const elementView = ({ selector: _s, rect: _r, frame, ...rest }: ElementRef): Record<string, unknown> =>
@@ -50,6 +51,13 @@ export class ObservationService {
 
   async observe(pageId: string, req: ObserveReq): Promise<Observation> {
     return this.lanes.enqueue(pageId, async () => {
+      const original = this.pages.live.get(pageId);
+      if (original?.target.backend === "aux" && !original.target.ownedByRuntime &&
+          !original.target.agentIsolation && this.pages.deps.native.available()) {
+        if (original.target.controller !== "human" && original.target.controller !== "none")
+          throw new AuxError("permission_denied", "This page is not available for a person read.");
+        return this.observePerson(pageId, original, req);
+      }
       const dp = this.pages.driverPageLenient(pageId);
       const lp = this.pages.live.get(pageId);
       const startingEpoch = lp?.target.documentEpoch;
@@ -88,6 +96,38 @@ export class ObservationService {
   }
 
   /** Structural delta for `sinceRevision` — only against a revision of the same document. */
+  private personReader(pageId: string, original: LivePage) {
+    const epoch = original.target.documentEpoch;
+    const controlEpoch = original.target.controllerEpoch;
+    const sessionId = original.target.sessionId;
+    const url = original.target.url;
+    const current = () => !this.pages.closing && this.pages.live.get(pageId) === original &&
+      original.target.documentEpoch === epoch && original.target.controllerEpoch === controlEpoch &&
+      original.target.sessionId === sessionId &&
+      original.target.url === url && !original.target.ownedByRuntime && !original.target.agentIsolation &&
+      ["human", "none"].includes(original.target.controller) &&
+      !["detached", "crashed"].includes(original.target.viewStatus);
+    const read = this.pages.deps.native.personRead;
+    if (!read) throw new AuxError("backend_unavailable", "The native page reader is unavailable.");
+    return { reader: new NativePersonReader({ read: read.bind(this.pages.deps.native) }), current, url };
+  }
+
+  private async observePerson(pageId: string, original: LivePage, req: ObserveReq): Promise<Observation> {
+    if (req.scope === "subtree" && !req.subtreeRef)
+      throw new AuxError("invalid_params", "Choose a subtree reference or selector.");
+    const { reader, current, url } = this.personReader(pageId, original);
+    const result = await reader.observe(pageId, { maxElements: req.maxElements ?? 120,
+      maxTextChars: req.maxTextChars ?? 6000,
+      ...(req.scope === "all" || req.scope === "viewport" ? { filter: req.scope } : {}),
+      ...(req.scope === "subtree" ? { subtreeRef: req.subtreeRef } : {}) }, current);
+    if (!current() || result.content.url !== url)
+      throw new AuxError("target_detached", "This page changed while it was being observed.");
+    if (original.target.sessionId && original.target.sessionId !== result.sessionId)
+      throw new AuxError("ref_stale", "This tab's read session changed. Select its current context again.");
+    this.pages.adoptPersonReadContext(original, result);
+    return this.recordObservation(pageId, result.content, req);
+  }
+
   private deltaSince(lp: LivePage, req: ObserveReq, current: ObservedRevision): ObservationDelta | undefined {
     if (req.sinceRevision === undefined) return undefined;
     const base = lp.history.find((h) => h.revision === req.sinceRevision);
@@ -184,6 +224,18 @@ export class ObservationService {
     const obs = await this.observe(pageId, {});
     const { picked, css } = pickExtractFields(obs.content, fields);
     if (css.length) {
+      const original = this.pages.live.get(pageId);
+      if (original?.personReadDocumentId && original.target.backend === "aux" &&
+          this.pages.deps.native.available() && !original.target.ownedByRuntime) {
+        const documentId = original.personReadDocumentId;
+        const { reader, current } = this.personReader(pageId, original);
+        const fixed = PersonReadRequestSchema.options[1].parse({ operation: "extract", fields: css });
+        const extra = await reader.extract(pageId, fixed.fields, current);
+        if (!current() || extra.documentId !== documentId || extra.sessionId !== original.target.sessionId)
+          throw new AuxError("ref_stale", "This page changed between observation and extraction.");
+        Object.assign(picked, extra.fields);
+        return { pageId, documentEpoch: obs.documentEpoch, revision: obs.revision, fields: picked };
+      }
       const extra = await this.pages.driverPageLenient(pageId).extract(css);
       Object.assign(picked, extra);
     }

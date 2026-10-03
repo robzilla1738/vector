@@ -21,6 +21,9 @@ export type ExecuteResult = ProgramResult & { observation?: Observation };
 export interface LivePage {
   target: PageTarget;
   driver: DriverPage | null;
+  /** Original browser DocumentUserData identity for fixed native person reads. */
+  personReadDocumentId?: string;
+  personReadDocumentEpoch?: number;
   /** serialization chain — commands to one page never overlap */
   queue: Promise<unknown>;
   lastObservationId?: string;

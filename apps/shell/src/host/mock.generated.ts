@@ -632,6 +632,21 @@ const RESULTS: Record<string, unknown> = {
   "native.egressRevoke": {
     "accepted": true
   },
+  "native.personReadContext": {
+    "documentId": "00000000-0000-4000-8000-000000000000",
+    "sessionId": "00000000-0000-4000-8000-000000000000",
+    "pageId": "00000000-0000-4000-8000-000000000000",
+    "producerSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "url": "https://example.com/"
+  },
+  "native.personRead": {
+    "documentId": "00000000-0000-4000-8000-000000000000",
+    "sessionId": "00000000-0000-4000-8000-000000000000",
+    "pageId": "00000000-0000-4000-8000-000000000000",
+    "producerSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "readId": "00000000-0000-4000-8000-000000000000",
+    "value": null
+  },
   "native.historyClear": {
     "removed": 0
   },

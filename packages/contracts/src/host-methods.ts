@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NativePersonReadParamsSchema, NativePersonReadReceiptSchema, NativePersonReadContextParamsSchema, NativePersonReadContextSchema } from "./native-person-read.js";
 import { LiveFolderSchema } from "./live-folders.js";
 import { OrganizationCommitSchema, OrganizationSnapshotSchema, ProfileOrganizationSnapshotSchema } from "./organization.js";
 import { TabCatalogSnapshotSchema, TabCommandAckSchema, TabCommandEnvelopeSchema, TabCommandSchema, TabPatchSchema, TabPlacementSchema } from "./tabs.js";
@@ -355,6 +356,8 @@ export const HostMethods = {
   "native.egressInstall": runtime("core", EgressInstallSchema, accepted),
   "native.permissionRetire": runtime("core", z.object({ tabId: z.string().min(1).max(160), batchId: z.string().min(1).max(160), reservationId: z.string().uuid() }).strict(), accepted),
   "native.egressRevoke": runtime("core", EgressRevokeSchema, accepted),
+  "native.personReadContext": runtime("core", NativePersonReadContextParamsSchema, NativePersonReadContextSchema),
+  "native.personRead": runtime("core", NativePersonReadParamsSchema, NativePersonReadReceiptSchema),
   "native.historyClear": runtime("core", z.object({ since: number.optional(), before: number.optional() }).strict(), z.object({ removed: number }).strict()),
   "native.historyImport": runtime("core", z.object({ visits: z.array(z.object({
     url: str, title: z.string().max(1000), visitedAt: z.number().int().nonnegative(),

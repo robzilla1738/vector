@@ -63,6 +63,7 @@ class NativePersonReadReceipt {
 
  private:
   friend class EgressController;
+  friend class NativePersonObserverController;
   NativePersonReadReceipt(content::WeakDocumentPtr document,
                           std::string page_id,
                           std::string control_generation,

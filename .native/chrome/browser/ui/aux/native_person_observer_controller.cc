@@ -22,6 +22,10 @@ namespace {
 class PersonReadDocument : public content::DocumentUserData<PersonReadDocument> {
  public:
   const std::string id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  std::string connection_id;
+  std::string session_id;
+  std::string control_generation;
+  std::string retirement_generation;
   ~PersonReadDocument() override = default;
  private:
   explicit PersonReadDocument(content::RenderFrameHost* frame)
@@ -47,7 +51,12 @@ bool ValidRequest(const base::DictValue& request) {
   if (*operation == "observe") {
     const auto elements = request.FindInt("maxElements");
     const auto text = request.FindInt("maxTextChars");
-    return OnlyKeys(request, {"operation", "maxElements", "maxTextChars"}) &&
+    const auto* filter = request.FindString("filter");
+    const auto* subtree = request.FindString("subtreeRef");
+    return OnlyKeys(request, {"operation", "maxElements", "maxTextChars", "filter", "subtreeRef"}) &&
+           (!request.contains("filter") ||
+            (filter && (*filter == "interactive" || *filter == "all" || *filter == "viewport"))) &&
+           (!request.contains("subtreeRef") || (subtree && !subtree->empty() && subtree->size() <= 512)) &&
            elements && *elements >= 1 && *elements <= 200 &&
            text && *text >= 1 && *text <= 16000;
   }
@@ -82,6 +91,29 @@ bool ValidRequest(const base::DictValue& request) {
 }
 }  // namespace
 WEB_CONTENTS_USER_DATA_KEY_IMPL(NativePersonObserverController);
+base::DictValue NativePersonObserverController::Describe(
+    const NativePersonReadReceipt& receipt, const std::string& connection_id) {
+  auto* frame = receipt.document().AsRenderFrameHostIfValid();
+  if (!frame || !base::Uuid::ParseLowercase(connection_id).is_valid())
+    return Fault("target_detached");
+  auto* profile = Profile::FromBrowserContext(frame->GetBrowserContext());
+  if (!profile || !EgressController::ForProfile(profile)->MayReadPerson(receipt))
+    return Fault("target_detached");
+  auto* document = PersonReadDocument::GetOrCreateForCurrentDocument(frame);
+  if (document->connection_id != connection_id ||
+      document->control_generation != receipt.control_generation_ ||
+      document->retirement_generation != receipt.retirement_generation_) {
+    document->connection_id = connection_id;
+    document->control_generation = receipt.control_generation_;
+    document->retirement_generation = receipt.retirement_generation_;
+    document->session_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  }
+  return base::DictValue().Set("result", base::DictValue()
+      .Set("pageId", receipt.page_id()).Set("documentId", document->id)
+      .Set("url", frame->GetLastCommittedURL().spec())
+      .Set("sessionId", document->session_id)
+      .Set("producerSha256", person_observer_script::kProducerSha256));
+}
 NativePersonObserverController::NativePersonObserverController(
     content::WebContents* contents)
     : content::WebContentsObserver(contents),

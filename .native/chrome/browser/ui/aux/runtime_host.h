@@ -252,7 +252,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
   void NativeConnectionPublished(uint64_t generation);
   void NativeConnectionRetired(uint64_t generation);
   void HandleNativePersonReadCall(
-      const base::DictValue& params, uint64_t connection_generation,
+      const std::string& method, const base::DictValue& params, uint64_t connection_generation,
       base::OnceCallback<void(base::DictValue)> callback);
   void HandleNativeRecorderCall(
       const std::string& method, const base::DictValue& params,
@@ -284,6 +284,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
   base::WeakPtr<aux::NativeRecorderController> native_recorder_;
   std::map<std::string, base::WeakPtr<aux::NativePersonObserverController>>
       native_person_reads_;
+  std::string native_person_connection_id_;
   bool shutting_down_ = false;
   base::WeakPtr<aux::EgressController> owner_mutation_egress_;
   std::set<std::string> owner_mutation_tokens_;

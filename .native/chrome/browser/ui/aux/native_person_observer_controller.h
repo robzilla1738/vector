@@ -21,6 +21,8 @@ class NativePersonObserverController final
       public content::WebContentsUserData<NativePersonObserverController> {
  public:
   using Reply = base::OnceCallback<void(base::DictValue)>;
+  static base::DictValue Describe(const NativePersonReadReceipt& receipt,
+                                  const std::string& connection_id);
   ~NativePersonObserverController() override;
   base::WeakPtr<NativePersonObserverController> GetWeakPtr() {
     return weak_factory_.GetWeakPtr();

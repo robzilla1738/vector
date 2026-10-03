@@ -20,6 +20,7 @@ export interface MentionContext {
   taskRevision?: number;
 }
 export interface TurnMentionDependencies {
+  prepareReadPage?(pageId: string): Promise<void>;
   page(pageId: string): PageTarget | undefined;
   authorizeRead?(runId: string, pageId: string, taskRead?: ValidatedTaskRead): Promise<() => void>;
   organization(): Promise<ProfileOrganizationSnapshot>;
@@ -64,6 +65,17 @@ export class TurnMentionService {
         ? await this.deps.organization()
         : undefined;
       if (this.starts.get(runId) !== token) throw new Error("This turn ended while resolving its sources.");
+      const selected = new Set<string>();
+      for (const ref of refs) {
+        if (ref.kind === "tab") selected.add(ref.pageId);
+        if (ref.kind === "group") for (const member of ref.members) selected.add(member.pageId);
+        if (ref.kind === "space") for (const [pageId, spaceId] of Object.entries(organization?.shared?.tabSpace ?? {}))
+          if (spaceId === ref.spaceId) selected.add(pageId);
+      }
+      if (this.deps.prepareReadPage && selected.size) {
+        await Promise.all([...selected].map(pageId => this.deps.prepareReadPage!(pageId)));
+        if (this.starts.get(runId) !== token) throw new MentionUnavailable("This turn changed while preparing its sources.");
+      }
       const active: Active = {
         token,
         authority: new TurnMentions(this.page, {
@@ -178,13 +190,16 @@ export class TurnMentionService {
   }
   async require(runId: string, pageId: string, access: MentionAccess): Promise<MentionAvailability> {
     const active = await this.refresh(runId);
-    return active
-      ? active.authority.require(runId, pageId, access)
-      : {
-          status: "unavailable",
-          reason: "This turn or its Space snapshot changed. Mention the sources again.",
-        };
+    const unavailable: MentionAvailability = {
+      status: "unavailable", reason: "This turn or its Space snapshot changed. Mention the sources again.",
+    };
+    if (!active) return unavailable;
+    const initial = active.authority.require(runId, pageId, access);
+    if (initial.status === "unavailable") return initial;
+    if (access === "read" && this.deps.prepareReadPage) await this.deps.prepareReadPage(pageId);
+    return this.turns.get(runId) === active ? active.authority.require(runId, pageId, access) : unavailable;
   }
+
   capture(runId: string): symbol {
     const active = this.turns.get(runId);
     if (!active) throw new MentionUnavailable("This turn has ended.");
@@ -229,6 +244,11 @@ export class TurnMentionService {
       const result = await this.use(runId, pageId, access, dispatch);
       checkSource();
       return result;
+    }
+    if (access === "read" && this.deps.prepareReadPage) {
+      await this.deps.prepareReadPage(pageId);
+      if (this.turns.get(runId) !== active) throw new MentionUnavailable("This turn ended while preparing its source.");
+      checkSource();
     }
     const before = this.page(pageId);
     if (!before) throw new MentionUnavailable("The authorized source attachment is unavailable.");

@@ -5,6 +5,7 @@
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/test_future.h"
+#include "base/uuid.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/aux/page_identity.h"
 #include "chrome/browser/ui/aux/tab_catalog.h"
@@ -115,8 +116,10 @@ IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
   reader_->Read(1, Observe(), original.GetCallback());
   reader_->Disconnect(1);
   ASSERT_NE(original.Take().FindDict("error"), nullptr);
-  auto replacement = Read();
-  ASSERT_NE(replacement.FindDict("result"), nullptr);
+  base::test::TestFuture<base::DictValue> replacement;
+  reader_->Read(2, Observe(), replacement.GetCallback());
+  reader_->Disconnect(1);
+  ASSERT_NE(replacement.Take().FindDict("result"), nullptr);
   ASSERT_NE(Read().FindDict("result"), nullptr);
 }
 
@@ -148,5 +151,52 @@ IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
   ASSERT_NE(value, nullptr);
   ASSERT_NE(value->FindString("url"), nullptr);
   EXPECT_EQ(*value->FindString("url"), embedded_test_server()->GetURL("/replacement-read").spec());
+}
+IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
+                       NativeReadSessionRetainsOriginalDocumentAndConnection) {
+  auto* authority = EgressController::ForProfile(browser()->GetProfile());
+  auto receipt = authority->CapturePersonRead(page_);
+  ASSERT_TRUE(receipt);
+  const auto connection = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  auto first = NativePersonObserverController::Describe(*receipt, connection);
+  auto repeated = NativePersonObserverController::Describe(*receipt, connection);
+  ASSERT_NE(first.FindDict("result"), nullptr);
+  ASSERT_NE(repeated.FindDict("result"), nullptr);
+  const auto* session = first.FindDict("result")->FindString("sessionId");
+  ASSERT_NE(session, nullptr);
+  ASSERT_NE(repeated.FindDict("result")->FindString("sessionId"), nullptr);
+  EXPECT_EQ(*repeated.FindDict("result")->FindString("sessionId"), *session);
+  EXPECT_EQ(first.FindDict("result")->FindDict("value"), nullptr);
+  auto replacement = NativePersonObserverController::Describe(*receipt,
+      base::Uuid::GenerateRandomV4().AsLowercaseString());
+  ASSERT_NE(replacement.FindDict("result"), nullptr);
+  ASSERT_NE(replacement.FindDict("result")->FindString("sessionId"), nullptr);
+  EXPECT_NE(*replacement.FindDict("result")->FindString("sessionId"), *session);
+  ASSERT_NE(replacement.FindDict("result")->FindString("documentId"), nullptr);
+  ASSERT_NE(first.FindDict("result")->FindString("documentId"), nullptr);
+  EXPECT_EQ(*replacement.FindDict("result")->FindString("documentId"),
+            *first.FindDict("result")->FindString("documentId"));
+}
+IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
+                       SettledOwnerMutationRotatesNativeReadSession) {
+  auto* authority = EgressController::ForProfile(browser()->GetProfile());
+  auto receipt = authority->CapturePersonRead(page_);
+  ASSERT_TRUE(receipt);
+  const auto connection = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  auto first = NativePersonObserverController::Describe(*receipt, connection);
+  ASSERT_NE(first.FindDict("result"), nullptr);
+  ASSERT_NE(first.FindDict("result")->FindString("sessionId"), nullptr);
+  const std::string original_session = *first.FindDict("result")->FindString("sessionId");
+  auto mutation = authority->owner_mutations().Begin();
+  ASSERT_TRUE(mutation);
+  ASSERT_TRUE(authority->owner_mutations().End(*mutation, true));
+  EXPECT_FALSE(authority->MayReadPerson(*receipt));
+  EXPECT_NE(NativePersonObserverController::Describe(*receipt, connection).FindDict("error"), nullptr);
+  auto current = authority->CapturePersonRead(page_);
+  ASSERT_TRUE(current);
+  auto replacement = NativePersonObserverController::Describe(*current, connection);
+  ASSERT_NE(replacement.FindDict("result"), nullptr);
+  ASSERT_NE(replacement.FindDict("result")->FindString("sessionId"), nullptr);
+  EXPECT_NE(*replacement.FindDict("result")->FindString("sessionId"), original_session);
 }
 }  // namespace aux

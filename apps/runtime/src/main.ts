@@ -1134,6 +1134,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const mentionRoutines = new RoutineService(repo, events);
   const mentionConnectors = new ConnectorCatalogService({ repo, tasks: new TaskService(repo, events), settings, calendar, mcp: outboundMcp });
   turnMentions = new TurnMentionService({
+    prepareReadPage: pageId => pages.prepareReadPage(pageId),
     authorizeRead: (runId, pageId, taskRead) => pages.authorizeAgentRead(runId, pageId, "page.read", taskRead),
     page: pageId => {
       try { return pages.get(pageId); }

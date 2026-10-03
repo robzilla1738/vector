@@ -476,6 +476,7 @@ void AuxRuntimeHost::NativeConnectionPublished(uint64_t generation) {
       return;
   }
   admitted_native_generation_ = generation;
+  native_person_connection_id_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
 }
 void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
   if (!generation)
@@ -484,6 +485,7 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
   if (admitted_native_generation_ != generation)
     return;
   admitted_native_generation_ = 0;
+  native_person_connection_id_.clear();
   ++native_recorder_session_generation_;
   auto recorder = native_recorder_;
   native_recorder_.reset();
@@ -501,22 +503,23 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
     recorder->Disconnect(generation);
 }
 void AuxRuntimeHost::HandleNativePersonReadCall(
-    const base::DictValue& params, uint64_t connection_generation,
+    const std::string& method, const base::DictValue& params, uint64_t connection_generation,
     base::OnceCallback<void(base::DictValue)> callback) {
   if (shutting_down_ || !connection_generation ||
       admitted_native_generation_ != connection_generation ||
-      connection_generation <= retired_native_generation_) {
+      connection_generation <= retired_native_generation_ || native_person_connection_id_.empty()) {
     std::move(callback).Run(NativeFault("target_detached", "Page connection retired"));
     return;
   }
   const auto* page_id = params.FindString("pageId");
   const auto* request = params.FindDict("request");
-  if (params.size() != 2 || !page_id || !aux::PageIdentity::IsValid(*page_id) ||
-      !request) {
+  const bool describe = method == "native.personReadContext";
+  if (params.size() != (describe ? 1u : 2u) || !page_id || !aux::PageIdentity::IsValid(*page_id) ||
+      (!describe && (method != "native.personRead" || !request))) {
     std::move(callback).Run(NativeFault("invalid_params", "Invalid fixed page read"));
     return;
   }
-  if (native_person_reads_.size() >= 8) {
+  if (!describe && native_person_reads_.size() >= 8) {
     std::move(callback).Run(NativeFault("conflict", "Too many pending page reads"));
     return;
   }
@@ -528,6 +531,17 @@ void AuxRuntimeHost::HandleNativePersonReadCall(
     std::move(callback).Run(NativeFault("permission_denied", "This page could not be read"));
     return;
   }
+  auto context = aux::NativePersonObserverController::Describe(*receipt, native_person_connection_id_);
+  auto* identity = context.FindDict("result");
+  const auto* session_id = identity ? identity->FindString("sessionId") : nullptr;
+  if (!session_id || !authority->MayReadPerson(*receipt)) {
+    std::move(callback).Run(NativeFault("target_detached", "Page read context retired"));
+    return;
+  }
+  if (describe) {
+    std::move(callback).Run(std::move(context));
+    return;
+  }
   aux::NativePersonObserverController::CreateForWebContents(page);
   auto reader = aux::NativePersonObserverController::FromWebContents(page)->GetWeakPtr();
   // Private operation identity survives controller callback invalidation;
@@ -537,7 +551,7 @@ void AuxRuntimeHost::HandleNativePersonReadCall(
   reader->Read(connection_generation, request->Clone(), base::BindOnce(
       [](base::WeakPtr<AuxRuntimeHost> owner,
          base::WeakPtr<aux::EgressController> authority,
-         aux::NativePersonReadReceipt receipt, std::string operation_id,
+         aux::NativePersonReadReceipt receipt, std::string operation_id, std::string session_id,
          uint64_t generation, base::OnceCallback<void(base::DictValue)> callback,
          base::DictValue reply) {
         if (!owner) {
@@ -552,9 +566,11 @@ void AuxRuntimeHost::HandleNativePersonReadCall(
           std::move(callback).Run(NativeFault("target_detached", "Page read retired"));
           return;
         }
+        if (auto* result = reply.FindDict("result"))
+          result->Set("sessionId", session_id);
         std::move(callback).Run(std::move(reply));
       }, weak_factory_.GetWeakPtr(), authority->GetWeakPtr(), std::move(*receipt),
-      operation_id, connection_generation, std::move(callback)));
+      operation_id, *session_id, connection_generation, std::move(callback)));
 }
 void AuxRuntimeHost::HandleNativeRecorderCall(
     const std::string& method, const base::DictValue& params,
@@ -1058,8 +1074,8 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
                         base::DictValue params,
                         uint64_t connection_generation,
                         std::shared_ptr<NativeReplyState> state) {
-                       if (owner && method == "native.personRead") {
-                         owner->HandleNativePersonReadCall(params, connection_generation,
+                       if (owner && (method == "native.personRead" || method == "native.personReadContext")) {
+                         owner->HandleNativePersonReadCall(method, params, connection_generation,
                              base::BindOnce([](std::shared_ptr<NativeReplyState> state,
                                                base::DictValue reply) {
                                state->reply = std::move(reply);

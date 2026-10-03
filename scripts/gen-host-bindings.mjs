@@ -108,6 +108,12 @@ function emitNode(schema, index) {
     if (schema.pattern && schema.format !== "uuid") {
       if (schema.pattern === "^[^\\p{Cc}\\p{Cf}]+$") add("if (!HasNoControlOrFormatCharacters(utf16)) return false;");
       else if (schema.pattern === "^[a-f0-9]{64}$") add("if (!IsLowerHexSha256(value.GetString())) return false;");
+      else if (schema.pattern === "^[A-Za-z][\\w-]{0,63}$") {
+        add("const auto& name = value.GetString();");
+        add("const auto alpha = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); };");
+        add("if (name.empty() || name.size() > 64 || !alpha(name[0])) return false;");
+        add("for (char c : name) if (!alpha(c) && !(c >= '0' && c <= '9') && c != '_' && c != '-') return false;");
+      }
       else throw new Error(`Unsupported pattern ${schema.pattern}`);
     }
   }

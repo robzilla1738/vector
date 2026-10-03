@@ -241,6 +241,8 @@ export class PageService {
   capture: PageDiagnostics["capture"] = (...args) => this.diagnostics.capture(...args);
   viewport: PageDiagnostics["viewport"] = (...args) => this.diagnostics.viewport(...args);
 
+  prepareReadPage: PageRegistry["prepareReadPage"] = (...args) => this.pages.prepareReadPage(...args);
+
   syncCatalog: NativeViewSync["syncCatalog"] = (...args) => this.nativeSync.syncCatalog(...args);
   onNativeRemoved: NativeViewSync["onNativeRemoved"] = (...args) => this.nativeSync.onNativeRemoved(...args);
   onNativeNavigated: NativeViewSync["onNativeNavigated"] = (...args) => this.nativeSync.onNativeNavigated(...args);

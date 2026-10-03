@@ -29,6 +29,13 @@ import {
   EgressContextSchema,
   type EgressContext,
   type EgressLease,
+  NativePersonReadContextParamsSchema,
+  NativePersonReadContextSchema,
+  type NativePersonReadContext,
+  NativePersonReadParamsSchema,
+  NativePersonReadReceiptSchema,
+  type PersonReadRequest,
+  type NativePersonReadReceipt,
 } from "@aux/contracts";
 
 export interface ContentBlockBegin {
@@ -84,6 +91,8 @@ import {
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge extends Partial<DownloadNamingNative> {
+  personReadContext?(pageId: string): Promise<NativePersonReadContext>;
+  personRead?(input: { pageId: string; request: PersonReadRequest }): Promise<NativePersonReadReceipt>;
   powerRelease?(): Promise<HostMethodResult<"native.powerRelease">>;
   powerStatus?(): Promise<HostMethodResult<"native.powerStatus">>;
   powerActivity?(input: { reason: string; durationSec: number }): Promise<HostMethodResult<"native.powerActivity">>;
@@ -197,6 +206,14 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   egressRevoke(input: { leaseId: string }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressRevoke", input);
+  }
+  async personReadContext(pageId: string): Promise<NativePersonReadContext> {
+    return NativePersonReadContextSchema.parse(await this.channel.call(
+      "native.personReadContext", NativePersonReadContextParamsSchema.parse({ pageId })));
+  }
+  async personRead(input: { pageId: string; request: PersonReadRequest }): Promise<NativePersonReadReceipt> {
+    return NativePersonReadReceiptSchema.parse(await this.channel.call(
+      "native.personRead", NativePersonReadParamsSchema.parse(input)));
   }
   async powerRelease() { return HostMethods["native.powerRelease"].result.parse(await this.channel.call("native.powerRelease", {})); }
   async powerStatus() { return HostMethods["native.powerStatus"].result.parse(await this.channel.call("native.powerStatus", {})); }

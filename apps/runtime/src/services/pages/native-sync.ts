@@ -21,6 +21,7 @@ export class NativeViewSync {
     if (!lp) return;
     lp.target.url = url;
     lp.target.documentEpoch++;
+    if (!lp.driver) delete lp.target.sessionId;
     this.pages.resetDocumentState(lp);
     if (lp.target.viewStatus === "crashed") lp.target.viewStatus = lp.target.ownedByRuntime ? "background" : this.pages.activeByWindow.get(lp.target.windowId ?? "main") === pageId ? "visible" : "hidden";
     lp.target.error = undefined;
@@ -28,6 +29,22 @@ export class NativeViewSync {
     this.pages.persist(lp);
     if (!this.pages.restoring) this.pages.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
     void this.pages.refreshMeta(lp);
+    void this.publishReadContext(pageId);
+  }
+
+  private async publishReadContext(pageId: string) {
+    const original = this.pages.live.get(pageId);
+    if (!original || original.driver || original.target.ownedByRuntime || original.target.agentIsolation) return;
+    const sessionId = original.target.sessionId, epoch = original.target.documentEpoch;
+    try { await this.pages.prepareReadPage(pageId); }
+    catch {
+      if (this.pages.live.get(pageId) === original && original.target.documentEpoch === epoch &&
+          original.target.sessionId === sessionId && sessionId) {
+        delete original.target.sessionId;
+        this.pages.persist(original);
+        this.pages.deps.events.emit(EventTypes.PageUpdated, { page: original.target });
+      }
+    }
   }
 
   onNativeNavigationError(pageId: string, error: { url: string; code: number; message: string; upgradedFrom?: string } | null) {
@@ -115,6 +132,18 @@ export class NativeViewSync {
         this.pages.lastKnownWindow.set(tab.pageId, tab.windowId);
         const lp = this.pages.live.get(tab.pageId);
         if (lp) {
+          if (!lp.driver && !lp.target.ownedByRuntime && !lp.target.agentIsolation) {
+            if (lp.target.url !== tab.url) {
+              lp.target.url = tab.url;
+              lp.target.documentEpoch++;
+              delete lp.target.sessionId;
+              this.pages.resetDocumentState(lp);
+            }
+            lp.target.title = tab.title;
+            this.pages.persist(lp);
+            this.pages.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
+            await this.publishReadContext(tab.pageId);
+          }
           this.syncSplit(tab.pageId, tab.split);
           this.onNativeNavigationError(tab.pageId, tab.navigationError ?? null);
           if (lp.target.themeColor !== tab.themeColor) {
@@ -157,6 +186,7 @@ export class NativeViewSync {
           // surface must invalidate observations made against the old one.
           restored: this.pages.deps.repo.getPage(tab.pageId),
         });
+        await this.publishReadContext(tab.pageId);
         this.syncSplit(tab.pageId, tab.split);
         if (this.pages.pendingRestore.delete(tab.pageId)) {
           this.pages.restoreErrors.delete(tab.pageId);

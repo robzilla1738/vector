@@ -1,0 +1,38 @@
+{
+  "sourceOnly": true,
+  "logs": [
+    {
+      "gate": "unit",
+      "log": "/tmp/aux-person-context-unit.log",
+      "sha256": "6ae4a2b54f91fccc2eda9e8c19bebb728b0e9bc1dd007bb852d775feef8fa559"
+    },
+    {
+      "gate": "typecheck",
+      "log": "/tmp/aux-person-context-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    },
+    {
+      "gate": "lint",
+      "log": "/tmp/aux-person-context-lint.log",
+      "sha256": "de10a988362d9d7c7c988dbf089278c03105c0f6680a1e325785376e0e8d54cf"
+    },
+    {
+      "gate": "format",
+      "log": "/tmp/aux-person-context-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    }
+  ],
+  "checks": [
+    "workspace rebuild and whole unit suite PASS",
+    "typecheck PASS",
+    "lint within390 PASS",
+    "format ratchet PASS",
+    "generated fixed reader and211method/26event bindings PASS",
+    "bridge coverage PASS",
+    "native inventory PASS",
+    "47journey/43feature registry PASS"
+  ],
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "rendererBudget": "next coherent UI asset batch pending"
+}

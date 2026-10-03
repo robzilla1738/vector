@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
-import { AuxError, type Backend, EventTypes, type PageTarget } from "@aux/contracts";
+import { AuxError, type Backend, EventTypes, type PageTarget, type NativePersonReadContext } from "@aux/contracts";
 import type { Repo } from "../../store/repo.js";
+import { parsePersonReadContext } from "../native-person-reader.js";
 import type { LivePage, PageServiceDeps } from "./types.js";
 
 /**
@@ -69,6 +70,48 @@ export class PageRegistry {
     if (driver) this.installDriver(lp, driver);
     this.persist(lp);
     return lp;
+  }
+
+  /** A native read session is distinct from a browser-control attachment. */
+  adoptPersonReadContext(lp: LivePage, context: Pick<NativePersonReadContext, "documentId" | "sessionId">) {
+    if (this.closing || this.live.get(lp.target.pageId) !== lp || lp.driver)
+      throw new AuxError("target_detached", "This tab changed while preparing its context.");
+    if (lp.personReadDocumentId && lp.personReadDocumentId !== context.documentId) {
+      if (lp.target.sessionId === context.sessionId)
+        throw new AuxError("backend_unavailable", "The native reader reused a retired document session.");
+      if (lp.personReadDocumentEpoch === lp.target.documentEpoch) lp.target.documentEpoch++;
+      this.resetDocumentState(lp);
+    }
+    const changed = lp.target.sessionId !== context.sessionId;
+    lp.personReadDocumentId = context.documentId;
+    lp.personReadDocumentEpoch = lp.target.documentEpoch;
+    lp.target.sessionId = context.sessionId;
+    if (changed) {
+      this.persist(lp);
+      this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
+    }
+  }
+  async prepareReadPage(pageId: string): Promise<void> {
+    const lp = this.live.get(pageId);
+    if (!lp) throw new AuxError("target_detached", "This tab is no longer available.");
+    if (lp.driver || lp.target.backend !== "aux" || lp.target.ownedByRuntime || lp.target.agentIsolation) return;
+    if (!["human", "none"].includes(lp.target.controller) ||
+        ["detached", "crashed"].includes(lp.target.viewStatus))
+      throw new AuxError("permission_denied", "This tab is unavailable for read-only context.");
+    const prepare = this.deps.native.personReadContext;
+    if (!this.deps.native.available() || !prepare)
+      throw new AuxError("backend_unavailable", "The native page reader is unavailable.");
+    const epoch = lp.target.documentEpoch, control = lp.target.controllerEpoch, url = lp.target.url;
+    const raw = await prepare.call(this.deps.native, pageId);
+    if (this.live.get(pageId) !== lp || this.closing || lp.driver ||
+        lp.target.documentEpoch !== epoch || lp.target.controllerEpoch !== control || lp.target.url !== url ||
+        lp.target.ownedByRuntime || lp.target.agentIsolation ||
+        !["human", "none"].includes(lp.target.controller) || ["detached", "crashed"].includes(lp.target.viewStatus))
+      throw new AuxError("target_detached", "This tab changed while preparing its context.");
+    const context = parsePersonReadContext(pageId, raw);
+    if (context.url !== lp.target.url)
+      throw new AuxError("ref_stale", "This tab navigated before its context was ready.");
+    this.adoptPersonReadContext(lp, context);
   }
 
   /** Restored placeholders acquire a driver only after their native tab opens. */

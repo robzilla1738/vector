@@ -1,7 +1,7 @@
 import type { ObserveScriptResult } from "./observe-script.js";
 
 export type PersonReadRequest =
-  | { operation: "observe"; maxElements: number; maxTextChars: number }
+  | { operation: "observe"; maxElements: number; maxTextChars: number; filter?: "interactive" | "all" | "viewport"; subtreeRef?: string }
   | { operation: "extract"; fields: Array<{ name: string; selector?: string; attribute?: string; all?: boolean }> };
 
 /** Fixed isolated-world reader. Arguments are data; no scripts or actuation. */
@@ -13,6 +13,9 @@ export function readPersonDocument(request: PersonReadRequest): ObserveScriptRes
   if (request.operation === "observe" &&
       (!Number.isInteger(request.maxElements) || request.maxElements < 1 || request.maxElements > 200 ||
        !Number.isInteger(request.maxTextChars) || request.maxTextChars < 1 || request.maxTextChars > 16000)) fail();
+  if (request.operation === "observe" &&
+      ((request.filter !== undefined && !["interactive", "all", "viewport"].includes(request.filter)) ||
+       (request.subtreeRef !== undefined && (typeof request.subtreeRef !== "string" || !request.subtreeRef.length || request.subtreeRef.length > 512)))) fail();
   if (request.operation === "extract" && (!Array.isArray(request.fields) || request.fields.length < 1 || request.fields.length > 20)) fail();
 
   const roots: Array<Document | ShadowRoot> = [document];
@@ -104,14 +107,30 @@ export function readPersonDocument(request: PersonReadRequest): ObserveScriptRes
   }
   const state = globalThis as typeof globalThis & { __auxPersonRefs?: { ids: WeakMap<Element, number>; next: number } };
   const refs = state.__auxPersonRefs ??= { ids: new WeakMap(), next: 1 };
+  let scope: Node = document.body;
+  if (request.subtreeRef !== undefined) {
+    const ref = /^r([1-9][0-9]*)$/.exec(request.subtreeRef);
+    const matches = ref ? elements.filter(element => refs.ids.get(element) === Number(ref[1])) :
+      roots.flatMap(root => [...root.querySelectorAll(request.subtreeRef!)]);
+    if (matches.length !== 1 || !matches[0]!.isConnected) fail();
+    scope = matches[0]!;
+  }
+  const inside = (element: Element): boolean => {
+    for (let node: Node | null = element; node; node = node.parentNode ?? (node instanceof ShadowRoot ? node.host : null))
+      if (node === scope) return true;
+    return false;
+  };
+  const scoped = elements.filter(inside);
   const interactive = "a[href],button,input:not([type=hidden]),select,textarea,summary,[role],[tabindex]";
-  const candidates = elements.filter(element => element.matches(interactive));
+  const candidates = request.filter === "all" ? scoped : scoped.filter(element => element.matches(interactive));
   const entries = [];
   for (const element of candidates) {
     if (entries.length >= request.maxElements) break;
     const rect = element.getBoundingClientRect();
     const style = getComputedStyle(element);
     if (!rect.width || !rect.height || style.display === "none" || style.visibility !== "visible") continue;
+    if (request.filter === "viewport" &&
+        (rect.bottom <= 0 || rect.right <= 0 || rect.top >= innerHeight || rect.left >= innerWidth)) continue;
     let id = refs.ids.get(element);
     if (id === undefined) { id = refs.next++; refs.ids.set(element, id); }
     if (!Number.isSafeInteger(refs.next)) fail();
@@ -129,7 +148,7 @@ export function readPersonDocument(request: PersonReadRequest): ObserveScriptRes
   }
   const formFields = entries.filter(entry => ["input", "select", "textarea"].includes(entry.tag))
     .map(entry => ({ ref: entry.ref, label: entry.name, type: entry.type ?? entry.tag }));
-  const tables = elements.filter(element => element.tagName === "TABLE").slice(0, 6).map((table, index) => {
+  const tables = scoped.filter(element => element.tagName === "TABLE").slice(0, 6).map((table, index) => {
     const rows = [...table.querySelectorAll("tr")];
     const header = rows.find(row => row.querySelector("th"));
     const body = rows.filter(row => row !== header);
@@ -137,14 +156,14 @@ export function readPersonDocument(request: PersonReadRequest): ObserveScriptRes
     return { ref: `t${index + 1}`, caption: table.querySelector("caption") ? textOf(table.querySelector("caption")!, 80) : undefined,
       columns: header ? cells(header) : [], rows: body.slice(0, 12).map(cells), totalRows: body.length, truncated: body.length > 12 };
   });
-  const dialogs = elements.filter(element => element.matches('dialog[open],[role="dialog"],[role="alertdialog"]'))
+  const dialogs = scoped.filter(element => element.matches('dialog[open],[role="dialog"],[role="alertdialog"]'))
     .slice(0, 8).map(element => ({ type: element.getAttribute("role") ?? "dialog", message: textOf(element, 512) }));
-  const text = textOf(document.body, request.maxTextChars + 1);
+  const text = textOf(scope, request.maxTextChars + 1);
   return { url: pageUrl, title: document.title.slice(0, 512),
     viewport: { width: innerWidth, height: innerHeight, scale: devicePixelRatio || 1 },
     scroll: { x: Math.round(scrollX), y: Math.round(scrollY), maxY: Math.max(0, document.documentElement.scrollHeight - innerHeight) },
     text: text.slice(0, request.maxTextChars),
-    headings: elements.filter(element => /^H[1-3]$/.test(element.tagName)).slice(0, 12).map(element => textOf(element, 140)),
+    headings: scoped.filter(element => /^H[1-3]$/.test(element.tagName)).slice(0, 12).map(element => textOf(element, 140)),
     elements: entries, formFields, tables, links: entries.filter(element => element.href).map(element => ({ ref: element.ref, text: element.name, href: element.href })),
     dialogs, truncated: candidates.length > entries.length || text.length > request.maxTextChars,
     elementsTotal: candidates.length, nextRef: refs.next };
