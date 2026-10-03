@@ -1,3 +1,4 @@
+import { captureHomeJourneyState as captureMainState } from '../lib/home-capture.mjs';
 import { setTabLayout } from '../lib/tab-layout.mjs';
 
 export const journey = {
@@ -37,7 +38,7 @@ export async function run(t) {
     t.assert.ok(panes.every(pane => pane.frame?.width >= 200 && pane.frame?.height >= 200));
     const pages = await t.rpc('pages.list');
     t.assert.ok(pages.some(page => page.pageId === red.pageId) && pages.some(page => page.pageId === blue.pageId));
-    await t.capture('split-open');
+    await captureMainState(t, 'split-open', 'split-open');
     return { ax, rpc: { pages, workspace: await t.rpc('workspace.get') } };
   });
   await t.step('close the split while retaining both pages', { kind: 'ui', features: ['splitView'] }, async () => {

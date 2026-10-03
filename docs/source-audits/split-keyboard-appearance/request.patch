@@ -1,0 +1,36 @@
+diff --git a/tests/host/journeys/keyboard-tabs.mjs b/tests/host/journeys/keyboard-tabs.mjs
+index 41ae5cdb..8c41646d 100644
+--- a/tests/host/journeys/keyboard-tabs.mjs
++++ b/tests/host/journeys/keyboard-tabs.mjs
+@@ -1,3 +1,4 @@
++import { captureHomeJourneyState as captureMainState } from '../lib/home-capture.mjs';
+ import { setTabLayout } from '../lib/tab-layout.mjs';
+ 
+ export const journey = {
+@@ -23,7 +24,7 @@ export async function run(t) {
+       t.assert.match(JSON.stringify(ax), new RegExp(page.pageId === red.pageId ? 'Aux native Red' : 'Aux native Blue'));
+       const settings = await t.rpc('settings.get');
+       t.assert.equal(settings.tabLayout, layout);
+-      await t.capture(`keyboard-${layout}-${name}`);
++      await captureMainState(t, `keyboard-${layout}-${name}`, `keyboard-${layout}-${name}`);
+       return { ax, rpc: { workspace: rpc, tabLayout: settings.tabLayout } };
+     });
+     }
+diff --git a/tests/host/journeys/split-view.mjs b/tests/host/journeys/split-view.mjs
+index 072b75f0..d6ce1d53 100644
+--- a/tests/host/journeys/split-view.mjs
++++ b/tests/host/journeys/split-view.mjs
+@@ -1,3 +1,4 @@
++import { captureHomeJourneyState as captureMainState } from '../lib/home-capture.mjs';
+ import { setTabLayout } from '../lib/tab-layout.mjs';
+ 
+ export const journey = {
+@@ -37,7 +38,7 @@ export async function run(t) {
+     t.assert.ok(panes.every(pane => pane.frame?.width >= 200 && pane.frame?.height >= 200));
+     const pages = await t.rpc('pages.list');
+     t.assert.ok(pages.some(page => page.pageId === red.pageId) && pages.some(page => page.pageId === blue.pageId));
+-    await t.capture('split-open');
++    await captureMainState(t, 'split-open', 'split-open');
+     return { ax, rpc: { pages, workspace: await t.rpc('workspace.get') } };
+   });
+   await t.step('close the split while retaining both pages', { kind: 'ui', features: ['splitView'] }, async () => {

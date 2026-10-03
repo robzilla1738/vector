@@ -1,3 +1,4 @@
+import { captureHomeJourneyState as captureMainState } from '../lib/home-capture.mjs';
 import { setTabLayout } from '../lib/tab-layout.mjs';
 
 export const journey = {
@@ -23,7 +24,7 @@ export async function run(t) {
       t.assert.match(JSON.stringify(ax), new RegExp(page.pageId === red.pageId ? 'Aux native Red' : 'Aux native Blue'));
       const settings = await t.rpc('settings.get');
       t.assert.equal(settings.tabLayout, layout);
-      await t.capture(`keyboard-${layout}-${name}`);
+      await captureMainState(t, `keyboard-${layout}-${name}`, `keyboard-${layout}-${name}`);
       return { ax, rpc: { workspace: rpc, tabLayout: settings.tabLayout } };
     });
     }
