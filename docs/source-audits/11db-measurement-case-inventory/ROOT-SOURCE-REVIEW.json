@@ -1,0 +1,15 @@
+{
+  "sourceOnly": true,
+  "inventorySha256": "0965b75710e88644e5508c89082125d9f298ce365155d800f02aa324db70da04",
+  "actualNetReverseOriginalBaselines": true,
+  "baselineScratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-measurement-case-baselines-nc3lso_q",
+  "actualDeclarationsCompared": 71,
+  "genuinelyNewDeclarations": 62,
+  "actualFrozenGnSourceMentionsChecked": true,
+  "successorPlanSha256": "b114a75e635e85ef3fff1017a426bf70281473c11bfc6e8fa03f6b6e28467979",
+  "successorControllerSha256": "f8259be58cb914ae9c79f5a7050682bceb25c7f78ea377b6fa0c1df94b06ef6f",
+  "exactCorrectionOnly": true,
+  "nativeCompiledOwnersOrListsProven": false,
+  "runtimeHelperExecutionApproved": false,
+  "whole17SuccessfulTerminalAndCompiledGuardRequired": true
+}
