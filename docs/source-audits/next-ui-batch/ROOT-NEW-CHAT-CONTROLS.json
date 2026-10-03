@@ -1,0 +1,39 @@
+{
+  "status": "source controls and mock renderer verification; native qualification pending",
+  "sourceCommit": "6809bafb",
+  "checks": {
+    "contractsBuild": {
+      "exitCode": 0,
+      "log": "/tmp/aux-next-chat-contract-build.log"
+    },
+    "shellTypecheck": {
+      "exitCode": 0,
+      "log": "/tmp/aux-next-new-chat-typecheck.log"
+    },
+    "commandDispatch": {
+      "exitCode": 0,
+      "log": "/tmp/aux-next-new-chat-command.log"
+    },
+    "registryAndContract": {
+      "exitCode": 0,
+      "log": "/tmp/aux-next-new-chat-registry.log"
+    },
+    "formatRatchet": {
+      "exitCode": 0,
+      "log": "/tmp/aux-next-format.log"
+    },
+    "scopedLint": {
+      "exitCode": 0,
+      "log": "/tmp/aux-next-new-chat-lint.log",
+      "note": "Existing Sidebar warnings retained; full390ratchet waits coherentbatch"
+    }
+  },
+  "actualPreview": {
+    "url": "http://127.0.0.1:5238/",
+    "mode": "mock",
+    "newChat": "Registered action opens full conversation with no browser context; active element composer; existing draft retained and send enabled",
+    "sidebar": "overflow clip; education normal wrap; no overflow",
+    "dependencyIssue": "Vite dependency cache retained earlier contract inventory; isolated preview cache recreated and original New chat successfully verified. No native build cache mutation."
+  },
+  "nativeStatus": "Current07f3 compile signature failure preserved;0335source correction adopted but uncompiled"
+}
