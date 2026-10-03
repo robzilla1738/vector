@@ -1,0 +1,46 @@
+{
+  "sourceOnly": true,
+  "successorControllerSha256": "032a7c274bcbf6adf46f4a783d843e73665fc558f1dd1de93c3ea1f17ed30ef6",
+  "launcherSha256": "dd46b1c08e0a7723292c0150f582bf74622d804e34659f891de23fe85ad3585d",
+  "exactUnchangedControllerOutsideBuiltinEolGuardAndFreshOutput": true,
+  "exactRequestSuccessor": true,
+  "actualFailedTerminalSha256": "8b7f20d2640d95c75afbe8f120324b19cb54ac966d5867377a58bdff0ecfd659",
+  "actual128ChildrenReceiptsAndRawBytesMatch": true,
+  "actualOriginalProcessesAndGroupsAbsent": true,
+  "actualSlotAbsent": true,
+  "actualReadOnlyControls": [
+    {
+      "repository": "source",
+      "case": "original",
+      "actualCanonicalOid": "a2d00d659396ac7f96b63cc083e904b1c61d8b58",
+      "indexUnchanged": true,
+      "attributesSha256": "639df17e3777693f9aaba37ee879a0c1e19336418e16df99897acd4c3f17e35e"
+    },
+    {
+      "repository": "source",
+      "case": "corrupt",
+      "actualCanonicalOid": "057b4d69fe8673611242e416ef6faee8d9dc28ea",
+      "indexUnchanged": true,
+      "attributesSha256": "639df17e3777693f9aaba37ee879a0c1e19336418e16df99897acd4c3f17e35e"
+    },
+    {
+      "repository": "destination",
+      "case": "original",
+      "actualCanonicalOid": "a2d00d659396ac7f96b63cc083e904b1c61d8b58",
+      "indexUnchanged": true,
+      "attributesSha256": "639df17e3777693f9aaba37ee879a0c1e19336418e16df99897acd4c3f17e35e"
+    },
+    {
+      "repository": "destination",
+      "case": "corrupt",
+      "actualCanonicalOid": "057b4d69fe8673611242e416ef6faee8d9dc28ea",
+      "indexUnchanged": true,
+      "attributesSha256": "639df17e3777693f9aaba37ee879a0c1e19336418e16df99897acd4c3f17e35e"
+    }
+  ],
+  "actualOriginalSourceAndDestinationWorkingBytesAndModeMatch": true,
+  "fullSourceReady": false,
+  "gnBuildLaunchApproved": false,
+  "sourceMaterializationDispatchReviewed": true,
+  "missingLfsObjects": 23
+}
