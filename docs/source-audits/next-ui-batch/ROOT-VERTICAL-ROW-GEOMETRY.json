@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "kind": "source-renderer-preview",
+  "source": "06/assets/upstream-src/chrome/browser/ui/layout_constants.cc",
+  "destination": "apps/shell/src/components/Sidebar.css",
+  "observedRows": 7,
+  "heightPx": 30,
+  "radiusPx": 8,
+  "paddingInlinePx": 12,
+  "preview": "http://127.0.0.1:5238/settings/appearance",
+  "nativeQualification": false
+}

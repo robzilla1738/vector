@@ -37,3 +37,7 @@ Aux runs Chromium 154. Any native adaptation must use the actual pinned 154 APIs
 ## Acceptance ledger
 
 For every F1–F21 surface: record source file/symbol or decoded component, adopted geometry/state/material/motion, deliberate differences with rationale, actual Aux destination and reference build; then compare real journey contact sheets in light/dark, transparency on/off, reduced motion, narrow window, keyboard focus, long labels and hit targets. No open P0–P2 findings and final owner visual sign-off remain mandatory. Keep original safety, qualification, command, native ownership, performance and merge-order gates. Current inventory/map is complete; implementation comparisons and native visual qualification remain open.
+
+### Adopted vertical-row correction
+
+`chrome/browser/ui/layout_constants.cc` (`TAB_HEIGHT`, `TAB_STRIP_PADDING`, vertical-tab corner constants) and F2 supply 30 px ordinary rows, 8 px corners and 12 px horizontal inset. `apps/shell/src/components/Sidebar.css` now uses the existing `--sidebar-row-h`, `--sidebar-row-radius` and spacing tokens instead of overriding them with 34 px/11.2 px. Folder indentation retains its more specific rules. The isolated renderer preview at localhost:5238, Appearance → Vertical, reports all seven actual tab rows at 30 px height, 8 px radius and 12 px left/right padding. This is renderer geometry evidence only; native light/dark/transparency, focus/hit-target and contact-sheet acceptance remain open.

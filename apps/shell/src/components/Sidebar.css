@@ -24,7 +24,7 @@
 .sidebar .sb-split-pair button { color:var(--ink-2); border-radius:var(--r-md); padding:var(--space-1); }
 .sidebar .sb-split-pair button:hover, .sidebar .sb-split-pair button:focus-visible { color:var(--ink-0); background:var(--bg-hover); }
 .sidebar .sidebar-section-heading { min-height: 32px; font-size: var(--fs-xs); padding-inline: var(--space-4); }
-.sidebar .tab-row, .sidebar .tab-new, .sidebar .folder-row { height: 34px; border-radius: var(--r-lg); gap: var(--space-2-5); }
+.sidebar .tab-row, .sidebar .tab-new, .sidebar .folder-row { height: var(--sidebar-row-h); border-radius: var(--sidebar-row-radius); padding-inline: var(--space-3); gap: var(--space-2-5); }
 .sidebar .tab-row.active { box-shadow: none; }
 .sidebar .folder-block { margin-block: var(--space-1); }
 .sidebar .folder-block.open, .sidebar .folder-block.open:hover { background: var(--sb-field); }
