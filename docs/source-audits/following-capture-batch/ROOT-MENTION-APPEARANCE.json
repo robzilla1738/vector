@@ -1,0 +1,38 @@
+{
+  "freezeSha256": "151d88cb2d396690fb3f969004085fcf90c1f38773f2b38d727eab8b266cd8e5",
+  "requestSha256": "cd4dda77304833b16b6597c3b212471a914c2875f651abb70435fafaecd2911b",
+  "files": [
+    {
+      "path": "tests/host/run-journey.mjs",
+      "beforeSha256": "62c281885a997cb43e9ccd508c8bc2702b59a009769fc699d4ce55530daf50cc",
+      "afterSha256": "f2e4d50432d5d05418964fa1d67bee042df4f0db4647fc5761bb577d7769f993",
+      "bytes": 26837
+    },
+    {
+      "path": "tests/host/lib/mentions-appearance.mjs",
+      "beforeSha256": null,
+      "afterSha256": "e0af90c4b6343fd8eeeccd82e9d6fc933c4404e9fc27dae90bdec5eac517aaa4",
+      "bytes": 2712
+    },
+    {
+      "path": "tests/host/lib/mentions-appearance.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "01d7bb480d18d5dcfef3afc736d5e4ffe825465ce33df91b9ba8d0aa322e63dc",
+      "bytes": 3476
+    },
+    {
+      "path": "tests/host/appearance-journeys/mentions-appearance.mjs",
+      "beforeSha256": null,
+      "afterSha256": "2ae22d166a2a48140b8ad0c210d10b1f97d856e7c0b05f706c1a1c9f81c5e59a",
+      "bytes": 6439
+    }
+  ],
+  "exactReplay": "PASS",
+  "nativeExecuted": false,
+  "qualification": false,
+  "nodeControls": {
+    "exitCode": 0,
+    "log": "/tmp/aux-root-mention-appearance-controls.log",
+    "sha256": "12b6ca7d7545cbd68ade22aeab91a567b616d9b426f6a533b4407786c74885c6"
+  }
+}

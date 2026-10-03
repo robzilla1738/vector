@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { MENTIONS_APPEARANCE_ID, requireMentionsAppearance } from './lib/mentions-appearance.mjs';
 import { retainPackagedRuntimePair } from './lib/packaged-runtime-pair-artifact.mjs';
 import { preflightAppearancePair } from './lib/appearance-pair-preflight.mjs';
 import { createLaunchServicesAppearanceProvenance } from './lib/appearance-provenance.mjs';
@@ -50,7 +51,12 @@ const slot = await acquireNativeSlot();
 process.env.AUX_NATIVE_SLOT_TOKEN = slot.token;
 try {
 let entry;
-if (values.journey === SETUP_IMPORT_INTERRUPTION_ID) {
+if (values.journey === MENTIONS_APPEARANCE_ID) {
+  requireMentionsAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/mentions-appearance.mjs');
+  const module = await import('./appearance-journeys/mentions-appearance.mjs');
+  entry = { ...module, path };
+} else if (values.journey === SETUP_IMPORT_INTERRUPTION_ID) {
   requireImportInterruptionAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
   const path = join(root, 'tests/host/appearance-journeys/setup-import-interruption-appearance.mjs');
   const module = await import('./appearance-journeys/setup-import-interruption-appearance.mjs');
