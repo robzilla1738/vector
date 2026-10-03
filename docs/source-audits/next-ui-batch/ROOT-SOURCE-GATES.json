@@ -1,0 +1,14 @@
+{
+  "sourceCommit": "484d296c",
+  "workspaceBuild": "PASS /tmp/aux-root-0333-contract-build.log then /tmp/aux-root-protected-retry-build.log",
+  "shellTypecheck": "PASS /tmp/aux-root-retry-panel-typecheck.log",
+  "bindingCheck": "PASS /tmp/aux-next-bindings-check-002.log",
+  "bridgeCoverage": "PASS /tmp/aux-next-bridge-check.log",
+  "journeyRegistry": "PASS 49 journeys / 43 features at /tmp/aux-next-registry-check.log; no journeys executed",
+  "lint": "PASS /tmp/aux-next-batch-lint-002.log",
+  "formatRatchet": "PASS /tmp/aux-next-batch-format-002.log",
+  "contrast": "PASS /tmp/aux-next-glass-contrast-003.log; base palette only, actual native layers unqualified",
+  "productionBundle": "PASS /tmp/aux-next-shell-build.log and /tmp/aux-next-bundle-budgets.log BEFORE subsequent RunPanel/material changes; final coherent bundle must rerun",
+  "nativeQualification": false,
+  "remainingBatch": "Home Ask default/storage recovery, appearance unowned cleanup retry successor, stable Settings orientation; then full final source/bundle/native/qualification gates"
+}
