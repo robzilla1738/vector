@@ -1,0 +1,12 @@
+{
+  "stageRequestSha256": "3a586d530b7df8f558c931112cd708db1a4a1e97a72d240989e6a42168826fe2",
+  "launchSha256": "a52c8b6b66cfb90a9e9cb12371a46ebf47c7158ec1d52c7d539c55171f5cb36a",
+  "controllerSha256": "0f238e6c41c1cfcb08176b5d7a0e4d1cfd4d9c703981f0989128e7cfb9337a7d",
+  "exactDiffSha256": "5e839f468e094a63b2f0a4cfd9e2f18780bf95420127ecd9ed98b73b03b71eea",
+  "exactPriorControllerDeltaReadAndVerified": true,
+  "allOriginalCleanupAndWatcherBodiesPreserved": true,
+  "actualProductIdentityConfirmed": true,
+  "new665And302SourceJoinExact": true,
+  "authorizedScope": "one owned source/generated/assets stage only; no GN/build/runtime/helper/app",
+  "nativeCompiled": false
+}
