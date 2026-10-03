@@ -59,6 +59,7 @@ export interface FeatureMount {
   railView?: { component: ComponentType; active: () => boolean; subscribe: (listener: () => void) => () => void };
   overlays?: readonly ComponentType[];
   composerPlugins?: readonly ComponentType<ComposerPluginProps>[];
+  composerActions?: readonly ComponentType<ComposerPluginProps>[];
   settingsSections?: readonly { category: string; component: ComponentType }[];
   commands?: Partial<Record<ShellCommandId, (context: CommandContext, invocation: CommandInvocation) => unknown>>;
   /** Registry IDs only: bindings and remapping stay in the shared command contract. */
@@ -105,8 +106,8 @@ export function FeatureSettings({ category }: { category: string | null }) {
   return featureMounts.filter(enabled).flatMap(mount => (mount.settingsSections ?? [])
     .map((section, index) => createElement("div", { key: `${mount.feature}:${index}`, hidden: section.category !== category }, createElement(section.component))));
 }
-export function FeatureComposer(props: ComposerPluginProps) {
-  return featureMounts.filter(enabled).flatMap(mount => (mount.composerPlugins ?? []).map((component, index) =>
+export function FeatureComposer({ slot = "composerPlugins", ...props }: ComposerPluginProps & { slot?: "composerPlugins" | "composerActions" }) {
+  return featureMounts.filter(enabled).flatMap(mount => (mount[slot] ?? []).map((component, index) =>
     createElement(component, { ...props, key: `${mount.feature}:${index}` })));
 }
 

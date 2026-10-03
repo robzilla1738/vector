@@ -11,11 +11,11 @@ function NightSettingsSection() {
 }
 import { bootNightReview, queueTonight, reviewNightItem, useNightReview, nightReviewGeneration } from "./state";
 function QueueButton({ disabled = false }: Partial<ComposerPluginProps>) {
-  return createElement("button", { className: "btn sm ghost", disabled, onClick: () => void executeCommand("queue-for-tonight") }, "Queue for tonight");
+  return createElement("button", { className: "btn sm ghost", "data-command-id": "queue-for-tonight", disabled, onClick: () => void executeCommand("queue-for-tonight") }, "Queue for tonight");
 }
 export const mount: FeatureMount = {
   feature: "overnightReview", boot: bootNightReview, sidebarFooterItems: [OvernightCard], startItems: [OvernightCard], overlays: [NightOverlays],
-  composerPlugins: [QueueButton], settingsSections: [{ category: "Automations", component: NightSettingsSection }],
+  composerActions: [QueueButton], settingsSections: [{ category: "Automations", component: NightSettingsSection }],
   commands: {
     "queue-for-tonight": (_context, invocation) => invocation.payload && "queue" in invocation.payload
       ? queueTonight(invocation.payload.queue) : useNightReview.setState({ queueOpen: true, inboxOpen: false, queueVisited: true }),
