@@ -1,0 +1,20 @@
+{
+  "result": "PASS independent audit of failed terminal build",
+  "terminalAuditSha256": "1a396085eb0e865a2193e59c0b671d04e8683a006e54694a8f0fe51fc8cdd805",
+  "actualPathBindings": 9983,
+  "actualPhysicalFilesHashed": 9983,
+  "nativeFiles": 374,
+  "generatedFiles": 3,
+  "packets": 142,
+  "assets": 175,
+  "partialOutputs": 17,
+  "componentLibraryPathBindings": 577,
+  "pakPathBindings": 8207,
+  "actualOriginalProcessRows": [],
+  "slotAbsent": true,
+  "graphExitCode": 1,
+  "watcherExitCode": 0,
+  "qualification": false,
+  "stagingApproved": false,
+  "limitation": "Failed graph outputs are partial; they must not launch or qualify.0318/0319 remain source fixes pending corrected mandatory full native build."
+}
