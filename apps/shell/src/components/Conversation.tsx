@@ -326,10 +326,11 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   const pendingTurns = useStore(useShallow(s => s.pendingTurns.filter(turn => turn.chatId === (id ?? sendingChat))));
   const answerPending = useStore(s=>!!last && !!s.runAnswerPending[last.runId]);
   const [sendError,setSendError]=useState("");
-  useEffect(()=>setSendError(""),[id,last?.runId,last?.statusMessage]);
+  const [sendErrorDetails, setSendErrorDetails] = useState("");
+  useEffect(() => { setSendError(""); setSendErrorDetails(""); }, [id, last?.runId, last?.statusMessage]);
   const readText = () => draftText(useStore.getState(), id, answerRunId, answerQuestion);
   const setText = (value:string) => {
-    setSendError("");
+    setSendError(""); setSendErrorDetails("");
     if(answerRunId && last)useStore.getState().setRunAnswerDraft(last.runId,last.statusMessage ?? "",value);
     else if(id)useStore.getState().setConversationDraft(id,value);
     else useStore.getState().setAgentDraft(value);
@@ -525,7 +526,13 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     if (archived || !connected || !text.trim() || sendPending.current || answerPending) return;
     if (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length)) || historyLoading || historyError || contextLoading || contextError || (taskBound && last?.status !== "needs_input"))) return;
     sendPending.current = true;
-    setSending(true); setSendError("");
+    setSending(true); setSendError(""); setSendErrorDetails("");
+    let draftCleared = false;
+    const restoreDraft = () => {
+      if (!draftCleared || readText()) return;
+      if (id) useStore.getState().setConversationDraft(id, text);
+      else useStore.getState().setAgentDraft(text);
+    };
     try {
       const mentions = await submittedMentions(composerId, text);
       if (answering && last && suspension && effectiveLiveMode === "answer") {
@@ -575,12 +582,19 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
         const contextPageRefs = [...(primaryForRun ? [browserSources.find(source => source.pageId === primaryForRun.pageId) ?? sourceRef(primaryForRun)] : []), ...browserSources.filter(source => source.pageId !== primaryForRun?.pageId)].filter(source => pageIds.includes(source.pageId));
         setSendingChat(chatId);
         setText("");
+        draftCleared = true;
         if (activeChat.current === id) scrolling.jumpToLatest();
         const run = await useStore.getState().startRun(text, { chatId, pageId: primaryForRun?.pageId ?? null, pageIds, contextPageRefs, mentions, scope: primaryForRun ? "page" : "new", presentation: embedded && !home ? "rail" : "conversation", ownsDraft: true });
         if (run) { clearMentionDraft(composerId); try { localStorage.removeItem(PENDING_CHAT_KEY); if(localStorage.getItem(HOME_DRAFT_CHAT_KEY)===chatId)localStorage.removeItem(HOME_DRAFT_CHAT_KEY); } catch { /* storage is optional */ } if (!id) { useStore.getState().setConversationContext(null, ""); useStore.getState().setConversationBrowserSources(null, []); } if (activeChat.current === id) scrolling.jumpToLatest(); }
-        else if (!readText()) setText(text);
+        else restoreDraft();
       }
-    } catch (error) { setSendError(error instanceof Error ? error.message : String(error)); }
+    } catch (error) {
+      restoreDraft();
+      if (activeChat.current === id) {
+        setSendError("Your message couldn’t be sent. Try sending it again.");
+        setSendErrorDetails(error instanceof Error ? error.message : String(error));
+      }
+    }
     finally { sendPending.current = false; setSending(false); setSendingChat(null); }
   };
   const reopen = async () => {
@@ -739,16 +753,16 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       {imageTray}
       </div>
       {!connected && <output className="hint" data-block>Connecting to Aux… You can keep writing.</output>}
-      {sendError && <p className="field-error" role="alert">{sendError} Your reply is kept.</p>}
+      {sendError && <div className="field-error"><p role="alert">{sendError} Your reply is kept.</p>{sendErrorDetails && <details><summary>Details</summary><p>{sendErrorDetails}</p></details>}</div>}
       {taskBound ? <>
       <ConversationTask key={boundTaskId} taskId={boundTaskId!} live={live} disabled={attachmentSaving || historySaving || contextLocked || historyLoading || !!historyError} page={selectedContext} context={contextPage} linkedPageId={linked?.pageId} onContext={setContextPage} onStarted={() => { if (activeChat.current === id) scrolling.jumpToLatest(); }} />
 
       {contextLoading && <output className="hint" data-block>Loading saved context…</output>}
-      {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
+      {contextError && <div className="field-error"><p role="alert">Saved context couldn’t be loaded. Your draft is kept.</p><button type="button" className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button><details><summary>Details</summary><p>{contextError}</p></details></div>}
       {answering && <ComposerInput workspaceId={workspaceContext.workspace?.workspaceId} id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={20000} disabled={archived || sending || answerPending} placeholder="Answer Aux’s question…" sendDisabled={archived || !connected || sending || answerPending} onChange={setText} onSend={() => void send()} textareaRef={textareaRef} />}
       </> : <>
       {contextLoading && <output className="hint" data-block>Loading saved context…</output>}
-      {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
+      {contextError && <div className="field-error"><p role="alert">Saved context couldn’t be loaded. Your draft is kept.</p><button type="button" className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button><details><summary>Details</summary><p>{contextError}</p></details></div>}
       {missingContext && !closedPage && <output className="field-error" data-block>The selected tab is unavailable. Choose another browser context before sending.</output>}
       {changedBrowserSources.length > 0 && !closedPage && <output className="field-error" data-block>A selected tab changed or closed. Update or remove it before sending.</output>}
 

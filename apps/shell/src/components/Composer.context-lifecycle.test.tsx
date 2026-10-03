@@ -180,3 +180,51 @@ it("still retries a genuinely pending tab and selects its fresh live document", 
   expect(bridge.invoke).toHaveBeenCalledWith("browser.recovery.retry", { pageId: before.pageId });
   expect(onSources).toHaveBeenCalledExactlyOnceWith([expect.objectContaining({ pageId: after.pageId, url: after.url, documentEpoch: 2 })]);
 });
+
+
+it("shows a concise context failure and retries without discarding the draft", async () => {
+  const originalInvoke = vi.mocked(bridge.invoke).getMockImplementation()!;
+  let failed = true;
+  vi.mocked(bridge.invoke).mockImplementation(async (method, args) => {
+    if (method === "conversations.images.get" && failed) throw new Error("not_found: no page internal-page-id");
+    return originalInvoke(method, args);
+  });
+  useStore.setState({ conversationDrafts: { "chat:recover": "Keep my question" } });
+  await act(async () => root.render(<Conversation chatId="recover" />));
+  const alert = host.querySelector('[role="alert"]')!;
+  expect(alert.textContent).toBe("Saved context couldn’t be loaded. Your draft is kept.");
+  const details = alert.parentElement!.querySelector('details')!;
+  expect(details.open).toBe(false);
+  expect(details.textContent).toContain("not_found: no page internal-page-id");
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.disabled).toBe(true);
+  failed = false;
+  await act(async () => alert.parentElement!.querySelector<HTMLButtonElement>('button')!.click());
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe("Keep my question");
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.disabled).toBe(false);
+});
+
+it.each(["same", "new-draft", "other-chat"])("restores only the original empty draft after a thrown start (%s)", async scenario => {
+  let reject!: (reason: Error) => void;
+  const startRun = vi.fn().mockImplementation(() => new Promise((_done, fail) => { reject = fail; }));
+  useStore.setState({ startRun, conversationDrafts: { "chat:original": "Original question", "chat:other": "Other question" } });
+  await act(async () => root.render(<Conversation chatId="original" />));
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.click());
+  expect(startRun).toHaveBeenCalledOnce();
+  expect(useStore.getState().conversationDrafts["chat:original"] ?? "").toBe("");
+  if (scenario === "new-draft") await act(async () => useStore.getState().setConversationDraft("original", "New question"));
+  if (scenario === "other-chat") await act(async () => root.render(<Conversation chatId="other" />));
+  await act(async () => reject(new Error("not_found: no page internal-page-id")));
+  expect(useStore.getState().conversationDrafts["chat:original"]).toBe(scenario === "new-draft" ? "New question" : "Original question");
+  expect(useStore.getState().conversationDrafts["chat:other"]).toBe("Other question");
+  const stayed = scenario !== "other-chat";
+  const alert = host.querySelector('[role="alert"]');
+  const details = alert?.parentElement?.querySelector('details');
+  expect(alert?.textContent ?? null).toBe(stayed ? "Your message couldn’t be sent. Try sending it again. Your reply is kept." : null);
+  expect(details?.open ?? null).toBe(stayed ? false : null);
+  expect(details?.textContent ?? null).toBe(stayed ? "Detailsnot_found: no page internal-page-id" : null);
+  expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe(scenario === "other-chat" ? "Other question" : scenario === "new-draft" ? "New question" : "Original question");
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="Send message"]')!.disabled).toBe(false);
+  expect(startRun.mock.calls[0]![1]).toMatchObject({ pageId: null, pageIds: [], scope: "new" });
+  expect(useStore.getState().pages).toEqual([]);
+});
