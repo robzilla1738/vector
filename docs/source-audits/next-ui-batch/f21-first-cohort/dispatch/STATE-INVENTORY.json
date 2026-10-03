@@ -2,7 +2,7 @@
   "producer": "aux-f21-source-dispatch-inventory",
   "version": 1,
   "sourceOnly": true,
-  "base": "c7ee0735",
+  "base": "e6919dd3479840b543548184b0a0e3d91c8dfaf1",
   "notQualificationData": true,
   "nativeExecutionAuthorized": false,
   "sourceStates": [
@@ -575,6 +575,130 @@
       "status": "source-prepared",
       "nativeCaptured": false,
       "acceptedCells": []
+    },
+    {
+      "group": "G",
+      "journey": "memory-appearance",
+      "captureName": "memory-long-space-selected",
+      "semanticState": "memory-long-space-selected-focused",
+      "source": "tests/host/lib/memory-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": [],
+      "requiredWitness": "Actual Save notes acknowledgement; exact minted native Space/workspace join; selected checked choice focused; original textarea contains authored fixed note.",
+      "requiredNativeRole": "AXCheckBox for aria-pressed toggle; original733 checked:true and actual keyboard focus required"
+    },
+    {
+      "group": "G",
+      "journey": "memory-appearance",
+      "captureName": "memory-long-space-search-focused",
+      "semanticState": "memory-long-space-real-notes-search-focused",
+      "source": "tests/host/lib/memory-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": [],
+      "requiredWitness": "Actual saved excerpt appears within Space memory selection after real search; selected exact choice; search input focused; no protected-memory read.",
+      "requiredNativeRole": "AXCheckBox for aria-pressed toggle; original733 checked:true and actual keyboard focus required"
+    },
+    {
+      "group": "G",
+      "journey": "memory-appearance",
+      "captureName": "memory-search-result-selected",
+      "semanticState": "memory-search-result-selected-focused",
+      "source": "tests/host/lib/memory-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": [],
+      "requiredWitness": "Actual matching result clicked and focused; checked exact choice and original notes remain; original records preserved.",
+      "requiredNativeRole": "AXCheckBox for aria-pressed toggle; original733 checked:true and actual keyboard focus required"
+    },
+    {
+      "group": "H",
+      "journey": "model-discovery-appearance",
+      "captureName": "provider-model-discovery-pending",
+      "semanticState": "provider-model-discovery-real-http-pending",
+      "source": "tests/host/lib/model-discovery-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": [],
+      "requiredWitness": "One original GET pending on owned loopback; actual Discovering\u2026 disabled; original ten-second abort preserved; response still pending after capture."
+    },
+    {
+      "group": "H",
+      "journey": "model-discovery-appearance",
+      "captureName": "provider-model-discovery-released-focused",
+      "semanticState": "provider-model-discovery-released-planner-focused",
+      "source": "tests/host/lib/model-discovery-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": [],
+      "requiredWitness": "Original fixed catalog response delivered; actual Discover models enabled and unchanged Planner model focused; no datalist popup or unknown availability claim."
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-saved-source-changed-kept-draft",
+      "semanticState": "first-chat-saved-source-changed-kept-draft",
+      "source": "tests/host/lib/saved-source-recovery.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": [],
+      "requiredWitness": "Actual person navigation changes same original page session/documentEpoch; warning shown; exact unsent draft retained; Send disabled; run/model counts unchanged."
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-saved-source-removed-kept-draft",
+      "semanticState": "first-chat-saved-source-removed-kept-draft",
+      "source": "tests/host/lib/saved-source-recovery.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": [],
+      "requiredWitness": "Explicit removal (registered-command closure under integration); warning absent; kept draft and Send enabled; no model/run before Send."
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-saved-source-recovered",
+      "semanticState": "first-chat-saved-source-recovered",
+      "source": "tests/host/lib/saved-source-recovery.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": [],
+      "requiredWitness": "Actual completed kept-draft run has empty pageIds/contextPageRefs/mentions and page-free retry amber-839 answer; close exact original page with cleanup debt retained."
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-update-source-changed-kept-draft",
+      "semanticState": "first-chat-update-source-changed-kept-draft",
+      "source": "tests/host/lib/saved-source-update.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": [],
+      "requiredWitness": "Actual same page replacement document; warning and disabled Send; exact unsent draft/run/model counts retained."
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-update-source-acknowledged-kept-draft",
+      "semanticState": "first-chat-update-source-acknowledged-kept-draft",
+      "source": "tests/host/lib/saved-source-update.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": [],
+      "requiredWitness": "Registered Use current action for actual replacement title; warning absent; exact draft retained and Send enabled; no run/model before Send."
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-update-source-recovered",
+      "semanticState": "first-chat-update-source-recovered",
+      "source": "tests/host/lib/saved-source-update.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": [],
+      "requiredWitness": "Completed actual run config references exact current pageId/url/sessionId/documentEpoch; no invented mentions; exact permitted isolated copy if present; copper-467 answer; original page teardown."
     }
   ],
   "requiredCellDimensions": {
@@ -602,5 +726,6 @@
     ]
   },
   "note": "This first cohort is a subset. State names and source controls do not prove any cell. Full per-feature F21 matrix and final owner sign-off remain required.",
-  "unlistedDynamicStates": "Long-label helpers and conditional absent/column/feature gates require actual run receipts; this inventory is an explicit first subset, not a complete feature matrix."
+  "unlistedDynamicStates": "Long-label helpers and conditional absent/column/feature gates require actual run receipts; this inventory is an explicit first subset, not a complete feature matrix.",
+  "producerSnapshot": "Reviewed e6919dd3 plus committed02981618 Memory AXCheckBox correction; documentary source pins only, not compiled identity"
 }
