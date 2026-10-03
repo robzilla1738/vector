@@ -7,7 +7,7 @@ import { useConfirm } from "../ui/confirm";
 import { shellIconBookmark, shellIconChromeSm, shellIconCode, shellIconFolder, shellIconGlobe, shellIconPerson } from "./icons";
 import { Menu } from "../ui/dialog";
 import "./ProfileSwitcher.css";
-import { HostMethods } from "@aux/contracts";
+import { BrowserHostMethods as HostMethods } from "@aux/contracts/browser-host-methods";
 import { executeCommand } from "../commands";
 import { commandResult } from "../features/profiles/command-result";
 import { subscribeProfileMoves } from "../features/profiles/move-request";

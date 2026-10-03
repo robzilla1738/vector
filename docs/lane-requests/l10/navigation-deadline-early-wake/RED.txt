@@ -1,0 +1,56 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-l10-browser-host-registry
+
+ ❯ |unit| tests/unit/controlled-native-navigation.test.ts (23 tests | 1 failed | 22 skipped) 13ms
+   ↓ advances a mentioned attachment only through the completed one-use private continuation
+   ↓ refuses caller-shaped attachment metadata without advancing the original mention
+   ↓ routes the real program executor through native readmission before its next input
+   ↓ refuses native program navigation when the genuine continuation producer is absent
+   ↓ retires the fresh driver and authority when original mention source revalidation refuses
+   ↓ does not let a different internal turn validator consume the navigation receipt
+   ↓ retires fresh publication on 'end-turn' during Space refresh 4
+   ↓ retires fresh publication on 'task-revision' during Space refresh 4
+   ↓ retires fresh publication on 'end-turn' during Space refresh 5
+   ↓ retires fresh publication on 'task-revision' during Space refresh 5
+   ↓ waits for the exact old driver destruction after TAKE before installing fresh authority
+   ↓ refuses takeover while the original SDK destruction is held without installing a replacement
+   ↓ uses the original receipt deadline while waiting for SDK destruction
+   × rechecks the original deadline after an early timer wake while SDK destruction is held 12ms
+     → expected false to be true // Object.is equality
+   ↓ retains the original command deadline while a fresh native install ACK is held
+   ↓ never renews an unconsumed turn receipt or publishes it after its original deadline
+   ↓ renews a short continuation only after real service turn publication
+   ↓ readmits the first real blank-to-website document using original native retirement authority
+   ↓ synchronously cancels stop during the original retirement ACK gap
+   ↓ synchronously cancels takeover during the original retirement ACK gap
+   ↓ synchronously cancels policy during the original retirement ACK gap
+   ↓ expires the original continuation while its retirement acknowledgement remains held
+   ↓ routes a genuinely created protected page first load through the same native continuation
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| tests/unit/controlled-native-navigation.test.ts > rechecks the original deadline after an early timer wake while SDK destruction is held
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/unit/controlled-native-navigation.test.ts:312:21
+    310|     clock.mockRestore();
+    311|     await vi.advanceTimersByTimeAsync(1);
+    312|     expect(settled).toBe(true);
+       |                     ^
+    313|     expect(await pending).toMatchObject({ code: "ref_stale" });
+    314|     expect(f.live.driver).toBe(f.old.page);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 22 skipped (23)
+   Start at  08:38:35
+   Duration  3.12s (transform 900ms, setup 0ms, collect 2.94s, tests 13ms, environment 0ms, prepare 31ms)
+

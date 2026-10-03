@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-l10-browser-host-registry
+
+ ✓ |unit| tests/unit/controlled-native-navigation.test.ts (23 tests) 192ms
+
+ Test Files  1 passed (1)
+      Tests  23 passed (23)
+   Start at  08:39:06
+   Duration  3.51s (transform 908ms, setup 0ms, collect 3.14s, tests 192ms, environment 0ms, prepare 39ms)
+

@@ -232,7 +232,15 @@ export class PageRegistry {
         };
         original.retirementObservers.add(check);
         signal.addEventListener("abort", check, { once: true });
-        timer = setTimeout(check, Math.max(0, deadline - Date.now()));
+        const wake = () => {
+          timer = undefined;
+          check();
+          // Timer delivery may precede the wall-clock deadline. Keep only the
+          // original remaining interval; an early wake never retires the wait.
+          if (original.retirementObservers.has(check))
+            timer = setTimeout(wake, Math.max(1, deadline - Date.now()));
+        };
+        timer = setTimeout(wake, Math.max(0, deadline - Date.now()));
         check();
       }),
       cancel: async () => {

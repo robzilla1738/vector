@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ActionMenu, Badge, ListRow } from "../ui";
-import { HostMethods } from "@aux/contracts";
+import { BrowserHostMethods as HostMethods } from "@aux/contracts/browser-host-methods";
 import { executeCommand } from "../commands";
 import { commandResult } from "../features/profiles/command-result";
 import { SPACE_COLORS } from "../workspace";

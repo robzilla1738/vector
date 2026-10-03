@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { HostMethods, type LinkRoutes, type LinkRouteDestination } from "@aux/contracts";
+import { BrowserHostMethods as HostMethods } from "@aux/contracts/browser-host-methods";
+import type { LinkRoutes, LinkRouteDestination } from "@aux/contracts";
 import { bridge, type BrowserProfile } from "../../bridge";
 import { errToast, toast } from "../../store";
 import { SettingsField, SettingsSection } from "../primitives";

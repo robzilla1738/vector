@@ -263,16 +263,62 @@ it("refuses takeover while the original SDK destruction is held without installi
 });
 
 it("uses the original receipt deadline while waiting for SDK destruction", async () => {
+  vi.useFakeTimers();
   const f = fixture(false);
-  await f.egress.acquire("run", pageId);
-  const deadline = Date.now() + 60;
-  f.cdp.navigationDeadline.mockReturnValue(deadline);
-  const pending = f.navigate().then(() => null, error => error);
-  expect(await pending).toMatchObject({ code: "ref_stale" });
-  expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
-  expect(f.live.driver).toBe(f.old.page);
-  f.old.retire();
-  expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+  try {
+    await f.egress.acquire("run", pageId);
+    const deadline = Date.now() + 60;
+    let entered!: () => void;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    f.cdp.navigationDeadline.mockImplementation(() => { entered(); return deadline; });
+    const pending = f.navigate().then(() => null, error => error);
+    await started;
+    expect(f.live.driver).toBe(f.old.page);
+    expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(61);
+    expect(await pending).toMatchObject({ code: "ref_stale" });
+    expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+    expect(f.live.driver).toBe(f.old.page);
+    f.old.retire();
+    expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+  } finally {
+    f.old.retire();
+    vi.useRealTimers();
+  }
+});
+
+it("rechecks the original deadline after an early timer wake while SDK destruction is held", async () => {
+  vi.useFakeTimers();
+  const f = fixture(false);
+  let clock: ReturnType<typeof vi.spyOn> | undefined;
+  try {
+    await f.egress.acquire("run", pageId);
+    const deadline = Date.now() + 60;
+    let entered!: () => void;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    f.cdp.navigationDeadline.mockImplementation(() => { entered(); return deadline; });
+    let settled = false;
+    const pending = f.navigate().then(() => null, error => error).finally(() => { settled = true; });
+    await started;
+    // Deliver the original timer while the separate wall clock is one tick
+    // before its deadline. The original SDK incarnation remains attached.
+    clock = vi.spyOn(Date, "now").mockReturnValue(deadline - 1);
+    await vi.advanceTimersByTimeAsync(60);
+    expect(settled).toBe(false);
+    expect(f.live.driver).toBe(f.old.page);
+    expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+    clock.mockRestore();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(settled).toBe(true);
+    expect(await pending).toMatchObject({ code: "ref_stale" });
+    expect(f.live.driver).toBe(f.old.page);
+    f.old.retire();
+    expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+  } finally {
+    clock?.mockRestore();
+    f.old.retire();
+    vi.useRealTimers();
+  }
 });
 
 it("retains the original command deadline while a fresh native install ACK is held", async () => {

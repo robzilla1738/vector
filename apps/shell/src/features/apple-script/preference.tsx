@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { HostMethods } from "@aux/contracts";
+import { BrowserHostMethods as HostMethods } from "@aux/contracts/browser-host-methods";
 import { commandResult } from "../profiles/command-result";
 import { bridge } from "../../bridge";
 import { SettingsField, SettingsSection } from "../../settings/primitives";
