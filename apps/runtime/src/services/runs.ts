@@ -1084,6 +1084,24 @@ export class RunService {
     if (latest && latest.runId !== prior.runId) throw new AuxError("conflict", "A newer turn exists in this conversation. Retry it instead.");
     if (replacementPageId && prior.pageIds.length > 1) throw new AuxError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
     const originalRefs = prior.config?.contextPageRefs ?? [];
+    let originalPageIds = prior.pageIds;
+    const copies = prior.config?.isolatedPageSources;
+    if (!replacementPageId && copies?.length) {
+      // A completed run contains its temporary driver IDs. Retry only the
+      // original selected sources; a copy URL is not a fresh source grant.
+      const resolved = prior.pageIds.map(pageId => copies.filter(copy => copy.pageId === pageId));
+      if (copies.length !== prior.pageIds.length || resolved.some(matches => matches.length !== 1))
+        throw new AuxError("conflict", "The original browser sources are unavailable. Choose their context again before retrying.");
+      originalPageIds = resolved.map(matches => matches[0]!.sourcePageId);
+      if (new Set(originalPageIds).size !== originalPageIds.length || originalRefs.length !== originalPageIds.length
+        || resolved.some(matches => {
+          const copy = matches[0]!;
+          const refs = originalRefs.filter(ref => ref.pageId === copy.sourcePageId);
+          return refs.length !== 1 || refs[0]!.url !== copy.url;
+        })) throw new AuxError("conflict", "The original browser source snapshots changed. Choose their context again before retrying.");
+    }
+    if (!replacementPageId && originalRefs.some(ref => !originalPageIds.includes(ref.pageId)))
+      throw new AuxError("conflict", "The original browser sources are unavailable. Choose their context again before retrying.");
     const currentPage = (pageId: string) => {
       try { return this.deps.pages.get(pageId); }
       catch (error) {
@@ -1113,7 +1131,7 @@ export class RunService {
       contextPageRefs = page.ownedByRuntime ? undefined : [{ pageId: page.pageId,
         url: page.url, documentEpoch: page.documentEpoch, sessionId: page.sessionId }];
     } else {
-      const missing = prior.pageIds.filter(id => !usable(id));
+      const missing = originalPageIds.filter(id => !usable(id));
       if (missing.length) {
         if (prior.pageIds.length > 1) throw new AuxError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
         throw new AuxError("conflict", "Reopen or choose a browser tab before retrying this turn.");
@@ -1121,7 +1139,7 @@ export class RunService {
     }
     return this.start({
       goal: prior.goal,
-      pageIds: replacementPageId ? [replacementPageId] : prior.pageIds,
+      pageIds: replacementPageId ? [replacementPageId] : originalPageIds,
       contextPageRefs,
       mentions: prior.config?.mentions,
       modelId: prior.config?.modelId,

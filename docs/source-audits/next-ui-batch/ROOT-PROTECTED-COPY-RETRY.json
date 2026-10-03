@@ -1,0 +1,34 @@
+{
+  "schema": "aux-source-request/v1",
+  "baseCommit": "017e1e410c3dccbd6889512e270d939e5210943e",
+  "patchSha256": "949a8c5b1d0f89001a6660d64366bc038c83699fbf8b81de34406293bbcc7b66",
+  "rows": [
+    {
+      "path": "apps/runtime/src/services/runs.ts",
+      "beforeSha256": "f0e6229c4c7a76808a50ae28c7692af2c5c48bcc7827a6f0ff8eeb80b1730995",
+      "afterSha256": "6035bbe9f3334c299dbe28121fd5ae7baf9ab69728565ead26b868a9fedd00f9",
+      "beforeBytes": 80309,
+      "afterBytes": 81725
+    },
+    {
+      "path": "tests/unit/agent-isolation-flow.test.ts",
+      "beforeSha256": "4738ef6a02e43f5ce41ff92e7c08581f59ae254989ac8c5529a767fef9b22c47",
+      "afterSha256": "531e74fa63a6ef568933255d2eced3682e3465219a9e17918db295a6084a714e",
+      "beforeBytes": 17670,
+      "afterBytes": 20506
+    }
+  ],
+  "replay": "forward/reverse/forward exact PASS",
+  "verification": {
+    "red": "Rebuilt predecessor real protected-copy producer retry fails while original source remains unchanged",
+    "green": "80 cases PASS: agent-isolation-flow20 and set-run-lifecycle60 after tsc -b",
+    "lint": "PASS; one unchanged runs.ts229 no-control-regex warning",
+    "diffCheck": "PASS"
+  },
+  "nativeQualification": "Synthetic native bridge in real coordinator/BrowserEgress source composition; no native build or execution",
+  "rootIndependentReplay": "PASS",
+  "rootVerification": "PASS after successful workspace rebuild",
+  "rootBuildLog": "/tmp/aux-root-protected-retry-build.log",
+  "rootControlLog": "/tmp/aux-root-protected-retry-controls-002.log",
+  "dependencyRepair": "Original own-workspace links restored after package-manager auto verification; initial dependency-only refusal retained at /tmp/aux-root-protected-retry-controls.log"
+}

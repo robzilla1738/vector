@@ -17,7 +17,7 @@ function fixture({ ownedChild = false } = {}) {
     ensureUrlLauncher() {}, validateExternalLaunch: url => url, validateAuxLaunch: url => url,
     quarantineLaunchServicesAppearanceSlot: async () => { ++state.reservations; if (state.failReservation) throw new Error('Original reservation publication failed'); return guard; },
     spawn(executable, args) {
-      assert.equal(executable, '/controlled/launch-url'); ++state.dispatches;
+      assert.equal(executable, '/controlled/launch-url'); assert.equal(args.length, 7); assert.equal(args[0], '/controlled/Aux.app'); assert.equal(args[2], '[]'); assert.ok(['0', '42'].includes(args[3])); ++state.dispatches;
       const helper = new EventEmitter(); helper.stdout = new EventEmitter(); helper.stderr = new EventEmitter(); helper.stdin = new EventEmitter(); helper.kill = () => {};
       helper.stdin.end = () => {
         const complete = () => { helper.stdout.emit('data', JSON.stringify({ pid: 42, generation: 123 })); helper.emit('close', 0); };

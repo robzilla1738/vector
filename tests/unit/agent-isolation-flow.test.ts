@@ -276,3 +276,49 @@ it("continues cancelled creator cleanup past a detached copy while preserving a 
   expect(f.runs.pageOwnership.snapshot()).not.toHaveProperty("controlled-3");
   expect(f.model.generateStructured).not.toHaveBeenCalled();
 });
+
+async function completedSourceTurn(f: ReturnType<typeof harness>) {
+  const owner = f.targets.get("owner")!;
+  const ref = { pageId: owner.pageId, url: owner.url, documentEpoch: owner.documentEpoch, sessionId: owner.sessionId };
+  const run = await f.runs.start({ goal: "Read exact source", pageIds: [owner.pageId], contextPageRefs: [ref], chatId: "protected-retry" });
+  await until(() => f.repo.getRun(run.runId)?.status === "needs_input");
+  await f.runs.cancel(run.runId);
+  await until(() => !f.runs.coordinator.controls.has(run.runId));
+  return { run: f.repo.getRun(run.runId)!, ref, owner };
+}
+
+it("retries a genuine protected-copy turn from its unchanged original source after the old copy closes", async () => {
+  const f = harness();
+  const { run, ref } = await completedSourceTurn(f);
+  expect(run.pageIds).toEqual(["controlled-1"]);
+  expect(run.config?.isolatedPageSources).toEqual([{ sourcePageId: "owner", pageId: "controlled-1", url: ref.url }]);
+  await f.pages.close("controlled-1");
+  const retried = await f.runs.retry(run.runId);
+  expect(retried.config?.contextPageRefs).toEqual([ref]);
+  await until(() => f.repo.getRun(retried.runId)?.status === "needs_input");
+  expect(f.repo.getRun(retried.runId)?.pageIds).toEqual(["controlled-2"]);
+  expect(f.created).toHaveLength(2);
+  expect(f.created[1]?.source).toEqual({ tabId: "owner", expectedUrl: ref.url, documentToken: "owner:1" });
+  expect(f.trace).not.toContain("observe:owner");
+  expect(f.targets.get("owner")).toMatchObject({ ownedByRuntime: false, url: ref.url, documentEpoch: ref.documentEpoch, sessionId: ref.sessionId });
+  await f.runs.cancel(retried.runId);
+  await until(() => !f.runs.coordinator.controls.has(retried.runId));
+});
+
+it.each(["document", "session", "url", "ownership", "closed", "missing-map", "ambiguous-map", "missing-snapshot"] as const)(
+  "refuses protected-copy retry after original %s drift without creating another tab or run", async drift => {
+    const f = harness();
+    const { run, owner } = await completedSourceTurn(f);
+    if (drift === "document") owner.documentEpoch++;
+    if (drift === "session") owner.sessionId = "replacement-person-document";
+    if (drift === "url") owner.url = "https://different.test/";
+    if (drift === "ownership") owner.ownedByRuntime = true;
+    if (drift === "closed") f.targets.delete(owner.pageId);
+    if (drift === "missing-map") run.config!.isolatedPageSources = undefined;
+    if (drift === "ambiguous-map") run.config!.isolatedPageSources!.push({ ...run.config!.isolatedPageSources![0]! });
+    if (drift === "missing-snapshot") run.config!.contextPageRefs = undefined;
+    f.repo.saveRun(run);
+    await expect(f.runs.retry(run.runId)).rejects.toMatchObject({ code: "conflict" });
+    expect(f.created).toHaveLength(1);
+    expect(f.repo.listRuns(20)).toHaveLength(1);
+  });
