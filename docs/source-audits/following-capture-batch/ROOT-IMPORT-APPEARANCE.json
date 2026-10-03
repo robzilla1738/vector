@@ -1,0 +1,50 @@
+{
+  "scope": "Source-only exact paired importer appearance preparation; no native/F21 or real interruption acceptance",
+  "requestDirectory": "/tmp/aux-browser-runtime-l10-import-journey/docs/lane-requests/l10/setup-import-appearance",
+  "orderedPatchSha256": [
+    "0d9dec31e5e82b898203cf282eb07bba4346b9dde902f130fa06a4182d41fa3f",
+    "62ef3480035f0f34790168f5963eed8999fc0947c581492fcb25b5ad7901ea04",
+    "51b7582a7d1ff0ef00b4bdd67211076a896dc8dd29ab116712f3c9d134a14aa9"
+  ],
+  "files": [
+    {
+      "path": "tests/host/run-journey.mjs",
+      "beforeSha256": "e5ff4c877e0f5e2d9126f86fb2bde7ed679029ebdec2c2373fd2d8290b6c7532",
+      "afterSha256": "9098b8f49a0fd6302df1d442407dd815d5409d3a3ba990d9f3866d90753b4660"
+    },
+    {
+      "path": "tests/host/appearance-journeys/setup-import-appearance.mjs",
+      "beforeSha256": null,
+      "afterSha256": "961e5fa54bfbc6e79257276b6eb5a490fc197d7c83f88d56a6429e0651193be2"
+    },
+    {
+      "path": "tests/host/lib/setup-import-appearance.mjs",
+      "beforeSha256": null,
+      "afterSha256": "d5c3c66c1739ed7c28f55bf057889372dec0a589d4ad80df6dedc490e580d8a0"
+    },
+    {
+      "path": "tests/host/lib/setup-import-appearance.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "bdee8680e461989a2d5bf5d93258af2eb9b795715eb474913b279b0f30581864"
+    }
+  ],
+  "rootIndependentForwardReverseForward": true,
+  "controls": {
+    "log": "/tmp/aux-root-following-import-journey-controls.log",
+    "passed": true
+  },
+  "preserved": [
+    "Exact appearance-only ID and original externally admitted pair; functional registry unchanged",
+    "App-minted owned synthetic source and retained original setup",
+    "Unselected UI and actual empty destinations/no job before consent; actual checkbox state",
+    "Explicit Import confirmation before real job/receipt/durable counts",
+    "Same completed job on revisit, no second import",
+    "Only exact absent-job not_found waits; original unexpected error propagates",
+    "Cleanup confirms original App stopped before exact owned source removal; original debt/failure retained"
+  ],
+  "pending": [
+    "Original paired native execution",
+    "Actual interrupted import/retry/replay workload",
+    "Required complete appearance/perf/qualification gates"
+  ]
+}
