@@ -1,0 +1,85 @@
+{
+  "sourceOnly": true,
+  "nativeAcceptance": false,
+  "packet": "chromium/patches/0341-auto-pip-fixture-current-isolation-api.patch",
+  "packetSha256": "5ba35c2dcdacdd365185bb5772657ac056a5c82d4e7c1e823ecca8883e60d347",
+  "rootReview": {
+    "actualOriginalResultAPIRawPins": "PASS",
+    "independentWholeLeafForwardReverseForward": "PASS",
+    "productionAuthorityAPI": "unchanged",
+    "originalAssertionsLeaseMetadataMediaDocumentDeadlines": "preserved",
+    "scope": "two fixture-only explicit synthetic Profile transport admissions and original run ancestry/generation arguments"
+  },
+  "retainedRequest": {
+    "sourceOnly": true,
+    "nativeOperationsExecuted": false,
+    "originalStableLeaf": {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc",
+      "sha256": "599478b64c755a4e437b998b26a4f9a3358642d276e81188b3e22cdd3494ca50"
+    },
+    "result": {
+      "path": "/private/tmp/aux-builder-native310-d137826a-preparation-001/automatic-pip-registration-api-correction-001/result/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc",
+      "sha256": "dc846a74f0212c787f388353ab5795bb826887322803dcf1a4d6d12cfe663593"
+    },
+    "patch": {
+      "path": "/private/tmp/aux-builder-native310-d137826a-preparation-001/automatic-pip-registration-api-correction-001/request.patch",
+      "sha256": "5ba35c2dcdacdd365185bb5772657ac056a5c82d4e7c1e823ecca8883e60d347"
+    },
+    "apiPins": {
+      "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/egress_controller.h": "f9a46900296b9ed6307c3281ceb0b81c09f4bbec8af54d07c83ec62d5411df8a",
+      "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/egress_controller.cc": "f80e19d2f4afd324fd80142fa84a9babd66648d7b3bb40d2ccf271c611335981",
+      "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/permission_broker_unittest.cc": "863701af8c7a3c2fa4c75c453930f43322ebd676dda66b6954031cbce75ab101"
+    },
+    "rawFailure": {
+      "path": "/private/tmp/aux-builder-native310-d137826a-preparation-001/automatic-pip-registration-api-correction-001/actual-failed-block.log",
+      "sha256": "5be7996d52f07443716605e54d733483141b5c4fc820dee42fc1a3a91480c921",
+      "originalLog": "/private/tmp/aux-builder-native310-d137826a-preparation-001/build-original-launch-001/stdout.log",
+      "firstRawNormalizedLine": 5659
+    },
+    "semanticChanges": [
+      "two fixture-only synthetic Profile connection admissions through original public AdmitRuntimeConnection API",
+      "two original RegisterIsolation calls supply original run ancestry and admitted generation1"
+    ],
+    "preserved": [
+      "all original assertions and lease metadata",
+      "genuine Profile/fixed StoragePartition/native media/session/current document",
+      "original deadlines/automatic refusal/no window expectations",
+      "production authority API/predicates untouched"
+    ],
+    "qualificationClaims": false,
+    "scratchForwardReverseForward": [
+      {
+        "argv": [
+          "git",
+          "apply",
+          "/private/tmp/aux-builder-native310-d137826a-preparation-001/automatic-pip-registration-api-correction-001/request.patch"
+        ],
+        "exitCode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "git",
+          "apply",
+          "--reverse",
+          "/private/tmp/aux-builder-native310-d137826a-preparation-001/automatic-pip-registration-api-correction-001/request.patch"
+        ],
+        "exitCode": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "git",
+          "apply",
+          "/private/tmp/aux-builder-native310-d137826a-preparation-001/automatic-pip-registration-api-correction-001/request.patch"
+        ],
+        "exitCode": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    ]
+  },
+  "remaining": "successful mandatory17 compilation, original compiled assertions, matching runtime/helper and native journeys/design/performance/qualification"
+}
