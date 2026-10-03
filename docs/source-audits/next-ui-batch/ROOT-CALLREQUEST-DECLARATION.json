@@ -1,0 +1,28 @@
+{
+  "request": {
+    "producer": "builder-runtime-host-callrequest-declaration-correction-request",
+    "version": 1,
+    "requestOnly": true,
+    "canonicalNumberReserved": false,
+    "candidate": "07f3bc96b484affdece44594fa1552be998c8c5e",
+    "path": "chrome/browser/ui/aux/runtime_host.h",
+    "beforeSha256": "40be753a30572f402f699c41196c02c1c9649a74c83983428f34f12b281ae121",
+    "afterSha256": "c6581e5287b53f4e90a63b4215e04ade9ff8015c40fd295b32607f9cfb28efb7",
+    "patchSha256": "ad68405fc522d3034d2dcc81cf477c83cc0f5f5f1a0c7c41b58aa4e99a381c1b",
+    "actualDefinition": {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/runtime_host.cc",
+      "sha256": "f4681aa5a32589e62e26d977249b88ea703987dad306264703fa5364b37b3fa2",
+      "lines": [
+        1826,
+        1831,
+        1834
+      ]
+    },
+    "scope": "Only header declaration matches existing five-argument definition/callers. Exact whole original restored by inverse substitution; no callback ordering, person receipt, predicates, assertions or production body changes.",
+    "contextualForwardReverse": "PASS",
+    "stableChanged": false
+  },
+  "canonicalPacket": "chromium/patches/aux/runtime/0335-runtime-callrequest-declaration.patch",
+  "independentReview": "Exact header before/after hashes and inverse restoration; actual existing definition and both callers independently read. Header parameter only; no implementation, authority or callback change. Native compilation pending.",
+  "stableMutation": false
+}

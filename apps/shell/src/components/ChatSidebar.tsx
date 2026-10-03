@@ -25,7 +25,7 @@ export function ChatSidebar({ minimal = false }: { minimal?: boolean }) {
     <div className="chat-sidebar-content">
     <FeatureSlots slot="sidebarItems" />
     <nav aria-label="Work">
-      {!bridge.privateMode && <button className={`chat-sidebar-link primary${mode === "conversation" && !conversationId ? " current" : ""}`} aria-current={mode === "conversation" && !conversationId ? "page" : undefined} onClick={() => useStore.getState().openConversation(null)}>{shellIconPencil}<span>New chat</span></button>}
+      {!bridge.privateMode && <button className={`chat-sidebar-link primary${mode === "conversation" && !conversationId ? " current" : ""}`} aria-current={mode === "conversation" && !conversationId ? "page" : undefined} data-command-id="new-chat" onClick={() => runCommand("new-chat")}>{shellIconPencil}<span>New chat</span></button>}
       <button className="chat-sidebar-link" onClick={() => setOverlay("tasks")}>{shellIconFolder}<span>Tasks</span></button>
       <button className="chat-sidebar-link" onClick={() => setOverlay("settings")}>{shellIconGear}<span>Settings</span></button>
     </nav>

@@ -1,0 +1,418 @@
+{
+  "referenceRoot": "/Users/rcourson/AI Blueprints/06/assets/upstream-src",
+  "tag": "152.0.7977.83",
+  "fileCount": 81,
+  "extensions": {
+    ".cc": 47,
+    ".h": 33,
+    ".mm": 1
+  },
+  "status": "reference inventory; does not certify Aux adoption or native visual acceptance",
+  "files": [
+    {
+      "path": "chrome/browser/ui/browser.cc",
+      "sha256": "409eb78509da559de2cc843166f638d2905eb5fddea7a142b0b229f3827ec883",
+      "bytes": 109957
+    },
+    {
+      "path": "chrome/browser/ui/browser.h",
+      "sha256": "43d05e5d1c596f08eb47f51c9aac53a825d7f66e16af408c5224c58c77c46ac1",
+      "bytes": 42167
+    },
+    {
+      "path": "chrome/browser/ui/color/chrome_color_id.h",
+      "sha256": "459de96039972fb1141f68872142a8b92f33fc71e8447963c03656ab5e700c1f",
+      "bytes": 58413
+    },
+    {
+      "path": "chrome/browser/ui/color/chrome_color_mixer.cc",
+      "sha256": "00c98db4bce69f038b7dcb4fe0b29663807e1bcd1c7462ba28e6a5b8f43afcc7",
+      "bytes": 64349
+    },
+    {
+      "path": "chrome/browser/ui/color/chrome_color_provider_utils.cc",
+      "sha256": "88aa7187c57fa37b2f4617613b0eb55b9d457f0a8859a3aefe7b44e7d65b5ce8",
+      "bytes": 5491
+    },
+    {
+      "path": "chrome/browser/ui/layout_constants.cc",
+      "sha256": "354a0a83efda3d2782c00285b900940ddc0e185393efd90807e8a0d2b2f1b6f8",
+      "bytes": 8806
+    },
+    {
+      "path": "chrome/browser/ui/layout_constants.h",
+      "sha256": "d59e530104cde49946bd239bf709002bd17027280604da6b5ab69e6d99621460",
+      "bytes": 12733
+    },
+    {
+      "path": "chrome/browser/ui/tabs/tab_strip_model.cc",
+      "sha256": "542929c30f4d44936d82ad1fc9db33a88bad303fd5e53842cd4066bbfae222f3",
+      "bytes": 206824
+    },
+    {
+      "path": "chrome/browser/ui/tabs/vertical_tab_iph_controller.cc",
+      "sha256": "10ffe43e3b2b1b2cec832cb1e866d06ea955c80c3bb59ebe674a3c2a3d5b786e",
+      "bytes": 3802
+    },
+    {
+      "path": "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.cc",
+      "sha256": "4d0fd5e780ed1ac086e2327bd4dcfec10acf547f63dde2b4b6a01dbf58420fc7",
+      "bytes": 14966
+    },
+    {
+      "path": "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h",
+      "sha256": "bb01e31966adc17a687f4ba8033e67973fd5fd01a8cba2a6a4d1ada1499a0f93",
+      "bytes": 7361
+    },
+    {
+      "path": "chrome/browser/ui/ui_features.cc",
+      "sha256": "84de7b9f6044e7d474790ae9206e24bcba288815381c3ab26d47115179a3ec80",
+      "bytes": 21709
+    },
+    {
+      "path": "chrome/browser/ui/ui_features.h",
+      "sha256": "35a175d664bd3d4e21963a06963a0f4228d94a29b7a3590056488916cc9a214f",
+      "bytes": 15229
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/base_tab_strip_region_view.h",
+      "sha256": "6a7f037404a92b4a5debdbf79900da6b9d50a725544a39ff6482d16824485e14",
+      "bytes": 6987
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_frame_view.cc",
+      "sha256": "e77d56966cfaf052617c04e1e5d7a2a4e08d533bcddac99f955b22bce83f1720",
+      "bytes": 14739
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_frame_view.h",
+      "sha256": "e70f53a5c00cff3441dc11adad265b0cb5ac33f60dde7309ba815bc89909b012",
+      "bytes": 11913
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_frame_view_mac.mm",
+      "sha256": "d7e5ca3066f0bd963ac126a508b9015b1a08ee5ad4e1fde5d638babbf04a2235",
+      "bytes": 23661
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "sha256": "edb6bd0a145d659672029eb678252577a8f1ed3c638cc0d66d4127889e6a4634",
+      "bytes": 233327
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.h",
+      "sha256": "7500cbd08c8a71d0bf9ef48d4a38a9687e5b2c3f1ffdb92ed70b9999c131af1d",
+      "bytes": 59326
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/contents_container_view.cc",
+      "sha256": "d79a063fe2c063fed2220c7a19fb143312c4a3a4b4e8e222df5a971fce32ac46",
+      "bytes": 27511
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/contents_web_view.cc",
+      "sha256": "ec0b6f0b9aea3e10efddfb3adbe728a5ed2765cb765b6d86b456c7ab4e94bf28",
+      "bytes": 9388
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.cc",
+      "sha256": "756a558988350d1cbc48b5b334b3a7f75cd3672d294be31f04059a0ee24af15c",
+      "bytes": 33593
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h",
+      "sha256": "3674623fcf85c56e01e816a5d15080886279695cca544971dbae54eded817363",
+      "bytes": 7363
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view.cc",
+      "sha256": "325aff2954fcb1f9c258159a40ba492e2c9061a60c4ebaed6c8f27a07430e0b7",
+      "bytes": 33249
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/multi_contents_view.h",
+      "sha256": "a090f4664d33f2f2ce0c7178bc34e1b4fd989664587ba4abbd24c6c0f3423cf9",
+      "bytes": 13483
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/opaque_browser_frame_view_layout.cc",
+      "sha256": "57a7a8710da8e08f7920a702b6fafa85a461ff60c79ae2c61c2766130009125f",
+      "bytes": 25665
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/tab_strip_region_view.cc",
+      "sha256": "f555aa3f43c784a003b839e598129b5237dc411248da05fa0c4e3d579a3d4084",
+      "bytes": 167
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/tab_strip_region_view.h",
+      "sha256": "633a6cd1d2fd13a8519ef616325e104a95d4d8c005cdbdef7e42bfcd80284b6e",
+      "bytes": 4155
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/top_container_view.cc",
+      "sha256": "297c327a80e09bef4841704b5971b0e1d6689fd55648d1e55d9df6865c2c4749",
+      "bytes": 4519
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/top_container_view.h",
+      "sha256": "f79ee7b0f05b78e9f9d6581e727b148936c30e65e82db797bf0058027d0ccaf8",
+      "bytes": 1305
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_background_blur_backdrop.cc",
+      "sha256": "292f0a53c41570d5f0592016b52b9d7e9677f2aaf5b4c33d9a84215c4f6a1db7",
+      "bytes": 2509
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_background_blur_backdrop.h",
+      "sha256": "296f53b8861b335516b0a4fd5af5c0611a9e53d0899909f8bd628f34e38d6def",
+      "bytes": 1075
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+      "sha256": "653eedd1314d18fdfaacb6c96b1637d49dd55919211b59aead2bd129a9f90f37",
+      "bytes": 42441
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+      "sha256": "9f874eb6a58c176ea609e4ef59f83dd29a8950646737670b39c0d28e3df26957",
+      "bytes": 12240
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.cc",
+      "sha256": "386a704915e305acd78a1121115721f3a490150074220c5910c01334f9646398",
+      "bytes": 102796
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_bar_view.h",
+      "sha256": "8b64bc755751a5ff6a6f9b019cf3e850181da2a6a02c062ebe44a51a9a27d18f",
+      "bytes": 26917
+    },
+    {
+      "path": "chrome/browser/ui/views/location_bar/location_icon_view.cc",
+      "sha256": "0be8fb3a020bb2c1610aa6e98a6dec70b24cfd904c21f39374c83cede5375ce5",
+      "bytes": 16765
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc",
+      "sha256": "fe58f04826796348a5feaf0c502bded1a952b3f485ee5b381693a06148ce6692",
+      "bytes": 36006
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_view_views.h",
+      "sha256": "efffda3b24b398a8199f59380e836d58a12d5508b7d7b2929433671ad39f4753",
+      "bytes": 9294
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_popup_webui_content.cc",
+      "sha256": "767d923f36afaf88e20e6d633d14efe90666db944142c0b7ea2a05b624c08f51",
+      "bytes": 2752
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_result_view.cc",
+      "sha256": "6b5b0120b531097c68d9bd3636706a5e4883bc985ddb5f9d81c3254382d1b030",
+      "bytes": 34593
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_view_views.cc",
+      "sha256": "137038ca0321dafcaa6b9ecf1184e687667e27d0095cc818661b2f465272137c",
+      "bytes": 94955
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/omnibox_view_views.h",
+      "sha256": "540418a70cd053d1a269fb385fff1fabde56223db57381fcc7e424927c16ad02",
+      "bytes": 21972
+    },
+    {
+      "path": "chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.cc",
+      "sha256": "785e1ed9abae3354d7299cd64815b50d77dee7e0db539f00138929501957f03f",
+      "bytes": 17047
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel.cc",
+      "sha256": "6f9ae7711ac3525afa8f42e71e7d9839a7aa068fbd5fbffa98fd684783f4c381",
+      "bytes": 28784
+    },
+    {
+      "path": "chrome/browser/ui/views/side_panel/side_panel.h",
+      "sha256": "6a1a4115543591aad93b2d998fcec00848506bdbab4664e70a4440c3e75754f9",
+      "bytes": 7222
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab.cc",
+      "sha256": "c5586f57ee198d8abe41581856664727dcd35d5db2e2317df3968522cbc179ac",
+      "bytes": 50974
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab.h",
+      "sha256": "94ced83bd443423887a40055b74d29560f1e09d5c8594b10816a9cfd70eb0ce1",
+      "bytes": 12767
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_group_header.cc",
+      "sha256": "365081835bcf96f6bcd6f45f04bd94a939e2a5961dc04829050cb308e9546733",
+      "bytes": 34187
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_group_header.h",
+      "sha256": "4dc4f10b7eeabff457ffd58a88df7cb10e30852e60e689e9e0e25a2a579c7f70",
+      "bytes": 6740
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_group_highlight.cc",
+      "sha256": "fa92938476d530a1bdc6badc25012f83071db284c4fdc4f8fb9fa701a73af20a",
+      "bytes": 3434
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_group_style.cc",
+      "sha256": "0de71fc44e7c32cf08c5cc7d69ec42f1fe34b04a8e36eda0da6fdd4cad2229a8",
+      "bytes": 4602
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_group_style.h",
+      "sha256": "47f4ab8f7b2c525f3a95699e6978ab03f4e87a9c2702cccd307ee73d0d8c00a1",
+      "bytes": 2629
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_group_underline.cc",
+      "sha256": "6ef7a4e7b8268ea0716a96bce255ae6ad470de4ab891f4d0f650e144e78be199",
+      "bytes": 4510
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_group_views.cc",
+      "sha256": "5153ec208638a89eaeb12724389aa254978deec70d7ebb82c5d8a1a3e13949f2",
+      "bytes": 7547
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_group_views.h",
+      "sha256": "68a002e86eaa804c43d7a2a9c30f3f833371a950c806d36237487c9ae5a548c0",
+      "bytes": 3037
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip.cc",
+      "sha256": "a109740be3d68431cae3734faedc3547a915ff58a09234efbb36dc6166f2ee59",
+      "bytes": 92471
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip.h",
+      "sha256": "51f95c6516b605efbc95ec47efeb19beaf816a6fe89eebdf5f4a5d19b83ffa75",
+      "bytes": 19194
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip_control_button.cc",
+      "sha256": "41abfab3835f2fb48a4db3e06901b12626afdf1da76b1bf121370315263fcf14",
+      "bytes": 13717
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip_layout.cc",
+      "sha256": "20e00e8c38dc0b8df6b8ecc6b54477651141d9f8d319f74fa13395b7a401057a",
+      "bytes": 6277
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip_layout.h",
+      "sha256": "6b5caeda1891bc130914813c9704813d3c0fbc0750edf834cd004d711e230c4d",
+      "bytes": 1788
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip_layout_helper.cc",
+      "sha256": "9b499d6f8e23c600d75f9fd376cccd448e9d38e646aa4c6d71a7bf13dea54890",
+      "bytes": 15725
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip_layout_helper.h",
+      "sha256": "69e82e6c99f9114d67a023dd2ef572dbdf7939a1da4d928d30f97fd0b2042923",
+      "bytes": 6390
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_strip_layout_types.h",
+      "sha256": "77988c7cb46060750a669491aa3593e86e47b0395932cc38c096637a6ffeca12",
+      "bytes": 987
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_style_views.cc",
+      "sha256": "725ca9c5d93046a4127e26ad4c8c628d405b6d596698cfad427f16e3332fcbb2",
+      "bytes": 44158
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/tab_style_views.h",
+      "sha256": "12185080421295a213c4515b1e5778a0102f78798f92e26f43d515e8241dde51",
+      "bytes": 2990
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/top_container_button.cc",
+      "sha256": "9560efd6c887c56883583989c892960a73b3917fa6fec906c065dc5c1c4a78c6",
+      "bytes": 3590
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/top_container_button.h",
+      "sha256": "cfdf13bb9d1172312ae54d138c01a843780e3072a4a22c9a34d1491155188461",
+      "bytes": 1240
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.cc",
+      "sha256": "73fc0ae739b723a322073b86f9d3f1357d975e964ee682470e1b9e08b5e1a7c1",
+      "bytes": 5422
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_bottom_container.h",
+      "sha256": "4940a70ea6bd660258117fde18663b991526d695075f30b4dd2283e1792f9acb",
+      "bytes": 2252
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_expand_on_hover_lock.cc",
+      "sha256": "8178af79961ed142aa037df73bd298fbbdc58d04804baaafed5e6e74102910d1",
+      "bytes": 612
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_expand_on_hover_lock.h",
+      "sha256": "133dd0f5ef3db665b0ce3787760ce4639b4004f303fd4c13cc63e8eb385fd06c",
+      "bytes": 1214
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.cc",
+      "sha256": "543d7319832994fcd42f9d2cf82c55b64902b88ab7110535eabd1d6bb74a7151",
+      "bytes": 1455
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_scroll_bar.h",
+      "sha256": "59e8d413d11408a42c1bc0e0d4b10cff627c6f4e18d026e50e0c02124f302a9e",
+      "bytes": 1428
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.cc",
+      "sha256": "735c251ae3ce470d8103a7b509d8694eb6863bfb0db858ec35c83b22751173a9",
+      "bytes": 18970
+    },
+    {
+      "path": "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h",
+      "sha256": "1c2055e2a7ad380000a6fc3da709be22e959ac5a898a52fe726aa38363dd0ab8",
+      "bytes": 5080
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_button.cc",
+      "sha256": "d07e0397208267faedd4c72a17604149e05697f3b19ea03888e6266addc66a5b",
+      "bytes": 28993
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_ink_drop_util.cc",
+      "sha256": "a4bb29c334ae328a6fd661db44b87f694fb99cdb1b16a861cacd8f476e1a8199",
+      "bytes": 6005
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.cc",
+      "sha256": "8af8701b7e72ee6b217616582d8176f482c420ad205e059239aef482b1dd46a5",
+      "bytes": 75003
+    },
+    {
+      "path": "chrome/browser/ui/views/toolbar/toolbar_view.h",
+      "sha256": "3a54fec94c974d0df01bfd52f5a6b736a5c80b38ee566f57f54c25781fa3850b",
+      "bytes": 18310
+    },
+    {
+      "path": "ui/views/layout/flex_layout.cc",
+      "sha256": "2fc86daadeaf46dd10559b90d2d2c9b8dfbadfc21f8e127932fd4c14f37ba5d9",
+      "bytes": 51216
+    }
+  ]
+}

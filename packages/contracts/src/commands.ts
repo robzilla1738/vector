@@ -129,6 +129,7 @@ export const COMMANDS = [
   { id: "close-window", section: "Windows", handler: "shell", label: "Close Window", bindings: [B("w", { command: true, shift: true })], intercept: true },
   { id: "print", section: "Page", handler: "shell", label: "Print…", bindings: [B("p", { command: true })], intercept: true },
   { id: "save-pdf", section: "Page", handler: "shell", label: "Save Page as PDF…", bindings: [B("p", { command: true, shift: true })], intercept: true },
+  { id: "new-chat", section: "Agent", handler: "shell", label: "New chat", focusShell: true, windows: ["normal"], bindings: [] },
   { id: "quick-ask", section: "Agent", handler: "shell", label: "Quick Ask", bindings: [B(" ", { command: true, shift: true })] },
   { id: "find", section: "Page", handler: "shell", label: "Find…", bindings: [B("f", { command: true })], intercept: true },
   { id: "find-next", section: "Page", handler: "shell", label: "Find Next", bindings: [B("g", { command: true })], intercept: true },

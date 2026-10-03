@@ -1,0 +1,12 @@
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -144,7 +144,8 @@
+     void CallInternal(std::string method, std::string params_json,
+                       ResponseCallback callback);
+     void CallRequest(std::string method, std::string params_json,
+-                     bool desktop_api, ResponseCallback callback);
++                     bool desktop_api, std::string person_resume,
++                     ResponseCallback callback);
+     bool Pump();
+     std::optional<PerformanceProcessIdentity> ReadPerformanceProcessIdentity();
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)

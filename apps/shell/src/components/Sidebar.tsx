@@ -406,7 +406,7 @@ const SidebarBookmarks = memo(function SidebarBookmarks({ onOpen, onDropped }: {
 });
 
 const SidebarChats = memo(function SidebarChats() {
-  return <div className="sb-chats"><button className="sb-link" onClick={() => useStore.getState().openConversation(null)}>{shellIconPencil}<span>New chat</span></button><ChatSessions compact /></div>;
+  return <div className="sb-chats"><button className="sb-link" data-command-id="new-chat" onClick={() => runCommand("new-chat")}>{shellIconPencil}<span>New chat</span></button><ChatSessions compact /></div>;
 });
 
 /* ------------------------------------------------------------------ */

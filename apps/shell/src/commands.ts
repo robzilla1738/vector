@@ -254,6 +254,7 @@ export const COMMAND_ACTIONS = {
     const page = st.pages.find((page) => page.pageId === st.activePageId);
     if (page) return navigator.clipboard.writeText(page.url).then(() => st.toast("Link copied"));
   },
+  "new-chat": st => st.openConversation(null),
   "quick-ask": () => bridge.quickAsk("open"),
 
   "new-tab": () => openCommandSurface({ mode: "new-tab" }),

@@ -82,3 +82,12 @@ it("awaits the actual registered feature acknowledgment and propagates refusal w
   await expect(executeCommand("archive-delete", { payload: { archiveId: "saved-tab" } })).rejects.toBe(error);
   expect(toast).not.toHaveBeenCalled();
 });
+
+it("opens page-free chat through the remappable command without creating a tab", () => {
+  vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
+  const state = useStore.getState(), openConversation = vi.fn(), newTab = vi.fn();
+  expect(runCommand("new-chat", { state: { ...state, openConversation, newTab } })).toBe(true);
+  expect(openConversation).toHaveBeenCalledExactlyOnceWith(null);
+  expect(newTab).not.toHaveBeenCalled();
+  expect(COMMANDS.find(command => command.id === "new-chat")?.windows).toEqual(["normal"]);
+});
