@@ -2,7 +2,7 @@
 // Synthetic lifecycle/event contracts only; no native startup qualification.
 #include "components/viz/service/display/native_stock_first_hardware_retention.h"
 #include "base/functional/bind.h"
-#include "base/test/task_environment.h"
+#include "base/test/scoped_standalone_mock_time.h"
 #include "components/viz/common/surfaces/local_surface_id.h"
 #include "testing/gtest/include/gtest/gtest.h"
 namespace viz {
@@ -29,7 +29,7 @@ class NativeStockFirstHardwareRetentionTest : public testing::Test {
     retention.Presented(group, swap, gfx::PresentationFeedback(retention.registered_at() + base::Milliseconds(7),
         base::Milliseconds(16), hw ? gfx::PresentationFeedback::kHWCompletion : 0));
   }
-  base::test::TaskEnvironment environment_{base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  base::test::ScopedStandaloneMockTime environment_;
   const base::UnguessableToken nonce_ = base::UnguessableToken::Create();
   const FrameSinkId sink_{1, 1};
   const SurfaceId surface_{sink_, LocalSurfaceId(1, 1, base::UnguessableToken::Create())};

@@ -2,7 +2,7 @@
 // Synthetic cc lifecycle contracts, not Stock startup measurement evidence.
 #include "cc/trees/native_stock_ready_swap_promise.h"
 #include "base/functional/bind.h"
-#include "base/test/task_environment.h"
+#include "base/test/scoped_standalone_mock_time.h"
 #include "testing/gtest/include/gtest/gtest.h"
 namespace cc {
 class NativeStockReadySwapPromiseTest : public testing::Test {
@@ -15,7 +15,7 @@ class NativeStockReadySwapPromiseTest : public testing::Test {
     return base::BindOnce([](int* calls, std::optional<viz::NativeStockReadyFrame>* out,
         std::optional<viz::NativeStockReadyFrame> value) { ++*calls; *out = std::move(value); }, &calls_, &result_);
   }
-  base::test::TaskEnvironment environment_{base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  base::test::ScopedStandaloneMockTime environment_;
   const base::UnguessableToken nonce_ = base::UnguessableToken::Create();
   int calls_ = 0;
   std::optional<viz::NativeStockReadyFrame> result_;
