@@ -1,3 +1,4 @@
+import { captureSettingsRail } from '../lib/chat-settings-capture.mjs';
 import { captureAppearanceTextState } from '../lib/appearance-text-state.mjs';
 import { captureHomeJourneyState as captureLayoutState } from '../lib/home-capture.mjs';
 import { performance } from 'node:perf_hooks';
@@ -35,6 +36,7 @@ async function setting(t, label, key, value) {
       name: `settings-${layout}-long-search-no-results`, state: 'settings-long-search-no-results',
       ready: () => t.ax.waitFor({ name: 'No settings found for', match: 'contains', scope: 'shell', index: 0 }) });
     t.assert.deepEqual(await t.rpc('pages.list'), originalPages, 'Settings search must not create or navigate a page');
+    await captureSettingsRail(t, layout);
   }
   await t.ax.type(label, search);
   const result = { name: `^Appearance ${label}(?: |$)`, role: 'AXButton', match: 'regex', scope: 'shell', index: 0 };

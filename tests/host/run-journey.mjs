@@ -5,6 +5,7 @@ import { createLaunchServicesAppearanceProvenance } from './lib/appearance-prove
 import { createOwnedNarrowGenerations } from './lib/distinct-narrow-window.mjs';
 import { collectNativeKeyEffects } from './lib/native-key-performance.mjs';
 import { dismissObservedSetup } from './lib/dismiss-observed-setup.mjs';
+import { SETUP_APPEARANCE_ID, requireSetupAppearance, setupDisposition } from './lib/setup-appearance.mjs';
 import { createUntil } from './lib/until.mjs';
 import { createClock } from "../../packages/contracts/dist/clock.js";
 import assert from 'node:assert/strict';
@@ -46,7 +47,13 @@ if (!process.env.AUX_NATIVE_SLOT_TOKEN) {
 const slot = await acquireNativeSlot();
 process.env.AUX_NATIVE_SLOT_TOKEN = slot.token;
 try {
-const entry = (await journeyRegistry()).find(entry => entry.journey.id === values.journey);
+let entry;
+if (values.journey === SETUP_APPEARANCE_ID) {
+  requireSetupAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/setup-appearance.mjs');
+  const module = await import('./appearance-journeys/setup-appearance.mjs');
+  entry = { ...module, path };
+} else entry = (await journeyRegistry()).find(entry => entry.journey.id === values.journey);
 assert.ok(entry, `Unknown journey: ${values.journey}`);
 const { journey, run } = entry;
 assert.ok(!journey.needs.includes('owner-presence') || values.attended, 'Journey requires --attended and owner presence');
@@ -308,7 +315,8 @@ async function execute() {
   manifest.native = actual.native;
   manifest.runtime = actual.runtime;
   assertJourneyIdentity(actual, identity);
-  await dismissObservedSetup(context, appearance ? windowId => appearance.observeWindowKind(windowId) : undefined);
+  if (setupDisposition(journey.id, Boolean(values.appearance), appearancePair) === 'dismiss')
+    await dismissObservedSetup(context, appearance ? windowId => appearance.observeWindowKind(windowId) : undefined);
   if (narrowGenerations) {
     await narrowGenerations.prepare();
     signal.throwIfAborted();

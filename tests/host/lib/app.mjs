@@ -1,3 +1,4 @@
+import { createImportSourceOwner, createImportSourceHome, readImportSourceHome, disposeImportSourceHome, importSourceEnvironment } from './import-source-home.mjs';
 import { homedir } from 'node:os';
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
@@ -145,8 +146,9 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   const launchArgs = launch.args ?? [];
   if (!Array.isArray(launchArgs) || launchArgs.some(arg => typeof arg !== 'string' || /^(--user-data-dir|--profile-directory|--remote-debugging|--password-store|--use-mock-keychain)/.test(arg)))
     throw new Error('Launch args must preserve disposable Profile and disabled public debugging');
+  const fixtureEnvironment = importSourceEnvironment(process.env, launch.env);
   const env = privatePair ? { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8',
-    HOME: profileRoot, TMPDIR: profileRoot } : { ...process.env, ...launch.env, ...acceptance?.env };
+    HOME: profileRoot, TMPDIR: profileRoot } : { ...fixtureEnvironment, ...acceptance?.env };
   // Never inherit a developer token unless this launcher made its own marker.
   if (!acceptance) delete env.AUX_DEV_ACCEPTANCE_TOKEN;
   let appearanceStream, pipAppearanceStream, appearanceDetach, fileAppearance, appearanceOwnerFailure, appearanceChannelRetirement;
@@ -165,6 +167,15 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     pipAppearanceStream?.dispose(); pipAppearanceStream = undefined;
   }
   let privateOwner, privateStream, privateStarted = false, privateWindowId, privateCloseReceipt, privateCaptureCandidate;
+  const importSourceOwner = createImportSourceOwner(userDataDir);
+  let importSourceLease, importSourcePreparationFailure;
+  function assertImportSource() {
+    if (importSourcePreparationFailure) throw importSourcePreparationFailure;
+    if (importSourceLease) {
+      const receipt = readImportSourceHome(importSourceLease, importSourceOwner);
+      if (env.AUX_IMPORT_SOURCE_HOME !== receipt.home) throw new Error('Original import source environment changed');
+    } else if (env.AUX_IMPORT_SOURCE_HOME !== undefined) throw new Error('Unowned import source environment');
+  }
   let child;
   let externalPid;
   let externalGeneration;
@@ -349,6 +360,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     if (privatePair) throw new Error('Private observation cannot use ordinary runtime startup');
     if (startupAttachment) throw new Error("Attached startup cannot use another launcher");
     if (running()) throw new Error('Journey Aux is already running');
+    assertImportSource();
     if (auxUrl) {
       const selected = new URL(auxUrl).searchParams.get('profile');
       if (selected) { activeProfile = selected === 'default' ? 'Default' : selected; nativeProfileName(activeProfile); }
@@ -368,6 +380,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       ...(appearanceArtifact && (externalUrl || auxUrl) ? ['--aux-native-appearance-file-observer'] : []),
     ];
     try {
+      assertImportSource();
       if (externalUrl || auxUrl) {
         if (appearanceArtifact) { appearanceArtifact.validate(); if (activeProfile !== "Default" || launchArgs.filter(arg => arg === "--aux-native-appearance-observer").length !== 1) throw new Error("Owned file observation requires actual Default appearance opt-in"); }
         const receipt = await launchUrl(auxUrl ?? externalUrl, args, null, !!auxUrl, background);
@@ -389,6 +402,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
           nativeConnected: workspace?.sessions?.some(session => session.sessionId === 'aux' && session.status === 'connected') === true });
         if (workspace?.sessions?.some(session => session.sessionId === 'aux' && session.status === 'connected')) {
           if (existsSync(join(userDataDir, 'DevToolsActivePort'))) throw new Error('Journey exposed a public debugging port');
+          assertImportSource();
           startupTrace = undefined;
           return api;
         }
@@ -611,6 +625,25 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     observePipAppearance(selection) {
       if (!running() || externalPid || !pipAppearanceStream) return Promise.reject(new Error('No owned child appearance stream for current child'));
       return pipAppearanceStream.observe(selection);
+    },
+    prepareImportSourceHome(fixtureUrl) {
+      if (privatePair || startupAttachment || running() || importSourceLease || importSourcePreparationFailure) throw new Error('Import source must be prepared once before an owned regular launch');
+      try { importSourceLease = createImportSourceHome(importSourceOwner, fixtureUrl); }
+      catch (error) { importSourcePreparationFailure = error; throw error; }
+      const receipt = readImportSourceHome(importSourceLease, importSourceOwner);
+      env.AUX_IMPORT_SOURCE_HOME = receipt.home;
+      return receipt;
+    },
+    readImportSourceHome() {
+      if (!importSourceLease) throw new Error('No original import source lease');
+      assertImportSource();
+      return readImportSourceHome(importSourceLease, importSourceOwner);
+    },
+    disposeImportSourceHome() {
+      if (running() || startupAttachment || !importSourceLease) throw new Error('Import source cleanup requires its stopped original App');
+      disposeImportSourceHome(importSourceLease, importSourceOwner);
+      importSourceLease = undefined;
+      delete env.AUX_IMPORT_SOURCE_HOME;
     },
     prepareFixtureEnv(extra, fixtureUrl) {
       if (privatePair) throw new Error('Private observation uses only its original fixed environment');

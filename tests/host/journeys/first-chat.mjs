@@ -1,3 +1,4 @@
+import { captureFreshChat } from '../lib/chat-settings-capture.mjs';
 import { captureHomeJourneyState } from '../lib/home-capture.mjs';
 import { withFailureEvidence } from '../lib/journey-diagnostics.mjs';
 import { fixturePage } from '../lib/fixture.mjs';
@@ -58,6 +59,7 @@ export async function run(t) {
     t.assert.deepEqual(await t.rpc('pages.list'), [], 'Fresh chat must start with no public page');
     await newChat(t);
     t.assert.deepEqual(await t.rpc('pages.list'), [], 'Opening the composer must not create a blank page');
+    const freshAppearance = await captureFreshChat(t);
     let partial;
     try {
       first = await send(t, 'Give a short greeting without opening or attaching any browser page.');
@@ -76,7 +78,7 @@ export async function run(t) {
     t.assert.deepEqual(await t.rpc('pages.list'), [], 'Answering must not create any page');
     t.assert.ok(decisions.some(row => row.phase === 'answer' && row.stream));
     await captureHomeJourneyState(t, 'first-chat-page-free-answer', 'first-chat-page-free-answer');
-    return { ax: await t.ax.dump(), rpc: { partial, details, pages: await t.rpc('pages.list'), decisions } };
+    return { freshAppearance, ax: await t.ax.dump(), rpc: { partial, details, pages: await t.rpc('pages.list'), decisions } };
   });
   await t.step('retry the same page-free run without manufacturing page context', { kind: 'ui', features: ['electronMigration'] }, async () => {
     phase = 'retry';
