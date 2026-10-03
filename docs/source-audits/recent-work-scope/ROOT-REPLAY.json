@@ -1,0 +1,44 @@
+{
+  "sourceOnly": true,
+  "nativeVerified": false,
+  "packets": [
+    {
+      "path": "/tmp/aux-browser-runtime-design-recent-scope/docs/design-reviews/recent-work-scope/request.patch",
+      "sha256": "8dc481f78b5fb36393c217afa6059a75c7245e528968cf44cbde6709272fdca5"
+    }
+  ],
+  "before": {
+    "apps/shell/src/components/RecentWork.tsx": "3d25618f98d5189266e224077b960f5aa40e63d13b8580bd82ad24b6bea9054e",
+    "apps/shell/src/components/RecentWork.scope.test.tsx": null
+  },
+  "after": {
+    "apps/shell/src/components/RecentWork.tsx": "d7da2edc3eec7a79aa56cecb0b3882784c4759588c97c38ad5967e974da86531",
+    "apps/shell/src/components/RecentWork.scope.test.tsx": "5d0ca21fffcc5d33cebe3bd8fffc4fe51ae52cb196007ec8eecbac39dc55944d"
+  },
+  "exactForwardReverseForward": true,
+  "controls": {
+    "log": "/tmp/aux-root-recent-controls.log",
+    "sha256": "3e3aa43e2c37e57efa3f3f70622f52ffb274b4b04d7f243c3ae11a6e1560ff81",
+    "exit": 0
+  },
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-recent-replay-8wrd3kbs",
+  "sourceGates": {
+    "shellTypecheckExit": 0,
+    "scopedLintExit": 0,
+    "warningCount": 1,
+    "budgetsKb": {
+      "startupJs": 487,
+      "startupCss": 175,
+      "totalJs": 1800
+    },
+    "assetCount": 175,
+    "assetDigest": "7270ffb5375bf8cba678dd13fc09f183d9d2a6a98b2c234c1030c2c64edea12c",
+    "nativeQualification": false,
+    "logs": {
+      "/tmp/aux-root-recent-controls.log": "3e3aa43e2c37e57efa3f3f70622f52ffb274b4b04d7f243c3ae11a6e1560ff81",
+      "/tmp/aux-root-recent-renderer.log": "5d8ae87b3281a85783b76873f65e61867877ce40caabf64983472dbf89e071ee",
+      "/tmp/aux-root-recent-lint.log": "72d46efe84d889150853c104ce26a90971075e3fe96beb4bd66e7fc52905a9b7",
+      "/tmp/aux-root-recent-budgets.log": "ae1a7f494d6b2b985e8f8fe14fb3ce8dd80f8598e041a6756f767b1b7ac7fdcb"
+    }
+  }
+}

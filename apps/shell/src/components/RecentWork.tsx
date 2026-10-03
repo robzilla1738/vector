@@ -14,12 +14,13 @@ import { Tabs } from "../ui";
 export function RecentWork() {
   const [items, setItems] = useState<ConversationSummary[]>([]);
   const [results,setResults]=useState<Record<string,ConversationArtifact>>({});
-  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [routineResult, setRoutineResult] = useState<{ workspaceId?: string; items: Routine[] }>({ items: [] });
   const [tab, setTab] = useState<"chats" | "routines">("chats");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
   const workspaceId = useStore(state => state.layout.spaces.find(space => space.id === state.layout.activeSpaceId)?.workspaceId);
+  const routines = routineResult.workspaceId === workspaceId ? routineResult.items : [];
   useEffect(() => {
     const update = () => setRefresh(value => value + 1);
     window.addEventListener("focus", update);
@@ -45,7 +46,7 @@ export function RecentWork() {
           if(live)setResults(next);
         })
       : (workspaceId ? call("routines.list", {workspaceId, includeArchived: false}) : Promise.resolve([]))
-        .then(found => { if (live) setRoutines(found); });
+        .then(found => { if (live) setRoutineResult({ workspaceId, items: found }); });
     void fetch
       .catch(reason => { if (live) setError(String(reason)); })
       .finally(() => { if (live) setLoading(false); });
