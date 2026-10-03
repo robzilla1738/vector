@@ -1,0 +1,13 @@
+{
+  "base": "3c76779a",
+  "originalSha256": "1ca30229f64c276080274057292b4ba5cf242ddcff17813e3bffebd63157c681",
+  "resultSha256": "584f7fc86d6c7aed85a7efe95cc8fcf1c929c1cd20b8090ab1d58b47e6c3c5e6",
+  "patchSha256": "769639a79c29e4a7aed31e90e357102712dcb9a3370b418d10cab66435f257c9",
+  "exactForwardReverseRestoration": true,
+  "review": "Fixed one-shot CmdN endpoint, actual original kernel UUID/start and owned onscreen layer0 window; private CG source PID/state and timestamp readback, exact before-post and after-release generation checks; no caller target/chord/window/time selectors. Existing frontmost/held-key ownership preserved.",
+  "compiled": false,
+  "executed": false,
+  "nativeInputLineageProven": false,
+  "timingQualified": false,
+  "required": "Original compiler/SDK/helper artifact pairing, native event producer joins and>=20 real AC trials."
+}

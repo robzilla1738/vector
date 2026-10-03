@@ -1271,6 +1271,90 @@ func mouseEvent(_ type: CGEventType, at point: CGPoint, button: CGMouseButton = 
   guard let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: button) else { throw protocolError("Cannot create mouse event") }
   event.flags = flags; event.setIntegerValueField(.mouseEventClickState, value: Int64(count)); event.post(tap: .cghidEventTap)
 }
+// Private warm-window harness endpoint. One genuine Cmd+N per original helper
+// lifetime, with no caller chord/window/PID/clock selectors.
+struct WarmWindowKernelGeneration: Equatable {
+  let imageUuid: String
+  let startMachTicks: UInt64
+}
+func warmWindowKernelGeneration(_ actual: pid_t) throws -> WarmWindowKernelGeneration {
+  var usage = rusage_info_v0()
+  let status = withUnsafeMutablePointer(to: &usage) { pointer in
+    pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
+      proc_pid_rusage(actual, RUSAGE_INFO_V0, $0)
+    }
+  }
+  let uuid = withUnsafeBytes(of: usage.ri_uuid) { bytes in bytes.map { String(format: "%02x", $0) }.joined() }
+  guard status == 0, usage.ri_proc_start_abstime > 0, usage.ri_proc_exit_abstime == 0,
+        uuid != String(repeating: "0", count: 32) else { throw protocolError("Warm input kernel generation unavailable") }
+  return WarmWindowKernelGeneration(imageUuid: uuid, startMachTicks: usage.ri_proc_start_abstime)
+}
+var warmWindowKeyReceiptUsed = false
+func warmWindowKeyReceipt(_ request: [String: Any]) throws -> [String: Any] {
+  guard Set(request.keys).isSubset(of: Set(["id", "command"])),
+        request["command"] as? String == "warmWindowKeyReceipt",
+        !warmWindowKeyReceiptUsed else { throw protocolError("Invalid or reused fixed warm input request") }
+  try heldKeySession.requireAvailable()
+  try requireLiveTarget()
+  guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+    throw protocolError("Warm input original target is not frontmost")
+  }
+  let targetBefore = try warmWindowKernelGeneration(pid)
+  let helperBefore = try warmWindowKernelGeneration(getpid())
+  let originalWindows = windowInventory().filter { ($0["layer"] as? Int) == 0 }
+  guard originalWindows.count == 1, let originalWindow = originalWindows[0]["id"] as? Int,
+        originalWindow > 0, let source = CGEventSource(stateID: .privateState),
+        let code = keyCodes["n"],
+        let down = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true),
+        let up = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false) else {
+    throw protocolError("Warm input requires one actual original window and native key events")
+  }
+  down.flags = .maskCommand; up.flags = .maskCommand
+  let actualSourcePid = down.getIntegerValueField(.eventSourceUnixProcessID)
+  let actualSourceState = down.getIntegerValueField(.eventSourceStateID)
+  guard actualSourcePid == Int64(getpid()),
+        actualSourceState == Int64(CGEventSourceStateID.privateState.rawValue),
+        down.getIntegerValueField(.keyboardEventAutorepeat) == 0 else {
+    throw protocolError("Warm input original native source unavailable")
+  }
+  // Admit the actual source and target again immediately before posting. A
+  // generation change or foreign window cannot reuse an earlier Ready scope.
+  try requireLiveTarget()
+  guard try warmWindowKernelGeneration(pid) == targetBefore,
+        try warmWindowKernelGeneration(getpid()) == helperBefore,
+        NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
+        windowInventory().filter({ ($0["layer"] as? Int) == 0 }).map({ $0["id"] as? Int }) == [originalWindow] else {
+    throw protocolError("Warm input original owner changed")
+  }
+  warmWindowKeyReceiptUsed = true
+  var posted = false, released = false
+  defer { if posted && !released { up.timestamp = DispatchTime.now().uptimeNanoseconds; up.post(tap: .cghidEventTap) } }
+  let postBeforeNs = DispatchTime.now().uptimeNanoseconds
+  down.timestamp = postBeforeNs
+  guard down.timestamp == postBeforeNs else { throw protocolError("Warm input native timestamp unavailable") }
+  down.post(tap: .cghidEventTap); posted = true
+  let postReturnedNs = DispatchTime.now().uptimeNanoseconds
+  usleep(20_000)
+  let releaseNs = DispatchTime.now().uptimeNanoseconds
+  up.timestamp = releaseNs; up.post(tap: .cghidEventTap); released = true
+  try requireLiveTarget()
+  let targetAfter = try warmWindowKernelGeneration(pid)
+  let helperAfter = try warmWindowKernelGeneration(getpid())
+  guard targetAfter == targetBefore, helperAfter == helperBefore,
+        postBeforeNs > 0, postReturnedNs >= postBeforeNs, releaseNs >= postReturnedNs else {
+    throw protocolError("Warm input original process generation or native clock changed")
+  }
+  return ["producer": "aux-native-stock-warm-input", "version": 1,
+          "targetPid": Int(pid), "helperPid": Int(getpid()), "originalWindowNumber": originalWindow,
+          "targetProcessUuid": targetBefore.imageUuid, "targetProcessStartMachTicks": String(targetBefore.startMachTicks),
+          "helperProcessUuid": helperBefore.imageUuid, "helperProcessStartMachTicks": String(helperBefore.startMachTicks),
+          "cgTimestampNs": String(down.timestamp), "postBeforeNs": String(postBeforeNs),
+          "postReturnedNs": String(postReturnedNs), "releaseNs": String(releaseNs),
+          "keyCode": Int(code), "flags": String(down.flags.rawValue),
+          "sourcePid": String(actualSourcePid), "sourceState": String(actualSourceState),
+          "autorepeat": false, "transport": "cghidEventTap"]
+}
+
 func protocolCommand(_ request: [String: Any]) throws -> Any {
   guard let command = (request["command"] ?? request["cmd"]) as? String else { throw protocolError("command required") }
   switch command {
@@ -1303,7 +1387,7 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
       usleep(50_000)
     } while Date() < deadline
     throw protocolError("waitFor timed out: \(selector)")
-  case "press", "focus", "click", "hover", "key", "type", "drag", "scroll", "menu", "contextMenu", "savePanel", "openPanel", "measureKey": break
+  case "press", "focus", "click", "hover", "key", "type", "drag", "scroll", "menu", "contextMenu", "savePanel", "openPanel", "measureKey", "warmWindowKeyReceipt": break
   default: throw protocolError("Unknown command: \(command)")
   }
   try frontmostGuard()
@@ -1313,6 +1397,7 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
     let status = command == "press" ? AXUIElementPerformAction(target, kAXPressAction as CFString)
       : AXUIElementSetAttributeValue(target, kAXFocusedAttribute as CFString, kCFBooleanTrue)
     guard status == .success else { throw protocolError("AX action failed: \(status.rawValue)") }
+  case "warmWindowKeyReceipt": return try warmWindowKeyReceipt(request)
   case "measureKey": return try measureKey(request)
   case "key":
     guard let chord = request["chord"] as? String else { throw protocolError("chord required") }
