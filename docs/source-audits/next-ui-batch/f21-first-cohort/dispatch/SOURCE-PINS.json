@@ -1,5 +1,5 @@
 {
-  "base": "e6919dd3479840b543548184b0a0e3d91c8dfaf1",
+  "base": "67e42d3626cf95c21883cfe4dc8cf7a0088d79f1",
   "sourcePins": {
     "tests/host/run-journey.mjs": "8d6aeb032f5d73524c4aaea5759f136e343615b0918e5b1b186ebffe260bf807",
     "tests/host/journeys/index.mjs": "c553ab7ce26ef646e3109723b3c01d931be1aba5742355e28093365af13e6f6f",
@@ -13,8 +13,8 @@
     "tests/host/lib/setup-appearance.mjs": "ec5753c6967ca050643f8956ba56943462407b2eaa91a8b3ace4c5ab50776ef7",
     "tests/host/lib/setup-import-appearance.mjs": "d5c3c66c1739ed7c28f55bf057889372dec0a589d4ad80df6dedc490e580d8a0",
     "tests/host/lib/setup-import-interruption.mjs": "86d2f88a213fd2adb83ab7a38d9376d9f4b428407ace4222bb517bf2e5c495b8",
-    "tests/host/journeys/home-composer.mjs": "cc9a17fec24c53e72fc9475388b4f28f8ddf45d367aa2e52276eaf1239a10cdb",
-    "tests/host/journeys/first-chat.mjs": "32be210ace8477f663a226c7273127c5a42d246bc65d057258fe83b1fbc9a955",
+    "tests/host/journeys/home-composer.mjs": "1aa5f17107f6b954d7028d1e4453fb46421f3b620e3b727cfa141a11c6a324ba",
+    "tests/host/journeys/first-chat.mjs": "e6f02e0efce4ceba63df9fbb7dba34b6766ac63df1e9d175e7a428533d825cf9",
     "tests/host/journeys/layout-modes.mjs": "1279a9106111666373c641863c8bd63042acf997b0b9fde0c215cf9dba0ef799",
     "scripts/design-qa.mjs": "48231213bcf5dae2ccfbbb23eca92a62af526b9885b7c57d4efcd7141ca013b4",
     "docs/BROWSER-RUNTIME-PLAN.md": "832777b0b4c00cebe32e4537b6fc074e3fb80a92b46301d47fe0f6d825594364",
@@ -29,23 +29,30 @@
     "tests/host/lib/settings-row-completion-appearance.mjs": "05fc6a85272013be98bdeb1fd17473cb180e899173f3ea6601eb55deb48e7fad",
     "tests/host/lib/memory-appearance.mjs": "2e9c1f51060496a291fd272a1ffb92a18fbd94b46fa7a52f1590ec11b2129594",
     "tests/host/lib/model-discovery-appearance.mjs": "89489187c0f12710f9d935cd1e029f6f293e3398de6e4b44161f2fda3b1f9a1c",
-    "tests/host/lib/saved-source-recovery.mjs": "ad833858aca6a254a5cff7bca3403fb8add3f713baa60cbbbcdcce710d46f01c",
-    "tests/host/lib/saved-source-update.mjs": "64b2a4def72fcece804bada5da3ee38df1db2a1204bf9bf32e31d6696aade981",
+    "tests/host/lib/saved-source-recovery.mjs": "a19f23090a58db5fd5b2e827ee013c8f90570cb41797bd0d2b8ab18e69c899be",
+    "tests/host/lib/saved-source-update.mjs": "56aca58c92f5667b199b0bbc5852600c618054bef9bedd5ffe7b4c0389b18b24",
     "tests/host/appearance-journeys/memory-appearance.mjs": "3c8262644df7333653ae619fb1698115a08694e2b311ffe922fb5c795e6feb68",
     "tests/host/appearance-journeys/model-discovery-appearance.mjs": "9326a63f7d2b25ca36bc40257e2bfa6435016f6e3254c031d87d43c642c6987f",
     "tests/host/memory-appearance.test.mjs": "3ef52da0b0d1604bf0cd67314484b5c650f8f67cb60686b296a56b8a4fc3a50e",
     "tests/host/model-discovery-appearance.test.mjs": "7b76dc82e925487e198c213934e77376bbfcd01e47358037511a8b4930845d65",
     "tests/host/lib/saved-source-recovery.test.mjs": "b159e7625ebc21caded88f00ab6939af5e06f248d00bdef6a72b675a20891147",
     "tests/host/lib/saved-source-update.test.mjs": "713dbe4b51e179a7d443656f42ccec41a252e8f830c7eeedaf2bcad1a2dde838",
-    "apps/shell/src/browser-source-commands.ts": "1153ee09b672aaab6ffd1af8addc9e73ff067945e0014c63f1b4bfe9458832b8",
-    "apps/shell/src/components/BrowserContextTray.tsx": "3f7ac735c41932e7e2bae02682e176cc735dd5f50a5041c1be84588c97142660",
-    "apps/shell/src/commands.ts": "54ca1bc2b841853a4a94326c1794601436b46c7930d7097ca751261d51141f13",
-    "packages/contracts/src/commands.ts": "68d63e3e7a28ecb14027ae41bb21e884b93aa0c4396e4d21f1df391a65b25a70",
-    "apps/shell/src/components/MemorySettings.tsx": "73ff907b8aec8b1b1305529de558bf23821752af2ec4f493421d45429e968d4b",
+    "apps/shell/src/components/BrowserContextTray.tsx": "c763794d42fcbb1ba1ae1f6326cc93e1f2ed0fdcca3871e68d860c5ac7358a68",
+    "apps/shell/src/commands.ts": "bd69ded5cb490118c160a91e441e525338f4188f48cd831426456fe314df365e",
+    "packages/contracts/src/commands.ts": "a1b1b9219fab7c2d64db37c6e0d5817db6cd29d3e46d49760541cd875d96c26a",
+    "apps/shell/src/components/MemorySettings.tsx": "b6d42806e1c8554fa26a2c6d8e16c81d2ebda18bec61e0ed42c2bc425e5c193a",
     "apps/shell/src/components/Settings.css": "9b8e27965061c3b907bc3c7689a1440a195046268c11e77cf38d5ef9ad427c61",
     "apps/shell/src/settings/sections/Models.tsx": "c72881bb369e665dcd853a5f06b358bf7c3a3c5e0d850d4e58ee950c3d924d57",
     "apps/runtime/src/services/settings.ts": "929d7771958ac98126dd52d320db60cd7cae20cd6ba32211d35a03ee0d8e02b6",
-    "/Users/rcourson/aux-chromium-stable/chromium/src/ui/accessibility/platform/ax_platform_node_cocoa.mm": "e70c52999ebbbfb6eb8150c52ae2d9741841b34a202fb86eb882cd9d3c507ce1"
+    "/Users/rcourson/aux-chromium-stable/chromium/src/ui/accessibility/platform/ax_platform_node_cocoa.mm": "e70c52999ebbbfb6eb8150c52ae2d9741841b34a202fb86eb882cd9d3c507ce1",
+    "apps/shell/src/scoped-control-commands.ts": "17c4083e4ea72a100e36c29b39b22c84e626f29515988dcb7ab0da2900ef2205",
+    "apps/shell/src/components/BrowserContextPicker.tsx": "3e623723dfa76c60c7b1b27d76b97873b79893a9557f83364e6d561954d16a27",
+    "apps/shell/src/components/MemorySettingsControl.tsx": "f496883e98f18b9232560fff0fd8afebea3fa19938aba9bc05b882efac06c638",
+    "apps/shell/src/components/SpaceMemoryEditor.tsx": "dc257ea8a1825605e3e4b1e94a221ea69bfe8f4115eb1f143ab35e676000683b",
+    "apps/runtime/src/services/pages/session-restore.ts": "90ced4d3a0864a40886211c614308bcb676ae1dcc4ab81670ffc98637990d2fc",
+    "packages/contracts/src/api.ts": "12007132d94e8ea6184b950f29f50d766e1010fa5a857afb17539d4eba5615ae",
+    "chromium/shell-assets/manifest.json": "38bdbf0cce623af596d4f2019186c1bd88acfc34bb7eaa67076b3a23294de4b4",
+    "chromium/patches/0340-native-appearance-declaration-and-measurement-dict-api.patch": "2bf570ba01b40a4e0069c1525d264aeab8c9660425b8aba01b3ed4094af6fcac"
   },
   "incomingSettings": {
     "commit": "824d5295",
@@ -60,7 +67,7 @@
   "compositionRule": "Root must pin actual integrated source and final approved pair. These review pins do not identify a compiled candidate.",
   "reviewedIncomingPacketsIntegrated": true,
   "historicalDispatchBase": "c7ee0735",
-  "snapshotStatus": "root reviewed and integrated clean source e6919dd3; native f0 graph separate; no compiled-pair/capture admission",
+  "snapshotStatus": "root actual integrated recovery/native0340 plus metadata-equivalent command optimization and passing current175asset snapshot; no compiled-pair/capture admission",
   "reviewedFuturePackets": [
     {
       "commit": "1695adac",
@@ -88,7 +95,7 @@
     "status": "root integrated in e6919dd3",
     "scope": "diagnostic containment CSS only; native narrow pixels pending"
   },
-  "plannedFutureChanges": "Trust commands may change Tray/Picker/adapter after this snapshot; unaccepted and require fresh pins",
+  "plannedFutureChanges": "ContentMemory and BrowsingMemory independent requests remain unaccepted; repin their actual eventual integrated source before relevant capture",
   "pendingReviewedCorrection": {
     "scope": "Memory aria-pressed actual AXCheckBox role",
     "status": "root correction committed02981618, actual bytes independently verified",
@@ -98,5 +105,9 @@
     },
     "nativeRoleMapping": "kToggleButton -> NSAccessibilityCheckBoxRole",
     "helper733Changed": false
+  },
+  "historicalSourcePinBase": "e6919dd3479840b543548184b0a0e3d91c8dfaf1",
+  "retiredHistoricalSourcePins": {
+    "apps/shell/src/browser-source-commands.ts": "1153ee09b672aaab6ffd1af8addc9e73ff067945e0014c63f1b4bfe9458832b8"
   }
 }

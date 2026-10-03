@@ -1,3 +1,5 @@
+Current root source pins cover integrated recovery/native0340, original-control Memory/context commands and metadata-equivalent command packaging. All68 prepared states remain native-pending; source pins identify exact current bytes, not a compiled pair or visual acceptance. Historical review bases below are retained as provenance.
+
 Request-only dispatch successor inspected against root-reviewed clean e6919dd3, including Memory, discovery, saved-source recovery/update, Use current and Settings diagnostic wrap. Exact integrated source hashes are documentary; they are not native/compiled identity. Original frozen packets remain immutable; all states remain native-pending.
 
 # First F21 dispatch readiness — request only
