@@ -4420,7 +4420,12 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
                        PausedPlayerBeforeActualAutomaticEffectRefusesWindow) {
   ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
   ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
-  PauseVideo(page);
+  // The ordinary fixture has no pauseVideo() helper. Pause its real player
+  // before waiting for the corresponding native media-session state.
+  ASSERT_TRUE(content::ExecJs(page,
+      "document.querySelector('video').pause();"
+      "navigator.mediaSession.playbackState = 'paused'",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
   WaitForMediaSessionPaused(page);
   ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
 }
@@ -4591,9 +4596,12 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
   EXPECT_FALSE(page->HasPictureInPictureDocument());
   EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
   ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
+  content::MediaStartStopObserver enter_pip_observer(
+      page, content::MediaStartStopObserver::Type::kEnterPictureInPicture);
   EXPECT_EQ(true, content::EvalJs(page,
       "documentPictureInPicture.requestWindow().then(window => !!window)",
       content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  enter_pip_observer.Wait();
   EXPECT_TRUE(page->HasPictureInPictureDocument());
 }
 
@@ -4617,6 +4625,9 @@ class AuxAutoPictureInPictureEligibilityBrowserTest
     : public AutoPictureInPictureWithVideoPlaybackBrowserTest {
  public:
   void PrepareOwnedVideo() {
+    // Keep setup from entering PiP while the live shell publishes its stage
+    // selection. The real native guard ends before eligibility is asserted.
+    ScopedDisallowPictureInPicture setup_disallow;
     LoadAutoVideoPipPage(browser());
     page = browser()->GetTabStripModel()->GetActiveWebContents();
     WaitForMediaSessionActionRegistered(page);
