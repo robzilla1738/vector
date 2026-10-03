@@ -57,8 +57,8 @@ export function MemorySettings() {
     {space && <h4>{space.name}</h4>}
     {loading && !memory && <output className="hint" data-block>Loading saved notes…</output>}
     {error && <p className="field-error" role="alert">{error} <button className="btn sm" onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
-    {memory && <SpaceMemoryEditor key={memory.workspaceId} memory={memory} onSaved={value=>{if(value.workspaceId!==selectedWorkspace.current)return;setMemory(value);if(query.trim())setRefresh(current=>current+1);}} />}
-    {space?.workspaceId && <SpaceMemory key={space.workspaceId} workspaceId={space.workspaceId} />}
+    {memory && <SpaceMemoryEditor key={`editor:${memory.workspaceId}`} memory={memory} onSaved={value=>{if(value.workspaceId!==selectedWorkspace.current)return;setMemory(value);if(query.trim())setRefresh(current=>current+1);}} />}
+    {space?.workspaceId && <SpaceMemory key={`pipeline:${space.workspaceId}`} workspaceId={space.workspaceId} />}
     {!spaces.length && <p className="hint">Create a Space to save shared notes.</p>}
   </div>;
 }

@@ -1,0 +1,86 @@
+{
+  "packets": [
+    {
+      "packet": "/tmp/aux-browser-runtime-l10-image-creation-debt/docs/lane-requests/l10/image-creation-debt",
+      "patchSha256": "86f8993330f9a0865b8ecabd7afc2add3219ff8d8d520d12ec7c44631f734ed5",
+      "leaves": [
+        {
+          "path": "tests/host/lib/composer-image-appearance.mjs",
+          "beforeSha256": "5f7a60228e4fad1c1bdd327ffa11a9eae4b292a762a53e79e876316e8209cdcc",
+          "afterSha256": "23efdafd544eb5741adc4281ef16943a4e42587a40a2161ba362ab356027afa1"
+        },
+        {
+          "path": "tests/host/lib/composer-image-creation.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "3c4c7885ed533f9e0ad66865759ff4e81db71cd8320442ca91949b53d686348c"
+        }
+      ],
+      "rootExactForwardReverseForward": true,
+      "actualSourcePinsVerified": true
+    },
+    {
+      "packet": "/tmp/aux-browser-runtime-design-memory-labels/docs/lane-requests/design/memory-space-labels",
+      "patchSha256": "4f4e2c9b1f5eb9696bc44e3e2614d01b378ee19a49eb2d639d9a25513c0f963c",
+      "leaves": [
+        {
+          "path": "apps/shell/src/components/Settings.css",
+          "beforeSha256": "a84e4b18a3b37adf52ca48530d6ceec55235a16c2199d9eb03f3800e9108e98d",
+          "afterSha256": "3b775fa8a929147ee6ce4375e4eea641b11fbed643fa6efd6ac450c4d1a5450c"
+        },
+        {
+          "path": "apps/shell/src/components/MemorySettings.tsx",
+          "beforeSha256": "f7435f8b1958911fc1de1a6cd00958411cbfe31e8c8ab52057868c27193e67de",
+          "afterSha256": "73ff907b8aec8b1b1305529de558bf23821752af2ec4f493421d45429e968d4b"
+        },
+        {
+          "path": "apps/shell/src/components/MemorySettings.test.tsx",
+          "beforeSha256": null,
+          "afterSha256": "1ddbcee67c16363ee748f87e037e0a9bb5c02c254c83a0c21fd8f56a73f9ce18"
+        }
+      ],
+      "rootExactForwardReverseForward": true,
+      "actualSourcePinsVerified": true
+    }
+  ],
+  "logs": [
+    {
+      "path": "/tmp/aux-root-image-creation-controls.log",
+      "sha256": "215cd0e19726e39672528ee856c4711696aca9ca923b11258e5096bc2bd8ea28",
+      "exitCode": 0
+    },
+    {
+      "path": "/tmp/aux-root-memory-settings-controls.log",
+      "sha256": "e30b09334d2d577deb477e09b35cb175995d26c96d22268c349c3839eefd958d",
+      "exitCode": 0
+    },
+    {
+      "path": "/tmp/aux-following-memory-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f",
+      "exitCode": 0
+    },
+    {
+      "path": "/tmp/aux-following-coherent-lint.log",
+      "sha256": "36f9ccde1f1ebc7a6bfbdcb31a771cb8692a41323142718d1266506261e5fdea",
+      "exitCode": 0
+    },
+    {
+      "path": "/tmp/aux-following-coherent-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562",
+      "exitCode": 0
+    },
+    {
+      "path": "/tmp/aux-following-coherent-journeys.log",
+      "sha256": "85f9d712b99132aec5d1ec7b0fa2e886971959e0a41282ccc4aa8efcc28d4362",
+      "exitCode": 0
+    },
+    {
+      "path": "/tmp/aux-following-memory-renderer.log",
+      "sha256": "108faf2d282f24397b2db84afca6e994605842c106eac133d18a10db4e33b54e",
+      "exitCode": 0
+    }
+  ],
+  "nativeExecuted": false,
+  "qualified": false,
+  "rendererPackaged": false,
+  "remaining": "coherent next source bundle and budgets, all native/visual/qualification gates"
+}

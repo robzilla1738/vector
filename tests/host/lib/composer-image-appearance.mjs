@@ -14,11 +14,13 @@ const composer = shell('Reply to conversation');
 export async function createInvalidImageFixture() {
   const directory = await mkdtemp(join(tmpdir(), 'aux-image-appearance-'));
   const path = join(directory, 'invalid-image.png');
-  let file;
+  let file, parent, initialFile;
   try {
+    parent = await lstat(directory); // Retain original identity before any file open.
     file = await open(path, 'wx+', 0o600);
+    initialFile = await file.stat(); // Retain original FD/inode before any write.
     await file.writeFile(bytes); await file.sync();
-    const original = await file.stat(), parent = await lstat(directory);
+    const original = await file.stat();
     const validate = async () => {
       const now = await lstat(path), dir = await lstat(directory), held = await file.stat();
       assert.ok(now.isFile() && !now.isSymbolicLink() && dir.isDirectory() && !dir.isSymbolicLink());
@@ -55,9 +57,47 @@ export async function createInvalidImageFixture() {
     } });
     return lease;
   } catch (error) {
-    // Unknown file/tree identity is retained as cleanup debt, never blindly removed.
-    if (file) await file.close().catch(() => {});
-    throw error;
+    // Creation failure retains only the directory returned by mkdtemp and
+    // original exclusive file handle; no discovery/reopen can supply identity.
+    let fileRemoved = false, treeRemoved = false, disposed = false;
+    const identity = value => value && Object.freeze(Object.fromEntries(['dev', 'ino', 'uid', 'mode'].map(key => [key, value[key]])));
+    const diagnostics = Object.freeze({ directory, path, originalDirectory: identity(parent), originalFile: identity(initialFile) });
+    const originalDirectory = async () => {
+      assert.ok(parent, 'Original created directory identity was not available; cleanup remains debt');
+      const dir = await lstat(directory);
+      assert.ok(dir.isDirectory() && !dir.isSymbolicLink());
+      for (const key of ['dev', 'ino', 'uid', 'mode']) assert.equal(dir[key], parent[key], `Original creation directory ${key} changed`);
+      assert.equal(dir.uid, process.getuid());
+    };
+    const lease = Object.freeze({ path, diagnostics, async dispose() {
+      if (disposed) return;
+      try {
+        if (!treeRemoved) {
+          await originalDirectory();
+          if (file && !fileRemoved) {
+            assert.ok(initialFile, 'Original exclusive file identity unavailable; cleanup remains debt');
+            const held = await file.stat(), named = await lstat(path);
+            assert.ok(named.isFile() && !named.isSymbolicLink());
+            for (const key of ['dev', 'ino', 'uid', 'mode']) { assert.equal(held[key], initialFile[key]); assert.equal(named[key], initialFile[key]); }
+            assert.equal(named.uid, process.getuid()); assert.equal(named.nlink, 1); assert.equal(held.nlink, 1);
+            assert.ok(Number.isSafeInteger(held.size) && held.size >= 0 && held.size <= bytes.length); assert.equal(named.size, held.size);
+            const partial = Buffer.alloc(held.size), read = await file.read(partial, 0, partial.length, 0);
+            assert.equal(read.bytesRead, partial.length); assert.ok(partial.equals(bytes.subarray(0, partial.length)), 'Unknown partial creation bytes refuse cleanup');
+            assert.deepEqual(await readdir(directory), ['invalid-image.png']);
+            await unlink(path); fileRemoved = true;
+          }
+          await originalDirectory(); assert.deepEqual(await readdir(directory), []);
+          await rmdir(directory); treeRemoved = true;
+        }
+        if (file) { await file.close(); file = null; }
+        disposed = true;
+      } catch (cleanup) {
+        throw Object.assign(new AggregateError([error, cleanup], 'Image creation and original cleanup remain unresolved', { cause: error }),
+          { ownedImageFixture: lease, cleanupPhase: treeRemoved ? 'creation-tree-removed' : fileRemoved ? 'creation-file-removed' : 'creation-failed' });
+      }
+    } });
+    throw Object.assign(new AggregateError([error], 'Owned image fixture creation failed with retained cleanup lease', { cause: error }),
+      { ownedImageFixture: lease, cleanupPhase: 'creation-failed' });
   }
 }
 

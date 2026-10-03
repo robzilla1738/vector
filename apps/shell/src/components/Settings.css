@@ -10,7 +10,9 @@
 .memory-settings > h4 { margin-top: var(--space-2); font-size: var(--fs-md); font-weight: var(--fw-strong); }
 .memory-space-search { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--fs-sm); }
 .memory-space-search input { width: 100%; min-width: 0; }
-.memory-space-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.memory-space-list { display: flex; flex-wrap: wrap; gap: var(--space-2); min-width: 0; max-width: 100%; }
+.memory-space-list > .btn { min-width: 0; max-width: 100%; height: auto; white-space: normal; }
+.memory-space-list > .btn > span, .memory-settings > h4 { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .memory-space-list [aria-pressed="true"] { background: var(--bg-active); box-shadow: inset 0 0 0 1px var(--ink-2); color: var(--ink-0); }
 .space-memory-editor { display: flex; flex-direction: column; gap: var(--space-2-5); min-width: 0; }
 .space-memory-editor textarea { width: 100%; min-height: 140px; max-height: 360px; resize: vertical; padding: var(--space-3); border: var(--hairline) solid var(--line); border-radius: var(--r-md); background: var(--bg-2); line-height: 1.6; }
@@ -52,7 +54,7 @@
 .memory-use-toggle input { margin-top:3px; accent-color:var(--ink-0); }
 .memory-use-toggle small { display:block; color:var(--ink-2); margin-top:var(--space-1); line-height:1.5; }
 .memory-search-results { display:grid; grid-template-columns:1fr; max-height:240px; overflow:auto; }
-.memory-search-results .btn { height:auto; min-height:64px; display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-1-5); text-align:left; padding:var(--space-3); }
+.memory-space-list.memory-search-results > .btn { height:auto; min-height:64px; display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-1-5); text-align:left; padding:var(--space-3); }
 .memory-search-results small { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal; overflow-wrap:anywhere; font-weight:var(--fw-regular); color:var(--ink-2); }
 }
 
