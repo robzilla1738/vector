@@ -1,0 +1,6 @@
+@layer components {
+  .model-probe-details { margin-top: var(--space-2); min-width: 0; }
+  .model-probe-details summary { cursor: pointer; }
+  .model-probe-details summary:focus-visible { outline: 2px solid var(--focus-line); outline-offset: 2px; border-radius: var(--r-xs); }
+  .model-probe-details p { max-height: 160px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+}

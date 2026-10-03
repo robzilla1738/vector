@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MODEL_PROVIDER_NAMES, type ModelConnectionStatus, type ModelProvider } from "@aux/contracts";
 import { ModelConnections } from "./ModelConnections";
+import "./ModelProbeStatus.css";
 import {
   DEFAULT_PLANNER_MODEL_ID,
   MODEL_REGISTRY,
@@ -583,12 +584,20 @@ export function ModelsSettings({
           </p>
         )}
         {probe && (
-          <output className={`hint model-probe-status ${probe.ok ? "ok" : "err"}`}>
-            {probe.ok
-              ? `Connection tested${probe.latencyMs == null ? "" : ` · ${probe.latencyMs} ms`}${probe.vision === true ? " · vision" : probe.vision === false ? " · no vision" : ""}`
-              : `Failed — ${probe.error}`}
-            {probe.checkedAt ? ` · ${new Date(probe.checkedAt).toLocaleString()}` : ""}
-          </output>
+          <>
+            <output className={`hint model-probe-status ${probe.ok ? "ok" : "err"}`}>
+              {probe.ok
+                ? `Connection tested${probe.latencyMs == null ? "" : ` · ${probe.latencyMs} ms`}${probe.vision === true ? " · vision" : probe.vision === false ? " · no vision" : ""}`
+                : "Connection test failed. Check your provider settings, then try again."}
+              {probe.checkedAt ? ` · ${new Date(probe.checkedAt).toLocaleString()}` : ""}
+            </output>
+            {!probe.ok && probe.error && (
+              <details className="hint model-probe-details">
+                <summary>Connection test details</summary>
+                <p>{probe.error}</p>
+              </details>
+            )}
+          </>
         )}
       </IndexedField>
 

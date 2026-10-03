@@ -1,0 +1,48 @@
+{
+  "sourceOnly": true,
+  "nativeVerified": false,
+  "rootContextProviderExactReplayProofs": [
+    "docs/source-audits/composer-context-lifecycle/ROOT-REPLAY.json",
+    "docs/source-audits/provider-probe-status/ROOT-REPLAY.json"
+  ],
+  "finalSourceHashes": {
+    "apps/shell/src/components/BrowserContextTray.tsx": "5ab3c62e1a74eaebda35d14257eb57159aa41af9c30392fbd115040d7b0d9a79",
+    "apps/shell/src/components/Conversation.tsx": "10638599a943a9f8daa8bc54a2314667146e9d7e74756de1210b4f788279cb5b",
+    "apps/shell/src/settings/sections/Models.tsx": "c72881bb369e665dcd853a5f06b358bf7c3a3c5e0d850d4e58ee950c3d924d57",
+    "apps/shell/src/settings/sections/ModelProbeStatus.css": "de6235659b33797448e1e87675aa7ca49d76ea9015ee2b5b127db8c5f0154337"
+  },
+  "actualRendererControlCounts": {
+    "context": 21,
+    "providerAndOnboarding": 31
+  },
+  "shellTypecheckExit": 0,
+  "actualCssParser": "installed Vite PostCSS; PASS",
+  "lintWarningsBeforeCommonRefactor": 381,
+  "finalChangedSourceScopedLintExit": 0,
+  "formatterExit": 0,
+  "shellDigest": "9088545063dc9144f87f82f36c7d9b1474843e789417d4268cbde47ff647e283",
+  "shellAssetCount": 175,
+  "budgetsKb": {
+    "startupJs": 487,
+    "startupCss": 175,
+    "totalJs": 1800
+  },
+  "initialBudgetFailure": {
+    "totalJsBytes": 1843887,
+    "totalJsKb": 1801,
+    "limitKb": 1800,
+    "preservedLimits": true,
+    "correction": "shared original-scope context operation and shared live composer mode rendering"
+  },
+  "initialArchiveControlsFailedBeforeExecution": "missing apps/shell package node_modules symlink; preserved /tmp/aux-root-context-controls.log; rebuilt isolated dependency resolution and21 actual controls pass",
+  "logs": {
+    "/tmp/aux-root-context-final-controls.log": "fedfd50b724e5628f52b17bafff4414809ce0e0860642517d2a12fc3f5c2482f",
+    "/tmp/aux-root-provider-controls.log": "b69e4ed72a02895c469b47b804e47998798b4e7b8876cfaf3a62ee4424cd146d",
+    "/tmp/aux-root-context-final-renderer.log": "3690700cb8d74034d547b377207f6643f3d28522d4a4a7a760ebbb7bbe830b66",
+    "/tmp/aux-root-context-final-budgets.log": "4b4b1970b6566e0ede6b249b25ce5fca1d25871c89aee39ff6d41a7775727b8a",
+    "/tmp/aux-root-context-provider-lint.log": "28853b81eeb521fae1f1c4d06cae63765857384a7ca682c4c34c8f30154d170d",
+    "/tmp/aux-root-context-provider-format.log": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562",
+    "/tmp/aux-root-context-final-scoped-lint.log": "909507b4d5ee948f222bab0f3a9c9b13600c706f35df3d71b33f44975210a6db"
+  },
+  "stableAndCurrentGraphUntouched": true
+}

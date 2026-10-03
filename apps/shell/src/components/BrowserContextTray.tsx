@@ -57,12 +57,10 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
   const [busy, setBusy] = useState<{ scope: string; pageId: string | null }>({ scope: inputScope, pageId: null });
   const busyPageId = busy.scope === inputScope ? busy.pageId : null;
   if (busy.scope !== inputScope) setBusy({ scope: inputScope, pageId: null });
-  const request = useRef({ active: false });
-  const operation = useRef<object | null>(null);
+  const request = useRef({ active: false, pending: false });
   useLayoutEffect(() => {
-    const scope = { active: true };
+    const scope = { active: true, pending: false };
     request.current = scope;
-    operation.current = null;
     return () => { scope.active = false; };
   }, [disabled, primary, linkedPageId, sourceScope]);
   const primaryPage = useStore(state => conversationPage(state.pages, primary, activePageId, linkedPageId));
@@ -83,43 +81,33 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
     if (!live || !availableSource(live)) throw new Error("This browser tab is unavailable.");
     return sourceRef(live);
   };
-  const toggle = async (pageId: string) => {
-    if (disabled || operation.current) return;
+  const update = async (pageId: string, apply: (source: PageContextRef) => PageContextRef[]) => {
+    const scope = request.current;
+    if (disabled || !scope.active || scope.pending) return;
+    scope.pending = true;
+    setBusy({ scope: inputScope, pageId });
+    try {
+      const source = await liveSource(pageId, scope);
+      if (source && scope.active) onSources(apply(source));
+    }
+    catch (error) { if (scope.active) errToast(error); }
+    finally {
+      if (scope.active) { scope.pending = false; setBusy({ scope: inputScope, pageId: null }); }
+    }
+  };
+  const toggle = (pageId: string) => {
+    if (disabled || !request.current.active || request.current.pending) return;
     if (sources.some(source => source.pageId === pageId)) {
       onSources(sources.filter(source => source.pageId !== pageId));
       return;
     }
     if (additionalSources.length >= 8) { errToast(new Error("Choose up to eight additional tabs.")); return; }
-    const page = useStore.getState().pages.find(item => item.pageId === pageId && availableSource(item, primaryPage?.pageId));
-    if (!page) return;
-    const owner = {};
-    operation.current = owner;
-    setBusy({ scope: inputScope, pageId });
-    const scope = request.current;
-    try {
-      const source = await liveSource(pageId, scope);
-      if (source && scope.active) onSources([...sources, source]);
-    }
-    catch (error) { if (scope.active) errToast(error); }
-    finally {
-      if (operation.current === owner) { operation.current = null; setBusy({ scope: inputScope, pageId: null }); }
-    }
+    if (useStore.getState().pages.some(page => page.pageId === pageId && availableSource(page, primaryPage?.pageId)))
+      return update(pageId, source => [...sources, source]);
   };
-  const refresh = async (pageId: string) => {
-    const page = useStore.getState().pages.find(item => item.pageId === pageId);
-    if (!page || disabled || operation.current) return;
-    const owner = {};
-    operation.current = owner;
-    setBusy({ scope: inputScope, pageId });
-    const scope = request.current;
-    try {
-      const latest = await liveSource(pageId, scope);
-      if (latest && scope.active) onSources(sources.map(source => source.pageId === pageId ? latest : source));
-    }
-    catch (error) { if (scope.active) errToast(error); }
-    finally {
-      if (operation.current === owner) { operation.current = null; setBusy({ scope: inputScope, pageId: null }); }
-    }
+  const refresh = (pageId: string) => {
+    if (useStore.getState().pages.some(page => page.pageId === pageId))
+      return update(pageId, latest => sources.map(source => source.pageId === pageId ? latest : source));
   };
 
   return <div className="conversation-browser-context">
