@@ -40,7 +40,36 @@ it("refuses changed, missing, non-person and detached pages before the native op
     { pages: [{ ...page, viewStatus: "crashed" as const }], activePageId: page.pageId },
   ]) {
     useStore.setState({ ...state, returnControl });
-    await expect(executeCommand("return-agent-control", { payload: { pageId: page.pageId } })).rejects.toThrow(/person-held page changed/);
+    await expect(executeCommand("return-agent-control", { payload: { pageId: page.pageId } })).rejects.toThrow(/selected page changed/);
   }
   expect(returnControl).not.toHaveBeenCalled();
+});
+
+it("registers Take control and suppresses duplicate pending native requests", async () => {
+  vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
+  let acknowledge!: (result: unknown) => void;
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(() => new Promise(resolve => { acknowledge = resolve; }));
+  useStore.setState({ pages: [{ ...page, controller: "agent" }], activePageId: page.pageId });
+  const operation = executeCommand("take-page-control", { payload: { pageId: page.pageId } });
+  await executeCommand("take-page-control", { payload: { pageId: page.pageId } });
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("pages.takeover", { pageId: page.pageId });
+  acknowledge(page); await operation;
+  invoke.mockResolvedValue(page);
+  await executeCommand("take-page-control", { payload: { pageId: page.pageId } });
+  expect(invoke).toHaveBeenCalledTimes(2);
+});
+it("refuses Take control of a missing or person-held page before native ingress", async () => {
+  vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
+  const invoke = vi.spyOn(bridge, "invoke");
+  useStore.setState({ pages: [page], activePageId: page.pageId });
+  await expect(executeCommand("take-page-control")).rejects.toThrow(/selected page changed/);
+  expect(invoke).not.toHaveBeenCalled();
+});
+it("releases the pending Take control guard after the original native refusal", async () => {
+  vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
+  const invoke = vi.spyOn(bridge, "invoke").mockRejectedValueOnce(new Error("Original native refusal")).mockResolvedValue(page);
+  useStore.setState({ pages: [{ ...page, controller: "external" }], activePageId: page.pageId });
+  await expect(executeCommand("take-page-control")).rejects.toThrow("Original native refusal");
+  await executeCommand("take-page-control");
+  expect(invoke).toHaveBeenCalledTimes(2);
 });

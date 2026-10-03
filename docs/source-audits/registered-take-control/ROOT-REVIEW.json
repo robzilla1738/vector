@@ -1,0 +1,41 @@
+{
+  "producer": "root-registered-take-control-source-review/v1",
+  "baseProduct": "7827ff5d180811f2f78191b06d7fee67e9f7a680",
+  "patchSha256": "5acb995cb4b2862715b5e97ea22d87893415e3dc22ee1947c1033d0c617c2588",
+  "behavior": [
+    "original selected current agent/external page before original pages.takeover",
+    "same registered remappable command for toolbar/shortcut/command search",
+    "original toolbar pending/error/finally semantics retained",
+    "dispatcher pending guard suppresses duplicate RPC and releases after refusal",
+    "no renderer-created native authority or hardware claim",
+    "103 exact original unavailable command IDs constructed once with same lazy label/error and compile-time exhaustive mapping; genuine feature handler precedence unchanged"
+  ],
+  "sourceGates": {
+    "workspaceBuild": true,
+    "shellTypecheck": true,
+    "affectedCases": 25,
+    "scopedLint": true,
+    "diffCheck": true,
+    "chromiumAssetCaptureVerify": true
+  },
+  "bundleKB": {
+    "startupJs": 485,
+    "startupCss": 175,
+    "totalJs": 1799
+  },
+  "unchangedLimitsKB": {
+    "startupJs": 490,
+    "startupCss": 180,
+    "totalJs": 1800
+  },
+  "shellAssets": {
+    "count": 175,
+    "sha256": "abe49c32698fcaac101918f704f5eeb719a9a9415e473500b9f79763f491b9fb"
+  },
+  "reviewCorrections": [
+    "Initial Take control build exceeded total bundle limit; removed repeated command IDs without relaxing limits.",
+    "Initial build used Vite mode instead of AUX_CHROMIUM_SHELL_BUILD=1; actual CSP staging gate refused, corrected Chromium build/capture/verify passed.",
+    "Initial focused test paths included nonexisting names; final actual dispatch/executor/settings/registry/contract and six control cases passed."
+  ],
+  "nativeCompilationJourneysPerformanceVisualQualification": false
+}

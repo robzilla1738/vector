@@ -1,0 +1,16 @@
+{
+  "producer": "root-stock006-terminal-and-source-ledger-review/v1",
+  "terminalSha256": "37011fd062a962d20289736fb96d9f062756751b2448b9d3b043c20ce075a3f6",
+  "sourceProofSha256": "53829364cc4780cac7ef666f97b6e3fac2ead10727ad3c208e6fe8eb96fe0f63",
+  "artifactHashesVerified": 10625,
+  "actualOriginalChildReceipts": 5201,
+  "actualOriginalProcessesGroupsAndSlotAbsent": true,
+  "actualOriginalRepositoryReceipts": 136,
+  "trackedBlobLedgerJoins": 451715,
+  "originalBuiltinEolJoins": 224,
+  "missingLfsObjects": 23,
+  "actualFinalParentStatusEmpty": true,
+  "fullSourceReady": false,
+  "gnBuildLaunchApproved": false,
+  "reviewCorrection": "Initial terminal audit verified all hashes and cleanup, then a summary-only access used the wrong repositories key; corrected to actualOriginalRepositories without repeating unchanged hash checks."
+}

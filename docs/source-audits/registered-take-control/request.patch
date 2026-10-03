@@ -1,0 +1,380 @@
+diff --git a/apps/shell/src/commands.ts b/apps/shell/src/commands.ts
+index ce423598..b00c8ba3 100644
+--- a/apps/shell/src/commands.ts
++++ b/apps/shell/src/commands.ts
+@@ -30,8 +30,21 @@ export interface CommandContext extends CommandInvocation {
+ }
+ type CommandAction = (state: StoreState, context: CommandContext) => unknown;
+ const defaultSwitcher = createTabSwitcher();
+-function featureCommand(id: ShellCommandId): CommandAction {
+-  return () => { throw new Error(`${COMMANDS.find(command => command.id === id)?.label ?? id} is unavailable in this window`); };
++const takingPageControl = new Set<string>();
++function controlledPage(st: StoreState, { payload }: CommandContext, returning: boolean): string {
++  const pageId = payload && "pageId" in payload ? payload.pageId : st.activePageId;
++  const page = st.pages.find(item => item.pageId === pageId);
++  if (!page || page.pageId !== st.activePageId ||
++      !(returning ? page.controller === "human" : page.controller === "agent" || page.controller === "external") ||
++      ["detached", "crashed"].includes(page.viewStatus ?? ""))
++    throw new Error("The selected page changed. Refresh before changing control.");
++  return page.pageId;
++}
++
++function featureCommands<const T extends readonly ShellCommandId[]>(...ids: T) {
++  return Object.fromEntries(ids.map<[ShellCommandId, CommandAction]>(id => [id, () => {
++    throw new Error(`${COMMANDS.find(command => command.id === id)?.label ?? id} is unavailable in this window`);
++  }])) as { [K in T[number]]: CommandAction };
+ }
+ function findAgain(st: StoreState, forward: boolean) {
+   if (st.overlay === "reader") {
+@@ -78,14 +91,115 @@ function bookmarkAll(st: StoreState) {
+   );
+ }
+ export const COMMAND_ACTIONS = {
+-  "set-site-agent-access": featureCommand("set-site-agent-access"),
+-  "delete-site-agent-rule": featureCommand("delete-site-agent-rule"),
+-  "revoke-site-agent-grant": featureCommand("revoke-site-agent-grant"),
++  ...featureCommands(
++    "set-site-agent-access",
++    "delete-site-agent-rule",
++    "revoke-site-agent-grant",
++    "allow-agent-action-for-origin",
++    "set-agent-effect-grants",
++    "mention-insert",
++    "mention-remove",
++    "export-demonstration",
++    "record-demonstration",
++    "pause-demonstration",
++    "resume-demonstration",
++    "stop-demonstration",
++    "discard-demonstration",
++    "save-demonstration",
++    "queue-for-tonight",
++    "review-overnight",
++    "review-overnight-item",
++    "configure-night-shift",
++    "prepare-skill-replay",
++    "test-skill-replay",
++    "check-skill-replay",
++    "propose-skill-repair",
++    "approve-skill-repair",
++    "undo-download-rename",
++    "set-download-naming",
++    "show-download-settings",
++    "create-browser-profile",
++    "open-browser-profile",
++    "rename-browser-profile",
++    "archive-browser-profile",
++    "delete-browser-profile",
++    "set-profile-appearance",
++    "refresh-browser-profiles",
++    "save-link-routing",
++    "test-link-routing",
++    "resolve-link-routing",
++    "refresh-link-routing",
++    "set-javascript-apple-events",
++    "focus-profile-space",
++    "move-tab-to-profile",
++    "show-profiles",
++    "show-link-routing",
++    "split-separate",
++    "split-resize",
++    "minimal-ui",
++    "pin-tab",
++    "extension-action",
++    "pin-extension-action",
++    "show-extensions",
++    "close-extension-panel",
++    "set-extension-command-shortcut",
++    "install-store-extension",
++    "install-unpacked-extension",
++    "update-extension",
++    "reload-extension",
++    "set-extension-enabled",
++    "remove-extension",
++    "reset-pinned-app",
++    "toggle-pin-keep-awake",
++    "open-pinned-app",
++    "pin-open-new-tab",
++    "pin-open-background",
++    "pin-copy-url",
++    "pin-reorder",
++    "pin-unpin",
++    "clear-today",
++    "make-live-folder",
++    "refresh-live-folder",
++    "open-live-folder-item",
++    "connect-github",
++    "revoke-github",
++    "archive-restore",
++    "archive-restore-all",
++    "archive-delete",
++    "archive-undo",
++    "acknowledge-auto-archive",
++    "configure-auto-archive",
++    "save-live-folder",
++    "set-auto-archive-policy",
++    "little-window",
++    "promote-tab",
++    "picture-in-picture",
++    "split-add",
++    "split-close",
++    "split-next",
++    "split-previous",
++    "split-swap",
++    "split-flip",
++    "profile-1",
++    "profile-2",
++    "profile-3",
++    "profile-4",
++    "profile-5",
++    "profile-6",
++    "profile-7",
++    "profile-8",
++    "profile-9",
++    "claim-tab",
++    "show-tab-window",
++    "little-space-picker",
++    "little-downloads",
++    "set-external-link-target",
++    "show-archived-tabs",
++  ),
+   "approve-agent-action": (_st, { payload }) => {
+     if (!payload || !("approvalId" in payload) || !("turnId" in payload)) throw new Error("This approval is unavailable.");
+     return decideAgentAction(payload, "accept");
+   },
+-  "allow-agent-action-for-origin": featureCommand("allow-agent-action-for-origin"),
+   "deny-agent-action": (_st, { payload }) => {
+     if (!payload || !("turnId" in payload)) throw new Error("This approval is unavailable.");
+     return "approvalId" in payload ? decideAgentAction(payload, "decline") : dismissAgentHandoff(payload.turnId);
+@@ -94,17 +208,13 @@ export const COMMAND_ACTIONS = {
+     if (!payload || !("pageId" in payload) || !("turnId" in payload)) throw new Error("The requested page is unavailable.");
+     return takeOverAgentAction(payload, id => st.activate(id));
+   },
+-  "return-agent-control": (st, { payload }) => {
+-    const pageId = payload && "pageId" in payload ? payload.pageId : st.activePageId;
+-    const page = st.pages.find(item => item.pageId === pageId);
+-    if (!page || page.pageId !== st.activePageId || page.controller !== "human" ||
+-        ["detached", "crashed"].includes(page.viewStatus ?? ""))
+-      throw new Error("The person-held page changed. Select it before returning control.");
+-    return st.returnControl(page.pageId);
++  "return-agent-control": (st, context) => st.returnControl(controlledPage(st, context, true)),
++  "take-page-control": (st, context) => {
++    const pageId = controlledPage(st, context, false);
++    if (takingPageControl.has(pageId)) return;
++    takingPageControl.add(pageId);
++    return call("pages.takeover", { pageId }).finally(() => takingPageControl.delete(pageId));
+   },
+-  "set-agent-effect-grants": featureCommand("set-agent-effect-grants"),
+-  "mention-insert": featureCommand("mention-insert"),
+-  "mention-remove": featureCommand("mention-remove"),
+ 
+   ...COMMAND_SURFACE_ACTIONS,
+   "command-switch-space": (st, context) => {
+@@ -118,105 +228,15 @@ export const COMMAND_ACTIONS = {
+     if (!value || !("targetId" in value) || !("url" in value)) throw new Error("Choose an attached Chrome tab.");
+     return call("pages.open", { url: value.url, backend: "chrome", targetId: value.targetId, activate: true });
+   },
+-  "export-demonstration": featureCommand("export-demonstration"),
+-  "record-demonstration": featureCommand("record-demonstration"),
+-  "pause-demonstration": featureCommand("pause-demonstration"),
+-  "resume-demonstration": featureCommand("resume-demonstration"),
+-  "stop-demonstration": featureCommand("stop-demonstration"),
+-  "discard-demonstration": featureCommand("discard-demonstration"),
+-  "save-demonstration": featureCommand("save-demonstration"),
+-  "queue-for-tonight": featureCommand("queue-for-tonight"),
+-  "review-overnight": featureCommand("review-overnight"),
+-  "review-overnight-item": featureCommand("review-overnight-item"),
+-  "configure-night-shift": featureCommand("configure-night-shift"),
+-  "prepare-skill-replay": featureCommand("prepare-skill-replay"),
+-  "test-skill-replay": featureCommand("test-skill-replay"),
+-  "check-skill-replay": featureCommand("check-skill-replay"),
+-  "propose-skill-repair": featureCommand("propose-skill-repair"),
+-  "approve-skill-repair": featureCommand("approve-skill-repair"),
+ 
+-  "undo-download-rename": featureCommand("undo-download-rename"),
+-  "set-download-naming": featureCommand("set-download-naming"),
+-  "show-download-settings": featureCommand("show-download-settings"),
+-  "create-browser-profile": featureCommand("create-browser-profile"),
+-  "open-browser-profile": featureCommand("open-browser-profile"),
+-  "rename-browser-profile": featureCommand("rename-browser-profile"),
+-  "archive-browser-profile": featureCommand("archive-browser-profile"),
+-  "delete-browser-profile": featureCommand("delete-browser-profile"),
+-  "set-profile-appearance": featureCommand("set-profile-appearance"),
+-  "refresh-browser-profiles": featureCommand("refresh-browser-profiles"),
+-  "save-link-routing": featureCommand("save-link-routing"),
+-  "test-link-routing": featureCommand("test-link-routing"),
+-  "resolve-link-routing": featureCommand("resolve-link-routing"),
+-  "refresh-link-routing": featureCommand("refresh-link-routing"),
+-  "set-javascript-apple-events": featureCommand("set-javascript-apple-events"),
+ 
+-  "focus-profile-space": featureCommand("focus-profile-space"),
+-  "move-tab-to-profile": featureCommand("move-tab-to-profile"),
+-  "show-profiles": featureCommand("show-profiles"),
+-  "show-link-routing": featureCommand("show-link-routing"),
+-  "split-separate": featureCommand("split-separate"),
+-  "split-resize": featureCommand("split-resize"),
+   "mute-tab": (st, context) => {
+     const pageId = context.payload && "pageId" in context.payload ? context.payload.pageId : st.activePageId;
+     const audio = pageId ? st.tabAudio[pageId] : undefined;
+     if (!pageId || !audio) return st.toast("Audio state is unavailable for this tab");
+     return tabCommand({ kind: "setMuted", pageId, muted: !audio.muted });
+   },
+-  "minimal-ui": featureCommand("minimal-ui"),
+-  "pin-tab": featureCommand("pin-tab"),
+-  "extension-action": featureCommand("extension-action"),
+-  "pin-extension-action": featureCommand("pin-extension-action"),
+-  "show-extensions": featureCommand("show-extensions"),
+-  "close-extension-panel": featureCommand("close-extension-panel"),
+-  "set-extension-command-shortcut": featureCommand("set-extension-command-shortcut"),
+-  "install-store-extension": featureCommand("install-store-extension"),
+-  "install-unpacked-extension": featureCommand("install-unpacked-extension"),
+-  "update-extension": featureCommand("update-extension"),
+-  "reload-extension": featureCommand("reload-extension"),
+-  "set-extension-enabled": featureCommand("set-extension-enabled"),
+-  "remove-extension": featureCommand("remove-extension"),
+-  "reset-pinned-app": featureCommand("reset-pinned-app"),
+-  "toggle-pin-keep-awake": featureCommand("toggle-pin-keep-awake"),
+-  "open-pinned-app": featureCommand("open-pinned-app"),
+-  "pin-open-new-tab": featureCommand("pin-open-new-tab"),
+-  "pin-open-background": featureCommand("pin-open-background"),
+-  "pin-copy-url": featureCommand("pin-copy-url"),
+-  "pin-reorder": featureCommand("pin-reorder"),
+-  "pin-unpin": featureCommand("pin-unpin"),
+-  "clear-today": featureCommand("clear-today"),
+-  "make-live-folder": featureCommand("make-live-folder"),
+-  "refresh-live-folder": featureCommand("refresh-live-folder"),
+-  "open-live-folder-item": featureCommand("open-live-folder-item"),
+-  "connect-github": featureCommand("connect-github"),
+-  "revoke-github": featureCommand("revoke-github"),
+-  "archive-restore": featureCommand("archive-restore"),
+-  "archive-restore-all": featureCommand("archive-restore-all"),
+-  "archive-delete": featureCommand("archive-delete"),
+-  "archive-undo": featureCommand("archive-undo"),
+-  "acknowledge-auto-archive": featureCommand("acknowledge-auto-archive"),
+-  "configure-auto-archive": featureCommand("configure-auto-archive"),
+-  "save-live-folder": featureCommand("save-live-folder"),
+-  "set-auto-archive-policy": featureCommand("set-auto-archive-policy"),
+ 
+-  "little-window": featureCommand("little-window"),
+-  "promote-tab": featureCommand("promote-tab"),
+-  "picture-in-picture": featureCommand("picture-in-picture"),
+-  "split-add": featureCommand("split-add"),
+-  "split-close": featureCommand("split-close"),
+-  "split-next": featureCommand("split-next"),
+-  "split-previous": featureCommand("split-previous"),
+-  "split-swap": featureCommand("split-swap"),
+-  "split-flip": featureCommand("split-flip"),
+-  "profile-1": featureCommand("profile-1"),
+-  "profile-2": featureCommand("profile-2"),
+-  "profile-3": featureCommand("profile-3"),
+-  "profile-4": featureCommand("profile-4"),
+-  "profile-5": featureCommand("profile-5"),
+-  "profile-6": featureCommand("profile-6"),
+-  "profile-7": featureCommand("profile-7"),
+-  "profile-8": featureCommand("profile-8"),
+-  "profile-9": featureCommand("profile-9"),
+   "space-1": (st) => switchSpaceOrdinal(st, 1),
+   "space-2": (st) => switchSpaceOrdinal(st, 2),
+   "space-3": (st) => switchSpaceOrdinal(st, 3),
+@@ -231,12 +251,6 @@ export const COMMAND_ACTIONS = {
+     if (page) return navigator.clipboard.writeText(page.url).then(() => st.toast("Link copied"));
+   },
+   "quick-ask": () => bridge.quickAsk("open"),
+-  "claim-tab": featureCommand("claim-tab"),
+-  "show-tab-window": featureCommand("show-tab-window"),
+-  "little-space-picker": featureCommand("little-space-picker"),
+-  "little-downloads": featureCommand("little-downloads"),
+-  "set-external-link-target": featureCommand("set-external-link-target"),
+-  "show-archived-tabs": featureCommand("show-archived-tabs"),
+ 
+   "new-tab": () => openCommandSurface({ mode: "new-tab" }),
+   "open-file": () => openLocalFile().catch(errToast),
+diff --git a/apps/shell/src/components/Toolbar.tsx b/apps/shell/src/components/Toolbar.tsx
+index 102b19ed..5af425d8 100644
+--- a/apps/shell/src/components/Toolbar.tsx
++++ b/apps/shell/src/components/Toolbar.tsx
+@@ -1,10 +1,10 @@
+ import { ReturnControlButton } from "./ReturnControlButton";
+-import {runCommand} from "../commands";
++import {executeCommand, runCommand} from "../commands";
+ import { FeatureSlots } from "../features/registry";
+ import { memo, useRef, type CSSProperties } from "react";
+ import { NavigationButtons } from "./NavigationButtons";
+ import { bridge, inNativeHost } from "../bridge";
+-import { useStore, call, errToast } from "../store";
++import { useStore, errToast } from "../store";
+ import { deferSurface } from "./DeferredSurface";
+ const CommandBar = deferSurface<{ compact: boolean }>(async () => { const module = await import("./CommandBar"); return { default: module.CommandBar }; }, "Address field", true, true);
+ import { shellIconAgent, shellIconAgentSm, shellIconBookmark, shellIconBookmarkFill, shellIconGear, shellIconGrid, shellIconSidebarOpen } from "./icons";
+@@ -22,7 +22,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
+   const takeControl = async (pageId: string) => {
+     if (takingControl.current) return;
+     takingControl.current = true;
+-    try { await call("pages.takeover", { pageId }); }
++    try { await executeCommand("take-page-control", { payload: { pageId } }); }
+     catch (error) { errToast(error); }
+     finally { takingControl.current = false; }
+   };
+@@ -52,7 +52,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
+         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{shellIconGear}</button>}
+         {page?.controller === "human" && <ReturnControlButton pageId={page.pageId} />}
+         {page && (page.controller === "agent" || page.controller === "external") && (
+-          <button type="button" className="ctl-chip agent" title="Take control of this page" aria-label="Take control of this page" onClick={() => void takeControl(page.pageId)}>
++          <button type="button" className="ctl-chip agent" title={withShortcut("Take control of this page", key("take-page-control"))} aria-label="Take control of this page" data-command-id="take-page-control" onClick={() => void takeControl(page.pageId)}>
+             {shellIconAgentSm}
+             <span className="ctl-chip-label">Agent</span>
+             <span className="ctl-take">Take over</span>
+diff --git a/apps/shell/src/features/commands/return-control.test.ts b/apps/shell/src/features/commands/return-control.test.ts
+index c3c8a094..9c44cc62 100644
+--- a/apps/shell/src/features/commands/return-control.test.ts
++++ b/apps/shell/src/features/commands/return-control.test.ts
+@@ -40,7 +40,36 @@ it("refuses changed, missing, non-person and detached pages before the native op
+     { pages: [{ ...page, viewStatus: "crashed" as const }], activePageId: page.pageId },
+   ]) {
+     useStore.setState({ ...state, returnControl });
+-    await expect(executeCommand("return-agent-control", { payload: { pageId: page.pageId } })).rejects.toThrow(/person-held page changed/);
++    await expect(executeCommand("return-agent-control", { payload: { pageId: page.pageId } })).rejects.toThrow(/selected page changed/);
+   }
+   expect(returnControl).not.toHaveBeenCalled();
+ });
++
++it("registers Take control and suppresses duplicate pending native requests", async () => {
++  vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
++  let acknowledge!: (result: unknown) => void;
++  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(() => new Promise(resolve => { acknowledge = resolve; }));
++  useStore.setState({ pages: [{ ...page, controller: "agent" }], activePageId: page.pageId });
++  const operation = executeCommand("take-page-control", { payload: { pageId: page.pageId } });
++  await executeCommand("take-page-control", { payload: { pageId: page.pageId } });
++  expect(invoke).toHaveBeenCalledExactlyOnceWith("pages.takeover", { pageId: page.pageId });
++  acknowledge(page); await operation;
++  invoke.mockResolvedValue(page);
++  await executeCommand("take-page-control", { payload: { pageId: page.pageId } });
++  expect(invoke).toHaveBeenCalledTimes(2);
++});
++it("refuses Take control of a missing or person-held page before native ingress", async () => {
++  vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
++  const invoke = vi.spyOn(bridge, "invoke");
++  useStore.setState({ pages: [page], activePageId: page.pageId });
++  await expect(executeCommand("take-page-control")).rejects.toThrow(/selected page changed/);
++  expect(invoke).not.toHaveBeenCalled();
++});
++it("releases the pending Take control guard after the original native refusal", async () => {
++  vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
++  const invoke = vi.spyOn(bridge, "invoke").mockRejectedValueOnce(new Error("Original native refusal")).mockResolvedValue(page);
++  useStore.setState({ pages: [{ ...page, controller: "external" }], activePageId: page.pageId });
++  await expect(executeCommand("take-page-control")).rejects.toThrow("Original native refusal");
++  await executeCommand("take-page-control");
++  expect(invoke).toHaveBeenCalledTimes(2);
++});
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index aa39f59a..269be748 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -22,6 +22,7 @@ export const COMMANDS = [
+   { id: "allow-agent-action-for-origin", label: "Always allow agent action on this site", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+   { id: "deny-agent-action", label: "Deny agent action", section: "Agent", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+   { id: "take-over-agent-action", label: "Take over agent action", section: "Agent", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
++  { id: "take-page-control", label: "Take control of this page", section: "Agent", handler: "shell", focusShell: true, windows: ["normal"], bindings: [], intercept: true },
+   { id: "return-agent-control", label: "Return control to agent", section: "Agent", handler: "shell", focusShell: true, windows: ["normal"], bindings: [], intercept: true },
+   { id: "set-agent-effect-grants", label: "Change agent effect grants", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+   { id: "mention-insert", label: "Mention source", section: "Agent", handler: "shell", feature: "tabMentions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },

@@ -1,10 +1,10 @@
 import { ReturnControlButton } from "./ReturnControlButton";
-import {runCommand} from "../commands";
+import {executeCommand, runCommand} from "../commands";
 import { FeatureSlots } from "../features/registry";
 import { memo, useRef, type CSSProperties } from "react";
 import { NavigationButtons } from "./NavigationButtons";
 import { bridge, inNativeHost } from "../bridge";
-import { useStore, call, errToast } from "../store";
+import { useStore, errToast } from "../store";
 import { deferSurface } from "./DeferredSurface";
 const CommandBar = deferSurface<{ compact: boolean }>(async () => { const module = await import("./CommandBar"); return { default: module.CommandBar }; }, "Address field", true, true);
 import { shellIconAgent, shellIconAgentSm, shellIconBookmark, shellIconBookmarkFill, shellIconGear, shellIconGrid, shellIconSidebarOpen } from "./icons";
@@ -22,7 +22,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
   const takeControl = async (pageId: string) => {
     if (takingControl.current) return;
     takingControl.current = true;
-    try { await call("pages.takeover", { pageId }); }
+    try { await executeCommand("take-page-control", { payload: { pageId } }); }
     catch (error) { errToast(error); }
     finally { takingControl.current = false; }
   };
@@ -52,7 +52,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{shellIconGear}</button>}
         {page?.controller === "human" && <ReturnControlButton pageId={page.pageId} />}
         {page && (page.controller === "agent" || page.controller === "external") && (
-          <button type="button" className="ctl-chip agent" title="Take control of this page" aria-label="Take control of this page" onClick={() => void takeControl(page.pageId)}>
+          <button type="button" className="ctl-chip agent" title={withShortcut("Take control of this page", key("take-page-control"))} aria-label="Take control of this page" data-command-id="take-page-control" onClick={() => void takeControl(page.pageId)}>
             {shellIconAgentSm}
             <span className="ctl-chip-label">Agent</span>
             <span className="ctl-take">Take over</span>
