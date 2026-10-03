@@ -7435,6 +7435,16 @@ ChromeContentBrowserClient::MaybeGetScopedPictureInPictureTucker(
   return base::ScopedClosureRunner();
 }
 
+std::optional<url::Origin>
+ChromeContentBrowserClient::GetAdmittedNonNetworkOpaqueOrigin(
+    content::NavigationHandle& navigation) {
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  return aux::GetAdmittedResultPreviewOrigin(navigation);
+#else
+  return std::nullopt;
+#endif
+}
+
 bool ChromeContentBrowserClient::RequiresCurrentAutoPictureInPictureAuthority() const {
 #if BUILDFLAG(ENABLE_AUX_SHELL)
   return true;

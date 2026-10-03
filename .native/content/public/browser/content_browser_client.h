@@ -1785,6 +1785,12 @@ class CONTENT_EXPORT ContentBrowserClient {
       const std::string& scheme,
       FrameTreeNodeId frame_tree_node_id);
 
+  // Optional opaque origin for an admitted embedder-owned non-network
+  // navigation. Admission must be rechecked against the original document.
+  // A default-null result leaves upstream origin semantics unchanged.
+  virtual std::optional<url::Origin> GetAdmittedNonNetworkOpaqueOrigin(
+      NavigationHandle& navigation);
+
   using NonNetworkURLLoaderFactoryMap =
       std::map<std::string,
                mojo::PendingRemote<network::mojom::URLLoaderFactory>>;

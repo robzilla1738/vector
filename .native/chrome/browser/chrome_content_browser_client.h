@@ -830,6 +830,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       content::VideoPictureInPictureWindowController* controller) override;
   base::ScopedClosureRunner MaybeGetScopedPictureInPictureTucker(
       content::WebContents* web_contents) override;
+  std::optional<url::Origin> GetAdmittedNonNetworkOpaqueOrigin(
+      content::NavigationHandle& navigation) override;
   bool RequiresCurrentAutoPictureInPictureAuthority() const override;
   void OnNativeManualDocumentPictureInPicture(
       content::RenderFrameHost& frame) override;

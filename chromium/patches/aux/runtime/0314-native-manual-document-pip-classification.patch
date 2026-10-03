@@ -1,49 +1,8 @@
---- a/content/public/browser/content_browser_client.h
-+++ b/content/public/browser/content_browser_client.h
-@@ -2432,6 +2432,10 @@
-   // their existing policy; Aux always requires it.
-   virtual bool RequiresCurrentAutoPictureInPictureAuthority() const;
- 
-+  // Called only after native user authority admits a Document PiP window on
-+  // the original current initiating document. This is intent, not a PiP effect.
-+  virtual void OnNativeManualDocumentPictureInPicture(RenderFrameHost& frame) {}
-+
-   virtual media::PictureInPictureEventsInfo::AutoPipInfo GetAutoPipInfo(
-       const WebContents& web_contents) const;
- 
---- a/content/browser/renderer_host/render_frame_host_impl.cc
-+++ b/content/browser/renderer_host/render_frame_host_impl.cc
-@@ -10662,6 +10662,16 @@
-     return;
-   }
- 
-+  if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE) {
-+    const auto original_document = GetWeakDocumentPtr();
-+    GetContentClient()->browser()->OnNativeManualDocumentPictureInPicture(*this);
-+    if (original_document.AsRenderFrameHostIfValid() != this ||
-+        !IsActive() || !is_render_frame_created()) {
-+      std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
-+      return;
-+    }
-+  }
-+
-   // Otherwise, consume user activation before we proceed. In particular, it is
-   // important to do this before we return from the |opener_suppressed| case
-   // below.
---- a/chrome/browser/chrome_content_browser_client.h
-+++ b/chrome/browser/chrome_content_browser_client.h
-@@ -831,6 +831,8 @@
-   base::ScopedClosureRunner MaybeGetScopedPictureInPictureTucker(
-       content::WebContents* web_contents) override;
-   bool RequiresCurrentAutoPictureInPictureAuthority() const override;
-+  void OnNativeManualDocumentPictureInPicture(
-+      content::RenderFrameHost& frame) override;
-   media::PictureInPictureEventsInfo::AutoPipInfo GetAutoPipInfo(
-       const content::WebContents& web_contents) const override;
-   void RegisterRendererPreferenceWatcher(
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+index 9d5fb04..ab16bdc 100644
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -7443,6 +7443,20 @@
+@@ -7453,6 +7453,20 @@ bool ChromeContentBrowserClient::RequiresCurrentAutoPictureInPictureAuthority()
  #endif
  }
  
@@ -64,22 +23,24 @@
  media::PictureInPictureEventsInfo::AutoPipInfo
  ChromeContentBrowserClient::GetAutoPipInfo(
      const content::WebContents& web_contents) const {
---- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
-+++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
-@@ -138,6 +138,10 @@
-   // clears the preconditions until the next time they're met.
-   bool AreAutoPictureInPicturePreconditionsMet() const;
- 
-+  // Retire pending automatic classification at an admitted native manual
-+  // Document PiP intent. Caller must be the original current primary frame.
-+  void OnNativeManualDocumentPictureInPicture(content::RenderFrameHost& frame);
-+
-   void set_auto_blocker_for_testing(
-       permissions::PermissionDecisionAutoBlockerBase* auto_blocker);
- 
+diff --git a/chrome/browser/chrome_content_browser_client.h b/chrome/browser/chrome_content_browser_client.h
+index 225e89c..89526f3 100644
+--- a/chrome/browser/chrome_content_browser_client.h
++++ b/chrome/browser/chrome_content_browser_client.h
+@@ -833,6 +833,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
+   std::optional<url::Origin> GetAdmittedNonNetworkOpaqueOrigin(
+       content::NavigationHandle& navigation) override;
+   bool RequiresCurrentAutoPictureInPictureAuthority() const override;
++  void OnNativeManualDocumentPictureInPicture(
++      content::RenderFrameHost& frame) override;
+   media::PictureInPictureEventsInfo::AutoPipInfo GetAutoPipInfo(
+       const content::WebContents& web_contents) const override;
+   void RegisterRendererPreferenceWatcher(
+diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
+index a40a4f2..e46bd05 100644
 --- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
 +++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
-@@ -1040,6 +1040,19 @@
+@@ -1040,6 +1040,19 @@ bool AutoPictureInPictureTabHelper::AreAutoPictureInPicturePreconditionsMet()
    return clock_->NowTicks() < auto_picture_in_picture_activation_time_;
  }
  
@@ -99,9 +60,26 @@
  void AutoPictureInPictureTabHelper::set_auto_blocker_for_testing(
      permissions::PermissionDecisionAutoBlockerBase* auto_blocker) {
    auto_blocker_ = auto_blocker;
+diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
+index 2685690..1578c50 100644
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
+@@ -138,6 +138,10 @@ class AutoPictureInPictureTabHelper
+   // clears the preconditions until the next time they're met.
+   bool AreAutoPictureInPicturePreconditionsMet() const;
+ 
++  // Retire pending automatic classification at an admitted native manual
++  // Document PiP intent. Caller must be the original current primary frame.
++  void OnNativeManualDocumentPictureInPicture(content::RenderFrameHost& frame);
++
+   void set_auto_blocker_for_testing(
+       permissions::PermissionDecisionAutoBlockerBase* auto_blocker);
+ 
+diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
+index 4b5d9d8..4ded632 100644
 --- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
 +++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
-@@ -4603,6 +4603,41 @@
+@@ -4603,6 +4603,41 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
        content::EXECUTE_SCRIPT_NO_USER_GESTURE));
    enter_pip_observer.Wait();
    EXPECT_TRUE(page->HasPictureInPictureDocument());
@@ -143,3 +121,39 @@
  }
  
  IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
+diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
+index 05bcb30..693417c 100644
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -10662,6 +10662,16 @@ void RenderFrameHostImpl::CreateNewWindow(
+     return;
+   }
+ 
++  if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE) {
++    const auto original_document = GetWeakDocumentPtr();
++    GetContentClient()->browser()->OnNativeManualDocumentPictureInPicture(*this);
++    if (original_document.AsRenderFrameHostIfValid() != this ||
++        !IsActive() || !is_render_frame_created()) {
++      std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
++      return;
++    }
++  }
++
+   // Otherwise, consume user activation before we proceed. In particular, it is
+   // important to do this before we return from the |opener_suppressed| case
+   // below.
+diff --git a/content/public/browser/content_browser_client.h b/content/public/browser/content_browser_client.h
+index ce98605..bf39722 100644
+--- a/content/public/browser/content_browser_client.h
++++ b/content/public/browser/content_browser_client.h
+@@ -2438,6 +2438,10 @@ class CONTENT_EXPORT ContentBrowserClient {
+   // their existing policy; Aux always requires it.
+   virtual bool RequiresCurrentAutoPictureInPictureAuthority() const;
+ 
++  // Called only after native user authority admits a Document PiP window on
++  // the original current initiating document. This is intent, not a PiP effect.
++  virtual void OnNativeManualDocumentPictureInPicture(RenderFrameHost& frame) {}
++
+   virtual media::PictureInPictureEventsInfo::AutoPipInfo GetAutoPipInfo(
+       const WebContents& web_contents) const;
+ 
