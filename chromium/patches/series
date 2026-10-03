@@ -302,3 +302,4 @@ aux/runtime/0331-original-utility-appearance-owner.patch
 aux/runtime/0334-content-defaults-and-weak-input-admission.patch
 aux/runtime/0335-runtime-callrequest-declaration.patch
 aux/runtime/0332-native-cdp-retirement-measurement.patch
+aux/runtime/0336-recorder-browser-test-macro-include.patch
