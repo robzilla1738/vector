@@ -138,6 +138,10 @@ class AutoPictureInPictureTabHelper
   // clears the preconditions until the next time they're met.
   bool AreAutoPictureInPicturePreconditionsMet() const;
 
+  // Retire pending automatic classification at an admitted native manual
+  // Document PiP intent. Caller must be the original current primary frame.
+  void OnNativeManualDocumentPictureInPicture(content::RenderFrameHost& frame);
+
   void set_auto_blocker_for_testing(
       permissions::PermissionDecisionAutoBlockerBase* auto_blocker);
 

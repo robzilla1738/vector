@@ -1,0 +1,27 @@
+{
+  "scope": "source-only; no Stable writes, compilation or execution",
+  "candidate": "21ebefdd1a80703ef060f20344070ae9c5a5bf7c",
+  "leaf": "components/viz/service/display/native_startup_first_hardware_retention_unittest.cc",
+  "beforeSha256": "15089a276b9f47839eff33898a03e5817edf38a56197a94168e0f1fc86e8960b",
+  "afterSha256": "c0c6caa670bb1f07bdf743e97e0b34b43e2c23b6fca9f16fdc3eb906c59aad2e",
+  "patchSha256": "36bf895fe689011ca10f80741c488d910c618d0c3f92bec3564d2f5c55949f14",
+  "apiPins": {
+    "base/test/test_mock_time_task_runner.h": "e90f86ad38c74ad0b0b7f1e0d706f941bc29b2a7da4d83bf50786fa57367ad8e",
+    "base/test/test_mock_time_task_runner.cc": "6e1d5221119259fe854a31cb33ed1d0e0e77f5e6fbc001169e2880313c9bd80c",
+    "base/test/scoped_mock_clock_override.h": "6657c5cc2784175f93de5f96271fcfedfd0cf80b0fa340a507128848abc04153",
+    "base/test/scoped_mock_clock_override.cc": "da7a1709550377c74193d424d97881cdafd442bf27afa71a06b2f2965cf37d05",
+    "base/memory/ref_counted.h": "83b08b3316a4d19cc0b500fc4216b9a6010c2b3f2b545e86de2f87551637bb27",
+    "components/viz/test/viz_test_suite.cc": "01cde1cc6a3d0be0cf97c95043ae05db3dc0e5dfc0bcf67ceaa66f0325d89f4d",
+    "components/viz/service/display/native_startup_first_hardware_retention.cc": "41513fbe6dc1e63e84bba7e49e9eab0e2fb132747f67102529cdde2f04ff3c7a"
+  },
+  "crashLog": "/tmp/aux-browser-runtime-builder-21ebefdd/release/test-artifacts/builder-21eb-assertion-batch/native/viz_unittests/stderr.log",
+  "crashLogSha256": "5c34484f3759ee32f6f9455cce4dd1d184f8552b728e6005da9f6fff7da6fd89",
+  "cause": "VizTestSuite already owns a UI TaskEnvironment; local TaskEnvironment registers a second RunLoop delegate and crashes before assertions.",
+  "clockSemantics": "Default kStandalone runner avoids delegate registration; ScopedContext supplies current default runner. OnAfterTimePassed advances the genuine mock clock at every queued deadline before callback invocation, retaining original registered/draw/feedback/current-time comparisons and actual five-second retention timer. Existing suite tasks are not pumped inside the scoped context.",
+  "lifetime": "Fixture facade destroys ScopedContext, then standalone runner, then mock clock. Local retention instances destruct/cancel their timers before fixture destruction.",
+  "originalRestoration": true,
+  "allOriginalTestsAssertionsFastForwardCallsUnchanged": true,
+  "forwardCheck": true,
+  "reverseCheck": true,
+  "nativeValidation": "open; changed fixture must compile and all nine original cases run; process-global mock-clock scope requires independent review"
+}

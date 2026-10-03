@@ -279,3 +279,7 @@ aux/runtime/0305-startup-session-fixture-private-wrappers.patch
 aux/runtime/0306-pip-eligibility-native-setup-scope.patch
 aux/runtime/0307-pip-manual-document-native-enter-observer.patch
 aux/runtime/0308-pip-ordinary-fixture-real-player-pause.patch
+aux/runtime/0310-interactive-witness-testing-platform.patch
+aux/runtime/0311-viz-retention-standalone-clock.patch
+aux/runtime/0314-native-manual-document-pip-classification.patch
+aux/runtime/0315-real-owned-media-toolbar-fixture.patch

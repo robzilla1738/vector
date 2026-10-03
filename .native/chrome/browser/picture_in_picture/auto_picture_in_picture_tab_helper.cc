@@ -1040,6 +1040,19 @@ bool AutoPictureInPictureTabHelper::AreAutoPictureInPicturePreconditionsMet()
   return clock_->NowTicks() < auto_picture_in_picture_activation_time_;
 }
 
+void AutoPictureInPictureTabHelper::OnNativeManualDocumentPictureInPicture(
+    content::RenderFrameHost& frame) {
+  if (!frame.IsActive() || !frame.IsRenderFrameLive() ||
+      web_contents()->GetPrimaryMainFrame() != &frame ||
+      content::WebContents::FromRenderFrameHost(&frame) != web_contents()) {
+    return;
+  }
+  dispatch_weak_factory_.InvalidateWeakPtrs();
+  auto_picture_in_picture_activation_time_ = base::TimeTicks();
+  auto_pip_trigger_reason_ =
+      media::PictureInPictureEventsInfo::AutoPipReason::kUnknown;
+}
+
 void AutoPictureInPictureTabHelper::set_auto_blocker_for_testing(
     permissions::PermissionDecisionAutoBlockerBase* auto_blocker) {
   auto_blocker_ = auto_blocker;

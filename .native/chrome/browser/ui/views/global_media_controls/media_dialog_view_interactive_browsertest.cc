@@ -69,7 +69,9 @@
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/button/toggle_button.h"
 #include "ui/views/controls/combobox/combobox.h"
+#include "chrome/browser/ui/views/global_media_controls/media_toolbar_button_contextual_menu.h"
 #include "ui/views/view_utils.h"
+#include "ui/views/widget/widget.h"
 
 using media_session::mojom::MediaSessionAction;
 
@@ -1219,6 +1221,25 @@ IN_PROC_BROWSER_TEST_F(MediaDialogViewWithBackForwardCacheBrowserTest,
 #if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
 IN_PROC_BROWSER_TEST_F(MediaDialogViewBrowserTest,
                        ActualNativeViewsClickRetainsManualPiPAfterAutomaticContext) {
+  // Aux's production window has no BrowserView toolbar. Install the genuine
+  // media controller/button in an owned native child of that same browser.
+  views::Widget toolbar_widget;
+  views::Widget::InitParams params(views::Widget::InitParams::TYPE_WINDOW_FRAMELESS);
+  params.ownership = views::Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
+  params.activatable = views::Widget::InitParams::Activatable::kNo;
+  params.parent = browser()->GetWindow()->GetNativeWindow();
+  const gfx::Rect browser_bounds = browser()->GetWindow()->GetBounds();
+  params.bounds = gfx::Rect(browser_bounds.right() - 64, browser_bounds.y() + 64, 48, 48);
+  toolbar_widget.Init(std::move(params));
+  auto* button = toolbar_widget.SetContentsView(
+      std::make_unique<MediaToolbarButtonView>(browser(), nullptr));
+  ui_.SetToolbarIconForTesting(button);
+  base::ScopedClosureRunner close_toolbar(base::BindLambdaForTesting([&] {
+    MediaDialogView::HideDialog();
+    ui_.SetToolbarIconForTesting(nullptr);
+    toolbar_widget.CloseNow();
+  }));
+  toolbar_widget.ShowInactive();
   OpenTestURL();
   StartPlayback();
   WaitForStart();

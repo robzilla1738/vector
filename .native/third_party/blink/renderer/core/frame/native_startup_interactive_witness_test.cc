@@ -13,6 +13,9 @@
 #include "v8/include/v8.h"
 namespace blink {
 class NativeStartupInteractiveWitnessTest : public PageTestBase {
+ public:
+  NativeStartupInteractiveWitnessTest() { EnablePlatform(); }
+
  protected:
   void Fixture(const char* html) {
     GetDocument().SetURL(KURL("chrome://aux/"));

@@ -1,0 +1,48 @@
+{
+  "scope": "Source-only proposal. No Stable mutations, compilation or effects.",
+  "candidate": "21ebefdd1a80703ef060f20344070ae9c5a5bf7c",
+  "patchSha256": "6faa505acc0f6601c474faaf7420ffe366c78f3d3c6ef6e6bde65746387710b5",
+  "files": {
+    "content/public/browser/content_browser_client.h": {
+      "before": "f422784d5a0d59e99e5235c3ab6b1e912b189aec4d9aa2861e619c56b8ee8f4a",
+      "after": "8bd02e9e181fc778e84527ba77f21b48a079f26b9e09ccc8e28cb087514ca00d"
+    },
+    "content/browser/renderer_host/render_frame_host_impl.cc": {
+      "before": "1b8753b7f82a99f7cbe1bc11c396c2b192e0967a63ad347788b81f9456e434ae",
+      "after": "a799b4671644ad8a2206a688ef92e0a277af295bf2b0c79c7f8253c60de0e38c"
+    },
+    "chrome/browser/chrome_content_browser_client.h": {
+      "before": "5e60baf330ea7dce7054d792ba67f67ecc662e179ed11c524264a7edef16a8a0",
+      "after": "b09535de6d128fe2d645689fbdae53f0d851453089fe13038c5d05ef94a51c1d"
+    },
+    "chrome/browser/chrome_content_browser_client.cc": {
+      "before": "752d82c7e7d728bbed853fb21330a21910c346cebd27b2afde949021f1e92acf",
+      "after": "686ad74aa3c10029466e9fea46026d46ec1f93d43df60cba9a7789c2d7ccd7f0"
+    },
+    "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h": {
+      "before": "6eadb2ca7608cba169ba4a4b7998a8a5f0388619208dd7129ab3f6aaf8bb6304",
+      "after": "84904e7d055e9db33587e9b1ac209168f0503d9526dadef4cef1ec5f4f587974"
+    },
+    "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc": {
+      "before": "32a6ed9ec4d327defd1240d0c186d9a1fa45a0820b118317ee9df5312e7523f7",
+      "after": "440b56698582dc84e3f6ad9c218599ef907a3421964f8aab261d928fe7c04034"
+    },
+    "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc": {
+      "before": "d1d9d0753c3b92e9f692af92e0f97894a9298d21f1f51dc48d7ae8dcbe2063e4",
+      "after": "03e439992c7436c9b69e3c79dfbf9bff5312be33460558f8df23ff1f1df5abb4"
+    }
+  },
+  "checks": {
+    "contextualForwardReverse": true,
+    "wholeOriginalRestoration": true,
+    "allOriginalAssertionsRetained": true
+  },
+  "boundary": "Native successful ConsumePictureInPictureUserInput NEW_PICTURE_IN_PICTURE only, original WeakDocument recheck after embedder hook; exact current primary document and WebContents checked twice. Default embedder/no-Aux unchanged.",
+  "effect": "Retire pending automatic deadline/dispatch weak callbacks, no grant, no timer advancement, no replacement/native input synthesis. Existing missing-ticket and automatic authority refusal cases remain unchanged.",
+  "requiredExecution": [
+    "AutomaticDocumentHandlerRefusesButRealManualDocumentPipWorks",
+    "LegacyMissingTicketCannotEnterVideoOrMintManualActivation",
+    "existing replaced-document/current-authority/selection expiry browser and content cases"
+  ],
+  "open": "Independent source review and future coherent native compilation/assertion execution required."
+}

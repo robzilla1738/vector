@@ -4603,6 +4603,41 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
       content::EXECUTE_SCRIPT_NO_USER_GESTURE));
   enter_pip_observer.Wait();
   EXPECT_TRUE(page->HasPictureInPictureDocument());
+  auto* helper = AutoPictureInPictureTabHelper::FromWebContents(page);
+  ASSERT_NE(helper, nullptr);
+  EXPECT_FALSE(helper->AreAutoPictureInPicturePreconditionsMet());
+  EXPECT_FALSE(helper->IsInAutoPictureInPicture());
+}
+
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       NativeManualDocumentSupersedesQueuedAutomaticWithoutClockAdvance) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  auto* helper = AutoPictureInPictureTabHelper::FromWebContents(page);
+  ASSERT_NE(helper, nullptr);
+  ASSERT_TRUE(helper->AreAutoPictureInPicturePreconditionsMet());
+  // Test EvalJs activation alone cannot consume the native input receipt.
+  EXPECT_EQ("NotAllowedError", content::EvalJs(page,
+      "documentPictureInPicture.requestWindow().then(() => 'entered', e => e.name)"));
+  EXPECT_FALSE(page->HasPictureInPictureDocument());
+  EXPECT_TRUE(helper->AreAutoPictureInPicturePreconditionsMet());
+  ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
+  content::MediaStartStopObserver entered(
+      page, content::MediaStartStopObserver::Type::kEnterPictureInPicture);
+  EXPECT_EQ(true, content::EvalJs(page,
+      "documentPictureInPicture.requestWindow().then(window => !!window)",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  entered.Wait();
+  ASSERT_TRUE(page->HasPictureInPictureDocument());
+  EXPECT_FALSE(helper->AreAutoPictureInPicturePreconditionsMet());
+  EXPECT_FALSE(helper->IsInAutoPictureInPicture());
+  auto queued = held_.Take();
+  ASSERT_TRUE(queued);
+  std::move(queued).Run();
+  EXPECT_TRUE(page->HasPictureInPictureDocument());
+  EXPECT_FALSE(page->HasPictureInPictureVideo());
+  EXPECT_FALSE(helper->IsInAutoPictureInPicture());
+  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), page);
 }
 
 IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,

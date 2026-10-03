@@ -1,0 +1,57 @@
+--- a/components/viz/service/display/native_startup_first_hardware_retention_unittest.cc
++++ b/components/viz/service/display/native_startup_first_hardware_retention_unittest.cc
+@@ -2,10 +2,44 @@
+ // Synthetic native event/lifetime contracts, not real startup/paint evidence.
+ #include "components/viz/service/display/native_startup_first_hardware_retention.h"
+ #include "base/functional/bind.h"
+-#include "base/test/task_environment.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/ref_counted.h"
++#include "base/test/scoped_mock_clock_override.h"
++#include "base/test/test_mock_time_task_runner.h"
+ #include "components/viz/common/surfaces/local_surface_id.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ namespace viz {
++// The Viz suite already owns the thread's RunLoop delegate. A standalone
++// runner preserves genuine delayed callbacks without installing a second one.
++class RetentionTaskRunner : public base::TestMockTimeTaskRunner {
++ public:
++  explicit RetentionTaskRunner(base::ScopedMockClockOverride* clock)
++      : base::TestMockTimeTaskRunner(base::Time::Now(), base::TimeTicks::Now()),
++        clock_(clock) {}
++
++ protected:
++  ~RetentionTaskRunner() override = default;
++  void OnAfterTimePassed() override {
++    // Advance at every actual queued deadline, before its callback executes.
++    clock_->Advance(NowTicks() - base::TimeTicks::Now());
++  }
++
++ private:
++  const raw_ptr<base::ScopedMockClockOverride> clock_;
++};
++class RetentionTaskEnvironment {
++ public:
++  RetentionTaskEnvironment()
++      : runner_(base::MakeRefCounted<RetentionTaskRunner>(&clock_)),
++        context_(runner_) {}
++  void FastForwardBy(base::TimeDelta delta) { runner_->FastForwardBy(delta); }
++
++ private:
++  // Destruction restores the original task handle before runner/clock teardown.
++  base::ScopedMockClockOverride clock_;
++  scoped_refptr<RetentionTaskRunner> runner_;
++  base::TestMockTimeTaskRunner::ScopedContext context_;
++};
+ class NativeStartupFirstHardwareRetentionTest : public testing::Test {
+  protected:
+   SurfaceId Surface(FrameSinkId sink) {
+@@ -45,7 +79,7 @@
+     return base::BindOnce([](std::optional<NativeGuestInclusionResult>* out, int* count,
+         std::optional<NativeGuestInclusionResult> result) { ++*count; *out = std::move(result); }, output, calls);
+   }
+-  base::test::TaskEnvironment environment_{base::test::TaskEnvironment::TimeSource::MOCK_TIME};
++  RetentionTaskEnvironment environment_;
+   const FrameSinkId display_{1, 1}, shell_{2, 2};
+ };
+ TEST_F(NativeStartupFirstHardwareRetentionTest, OriginalGroupBeforeJoinRetainsExactFullHardware) {
