@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 import { act } from "react";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useStore } from "../store";
@@ -96,4 +99,33 @@ it("updates genuine Current and Conversation availability while open and preserv
   expect(linked().disabled).toBe(false);
   await act(async () => linked().click()); expect(changed).toHaveBeenCalledExactlyOnceWith("linked");
   expect(document.querySelector('dialog[aria-label="Browser context"]')).toBeNull();
+});
+
+it("keeps unavailable selected choices quiet and readable while enabled selection/focus retains interaction", async () => {
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "ContextPicker.css"), "utf8");
+  // jsdom lacks cascade layers. Parse the original rules with only the enclosing
+  // layer removed; selectors are the actual shipped selectors, not test copies.
+  const sheet = document.createElement("style");
+  sheet.textContent = css.replace(/^@layer components \{\s*/, "").replace(/\}\s*$/, "");
+  document.head.append(sheet);
+  try {
+    const rules = [...sheet.sheet!.cssRules].filter((rule): rule is CSSStyleRule => "selectorText" in rule);
+    const interactive = rules.find(rule => rule.style.getPropertyValue("background") === "var(--bg-hover)")!;
+    const unavailable = rules.find(rule => rule.style.getPropertyValue("color") === "var(--ink-2)" && rule.style.getPropertyValue("cursor") === "default")!;
+    expect(interactive).toBeDefined(); expect(unavailable).toBeDefined();
+    const changed = vi.fn();
+    await act(async () => root.render(<BrowserContextPicker value="active" onChange={changed}/>));
+    const panel = await open();
+    const current = () => [...panel.querySelectorAll<HTMLButtonElement>("button")].find(button => button.querySelector("strong")?.textContent === "Current tab")!;
+    expect(current().disabled).toBe(true); expect(current().getAttribute("aria-pressed")).toBe("true");
+    expect(current().matches(interactive.selectorText)).toBe(false); expect(current().matches(unavailable.selectorText)).toBe(true);
+    expect(current().querySelector("small")!.textContent).toBe("No website open"); expect(current().title).toContain("No website open");
+    expect(unavailable.style.getPropertyValue("opacity")).toBe("");
+    await act(async () => current().click()); expect(changed).not.toHaveBeenCalled();
+    const page = makePage(0, { pageId: "available-context", title: "Planning", url: "https://example.test/planning" });
+    await act(async () => useStore.setState({ pages: [page], activePageId: page.pageId }));
+    expect(current().disabled).toBe(false); expect(current().matches(interactive.selectorText)).toBe(true); expect(current().matches(unavailable.selectorText)).toBe(false);
+    current().focus(); expect(document.activeElement).toBe(current());
+    await act(async () => current().click()); expect(changed).toHaveBeenCalledExactlyOnceWith("active");
+  } finally { sheet.remove(); }
 });

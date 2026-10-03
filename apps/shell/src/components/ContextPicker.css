@@ -38,8 +38,12 @@
     font-size: var(--fs-xs);
     color: var(--ink-2);
   }
-  .context-choice:is(:hover, [aria-pressed="true"]) {
+  .context-choice:not(:disabled):is(:hover, [aria-pressed="true"]) {
     background: var(--bg-hover);
+  }
+  .context-choice:disabled {
+    color: var(--ink-2);
+    cursor: default;
   }
   .context-choice > svg,
   .context-choice > input {

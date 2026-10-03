@@ -1,0 +1,46 @@
+{
+  "baseCommit": "f9b1b4e95d98c68540529c0c7365937ac776fc87",
+  "status": "source-only disabled context choice affordance",
+  "patchSha256": "0a62aeff2b145332c56da521c4502c7ad7e1d5956576951c62f3422c30a609e5",
+  "files": [
+    {
+      "path": "apps/shell/src/components/BrowserContextPicker.disclosure.test.tsx",
+      "beforeSha256": "3a061506cfdb082bb88dba9bc9fffc68289659ad66778fe990ab2665a94d1f8d",
+      "afterSha256": "df6961f616213b8fadf947d697a14d506f506679339be579776dc1c00a882b58",
+      "beforeSnapshot": "docs/lane-requests/design/context-disabled-affordance/before/apps/shell/src/components/BrowserContextPicker.disclosure.test.tsx",
+      "afterSnapshot": "docs/lane-requests/design/context-disabled-affordance/after/apps/shell/src/components/BrowserContextPicker.disclosure.test.tsx"
+    },
+    {
+      "path": "apps/shell/src/components/ContextPicker.css",
+      "beforeSha256": "5822f3da94f9ca56a3c89127486c4cedfb53848f777af4bf0bf3f64429a8f625",
+      "afterSha256": "8459a266056a05cacfe8abc0ea7bcd4f827154e6c36665510c3913d049f12e20",
+      "beforeSnapshot": "docs/lane-requests/design/context-disabled-affordance/before/apps/shell/src/components/ContextPicker.css",
+      "afterSnapshot": "docs/lane-requests/design/context-disabled-affordance/after/apps/shell/src/components/ContextPicker.css"
+    }
+  ],
+  "reference": {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/color/chrome_color_mixer.cc",
+    "sha256": "00c98db4bce69f038b7dcb4fe0b29663807e1bcd1c7462ba28e6a5b8f43afcc7",
+    "symbols": [
+      "kColorToolbarButtonIconDisabled",
+      "kColorBookmarkBarForegroundDisabled"
+    ],
+    "adaptation": "Use existing Aux muted disabled foreground; no opacity applied to explanations."
+  },
+  "replay": {
+    "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-context-disabled-affordance-replay-ezkpomym",
+    "forwardReverseForward": true,
+    "everyHashMatches": true
+  },
+  "affectedComponentCases": 8,
+  "shellTypecheckPassed": true,
+  "scopedLintPassed": true,
+  "nativePixelsVerified": false,
+  "rootIndependentReplay": "PASS",
+  "rootControls": {
+    "status": "PASS source-only",
+    "log": "/tmp/aux-root-context-affordance-controls.log",
+    "nativeExecution": "NOT RUN"
+  },
+  "nativeExecution": "NOT RUN"
+}
