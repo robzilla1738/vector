@@ -10,8 +10,17 @@ struct Request: Decodable {
   let bundle: String
   let fixtureRoot: String
   let trial: String
+  let browserBinarySha256: String
+  let browserImageUuid: String
 }
+var startupSpawnAttempted = false
+var startupPrelaunchRefusal: [String: Any]?
 func fail(_ message: String) -> Never {
+  if !startupSpawnAttempted, let record = startupPrelaunchRefusal,
+      let bytes = try? JSONSerialization.data(withJSONObject: record, options: [.sortedKeys]), bytes.count <= 2048 {
+    FileHandle.standardOutput.write(Data("AUX_STARTUP_REFUSAL_V1 ".utf8))
+    FileHandle.standardOutput.write(bytes); FileHandle.standardOutput.write(Data([10]))
+  }
   FileHandle.standardError.write(Data((message + "\n").utf8)); exit(1)
 }
 // Never a caller-provided executable path. The live process supplies both
@@ -119,10 +128,12 @@ func emitBytes(_ bytes: Data) {
 let childLifetime = StartupChildLifetime()
 let bytes = FileHandle.standardInput.readData(ofLength: 8193)
 guard bytes.count <= 8192, let object = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any],
-      Set(object.keys) == Set(["kind", "bundle", "fixtureRoot", "trial"]),
+      Set(object.keys) == Set(["kind", "bundle", "fixtureRoot", "trial", "browserBinarySha256", "browserImageUuid"]),
       let request = try? JSONDecoder().decode(Request.self, from: bytes),
       ["aux", "stock"].contains(request.kind),
-      request.trial.range(of: "^[a-f0-9]{32}$", options: .regularExpression) != nil else {
+      request.trial.range(of: "^[a-f0-9]{32}$", options: .regularExpression) != nil,
+      request.browserBinarySha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil,
+      request.browserImageUuid.range(of: "^[a-f0-9]{32}$", options: .regularExpression) != nil else {
   fail("Invalid fixed startup request")
 }
 let root = URL(fileURLWithPath: request.fixtureRoot)
@@ -153,6 +164,10 @@ do {
   }
   try build.validate(); try writer.validate()
 } catch { fail("Startup helper identity or fixture admission failed") }
+startupPrelaunchRefusal = ["producer": "aux-native-startup-prelaunch-refusal", "version": 1,
+  "kind": request.kind, "trial": request.trial, "launcherPid": getpid(),
+  "helperBinarySha256": helper.sha256, "helperSourceSha256": startupHelperSourceSha256,
+  "browserSpawnAttempted": false]
 let profile = canonicalRoot + "/profile"
 let bundle = URL(fileURLWithPath: request.bundle)
 guard request.bundle == bundle.resolvingSymlinksInPath().path,
@@ -169,6 +184,14 @@ guard lstat(binary, &binaryInfo) == 0, (binaryInfo.st_mode & S_IFMT) == S_IFREG,
       binaryInfo.st_uid == geteuid(), binaryInfo.st_mode & 0o022 == 0 else {
   fail("Startup executable is not the owned regular binary")
 }
+// Held executable pins come from the caller's independently admitted native pair.
+// Complete kernel inventory must succeed before the original spawn can begin.
+let cold: StartupColdProcessAudit
+do {
+  cold = try StartupColdProcessAudit(fixedExecutable: binary,
+      manifestSha256: request.browserBinarySha256, manifestImageUuid: request.browserImageUuid)
+  try cold.provePrelaunchAbsence()
+} catch { fail("Startup cold executable or complete kernel inventory refused") }
 // Child stdout/stdin cannot forge or consume the launcher's receipt channel.
 // Stderr remains inherited for genuine bounded native producer records.
 var actions: posix_spawn_file_actions_t? = nil
@@ -179,7 +202,11 @@ guard posix_spawn_file_actions_init(&actions) == 0,
 }
 var arguments = [binary, "--user-data-dir=" + profile, "--no-first-run", "--no-default-browser-check",
   "--use-mock-keychain", "--password-store=basic"]
-if request.kind == "aux" { arguments.append(contentsOf: ["--aux-native-performance-observer", "--aux-native-startup-observer"]) }
+if request.kind == "aux" {
+  arguments.append(contentsOf: ["--aux-native-performance-observer", "--aux-native-startup-observer"])
+} else {
+  arguments.append(contentsOf: ["--aux-native-stock-measurement-observer", "--aux-native-stock-startup-observer"])
+}
 let ownedArguments = arguments.map { strdup($0) }
 var argv = ownedArguments + [nil]
 var attributes: posix_spawnattr_t? = nil
@@ -197,6 +224,7 @@ do { try helper.validate(); try build.validate(); try writer.validate() }
 catch { posix_spawnattr_destroy(&attributes); posix_spawn_file_actions_destroy(&actions); ownedArguments.forEach { free($0) }; fail("Startup admission changed before spawn") }
 // No estimated clock mapping: Chromium FromMachAbsoluteTime uses this clock.
 guard childLifetime.beginSpawn() else { fail("Startup launch canceled before spawn") }
+startupSpawnAttempted = true
 let beforeLaunch = mach_absolute_time()
 let result = posix_spawn(&pid, binary, &actions, &attributes, &argv, environ)
 let afterLaunch = mach_absolute_time()
@@ -208,6 +236,7 @@ guard result == 0, pid > 0 else { fail("Native startup launch failed") }
 do {
   guard !childLifetime.isCanceled() else { throw StartupReceiptError.io }
   try helper.validate(); try build.validate(); try writer.validate()
+  let generation = try cold.consumeOriginalChild(pid, launch: beforeLaunch, spawnReturned: afterLaunch)
   let receipt = try canonical(["producer": "aux-native-startup-launch", "version": 1, "kind": request.kind,
     "trial": request.trial, "launcherPid": getpid(), "browserPid": pid,
     "launchMachTicks": String(beforeLaunch), "spawnReturnedMachTicks": String(afterLaunch),
@@ -217,6 +246,19 @@ do {
   try helper.validate(); try build.validate(); try writer.validate()
   guard !childLifetime.isCanceled() else { throw StartupReceiptError.io }
   emitBytes(receipt)
+  let kernelReceipt = try canonical(["producer": "aux-native-startup-cold", "version": 1,
+    "kind": request.kind, "trial": request.trial, "launcherPid": getpid(), "browserPid": pid,
+    "browserBinarySha256": request.browserBinarySha256, "browserImageUuid": generation.child.imageUuid,
+    "browserDevice": generation.candidateDevice, "browserInode": generation.candidateInode,
+    "browserStartMachTicks": String(generation.child.startMachTicks),
+    "inventoryStartedMachTicks": String(generation.inventoryStartedMachTicks),
+    "inventoryFinishedMachTicks": String(generation.inventoryFinishedMachTicks),
+    "launchMachTicks": String(generation.launchMachTicks),
+    "spawnReturnedMachTicks": String(generation.spawnReturnedMachTicks),
+    "childObservedMachTicks": String(generation.childObservedMachTicks)])
+  guard !childLifetime.isCanceled() else { throw StartupReceiptError.io }
+  FileHandle.standardOutput.write(Data("AUX_STARTUP_COLD_V1 ".utf8))
+  FileHandle.standardOutput.write(kernelReceipt); FileHandle.standardOutput.write(Data([10]))
 } catch {
   FileHandle.standardError.write(Data("Startup admission changed or fixed receipt publication failed\n".utf8))
   childLifetime.requestCancellation()

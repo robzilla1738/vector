@@ -1,5 +1,5 @@
-// Internal fixed startup helper producer. Not assembled or admitted until the
-// candidate executable pins and raw protocol are wired into the original helper.
+// Internal fixed startup helper producer. Original held candidate and kernel
+// process receipts are required; a disposable profile is never a cold proof.
 import Darwin
 import Foundation
 import CryptoKit
@@ -18,6 +18,8 @@ struct StartupColdProcessReceipt {
   let spawnReturnedMachTicks: UInt64
   let childObservedMachTicks: UInt64
   let child: StartupKernelGeneration
+  let candidateDevice: String
+  let candidateInode: String
 }
 final class StartupColdProcessAudit {
   private let path: String
@@ -140,12 +142,22 @@ final class StartupColdProcessAudit {
     guard Set(live).count == live.count else { throw StartupColdAuditError.incompleteInventory }
     return Set(live)
   }
+  // Also compare kernel generations: a numerically identical PID set can hide
+  // an exit/reuse or exec while later processes are being inspected.
+  static func validateInventoryGenerations(_ original: [pid_t: StartupKernelGeneration],
+                                          _ current: [pid_t: StartupKernelGeneration]) throws {
+    guard !original.isEmpty, original.count < 100000, original == current,
+      original.allSatisfy({ $0.key > 0 && $0.key == $0.value.pid }) else {
+      throw StartupColdAuditError.incompleteInventory
+    }
+  }
   func provePrelaunchAbsence() throws {
     guard !attempted, !consumed else { throw StartupColdAuditError.incompleteInventory }
     attempted = true // incomplete inventory cannot later be retried as this trial
     let before = mach_absolute_time()
     try validateExecutable()
     let ids = try Self.processIds()
+    var originals: [pid_t: StartupKernelGeneration] = [:]
     for pid in ids {
       let first = try Self.generation(pid)
       let processPath = try Self.processPath(pid)
@@ -156,7 +168,12 @@ final class StartupColdProcessAudit {
         throw StartupColdAuditError.existingCandidate
       }
       guard try Self.generation(pid) == first else { throw StartupColdAuditError.incompleteInventory }
+      originals[pid] = first
     }
+    guard try Self.processIds() == ids else { throw StartupColdAuditError.incompleteInventory }
+    var finalGenerations: [pid_t: StartupKernelGeneration] = [:]
+    for pid in ids { finalGenerations[pid] = try Self.generation(pid) }
+    try Self.validateInventoryGenerations(originals, finalGenerations)
     guard try Self.processIds() == ids else { throw StartupColdAuditError.incompleteInventory }
     try validateExecutable()
     inventory = (before, mach_absolute_time())
@@ -164,9 +181,8 @@ final class StartupColdProcessAudit {
   func consumeOriginalChild(_ original: pid_t, launch: UInt64, spawnReturned: UInt64) throws -> StartupColdProcessReceipt {
     guard !consumed, let (inventoryStart, inventoryEnd) = inventory else { throw StartupColdAuditError.invalidChild }
     consumed = true // a failed child audit cannot later become a cold trial
-    let observed = mach_absolute_time()
     guard original > 0, inventoryStart <= inventoryEnd, inventoryEnd <= launch,
-      launch <= spawnReturned, spawnReturned <= observed else { throw StartupColdAuditError.invalidChild }
+      launch <= spawnReturned else { throw StartupColdAuditError.invalidChild }
     try validateExecutable()
     let child = try Self.generation(original)
     var bsd = proc_bsdinfo(), atPath = stat()
@@ -178,7 +194,11 @@ final class StartupColdProcessAudit {
       throw StartupColdAuditError.invalidChild
     }
     try validateExecutable()
+    guard try Self.generation(original) == child else { throw StartupColdAuditError.invalidChild }
+    let observed = mach_absolute_time()
+    guard spawnReturned <= observed else { throw StartupColdAuditError.invalidChild }
     return StartupColdProcessReceipt(inventoryStartedMachTicks: inventoryStart, inventoryFinishedMachTicks: inventoryEnd,
-      launchMachTicks: launch, spawnReturnedMachTicks: spawnReturned, childObservedMachTicks: observed, child: child)
+      launchMachTicks: launch, spawnReturnedMachTicks: spawnReturned, childObservedMachTicks: observed, child: child,
+      candidateDevice: String(initial.st_dev), candidateInode: String(initial.st_ino))
   }
 }

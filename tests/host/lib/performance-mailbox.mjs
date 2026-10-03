@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname } from 'node:path';
-const operations = new Set(['prepareLittleWindowPresentation', 'completeLittleWindowPresentation', 'prepareOrganizationAutoArchiveWork', 'prepareOrganizationLiveFolderWork', 'completeOrganizationWork', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation', 'sampleShellMemory', 'sampleProcessMemory', 'sampleStockProcessMemory', 'prepareSubagentMemoryWorkload']);
+const operations = new Set(['prepareLittleWindowPresentation', 'completeLittleWindowPresentation', 'prepareOrganizationAutoArchiveWork', 'prepareOrganizationLiveFolderWork', 'completeOrganizationWork', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation', 'sampleShellMemory', 'sampleProcessMemory', 'sampleStockProcessMemory', 'prepareStockWarmWindow', 'completeStockWarmWindow', 'prepareAuxWarmWindow', 'completeAuxWarmWindow', 'prepareSubagentMemoryWorkload']);
 const prefix = 'AUX_NATIVE_FIXTURE_REPLY_V1 ';
 const refusalPrefix = 'AUX_NATIVE_FIXTURE_REFUSAL_V1 ';
 function ownedFixture(userDataDir) {
@@ -94,7 +94,11 @@ export function createPerformanceMailbox({ userDataDir, pid, generation }) {
           assert.ok(Number.isInteger(raw.windowId) && raw.windowId > 0 && operations.has(raw.operation));
           assert.ok(pending, 'Unrequested private reply'); assert.equal(raw.sequence, pending.sequence); assert.equal(raw.operation, pending.method);
           assert.ok(raw.record && typeof raw.record === 'object' && !Array.isArray(raw.record));
-          if (raw.record.windowId !== undefined) assert.equal(raw.record.windowId, raw.windowId, 'Native wrapper scope mismatch');
+          if (raw.operation === 'completeAuxWarmWindow' && raw.record.status === 'measured') {
+            assert.equal(raw.record.producer, 'aux-native-warm-window');
+            assert.equal(raw.record.preparedWindowId, raw.windowId);
+            assert.ok(Number.isInteger(raw.record.windowId) && raw.record.windowId > 0 && raw.record.windowId !== raw.windowId);
+          } else if (raw.record.windowId !== undefined) assert.equal(raw.record.windowId, raw.windowId, 'Native wrapper scope mismatch');
           verify(); lastReceipt = { raw: text, sequence: raw.sequence, operation: raw.operation, pid, generation, recordRaw: JSON.stringify(raw.record) }; const waiter = pending; pending = undefined; clearTimeout(waiter.timer); waiter.resolve(JSON.stringify(raw.record));
         }
         assert.ok(Buffer.byteLength(partial) <= 16384, 'Private partial reply overflow');

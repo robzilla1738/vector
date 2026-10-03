@@ -52,4 +52,18 @@ let target = directory.appendingPathComponent("target")
 try original.write(to: target); guard chmod(target.path, 0o700) == 0 else { fatalError("fixture chmod") }
 try FileManager.default.createSymbolicLink(atPath: executable.path, withDestinationPath: target.path)
 refuses { _ = try audit(original) }
-print("PASS cold candidate admission controls; no process inventory or timing qualification")
+// Exercise the production generation-map validator with synthetic receipts;
+// these controls do not run a kernel inventory or qualify cold startup.
+let generation = StartupKernelGeneration(pid: 41, imageUuid: uuid, startMachTicks: 100)
+let originalInventory: [pid_t: StartupKernelGeneration] = [41: generation]
+try StartupColdProcessAudit.validateInventoryGenerations(originalInventory, originalInventory)
+for replacement in [
+  StartupKernelGeneration(pid: 41, imageUuid: uuid, startMachTicks: 101),
+  StartupKernelGeneration(pid: 41, imageUuid: String(repeating: "f", count: 32), startMachTicks: 100),
+  StartupKernelGeneration(pid: 42, imageUuid: uuid, startMachTicks: 100),
+] {
+  refuses { try StartupColdProcessAudit.validateInventoryGenerations(originalInventory, [41: replacement]) }
+}
+refuses { try StartupColdProcessAudit.validateInventoryGenerations(originalInventory, [:]) }
+refuses { try StartupColdProcessAudit.validateInventoryGenerations([:], [:]) }
+print("PASS cold candidate and generation-map controls; no process inventory or timing qualification")

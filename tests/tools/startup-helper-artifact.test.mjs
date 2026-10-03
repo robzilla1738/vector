@@ -7,7 +7,7 @@ import { assembleStartupHelper } from '../host/assemble-startup-helper.mjs';
 import { readStartupMachO } from '../host/lib/startup-helper-manifest.mjs';
 import { retainStartupHelperArtifact } from '../host/lib/startup-helper-artifact.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-const assembly = assembleStartupHelper(readFileSync(new URL('../host/startup-receipt-writer.swift', import.meta.url)), readFileSync(new URL('../host/startup-launch.swift', import.meta.url)), readFileSync(new URL('../host/assemble-startup-helper.mjs', import.meta.url)), readFileSync(new URL('../host/startup-child-lifetime.swift', import.meta.url))).manifest;
+const assembly = assembleStartupHelper(readFileSync(new URL('../host/startup-receipt-writer.swift', import.meta.url)), readFileSync(new URL('../host/startup-launch.swift', import.meta.url)), readFileSync(new URL('../host/assemble-startup-helper.mjs', import.meta.url)), readFileSync(new URL('../host/startup-child-lifetime.swift', import.meta.url)), readFileSync(new URL('../host/startup-cold-process-audit.swift', import.meta.url))).manifest;
 function fixture(run) {
   const root = realpathSync(mkdtempSync('/tmp/aux-startup-artifact-test-'));
   const path = join(root, 'not-a-compiled-helper'), compilerManifestPath = join(root, 'synthetic-compiler-manifest');

@@ -1,3 +1,5 @@
+import { readNativeWindowCompilerExecutable } from './native-window-compiler-artifact.mjs';
+import { originalInputHelperClose } from './native-input-helper-close.mjs';
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
@@ -31,20 +33,27 @@ export async function preflight() {
   return withNativeSlot(() => JSON.parse(execFileSync(executable, ['trusted'], { encoding: 'utf8', timeout: 10_000 })));
 }
 
-export async function createAxClient(pid, { timeoutMs = 65_000 } = {}) {
+export async function createAxClient(pid, { timeoutMs = 65_000, compilerArtifact } = {}) {
   if (!Number.isInteger(pid) || pid <= 0) throw new Error('AX client needs a positive PID');
-  const executable = await nativeWindowExecutable();
+  const executable = compilerArtifact === undefined ? await nativeWindowExecutable() :
+    readNativeWindowCompilerExecutable(compilerArtifact, source);
   const slot = await acquireNativeSlot();
-  const child = spawn(executable, ['serve', String(pid)], {
-    stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, AUX_NATIVE_SLOT_TOKEN: slot.token },
-  });
+  let child;
+  try {
+    if (compilerArtifact !== undefined) readNativeWindowCompilerExecutable(compilerArtifact, source);
+    child = spawn(executable, ['serve', String(pid)], {
+      stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, AUX_NATIVE_SLOT_TOKEN: slot.token },
+    });
+  } catch (error) { slot.release(); throw error; }
+  const originalHelperPid = child.pid;
   const pending = new Map();
   let nextId = 0;
-  let closed = false;
+  let closed = false, closeRequested = false, primaryFailure;
   let stderr = '';
   child.stderr.on('data', bytes => { stderr = (stderr + bytes.toString()).slice(-4096); });
   const lines = createInterface({ input: child.stdout });
   const fail = error => {
+    primaryFailure ??= error;
     for (const waiter of pending.values()) { clearTimeout(waiter.timer); waiter.reject(error); }
     pending.clear();
   };
@@ -62,8 +71,10 @@ export async function createAxClient(pid, { timeoutMs = 65_000 } = {}) {
     child.once('error', error => { fail(error); });
     child.once('close', (code, signal) => {
       closed = true;
-      fail(new Error(`AX helper exited (${code ?? signal}): ${stderr.trim()}`));
-      lines.close(); slot.release(); resolveExit();
+      const receipt = originalInputHelperClose({ helperPid: originalHelperPid, code, signal,
+        cleanupRequested: closeRequested, primary: primaryFailure, pendingCount: pending.size, stderr });
+      if (receipt.primary) fail(receipt.primary);
+      lines.close(); slot.release(); resolveExit(receipt);
     });
   });
   function request(command, args = {}) {
@@ -71,11 +82,12 @@ export async function createAxClient(pid, { timeoutMs = 65_000 } = {}) {
     const id = ++nextId;
     return new Promise((resolveRequest, reject) => {
       const timer = setTimeout(() => {
-        pending.delete(id); reject(new Error(`AX ${command} timed out`)); child.kill();
+        const error = new Error(`AX ${command} timed out`); primaryFailure ??= error;
+        pending.delete(id); reject(error); child.kill();
       }, timeoutMs);
       pending.set(id, { resolve: resolveRequest, reject, timer });
       child.stdin.write(`${JSON.stringify({ ...args, id, command })}\n`, error => {
-        if (error) { clearTimeout(timer); pending.delete(id); reject(error); }
+        if (error) { primaryFailure ??= error; clearTimeout(timer); pending.delete(id); reject(error); }
       });
     });
   }
@@ -86,7 +98,7 @@ export async function createAxClient(pid, { timeoutMs = 65_000 } = {}) {
     get helperSource() { return source; },
     get helperExecutable() { return executable; },
     request,
-    async close() { if (!closed) child.stdin.end(); await exited; },
+    async close() { if (!closed) { closeRequested = true; child.stdin.end(); } return await exited; },
     query: selector => request('query', { selector }),
     dump: (selector = {}) => request('dump', { selector }),
     async press(selector) {

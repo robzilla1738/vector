@@ -27,6 +27,7 @@ export function retainStartupHelperArtifact(helper, compilerAudit) {
     readFileSync(new URL('../startup-launch.swift', import.meta.url)),
     readFileSync(new URL('../assemble-startup-helper.mjs', import.meta.url)),
     readFileSync(new URL('../startup-child-lifetime.swift', import.meta.url)),
+    readFileSync(new URL('../startup-cold-process-audit.swift', import.meta.url)),
   ).manifest;
   assert.equal(helper.sourceSha256, assembly.sourceSha256); assert.equal(helper.assembledSha256, assembly.assembledSha256);
   const held = [];

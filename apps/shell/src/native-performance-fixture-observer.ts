@@ -3,6 +3,8 @@ const operations = new Set([
   "prepareGuestDividerFramePresentation",
   "prepareGuestTabSwitchPresentation",
   "completeGuestPresentation",
+  "prepareAuxWarmWindow",
+  "completeAuxWarmWindow",
   "prepareLittleWindowPresentation",
   "completeLittleWindowPresentation",
   "sampleShellMemory",

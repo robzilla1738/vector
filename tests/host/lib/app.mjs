@@ -180,8 +180,22 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   let generation = 0;
   const knownPeers = new Map();
   let startupTrace;
+  let startupAttachment, startupOwner, startupRetired = false;
+  const profileInfo = lstatSync(userDataDir);
+  function assertStartupAttachment() {
+    if (!startupAttachment || startupRetired) throw new Error("No live original startup attachment");
+    startupAttachment.assertLive();
+    for (const [path, original] of [[profileRoot, rootInfo], [userDataDir, profileInfo]]) {
+      const current = lstatSync(path);
+      if (current.isSymbolicLink() || !current.isDirectory() || current.dev !== original.dev ||
+          current.ino !== original.ino || current.uid !== original.uid || current.mode & 0o077)
+        throw new Error("Original attached fixture replaced");
+    }
+    startupAttachment.assertLive();
+  }
   const recordStartup = (phase, facts) => startupTrace?.record(phase, facts);
   function running() {
+    if (startupAttachment) { assertStartupAttachment(); return true; }
     if (externalPid) {
       const receipt = JSON.parse(execFileSync(urlLauncher, ["check", bundle, String(externalPid), String(externalGeneration)], { timeout: 2000, encoding: "utf8", stdio: "pipe" }));
       return externalGenerationRunning(receipt);
@@ -190,6 +204,8 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   }
   async function descriptor(name = activeProfile, { timeoutMs = 30_000 } = {}) {
     nativeProfileName(name);
+    if (startupAttachment && name !== "Default") throw new Error("Attached startup owns only its original Default Profile");
+    const attachedOwner = startupOwner;
     const file = join(userDataDir, name, 'Aux Runtime Data/runtime.json');
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
@@ -221,6 +237,10 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
             startedAtMatches: peer?.startedAt === value.startedAt, schemaMatches: peer?.schema === value.version?.schema });
           if (peer?.service === 'aux-runtime' && peer.ready === true && peer.nonce === nonce && peer.pid === value.pid &&
               peer.instanceId === value.instanceId && peer.startedAt === value.startedAt && peer.schema === value.version?.schema) {
+            if (startupAttachment) {
+              if (startupOwner !== attachedOwner) throw new Error("Startup owner changed during peer validation");
+              assertStartupAttachment();
+            }
             knownPeers.set(name, { generation, instanceId: value.instanceId });
             return value;
           }
@@ -231,6 +251,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     throw new Error(`Timed out waiting for disposable Profile runtime (${name}); browser stderr retained in launcher.log`);
   }
   async function start({ externalUrl, auxUrl, background = false } = {}) {
+    if (startupAttachment) throw new Error("Attached startup cannot use another launcher");
     if (running()) throw new Error('Journey Aux is already running');
     if (auxUrl) {
       const selected = new URL(auxUrl).searchParams.get('profile');
@@ -291,6 +312,10 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   }
   async function quit() {
     disposeAppearance(); disposePerformance();
+    if (startupAttachment) {
+      startupRetired = true;
+      return await startupAttachment.stop();
+    }
     if (launchUncertain) throw new Error(`LaunchServices receipt unavailable: inspect the owned disposable profile ${userDataDir} and bundle ${bundle} before releasing the native batch.`);
     if (running()) {
       if (externalPid) execFileSync(urlLauncher, ["terminate", bundle, String(externalPid), String(externalGeneration)], { timeout: 2000, stdio: "pipe" }); else child.kill('SIGTERM');
@@ -304,6 +329,20 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     slot?.release(); slot = undefined;
   }
   const api = {
+    async attachStartup(owner) {
+      if (startupAttachment || child || externalPid || launchUncertain)
+        throw new Error('App already has an original launch owner');
+      const { readAuxStartupAttachment } = await import('./startup-helper-launch.mjs');
+      const observed = readAuxStartupAttachment(owner);
+      if (startupAttachment || child || externalPid || launchUncertain || observed.bundle !== bundle ||
+          realpathSync(observed.fixtureRoot) !== realpathSync(profileRoot) ||
+          realpathSync(observed.userDataDir) !== realpathSync(userDataDir) || activeProfile !== 'Default')
+        throw new Error('Foreign or replaced original startup fixture');
+      observed.assertLive(); startupOwner = owner; startupAttachment = observed;
+      generation = observed.generation;
+      observed.closed.then(() => { if (startupOwner === owner) startupRetired = true; });
+      assertStartupAttachment(); return api;
+    },
     configurePerformanceMailbox() {
       if (performanceMailbox) return performanceMailbox;
       if (!running() || externalPid || !child?.stderr ||
@@ -359,9 +398,10 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       acceptance.markers.push(...added.markers);
       return {profileId, restartRequired:true};
     },
-    start, async restart(options) { await quit(); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
-    async openExternal(url) { if (!running()) throw new Error("Disposable Aux is not running"); return launchUrl(url, [], api.pid); },
+    start, async restart(options) { if (startupAttachment) throw new Error("Attached startup cannot use another launcher"); await quit(); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
+    async openExternal(url) { if (startupAttachment) throw new Error("Attached startup is observation-only"); if (!running()) throw new Error("Disposable Aux is not running"); return launchUrl(url, [], api.pid); },
     async openAux(url, {cold = false, background = false} = {}) {
+      if (startupAttachment) throw new Error("Attached startup is observation-only");
       // Validate before quitting the existing owned generation.
       validateAuxEnvelope(url);
       if (cold) { await quit(); externalPid = undefined; externalGeneration = undefined; return start({auxUrl:url,background}); }
@@ -369,6 +409,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       return launchUrl(url, [], api.pid, true, background);
     },
     async appleScript(body) {
+      if (startupAttachment) throw new Error("Attached startup is observation-only");
       if (!running()) throw new Error("Disposable Aux is not running");
       ensureUrlLauncher();
       const pid = api.pid;
@@ -384,9 +425,15 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       });
     },
     get processObservation() { return observeJourneyProcess({ child, externalPid, generation, spawnError }); },
-    get pid() { return externalPid ?? child?.pid; }, get log() { return stderr + (existsSync(nativeLog) ? readFileSync(nativeLog, "utf8").slice(-65536) : ""); }, descriptor,
+    get pid() { if (startupAttachment) { assertStartupAttachment(); return startupAttachment.browserPid; } return externalPid ?? child?.pid; }, get log() { return stderr + (existsSync(nativeLog) ? readFileSync(nativeLog, "utf8").slice(-65536) : ""); }, descriptor,
     async identity() {
+      const attachedOwner = startupOwner;
+      if (startupAttachment) assertStartupAttachment();
       const describe = await createRpc(() => descriptor())('runtime.describe');
+      if (startupAttachment) {
+        if (startupOwner !== attachedOwner) throw new Error("Startup owner changed during identity validation");
+        assertStartupAttachment();
+      }
       if (!describe.nativeIdentity || !describe.runtimeIdentity) throw new Error('Runtime did not advertise native and runtime identities');
       const manifestHash = describe.nativeIdentity.buildId?.split('+')[1];
       if (!/^[a-f0-9]{64}$/.test(manifestHash)) throw new Error('Native identity has no valid host manifest hash');
