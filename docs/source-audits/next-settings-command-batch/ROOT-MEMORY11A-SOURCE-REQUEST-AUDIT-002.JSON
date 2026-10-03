@@ -1,0 +1,14 @@
+{
+  "requestSha256": "a706ec515a8a1c3181ebc4ede5932ab46ccd56a407a4638f76ede8f5185986b3",
+  "commit": "11a79d7720349092759f2b96d2510833991be2f0",
+  "productTree": "b63bcfc23e446a49d55d0d311b295e3d40096b36",
+  "actualCommittedSources": 43,
+  "actualCommittedAssets": 173,
+  "allGitBlobByteJoins": true,
+  "manifestDigest": "7eda323623fcb6640c0a66dcdf8acef741ecdbfac983e6caad1c428da5d1ac90",
+  "sourceGateActualGitAndLogJoins": true,
+  "nativeGitDeltaEmpty": true,
+  "sourceOnly": true,
+  "nativeStageAuthorized": false,
+  "firstAuditRefusal": "Git tree is not product identity; no mutation occurred"
+}
