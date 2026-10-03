@@ -269,10 +269,10 @@ base::DictValue AuxMethodRegistry::Capabilities() const {
 #else
   const bool startup = false;
 #endif
-  for (const auto& fixture : kNativePrivateFixtureMethods) {
-    if (ShellGroup(fixture.name) == AuxShellMethodGroup::kWindow &&
-        NativePrivateFixtureMethodEnabled(fixture, appearance, performance, startup))
-      methods.Append(std::string(fixture.name));
+  for (const auto& fixture_method : kNativePrivateFixtureMethods) {
+    if (ShellGroup(fixture_method.name) == AuxShellMethodGroup::kWindow &&
+        NativePrivateFixtureMethodEnabled(fixture_method, appearance, performance, startup))
+      methods.Append(std::string(fixture_method.name));
   }
 #endif
   result.Set("methods", std::move(methods));

@@ -293,3 +293,4 @@ aux/runtime/0322-person-read-receipt-out-of-line-members.patch
 aux/runtime/0323-recorder-fragment-component-api.patch
 aux/runtime/0324-causal-startup-warm-window-and-gpu-measurement.patch
 aux/runtime/0325-viz-readback-and-refcounted-callback-api.patch
+aux/runtime/0326-capability-local-and-warm-buildflag-api.patch

@@ -3,11 +3,12 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/browser_commands.h"
+
+#include "chrome/browser/buildflags.h"
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
 #include "chrome/browser/ui/aux/native_aux_warm_creation_ticket.h"
 #endif
 
-#include "chrome/browser/buildflags.h"
 #include "chrome/browser/ui/stock_measurement/native_stock_warm_creation_ticket.h"
 
 #include <algorithm>
