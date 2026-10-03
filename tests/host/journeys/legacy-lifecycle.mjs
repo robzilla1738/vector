@@ -1,3 +1,4 @@
+import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
 import { shell, settings, loadedPage, press } from '../fixtures/legacy-ui.mjs';
 
 export const journey = { id: 'tab-lifecycle', title: 'Sleep clean tabs while dirty, unknown, audible and runtime-owned tabs stay awake, with durable reports', features: ['tabLifecycle'], devAcceptance: ['tabLifecycle'], needs: ['accessibility', 'screen-recording'], model: 'none', launch: {}, timeoutMs: 300000, owner: 'LJ' };
@@ -60,7 +61,7 @@ export async function run(t) {
     for (const name of ['dirty', 'unknown', 'protected', 'tone', 'agent']) t.assert.equal(loads[name], 1);
     await t.ax.waitFor({ ...shell('Mute tab:'), match: 'contains' });
     const ax = await report();
-    await t.capture('lifecycle-protected-report');
+    await captureLegacyState(t, 'lifecycle-protected-report', 'lifecycle-protected-report');
     return { ax, rpc: { workspace, loads: structuredClone(loads), audio: beats.slice(-4) } };
   });
   await t.restart();
@@ -73,7 +74,7 @@ export async function run(t) {
       t.assert.ok(current && current.lifecycle !== 'placeholder' && current.lifecycle !== 'discarded');
     }
     const ax = await report();
-    await t.capture('lifecycle-report-restarted');
+    await captureLegacyState(t, 'lifecycle-report-restarted', 'lifecycle-report-restarted');
     await press(t, shell('Close settings', 'AXButton'));
     const before = structuredClone(loads);
     const sleepingTab = { name: 'Lifecycle clean', role: 'AXRadioButton', match: 'contains', scope: 'shell' };

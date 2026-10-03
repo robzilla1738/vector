@@ -1,3 +1,4 @@
+import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { shell, loadedPage, press } from '../fixtures/legacy-ui.mjs';
@@ -35,7 +36,7 @@ async function translate(t) {
     t.assert.ok(sent.includes('Esta página se puede traducir.'));
     t.assert.ok(!sent.some(text => /HIDDEN TRANSLATION SECRET|FORM VALUE SECRET|CODE TRANSLATION SECRET/.test(text)), 'Hidden, form and code text must not enter the model request');
     const ax = await t.ax.dump({ scope: 'any' });
-    await t.capture('translation-applied');
+    await captureLegacyState(t, 'translation-applied', 'translation-applied');
     return { ax, rpc };
   });
   await t.step('restore original text without another model request', { kind: 'ui', features: ['aiTranslate'] }, async () => {
@@ -48,7 +49,7 @@ async function translate(t) {
     t.assert.equal(inputs.length, 1);
     await t.ax.waitFor({ name: 'Hola mundo de Aux', match: 'exact', scope: 'page' });
     const ax = await t.ax.dump({ scope: 'any' });
-    await t.capture('translation-original');
+    await captureLegacyState(t, 'translation-original', 'translation-original');
     return { ax, rpc };
   });
 }
@@ -82,7 +83,7 @@ async function tabName(t) {
     t.assert.ok(current?.revision >= baseline.revision, 'A missing or unflushed organization is not review evidence');
     t.assert.equal(current.shared.tabNames?.[page.pageId], undefined, 'Suggestion must not persist a label before Save');
     t.assert.equal((await t.rpc('pages.list')).find(item => item.pageId === page.pageId).title, 'Aux native Red');
-    await t.capture('tab-name-reviewed');
+    await captureLegacyState(t, 'tab-name-reviewed', 'tab-name-reviewed');
     await press(t, shell('Save tab label', 'AXMenuItem'));
     await t.ax.waitFor(tab('Red research'));
     await t.ax.waitFor(tab('Aux native Red'), 'absent');
@@ -93,7 +94,7 @@ async function tabName(t) {
     const rpc = await t.rpc('pages.list');
     t.assert.equal(rpc.find(item => item.pageId === page.pageId).title, 'Aux native Red');
     const ax = await t.ax.dump({ scope: 'shell' });
-    await t.capture('tab-name-applied');
+    await captureLegacyState(t, 'tab-name-applied', 'tab-name-applied');
     return { ax, rpc };
   });
   await t.restart();
@@ -108,7 +109,7 @@ async function tabName(t) {
     const rpc = await t.rpc('pages.list');
     t.assert.ok(rpc.some(item => item.url === `${t.fixture.url}/red` && item.title === 'Aux native Red'));
     const ax = await t.ax.dump({ scope: 'shell' });
-    await t.capture('tab-name-restored');
+    await captureLegacyState(t, 'tab-name-restored', 'tab-name-restored');
     return { ax, rpc };
   });
 }

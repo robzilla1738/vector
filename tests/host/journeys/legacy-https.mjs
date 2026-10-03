@@ -1,3 +1,4 @@
+import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { shell, settings, press } from '../fixtures/legacy-ui.mjs';
@@ -40,7 +41,7 @@ export async function run(t) {
     t.assert.equal(t.fixture.tlsHellos, hellos, 'Disabled HTTPS-first cannot start TLS');
     const ax = await t.ax.dump({ scope: 'page' });
     t.assert.match(JSON.stringify(ax), /Aux HTTPS-first fixture/);
-    await t.capture('https-first-off');
+    await captureLegacyState(t, 'https-first-off', 'https-first-off');
     return { ax, rpc: { page: rpc, tlsHellos: t.fixture.tlsHellos, saved: saved() } };
   });
   await t.step('turn HTTPS-first on and prove a native TLS upgrade attempt', { kind: 'ui', features: ['httpsFirst'] }, async () => {
@@ -58,7 +59,7 @@ export async function run(t) {
     const rpc = await t.rpc('pages.list');
     t.assert.ok(rpc.some(item => item.pageId === page.pageId && /aux-on\.notarealdomain-auxprobe\.com/.test(item.url)));
     const ax = [...settingsAx, ...await t.ax.dump({ scope: 'any' })];
-    await t.capture('https-first-on');
+    await captureLegacyState(t, 'https-first-on', 'https-first-on');
     return { ax, rpc: { pages: rpc, tlsHellos: t.fixture.tlsHellos, saved: saved() } };
   });
 }

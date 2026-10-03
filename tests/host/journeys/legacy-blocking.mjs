@@ -1,3 +1,4 @@
+import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { shell, settings, loadedPage, press } from '../fixtures/legacy-ui.mjs';
@@ -35,7 +36,7 @@ async function contentBlocking(t) {
     t.assert.equal(trackerRequests, 0);
     const ax = await t.ax.dump({ scope: 'page' });
     t.assert.match(JSON.stringify(ax), /Tracker finished/);
-    await t.capture('blocking-on');
+    await captureLegacyState(t, 'blocking-on', 'blocking-on');
     return { ax, rpc };
   });
   await t.step('disabled blocking allows the same tracker and restoring cancels it again', { kind: 'ui', features: ['contentBlocking'] }, async () => {
@@ -55,7 +56,7 @@ async function contentBlocking(t) {
     t.assert.equal(trackerRequests, before, 'Redirect cannot bypass native tracker blocking');
     const ax = await t.ax.dump({ scope: 'page' });
     t.assert.match(JSON.stringify(ax), /Tracker finished/);
-    await t.capture('blocking-restored-redirect');
+    await captureLegacyState(t, 'blocking-restored-redirect', 'blocking-restored-redirect');
     return { ax, rpc: { ...rpc, trackerRequests, redirectRequests } };
   });
 }
