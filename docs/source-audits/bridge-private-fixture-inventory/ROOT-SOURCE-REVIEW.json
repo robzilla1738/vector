@@ -1,0 +1,16 @@
+{
+  "sourceOnly": true,
+  "nativeVerified": false,
+  "priorMissingHandler": "appearanceSnapshot",
+  "cause": "Audit parsed register_shell literal lists but omitted actual gated private-fixture registration table",
+  "actualRegistrySha256": "206f7680057f824b2de932669be881e21a82549d5f4a4214288562021a1ce629",
+  "actualTableSha256": "4b512b73e7fc21ac7c39da6c03bac74300a2d258a13f70feac84b615785089b8",
+  "gatesUnchanged": true,
+  "actualBridgeCheck": {
+    "rendererUsed": 180,
+    "missing": 0,
+    "nativeHandlers": 172,
+    "eventProducers": 26,
+    "composed": 8
+  }
+}

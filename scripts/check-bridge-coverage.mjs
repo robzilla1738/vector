@@ -44,6 +44,18 @@ if (registrations.length < 5) throw new Error("Native shell registration invento
 const handled = new Set(registrations.flatMap(match =>
   [...match[1].matchAll(/"([^"]+)"/g)].map(name => name[1])));
 
+// Test-only methods use a gated table rather than register_shell. Count only
+// entries from the actual table consumed by the native registration loop.
+const fixtureRegistration = /for \(const auto& fixture : kNativePrivateFixtureMethods\)\s*\{\s*if \(NativePrivateFixtureMethodEnabled\(fixture, appearance, performance, startup\)\)\s*shell_handlers_\.emplace\(fixture\.name, AuxShellMethodGroup::kWindow\);\s*\}/;
+if (fixtureRegistration.test(nativeText)) {
+  const fixtureHeader = readFileSync(join(nativeRoot, "chrome/browser/ui/aux/native_private_fixture_methods.h"), "utf8");
+  const fixtureTable = fixtureHeader.match(/kNativePrivateFixtureMethods\[\] = \{([\s\S]*?)\n\};/);
+  if (!fixtureTable) throw new Error("Native private fixture registration table unavailable");
+  const fixtures = [...fixtureTable[1].matchAll(/\{"([^"]+)", NativePrivateFixtureGate::(kAppearance|kPerformance|kWarmStartup)\}/g)];
+  if (!fixtures.length) throw new Error("Native private fixture registration entries unavailable");
+  for (const fixture of fixtures) handled.add(fixture[1]);
+}
+
 // The shell answers capabilities before registry lookup. Keep that special
 // dispatch tied to source evidence instead of counting it as a missing method.
 const dispatcherText = readFileSync(dispatcher, "utf8");
