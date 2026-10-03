@@ -19,7 +19,10 @@
     "synchronousSpawnFailureSlotGapSuccessorRequested": false,
     "asyncNoPidCloseReviewRequested": false,
     "synchronousSpawnFailureReleasesOriginalSlot": true,
-    "asyncNoPidCloseRetainsOriginalFailureAndUnprovedReap": true
+    "asyncNoPidCloseRetainsOriginalFailureAndUnprovedReap": true,
+    "originalReportsErrorsAndCleanupCyclesPreserved": true,
+    "successfulObservedReportRetainedWhenSerializationRefuses": true,
+    "unsupportedInternalSlotTypesRefuseWithoutFakeEmptyEvidence": true
   },
   "controlsNotYetIndependentlyRun": false,
   "spawnSuccessor": {
@@ -44,6 +47,33 @@
     "actualDistinctNamedControls": 120,
     "failed": 0,
     "cancelled": 0,
-    "nativeOperations": false
-  }
+    "nativeOperations": false,
+    "reportSerialization": {
+      "log": "/tmp/aux-root-0316-warm-report-controls.log",
+      "sha256": "5787310aa2b784936552b79d9b54184c41e6a862def5ab9873feeef272e9144e",
+      "actualPass": 10,
+      "failed": 0,
+      "nativeOperations": false
+    }
+  },
+  "reportSerializationSuccessors": [
+    {
+      "name": "0316-report-serialization",
+      "sha256": "449231aac19fe26fb43c11dcd64ce43ddf697141744a728538f891b63a4ab7df",
+      "actualLeaves": 4,
+      "exactForwardReverseForward": true
+    },
+    {
+      "name": "0316-report-success-failure-successor",
+      "sha256": "1999b4b0b1f0d82ec8e020be3b30b83c7340be4512cf82e76db84f2145b6fbd9",
+      "actualLeaves": 2,
+      "exactForwardReverseForward": true
+    },
+    {
+      "name": "0316-report-prototype-successor",
+      "sha256": "a0f2fdbb7c65a4efd1df05f8110d657d20f0887643a84c44a49edd42a387508a",
+      "actualLeaves": 2,
+      "exactForwardReverseForward": true
+    }
+  ]
 }
