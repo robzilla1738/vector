@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "enumerationSha256": "dfe47eeb069187810332206419cd2c61715acf711fd7fb55d05997298013bd43",
+  "rawArtifactsVerified": 37,
+  "originalPidGroupAbsence": true,
+  "slotAbsent": true,
+  "actualRequiredListedExactlyOnce": 449,
+  "assertionsExecuted": false,
+  "appLaunched": false
+}

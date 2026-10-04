@@ -1,0 +1,77 @@
+{
+  "sourceCommandCohort": 402,
+  "workspaceRebuilt": true,
+  "wholeUnitSourcePassed": true,
+  "shellTypesPassed": true,
+  "lintAndFormatPassed": true,
+  "rendererBuilt": true,
+  "rendererStartupBudgetPassed": false,
+  "rendererCssAndTotalBudgetPassed": true,
+  "nativeEnumerationPassed": true,
+  "nativeAssertionsRunningWithRealFailures": true,
+  "nativeJourneysQualified": false,
+  "qualification": false,
+  "records": [
+    {
+      "path": "aux-root-task-receipt-edit-adoption-001.json",
+      "sha256": "9964aaf8e5480fbf47c7e62e77527c342a9549e31d77e43a51622b24d8d042b6"
+    },
+    {
+      "path": "aux-root-page-recovery-adoption-001.json",
+      "sha256": "024d86d8522b204f3e832e1028ea5e59e6a9a4f0914aa18ae4656d8cd28f85dc"
+    },
+    {
+      "path": "aux-root-original-mention-retry-adoption-001.json",
+      "sha256": "7a60210d0de2603634f2eb6dedf1bf7fef006d30b0ae2e018e5d3d25b05b9b5c"
+    },
+    {
+      "path": "aux-root-native314-actual-enumeration-audit-001.json",
+      "sha256": "5298e65bac92d720346a29cba49deafdc3b0dc4e63a955c9c74438853f7e6361"
+    },
+    {
+      "path": "aux-root-native314-assertion-admission-001.json",
+      "sha256": "74e988fc34ea852182d06b69dab8ea2aa4e35f616b39e870b00b3845a7b87ae6"
+    },
+    {
+      "path": "aux-root-native314-clean-canary-caller-audit-001.json",
+      "sha256": "edf586901840c023b3a3cf0742dd5bcdc7147e982d4e98b6e573f68e5b56103f"
+    },
+    {
+      "path": "aux-root-coherent-own-build-016.log",
+      "sha256": "09f124dfb170f19e67ad3b55fdb6891868bda5b0d4442c15e1de65e33244837f"
+    },
+    {
+      "path": "aux-root-coherent-types-018.log",
+      "sha256": "07257f7132cbb9aaf65e2a3ddfc4408a079c1bc1b30756443dd74c24b4d2d841"
+    },
+    {
+      "path": "aux-root-coherent-whole-unit-004.log",
+      "sha256": "e581497864dd6d256a210b8cee478ac325712a50d9202300722140b4e75d5faa"
+    },
+    {
+      "path": "aux-root-coherent-lint-008.log",
+      "sha256": "6b97cdcdfb0c51afeb0d56035f91808356017c1c226a7b9a24256a50e5f952fb"
+    },
+    {
+      "path": "aux-root-coherent-format-008.log",
+      "sha256": "90f03bbd69b53a9f2b2207c26df5d08780f684f34bb66cfe1b44679db0d36909"
+    },
+    {
+      "path": "aux-root-coherent-new-registration-002.log",
+      "sha256": "c9166159016b1aeadc40e69f4dc784befe8956f541a5ffc65457af72c215bc1e"
+    },
+    {
+      "path": "aux-root-coherent-renderer-010.log",
+      "sha256": "2b8021a67aeb8a7b383226758f5e20de2b2a253e2cfb25d6b1761ae520c57958"
+    },
+    {
+      "path": "aux-root-coherent-budget-010.log",
+      "sha256": "5a49d928ae6b8518fab21edd9c6e4d05cbf4e6d56ec437dc98bb9818e511220e"
+    },
+    {
+      "path": "aux-root-original-mention-retry-controls-001.log",
+      "sha256": "02b0b43a93d8bc16ef25afb125865db6bb48308db1e8c1a5c503b48d5b2cda4e"
+    }
+  ],
+  "correctionHistory": "Root omitted Page control-default declaration during contextual composition; first source build/registration and renderer failed genuinely. Added exact original packet declaration; build/types/whole source suite/registration passed. Original failure logs retained in /tmp. No gate waiver."
+}

@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "callerProofSha256": "11fe755de69efe02856749cb6a2657f8c454905167b9b057d4a6db300c5069ab",
+  "harnessHead": "f94f2b20153d729638389b818cdf6d34fd137869",
+  "nativeProductIdentity": {
+    "commit": "259693e22afc9801123eb2cdbaf0400c5211b1aa",
+    "tree": "c9ed35f0ee3668f7072f2d2ca128c21811ebbf72",
+    "dirty": false,
+    "label": "259693e22afc9801123eb2cdbaf0400c5211b1aa"
+  },
+  "only2OriginalProtocolLeavesChanged": true,
+  "actualDependencyRows": 286,
+  "actualOwnedWorkspaceJoins": 75,
+  "actualExactOriginalDistCopies": 1664,
+  "dependencyAndLeafChecksPassedInPriorRootInvocation": true,
+  "appLaunched": false
+}
