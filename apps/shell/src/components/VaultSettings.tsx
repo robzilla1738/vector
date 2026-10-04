@@ -5,6 +5,10 @@ import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { VaultAccessRecord, VaultGrant, VaultItem, VaultStatus } from "@aux/contracts";
 import { call } from "../store";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/class-props";
 
 export function VaultSettings() {
   const [status, setStatus] = useState<VaultStatus | null>(null);
@@ -38,7 +42,7 @@ export function VaultSettings() {
     finally { setBusy(false); }
   }
   return <section {...staticFieldProps} aria-label="Agent vault">
-    <div className="drawer-section">Sign-ins and agent vault</div>
+    <div {...auxClassDrawerSectionProps}>Sign-ins and agent vault</div>
     <p {...staticHintProps}>Locked store for site credentials. Aux offers to save sign-ins and fills them natively on the matching site; agents receive opaque fill references only. Secrets stay in OS encryption and never reach models, logs, observations or saved results.</p>
     {status && <output {...staticHintProps} data-block>{!status.available ? (status.error ?? "Vault requires the Aux desktop app.") : status.locked ? "Locked. Unlock to save or fill credentials." : status.configured ? `Unlocked · ${status.itemCount} saved ${status.itemCount === 1 ? "credential" : "credentials"}` : "No credentials saved."}</output>}
     {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
@@ -61,7 +65,7 @@ export function VaultSettings() {
       <label>Secret<input type="password" autoComplete="off" value={secret} required onChange={event => setSecret(event.target.value)} /></label>
       <div {...staticRowProps}>
         <button {...smallButtonProps} disabled={busy || !label.trim() || !origin.trim() || !secret}>Save credential</button>
-        <button type="button" {...smallGhostButtonProps} disabled={busy} onClick={() => void action(async () => {
+        <button {...auxNativeButtonTypeProps} {...smallGhostButtonProps} disabled={busy} onClick={() => void action(async () => {
           const generated = await call("vault.generate", { length: 20 });
           setSecret(generated.password);
         })}>Generate password</button>

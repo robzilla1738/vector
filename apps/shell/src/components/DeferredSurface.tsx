@@ -3,6 +3,7 @@ import { smallGhostButtonProps } from "../ui/button-props";
 import { Component, Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useStore } from "../store";
 import { SurfaceSkeleton } from "./Skeleton";
+import { staticPrimaryButtonProps as auxClassPrimaryButtonProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
 
 class SurfaceBoundary extends Component<{children:ReactNode; fallback(error:Error):ReactNode}, {error:Error|null}> {
   override state: {error:Error|null} = {error:null};
@@ -26,7 +27,7 @@ function SurfaceStatus({label, error, retry, pane, onClose}: {label:string; erro
     }
   }}>{error ? <div>
     <h2>{label} couldn’t open</h2>
-    <p>Try again. Your browser tabs and saved work stay available.</p><div {...staticRowProps}><button className="btn primary" onClick={retry}>Try again</button><button className="btn" onClick={close}>Close</button></div><details><summary>Details</summary><p>{error.message}</p></details>
+    <p>Try again. Your browser tabs and saved work stay available.</p><div {...staticRowProps}><button {...auxClassPrimaryButtonProps} onClick={retry}>Try again</button><button {...auxClassButtonProps} onClick={close}>Close</button></div><details><summary>Details</summary><p>{error.message}</p></details>
   </div> : <div className="surface-loading">
     <SurfaceSkeleton label={`Opening ${label.toLowerCase()}…`} />
     <button {...smallGhostButtonProps} onClick={close}>Cancel</button>

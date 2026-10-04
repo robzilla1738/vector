@@ -15,6 +15,9 @@ import { Popover } from "../ui/popover";
 import "./ContextPicker.css";
 import { Checkbox } from "../ui";
 import { shellIconClose, shellIconGlobe, shellIconReload } from "./icons";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 const availableSource = (page: PageTarget, primaryPageId?: string) => availableConversationPage(page) && !page.loading && page.url.length <= 8192
   && page.pageId !== primaryPageId;
@@ -75,8 +78,8 @@ const SourceChip = memo(function SourceChip({ source, primaryPageId, disabled, b
   return <span className={status === "current" ? "" : "stale"}>
     {shellIconGlobe}<span title={source.url}>{source.pageId === primaryPageId ? `Captured source · ${label}` : label}</span>
     {status !== "current" && <small>{status === "changed" ? "Changed" : "Closed"}</small>}
-    {status === "changed" && <button ref={updateButton} type="button" data-command-id="update-browser-source" disabled={disabled || busy || !!page?.loading} aria-label={`Use current ${label}`} title={withShortcut("Use this tab's current page", updateShortcut)} onClick={event => { void executeCommand("update-browser-source", { payload: { pageId: source.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>{shellIconReload}</button>}
-    <button ref={removeButton} type="button" data-command-id="remove-browser-source" title={withShortcut("Remove selected browser source", removeShortcut)} disabled={disabled || busy} aria-label={`Remove ${label}`} onClick={event => { void executeCommand("remove-browser-source", { payload: { pageId: source.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>{shellIconClose}</button>
+    {status === "changed" && <button ref={updateButton} {...auxNativeButtonTypeProps} data-command-id="update-browser-source" disabled={disabled || busy || !!page?.loading} aria-label={`Use current ${label}`} title={withShortcut("Use this tab's current page", updateShortcut)} onClick={event => { void executeCommand("update-browser-source", { payload: { pageId: source.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>{shellIconReload}</button>}
+    <button ref={removeButton} {...auxNativeButtonTypeProps} data-command-id="remove-browser-source" title={withShortcut("Remove selected browser source", removeShortcut)} disabled={disabled || busy} aria-label={`Remove ${label}`} onClick={event => { void executeCommand("remove-browser-source", { payload: { pageId: source.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>{shellIconClose}</button>
   </span>;
 });
 
@@ -192,7 +195,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
         if (chosen && sources.some(source => source.pageId === chosen.pageId)) onSources(sources.filter(source => source.pageId !== chosen.pageId));
       }} linkedPageId={linkedPageId} disabled={disabled} />
       {splitCompanion && !sources.some(source => source.pageId === splitCompanion.pageId) &&
-        <button ref={splitButton} type="button" data-command-id="toggle-browser-source" {...smallGhostButtonProps} disabled={disabled || !!busyPageId || additionalSources.length >= 8}
+        <button ref={splitButton} {...auxNativeButtonTypeProps} data-command-id="toggle-browser-source" {...smallGhostButtonProps} disabled={disabled || !!busyPageId || additionalSources.length >= 8}
           title={withShortcut(`Include ${splitCompanion.title || hostOf(splitCompanion.url)} from the current split`, splitShortcut)}
           onClick={event => { void executeCommand("toggle-browser-source", { payload: { pageId: splitCompanion.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>Add split tab</button>}
       <Popover label="Add browser tabs" disabled={disabled} trigger={<span>{busyPageId ? "Loading tab…" : `Add tabs${additionalSources.length ? ` · ${additionalSources.length}` : ""}`}</span>}>

@@ -6,6 +6,9 @@ import { useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { Task, PageTarget } from "@aux/contracts";
 import { call, useStore } from "../store";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, onSaved }: {
   chatId: string; runId: string; goal: string; workspaceId?: string; page?: PageTarget; onSaved(task: Task): void;
@@ -36,6 +39,6 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
     <label>Space<select value={space} disabled={busy} required onChange={event => setSpace(event.target.value)}><option value="" disabled>Choose a Space</option>{spaces.map(entry => { const [id, workspaceId, name] = entry.split("\u0001"); return <option key={id} value={workspaceId}>{name}</option>; })}</select></label></details>
     {!space && <p {...staticHintProps}>Choose a Space in Task details to keep this work organized.</p>}
     {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
-    <div {...staticRowProps}><button type="button" {...smallButtonProps} disabled={busy} onClick={() => setOpen(false)}>Cancel</button><button {...smallButtonProps} disabled={busy || !space || !title.trim() || !objective.trim() || !success.trim()}>{busy ? "Saving…" : "Save task"}</button></div>
+    <div {...staticRowProps}><button {...auxNativeButtonTypeProps} {...smallButtonProps} disabled={busy} onClick={() => setOpen(false)}>Cancel</button><button {...smallButtonProps} disabled={busy || !space || !title.trim() || !objective.trim() || !success.trim()}>{busy ? "Saving…" : "Save task"}</button></div>
   </form>;
 }

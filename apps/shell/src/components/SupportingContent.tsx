@@ -9,6 +9,9 @@ import { useDismissable } from "../use-dismissable";
 import { DetailPane } from "../ui";
 import { shellIconOpen, shellIconResult } from "./icons";
 import "./SupportingContent.css";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 /** One supporting-content slot. The transcript and composer never remount. */
 export function SupportingContent({ container, title, children, onClose, initiallyExpanded = false, viewer = false, current }: {
@@ -66,7 +69,7 @@ export function SupportingContent({ container, title, children, onClose, initial
   useNativeDialog(overlay, dialog);
   const pane = viewer ? <div className="supporting-viewer">{children}</div> : <DetailPane title={title} closeRef={node=>{close.current=node;}} onClose={event => current && event ? run("close-conversation-supporting-content",event) : (overlay ? collapse() : onClose())}>{children}</DetailPane>;
   if (!wide) return <>
-    <button type="button" ref={open} data-command-id={current ? "open-conversation-supporting-content" : undefined} className="supporting-chip" onClick={event => current ? run("open-conversation-supporting-content",event) : setExpanded(true)} aria-haspopup="dialog">{shellIconResult}<span>{title}</span>{shellIconOpen}</button>
+    <button {...auxNativeButtonTypeProps} ref={open} data-command-id={current ? "open-conversation-supporting-content" : undefined} className="supporting-chip" onClick={event => current ? run("open-conversation-supporting-content",event) : setExpanded(true)} aria-haspopup="dialog">{shellIconResult}<span>{title}</span>{shellIconOpen}</button>
     {overlay && createPortal(<dialog ref={dialog} tabIndex={-1} className="supporting-dialog ctx-menu" aria-label={title} onCancel={event => { event.preventDefault(); collapse(); }} onClick={event => { if (event.target === event.currentTarget) collapse(); }}>{pane}</dialog>, document.body)}
   </>;
   return <aside className="supporting-content" style={{ width }}>

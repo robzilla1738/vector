@@ -2,6 +2,9 @@ import { useCallback, useId, useLayoutEffect, useMemo, useRef } from "react";
 import type { RunMessage } from "@aux/contracts";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
 import { errToast } from "../store";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 export function ConversationQueuedControls({ message, current, disabled, onCancel }: {
   message: RunMessage; current(): boolean; disabled?: boolean;
@@ -31,5 +34,5 @@ function QueuedAction({ edit, message, current, disabled, onCancel }: {
     if (!current()) throw new Error("Choose the current queued conversation message.");
     return onCancel(message, edit, current);
   }, errToast);
-  return <button type="button" ref={controlRef} disabled={disabled} data-command-id={command} onClick={run}>{edit ? "Edit" : "Remove"}</button>;
+  return <button {...auxNativeButtonTypeProps} ref={controlRef} disabled={disabled} data-command-id={command} onClick={run}>{edit ? "Edit" : "Remove"}</button>;
 }

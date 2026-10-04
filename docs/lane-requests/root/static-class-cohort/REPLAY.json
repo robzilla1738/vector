@@ -1,0 +1,8 @@
+{
+  "files": 80,
+  "spans": 201,
+  "exactSourceInverse": true,
+  "wholeNative154LoweringInverse": true,
+  "originalHelperPrefix": true,
+  "nativeExecution": false
+}

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CalendarConnection, CalendarEvent } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call } from "../store";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
 
 type ConnectionList = Awaited<ReturnType<typeof call<"calendar.connections.list">>>;
 type EventPage = { events: CalendarEvent[]; nextPageToken?: string; fetchedAt: number };
@@ -103,7 +104,7 @@ export function CalendarConnections() {
 
   const connection = list?.connections.find(item => item.connectionId === selected);
   return <section {...staticFieldProps} aria-label="Google Calendar connection">
-    <div className="drawer-section">Google Calendar</div>
+    <div {...auxClassDrawerSectionProps}>Google Calendar</div>
     <p {...staticHintProps}>Connect a Google account for read-only event access. Aux keeps each account separate and stores its authorization in secure desktop storage. Browser cookies are never used.</p>
     {!list?.available && <output {...staticHintProps} data-block>{list?.reason ?? "Checking Calendar availability…"}</output>}
     <div {...staticRowProps}><button {...smallButtonProps} disabled={busy || !list?.available} onClick={() => void connect()}>Connect Google Calendar</button><button {...smallButtonProps} disabled={busy} onClick={() => void refresh().catch(reason => setError(String(reason)))}>Refresh accounts</button></div>
@@ -114,6 +115,6 @@ export function CalendarConnections() {
         {page?.connectionId === connection.connectionId && <div {...staticFieldProps}><strong>Upcoming events</strong>{page.value.events.length ? page.value.events.map(event => <div className="field" key={`${event.source.connectionId}:${event.eventId}`}><strong>{event.title}</strong><span {...staticHintProps}>{new Date(event.start).toLocaleString()} · {event.source.accountKey}</span></div>) : <p {...staticHintProps}>No events in this range.</p>}{page.value.nextPageToken && <button {...smallButtonProps} disabled={busy} onClick={() => void read(connection, page.value.nextPageToken)}>Load more</button>}</div>}</>}
     </>}
     {message && <output {...staticHintProps} data-block>{message}</output>}
-    {error && <p className="hint err" role="alert">{error}</p>}
+    {error && <p {...auxClassErrorHintProps} role="alert">{error}</p>}
   </section>;
 }

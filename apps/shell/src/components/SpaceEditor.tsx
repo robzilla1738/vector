@@ -10,6 +10,11 @@ import { useStore } from "../store";
 import { SPACE_COLORS, spaceThemeColor, type Space, type SpaceColor } from "../workspace";
 import { Dialog } from "../ui";
 import "./SpaceEditor.css";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+} from "../ui/native-attribute-props";
+import { staticButtonProps as auxClassButtonProps, staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
 
 const PRESET_HUE: Record<SpaceColor, number> = {
   blue: 250,
@@ -117,7 +122,7 @@ export default function SpaceEditor({
           />
         ))}
         <button
-          type="button"
+          {...auxNativeButtonTypeProps}
           role="radio"
           aria-checked={custom}
           aria-label="Custom color"
@@ -131,7 +136,7 @@ export default function SpaceEditor({
         style={{ "--space-color": spaceThemeColor(theme) } as React.CSSProperties}
       >
         <button
-          type="button"
+          {...auxNativeButtonTypeProps}
           className="space-color-pad"
           aria-label="Color pad"
           title="Choose hue and lightness"
@@ -210,17 +215,17 @@ export default function SpaceEditor({
           className="space-grain-preview"
           data-space={color}
           style={custom ? ({ "--space-color": spaceThemeColor(theme) } as React.CSSProperties) : undefined}
-          aria-hidden="true"
+          {...auxNativeAriaHiddenProps}
         />
         <div className="space-theme-actions">
           <button
-            type="button"
-            className="btn"
+            {...auxNativeButtonTypeProps}
+            {...auxClassButtonProps}
             onClick={() => setGrain((value) => (value >= 100 ? 0 : Math.min(100, value + 25)))}
           >
             Cycle grain
           </button>
-          <button type="button" className="btn" onClick={reset}>
+          <button {...auxNativeButtonTypeProps} {...auxClassButtonProps} onClick={reset}>
             Reset theme
           </button>
         </div>
@@ -231,10 +236,10 @@ export default function SpaceEditor({
         </p>
       )}
       <div className="sheet-acts">
-        <button className="btn" onClick={onClose}>
+        <button {...auxClassButtonProps} onClick={onClose}>
           Cancel
         </button>
-        <button className="btn primary" disabled={!name.trim() || saving} onClick={() => void save()}>
+        <button {...auxClassPrimaryButtonProps} disabled={!name.trim() || saving} onClick={() => void save()}>
           {saving ? "Saving…" : space ? "Save" : "Create"}
         </button>
       </div>

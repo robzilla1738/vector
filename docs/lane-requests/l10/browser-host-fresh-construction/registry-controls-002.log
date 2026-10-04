@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /private/tmp/aux-l10-static-class-reserve
+
+ ✓ |unit| tests/unit/browser-host-registry.test.ts (4 tests) 24ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  18:14:38
+   Duration  748ms (transform 114ms, setup 0ms, collect 393ms, tests 24ms, environment 0ms, prepare 140ms)
+

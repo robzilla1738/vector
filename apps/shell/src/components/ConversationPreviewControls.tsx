@@ -3,6 +3,9 @@ import type { PageTarget } from "@aux/contracts";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
 import { guardCommandCompletion } from "../command-completion";
 import { errToast } from "../store";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 export function previewPageIdentity(page: PageTarget | undefined) {
   return page ? JSON.stringify([page.pageId, page.targetId, page.backend, page.windowKind, page.url, page.documentEpoch, page.sessionId, page.windowId, page.controller, page.controllerEpoch, page.ownedByRuntime]) : null;
@@ -30,5 +33,5 @@ export function ConversationPreviewAction({ command, current, invoke, controlRef
     return invoke();
   }, original => { if (current()) errToast(original); });
   const originalRef = useCallback((node: HTMLButtonElement | null) => { ref(node); if (controlRef) controlRef.current = node; }, [ref, controlRef]);
-  return <button {...props} type="button" ref={originalRef} data-command-id={command} onClick={run}/>;
+  return <button {...props} {...auxNativeButtonTypeProps} ref={originalRef} data-command-id={command} onClick={run}/>;
 }

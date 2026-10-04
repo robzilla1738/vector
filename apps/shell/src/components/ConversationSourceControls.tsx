@@ -4,6 +4,9 @@ import { usePreferenceCommand } from "../settings/sections/preference-command";
 import { guardCommandCompletion } from "../command-completion";
 import { errToast } from "../store";
 import { SourceRow } from "./SourceRow";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 type SourceCommand = "toggle-conversation-sources" | "select-conversation-source" | "open-conversation-recorded-source" | "choose-conversation-source-profile" | "cancel-conversation-source-profile";
 /** A source is recorded provenance; this owner never synthesizes a live document or Profile. */
@@ -33,7 +36,7 @@ export function ConversationSourceAction({ command, current, invoke, controlRef,
 }) {
   const [ref, run] = useSourceControl(command, current, invoke);
   const originalRef = useCallback((node: HTMLButtonElement | null) => { ref(node); if (controlRef) controlRef.current = node; }, [ref, controlRef]);
-  return <button {...props} type="button" ref={originalRef} data-command-id={command} onClick={run}/>;
+  return <button {...props} {...auxNativeButtonTypeProps} ref={originalRef} data-command-id={command} onClick={run}/>;
 }
 export function ConversationSourceRow({ command, current, invoke, source, profileNames }: {
   command: "select-conversation-source" | "open-conversation-recorded-source"; current(): boolean; invoke(): unknown; source: ConversationSource; profileNames: Record<string, string>;

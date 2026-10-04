@@ -1,0 +1,71 @@
+{
+  "document": 720,
+  "font": true,
+  "query": "original query",
+  "scopes": [
+    {
+      "height": 26,
+      "minHeight": "auto",
+      "pressed": "true",
+      "text": "All",
+      "width": 30.0703125
+    },
+    {
+      "height": 26,
+      "minHeight": "auto",
+      "pressed": "false",
+      "text": "Open Tabs",
+      "width": 74.0390625
+    },
+    {
+      "height": 26,
+      "minHeight": "auto",
+      "pressed": "false",
+      "text": "Recently Closed",
+      "width": 105.2109375
+    },
+    {
+      "height": 26,
+      "minHeight": "auto",
+      "pressed": "false",
+      "text": "Bookmarks",
+      "width": 78.1015625
+    },
+    {
+      "height": 26,
+      "minHeight": "auto",
+      "pressed": "false",
+      "text": "History",
+      "width": 54.96875
+    },
+    {
+      "height": 26,
+      "minHeight": "auto",
+      "pressed": "false",
+      "text": "Extensions",
+      "width": 75.96875
+    },
+    {
+      "height": 26,
+      "minHeight": "auto",
+      "pressed": "false",
+      "text": "Sites",
+      "width": 43.640625
+    },
+    {
+      "height": 26,
+      "minHeight": "auto",
+      "pressed": "false",
+      "text": "Work",
+      "width": 44.890625
+    },
+    {
+      "height": 26,
+      "minHeight": "auto",
+      "pressed": null,
+      "text": "Ranking",
+      "width": 60.921875
+    }
+  ],
+  "viewport": 720
+}

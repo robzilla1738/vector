@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /private/tmp/aux-l10-static-class-reserve
+
+ ✓ |unit| apps/shell/src/ui/native-attribute-props.test.tsx (3 tests) 16ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  17:50:22
+   Duration  416ms (transform 17ms, setup 0ms, collect 52ms, tests 16ms, environment 183ms, prepare 32ms)
+

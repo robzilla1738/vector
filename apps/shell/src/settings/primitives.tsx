@@ -1,5 +1,6 @@
 import { staticHintProps } from "../ui/class-props";
 import { useId, type ReactNode } from "react";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/class-props";
 
 export function SettingsSection({
   name,
@@ -16,7 +17,7 @@ export function SettingsSection({
 }) {
   return (
     <section className={className || undefined} data-settings-section={name} hidden={hidden}>
-    <h2 className="drawer-section">{title}</h2>
+    <h2 {...auxClassDrawerSectionProps}>{title}</h2>
       {children}
     </section>
   );

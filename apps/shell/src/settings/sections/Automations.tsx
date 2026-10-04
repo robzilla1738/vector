@@ -10,6 +10,9 @@ import { bridge } from "../../bridge";
 import { openSavedSkill } from "../../task-navigation";
 import { RoutineSchedule, type CalendarTriggerAccounts } from "../../components/RoutineSchedule";
 import { SettingsField, SettingsSection } from "../primitives";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../../ui/native-attribute-props";
 
 const effectiveCap = (routine: Routine) => routine.spendCapUsd ?? 50;
 
@@ -134,7 +137,7 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
       </label>
       <RoutineSchedule mode="create" trigger={{ kind: "schedule", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", hour: 9, minute: 0, days: [1, 2, 3, 4, 5] }} calendar={calendar} disabled={busy || !taskId} onSave={(trigger) => void create(trigger)} />
       {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
-      <button {...smallGhostButtonProps} type="button" onClick={onClose} disabled={busy}>Cancel</button>
+      <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={onClose} disabled={busy}>Cancel</button>
     </dialog>, document.body,
   );
 }
@@ -263,7 +266,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
         hint="Scheduled Skills and Calendar checks run while Aux is open. Calendar checks poll granted accounts once a minute; no event titles are stored in automation runs."
         searchTerms={["monitor", "schedule", "calendar", "automation"]}
       >
-        <button {...smallButtonProps} type="button" disabled={!workspaceId || !!busyId} onClick={() => setCreating(true)}>Create automation</button>
+        <button {...smallButtonProps} {...auxNativeButtonTypeProps} disabled={!workspaceId || !!busyId} onClick={() => setCreating(true)}>Create automation</button>
         <label>
           Space
           <select
@@ -388,9 +391,9 @@ export function AutomationsSettings({ active }: { active: boolean }) {
               {item.run.status.replaceAll("_", " ")} · {new Date(item.run.createdAt).toLocaleString()}
               {item.run.reason ? ` · ${item.run.reason}` : ""}
             </span>
-            <button {...smallGhostButtonProps} type="button" onClick={() => void call("routines.get", { routineId: item.run.routineId })
+            <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={() => void call("routines.get", { routineId: item.run.routineId })
               .then(({ routine }) => openSavedSkill(routine)).catch(errToast)}>Open Skill</button>
-            {item.run.runId && <button {...smallGhostButtonProps} type="button"
+            {item.run.runId && <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps}
               disabled={!!outcomeBusy}
               onClick={() => {
                 setOutcomeBusy(item.run.routineRunId);

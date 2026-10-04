@@ -11,6 +11,9 @@ import { hostOf } from "../workspace";
 import { Popover } from "../ui/popover";
 import { shellIconCheck, shellIconDown, shellIconGlobe } from "./icons";
 import "./ContextPicker.css";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 const availablePage = availableConversationPage;
 
@@ -33,7 +36,7 @@ function ContextChoice({ choice, page, currentPage, disabled = false, selected, 
       return onSelect(choice);
     });
   }, [choice, page, currentPage, disabled, onSelect]);
-  return <button ref={button} type="button" className="context-choice" disabled={disabled} data-command-id="select-browser-context"
+  return <button ref={button} {...auxNativeButtonTypeProps} className="context-choice" disabled={disabled} data-command-id="select-browser-context"
     title={withShortcut(title, shortcut)} aria-pressed={selected}
     onClick={event => { void executeCommand("select-browser-context", { payload: { pageId: choice }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>
     {children}{selected && shellIconCheck}

@@ -16,6 +16,7 @@ import { useScopedCommandControls } from "../../scoped-command-controls";
 import { PreferenceAction } from "./preference-command";
 import { bindingFromKeydown } from "../../components/ShortcutsSetting";
 import { SettingsField, SettingsSection } from "../primitives";
+import { staticPrimaryButtonProps as auxClassPrimaryButtonProps, staticGhostButtonProps as auxClassGhostButtonProps } from "../../ui/class-props";
 
 export interface SelectionCaptureNativeStatus {
   /** A native registration result is meaningful only for the current saved revision. */
@@ -171,7 +172,7 @@ export function SelectionCaptureSettings({ active, settings, onSave, nativeStatu
     {conflict && <p role="alert">{conflict}</p>}
     {error && <p role="alert">{error}</p>}
     {message && <output>{message}</output>}
-    <div className="row wrap"><PreferenceAction command="save-selection-capture-settings" scopeId={scopeId} className="btn primary" disabled={busy || unavailable || !dirty || changedElsewhere || !validation.success || !!conflict} invoke={save}>{busy ? "Saving…" : "Save Selection & Capture"}</PreferenceAction>
-      {(dirty || changedElsewhere) && <PreferenceAction command="reload-selection-capture-settings" scopeId={scopeId} className="btn ghost" disabled={busy || unavailable} invoke={() => { requireCurrent(); draftRef.current = saved; setDraft(saved); setBaseKey(savedKey); setError(""); setMessage("Saved settings reloaded. Unsaved edits discarded."); }}>Reload saved settings</PreferenceAction>}</div>
+    <div className="row wrap"><PreferenceAction command="save-selection-capture-settings" scopeId={scopeId} {...auxClassPrimaryButtonProps} disabled={busy || unavailable || !dirty || changedElsewhere || !validation.success || !!conflict} invoke={save}>{busy ? "Saving…" : "Save Selection & Capture"}</PreferenceAction>
+      {(dirty || changedElsewhere) && <PreferenceAction command="reload-selection-capture-settings" scopeId={scopeId} {...auxClassGhostButtonProps} disabled={busy || unavailable} invoke={() => { requireCurrent(); draftRef.current = saved; setDraft(saved); setBaseKey(savedKey); setError(""); setMessage("Saved settings reloaded. Unsaved edits discarded."); }}>Reload saved settings</PreferenceAction>}</div>
   </SettingsSection>;
 }

@@ -1,0 +1,33 @@
+{
+  "owned": [
+    {
+      "path": "apps/shell/src/components/CommandBar.css",
+      "before": "1ca843878170208798b3b9473a385a5a7ecf4e5fc2abbe07afc925e8b8601925",
+      "after": "4676b024890a8f22d903176974aab7501c0b1373f09f6124e3480be13c06a6b8"
+    },
+    {
+      "path": "apps/shell/src/components/CommandBar.provider-target.test.tsx",
+      "before": null,
+      "after": "c176442096af983baabe71b3608f1d74942e361f2172e4191442157e9f8fc514"
+    }
+  ],
+  "patchSHA256": "7b8d588d8b48741c09a395b3a256cda00b93e59ccdd3df8e93dda74dd91bb6d4",
+  "replay": {
+    "forwardReverseForward": "PASS",
+    "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-provider-target-replay-kssjl4dx"
+  },
+  "producer": {
+    "path": "apps/shell/src/components/CommandBar.tsx",
+    "sha256": "890ba43435f31f3701fe0c8cdcf98d964df1a69188c68068cdc51acfa5cf5940"
+  },
+  "references": [
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/layout_constants.cc",
+      "sha256": "354a0a83efda3d2782c00285b900940ddc0e185393efd90807e8a0d2b2f1b6f8"
+    },
+    {
+      "path": "/private/tmp/aux-design-provider-scope-target/apps/shell/src/tokens.css",
+      "sha256": "c0036220218afbe4bd7ff1fe395cf842504b849e6df2e7dd668c5a056a251c1f"
+    }
+  ]
+}

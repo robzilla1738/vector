@@ -5,6 +5,7 @@ import type { SetMember } from "@aux/contracts";
 import { useStore, errToast } from "../store";
 import { hostOf } from "../workspace";
 import { shellIconAlert, shellIconCheck, shellIconCircle, shellIconClose, shellIconLayers, shellIconPlay, shellIconTable } from "./icons";
+import { staticSpacerProps as auxClassSpacerProps, staticNumericCountProps as auxClassNumericCountProps } from "../ui/class-props";
 
 const ORDER: SetMember["status"][] = ["completed", "running", "failed", "queued", "skipped"];
 
@@ -39,7 +40,7 @@ export function SetPanel({ setId }: { setId: string }) {
           {running ? "Working" : counts.completed === total ? "Done" : counts.queued === total ? "Queued" : "Partly done"}
         </span>
         <span className="run-time" title="Members done">{counts.completed}/{total} done</span>
-        <span className="sp" />
+        <span {...auxClassSpacerProps} />
         <button {...smallButtonProps} onClick={() => { void refreshResults(set.setId).then(() => setMode("table")).catch(errToast); }}>
           {shellIconTable} Results
         </button>
@@ -60,7 +61,7 @@ export function SetPanel({ setId }: { setId: string }) {
       <section className="run-section">
         <div className="run-section-head">
           <span>Members</span>
-          <span className="count nums">{total}</span>
+          <span {...auxClassNumericCountProps}>{total}</span>
         </div>
         <div className="member-grid" role="list" aria-label="Members">
           {list.map((m) => (
@@ -89,7 +90,7 @@ export function SetPanel({ setId }: { setId: string }) {
         <section className="run-section">
           <div className="run-section-head">
             <span>Failed</span>
-            <span className="count nums">{failed.length}</span>
+            <span {...auxClassNumericCountProps}>{failed.length}</span>
           </div>
           <div className="set-errors">
             {failed.slice(0, 5).map((m) => (

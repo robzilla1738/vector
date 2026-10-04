@@ -4,6 +4,11 @@ import { useCallback, useId, useLayoutEffect, useRef, useState, type ButtonHTMLA
 import { shellIconClose, shellIconFolder, shellIconMore } from "../components/icons";
 import { Menu } from "./dialog";
 import "./ui.css";
+import {
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "./native-attribute-props";
+import { staticTextProps as auxClassTextProps } from "./class-props";
 
 export { Dialog, Menu } from "./dialog";
 
@@ -29,7 +34,7 @@ export function Textarea({ className = "", ...props }: TextareaHTMLAttributes<HT
 }
 
 export function Skeleton({ className = "", ...props }: HTMLAttributes<HTMLSpanElement>) {
-  return <span {...props} aria-hidden="true" className={`ui-skeleton ${className}`.trim()} />;
+  return <span {...props} {...auxNativeAriaHiddenProps} className={`ui-skeleton ${className}`.trim()} />;
 }
 
 export function ScrollArea({ className = "", children, onScroll, tabIndex, ...props }: HTMLAttributes<HTMLDivElement>) {
@@ -118,7 +123,7 @@ export function Tabs<T extends string>({ label, value, onChange, items, panelId,
     focus(next);
   }}>
     {items.map(item => <button key={item.value} ref={node => { if (node) buttons.current.set(item.value, node); else buttons.current.delete(item.value); }}
-      type="button" role="tab" id={`${panelId}-${item.value}`} aria-controls={panelId} aria-label={item.ariaLabel}
+      {...auxNativeButtonTypeProps} role="tab" id={`${panelId}-${item.value}`} aria-controls={panelId} aria-label={item.ariaLabel}
       aria-selected={item.value === value} tabIndex={item.value === stop ? 0 : -1}
       className={item.value === value ? "active" : ""} disabled={item.disabled}
       onClick={() => onChange(item.value)}>{item.label}</button>)}
@@ -142,31 +147,31 @@ export function ActionMenu({ label, actions, children = shellIconMore, triggerRe
   };
   const close = useCallback(() => setOpen(false), []);
   return <>
-    <button ref={node => { trigger.current = node; triggerRef?.(node); triggerControl?.(node,activate); }} type="button" className="icon-btn ui-menu-trigger" aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} onClick={event => requestTrigger(event,"toggle")} onKeyDown={event => {
+    <button ref={node => { trigger.current = node; triggerRef?.(node); triggerControl?.(node,activate); }} {...auxNativeButtonTypeProps} className="icon-btn ui-menu-trigger" aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} onClick={event => requestTrigger(event,"toggle")} onKeyDown={event => {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); requestTrigger(event,event.key === "ArrowUp"?"last":"first"); }
     }}>{children}</button>
-    {open && <Menu id={id} label={label} onClose={close} anchor={trigger} returnFocus={trigger} atEnd={openAtEnd.current} className="menu ctx-menu ui-action-menu">{actions.map(action => <button key={action.label} ref={action.controlRef} type="button" role="menuitem" className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={event => { close(); trigger.current?.focus({ preventScroll: true }); action.onSelect(event); }}>
-      <span className="menu-ico">{action.icon}</span><span className="t">{action.label}</span>{action.shortcut && <Kbd>{action.shortcut}</Kbd>}
+    {open && <Menu id={id} label={label} onClose={close} anchor={trigger} returnFocus={trigger} atEnd={openAtEnd.current} className="menu ctx-menu ui-action-menu">{actions.map(action => <button key={action.label} ref={action.controlRef} {...auxNativeButtonTypeProps} role="menuitem" className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={event => { close(); trigger.current?.focus({ preventScroll: true }); action.onSelect(event); }}>
+      <span className="menu-ico">{action.icon}</span><span {...auxClassTextProps}>{action.label}</span>{action.shortcut && <Kbd>{action.shortcut}</Kbd>}
     </button>)}</Menu>}
   </>;
 }
 
 export function ListRow({ title, description, leading, trailing, selected = false, disabled = false, onOpen, openRef }: { title: string; description?: ReactNode; leading?: ReactNode; trailing?: ReactNode; selected?: boolean; disabled?: boolean; onOpen(event?: MouseEvent<HTMLButtonElement>): void; openRef?: (node: HTMLButtonElement | null) => void }) {
-  return <div className={`ui-list-row${selected ? " selected" : ""}`}><button ref={openRef} type="button" className="ui-list-open" disabled={disabled} onClick={onOpen} aria-current={selected ? "true" : undefined} title={title}>
+  return <div className={`ui-list-row${selected ? " selected" : ""}`}><button ref={openRef} {...auxNativeButtonTypeProps} className="ui-list-open" disabled={disabled} onClick={onOpen} aria-current={selected ? "true" : undefined} title={title}>
     {leading && <span className="ui-list-icon">{leading}</span>}<span className="ui-list-copy"><strong>{title}</strong>{description && <small>{description}</small>}</span>
   </button>{trailing && <div className="ui-list-actions">{trailing}</div>}</div>;
 }
 
 export function Badge({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "active" | "success" | "warning" | "error" }) {
-  return <span className="ui-status" data-tone={tone}><span aria-hidden="true" />{label}</span>;
+  return <span className="ui-status" data-tone={tone}><span {...auxNativeAriaHiddenProps} />{label}</span>;
 }
 
 export function EmptyState({ title, description, action, icon = shellIconFolder }: { title: string; description?: ReactNode; action?: ReactNode; icon?: ReactNode }) {
-  return <div className="ui-empty"><span className="ui-empty-icon" aria-hidden="true">{icon}</span><strong>{title}</strong>{description && <p>{description}</p>}{action}</div>;
+  return <div className="ui-empty"><span className="ui-empty-icon" {...auxNativeAriaHiddenProps}>{icon}</span><strong>{title}</strong>{description && <p>{description}</p>}{action}</div>;
 }
 
 export function DetailPane({ title, metadata, actions, onClose, children, className = "", headingRef, closeRef }: { title: string; metadata?: ReactNode; actions?: ReactNode; onClose?: (event?: MouseEvent<HTMLButtonElement>) => void; closeRef?: (node: HTMLButtonElement | null) => void; children: ReactNode; className?: string; headingRef?: RefObject<HTMLElement | null> }) {
-  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button ref={closeRef} type="button" {...staticIconButtonProps} aria-label={`Close ${title}`} onClick={onClose}>{shellIconClose}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
+  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button ref={closeRef} {...auxNativeButtonTypeProps} {...staticIconButtonProps} aria-label={`Close ${title}`} onClick={onClose}>{shellIconClose}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
 }
 
 export function ComposerFrame({ context, notices, children }: { context?: ReactNode; notices?: ReactNode; children: ReactNode }) {

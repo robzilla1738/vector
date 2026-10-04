@@ -11,6 +11,9 @@ import { BrowserHostMethods as HostMethods } from "@aux/contracts/browser-host-m
 import { executeCommand } from "../commands";
 import { commandResult } from "../features/profiles/command-result";
 import { subscribeProfileMoves } from "../features/profiles/move-request";
+import {
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+} from "../ui/native-attribute-props";
 export function ProfileMoveConfirmation() {
   const { confirm, confirmation } = useConfirm();
   useEffect(() => {
@@ -58,12 +61,12 @@ export function ProfileSwitcher() {
     void commandResult("focus-profile-space",HostMethods.focusBrowserProfileSpace.result,{profileId,spaceId}).then(ok=>{if(!alive.current||request!==focusRequest.current.value)return;if(!ok)throw new Error("The Profile or Space is no longer available.");setOpen(false);}).catch(error=>{if(alive.current&&request===focusRequest.current.value)errToast(error);});
   };
   return <div className="profile-switcher" data-space={current?.color ?? SPACE_COLORS[0]}>
-    <div className="profile-color-stripe" aria-hidden="true" />
-    <button ref={chip} className="profile-chip" aria-expanded={open} aria-label="Choose Profile and Space" onClick={() => setOpen(value => !value)}><span aria-hidden="true">{current?.name.slice(0,1).toLocaleUpperCase() ?? "P"}</span>{current?.name ?? "Profile"}</button>
+    <div className="profile-color-stripe" {...auxNativeAriaHiddenProps} />
+    <button ref={chip} className="profile-chip" aria-expanded={open} aria-label="Choose Profile and Space" onClick={() => setOpen(value => !value)}><span {...auxNativeAriaHiddenProps}>{current?.name.slice(0,1).toLocaleUpperCase() ?? "P"}</span>{current?.name ?? "Profile"}</button>
     {open && <Menu className="profile-menu" label="Profiles and Spaces" anchor={chip} returnFocus={chip} onClose={()=>setOpen(false)}>
       {profiles.map(profile => <div key={profile.id} className="profile-menu-group">
         <button className="profile-menu-profile" aria-current={profile.current ? "true" : undefined} data-space={profile.color ?? "blue"} onClick={() => focus(profile.id, null)}>{profile.icon === "code" ? shellIconCode : profile.icon === "travel" ? shellIconGlobe : profile.icon === "work" ? shellIconChromeSm : profile.icon === "study" ? shellIconBookmark : profile.icon === "home" ? shellIconFolder : shellIconPerson} {profile.name}</button>
-        {profile.spaces?.map(space => <button className="profile-menu-space" data-space={space.color} key={space.id} onClick={() => focus(profile.id, space.id)}><span className="space-dot" aria-hidden="true" />{space.name}</button>)}
+        {profile.spaces?.map(space => <button className="profile-menu-space" data-space={space.color} key={space.id} onClick={() => focus(profile.id, space.id)}><span className="space-dot" {...auxNativeAriaHiddenProps} />{space.name}</button>)}
       </div>)}
       <button onClick={() => { const request=++focusRequest.current.value;void executeCommand("show-profiles").then(()=>{if(alive.current&&request===focusRequest.current.value)setOpen(false);}).catch(error=>{if(alive.current&&request===focusRequest.current.value)errToast(error);}); }}>Manage Profiles…</button>
       <button onClick={() => setOpen(false)}>Close menu</button>
@@ -75,5 +78,5 @@ export function ProfileFooterStripe() {
   const [profile,setProfile] = useState<BrowserProfile>();
   useEffect(()=>{if(!inNativeHost||bridge.privateMode)return;let live=true,generation=0;const refresh=()=>{const request=++generation;void bridge.browserProfiles().then(items=>{if(live&&request===generation)setProfile(items.find(item=>item.current));}).catch(error=>{if(live&&request===generation)errToast(error);});};refresh();window.addEventListener("focus",refresh);return()=>{live=false;window.removeEventListener("focus",refresh);};},[]);
   if(!profile)return null;
-  return <div className="profile-footer-stripe" data-space={profile.color??"blue"} aria-hidden="true"/>;
+  return <div className="profile-footer-stripe" data-space={profile.color??"blue"} {...auxNativeAriaHiddenProps}/>;
 }

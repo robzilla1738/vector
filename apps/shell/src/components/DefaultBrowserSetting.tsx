@@ -7,6 +7,7 @@ import { errToast } from "../store";
 import { reportCommandCompletionFailure } from "../command-completion";
 import { registerScopedControl } from "../scoped-control-commands";
 import { useSettingsStatusOwner } from "../settings/sections/use-settings-status-owner";
+import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
 
 /** Registers Aux as the http/https handler; reports the measured OS state. */
 export function DefaultBrowserSetting() {
@@ -80,7 +81,7 @@ export function DefaultBrowserSetting() {
           )}
         </>
       )}
-      {error && <span className="hint err">{error}</span>}
+      {error && <span {...auxClassErrorHintProps}>{error}</span>}
     </div>
   );
 }

@@ -5,6 +5,8 @@ import "./ReviewedConnectors.css";
 import { useEffect, useState } from "react";
 import type { ConnectorCatalog, ConnectorEntry, Task, Workspace } from "@aux/contracts";
 import { call } from "../store";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
 
 type Kind = ConnectorEntry["kind"];
 type Review = {
@@ -169,7 +171,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
       aria-label="Connector access"
       data-setting="Connector access"
     >
-      <div className="drawer-section">Connector access</div>
+      <div {...auxClassDrawerSectionProps}>Connector access</div>
       <p {...staticHintProps}>
         Review each connection and the access currently available to a saved task. A connected account or
         approved server alone does not grant a task access.
@@ -233,7 +235,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
               {catalog?.entries.map((item) => (
                 <button
                   key={item.connectorId}
-                  type="button"
+                  {...auxNativeButtonTypeProps}
                   aria-current={selectedId === item.connectorId ? "true" : undefined}
                   onClick={() => {
                     setSelectedId(item.connectorId);
@@ -377,7 +379,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
           </div>
         )}
       {error && (
-        <p className="hint err" role="alert">
+        <p {...auxClassErrorHintProps} role="alert">
           {error}
         </p>
       )}

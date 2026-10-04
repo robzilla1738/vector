@@ -1,0 +1,5 @@
+Source-only fresh-construction request. Five private factories replace 90 exact direct expressions inside the fully retained BrowserHostMethods/HostEvents table. Every factory calls the original fresh constructor chain per occurrence; no schemas are cached. Original constructor arguments, order and imported object identities remain unchanged.
+
+Whole source reconstruction/inverse, 224-schema shared-reference/prototype/property-descriptor graph, 4,256 actual safeParse/error comparisons, and cached-optional negative control pass. The public declaration is byte-identical. Four original host registry controls pass. The original missing-zod fixture failure is retained; the owned root dependency join was added without modifying borrowed directories. Types and scoped lint pass.
+
+Actual packaged chrome154: before startup501916/CSS179481/total1848334; after startup501916/CSS179481/total1847631. Saves703 total bytes with startup unchanged. This does not close the coherent root budget deficit and confers no native qualification. No compiler/purity/loading/policy changes or native effects.

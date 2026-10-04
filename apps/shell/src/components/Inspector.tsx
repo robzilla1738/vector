@@ -5,6 +5,10 @@ import type { CompactObservation } from "@aux/contracts";
 import { useStore, call } from "../store";
 import { ObservationPanel } from "./ObservationPanel";
 import { DetailPane, Dialog, EmptyState } from "../ui";
+import {
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+} from "../ui/native-attribute-props";
+import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
 
 /**
  * Observation drawer — the compact observation of the active page (live), or
@@ -45,8 +49,8 @@ export function Inspector() {
           metadata={historical ? "Recorded snapshot · may differ from the live page" : "Current page observation"}
           actions={!historical && activePageId ? <button {...smallGhostButtonProps} onClick={() => setRetry(value => value + 1)}>Refresh</button> : undefined}>
           {!activePageId && !historical && <EmptyState title="No active page" description="Open a page to inspect its available content." />}
-          {err && <div role="alert"><p className="hint err">{err}</p><button {...smallButtonProps} onClick={() => setRetry(value => value + 1)}>Retry observation</button></div>}
-          {!obs && !err && (activePageId || historical) && <output className="drawer-loading" aria-live="polite" data-block><span className="spin" aria-hidden="true" /> Observing {page?.title || page?.url || activePageId}…</output>}
+          {err && <div role="alert"><p {...auxClassErrorHintProps}>{err}</p><button {...smallButtonProps} onClick={() => setRetry(value => value + 1)}>Retry observation</button></div>}
+          {!obs && !err && (activePageId || historical) && <output className="drawer-loading" aria-live="polite" data-block><span className="spin" {...auxNativeAriaHiddenProps} /> Observing {page?.title || page?.url || activePageId}…</output>}
           {obs && <><ObservationPanel key={`${obs.pageId}:${obs.revision}`} obs={obs} />
             <details className="observation-raw"><summary>Raw observation</summary><pre className="obs-raw selectable">{obs.text}</pre></details></>}
         </DetailPane>

@@ -6,6 +6,7 @@ import { bridge } from "../bridge";
 import { useStore, errToast } from "../store";
 import { shellIconOpen } from "./icons";
 import "./QuickAsk.css";
+import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 
 const QuickAskToast = memo(function QuickAskToast({ id }: { id: number }) {
   const toast = useStore(state => state.toasts.find(item => item.id === id));
@@ -20,7 +21,7 @@ export function QuickAsk({onExpand}:{onExpand():void}) {
   const toastIds=useStore(useShallow(state=>state.toasts.map(item=>item.id)));
   return <main className="quick-ask" onKeyDown={event=>{if(event.key==="Escape"&&!event.defaultPrevented){event.preventDefault();event.stopPropagation();void bridge.quickAsk("dismiss").catch(errToast);}}}>
     <div className="quick-ask-panel">
-      <header className="quick-ask-header"><strong>Ask Aux</strong><div className="sp"/><button {...smallGhostButtonProps} onClick={()=>{useStore.getState().openConversationDraft(crypto.randomUUID());}}>New chat</button><button {...smallGhostButtonProps} onClick={onExpand} title="Continue in a full browser window">Expand {shellIconOpen}</button></header>
+      <header className="quick-ask-header"><strong>Ask Aux</strong><div {...auxClassSpacerProps}/><button {...smallGhostButtonProps} onClick={()=>{useStore.getState().openConversationDraft(crypto.randomUUID());}}>New chat</button><button {...smallGhostButtonProps} onClick={onExpand} title="Continue in a full browser window">Expand {shellIconOpen}</button></header>
       {!connected&&<output className="quick-ask-connection" data-block>Connecting to Aux… Your draft stays here.</output>}
       <Conversation embedded composerRef={composer}/>
       <div className="toasts" aria-live="polite">{toastIds.map(id=><QuickAskToast key={id} id={id}/>)}</div>

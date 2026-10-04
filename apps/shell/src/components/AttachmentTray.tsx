@@ -3,6 +3,9 @@ import { ConversationImageAction, ConversationImageChoice } from "./Conversation
 import { Checkbox } from "../ui";
 import { shellIconClose, shellIconResult } from "./icons";
 import "./AttachmentTray.css";
+import {
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+} from "../ui/native-attribute-props";
 
 export type AttachmentItem = {
   key: string;
@@ -30,7 +33,7 @@ export function AttachmentTray({ items, disabled, busy }: { items: AttachmentIte
 }
 function AttachmentChip({item,disabled,busy}:{item:AttachmentItem;disabled:boolean;busy:boolean}) {
   const openProps = {type:"button" as const,className:"attachment-open",title:`${item.name}${item.detail ? ` · ${item.detail}` : ""}`};
-  const content = <><span className="attachment-icon" aria-hidden="true">{item.icon ?? shellIconResult}</span><span><strong>{item.name}</strong><small>{item.included ? item.detail || ({ document: "Document", image: "Image", result: "Saved result" }[item.kind]) : "Excluded from next reply"}</small></span></>;
+  const content = <><span className="attachment-icon" {...auxNativeAriaHiddenProps}>{item.icon ?? shellIconResult}</span><span><strong>{item.name}</strong><small>{item.included ? item.detail || ({ document: "Document", image: "Image", result: "Saved result" }[item.kind]) : "Excluded from next reply"}</small></span></>;
   const removeProps = {type:"button" as const,className:"icon-btn xs","aria-label":`Remove ${item.name}`,disabled:disabled || busy};
   return <div key={item.key} className={`attachment-chip${item.included ? "" : " excluded"}`}>
       {item.imageCurrent ? <ConversationImageAction {...openProps} command="preview-conversation-image" current={item.imageCurrent} invoke={item.onOpen}>{content}</ConversationImageAction> : item.openControl ? item.openControl(openProps,content,item.onOpen) : <button {...openProps} onClick={item.onOpen}>{content}</button>}

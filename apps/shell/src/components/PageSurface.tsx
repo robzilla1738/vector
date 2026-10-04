@@ -5,6 +5,8 @@ import type { PageTarget } from "@aux/contracts";
 import { bridge, inMock, inNativeHost } from "../bridge";
 import { MockPage } from "./surfaces";
 import "./PageSurface.css";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
 
 type SurfaceState = {
   pageId: string;
@@ -73,7 +75,11 @@ export function PageSurface({ page }: { page: PageTarget }) {
               ? "This page could not be attached."
               : "This page is not available in this window."}
           </p>
-          <button type="button" className="btn" onClick={() => setAttempt((value) => value + 1)}>
+          <button
+            {...auxNativeButtonTypeProps}
+            {...auxClassButtonProps}
+            onClick={() => setAttempt((value) => value + 1)}
+          >
             Try again
           </button>
         </>

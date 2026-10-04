@@ -1,0 +1,1850 @@
+diff --git a/apps/shell/src/agent/AgentOverlay.tsx b/apps/shell/src/agent/AgentOverlay.tsx
+index 3d9e39c2c..fa199f5aa 100644
+--- a/apps/shell/src/agent/AgentOverlay.tsx
++++ b/apps/shell/src/agent/AgentOverlay.tsx
+@@ -8,6 +8,9 @@ import {
+   type HandoffRect,
+ } from "./handoff-cutout";
+ import "./AgentOverlay.css";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ 
+ const COPY = "Finish this step in the page, then return to Aux.";
+ 
+@@ -90,7 +93,7 @@ export function HandoffCutoutFrame({
+       data-cutout-w={cutout.w}
+       data-cutout-h={cutout.h}
+     >
+-      <div className="agent-handoff-shield" style={{ clipPath: cutoutClip(cutout) }} aria-hidden="true" />
++      <div className="agent-handoff-shield" style={{ clipPath: cutoutClip(cutout) }} {...auxNativeAriaHiddenProps} />
+       <p className="agent-handoff-copy" role="status">
+         {COPY}
+       </p>
+diff --git a/apps/shell/src/agent/RunPresence.tsx b/apps/shell/src/agent/RunPresence.tsx
+index 3a5622603..b17569251 100644
+--- a/apps/shell/src/agent/RunPresence.tsx
++++ b/apps/shell/src/agent/RunPresence.tsx
+@@ -1,5 +1,8 @@
+ import type { PageTarget, Run } from "@aux/contracts";
+ import "./RunPresence.css";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ 
+ export type RunPresenceState = "working" | "waiting" | "paused" | "human" | "review" | "done";
+ 
+@@ -23,6 +26,6 @@ export function RunPresence({ run, pages, compact = false }: { run: Run; pages:
+     working: "Working", waiting: "Waiting", paused: "Paused", human: "You control", review: "Review", done: "Done",
+   };
+   return <output className={`agent-presence ${presence.state}${compact ? " compact" : ""}`} aria-label="Task presence" title={presence.detail}>
+-    <span className="agent-presence-dot" aria-hidden="true" />{compact ? compactLabel[presence.state] : presence.label}{run.config?.taskId && !compact ? " · Saved task" : ""}
++    <span className="agent-presence-dot" {...auxNativeAriaHiddenProps} />{compact ? compactLabel[presence.state] : presence.label}{run.config?.taskId && !compact ? " · Saved task" : ""}
+   </output>;
+ }
+diff --git a/apps/shell/src/components/ActionConfirmation.tsx b/apps/shell/src/components/ActionConfirmation.tsx
+index 1501c27cb..933ebc569 100644
+--- a/apps/shell/src/components/ActionConfirmation.tsx
++++ b/apps/shell/src/components/ActionConfirmation.tsx
+@@ -8,6 +8,9 @@ import { useStore } from "../store";
+ import { bridge } from "../bridge";
+ import { Dialog } from "../ui";
+ import { useFeature } from "../use-feature";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ /** The person confirms a page action. Allow decides the approval once. */
+ export function ActionConfirmation() {
+@@ -67,8 +70,8 @@ function Confirm({ confirmation }: { confirmation: TrustConfirmation }) {
+         {site && <p {...staticHintProps}>{site}</p>}
+         {error && <p role="alert">{error}</p>}
+         <div className="sheet-acts">
+-          <button ref={decline} type="button" className="btn" disabled={busy} data-command-id="deny-agent-action" onClick={() => void decide("decline")}>{handoff ? "Close" : "Deny"}</button>
+-          {sitePermissions && preapprovable && <button type="button" className="btn" disabled={busy} data-command-id="allow-agent-action-for-origin" onClick={() => void decide("acceptForOrigin")}>Always allow on {site.replace(/\/$/, "")}</button>}
++          <button ref={decline} {...auxNativeButtonTypeProps} className="btn" disabled={busy} data-command-id="deny-agent-action" onClick={() => void decide("decline")}>{handoff ? "Close" : "Deny"}</button>
++          {sitePermissions && preapprovable && <button {...auxNativeButtonTypeProps} className="btn" disabled={busy} data-command-id="allow-agent-action-for-origin" onClick={() => void decide("acceptForOrigin")}>Always allow on {site.replace(/\/$/, "")}</button>}
+           <button type="submit" className="btn primary" disabled={busy || (handoff && !confirmation.pageId)}
+             data-command-id={handoff ? "take-over-agent-action" : "approve-agent-action"} aria-label={handoff ? "Take over" : "Allow once"}>{handoff ? "Take over" : "Allow once"}</button>
+         </div>
+diff --git a/apps/shell/src/components/AttachmentTray.tsx b/apps/shell/src/components/AttachmentTray.tsx
+index cbbdbfe1b..a82be7ec1 100644
+--- a/apps/shell/src/components/AttachmentTray.tsx
++++ b/apps/shell/src/components/AttachmentTray.tsx
+@@ -3,6 +3,9 @@ import { ConversationImageAction, ConversationImageChoice } from "./Conversation
+ import { Checkbox } from "../ui";
+ import { shellIconClose, shellIconResult } from "./icons";
+ import "./AttachmentTray.css";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ 
+ export type AttachmentItem = {
+   key: string;
+@@ -30,7 +33,7 @@ export function AttachmentTray({ items, disabled, busy }: { items: AttachmentIte
+ }
+ function AttachmentChip({item,disabled,busy}:{item:AttachmentItem;disabled:boolean;busy:boolean}) {
+   const openProps = {type:"button" as const,className:"attachment-open",title:`${item.name}${item.detail ? ` · ${item.detail}` : ""}`};
+-  const content = <><span className="attachment-icon" aria-hidden="true">{item.icon ?? shellIconResult}</span><span><strong>{item.name}</strong><small>{item.included ? item.detail || ({ document: "Document", image: "Image", result: "Saved result" }[item.kind]) : "Excluded from next reply"}</small></span></>;
++  const content = <><span className="attachment-icon" {...auxNativeAriaHiddenProps}>{item.icon ?? shellIconResult}</span><span><strong>{item.name}</strong><small>{item.included ? item.detail || ({ document: "Document", image: "Image", result: "Saved result" }[item.kind]) : "Excluded from next reply"}</small></span></>;
+   const removeProps = {type:"button" as const,className:"icon-btn xs","aria-label":`Remove ${item.name}`,disabled:disabled || busy};
+   return <div key={item.key} className={`attachment-chip${item.included ? "" : " excluded"}`}>
+       {item.imageCurrent ? <ConversationImageAction {...openProps} command="preview-conversation-image" current={item.imageCurrent} invoke={item.onOpen}>{content}</ConversationImageAction> : item.openControl ? item.openControl(openProps,content,item.onOpen) : <button {...openProps} onClick={item.onOpen}>{content}</button>}
+diff --git a/apps/shell/src/components/AutofillSetting.tsx b/apps/shell/src/components/AutofillSetting.tsx
+index 484550d64..1a3198250 100644
+--- a/apps/shell/src/components/AutofillSetting.tsx
++++ b/apps/shell/src/components/AutofillSetting.tsx
+@@ -7,6 +7,9 @@ import type { AutofillProfile } from "@aux/contracts";
+ import { bridge } from "../bridge";
+ import { useSettingsSaveOwner, type SettingsSaveOwner } from "../settings/sections/use-settings-save-owner";
+ import { useScopedCommandControls } from "../scoped-command-controls";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ const FIELDS: { key: keyof AutofillProfile; label: string; auto?: string }[] = [
+   { key: "name", label: "Name", auto: "name" },
+   { key: "email", label: "Email", auto: "email" },
+@@ -159,7 +162,7 @@ export function AutofillSetting({
+             <button
+               ref={(element) => publish("cancel", "cancel-personal-info", element, cancel)}
+               {...smallGhostButtonProps}
+-              type="button"
++              {...auxNativeButtonTypeProps}
+               data-command-id="cancel-personal-info"
+               disabled={busy || disabled}
+               onClick={(event) => run("cancel-personal-info", event)}
+diff --git a/apps/shell/src/components/BrowserContextPicker.tsx b/apps/shell/src/components/BrowserContextPicker.tsx
+index 62daa33c5..61aa209a9 100644
+--- a/apps/shell/src/components/BrowserContextPicker.tsx
++++ b/apps/shell/src/components/BrowserContextPicker.tsx
+@@ -11,6 +11,9 @@ import { hostOf } from "../workspace";
+ import { Popover } from "../ui/popover";
+ import { shellIconCheck, shellIconDown, shellIconGlobe } from "./icons";
+ import "./ContextPicker.css";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ const availablePage = availableConversationPage;
+ 
+@@ -33,7 +36,7 @@ function ContextChoice({ choice, page, currentPage, disabled = false, selected,
+       return onSelect(choice);
+     });
+   }, [choice, page, currentPage, disabled, onSelect]);
+-  return <button ref={button} type="button" className="context-choice" disabled={disabled} data-command-id="select-browser-context"
++  return <button ref={button} {...auxNativeButtonTypeProps} className="context-choice" disabled={disabled} data-command-id="select-browser-context"
+     title={withShortcut(title, shortcut)} aria-pressed={selected}
+     onClick={event => { void executeCommand("select-browser-context", { payload: { pageId: choice }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>
+     {children}{selected && shellIconCheck}
+diff --git a/apps/shell/src/components/BrowserContextTray.tsx b/apps/shell/src/components/BrowserContextTray.tsx
+index 430b3b4ee..2f8c9a8de 100644
+--- a/apps/shell/src/components/BrowserContextTray.tsx
++++ b/apps/shell/src/components/BrowserContextTray.tsx
+@@ -15,6 +15,9 @@ import { Popover } from "../ui/popover";
+ import "./ContextPicker.css";
+ import { Checkbox } from "../ui";
+ import { shellIconClose, shellIconGlobe, shellIconReload } from "./icons";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ const availableSource = (page: PageTarget, primaryPageId?: string) => availableConversationPage(page) && !page.loading && page.url.length <= 8192
+   && page.pageId !== primaryPageId;
+@@ -75,8 +78,8 @@ const SourceChip = memo(function SourceChip({ source, primaryPageId, disabled, b
+   return <span className={status === "current" ? "" : "stale"}>
+     {shellIconGlobe}<span title={source.url}>{source.pageId === primaryPageId ? `Captured source · ${label}` : label}</span>
+     {status !== "current" && <small>{status === "changed" ? "Changed" : "Closed"}</small>}
+-    {status === "changed" && <button ref={updateButton} type="button" data-command-id="update-browser-source" disabled={disabled || busy || !!page?.loading} aria-label={`Use current ${label}`} title={withShortcut("Use this tab's current page", updateShortcut)} onClick={event => { void executeCommand("update-browser-source", { payload: { pageId: source.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>{shellIconReload}</button>}
+-    <button ref={removeButton} type="button" data-command-id="remove-browser-source" title={withShortcut("Remove selected browser source", removeShortcut)} disabled={disabled || busy} aria-label={`Remove ${label}`} onClick={event => { void executeCommand("remove-browser-source", { payload: { pageId: source.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>{shellIconClose}</button>
++    {status === "changed" && <button ref={updateButton} {...auxNativeButtonTypeProps} data-command-id="update-browser-source" disabled={disabled || busy || !!page?.loading} aria-label={`Use current ${label}`} title={withShortcut("Use this tab's current page", updateShortcut)} onClick={event => { void executeCommand("update-browser-source", { payload: { pageId: source.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>{shellIconReload}</button>}
++    <button ref={removeButton} {...auxNativeButtonTypeProps} data-command-id="remove-browser-source" title={withShortcut("Remove selected browser source", removeShortcut)} disabled={disabled || busy} aria-label={`Remove ${label}`} onClick={event => { void executeCommand("remove-browser-source", { payload: { pageId: source.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>{shellIconClose}</button>
+   </span>;
+ });
+ 
+@@ -192,7 +195,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary,
+         if (chosen && sources.some(source => source.pageId === chosen.pageId)) onSources(sources.filter(source => source.pageId !== chosen.pageId));
+       }} linkedPageId={linkedPageId} disabled={disabled} />
+       {splitCompanion && !sources.some(source => source.pageId === splitCompanion.pageId) &&
+-        <button ref={splitButton} type="button" data-command-id="toggle-browser-source" {...smallGhostButtonProps} disabled={disabled || !!busyPageId || additionalSources.length >= 8}
++        <button ref={splitButton} {...auxNativeButtonTypeProps} data-command-id="toggle-browser-source" {...smallGhostButtonProps} disabled={disabled || !!busyPageId || additionalSources.length >= 8}
+           title={withShortcut(`Include ${splitCompanion.title || hostOf(splitCompanion.url)} from the current split`, splitShortcut)}
+           onClick={event => { void executeCommand("toggle-browser-source", { payload: { pageId: splitCompanion.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>Add split tab</button>}
+       <Popover label="Add browser tabs" disabled={disabled} trigger={<span>{busyPageId ? "Loading tab…" : `Add tabs${additionalSources.length ? ` · ${additionalSources.length}` : ""}`}</span>}>
+diff --git a/apps/shell/src/components/BrowserProfiles.tsx b/apps/shell/src/components/BrowserProfiles.tsx
+index 0b9a0fc42..2ec2f1c6e 100644
+--- a/apps/shell/src/components/BrowserProfiles.tsx
++++ b/apps/shell/src/components/BrowserProfiles.tsx
+@@ -9,6 +9,10 @@ import { executeCommand } from "../commands";
+ import { commandResult } from "../features/profiles/command-result";
+ import { SPACE_COLORS } from "../workspace";
+ import { bridge, inNativeHost, type BrowserProfile } from "../bridge";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function BrowserProfiles() {
+   const [profiles,setProfiles]=useState<BrowserProfile[]>([]);
+@@ -58,7 +62,7 @@ export function BrowserProfiles() {
+     });
+   };
+   const profileRow=(profile:BrowserProfile)=><div className="browser-profile-item" key={profile.id}>
+-    <ListRow title={profile.name} description={profile.current?"Current Profile":profile.archived?"Archived · data kept on this Mac":"Separate sign-ins and browsing data"} leading={<span className="browser-profile-avatar" aria-hidden="true">{profile.name.slice(0,1).toLocaleUpperCase()}</span>} selected={profile.current} disabled={busy||profile.current||profile.archived} onOpen={()=>openProfile(profile)} trailing={<>
++    <ListRow title={profile.name} description={profile.current?"Current Profile":profile.archived?"Archived · data kept on this Mac":"Separate sign-ins and browsing data"} leading={<span className="browser-profile-avatar" {...auxNativeAriaHiddenProps}>{profile.name.slice(0,1).toLocaleUpperCase()}</span>} selected={profile.current} disabled={busy||profile.current||profile.archived} onOpen={()=>openProfile(profile)} trailing={<>
+       {profile.current ? <Badge label="Current"/> : !profile.archived && <button {...smallButtonProps} disabled={busy} onClick={()=>openProfile(profile)}>Open</button>}
+       <ActionMenu label={`Actions for ${profile.name} Profile`} actions={[
+         {label:"Rename",disabled:busy,onSelect:()=>{setEditing(profile.id);setName(profile.name);}},
+@@ -94,7 +98,7 @@ export function BrowserProfiles() {
+     });}}>
+       <input {...staticFieldInputProps} aria-label="Profile name" placeholder="Work, Personal…" autoFocus maxLength={60} disabled={busy} value={name} onChange={event=>setName(event.target.value)}/>
+       <button {...smallButtonProps} disabled={busy||!name.trim()}>{busy?(editing==="new"?"Creating…":"Saving…"):(editing==="new"?"Create and open":"Save")}</button>
+-      <button {...smallGhostButtonProps} type="button" disabled={busy} onClick={()=>setEditing(null)}>Cancel</button>
++      <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} disabled={busy} onClick={()=>setEditing(null)}>Cancel</button>
+     </form>:<button {...smallButtonProps} disabled={busy||loading} onClick={()=>{setEditing("new");setName("");}}>New profile</button>}
+     {profiles.some(profile=>profile.archived&&!profile.current)&&<details className="browser-profile-archive">
+       <summary>Archived profiles</summary>
+diff --git a/apps/shell/src/components/ChatSessions.tsx b/apps/shell/src/components/ChatSessions.tsx
+index b57d599f4..d5faaba83 100644
+--- a/apps/shell/src/components/ChatSessions.tsx
++++ b/apps/shell/src/components/ChatSessions.tsx
+@@ -9,6 +9,9 @@ import { bridge } from "../bridge";
+ import { call, errToast, useStore } from "../store";
+ import { readChatFolders, writeChatFolder, removeChatFolder, moveChatToFolder, type ChatFolder } from "../chat-folders";
+ import { shellIconArchive, shellIconChats, shellIconClose, shellIconDown, shellIconFolder, shellIconPencil, shellIconRight, shellIconTrash } from "./icons";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ /** Shared session organization for both sidebar layouts. Folder entries belong to this browser profile. */
+ export function ChatSessions({ compact = false }: { compact?: boolean }) {
+@@ -129,7 +132,7 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
+     </div>
+     {renaming === item.chatId && <form className="session-editor" onSubmit={event => { event.preventDefault(); void rename(item); }}>
+       <input autoFocus aria-label="Conversation name" maxLength={160} value={chatName} onChange={event => setChatName(event.target.value)} />
+-      <button {...smallButtonProps} disabled={busy || !chatName.trim()}>Save</button><button {...smallGhostButtonProps} type="button" onClick={() => dismiss(item.chatId)}>Cancel</button>
++      <button {...smallButtonProps} disabled={busy || !chatName.trim()}>Save</button><button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={() => dismiss(item.chatId)}>Cancel</button>
+     </form>}
+     <div className={`session-disclosure${moving === item.chatId ? " open" : ""}`} aria-hidden={moving !== item.chatId} inert={moving !== item.chatId}><div><label className="session-move">Project<select ref={node => { if (node) projectSelectors.current.set(item.chatId, node); else projectSelectors.current.delete(item.chatId); }} aria-label={`Project for ${item.title}`} value={organization.members[item.chatId] && organization.folders.some(f => f.id === organization.members[item.chatId]) ? organization.members[item.chatId] : ""} onChange={event => { organize(() => moveChatToFolder(localStorage, item.chatId, event.target.value)); focusReturn.current = { kind: "chat", id: item.chatId }; setMoving(null); }}><option value="">No project</option>{organization.folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label></div></div>
+     <div className={`session-disclosure${deleting === item.chatId ? " open" : ""}`} aria-hidden={deleting !== item.chatId} inert={deleting !== item.chatId}><div><div className="session-confirm" role="group" aria-label={`Delete ${item.title} permanently?`}><span>Delete this chat permanently?</span><button className="btn ghost danger" disabled={busy} onClick={() => void mutate(item, true)}>Delete permanently</button><button className="btn ghost" onClick={() => dismiss(item.chatId)}>Cancel</button></div></div></div>
+@@ -143,7 +146,7 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
+     {(organization.folders.length > 0 || editing) && <div className="session-heading"><span>Projects</span></div>}
+     {editing && <form className="session-editor" onSubmit={event => { event.preventDefault(); if (!name.trim()) return; organize(() => writeChatFolder(localStorage, { ...editing, name: name.trim() })); finishEdit(); }}>
+       <input autoFocus aria-label="Chat project name" placeholder="Project name" maxLength={80} value={name} onChange={event => setName(event.target.value)} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finishEdit(); } }} />
+-      <button className="btn" disabled={!name.trim()}>Save</button><button type="button" className="btn ghost" onClick={finishEdit}>Cancel</button>
++      <button className="btn" disabled={!name.trim()}>Save</button><button {...auxNativeButtonTypeProps} className="btn ghost" onClick={finishEdit}>Cancel</button>
+     </form>}
+     {organization.folders.map(folder => {
+       const children = visibleRows.filter(row => organization.members[row.chatId] === folder.id);
+diff --git a/apps/shell/src/components/CommandBar.tsx b/apps/shell/src/components/CommandBar.tsx
+index 4f6707e3d..207ac108e 100644
+--- a/apps/shell/src/components/CommandBar.tsx
++++ b/apps/shell/src/components/CommandBar.tsx
+@@ -49,6 +49,10 @@ import { commandTabRows } from "./command-tab-rows";
+ import { featureStage } from "../use-feature";
+ import { openCommandSurface, type CommandSurfaceMode } from "../command-surface-state";
+ import "./CommandBar.css";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ const askBreaker = new AskCircuitBreaker();
+ let pendingAsk: Promise<Run | null> | null = null;
+ 
+@@ -1162,7 +1166,7 @@ export function CommandBar({
+         {compact ? (
+           hasPage && !editing ? (
+             <button
+-              type="button"
++              {...auxNativeButtonTypeProps}
+               className="cb-ico cb-site-trigger"
+               title="Site controls"
+               aria-label="Site controls"
+@@ -1184,7 +1188,7 @@ export function CommandBar({
+         )}
+         {hasPage && !editing && !hero && !compact && (
+           <button
+-            type="button"
++            {...auxNativeButtonTypeProps}
+             className={`cb-lock ${secure ? "secure" : ""}`}
+             title="Site controls"
+             aria-label="Site controls"
+@@ -1297,7 +1301,7 @@ export function CommandBar({
+         </div>
+       ) : showIntent ? (
+         <button
+-          type="button"
++          {...auxNativeButtonTypeProps}
+           className={`cb-chip ${intent.kind}`}
+           tabIndex={-1}
+           title={
+@@ -1330,7 +1334,7 @@ export function CommandBar({
+         !bridge.privateMode &&
+         key("palette") && (
+           <button
+-            type="button"
++            {...auxNativeButtonTypeProps}
+             className="cb-kbd"
+             tabIndex={-1}
+             title={withShortcut("Command palette", key("palette"))}
+@@ -1344,7 +1348,7 @@ export function CommandBar({
+       )}
+       {hero && typedSomething && (
+         <button
+-          type="button"
++          {...auxNativeButtonTypeProps}
+           className="cb-send"
+           tabIndex={-1}
+           title="Go (↵)"
+@@ -1390,7 +1394,7 @@ export function CommandBar({
+               )}
+               {preferSearchOffer && (
+                 <button
+-                  type="button"
++                  {...auxNativeButtonTypeProps}
+                   {...auxReserveSmallGhostButtonProps}
+                   onClick={() => {
+                     void call("settings.set", { commandRouting: "prefer-search" })
+@@ -1409,7 +1413,7 @@ export function CommandBar({
+             {PROVIDER_SCOPES.filter((scope) => scope !== "extensions" || extensionEnabled).map((scope) => (
+               <button
+                 key={scope}
+-                type="button"
++                {...auxNativeButtonTypeProps}
+                 aria-pressed={providerScope === scope}
+                 title={`Alt+${PROVIDER_SCOPES.indexOf(scope) + 1}`}
+                 onMouseDown={(event) => event.preventDefault()}
+@@ -1438,7 +1442,7 @@ export function CommandBar({
+             ))}
+             {!bridge.privateMode && (
+               <button
+-                type="button"
++                {...auxNativeButtonTypeProps}
+                 className="cb-ranking-toggle"
+                 aria-expanded={rankingOpen}
+                 onMouseDown={(event) => event.preventDefault()}
+@@ -1499,7 +1503,7 @@ export function CommandBar({
+                     }}
+                     trailing={
+                       s.hint === "↵" ? (
+-                        <span className="cb-go" aria-hidden="true">
++                        <span className="cb-go" {...auxNativeAriaHiddenProps}>
+                           {shellIconSend}
+                         </span>
+                       ) : s.hint ? (
+diff --git a/apps/shell/src/components/ConversationHistory.tsx b/apps/shell/src/components/ConversationHistory.tsx
+index 9f6cbd65d..d7f0a41a4 100644
+--- a/apps/shell/src/components/ConversationHistory.tsx
++++ b/apps/shell/src/components/ConversationHistory.tsx
+@@ -19,6 +19,9 @@ import { mergeHistory } from "../run-history";
+ import { SkeletonRows } from "./Skeleton";
+ import { Tabs } from "../ui";
+ import { Menu } from "../ui/dialog";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ export { mergeHistory };
+ export function cursor(run: Run) { return { createdAt: run.createdAt, runId: run.runId }; }
+ export function conversationCursor(item: ConversationSummary) { return { updatedAt: item.updatedAt, chatId: item.chatId }; }
+@@ -155,7 +158,7 @@ export function ConversationHistory() {
+       {actionError && <p {...auxReserveStaticFieldErrorProps} role="alert">{actionError} <button {...smallGhostButtonProps} onClick={() => setActionError("")}>Dismiss</button></p>}
+       <div id="conversation-layout-panel" role="tabpanel" aria-labelledby={`conversation-layout-panel-${viewMode}`} className={`history-items ${viewMode}`}>
+       {rows.map((item, index) => <div className="history-conversation-wrap" data-chat-id={item.chatId} key={item.chatId}>
+-        {renaming === item.chatId ? <form className="history-rename" onSubmit={event => { event.preventDefault(); if (title.trim()) void mutate("rename", item); }}><input autoFocus aria-label="Conversation title" maxLength={160} value={title} onChange={event => setTitle(event.target.value)}/><button {...smallButtonProps} disabled={saving || !title.trim()}>Save</button><button type="button" {...smallGhostButtonProps} onClick={() => setRenaming(null)}>Cancel</button></form> : <>
++        {renaming === item.chatId ? <form className="history-rename" onSubmit={event => { event.preventDefault(); if (title.trim()) void mutate("rename", item); }}><input autoFocus aria-label="Conversation title" maxLength={160} value={title} onChange={event => setTitle(event.target.value)}/><button {...smallButtonProps} disabled={saving || !title.trim()}>Save</button><button {...auxNativeButtonTypeProps} {...smallGhostButtonProps} onClick={() => setRenaming(null)}>Cancel</button></form> : <>
+           <button ref={index === 0 ? firstConversation : undefined} disabled={saving} className="history-conversation" onClick={() => useStore.getState().openConversation(item.latestRun.runId)}><strong>{item.title}</strong><span>{drafts[draftKey(item.chatId)]?.trim() ? `Draft · ${drafts[draftKey(item.chatId)]}` : item.taskId ? "Saved task" : item.latestRun.statusMessage ?? item.latestRun.status.replaceAll("_", " ")}</span><time>{new Date(item.updatedAt).toLocaleString()} · {item.turnCount} {item.turnCount === 1 ? "turn" : "turns"}</time></button>
+           {viewMode === "grid" && <div className="history-card-preview home-excerpt" inert><AnswerMarkdown text={drafts[draftKey(item.chatId)]?.trim() || (typeof item.latestRun.result?.answer === "string" ? item.latestRun.result.answer : item.latestRun.statusMessage || item.latestRun.goal)} /></div>}
+           <button disabled={saving} className="icon-btn history-actions" aria-label={`Conversation actions for ${item.title}`} aria-haspopup="menu" aria-expanded={menu === item.chatId} onClick={event => { menuAnchor.current = event.currentTarget; setMenu(value => value === item.chatId ? null : item.chatId); setDeleting(null); }}>{shellIconMore}</button>
+diff --git a/apps/shell/src/components/ConversationPreviewControls.tsx b/apps/shell/src/components/ConversationPreviewControls.tsx
+index 0dde6d0b9..204d05149 100644
+--- a/apps/shell/src/components/ConversationPreviewControls.tsx
++++ b/apps/shell/src/components/ConversationPreviewControls.tsx
+@@ -3,6 +3,9 @@ import type { PageTarget } from "@aux/contracts";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+ import { guardCommandCompletion } from "../command-completion";
+ import { errToast } from "../store";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function previewPageIdentity(page: PageTarget | undefined) {
+   return page ? JSON.stringify([page.pageId, page.targetId, page.backend, page.windowKind, page.url, page.documentEpoch, page.sessionId, page.windowId, page.controller, page.controllerEpoch, page.ownedByRuntime]) : null;
+@@ -30,5 +33,5 @@ export function ConversationPreviewAction({ command, current, invoke, controlRef
+     return invoke();
+   }, original => { if (current()) errToast(original); });
+   const originalRef = useCallback((node: HTMLButtonElement | null) => { ref(node); if (controlRef) controlRef.current = node; }, [ref, controlRef]);
+-  return <button {...props} type="button" ref={originalRef} data-command-id={command} onClick={run}/>;
++  return <button {...props} {...auxNativeButtonTypeProps} ref={originalRef} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/ConversationQueuedControls.tsx b/apps/shell/src/components/ConversationQueuedControls.tsx
+index 239b34bea..7bd7c4537 100644
+--- a/apps/shell/src/components/ConversationQueuedControls.tsx
++++ b/apps/shell/src/components/ConversationQueuedControls.tsx
+@@ -2,6 +2,9 @@ import { useCallback, useId, useLayoutEffect, useMemo, useRef } from "react";
+ import type { RunMessage } from "@aux/contracts";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+ import { errToast } from "../store";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function ConversationQueuedControls({ message, current, disabled, onCancel }: {
+   message: RunMessage; current(): boolean; disabled?: boolean;
+@@ -31,5 +34,5 @@ function QueuedAction({ edit, message, current, disabled, onCancel }: {
+     if (!current()) throw new Error("Choose the current queued conversation message.");
+     return onCancel(message, edit, current);
+   }, errToast);
+-  return <button type="button" ref={controlRef} disabled={disabled} data-command-id={command} onClick={run}>{edit ? "Edit" : "Remove"}</button>;
++  return <button {...auxNativeButtonTypeProps} ref={controlRef} disabled={disabled} data-command-id={command} onClick={run}>{edit ? "Edit" : "Remove"}</button>;
+ }
+diff --git a/apps/shell/src/components/ConversationRecoveryControls.tsx b/apps/shell/src/components/ConversationRecoveryControls.tsx
+index c0cab4396..63a4e0306 100644
+--- a/apps/shell/src/components/ConversationRecoveryControls.tsx
++++ b/apps/shell/src/components/ConversationRecoveryControls.tsx
+@@ -4,6 +4,9 @@ import {
+ import { useId, type ButtonHTMLAttributes } from "react";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+ import { errToast } from "../store";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function ConversationRecoveryAction({ command, current, invoke, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
+   command: "restore-archived-conversation" | "reopen-conversation-page";
+@@ -14,5 +17,5 @@ export function ConversationRecoveryAction({ command, current, invoke, ...props
+     if (!current()) throw new Error("Choose the current conversation recovery control.");
+     return invoke();
+   }, errToast);
+-  return <button {...props} type="button" {...auxReserveSmallButtonProps} ref={controlRef} data-command-id={command} onClick={run}/>;
++  return <button {...props} {...auxNativeButtonTypeProps} {...auxReserveSmallButtonProps} ref={controlRef} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/ConversationSourceControls.tsx b/apps/shell/src/components/ConversationSourceControls.tsx
+index 8ab68e9fb..9c52b06fe 100644
+--- a/apps/shell/src/components/ConversationSourceControls.tsx
++++ b/apps/shell/src/components/ConversationSourceControls.tsx
+@@ -4,6 +4,9 @@ import { usePreferenceCommand } from "../settings/sections/preference-command";
+ import { guardCommandCompletion } from "../command-completion";
+ import { errToast } from "../store";
+ import { SourceRow } from "./SourceRow";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ type SourceCommand = "toggle-conversation-sources" | "select-conversation-source" | "open-conversation-recorded-source" | "choose-conversation-source-profile" | "cancel-conversation-source-profile";
+ /** A source is recorded provenance; this owner never synthesizes a live document or Profile. */
+@@ -33,7 +36,7 @@ export function ConversationSourceAction({ command, current, invoke, controlRef,
+ }) {
+   const [ref, run] = useSourceControl(command, current, invoke);
+   const originalRef = useCallback((node: HTMLButtonElement | null) => { ref(node); if (controlRef) controlRef.current = node; }, [ref, controlRef]);
+-  return <button {...props} type="button" ref={originalRef} data-command-id={command} onClick={run}/>;
++  return <button {...props} {...auxNativeButtonTypeProps} ref={originalRef} data-command-id={command} onClick={run}/>;
+ }
+ export function ConversationSourceRow({ command, current, invoke, source, profileNames }: {
+   command: "select-conversation-source" | "open-conversation-recorded-source"; current(): boolean; invoke(): unknown; source: ConversationSource; profileNames: Record<string, string>;
+diff --git a/apps/shell/src/components/ConversationViewControls.tsx b/apps/shell/src/components/ConversationViewControls.tsx
+index e5b2e8066..590e653f7 100644
+--- a/apps/shell/src/components/ConversationViewControls.tsx
++++ b/apps/shell/src/components/ConversationViewControls.tsx
+@@ -1,6 +1,9 @@
+ import { useId, type ButtonHTMLAttributes } from "react";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+ import { errToast } from "../store";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function ConversationViewAction({ command, current, invoke, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
+   command: "export-conversation-markdown" | "continue-conversation-in-rail" | "toggle-conversation-browser-preview" | "jump-conversation-to-latest";
+@@ -11,5 +14,5 @@ export function ConversationViewAction({ command, current, invoke, ...props }: O
+     if (!current()) throw new Error("Choose the current conversation view control.");
+     return invoke();
+   }, errToast);
+-  return <button {...props} type="button" ref={controlRef} data-command-id={command} onClick={run}/>;
++  return <button {...props} {...auxNativeButtonTypeProps} ref={controlRef} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/ExtensionActions.tsx b/apps/shell/src/components/ExtensionActions.tsx
+index 2ef6dedd6..afab8faca 100644
+--- a/apps/shell/src/components/ExtensionActions.tsx
++++ b/apps/shell/src/components/ExtensionActions.tsx
+@@ -9,6 +9,9 @@ import { useFeature } from "../use-feature";
+ import { useExtensionActions } from "../features/extensions/use-extension-actions";
+ import { extensionActionAnchor } from "../features/extensions/action-anchor";
+ import "../features/extensions/extensions.css";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ type Action = HostMethodResult<"extensionActions">[number];
+ function ActionIcon({ action }: { action: Action }) {
+@@ -37,7 +40,7 @@ export function ExtensionActions() {
+         .map((item) => (
+           <button
+             key={item.id}
+-            type="button"
++            {...auxNativeButtonTypeProps}
+             {...staticIconButtonProps}
+             aria-label={`${item.name}${item.badgeText ? ` · ${item.badgeText}` : ""}`}
+             title={item.name}
+@@ -50,7 +53,7 @@ export function ExtensionActions() {
+         ))}
+       <button
+         ref={anchor}
+-        type="button"
++        {...auxNativeButtonTypeProps}
+         {...staticIconButtonProps}
+         title="Extensions"
+         aria-label="Extensions"
+@@ -80,7 +83,7 @@ export function ExtensionActions() {
+           {items.map((item) => (
+             <fieldset key={item.id} aria-label={item.name}>
+               <button
+-                type="button"
++                {...auxNativeButtonTypeProps}
+                 role="menuitem"
+                 {...staticMenuItemProps}
+                 disabled={!item.enabled}
+@@ -94,7 +97,7 @@ export function ExtensionActions() {
+                 </span>
+               </button>
+               <button
+-                type="button"
++                {...auxNativeButtonTypeProps}
+                 role="menuitemcheckbox"
+                 aria-checked={item.pinned}
+                 aria-label={`${item.pinned ? "Unpin" : "Pin"} ${item.name}`}
+@@ -111,7 +114,7 @@ export function ExtensionActions() {
+             </fieldset>
+           ))}
+           <button
+-            type="button"
++            {...auxNativeButtonTypeProps}
+             role="menuitem"
+             {...staticMenuItemProps}
+             data-command-id="show-extensions"
+diff --git a/apps/shell/src/components/Extensions.tsx b/apps/shell/src/components/Extensions.tsx
+index 2d55f72dc..f4b8da03f 100644
+--- a/apps/shell/src/components/Extensions.tsx
++++ b/apps/shell/src/components/Extensions.tsx
+@@ -11,6 +11,9 @@ import { extensionInventory, refreshExtensions } from "../features/extensions/ex
+ 
+ import { guardCommandCompletion } from "../command-completion";
+ import { ExtensionLocalButton, ExtensionPermissions, useExtensionsOwner } from "./ExtensionsControls";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function Extensions() {
+   const available = useFeature("extensions");
+@@ -77,7 +80,7 @@ export function Extensions() {
+           spellCheck={false}
+         />
+         <button
+-          type="button"
++          {...auxNativeButtonTypeProps}
+           className="btn"
+           disabled={busy || !id}
+           data-command-id="install-store-extension"
+@@ -88,7 +91,7 @@ export function Extensions() {
+           Install from Store
+         </button>
+         <button
+-          type="button"
++          {...auxNativeButtonTypeProps}
+           className="btn ghost"
+           disabled={busy}
+           data-command-id="install-unpacked-extension"
+@@ -135,7 +138,7 @@ export function Extensions() {
+             {extension.managed && (
+               <div className="extension-actions">
+                 <button
+-                  type="button"
++                  {...auxNativeButtonTypeProps}
+                   {...smallGhostButtonProps}
+                   disabled={busy}
+                   data-command-id="set-extension-enabled"
+@@ -148,7 +151,7 @@ export function Extensions() {
+                   {extension.enabled ? "Disable" : "Enable"}
+                 </button>
+                 <button
+-                  type="button"
++                  {...auxNativeButtonTypeProps}
+                   {...smallGhostButtonProps}
+                   disabled={busy || !extension.enabled}
+                   data-command-id="reload-extension"
+@@ -157,7 +160,7 @@ export function Extensions() {
+                   Restart
+                 </button>
+                 <button
+-                  type="button"
++                  {...auxNativeButtonTypeProps}
+                   {...smallGhostButtonProps}
+                   disabled={busy}
+                   data-command-id="update-extension"
+diff --git a/apps/shell/src/components/FileTree.tsx b/apps/shell/src/components/FileTree.tsx
+index b4ac614c2..de7824984 100644
+--- a/apps/shell/src/components/FileTree.tsx
++++ b/apps/shell/src/components/FileTree.tsx
+@@ -1,6 +1,10 @@
+ import "./FileTree.css";
+ import { useEffect, useMemo, useRef, useState } from 'react';
+ import { shellIconCode, shellIconFolder, shellIconFolderClosed, shellIconRight } from './icons';
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ 
+ type Node = { path: string; name: string; directory: boolean; children: Node[] };
+ const parents = (path: string) => path.split('/').slice(0, -1).map((_, i) => path.split('/').slice(0, i + 1).join('/'));
+@@ -42,7 +46,7 @@ export function FileTree({ paths, selected, onSelect, disabled = false, expandAl
+   const focus = (index: number) => { const path = visible[index]?.node.path; if (path) { setFocused(path); buttons.current.get(path)?.focus(); } };
+   return <div className="ui-file-tree" role="tree" aria-label="Project files" aria-busy={disabled || undefined}>
+     {visible.map(({ node, depth, position, size }, index) => <button key={node.path} ref={element => { if (element) buttons.current.set(node.path, element); else buttons.current.delete(node.path); }}
+-      type="button" role="treeitem" aria-level={depth} aria-posinset={position} aria-setsize={size}
++      {...auxNativeButtonTypeProps} role="treeitem" aria-level={depth} aria-posinset={position} aria-setsize={size}
+       aria-expanded={node.directory ? expanded.has(node.path) : undefined} aria-selected={!node.directory && node.path === selected}
+       tabIndex={node.path === tabStop ? 0 : -1} disabled={disabled} title={node.path}
+       style={{ paddingLeft: 8 + (depth - 1) * 14 }} onFocus={() => setFocused(node.path)}
+@@ -55,9 +59,9 @@ export function FileTree({ paths, selected, onSelect, disabled = false, expandAl
+         else if (event.key === 'ArrowRight' && node.directory) { event.preventDefault(); if (expanded.has(node.path)) focus(index + 1); else toggle(node.path, true); }
+         else if (event.key === 'ArrowLeft') { event.preventDefault(); if (node.directory && expanded.has(node.path)) toggle(node.path, false); else focus(visible.findIndex(item => item.node.path === parents(node.path).at(-1))); }
+       }}>
+-      <span className="ui-file-icon" aria-hidden="true">{node.directory ? expanded.has(node.path) ? shellIconFolder : shellIconFolderClosed : shellIconCode}</span>
++      <span className="ui-file-icon" {...auxNativeAriaHiddenProps}>{node.directory ? expanded.has(node.path) ? shellIconFolder : shellIconFolderClosed : shellIconCode}</span>
+       <span className="ui-file-name">{node.name}</span>
+-      {node.directory && <span className={`ui-file-disclosure${expanded.has(node.path) ? ' open' : ''}`} aria-hidden="true">{shellIconRight}</span>}
++      {node.directory && <span className={`ui-file-disclosure${expanded.has(node.path) ? ' open' : ''}`} {...auxNativeAriaHiddenProps}>{shellIconRight}</span>}
+     </button>)}
+   </div>;
+ }
+diff --git a/apps/shell/src/components/FilterListManager.tsx b/apps/shell/src/components/FilterListManager.tsx
+index 5e0f08282..4c863972f 100644
+--- a/apps/shell/src/components/FilterListManager.tsx
++++ b/apps/shell/src/components/FilterListManager.tsx
+@@ -6,6 +6,7 @@ import "./FilterListManager.css";
+ import { useEffect, useState } from "react";
+ import { filterSourceUrl } from "@aux/contracts";
+ import { bridge, type FilterListStatus } from "../bridge";
++import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+ 
+ const messageOf = (reason: unknown) => errorMessage(reason);
+ 
+@@ -82,7 +83,7 @@ export function FilterListManager() {
+           {status?.sources.map((source) => (
+             <button
+               key={source.id}
+-              type="button"
++              {...auxNativeButtonTypeProps}
+               aria-current={selectedId === source.id ? "true" : undefined}
+               onClick={() => setSelectedId(source.id)}
+             >
+diff --git a/apps/shell/src/components/HomeAsk.tsx b/apps/shell/src/components/HomeAsk.tsx
+index d526fad66..3625d38c4 100644
+--- a/apps/shell/src/components/HomeAsk.tsx
++++ b/apps/shell/src/components/HomeAsk.tsx
+@@ -10,6 +10,9 @@ import { bridge } from "../bridge";
+ import { runCommand } from "../commands";
+ import { errToast, useStore } from "../store";
+ import "./HomeAsk.css";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ /** Home uses the real composer and durable draft/context services. Loaded only when the home composer is needed. */
+ export default function HomeAsk({ onSearch, current }: { onSearch?(): unknown; current?(): boolean }) {
+@@ -26,6 +29,6 @@ export default function HomeAsk({ onSearch, current }: { onSearch?(): unknown; c
+     return () => { active = false; };
+   }, [focusRequest, railOpen]);
+   useEffect(()=>bridge.onEvent(event=>{if(event.type==="conversation.deleted" && event.payload.chatId===chatId){setChatId(null);try{if(localStorage.getItem(HOME_DRAFT_CHAT_KEY)===chatId)localStorage.removeItem(HOME_DRAFT_CHAT_KEY);}catch{/* The mounted composer still forgets the deleted chat. */}}}),[chatId]);
+-  const controls = onSearch ? <div className="home-composer-mode" role="group" aria-label="Search or Ask"><HomeEntryAction type="button" aria-pressed={false} command="select-home-search" current={searchCurrent} invoke={onSearch}>Search</HomeEntryAction><button type="button" aria-pressed={true}>Ask</button></div> : undefined;
++  const controls = onSearch ? <div className="home-composer-mode" role="group" aria-label="Search or Ask"><HomeEntryAction type="button" aria-pressed={false} command="select-home-search" current={searchCurrent} invoke={onSearch}>Search</HomeEntryAction><button {...auxNativeButtonTypeProps} aria-pressed={true}>Ask</button></div> : undefined;
+   return <div className="home-ask">{railOpen ? <div className="home-ask-handoff"><span>Your assistant is open in the side panel.</span><button {...auxReserveSmallButtonProps} data-command-id="agent-rail" onClick={() => runCommand("agent-rail")}>Compose here</button>{onSearch && <HomeEntryAction {...auxReserveSmallGhostButtonProps} command="select-home-search" current={searchCurrent} invoke={onSearch}>Search instead</HomeEntryAction>}</div> : <Conversation embedded home composerRef={composer} chatId={chatId} onChatCreated={id=>{setChatId(id);try{localStorage.setItem(HOME_DRAFT_CHAT_KEY,id);}catch{/* The mounted composer still owns this draft. */}}} entryControls={controls}/>}</div>;
+ }
+diff --git a/apps/shell/src/components/HorizontalPins.tsx b/apps/shell/src/components/HorizontalPins.tsx
+index 3849a223e..e1f04bcc2 100644
+--- a/apps/shell/src/components/HorizontalPins.tsx
++++ b/apps/shell/src/components/HorizontalPins.tsx
+@@ -6,6 +6,9 @@ import { tabsInSpace, type Pin } from "../workspace";
+ import { FavIcon } from "./SiteTile";
+ import { PinMenu } from "./PinMenu";
+ import { Menu } from "../ui/dialog";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function HorizontalPins({ pins, spaceId, activePageId }: { pins: Pin[]; spaceId: string; activePageId: string | null }) {
+   const tabs = useStore(useShallow(state => tabsInSpace(state.layout, state.pages, spaceId).filter(page => pins.some(pin => pin.url === page.url))));
+@@ -40,7 +43,7 @@ export function HorizontalPins({ pins, spaceId, activePageId }: { pins: Pin[]; s
+         </button>;
+       })}
+       {pins.length > 5 && <div className="horizontal-pin-overflow">
+-        <button ref={overflow} type="button" aria-label={`${pins.length - 5} more pinned sites`} aria-haspopup="menu" aria-expanded={overflowOpen} onClick={() => setOverflowOpen(value => !value)}>+{pins.length - 5}</button>
++        <button ref={overflow} {...auxNativeButtonTypeProps} aria-label={`${pins.length - 5} more pinned sites`} aria-haspopup="menu" aria-expanded={overflowOpen} onClick={() => setOverflowOpen(value => !value)}>+{pins.length - 5}</button>
+         {overflowOpen && <Menu className="menu horizontal-pin-overflow-menu" label="More pinned sites" anchor={overflow} returnFocus={overflow} onClose={() => setOverflowOpen(false)}>
+           {pins.slice(5).map(pin => <button key={pin.url} {...staticMenuItemProps} role="menuitem" onClick={event => openPin(pin, event.metaKey || event.ctrlKey)} onContextMenu={event => { event.preventDefault(); contextMenu(pin, event.clientX, event.clientY); }}><FavIcon url={pin.url} src={tabs.find(page => page.url === pin.url)?.favicon} size="sm" /><span className="t">{pin.title}</span></button>)}
+         </Menu>}
+diff --git a/apps/shell/src/components/HttpAuthPrompt.tsx b/apps/shell/src/components/HttpAuthPrompt.tsx
+index e811045bc..30ea87bad 100644
+--- a/apps/shell/src/components/HttpAuthPrompt.tsx
++++ b/apps/shell/src/components/HttpAuthPrompt.tsx
+@@ -5,6 +5,9 @@ import { bridge, type HttpAuthRequest } from '../bridge';
+ import { isScrimOverlay } from '../chrome';
+ import { useStore } from '../store';
+ import { Dialog } from '../ui';
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function HttpAuthPrompt() {
+   const [requests,setRequests]=useState<HttpAuthRequest[]>([]);
+@@ -53,7 +56,7 @@ function Credentials({request}:{request:HttpAuthRequest}) {
+       <label>Password<input {...staticFieldInputProps} type="password" autoComplete="off" disabled={busy} value={password} onChange={event=>setPassword(event.target.value)} maxLength={4096}/></label>
+       <p {...staticHintProps}>Aux does not save these credentials. The browser may reuse them during this session.</p>
+       {error&&<p role="alert">{error}</p>}
+-      <div className="sheet-acts"><button type="button" className="btn" disabled={busy} onClick={()=>void respond(true)}>Cancel</button><button className="btn primary" disabled={busy}>Sign in</button></div>
++      <div className="sheet-acts"><button {...auxNativeButtonTypeProps} className="btn" disabled={busy} onClick={()=>void respond(true)}>Cancel</button><button className="btn primary" disabled={busy}>Sign in</button></div>
+     </form>
+   </Dialog>;
+ }
+diff --git a/apps/shell/src/components/Inspector.tsx b/apps/shell/src/components/Inspector.tsx
+index 4640fa990..c6bbaef04 100644
+--- a/apps/shell/src/components/Inspector.tsx
++++ b/apps/shell/src/components/Inspector.tsx
+@@ -5,6 +5,9 @@ import type { CompactObservation } from "@aux/contracts";
+ import { useStore, call } from "../store";
+ import { ObservationPanel } from "./ObservationPanel";
+ import { DetailPane, Dialog, EmptyState } from "../ui";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ 
+ /**
+  * Observation drawer — the compact observation of the active page (live), or
+@@ -46,7 +49,7 @@ export function Inspector() {
+           actions={!historical && activePageId ? <button {...smallGhostButtonProps} onClick={() => setRetry(value => value + 1)}>Refresh</button> : undefined}>
+           {!activePageId && !historical && <EmptyState title="No active page" description="Open a page to inspect its available content." />}
+           {err && <div role="alert"><p className="hint err">{err}</p><button {...smallButtonProps} onClick={() => setRetry(value => value + 1)}>Retry observation</button></div>}
+-          {!obs && !err && (activePageId || historical) && <output className="drawer-loading" aria-live="polite" data-block><span className="spin" aria-hidden="true" /> Observing {page?.title || page?.url || activePageId}…</output>}
++          {!obs && !err && (activePageId || historical) && <output className="drawer-loading" aria-live="polite" data-block><span className="spin" {...auxNativeAriaHiddenProps} /> Observing {page?.title || page?.url || activePageId}…</output>}
+           {obs && <><ObservationPanel key={`${obs.pageId}:${obs.revision}`} obs={obs} />
+             <details className="observation-raw"><summary>Raw observation</summary><pre className="obs-raw selectable">{obs.text}</pre></details></>}
+         </DetailPane>
+diff --git a/apps/shell/src/components/LayoutChoice.tsx b/apps/shell/src/components/LayoutChoice.tsx
+index 60a509a46..d41f73c9a 100644
+--- a/apps/shell/src/components/LayoutChoice.tsx
++++ b/apps/shell/src/components/LayoutChoice.tsx
+@@ -1,11 +1,14 @@
+ import { useId } from "react";
+ import { RadioCard } from "../ui";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ 
+ /** CSS miniatures use Aux's own silhouette and tokens, not stale screenshots. */
+ export function LayoutChoice({ value, onChange }: { value: string; onChange(value: "horizontal" | "vertical"): void }) {
+   const name = useId();
+   return <div className="layout-choice" role="radiogroup" aria-label="Tab layout">{(["horizontal", "vertical"] as const).map(layout => <RadioCard key={layout} name={name} value={layout} checked={value === layout} onChange={() => onChange(layout)}>
+-    <span className={`layout-miniature ${layout}`} aria-hidden="true"><span className="mini-controls"><i/><i/><i/></span><span className="mini-tabs"><i/><i/><i/></span><span className="mini-page"><i/><i/><i/></span></span>
++    <span className={`layout-miniature ${layout}`} {...auxNativeAriaHiddenProps}><span className="mini-controls"><i/><i/><i/></span><span className="mini-tabs"><i/><i/><i/></span><span className="mini-page"><i/><i/><i/></span></span>
+     <span>{layout === "horizontal" ? "Horizontal" : "Vertical"}</span>
+   </RadioCard>)}</div>;
+ }
+diff --git a/apps/shell/src/components/Library.tsx b/apps/shell/src/components/Library.tsx
+index 82019242e..0296bb4b1 100644
+--- a/apps/shell/src/components/Library.tsx
++++ b/apps/shell/src/components/Library.tsx
+@@ -26,6 +26,9 @@ import { openPeekLink } from "../peek-link";
+ import { useFeature } from "../use-feature";
+ 
+ import { LibraryButton, useLibraryReadOwner, useLibraryCurrent, useLibraryControl } from "./LibraryControls";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ type SavedPage = { nodeId?: string; url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean };
+ const bookmarkKey = (item: SavedPage) => item.nodeId ?? item.url;
+@@ -118,7 +121,7 @@ const SavedPageRow = memo(function SavedPageRow({ view, itemKey, position, selec
+       <label className="library-edit-field library-edit-folder">Folder<select {...staticFieldInputProps} aria-label="Bookmark folder" disabled={busy} value={JSON.stringify(editing.folderPath ?? [])} onChange={event => setEditing({ ...editing, folderPath: JSON.parse(event.target.value) as string[] })}>
+         <option value="[]">Bookmarks</option>{folders.map(path => <option key={JSON.stringify(path)} value={JSON.stringify(path)}>{path.join(" / ")}</option>)}
+       </select></label>
+-      <div className="library-edit-buttons"><button {...smallGhostButtonProps} type="button" disabled={busy} onClick={cancelEditor}>Cancel</button><button {...smallButtonProps} disabled={busy || !editing.title.trim() || !editing.url.trim()} type="submit">{busy ? "Saving…" : "Save"}</button></div>
++      <div className="library-edit-buttons"><button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} disabled={busy} onClick={cancelEditor}>Cancel</button><button {...smallButtonProps} disabled={busy || !editing.title.trim() || !editing.url.trim()} type="submit">{busy ? "Saving…" : "Save"}</button></div>
+     </form>}
+   </div>;
+ });
+@@ -429,7 +432,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
+       }}>
+         <input autoFocus aria-label="Folder name" placeholder="Folder name" value={folderEditor.name} maxLength={200} onChange={event => setFolderEditor({ ...folderEditor, name: event.target.value })} />
+         <button {...smallButtonProps} disabled={busy || !folderEditor.name.trim()}>{folderEditor.mode === "create" ? "Create folder" : "Rename"}</button>
+-        <button {...smallButtonProps} type="button" onClick={cancelEditor}>Cancel</button>
++        <button {...smallButtonProps} {...auxNativeButtonTypeProps} onClick={cancelEditor}>Cancel</button>
+       </form>}
+       {error && <p className="library-message" role="alert">{error} {failedLoad && <LibraryButton command="retry-library-load" current={current} {...smallButtonProps} disabled={loading || loadingMore} invoke={() => failedLoad === "more" ? loadMoreHistory() : setRefresh(value => value + 1)}>Retry</LibraryButton>}</p>}
+       {notice && <output className="library-message" data-block>{notice}</output>}
+diff --git a/apps/shell/src/components/MemoryExclusionControls.tsx b/apps/shell/src/components/MemoryExclusionControls.tsx
+index de62aa027..ed9febf28 100644
+--- a/apps/shell/src/components/MemoryExclusionControls.tsx
++++ b/apps/shell/src/components/MemoryExclusionControls.tsx
+@@ -1,5 +1,8 @@
+ import { useMemoryCallbackControl } from "./memory-control-construction";
+ import { type ButtonHTMLAttributes } from "react";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ 
+ 
+@@ -30,5 +33,5 @@ export function MemoryExclusionButton({
+   invoke(element: HTMLElement): unknown;
+ }) {
+   const [attach, run] = useMemoryExclusionControl(command, scopeId, invoke);
+-  return <button type="button" {...props} ref={attach} onClick={run} />;
++  return <button {...auxNativeButtonTypeProps} {...props} ref={attach} onClick={run} />;
+ }
+diff --git a/apps/shell/src/components/MemoryNoteControls.tsx b/apps/shell/src/components/MemoryNoteControls.tsx
+index 0c6158afe..c4be1d9ce 100644
+--- a/apps/shell/src/components/MemoryNoteControls.tsx
++++ b/apps/shell/src/components/MemoryNoteControls.tsx
+@@ -1,5 +1,8 @@
+ import { useMemoryCallbackControl } from "./memory-control-construction";
+ import { type ButtonHTMLAttributes } from "react";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ 
+ 
+@@ -41,5 +44,5 @@ export function MemoryNoteButton({
+   invoke(element: HTMLElement): unknown;
+ }) {
+   const [attach, run] = useMemoryNoteControl(command, scopeId, invoke);
+-  return <button type="button" {...props} ref={attach} onClick={run} />;
++  return <button {...auxNativeButtonTypeProps} {...props} ref={attach} onClick={run} />;
+ }
+diff --git a/apps/shell/src/components/MemorySettingsControl.tsx b/apps/shell/src/components/MemorySettingsControl.tsx
+index f33f2b42e..8f3f36019 100644
+--- a/apps/shell/src/components/MemorySettingsControl.tsx
++++ b/apps/shell/src/components/MemorySettingsControl.tsx
+@@ -3,6 +3,9 @@ import { bridge } from "../bridge";
+ import { errToast } from "../store";
+ import { executeCommand } from "../commands";
+ import { registerScopedControl } from "../scoped-control-commands";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function MemorySettingsControl({
+   command,
+@@ -31,7 +34,7 @@ export function MemorySettingsControl({
+   });
+   return (
+     <button
+-      type="button"
++      {...auxNativeButtonTypeProps}
+       {...props}
+       ref={element}
+       data-command-id={command}
+diff --git a/apps/shell/src/components/OutboundMcpSettings.tsx b/apps/shell/src/components/OutboundMcpSettings.tsx
+index 5c0ce01dc..ff1351fb0 100644
+--- a/apps/shell/src/components/OutboundMcpSettings.tsx
++++ b/apps/shell/src/components/OutboundMcpSettings.tsx
+@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
+ import type { OutboundMcpGrant, OutboundMcpServer, OutboundMcpTool, Task, Workspace } from "@aux/contracts";
+ import { bridge } from "../bridge";
+ import { call } from "../store";
++import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+ 
+ type BundleInspection = {
+   path: string;
+@@ -489,7 +490,7 @@ export function OutboundMcpSettings() {
+                 </p>
+                 <button
+                   {...smallButtonProps}
+-                  type="button"
++                  {...auxNativeButtonTypeProps}
+                   disabled={busy}
+                   onClick={() => void inspectBundle()}
+                 >
+@@ -525,7 +526,7 @@ export function OutboundMcpSettings() {
+             )}
+             <button
+               className="btn"
+-              type="button"
++              {...auxNativeButtonTypeProps}
+               disabled={
+                 busy ||
+                 !name.trim() ||
+diff --git a/apps/shell/src/components/Overview.tsx b/apps/shell/src/components/Overview.tsx
+index b9d75113f..47319c6a0 100644
+--- a/apps/shell/src/components/Overview.tsx
++++ b/apps/shell/src/components/Overview.tsx
+@@ -22,6 +22,9 @@ import { shellIconClose, shellIconGrid, shellIconPlusSm, shellIconSearch } from
+ import { useShortcutLabels } from "../use-shortcut-label";
+ import { useFeature } from "../use-feature";
+ import "./Overview.css";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ /** A searchable, keyboard-accessible place to organize several tabs together. */
+ export function Overview() {
+@@ -356,7 +359,7 @@ export function Overview() {
+     }}>
+       <label>{savingFolder === "tabs" ? "Tab folder" : "Bookmark folder"}<input {...staticFieldInputProps} autoFocus disabled={busy} value={folderName} maxLength={200} placeholder="Reading, trip ideas, project research…" onChange={event=>setFolderName(event.target.value)} /></label>
+       <p {...staticHintProps}>{savingFolder === "tabs" ? `Move the selected open tabs into a new folder in ${folderSpace?.name ?? "the selected Space"}. Their pages stay open.` : "Save web pages for later. Existing bookmarks keep their current folders. Open the folder’s pages together from Library."}</p>
+-      <div {...staticRowProps}><button {...smallButtonProps} disabled={busy||!folderName.trim()||(savingFolder === "tabs" && !folderSpace)}>{savingFolder === "tabs" ? "Create folder" : "Save folder"}</button><button type="button" {...smallGhostButtonProps} disabled={busy} onClick={()=>setSavingFolder(false)}>Cancel</button></div>
++      <div {...staticRowProps}><button {...smallButtonProps} disabled={busy||!folderName.trim()||(savingFolder === "tabs" && !folderSpace)}>{savingFolder === "tabs" ? "Create folder" : "Save folder"}</button><button {...auxNativeButtonTypeProps} {...smallGhostButtonProps} disabled={busy} onClick={()=>setSavingFolder(false)}>Cancel</button></div>
+     </form>}
+     {progress && <output className="hint ov-progress" data-block>{progress}</output>}
+     {error && <p role="alert" {...staticFieldErrorProps}>{error}</p>}
+diff --git a/apps/shell/src/components/PageSurface.tsx b/apps/shell/src/components/PageSurface.tsx
+index 7ef1d28fd..9bab76750 100644
+--- a/apps/shell/src/components/PageSurface.tsx
++++ b/apps/shell/src/components/PageSurface.tsx
+@@ -5,6 +5,7 @@ import type { PageTarget } from "@aux/contracts";
+ import { bridge, inMock, inNativeHost } from "../bridge";
+ import { MockPage } from "./surfaces";
+ import "./PageSurface.css";
++import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+ 
+ type SurfaceState = {
+   pageId: string;
+@@ -73,7 +74,11 @@ export function PageSurface({ page }: { page: PageTarget }) {
+               ? "This page could not be attached."
+               : "This page is not available in this window."}
+           </p>
+-          <button type="button" className="btn" onClick={() => setAttempt((value) => value + 1)}>
++          <button
++            {...auxNativeButtonTypeProps}
++            className="btn"
++            onClick={() => setAttempt((value) => value + 1)}
++          >
+             Try again
+           </button>
+         </>
+diff --git a/apps/shell/src/components/PictureInPictureMedia.tsx b/apps/shell/src/components/PictureInPictureMedia.tsx
+index aa8f1f138..382fddebe 100644
+--- a/apps/shell/src/components/PictureInPictureMedia.tsx
++++ b/apps/shell/src/components/PictureInPictureMedia.tsx
+@@ -4,6 +4,9 @@ import { localSplitPage } from "../features/surfaces/split-actions";
+ import { FavIcon } from "./SiteTile";
+ import { shellIconPip } from "./icons";
+ import "./PictureInPictureMedia.css";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function PictureInPictureMedia() {
+   const pages = useStore(state => state.pages), audio = useStore(state => state.tabAudio);
+@@ -15,7 +18,7 @@ export function PictureInPictureMedia() {
+       return <div className="sidebar-media-row" key={page.pageId}>
+         <FavIcon url={page.url} src={page.favicon} size="sm" />
+         <span title={page.title}>{page.title || "Video"}</span>
+-        <button type="button" className="icon-btn xs" data-command-id="picture-in-picture" aria-label={`${label}: ${page.title || "Video"}`} title={label} onClick={() => runCommand("picture-in-picture", { payload: { pageId: page.pageId } })}>{shellIconPip}</button>
++        <button {...auxNativeButtonTypeProps} className="icon-btn xs" data-command-id="picture-in-picture" aria-label={`${label}: ${page.title || "Video"}`} title={label} onClick={() => runCommand("picture-in-picture", { payload: { pageId: page.pageId } })}>{shellIconPip}</button>
+       </div>;
+     })}
+   </section>;
+diff --git a/apps/shell/src/components/PluginsPanel.tsx b/apps/shell/src/components/PluginsPanel.tsx
+index 8b775f64a..ed03b9ce5 100644
+--- a/apps/shell/src/components/PluginsPanel.tsx
++++ b/apps/shell/src/components/PluginsPanel.tsx
+@@ -6,6 +6,7 @@ import "./PluginsPanel.css";
+ import { useEffect, useState } from "react";
+ import type { MethodResult, Plugin, PluginAsset, PluginSkillGrant, Workspace } from "@aux/contracts";
+ import { bridge } from "../bridge";
++import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+ 
+ type Inspection = MethodResult<"plugins.inspect"> & { path: string };
+ const messageOf = (reason: unknown) => errorMessage(reason);
+@@ -199,7 +200,7 @@ export function PluginsPanel() {
+           {visible.map((plugin) => (
+             <button
+               key={plugin.pluginId}
+-              type="button"
++              {...auxNativeButtonTypeProps}
+               aria-current={selectedId === plugin.pluginId ? "true" : undefined}
+               onClick={() => setSelectedId(plugin.pluginId)}
+             >
+diff --git a/apps/shell/src/components/ProfileSwitcher.tsx b/apps/shell/src/components/ProfileSwitcher.tsx
+index d48b2c76d..be6111d42 100644
+--- a/apps/shell/src/components/ProfileSwitcher.tsx
++++ b/apps/shell/src/components/ProfileSwitcher.tsx
+@@ -11,6 +11,9 @@ import { BrowserHostMethods as HostMethods } from "@aux/contracts/browser-host-m
+ import { executeCommand } from "../commands";
+ import { commandResult } from "../features/profiles/command-result";
+ import { subscribeProfileMoves } from "../features/profiles/move-request";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ export function ProfileMoveConfirmation() {
+   const { confirm, confirmation } = useConfirm();
+   useEffect(() => {
+@@ -58,12 +61,12 @@ export function ProfileSwitcher() {
+     void commandResult("focus-profile-space",HostMethods.focusBrowserProfileSpace.result,{profileId,spaceId}).then(ok=>{if(!alive.current||request!==focusRequest.current.value)return;if(!ok)throw new Error("The Profile or Space is no longer available.");setOpen(false);}).catch(error=>{if(alive.current&&request===focusRequest.current.value)errToast(error);});
+   };
+   return <div className="profile-switcher" data-space={current?.color ?? SPACE_COLORS[0]}>
+-    <div className="profile-color-stripe" aria-hidden="true" />
+-    <button ref={chip} className="profile-chip" aria-expanded={open} aria-label="Choose Profile and Space" onClick={() => setOpen(value => !value)}><span aria-hidden="true">{current?.name.slice(0,1).toLocaleUpperCase() ?? "P"}</span>{current?.name ?? "Profile"}</button>
++    <div className="profile-color-stripe" {...auxNativeAriaHiddenProps} />
++    <button ref={chip} className="profile-chip" aria-expanded={open} aria-label="Choose Profile and Space" onClick={() => setOpen(value => !value)}><span {...auxNativeAriaHiddenProps}>{current?.name.slice(0,1).toLocaleUpperCase() ?? "P"}</span>{current?.name ?? "Profile"}</button>
+     {open && <Menu className="profile-menu" label="Profiles and Spaces" anchor={chip} returnFocus={chip} onClose={()=>setOpen(false)}>
+       {profiles.map(profile => <div key={profile.id} className="profile-menu-group">
+         <button className="profile-menu-profile" aria-current={profile.current ? "true" : undefined} data-space={profile.color ?? "blue"} onClick={() => focus(profile.id, null)}>{profile.icon === "code" ? shellIconCode : profile.icon === "travel" ? shellIconGlobe : profile.icon === "work" ? shellIconChromeSm : profile.icon === "study" ? shellIconBookmark : profile.icon === "home" ? shellIconFolder : shellIconPerson} {profile.name}</button>
+-        {profile.spaces?.map(space => <button className="profile-menu-space" data-space={space.color} key={space.id} onClick={() => focus(profile.id, space.id)}><span className="space-dot" aria-hidden="true" />{space.name}</button>)}
++        {profile.spaces?.map(space => <button className="profile-menu-space" data-space={space.color} key={space.id} onClick={() => focus(profile.id, space.id)}><span className="space-dot" {...auxNativeAriaHiddenProps} />{space.name}</button>)}
+       </div>)}
+       <button onClick={() => { const request=++focusRequest.current.value;void executeCommand("show-profiles").then(()=>{if(alive.current&&request===focusRequest.current.value)setOpen(false);}).catch(error=>{if(alive.current&&request===focusRequest.current.value)errToast(error);}); }}>Manage Profiles…</button>
+       <button onClick={() => setOpen(false)}>Close menu</button>
+@@ -75,5 +78,5 @@ export function ProfileFooterStripe() {
+   const [profile,setProfile] = useState<BrowserProfile>();
+   useEffect(()=>{if(!inNativeHost||bridge.privateMode)return;let live=true,generation=0;const refresh=()=>{const request=++generation;void bridge.browserProfiles().then(items=>{if(live&&request===generation)setProfile(items.find(item=>item.current));}).catch(error=>{if(live&&request===generation)errToast(error);});};refresh();window.addEventListener("focus",refresh);return()=>{live=false;window.removeEventListener("focus",refresh);};},[]);
+   if(!profile)return null;
+-  return <div className="profile-footer-stripe" data-space={profile.color??"blue"} aria-hidden="true"/>;
++  return <div className="profile-footer-stripe" data-space={profile.color??"blue"} {...auxNativeAriaHiddenProps}/>;
+ }
+diff --git a/apps/shell/src/components/ResultCard.tsx b/apps/shell/src/components/ResultCard.tsx
+index 20e8836ae..c84d80469 100644
+--- a/apps/shell/src/components/ResultCard.tsx
++++ b/apps/shell/src/components/ResultCard.tsx
+@@ -5,6 +5,9 @@ import { csvPreview } from "../csv-preview";
+ import { AnswerPreview } from "./surfaces";
+ import { shellIconOpen, shellIconResult } from "./icons";
+ import "./ResultCard.css";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ 
+ /** Render only the recorded excerpt, without loading or executing the full artifact. */
+ export function ResultExcerpt({result}:{result:ConversationArtifact}) {
+@@ -14,7 +17,7 @@ export function ResultExcerpt({result}:{result:ConversationArtifact}) {
+     try { const rows=csvPreview(result.excerpt).rows.slice(0,4).map(row=>row.slice(0,3));return rows.length?rows:null; }
+     catch { return null; }
+   },[result.mediaType,result.excerpt]);
+-  return <div className="result-card-preview" inert aria-hidden="true">{rows ? <table><tbody>{rows.map((row,i)=><tr key={i}>{row.map((cell,j)=><td key={j}>{cell}</td>)}</tr>)}</tbody></table> : result.mediaType==="text/markdown" ? <AnswerPreview text={result.excerpt}/> : result.mediaType==="text/html" ? <div className="result-card-html">{shellIconResult}<span>Interactive document</span></div> : <pre>{result.excerpt || "No text preview"}</pre>}</div>;
++  return <div className="result-card-preview" inert {...auxNativeAriaHiddenProps}>{rows ? <table><tbody>{rows.map((row,i)=><tr key={i}>{row.map((cell,j)=><td key={j}>{cell}</td>)}</tr>)}</tbody></table> : result.mediaType==="text/markdown" ? <AnswerPreview text={result.excerpt}/> : result.mediaType==="text/html" ? <div className="result-card-html">{shellIconResult}<span>Interactive document</span></div> : <pre>{result.excerpt || "No text preview"}</pre>}</div>;
+ }
+ 
+ export function ResultCard({result, revision, compact = false, onOpen}: {result:ConversationArtifact; revision?:number; compact?:boolean; onOpen():void}) {
+@@ -26,7 +29,7 @@ export function ResultCard({result, revision, compact = false, onOpen}: {result:
+     <button className="btn sm ghost result-card-open" onClick={onOpen} title={result.filename} aria-label={`Open ${result.filename}`}>Open {shellIconOpen}</button>
+   </article>;
+   return <article className="result-card">
+-    <header><span aria-hidden="true">{shellIconResult}</span><button onClick={onOpen} title={result.filename}>{result.filename}</button><span className="result-card-version">v{revision ?? result.revision ?? 1}</span></header>
++    <header><span {...auxNativeAriaHiddenProps}>{shellIconResult}</span><button onClick={onOpen} title={result.filename}>{result.filename}</button><span className="result-card-version">v{revision ?? result.revision ?? 1}</span></header>
+     <ResultExcerpt result={result}/>
+     <footer><span>{kind} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB</span><button {...smallGhostButtonProps} onClick={onOpen} aria-label={`Open ${result.filename}`}>Open {shellIconOpen}</button></footer>
+   </article>;
+diff --git a/apps/shell/src/components/ReviewedConnectors.tsx b/apps/shell/src/components/ReviewedConnectors.tsx
+index c1418132e..1d0ef6406 100644
+--- a/apps/shell/src/components/ReviewedConnectors.tsx
++++ b/apps/shell/src/components/ReviewedConnectors.tsx
+@@ -5,6 +5,7 @@ import "./ReviewedConnectors.css";
+ import { useEffect, useState } from "react";
+ import type { ConnectorCatalog, ConnectorEntry, Task, Workspace } from "@aux/contracts";
+ import { call } from "../store";
++import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+ 
+ type Kind = ConnectorEntry["kind"];
+ type Review = {
+@@ -233,7 +234,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
+               {catalog?.entries.map((item) => (
+                 <button
+                   key={item.connectorId}
+-                  type="button"
++                  {...auxNativeButtonTypeProps}
+                   aria-current={selectedId === item.connectorId ? "true" : undefined}
+                   onClick={() => {
+                     setSelectedId(item.connectorId);
+diff --git a/apps/shell/src/components/RoutineSchedule.tsx b/apps/shell/src/components/RoutineSchedule.tsx
+index 35d86bb09..4cafdd6be 100644
+--- a/apps/shell/src/components/RoutineSchedule.tsx
++++ b/apps/shell/src/components/RoutineSchedule.tsx
+@@ -3,6 +3,7 @@ import { staticHintProps } from "../ui/class-props";
+ import { smallGhostButtonProps } from "../ui/button-props";
+ import { useState } from "react";
+ import type { RoutineTrigger } from "@aux/contracts";
++import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+ 
+ const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+ 
+@@ -229,10 +230,18 @@ export function RoutineSchedule({
+               <input type="time" required value={time} onChange={(event) => setTime(event.target.value)} />
+             </label>
+             <div className="routine-day-presets">
+-              <button {...smallGhostButtonProps} type="button" onClick={() => setDays([1, 2, 3, 4, 5])}>
++              <button
++                {...smallGhostButtonProps}
++                {...auxNativeButtonTypeProps}
++                onClick={() => setDays([1, 2, 3, 4, 5])}
++              >
+                 Weekdays
+               </button>
+-              <button {...smallGhostButtonProps} type="button" onClick={() => setDays([0, 1, 2, 3, 4, 5, 6])}>
++              <button
++                {...smallGhostButtonProps}
++                {...auxNativeButtonTypeProps}
++                onClick={() => setDays([0, 1, 2, 3, 4, 5, 6])}
++              >
+                 Every day
+               </button>
+             </div>
+@@ -240,7 +249,7 @@ export function RoutineSchedule({
+               {weekdays.map((day, index) => (
+                 <button
+                   key={day}
+-                  type="button"
++                  {...auxNativeButtonTypeProps}
+                   aria-pressed={days.includes(index)}
+                   onClick={() =>
+                     setDays((current) =>
+diff --git a/apps/shell/src/components/SaveConversationTask.tsx b/apps/shell/src/components/SaveConversationTask.tsx
+index 38e50d7d1..67dcb66ae 100644
+--- a/apps/shell/src/components/SaveConversationTask.tsx
++++ b/apps/shell/src/components/SaveConversationTask.tsx
+@@ -6,6 +6,9 @@ import { useRef, useState } from "react";
+ import { useShallow } from "zustand/react/shallow";
+ import type { Task, PageTarget } from "@aux/contracts";
+ import { call, useStore } from "../store";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, onSaved }: {
+   chatId: string; runId: string; goal: string; workspaceId?: string; page?: PageTarget; onSaved(task: Task): void;
+@@ -36,6 +39,6 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
+     <label>Space<select value={space} disabled={busy} required onChange={event => setSpace(event.target.value)}><option value="" disabled>Choose a Space</option>{spaces.map(entry => { const [id, workspaceId, name] = entry.split("\u0001"); return <option key={id} value={workspaceId}>{name}</option>; })}</select></label></details>
+     {!space && <p {...staticHintProps}>Choose a Space in Task details to keep this work organized.</p>}
+     {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+-    <div {...staticRowProps}><button type="button" {...smallButtonProps} disabled={busy} onClick={() => setOpen(false)}>Cancel</button><button {...smallButtonProps} disabled={busy || !space || !title.trim() || !objective.trim() || !success.trim()}>{busy ? "Saving…" : "Save task"}</button></div>
++    <div {...staticRowProps}><button {...auxNativeButtonTypeProps} {...smallButtonProps} disabled={busy} onClick={() => setOpen(false)}>Cancel</button><button {...smallButtonProps} disabled={busy || !space || !title.trim() || !objective.trim() || !success.trim()}>{busy ? "Saving…" : "Save task"}</button></div>
+   </form>;
+ }
+diff --git a/apps/shell/src/components/Sidebar.tsx b/apps/shell/src/components/Sidebar.tsx
+index 8af21b620..c3fc76970 100644
+--- a/apps/shell/src/components/Sidebar.tsx
++++ b/apps/shell/src/components/Sidebar.tsx
+@@ -34,6 +34,10 @@ import { acquireFloatingSidebarLock, useFloatingSidebar } from "../floating-side
+ import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
+ import { useTabMembership, type TabMembership } from "../use-tab-membership";
+ import { Menu } from "../ui";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ const IDLE_DRAG = { folderId: null as string | null, from: -1, to: null as number | null, pageId: "", over: null as string | null };
+ 
+@@ -359,8 +363,8 @@ function FolderRow({ folder, count, open, dropOn, renaming, onToggle, onRename,
+       ) : (
+         <span className="tab-title">{folder.name}</span>
+       )}
+-      <span className="folder-count" aria-hidden="true">{count}</span>
+-      <span className="folder-chevron" aria-hidden="true">{shellIconDown}</span>
++      <span className="folder-count" {...auxNativeAriaHiddenProps}>{count}</span>
++      <span className="folder-chevron" {...auxNativeAriaHiddenProps}>{shellIconDown}</span>
+     </div>
+   );
+ }
+@@ -665,7 +669,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
+                 onKeyDown={event => pinKey(b, event)} onContextMenu={event => pinMenu(b, event)} />
+           ))}
+           {overflowPins.length > 0 && <div className="pin-overflow">
+-            <button ref={pinOverflowTrigger} type="button" aria-label={`${overflowPins.length} more pinned sites`} title="More pinned sites" aria-haspopup="menu" aria-expanded={pinOverflowOpen} onClick={() => setPinOverflowOpen(value => !value)}>+{overflowPins.length}</button>
++            <button ref={pinOverflowTrigger} {...auxNativeButtonTypeProps} aria-label={`${overflowPins.length} more pinned sites`} title="More pinned sites" aria-haspopup="menu" aria-expanded={pinOverflowOpen} onClick={() => setPinOverflowOpen(value => !value)}>+{overflowPins.length}</button>
+             {pinOverflowOpen && <Menu className="menu sidebar-native-menu pin-overflow-menu" label="More pinned sites" anchor={pinOverflowTrigger} returnFocus={pinOverflowTrigger} onClose={() => setPinOverflowOpen(false)}>
+               {overflowPins.map(pin => <button {...pinDragProps(pin)} className="menu-item" role="menuitem" key={pin.url} title={pin.url}
+                 onClick={event => openPin(pin, event)} onAuxClick={event => openPin(pin, event)}
+diff --git a/apps/shell/src/components/SidebarReveal.tsx b/apps/shell/src/components/SidebarReveal.tsx
+index 0d7ff2c34..7030b98d6 100644
+--- a/apps/shell/src/components/SidebarReveal.tsx
++++ b/apps/shell/src/components/SidebarReveal.tsx
+@@ -1,6 +1,9 @@
+ import { runCommand } from "../commands";
+ import { shellIconSidebarOpen } from "./icons";
+ import "./SidebarReveal.css";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export interface SidebarRevealProps {
+   minimal: boolean;
+@@ -12,5 +15,5 @@ export interface SidebarRevealProps {
+ 
+ export function SidebarReveal({ minimal, horizontal, hidden, toolbarHidden, peek }: SidebarRevealProps) {
+   if (minimal || horizontal || !hidden || !toolbarHidden || peek) return null;
+-  return <button type="button" className="sidebar-reveal-button icon-btn" aria-label="Show sidebar" aria-expanded={false} title="Show sidebar" data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{shellIconSidebarOpen}</button>;
++  return <button {...auxNativeButtonTypeProps} className="sidebar-reveal-button icon-btn" aria-label="Show sidebar" aria-expanded={false} title="Show sidebar" data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{shellIconSidebarOpen}</button>;
+ }
+diff --git a/apps/shell/src/components/SidebarSection.tsx b/apps/shell/src/components/SidebarSection.tsx
+index aa9591761..0436146e9 100644
+--- a/apps/shell/src/components/SidebarSection.tsx
++++ b/apps/shell/src/components/SidebarSection.tsx
+@@ -2,6 +2,9 @@ import { useId, useRef, type ReactNode } from "react";
+ import { bridge } from "../bridge";
+ import { useSidebarControl } from "./use-sidebar-control";
+ import { shellIconDown } from "./icons";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ 
+ export function SidebarSection({ title, open, onToggle, fill = false, children }: {
+   title: string; open: boolean; onToggle(): void; fill?: boolean; children: ReactNode;
+@@ -13,7 +16,7 @@ export function SidebarSection({ title, open, onToggle, fill = false, children }
+   return <section className={`sidebar-section ${fill ? "fill" : ""}`} aria-label={title}>
+     <button ref={heading} className="sidebar-section-heading" aria-expanded={open} aria-controls={id}
+       data-command-id="toggle-sidebar-section" onClick={toggle}>
+-      <span>{title}</span><span className="sidebar-section-chevron" aria-hidden="true">{shellIconDown}</span>
++      <span>{title}</span><span className="sidebar-section-chevron" {...auxNativeAriaHiddenProps}>{shellIconDown}</span>
+     </button>
+     <div id={id} className={`sidebar-section-body ${open ? "open" : ""}`} inert={!open} aria-hidden={!open}>
+       <div className="sidebar-section-inner">{children}</div>
+diff --git a/apps/shell/src/components/SpaceEditor.tsx b/apps/shell/src/components/SpaceEditor.tsx
+index bc3490f8f..88b97b034 100644
+--- a/apps/shell/src/components/SpaceEditor.tsx
++++ b/apps/shell/src/components/SpaceEditor.tsx
+@@ -10,6 +10,10 @@ import { useStore } from "../store";
+ import { SPACE_COLORS, spaceThemeColor, type Space, type SpaceColor } from "../workspace";
+ import { Dialog } from "../ui";
+ import "./SpaceEditor.css";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ 
+ const PRESET_HUE: Record<SpaceColor, number> = {
+   blue: 250,
+@@ -117,7 +121,7 @@ export default function SpaceEditor({
+           />
+         ))}
+         <button
+-          type="button"
++          {...auxNativeButtonTypeProps}
+           role="radio"
+           aria-checked={custom}
+           aria-label="Custom color"
+@@ -131,7 +135,7 @@ export default function SpaceEditor({
+         style={{ "--space-color": spaceThemeColor(theme) } as React.CSSProperties}
+       >
+         <button
+-          type="button"
++          {...auxNativeButtonTypeProps}
+           className="space-color-pad"
+           aria-label="Color pad"
+           title="Choose hue and lightness"
+@@ -210,17 +214,17 @@ export default function SpaceEditor({
+           className="space-grain-preview"
+           data-space={color}
+           style={custom ? ({ "--space-color": spaceThemeColor(theme) } as React.CSSProperties) : undefined}
+-          aria-hidden="true"
++          {...auxNativeAriaHiddenProps}
+         />
+         <div className="space-theme-actions">
+           <button
+-            type="button"
++            {...auxNativeButtonTypeProps}
+             className="btn"
+             onClick={() => setGrain((value) => (value >= 100 ? 0 : Math.min(100, value + 25)))}
+           >
+             Cycle grain
+           </button>
+-          <button type="button" className="btn" onClick={reset}>
++          <button {...auxNativeButtonTypeProps} className="btn" onClick={reset}>
+             Reset theme
+           </button>
+         </div>
+diff --git a/apps/shell/src/components/SplitControls.tsx b/apps/shell/src/components/SplitControls.tsx
+index 12c649e24..8ab10e723 100644
+--- a/apps/shell/src/components/SplitControls.tsx
++++ b/apps/shell/src/components/SplitControls.tsx
+@@ -2,6 +2,9 @@ import { useStore } from "../store";
+ import { visibleSplitGroup } from "../features/surfaces/split-actions";
+ import { runCommand } from "../commands";
+ import { FavIcon } from "./SiteTile";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ export function SplitControls() {
+   const layout = useStore(state => state.layout), pageId = useStore(state => state.activePageId);
+   const pages = useStore(state => state.pages), mode = useStore(state => state.mode);
+@@ -10,9 +13,9 @@ export function SplitControls() {
+   const panes = group.panes.map(id => pages.find(page => page.pageId === id)).filter(page => !!page);
+   return <section className="sb-split-pair" aria-label="Split view">
+     <span className="sb-split-pair-title"><span className="split-favicons">{panes.map(page => <FavIcon key={page.pageId} url={page.url} src={page.favicon} size="sm" />)}</span>{panes.length} tabs in split view</span>
+-    <button type="button" data-command-id="split-swap" aria-label="Swap split sides" onClick={() => runCommand("split-swap")}>Swap</button>
+-    <button type="button" data-command-id="split-flip" aria-label="Flip split layout" onClick={() => runCommand("split-flip")}>Flip</button>
+-    <button type="button" data-command-id="split-separate" aria-label="Separate split tabs" onClick={() => runCommand("split-separate")}>Separate</button>
+-    <button type="button" data-command-id="split-close" aria-label="Close split pane" onClick={() => runCommand("split-close")}>Close pane</button>
++    <button {...auxNativeButtonTypeProps} data-command-id="split-swap" aria-label="Swap split sides" onClick={() => runCommand("split-swap")}>Swap</button>
++    <button {...auxNativeButtonTypeProps} data-command-id="split-flip" aria-label="Flip split layout" onClick={() => runCommand("split-flip")}>Flip</button>
++    <button {...auxNativeButtonTypeProps} data-command-id="split-separate" aria-label="Separate split tabs" onClick={() => runCommand("split-separate")}>Separate</button>
++    <button {...auxNativeButtonTypeProps} data-command-id="split-close" aria-label="Close split pane" onClick={() => runCommand("split-close")}>Close pane</button>
+   </section>;
+ }
+diff --git a/apps/shell/src/components/StartPage.tsx b/apps/shell/src/components/StartPage.tsx
+index 5a6afc580..403dea971 100644
+--- a/apps/shell/src/components/StartPage.tsx
++++ b/apps/shell/src/components/StartPage.tsx
+@@ -12,6 +12,9 @@ import { bridge } from "../bridge";
+ import { RecentWork } from "./RecentWork";
+ import { RunAttentionFeed, selectAttentionRuns } from "../agent/RunAttentionFeed";
+ import { RunNoticePreference } from "../agent/RunNoticeControls";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ const HomeAsk = lazy(() => import("./HomeAsk"));
+ 
+@@ -28,7 +31,7 @@ export function StartPage() {
+       <span>Aux won’t save this window’s tabs, history, site data, or permissions. Files you download remain on your Mac.</span>
+     </section></> : <>
+       <header className="home-welcome"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task.</p></header>
+-      {needsModel && <div className="home-model-setup"><p>Connect an AI model to start chatting. Your draft stays here.</p><button type="button" {...smallButtonProps} data-command-id="settings" onClick={() => { useStore.setState({ settingsCategory: "Models" }); runCommand("settings"); }}>Connect an AI model</button></div>}
++      {needsModel && <div className="home-model-setup"><p>Connect an AI model to start chatting. Your draft stays here.</p><button {...auxNativeButtonTypeProps} {...smallButtonProps} data-command-id="settings" onClick={() => { useStore.setState({ settingsCategory: "Models" }); runCommand("settings"); }}>Connect an AI model</button></div>}
+       <Suspense fallback={<output className="home-ask-loading" role="status">Opening chat…</output>}><HomeAsk /></Suspense>
+       <SessionRecovery compact />
+       {connected && <RunAttentionFeed runs={runs} onOpenRun={(runId) => useStore.getState().openConversation(runId)} />}
+diff --git a/apps/shell/src/components/StepTimeline.tsx b/apps/shell/src/components/StepTimeline.tsx
+index c1f3bf819..c33642bcc 100644
+--- a/apps/shell/src/components/StepTimeline.tsx
++++ b/apps/shell/src/components/StepTimeline.tsx
+@@ -5,6 +5,9 @@ import { bridge } from "../bridge";
+ import { RunPanelAction, useRunPanelCommand } from "./RunPanelAction";
+ import { errToast, useStore } from "../store";
+ import { shellIconCheck, shellIconClose, shellIconObs, shellIconRight } from "./icons";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../ui/native-attribute-props";
+ 
+ export type StepState = "ok" | "failed" | "skipped" | "running";
+ 
+@@ -201,7 +204,7 @@ const StepCard = memo(function StepCard({
+           <span className="tl-op">{opLabel(s.op)}</span>
+           <span className="tl-detail" title={stepSummary(s)}>{stepSummary(s)}</span>
+           <span className={`tl-status ${state}`}>{statusLabel(state)}</span>
+-          {hasBody && <span className={`tl-disclosure ${open ? "open" : ""}`} aria-hidden="true">{shellIconRight}</span>}
++          {hasBody && <span className={`tl-disclosure ${open ? "open" : ""}`} {...auxNativeAriaHiddenProps}>{shellIconRight}</span>}
+ 
+         </RunPanelAction>
+         {receipt && <span className="tl-receipt" data-testid="tl-receipt" data-receipt={kind}>{receipt}</span>}
+diff --git a/apps/shell/src/components/SupportingContent.tsx b/apps/shell/src/components/SupportingContent.tsx
+index dd40a5d49..7a425c1d1 100644
+--- a/apps/shell/src/components/SupportingContent.tsx
++++ b/apps/shell/src/components/SupportingContent.tsx
+@@ -9,6 +9,9 @@ import { useDismissable } from "../use-dismissable";
+ import { DetailPane } from "../ui";
+ import { shellIconOpen, shellIconResult } from "./icons";
+ import "./SupportingContent.css";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ /** One supporting-content slot. The transcript and composer never remount. */
+ export function SupportingContent({ container, title, children, onClose, initiallyExpanded = false, viewer = false, current }: {
+@@ -66,7 +69,7 @@ export function SupportingContent({ container, title, children, onClose, initial
+   useNativeDialog(overlay, dialog);
+   const pane = viewer ? <div className="supporting-viewer">{children}</div> : <DetailPane title={title} closeRef={node=>{close.current=node;}} onClose={event => current && event ? run("close-conversation-supporting-content",event) : (overlay ? collapse() : onClose())}>{children}</DetailPane>;
+   if (!wide) return <>
+-    <button type="button" ref={open} data-command-id={current ? "open-conversation-supporting-content" : undefined} className="supporting-chip" onClick={event => current ? run("open-conversation-supporting-content",event) : setExpanded(true)} aria-haspopup="dialog">{shellIconResult}<span>{title}</span>{shellIconOpen}</button>
++    <button {...auxNativeButtonTypeProps} ref={open} data-command-id={current ? "open-conversation-supporting-content" : undefined} className="supporting-chip" onClick={event => current ? run("open-conversation-supporting-content",event) : setExpanded(true)} aria-haspopup="dialog">{shellIconResult}<span>{title}</span>{shellIconOpen}</button>
+     {overlay && createPortal(<dialog ref={dialog} tabIndex={-1} className="supporting-dialog ctx-menu" aria-label={title} onCancel={event => { event.preventDefault(); collapse(); }} onClick={event => { if (event.target === event.currentTarget) collapse(); }}>{pane}</dialog>, document.body)}
+   </>;
+   return <aside className="supporting-content" style={{ width }}>
+diff --git a/apps/shell/src/components/Toolbar.tsx b/apps/shell/src/components/Toolbar.tsx
+index ff6ef7749..51a457888 100644
+--- a/apps/shell/src/components/Toolbar.tsx
++++ b/apps/shell/src/components/Toolbar.tsx
+@@ -10,6 +10,10 @@ import { deferNamedSurface } from "./DeferredSurface";
+ const CommandBar = deferNamedSurface(() => import("./CommandBar"), "CommandBar", "Address field", true, true);
+ import { shellIconAgent, shellIconAgentSm, shellIconBookmark, shellIconBookmarkFill, shellIconGear, shellIconGrid, shellIconSidebarOpen } from "./icons";
+ import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: boolean }) {
+   const key = useShortcutLabels();
+@@ -45,7 +49,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
+       </div>
+ 
+       <CommandBar compact />
+-      {!horizontal && <div className="toolbar-drag-space" title="Drag to move window" aria-hidden="true" />}
++      {!horizontal && <div className="toolbar-drag-space" title="Drag to move window" {...auxNativeAriaHiddenProps} />}
+ 
+       <div className="tb-right">
+         <FeatureSlots slot="toolbarItems" />
+@@ -53,7 +57,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
+         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button {...staticIconButtonProps} title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{shellIconGear}</button>}
+         {page?.controller === "human" && <ReturnControlButton pageId={page.pageId} />}
+         {page && (page.controller === "agent" || page.controller === "external") && (
+-          <button type="button" className="ctl-chip agent" title={withShortcut("Take control of this page", key("take-page-control"))} aria-label="Take control of this page" data-command-id="take-page-control" onClick={() => void takeControl(page.pageId)}>
++          <button {...auxNativeButtonTypeProps} className="ctl-chip agent" title={withShortcut("Take control of this page", key("take-page-control"))} aria-label="Take control of this page" data-command-id="take-page-control" onClick={() => void takeControl(page.pageId)}>
+             {shellIconAgentSm}
+             <span className="ctl-chip-label">Agent</span>
+             <span className="ctl-take">Take over</span>
+diff --git a/apps/shell/src/components/VaultSettings.tsx b/apps/shell/src/components/VaultSettings.tsx
+index dc2057f29..c12afd96f 100644
+--- a/apps/shell/src/components/VaultSettings.tsx
++++ b/apps/shell/src/components/VaultSettings.tsx
+@@ -5,6 +5,9 @@ import { errorMessage } from "../error-message";
+ import { useEffect, useState } from "react";
+ import type { VaultAccessRecord, VaultGrant, VaultItem, VaultStatus } from "@aux/contracts";
+ import { call } from "../store";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function VaultSettings() {
+   const [status, setStatus] = useState<VaultStatus | null>(null);
+@@ -61,7 +64,7 @@ export function VaultSettings() {
+       <label>Secret<input type="password" autoComplete="off" value={secret} required onChange={event => setSecret(event.target.value)} /></label>
+       <div {...staticRowProps}>
+         <button {...smallButtonProps} disabled={busy || !label.trim() || !origin.trim() || !secret}>Save credential</button>
+-        <button type="button" {...smallGhostButtonProps} disabled={busy} onClick={() => void action(async () => {
++        <button {...auxNativeButtonTypeProps} {...smallGhostButtonProps} disabled={busy} onClick={() => void action(async () => {
+           const generated = await call("vault.generate", { length: 20 });
+           setSecret(generated.password);
+         })}>Generate password</button>
+diff --git a/apps/shell/src/components/icon-elements/PanelLeft.tsx b/apps/shell/src/components/icon-elements/PanelLeft.tsx
+index 7dd2a0d68..a93ff184c 100644
+--- a/apps/shell/src/components/icon-elements/PanelLeft.tsx
++++ b/apps/shell/src/components/icon-elements/PanelLeft.tsx
+@@ -1,8 +1,11 @@
+ import type { Props } from "./svg-props";
+ import { strokeProps } from "./svg-props";
+ import { icon, svgPath } from "./render";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../../ui/native-attribute-props";
+ 
+-export const PanelLeft = (props: Props) => (<svg width="1em" height="1em" aria-hidden="true" {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">{svgPath("M2.75 6.75C2.75 5.64543 3.64543 4.75 4.75 4.75H19.25C20.3546 4.75 21.25 5.64543 21.25 6.75V17.25C21.25 18.3546 20.3546 19.25 19.25 19.25H4.75C3.64543 19.25 2.75 18.3546 2.75 17.25V6.75Z", strokeProps)}{svgPath("M8.25 5V12V19", strokeProps)}</svg>);
++export const PanelLeft = (props: Props) => (<svg width="1em" height="1em" {...auxNativeAriaHiddenProps} {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">{svgPath("M2.75 6.75C2.75 5.64543 3.64543 4.75 4.75 4.75H19.25C20.3546 4.75 21.25 5.64543 21.25 6.75V17.25C21.25 18.3546 20.3546 19.25 19.25 19.25H4.75C3.64543 19.25 2.75 18.3546 2.75 17.25V6.75Z", strokeProps)}{svgPath("M8.25 5V12V19", strokeProps)}</svg>);
+ 
+ export const shellIconSidebar = /* @__PURE__ */ icon(PanelLeft);
+ export const shellIconSidebarClose = /* @__PURE__ */ icon(PanelLeft);
+diff --git a/apps/shell/src/components/icon-elements/deferred.tsx b/apps/shell/src/components/icon-elements/deferred.tsx
+index 5efa9adfe..b1d0a6aa9 100644
+--- a/apps/shell/src/components/icon-elements/deferred.tsx
++++ b/apps/shell/src/components/icon-elements/deferred.tsx
+@@ -1,6 +1,9 @@
+ import type { Props } from "./svg-props";
+ import { joinedStrokeProps, roundStrokeProps, strokeProps } from "./svg-props";
+ import { icon, svg, svgPath } from "./render";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++} from "../../ui/native-attribute-props";
+ 
+ export const Archive = (props: Props) => (svg(props, svgPath("M20.255 17.05V10.35C20.255 9.78995 20.255 9.50992 20.146 9.29601C20.0501 9.10785 19.8972 8.95487 19.709 8.85899C19.4951 8.75 19.2151 8.75 18.655 8.75H5.35C4.78995 8.75 4.50992 8.75 4.29601 8.85899C4.10785 8.95487 3.95487 9.10785 3.85899 9.29601C3.75 9.50992 3.75 9.78995 3.75 10.35V17.05C3.75 18.1701 3.75 18.7302 3.96799 19.158C4.15973 19.5343 4.46569 19.8403 4.84202 20.032C5.26984 20.25 5.82989 20.25 6.95 20.25H17.055C18.1751 20.25 18.7352 20.25 19.163 20.032C19.5393 19.8403 19.8453 19.5343 20.037 19.158C20.255 18.7302 20.255 18.1701 20.255 17.05Z"), svgPath("M5.75 8V3.75C5.75 3.19772 6.19772 2.75 6.75 2.75H9.67157C10.202 2.75 10.7107 2.96071 11.0858 3.33579L12.2071 4.45711C12.3946 4.64464 12.649 4.75 12.9142 4.75H17.25C17.8023 4.75 18.25 5.19772 18.25 5.75V8"), svgPath("M7.75 12.75L11.75 12.75")));
+ 
+@@ -66,7 +69,7 @@ export const MessagesSquare = (props: Props) => (svg(props, svgPath("M4.75195 7.
+ 
+ export const shellIconChats = /* @__PURE__ */ icon(MessagesSquare);
+ 
+-export const PanelRight = (props: Props) => (<svg width="1em" height="1em" aria-hidden="true" {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M15.75 5V19" {...strokeProps}/><path d="M2.75 6.75C2.75 5.64543 3.64543 4.75 4.75 4.75H19.25C20.3546 4.75 21.25 5.64543 21.25 6.75V17.25C21.25 18.3546 20.3546 19.25 19.25 19.25H4.75C3.64543 19.25 2.75 18.3546 2.75 17.25V6.75Z" {...strokeProps}/></svg>);
++export const PanelRight = (props: Props) => (<svg width="1em" height="1em" {...auxNativeAriaHiddenProps} {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M15.75 5V19" {...strokeProps}/><path d="M2.75 6.75C2.75 5.64543 3.64543 4.75 4.75 4.75H19.25C20.3546 4.75 21.25 5.64543 21.25 6.75V17.25C21.25 18.3546 20.3546 19.25 19.25 19.25H4.75C3.64543 19.25 2.75 18.3546 2.75 17.25V6.75Z" {...strokeProps}/></svg>);
+ 
+ export const shellIconRail = /* @__PURE__ */ icon(PanelRight);
+ 
+diff --git a/apps/shell/src/features/extensions/SidePanelSurface.tsx b/apps/shell/src/features/extensions/SidePanelSurface.tsx
+index fdd9dc4f6..afa60cd62 100644
+--- a/apps/shell/src/features/extensions/SidePanelSurface.tsx
++++ b/apps/shell/src/features/extensions/SidePanelSurface.tsx
+@@ -4,6 +4,9 @@ import { runCommand } from "../../commands";
+ import { shellIconClose } from "../../components/icons";
+ import { extensionPanel } from "./extension-panel";
+ import "./extensions.css";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../../ui/native-attribute-props";
+ 
+ export function SidePanelSurface() {
+   const panel = useBoundStore(extensionPanel, (state) => state.panel);
+@@ -14,7 +17,7 @@ export function SidePanelSurface() {
+         <span className="rail-title">{panel.title}</span>
+         <span className="sp" />
+         <button
+-          type="button"
++          {...auxNativeButtonTypeProps}
+           {...staticIconButtonProps}
+           aria-label={`Close ${panel.title} side panel`}
+           data-command-id="close-extension-panel"
+diff --git a/apps/shell/src/mentions/MentionComposer.tsx b/apps/shell/src/mentions/MentionComposer.tsx
+index f0cafd3f8..2b94d48d6 100644
+--- a/apps/shell/src/mentions/MentionComposer.tsx
++++ b/apps/shell/src/mentions/MentionComposer.tsx
+@@ -19,6 +19,9 @@ import {
+   type MentionQuery,
+ } from "./tokens";
+ import "./mentions.css";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../ui/native-attribute-props";
+ 
+ export function MentionComposer({
+   textareaRef,
+@@ -251,7 +254,7 @@ export function MentionComposer({
+                 <span>{token.text}</span>
+                 {status !== "Available" && <small>{status}</small>}
+                 <button
+-                  type="button"
++                  {...auxNativeButtonTypeProps}
+                   disabled={disabled}
+                   data-command-id="mention-remove"
+                   aria-label={`Remove ${token.text}`}
+diff --git a/apps/shell/src/settings/sections/Agents.tsx b/apps/shell/src/settings/sections/Agents.tsx
+index dbe7c6f6b..d00dd2ca5 100644
+--- a/apps/shell/src/settings/sections/Agents.tsx
++++ b/apps/shell/src/settings/sections/Agents.tsx
+@@ -3,6 +3,9 @@ import { executeCommand } from "../../commands";
+ import { useFeature } from "../../use-feature";
+ import { SiteRulesTable } from "../../features/trust/SiteRulesTable";
+ import { SettingsField, SettingsSection } from "../primitives";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../../ui/native-attribute-props";
+ 
+ export function AgentsSettings({
+   active,
+@@ -31,7 +34,7 @@ export function AgentsSettings({
+             return (
+               <button
+                 key={key}
+-                type="button"
++                {...auxNativeButtonTypeProps}
+                 aria-pressed={on}
+                 className={on ? "on" : ""}
+                 disabled={locked}
+diff --git a/apps/shell/src/settings/sections/Automations.tsx b/apps/shell/src/settings/sections/Automations.tsx
+index 3e20d1664..39f96e755 100644
+--- a/apps/shell/src/settings/sections/Automations.tsx
++++ b/apps/shell/src/settings/sections/Automations.tsx
+@@ -10,6 +10,9 @@ import { bridge } from "../../bridge";
+ import { openSavedSkill } from "../../task-navigation";
+ import { RoutineSchedule, type CalendarTriggerAccounts } from "../../components/RoutineSchedule";
+ import { SettingsField, SettingsSection } from "../primitives";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../../ui/native-attribute-props";
+ 
+ const effectiveCap = (routine: Routine) => routine.spendCapUsd ?? 50;
+ 
+@@ -134,7 +137,7 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
+       </label>
+       <RoutineSchedule mode="create" trigger={{ kind: "schedule", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", hour: 9, minute: 0, days: [1, 2, 3, 4, 5] }} calendar={calendar} disabled={busy || !taskId} onSave={(trigger) => void create(trigger)} />
+       {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+-      <button {...smallGhostButtonProps} type="button" onClick={onClose} disabled={busy}>Cancel</button>
++      <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={onClose} disabled={busy}>Cancel</button>
+     </dialog>, document.body,
+   );
+ }
+@@ -263,7 +266,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
+         hint="Scheduled Skills and Calendar checks run while Aux is open. Calendar checks poll granted accounts once a minute; no event titles are stored in automation runs."
+         searchTerms={["monitor", "schedule", "calendar", "automation"]}
+       >
+-        <button {...smallButtonProps} type="button" disabled={!workspaceId || !!busyId} onClick={() => setCreating(true)}>Create automation</button>
++        <button {...smallButtonProps} {...auxNativeButtonTypeProps} disabled={!workspaceId || !!busyId} onClick={() => setCreating(true)}>Create automation</button>
+         <label>
+           Space
+           <select
+@@ -388,9 +391,9 @@ export function AutomationsSettings({ active }: { active: boolean }) {
+               {item.run.status.replaceAll("_", " ")} · {new Date(item.run.createdAt).toLocaleString()}
+               {item.run.reason ? ` · ${item.run.reason}` : ""}
+             </span>
+-            <button {...smallGhostButtonProps} type="button" onClick={() => void call("routines.get", { routineId: item.run.routineId })
++            <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={() => void call("routines.get", { routineId: item.run.routineId })
+               .then(({ routine }) => openSavedSkill(routine)).catch(errToast)}>Open Skill</button>
+-            {item.run.runId && <button {...smallGhostButtonProps} type="button"
++            {item.run.runId && <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps}
+               disabled={!!outcomeBusy}
+               onClick={() => {
+                 setOutcomeBusy(item.run.routineRunId);
+diff --git a/apps/shell/src/settings/sections/LinkRouting.tsx b/apps/shell/src/settings/sections/LinkRouting.tsx
+index 84035ed16..24c814fa2 100644
+--- a/apps/shell/src/settings/sections/LinkRouting.tsx
++++ b/apps/shell/src/settings/sections/LinkRouting.tsx
+@@ -6,6 +6,9 @@ import { errToast, toast } from "../../store";
+ import { SettingsField, SettingsSection } from "../primitives";
+ import { commandResult } from "../../features/profiles/command-result";
+ import { Dialog } from "../../ui/dialog";
++import {
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "../../ui/native-attribute-props";
+ type Rule = LinkRoutes["rules"][number];
+ function Destination({value, profiles, onChange}:{value:LinkRouteDestination;profiles:BrowserProfile[];onChange:(value:LinkRouteDestination)=>void}) {
+   const profile = value.kind === "profile" ? profiles.find(item=>item.id===value.profileId) : undefined;
+@@ -38,7 +41,7 @@ export function LinkRoutingSettings() {
+         <button disabled={busy||config.rules.length>=500} onClick={()=>setDraft({id:crypto.randomUUID(),enabled:true,order:config.rules.length,match:{kind:"host",pattern:"",subdomains:false},destination:{kind:"ask"},hits:0})}>Add rule</button>
+       </>}
+     </SettingsField>
+-    {draft&&config&&<form onSubmit={event=>{event.preventDefault();void save({...config,rules:[...config.rules.filter(rule=>rule.id!==draft.id),draft].sort((a,b)=>a.order-b.order)});}}><label>Pattern kind<select value={draft.match.kind} onChange={event=>setDraft({...draft,match:{...draft.match,kind:event.target.value==="host"?"host":event.target.value==="glob"?"glob":"prefix"}})}><option value="host">Host</option><option value="glob">URL glob</option><option value="prefix">URL prefix</option></select></label><input aria-label="Routing pattern" required maxLength={2048} value={draft.match.pattern} onChange={event=>setDraft({...draft,match:{...draft.match,pattern:event.target.value}})}/><label><input type="checkbox" checked={draft.match.subdomains} onChange={event=>setDraft({...draft,match:{...draft.match,subdomains:event.target.checked}})}/>Include subdomains</label><Destination value={draft.destination} profiles={profiles} onChange={destination=>setDraft({...draft,destination})}/><label>Sources (empty means all)<input aria-label="Rule sources" value={draft.sources?.join(", ")??""} onChange={event=>{const sources=event.target.value.split(",").map(value=>value.trim()).filter((value):value is "external"|"cli"|"in-app"=>value==="external"||value==="cli"||value==="in-app");setDraft({...draft,sources:sources.length?sources:undefined});}}/></label><label>Sender bundle IDs<input value={draft.fromApps?.join(", ")??""} onChange={event=>setDraft({...draft,fromApps:event.target.value.split(",").map(value=>value.trim()).filter(Boolean)})}/></label><button disabled={busy}>Save rule</button><button type="button" onClick={()=>setDraft(undefined)}>Cancel</button></form>}
++    {draft&&config&&<form onSubmit={event=>{event.preventDefault();void save({...config,rules:[...config.rules.filter(rule=>rule.id!==draft.id),draft].sort((a,b)=>a.order-b.order)});}}><label>Pattern kind<select value={draft.match.kind} onChange={event=>setDraft({...draft,match:{...draft.match,kind:event.target.value==="host"?"host":event.target.value==="glob"?"glob":"prefix"}})}><option value="host">Host</option><option value="glob">URL glob</option><option value="prefix">URL prefix</option></select></label><input aria-label="Routing pattern" required maxLength={2048} value={draft.match.pattern} onChange={event=>setDraft({...draft,match:{...draft.match,pattern:event.target.value}})}/><label><input type="checkbox" checked={draft.match.subdomains} onChange={event=>setDraft({...draft,match:{...draft.match,subdomains:event.target.checked}})}/>Include subdomains</label><Destination value={draft.destination} profiles={profiles} onChange={destination=>setDraft({...draft,destination})}/><label>Sources (empty means all)<input aria-label="Rule sources" value={draft.sources?.join(", ")??""} onChange={event=>{const sources=event.target.value.split(",").map(value=>value.trim()).filter((value):value is "external"|"cli"|"in-app"=>value==="external"||value==="cli"||value==="in-app");setDraft({...draft,sources:sources.length?sources:undefined});}}/></label><label>Sender bundle IDs<input value={draft.fromApps?.join(", ")??""} onChange={event=>setDraft({...draft,fromApps:event.target.value.split(",").map(value=>value.trim()).filter(Boolean)})}/></label><button disabled={busy}>Save rule</button><button {...auxNativeButtonTypeProps} onClick={()=>setDraft(undefined)}>Cancel</button></form>}
+     <SettingsField label="Test a URL" description="Preview the matching rule without opening a page."><form onSubmit={event=>{event.preventDefault();test();}}><input aria-label="URL to test" type="url" required value={url} onChange={event=>setUrl(event.target.value)}/><select aria-label="Test source" value={source} onChange={event=>setSource(event.target.value==="cli"?"cli":event.target.value==="in-app"?"in-app":"external")}><option>external</option><option>cli</option><option>in-app</option></select><button disabled={busy}>Test</button></form><output>{result}</output></SettingsField>
+     {error&&<p role="alert">{error}</p>}<button disabled={busy} onClick={()=>load(true)}>Refresh rules</button>
+   </SettingsSection>;
+diff --git a/apps/shell/src/ui/confirm.tsx b/apps/shell/src/ui/confirm.tsx
+index e76263c62..b8e946d3d 100644
+--- a/apps/shell/src/ui/confirm.tsx
++++ b/apps/shell/src/ui/confirm.tsx
+@@ -1,6 +1,7 @@
+ import { useCallback, useEffect, useId, useRef, useState } from "react";
+ import { Dialog } from "./dialog";
+ import "./confirm.css";
++import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "./native-attribute-props";
+ 
+ export type ConfirmControls = {
+   confirmControl?(node: HTMLButtonElement | null, settle: () => void): void;
+@@ -47,7 +48,7 @@ export function AlertDialog({
+             cancel.current = node;
+             controls?.cancelControl?.(node, onCancel);
+           }}
+-          type="button"
++          {...auxNativeButtonTypeProps}
+           className="btn"
+           onClick={(event) => (controls?.onCancel ? controls.onCancel(event) : onCancel())}
+         >
+@@ -55,7 +56,7 @@ export function AlertDialog({
+         </button>
+         <button
+           ref={(node) => controls?.confirmControl?.(node, onConfirm)}
+-          type="button"
++          {...auxNativeButtonTypeProps}
+           className={`btn ${options.danger ? "danger" : "primary"}`}
+           onClick={(event) => (controls?.onConfirm ? controls.onConfirm(event) : onConfirm())}
+         >
+diff --git a/apps/shell/src/ui/index.tsx b/apps/shell/src/ui/index.tsx
+index c705bf615..fe156b29e 100644
+--- a/apps/shell/src/ui/index.tsx
++++ b/apps/shell/src/ui/index.tsx
+@@ -4,6 +4,10 @@ import { useCallback, useId, useLayoutEffect, useRef, useState, type ButtonHTMLA
+ import { shellIconClose, shellIconFolder, shellIconMore } from "../components/icons";
+ import { Menu } from "./dialog";
+ import "./ui.css";
++import {
++  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
++  nativeButtonTypeProps as auxNativeButtonTypeProps,
++} from "./native-attribute-props";
+ 
+ export { Dialog, Menu } from "./dialog";
+ 
+@@ -29,7 +33,7 @@ export function Textarea({ className = "", ...props }: TextareaHTMLAttributes<HT
+ }
+ 
+ export function Skeleton({ className = "", ...props }: HTMLAttributes<HTMLSpanElement>) {
+-  return <span {...props} aria-hidden="true" className={`ui-skeleton ${className}`.trim()} />;
++  return <span {...props} {...auxNativeAriaHiddenProps} className={`ui-skeleton ${className}`.trim()} />;
+ }
+ 
+ export function ScrollArea({ className = "", children, onScroll, tabIndex, ...props }: HTMLAttributes<HTMLDivElement>) {
+@@ -118,7 +122,7 @@ export function Tabs<T extends string>({ label, value, onChange, items, panelId,
+     focus(next);
+   }}>
+     {items.map(item => <button key={item.value} ref={node => { if (node) buttons.current.set(item.value, node); else buttons.current.delete(item.value); }}
+-      type="button" role="tab" id={`${panelId}-${item.value}`} aria-controls={panelId} aria-label={item.ariaLabel}
++      {...auxNativeButtonTypeProps} role="tab" id={`${panelId}-${item.value}`} aria-controls={panelId} aria-label={item.ariaLabel}
+       aria-selected={item.value === value} tabIndex={item.value === stop ? 0 : -1}
+       className={item.value === value ? "active" : ""} disabled={item.disabled}
+       onClick={() => onChange(item.value)}>{item.label}</button>)}
+@@ -142,31 +146,31 @@ export function ActionMenu({ label, actions, children = shellIconMore, triggerRe
+   };
+   const close = useCallback(() => setOpen(false), []);
+   return <>
+-    <button ref={node => { trigger.current = node; triggerRef?.(node); triggerControl?.(node,activate); }} type="button" className="icon-btn ui-menu-trigger" aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} onClick={event => requestTrigger(event,"toggle")} onKeyDown={event => {
++    <button ref={node => { trigger.current = node; triggerRef?.(node); triggerControl?.(node,activate); }} {...auxNativeButtonTypeProps} className="icon-btn ui-menu-trigger" aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} onClick={event => requestTrigger(event,"toggle")} onKeyDown={event => {
+       if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); requestTrigger(event,event.key === "ArrowUp"?"last":"first"); }
+     }}>{children}</button>
+-    {open && <Menu id={id} label={label} onClose={close} anchor={trigger} returnFocus={trigger} atEnd={openAtEnd.current} className="menu ctx-menu ui-action-menu">{actions.map(action => <button key={action.label} ref={action.controlRef} type="button" role="menuitem" className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={event => { close(); trigger.current?.focus({ preventScroll: true }); action.onSelect(event); }}>
++    {open && <Menu id={id} label={label} onClose={close} anchor={trigger} returnFocus={trigger} atEnd={openAtEnd.current} className="menu ctx-menu ui-action-menu">{actions.map(action => <button key={action.label} ref={action.controlRef} {...auxNativeButtonTypeProps} role="menuitem" className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={event => { close(); trigger.current?.focus({ preventScroll: true }); action.onSelect(event); }}>
+       <span className="menu-ico">{action.icon}</span><span className="t">{action.label}</span>{action.shortcut && <Kbd>{action.shortcut}</Kbd>}
+     </button>)}</Menu>}
+   </>;
+ }
+ 
+ export function ListRow({ title, description, leading, trailing, selected = false, disabled = false, onOpen, openRef }: { title: string; description?: ReactNode; leading?: ReactNode; trailing?: ReactNode; selected?: boolean; disabled?: boolean; onOpen(event?: MouseEvent<HTMLButtonElement>): void; openRef?: (node: HTMLButtonElement | null) => void }) {
+-  return <div className={`ui-list-row${selected ? " selected" : ""}`}><button ref={openRef} type="button" className="ui-list-open" disabled={disabled} onClick={onOpen} aria-current={selected ? "true" : undefined} title={title}>
++  return <div className={`ui-list-row${selected ? " selected" : ""}`}><button ref={openRef} {...auxNativeButtonTypeProps} className="ui-list-open" disabled={disabled} onClick={onOpen} aria-current={selected ? "true" : undefined} title={title}>
+     {leading && <span className="ui-list-icon">{leading}</span>}<span className="ui-list-copy"><strong>{title}</strong>{description && <small>{description}</small>}</span>
+   </button>{trailing && <div className="ui-list-actions">{trailing}</div>}</div>;
+ }
+ 
+ export function Badge({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "active" | "success" | "warning" | "error" }) {
+-  return <span className="ui-status" data-tone={tone}><span aria-hidden="true" />{label}</span>;
++  return <span className="ui-status" data-tone={tone}><span {...auxNativeAriaHiddenProps} />{label}</span>;
+ }
+ 
+ export function EmptyState({ title, description, action, icon = shellIconFolder }: { title: string; description?: ReactNode; action?: ReactNode; icon?: ReactNode }) {
+-  return <div className="ui-empty"><span className="ui-empty-icon" aria-hidden="true">{icon}</span><strong>{title}</strong>{description && <p>{description}</p>}{action}</div>;
++  return <div className="ui-empty"><span className="ui-empty-icon" {...auxNativeAriaHiddenProps}>{icon}</span><strong>{title}</strong>{description && <p>{description}</p>}{action}</div>;
+ }
+ 
+ export function DetailPane({ title, metadata, actions, onClose, children, className = "", headingRef, closeRef }: { title: string; metadata?: ReactNode; actions?: ReactNode; onClose?: (event?: MouseEvent<HTMLButtonElement>) => void; closeRef?: (node: HTMLButtonElement | null) => void; children: ReactNode; className?: string; headingRef?: RefObject<HTMLElement | null> }) {
+-  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button ref={closeRef} type="button" {...staticIconButtonProps} aria-label={`Close ${title}`} onClick={onClose}>{shellIconClose}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
++  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button ref={closeRef} {...auxNativeButtonTypeProps} {...staticIconButtonProps} aria-label={`Close ${title}`} onClick={onClose}>{shellIconClose}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
+ }
+ 
+ export function ComposerFrame({ context, notices, children }: { context?: ReactNode; notices?: ReactNode; children: ReactNode }) {
+diff --git a/apps/shell/src/ui/native-attribute-props.test.tsx b/apps/shell/src/ui/native-attribute-props.test.tsx
+new file mode 100644
+index 000000000..c78e345fb
+--- /dev/null
++++ b/apps/shell/src/ui/native-attribute-props.test.tsx
+@@ -0,0 +1,131 @@
++// @vitest-environment jsdom
++import { createElement, createRef, type MouseEvent } from "react";
++import { createRoot } from "react-dom/client";
++import { act } from "react";
++import { afterAll, afterEach, describe, expect, it } from "vitest";
++import { nativeAriaHiddenProps, nativeButtonTypeProps } from "./native-attribute-props";
++
++const originalActEnvironment = Object.getOwnPropertyDescriptor(globalThis, "IS_REACT_ACT_ENVIRONMENT");
++(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
++afterAll(() => {
++  if (originalActEnvironment)
++    Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", originalActEnvironment);
++  else Reflect.deleteProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT");
++});
++let cleanup: (() => void) | undefined;
++afterEach(() => cleanup?.());
++
++describe("closed native attribute construction", () => {
++  it("retains literal values in frozen own data records", () => {
++    for (const [record, key, value] of [
++      [nativeButtonTypeProps, "type", "button"],
++      [nativeAriaHiddenProps, "aria-hidden", "true"],
++    ] as const) {
++      expect(Reflect.ownKeys(record)).toEqual([key]);
++      expect(Object.isFrozen(record)).toBe(true);
++      expect(Object.getOwnPropertyDescriptor(record, key)).toEqual({
++        value,
++        writable: false,
++        enumerable: true,
++        configurable: false,
++      });
++    }
++  });
++
++  it("still creates fresh native props with the original key and property order", () => {
++    const ref = createRef<HTMLButtonElement>();
++    const literal = createElement("button", {
++      key: "original",
++      ref,
++      title: "Before",
++      type: "button",
++      disabled: true,
++    });
++    const spread = createElement("button", {
++      key: "original",
++      ref,
++      title: "Before",
++      ...nativeButtonTypeProps,
++      disabled: true,
++    });
++    const fresh = createElement("button", {
++      key: "original",
++      ref,
++      title: "Before",
++      ...nativeButtonTypeProps,
++      disabled: true,
++    });
++    expect(spread.key).toBe(literal.key);
++    expect(spread.props).toEqual(literal.props);
++    expect(Reflect.ownKeys(spread.props)).toEqual(Reflect.ownKeys(literal.props));
++    expect(fresh.props).not.toBe(spread.props);
++    expect(spread.props.ref).toBe(ref);
++  });
++
++  it("retains native button form behavior, original event/ref and hidden literal", async () => {
++    const host = document.createElement("div");
++    document.body.append(host);
++    const root = createRoot(host);
++    cleanup = () => {
++      act(() => root.unmount());
++      host.remove();
++      cleanup = undefined;
++    };
++    const literalRef = createRef<HTMLButtonElement>(),
++      spreadRef = createRef<HTMLButtonElement>();
++    const events: MouseEvent<HTMLButtonElement>[] = [];
++    let submissions = 0;
++    await act(async () =>
++      root.render(
++        <form
++          onSubmit={(event) => {
++            event.preventDefault();
++            submissions++;
++          }}
++        >
++          <button key="literal" ref={literalRef} type="button" onClick={(event) => events.push(event)}>
++            Literal
++          </button>
++          <button
++            key="spread"
++            ref={spreadRef}
++            {...nativeButtonTypeProps}
++            onClick={(event) => events.push(event)}
++          >
++            Spread
++          </button>
++          <span aria-hidden="true">Original hidden</span>
++          <span {...nativeAriaHiddenProps}>Spread hidden</span>
++          <button type="submit">Submit</button>
++        </form>,
++      ),
++    );
++    const literal = literalRef.current!,
++      spread = spreadRef.current!;
++    await act(async () => {
++      literal.click();
++      spread.click();
++    });
++    expect(submissions).toBe(0);
++    expect(events.map((event) => event.target)).toEqual([literal, spread]);
++    expect(events.map((event) => event.nativeEvent.target)).toEqual([literal, spread]);
++    spread.focus();
++    expect(document.activeElement).toBe(spread);
++    expect(spread.type).toBe(literal.type);
++    expect([...host.querySelectorAll("span")].map((node) => node.getAttribute("aria-hidden"))).toEqual([
++      "true",
++      "true",
++    ]);
++    await act(async () => host.querySelector<HTMLButtonElement>('[type="submit"]')!.click());
++    expect(submissions).toBe(1);
++    await act(async () =>
++      root.render(
++        <button {...nativeButtonTypeProps} disabled onClick={() => submissions++}>
++          Disabled
++        </button>,
++      ),
++    );
++    await act(async () => host.querySelector("button")!.click());
++    expect(submissions).toBe(1);
++  });
++});
+diff --git a/apps/shell/src/ui/native-attribute-props.ts b/apps/shell/src/ui/native-attribute-props.ts
+new file mode 100644
+index 000000000..2f658028e
+--- /dev/null
++++ b/apps/shell/src/ui/native-attribute-props.ts
+@@ -0,0 +1,3 @@
++/** Closed native attributes; every JSX spread still creates fresh props. */
++export const nativeButtonTypeProps = Object.freeze({ type: "button" as const });
++export const nativeAriaHiddenProps = Object.freeze({ "aria-hidden": "true" as const });
+diff --git a/apps/shell/src/ui/popover.tsx b/apps/shell/src/ui/popover.tsx
+index 1f974f918..5887ad411 100644
+--- a/apps/shell/src/ui/popover.tsx
++++ b/apps/shell/src/ui/popover.tsx
+@@ -13,6 +13,7 @@ import { positionAnchoredPopover } from "../position-context-menu";
+ import { requestStageReport } from "../stage-obstruction";
+ import { useNativeDialog } from "./native-dialog";
+ import "./popover.css";
++import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "./native-attribute-props";
+ 
+ /** Native dialog focus containment, anchored to its shell control and clamped to the viewport. */
+ export function Popover({
+@@ -75,7 +76,7 @@ export function Popover({
+     <>
+       <button
+         ref={setButton}
+-        type="button"
++        {...auxNativeButtonTypeProps}
+         className={`anchored-trigger ${className}`}
+         disabled={disabled}
+         aria-label={label}

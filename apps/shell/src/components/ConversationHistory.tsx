@@ -19,6 +19,9 @@ import { mergeHistory } from "../run-history";
 import { SkeletonRows } from "./Skeleton";
 import { Tabs } from "../ui";
 import { Menu } from "../ui/dialog";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 export { mergeHistory };
 export function cursor(run: Run) { return { createdAt: run.createdAt, runId: run.runId }; }
 export function conversationCursor(item: ConversationSummary) { return { updatedAt: item.updatedAt, chatId: item.chatId }; }
@@ -155,7 +158,7 @@ export function ConversationHistory() {
       {actionError && <p {...auxReserveStaticFieldErrorProps} role="alert">{actionError} <button {...smallGhostButtonProps} onClick={() => setActionError("")}>Dismiss</button></p>}
       <div id="conversation-layout-panel" role="tabpanel" aria-labelledby={`conversation-layout-panel-${viewMode}`} className={`history-items ${viewMode}`}>
       {rows.map((item, index) => <div className="history-conversation-wrap" data-chat-id={item.chatId} key={item.chatId}>
-        {renaming === item.chatId ? <form className="history-rename" onSubmit={event => { event.preventDefault(); if (title.trim()) void mutate("rename", item); }}><input autoFocus aria-label="Conversation title" maxLength={160} value={title} onChange={event => setTitle(event.target.value)}/><button {...smallButtonProps} disabled={saving || !title.trim()}>Save</button><button type="button" {...smallGhostButtonProps} onClick={() => setRenaming(null)}>Cancel</button></form> : <>
+        {renaming === item.chatId ? <form className="history-rename" onSubmit={event => { event.preventDefault(); if (title.trim()) void mutate("rename", item); }}><input autoFocus aria-label="Conversation title" maxLength={160} value={title} onChange={event => setTitle(event.target.value)}/><button {...smallButtonProps} disabled={saving || !title.trim()}>Save</button><button {...auxNativeButtonTypeProps} {...smallGhostButtonProps} onClick={() => setRenaming(null)}>Cancel</button></form> : <>
           <button ref={index === 0 ? firstConversation : undefined} disabled={saving} className="history-conversation" onClick={() => useStore.getState().openConversation(item.latestRun.runId)}><strong>{item.title}</strong><span>{drafts[draftKey(item.chatId)]?.trim() ? `Draft · ${drafts[draftKey(item.chatId)]}` : item.taskId ? "Saved task" : item.latestRun.statusMessage ?? item.latestRun.status.replaceAll("_", " ")}</span><time>{new Date(item.updatedAt).toLocaleString()} · {item.turnCount} {item.turnCount === 1 ? "turn" : "turns"}</time></button>
           {viewMode === "grid" && <div className="history-card-preview home-excerpt" inert><AnswerMarkdown text={drafts[draftKey(item.chatId)]?.trim() || (typeof item.latestRun.result?.answer === "string" ? item.latestRun.result.answer : item.latestRun.statusMessage || item.latestRun.goal)} /></div>}
           <button disabled={saving} className="icon-btn history-actions" aria-label={`Conversation actions for ${item.title}`} aria-haspopup="menu" aria-expanded={menu === item.chatId} onClick={event => { menuAnchor.current = event.currentTarget; setMenu(value => value === item.chatId ? null : item.chatId); setDeleting(null); }}>{shellIconMore}</button>

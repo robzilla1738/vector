@@ -1,0 +1,202 @@
+{
+  "closureSha256": "5df36f472be28a546e9fdc73bd54d8a27502b393745131c39c9d5a69d26230d9",
+  "actualRawPins": 96,
+  "actualCases": 524,
+  "actualStatuses": {
+    "SUCCESS": 478,
+    "FAILURE": 45,
+    "CRASH": 1
+  },
+  "failures": [
+    {
+      "name": "NativeCreatorCloseReceiptTest.CreationDeadlineCannotBeRearmedByReady",
+      "status": "FAILURE"
+    },
+    {
+      "name": "AuxAutoPictureInPictureEligibilityBrowserTest.NativeProtectedDocumentRefusesEntry",
+      "status": "FAILURE"
+    },
+    {
+      "name": "AuxQueuedAutomaticPictureInPictureBrowserTest.NativeManualDocumentSupersedesQueuedAutomaticWithoutClockAdvance",
+      "status": "FAILURE"
+    },
+    {
+      "name": "AuxQueuedAutomaticPictureInPictureBrowserTest.NativeProtectionInstalledBeforeActualAutomaticEffectRefusesWindow",
+      "status": "FAILURE"
+    },
+    {
+      "name": "AuxQueuedAutomaticPictureInPictureBrowserTest.ReplacedDocumentRefusesHeldAutomaticPayload",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.AttachRetirementCallbackDestroysOriginalWebContents",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.AttachRetirementCallbackReplacesSameUrlDocument",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.ConnectionRetirementRefusesOriginalAndHumanCanClose",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.FinalRealPredicateUserdataDestructionRefusesWithoutDeletion",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.GenuineBeforeUnloadContinuationDeletesOnlyOriginal",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.GenuineCreationMacAckAndFinalDeletionAreOneUse",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.GenuineLocalPersonReturnControlCreatesFreshOneUseNativeContext",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.GenuineParentOwnerStopRetiresOnlyRegisteredDescendantAndResumeIsOneUse",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.GenuineStartReadyTakeProducesCommittedCloseOnlyReceipt",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.HeldBeforeUnloadOwnerRetirementCannotDeleteOriginal",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.IndependentHumanCloseNeverBecomesAgentSuccess",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.NativeInstalledLeaseWithoutRuntimeAckRetiresToCloseOnly",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.NativePersonRetirementRefusesOriginalCleanup",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.NativeStartDeadlineCannotBeExtendedByDelayedTake",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.ObserverRetirementRefusesBeforeDestroyTabFeatures",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.SameProfileHostRecreationRetiresOriginalAuthority",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.TakeoverPreparationWaitsForRealOriginalFinalDispatch",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeCreatorCloseReceiptBrowserTest.UserdataRemovalIsNotSuccessfulWebContentsDestruction",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonObserverControllerBrowserTest.ActualEightPendingHostReadsRefuseNinthAndRetirementClearsAll",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonObserverControllerBrowserTest.ClosedRequestRejectsCallerScriptAndValueAttribute",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonObserverControllerBrowserTest.FixedReadReturnsOriginalDocumentWithoutFieldValues",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonObserverControllerBrowserTest.NativeReadSessionRetainsOriginalDocumentAndConnection",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonObserverControllerBrowserTest.NavigationRetiresOriginalBeforeReplacementDocumentRead",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonObserverControllerBrowserTest.OriginalDisconnectCannotClearReplacementRead",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonObserverControllerBrowserTest.OriginalHostPublicationIsIdempotentAndRetiredGenerationRefuses",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonObserverControllerBrowserTest.OriginalRetirementCallbackRetainsReentrantReplacementRead",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonObserverControllerBrowserTest.SettledOwnerMutationRetiresPendingOriginalRead",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonObserverControllerBrowserTest.SettledOwnerMutationRotatesNativeReadSession",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeRecorderControllerBrowserTest.FixedWorldCapturesTrustedInputAndRejectsProgrammaticClick",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeRecorderControllerBrowserTest.OldRecordingReceiptCannotStopOrDrainReplacement",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeRecorderControllerBrowserTest.PreservesTrustedInputAndImmediateSubmitBeforeNavigation",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeRecorderControllerBrowserTest.RefusesForeignConnectionAndRuntimeOwnedPage",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeRecorderControllerBrowserTest.RetiredPendingReplyCannotOverwriteReplacementCleanup",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativeRecorderControllerBrowserTest.SettledOwnerMutationCannotReplayPersonRecorderReceipt",
+      "status": "FAILURE"
+    },
+    {
+      "name": "ResultPreviewBrowserTest.OriginalParentLoadsHaveDistinctOpaqueDestinationNonces",
+      "status": "FAILURE"
+    },
+    {
+      "name": "ResultPreviewBrowserTest.ReplacedOriginalParentCannotReuseOriginalToken",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonCaptureControllerBrowserTest.ActiveTransitionAndAnimationCannotExposeEditablePixels",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonCaptureControllerBrowserTest.ActualViewportChangeAfterCopyRefusesExportAndRestoresMask",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonCaptureControllerBrowserTest.OOPIFOriginalChosenChildKeepsPublicPixelsAndMasksEditablePixels",
+      "status": "CRASH"
+    },
+    {
+      "name": "NativePersonCaptureControllerBrowserTest.SameWidgetFramesMaskEditablePixelsAndRestoreOriginalStyles",
+      "status": "FAILURE"
+    },
+    {
+      "name": "NativePersonCaptureControllerBrowserTest.StyleABABeforeRestoreRetainsOriginalDebt",
+      "status": "FAILURE"
+    }
+  ],
+  "naturalExit": 1,
+  "originalProcessesAndSlotRetired": true,
+  "safetyPassed": false,
+  "appAdmitted": false,
+  "customRawReparsePending": [],
+  "allOriginalRawOutcomesIndependentlyReparsed": true
+}

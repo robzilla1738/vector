@@ -2,6 +2,7 @@ import { smallGhostButtonProps } from "../ui/button-props";
 import { memo, useMemo, useState } from "react";
 import type { CompactObservation } from "@aux/contracts";
 import { shellIconCopy, shellIconRight } from "./icons";
+import { staticNumericCountProps as auxClassNumericCountProps, staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 
 interface ParsedObs {
   header: string[];
@@ -57,7 +58,7 @@ const ObsSection = memo(function ObsSection({ name, lines, startOpen }: { name: 
       <button className="obs-section-head" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         <span className={`chev ${open ? "open" : ""}`}>{shellIconRight}</span>
         <span>{name}</span>
-        <span className="count nums">{lines.length}</span>
+        <span {...auxClassNumericCountProps}>{lines.length}</span>
       </button>
       {open && (
         <ul className={`obs-lines ${isRefs ? "refs" : ""} ${isHeadings ? "headings" : ""}`}>
@@ -78,7 +79,7 @@ export const ObservationPanel = memo(
           <div className="obs-head">
             <span className="obs-title" title={obs.url}>{obs.title || obs.url}</span>
             <span className="obs-meta nums">rev {obs.revision} · {obs.refs.length} refs</span>
-            {onCopy && <button className="icon-btn xs" title="Copy observation" aria-label="Copy observation" onClick={onCopy}>{shellIconCopy}</button>}
+            {onCopy && <button {...auxClassExtraSmallIconButtonProps} title="Copy observation" aria-label="Copy observation" onClick={onCopy}>{shellIconCopy}</button>}
           </div>
         )}
         {!compact && parsed.header.slice(1).map((l, i) => (

@@ -9,6 +9,7 @@ import { deferSurface } from "./DeferredSurface";
 import { shellIconChats, shellIconLeft, shellIconOpen, shellIconPlus, shellIconRail } from "./icons";
 import { RunPresence } from "../agent/RunPresence";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
+import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 
 const SetPanel = deferSurface(async () => {
   const module = await import("./SetPanel");
@@ -54,7 +55,7 @@ export const AgentRail = memo(function AgentRail() {
           <span className="rail-title">{recentOpen ? "Recent work" : view.kind === "set" ? "Set" : "Ask Aux"}</span>
           {!connected && <output className="rail-sub offline">Connecting…</output>}
           {selectedRun && <RunPresence run={selectedRun} pages={selectedPages} compact />}
-          <span className="sp" />
+          <span {...auxClassSpacerProps} />
           <button {...staticIconButtonProps} title={recentOpen ? "Return to conversation" : "Recent conversations"} aria-label={recentOpen ? "Return to conversation" : "Recent conversations"} aria-pressed={recentOpen} onClick={() => setRecentOpen(value => !value)}>{recentOpen ? shellIconLeft : shellIconChats}</button>
           {!recentOpen && view.kind !== "set" && <button {...staticIconButtonProps} title="Open full conversation" aria-label="Open full conversation" onClick={expand}>{shellIconOpen}</button>}
           <button {...staticIconButtonProps} title="New conversation" aria-label="New conversation" onClick={() => { setRecentOpen(false); setRailView({kind:"home"}); }}>{shellIconPlus}</button>

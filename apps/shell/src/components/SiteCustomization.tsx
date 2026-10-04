@@ -9,6 +9,7 @@ import { siteControlsOpener } from "../site-controls-opener";
 import { Dialog } from "../ui";
 import { shellIconClose } from "./icons";
 import "./SiteCustomization.css";
+import { staticButtonProps as auxClassButtonProps, staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
 
 function pageOrigin(url: string | null | undefined): string | null {
   try {
@@ -224,10 +225,10 @@ export function SiteCustomization() {
               ))}
             </fieldset>
             <div className="zap-actions">
-              <button className="btn" onClick={() => setPick(null)}>
+              <button {...auxClassButtonProps} onClick={() => setPick(null)}>
                 Back
               </button>
-              <button className="btn primary" disabled={busy} onClick={() => void saveRule()}>
+              <button {...auxClassPrimaryButtonProps} disabled={busy} onClick={() => void saveRule()}>
                 {busy ? "Saving…" : "Hide selected"}
               </button>
             </div>
@@ -302,7 +303,7 @@ export function SiteCustomization() {
               <div className="zap-actions">
                 <span>{css.length.toLocaleString()} / 20,000</span>
                 <button
-                  className="btn primary"
+                  {...auxClassPrimaryButtonProps}
                   disabled={!origin || busy || css === savedCss}
                   onClick={() => void saveCss()}
                 >

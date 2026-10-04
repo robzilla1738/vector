@@ -45,6 +45,11 @@ const noArgs = tuple([]);
 const bool = z.boolean();
 const str = z.string();
 const number = z.number();
+const freshOptional = <T extends z.ZodType>(schema: T) => schema.optional();
+const freshWholeNumber = () => number.int().nonnegative();
+const freshTokenString = () => str.min(1).max(128);
+const freshWebUrl = () => z.string().url().max(8192);
+const freshStringArray = () => z.array(str);
 const nullableString = str.nullable();
 const noResult = z.union([z.undefined(), z.null()]);
 const token = strictObject({ contentHash: str, manifestSha256: str });
@@ -58,8 +63,8 @@ const migrationReview = strictObject({
 });
 const filterSource = strictObject({
   id: str, name: str, url: str, enabled: bool, kind: z.enum(["hosts", "cookie_banner"]),
-  meta: strictObject({ fetchedAt: number, etag: str.optional(), hosts: number,
-    selectors: number.optional(), sha256: str, error: str.optional() }).optional(),
+  meta: strictObject({ fetchedAt: number, etag: freshOptional(str), hosts: number,
+    selectors: freshOptional(number), sha256: str, error: freshOptional(str) }).optional(),
 });
 const filterStatus = strictObject({
   sources: z.array(filterSource), hosts: number, cookieSelectors: number, builtinHosts: number,
@@ -67,14 +72,14 @@ const filterStatus = strictObject({
   cosmeticBackend: z.enum(["document_start_stylesheet", "unavailable"]).optional(),
 });
 const extension = strictObject({
-  key: str, id: str.optional(), name: str, version: str, permissions: z.array(str),
+  key: str, id: freshOptional(str), name: str, version: str, permissions: freshStringArray(),
   enabled: bool, loaded: bool, managed: bool,
-  source: z.enum(["managed", "environment", "store"]), error: str.optional(),
+  source: z.enum(["managed", "environment", "store"]), error: freshOptional(str),
 });
 const routeFallbackReason = z.enum(["profile-unavailable", "space-unavailable"]);
-const routedOpen = strictObject({ pageId: str, profileId: str, spaceId: str.optional(), ruleId: str.optional(), fallbackReason: routeFallbackReason.optional() });
-const routePrompt = strictObject({ id: str, url: z.string().url().max(8192), expiresAt: number.int().nonnegative() });
-const browserProfile = strictObject({ id: str, name: str, current: bool, archived: bool.optional(),
+const routedOpen = strictObject({ pageId: str, profileId: str, spaceId: freshOptional(str), ruleId: freshOptional(str), fallbackReason: routeFallbackReason.optional() });
+const routePrompt = strictObject({ id: str, url: freshWebUrl(), expiresAt: freshWholeNumber() });
+const browserProfile = strictObject({ id: str, name: str, current: bool, archived: freshOptional(bool),
   color: SpaceColorSchema.optional(), icon: str.max(32).optional(),
   spaces: z.array(strictObject({ id: str, name: str, color: SpaceColorSchema })).max(200).optional(),
 });
@@ -83,19 +88,19 @@ const extensionAction = strictObject({ id: str, name: str, iconPng: str, badgeTe
 const extensionCommand = strictObject({ extensionId: str, name: str, description: str, shortcut: str });
 const screenRect = strictObject({ x: number, y: number, width: number.positive(), height: number.positive() });
 const autocompleteMatch = strictObject({ id: str, type: z.enum(["history", "bookmark", "search", "typed"]),
-  title: str, url: str, description: str.optional() });
+  title: str, url: str, description: freshOptional(str) });
 const httpAuthRequest = strictObject({ id: str, origin: str, proxy: bool, realm: str, retry: bool });
-const downloadFolderResult = strictObject({ path: str, custom: bool, error: str.optional() });
+const downloadFolderResult = strictObject({ path: str, custom: bool, error: freshOptional(str) });
 const startupMode = z.enum(["new-tab", "continue", "pages", "continue-and-pages"]);
-const startupPreferences = strictObject({ mode: startupMode, urls: z.array(str).max(20) });
+const startupPreferences = strictObject({ mode: startupMode, urls: freshStringArray().max(20) });
 export type HostReaderNode = string | { tag: string; href?: string; sourceId?: string; children: HostReaderNode[] };
 const readerNode: z.ZodType<HostReaderNode> = z.lazy(() => z.union([str,
-  strictObject({ tag: str, href: str.optional(), sourceId: str.optional(),
+  strictObject({ tag: str, href: freshOptional(str), sourceId: freshOptional(str),
     children: z.array(readerNode) })]));
 const stats = strictObject({ p50: number, p95: number, max: number });
 const healthSummary = strictObject({
-  recordingSince: number.optional(), latestAt: number.optional(), samples: number, sessions: number,
-  observedMinutes: number, spanDays: number, sevenDaySpan: bool, startupMs: number.optional(),
+  recordingSince: freshOptional(number), latestAt: freshOptional(number), samples: number, sessions: number,
+  observedMinutes: number, spanDays: number, sevenDaySpan: bool, startupMs: freshOptional(number),
   cpuPercent: stats, memoryMb: stats, eventLoopLagMs: stats,
   maxWindows: number, maxPages: number, maxSuspendedPages: number,
   swallowed: z.record(str, number).optional(),
@@ -111,9 +116,9 @@ export const BrowserHostMethods = {
   defaultBrowser: coreShell(noArgs, strictObject({ isDefault: bool })),
   setDefaultBrowser: coreShell(noArgs, strictObject({ isDefault: bool })),
   tabCommand: {
-    ...coreShell(tuple([TabCommandSchema, number.optional()]), TabCommandAckSchema),
+    ...coreShell(tuple([TabCommandSchema, freshOptional(number)]), TabCommandAckSchema),
     // The bootstrap supplies a command ID before forwarding to Mojo.
-    wireArgs: tuple([str.min(8).max(128), TabCommandSchema, number.optional()]),
+    wireArgs: tuple([str.min(8).max(128), TabCommandSchema, freshOptional(number)]),
   },
   bindTabSpace: spacesShell(tuple([str, str]), strictObject({ spaceId: str, workspaceId: str })),
   migrateTabSpaces: spacesShell(tuple([z.array(strictObject({ pageId: str, spaceId: str }))]), strictObject({ migrated: number })),
@@ -135,7 +140,7 @@ export const BrowserHostMethods = {
   /** Browser picks fixed copy. No goal, page, question, or result text crosses this boundary. */
   showRunAttention: coreShell(tuple([strictObject({
     kind: z.enum(["completed", "question", "handoff"]),
-    runId: str.min(1).max(128), identity: str.min(1).max(128), windowId: str.min(1).max(128),
+    runId: freshTokenString(), identity: freshTokenString(), windowId: freshTokenString(),
   })]), strictObject({ queued: bool })),
   createResultPreview: activeHtmlShell(tuple([str]), str),
   releaseResultPreview: activeHtmlShell(tuple([str]), bool),
@@ -145,7 +150,7 @@ export const BrowserHostMethods = {
   hardReload: coreShell(tuple([str]), bool),
   closeWindow: coreShell(noArgs, bool),
   openFile: coreShell(noArgs, nullableString),
-  dictationStatus: dictationShell(noArgs, strictObject({ available: bool, language: str.optional(), reason: str.optional() })),
+  dictationStatus: dictationShell(noArgs, strictObject({ available: bool, language: freshOptional(str), reason: freshOptional(str) })),
   startDictation: dictationShell(tuple([str]), bool),
   stopDictation: dictationShell(tuple([str]), bool),
   cancelDictation: dictationShell(tuple([str]), noResult),
@@ -155,28 +160,28 @@ export const BrowserHostMethods = {
     security: z.enum(["secure", "local", "insecure"]), cookieCount: number,
     permissions: z.record(str, z.enum(["allow", "deny"])), trackersAllowed: bool, blockedCount: number,
   })),
-  siteZoom: shell("pageZoom", tuple([str.optional()]), z.array(strictObject({ origin: str, percentage: number }))),
+  siteZoom: shell("pageZoom", tuple([freshOptional(str)]), z.array(strictObject({ origin: str, percentage: number }))),
   privatePageZoom: coreShell(tuple([str, strictObject({
-    level: number.optional(), delta: number.optional(), reset: bool.optional(),
+    level: freshOptional(number), delta: freshOptional(number), reset: freshOptional(bool),
     direction: z.enum(["in", "out"]).optional(),
   })]), strictObject({ level: number })),
   privacy: blockingShell(noArgs, strictObject({ trackerBlock: bool, blocked: number,
-    allowedHosts: z.array(str).optional(), httpsUpgrade: bool.optional() })),
+    allowedHosts: freshStringArray().optional(), httpsUpgrade: freshOptional(bool) })),
   setTrackerBlock: blockingShell(tuple([bool]), strictObject({ trackerBlock: bool, blocked: number,
-    allowedHosts: z.array(str).optional() })),
+    allowedHosts: freshStringArray().optional() })),
   setSiteTrackers: blockingShell(tuple([str, bool]), strictObject({ hostname: str, allowed: bool })),
-  removeAllowedHost: blockingShell(tuple([str]), z.array(str)),
+  removeAllowedHost: blockingShell(tuple([str]), freshStringArray()),
   filterLists: blockingShell(noArgs, filterStatus),
   updateFilters: blockingShell(noArgs, filterStatus),
   addFilterSource: blockingShell(tuple([str, str, z.enum(["hosts", "cookie_banner"]).optional()]), z.array(filterSource)),
   removeFilterSource: blockingShell(tuple([str]), z.array(filterSource)),
   setFilterSourceEnabled: blockingShell(tuple([str, bool]), z.array(filterSource)),
-  setAppearance: coreShell(tuple([z.enum(["system", "dark", "light"]), bool.optional(), bool.optional(),
+  setAppearance: coreShell(tuple([z.enum(["system", "dark", "light"]), freshOptional(bool), freshOptional(bool),
     z.enum(["liquid-glass", "titlebar", "sidebar", "under-window"]).optional()]), bool),
   dispatchCommand: coreShell(tuple([z.enum(["new-window", "new-private-window"])]), bool),
   setShortcuts: coreShell(tuple([z.array(strictObject({
     commandId: str.max(64), key: str.min(1).max(32), meta: bool, ctrl: bool,
-    shift: bool, alt: bool, focusShell: bool.optional(),
+    shift: bool, alt: bool, focusShell: freshOptional(bool),
   })).max(512)]), bool),
   windowControlsVisible: shell("minimalUi", WindowControlsVisibleSchema, bool),
   extensions: extensionShell(noArgs, z.array(extension)),
@@ -205,9 +210,9 @@ export const BrowserHostMethods = {
   focusBrowserProfileSpace: profileShell(tuple([str, nullableString]), bool),
   moveTabToProfile: profileShell(tuple([str, str]), bool),
   linkRoutes: linkRoutingShell(noArgs, LinkRoutesSchema),
-  setLinkRoutes: linkRoutingShell(tuple([number.int().nonnegative(), LinkRoutesSchema]), LinkRoutesSchema),
-  testLinkRoute: linkRoutingShell(tuple([z.string().url().max(8192), LinkRouteSourceSchema]),
-    strictObject({ destination: LinkRouteDestinationSchema, ruleId: str.optional(), fallback: bool, fallbackReason: routeFallbackReason.optional() })),
+  setLinkRoutes: linkRoutingShell(tuple([freshWholeNumber(), LinkRoutesSchema]), LinkRoutesSchema),
+  testLinkRoute: linkRoutingShell(tuple([freshWebUrl(), LinkRouteSourceSchema]),
+    strictObject({ destination: LinkRouteDestinationSchema, ruleId: freshOptional(str), fallback: bool, fallbackReason: routeFallbackReason.optional() })),
   resolveRoutePrompt: linkRoutingShell(tuple([str, LinkRouteDestinationSchema, bool]), bool),
   routedOpens: linkRoutingShell(noArgs, z.array(routedOpen).max(128)),
   routePrompts: linkRoutingShell(noArgs, z.array(routePrompt).max(128)),
@@ -216,29 +221,29 @@ export const BrowserHostMethods = {
   setAutofillProfile: coreShell(tuple([AutofillProfileSchema]), bool),
   autofill: coreShell(tuple([str]), number),
   vaultFill: coreShell(tuple([str]), bool),
-  vaultSave: coreShell(tuple([str, str, str.optional()]), strictObject({ ok: bool, updated: bool })),
-  vaultDismiss: coreShell(tuple([str, str, str.optional()]), bool),
+  vaultSave: coreShell(tuple([str, str, freshOptional(str)]), strictObject({ ok: bool, updated: bool })),
+  vaultDismiss: coreShell(tuple([str, str, freshOptional(str)]), bool),
   passwordExport: coreShell(tuple([str]), strictObject({ path: str, exported: number, skipped: number }).nullable()),
   passwordImport: coreShell(tuple([str]), strictObject({ added: number, skipped: number }).nullable()),
   // Quick Ask
-  quickAskShortcut: quickAskShell(tuple([bool.optional()]),
+  quickAskShortcut: quickAskShell(tuple([freshOptional(bool)]),
     strictObject({ enabled: bool, registered: bool, error: str })),
   quickAsk: quickAskShell(tuple([z.enum(["open", "expand", "dismiss", "status"])]), bool),
   showTabWindow: shell("windowSync", tuple([str]), bool),
   littleWindow: littleWindowShell(tuple([z.enum(["open", "promote", "close"]),
-    strictObject({ url: z.string().url().max(8192).optional(), spaceId: str.optional() })]), bool),
+    strictObject({ url: freshWebUrl().optional(), spaceId: freshOptional(str) })]), bool),
   externalLinkTarget: littleWindowShell(tuple([z.enum(["little", "main"]).optional()]), z.enum(["little", "main"])),
-  javascriptAppleEvents: shell("appleScript", tuple([bool.optional()]), strictObject({ enabled: bool, managed: bool })),
+  javascriptAppleEvents: shell("appleScript", tuple([freshOptional(bool)]), strictObject({ enabled: bool, managed: bool })),
   // Downloads and tab audio
   downloadFolder: coreShell(noArgs, downloadFolderResult),
-  chooseDownloadFolder: coreShell(tuple([bool.optional()]), downloadFolderResult),
-  spellCheck: coreShell(tuple([bool.optional()]), strictObject({ enabled: bool, managed: bool })),
+  chooseDownloadFolder: coreShell(tuple([freshOptional(bool)]), downloadFolderResult),
+  spellCheck: coreShell(tuple([freshOptional(bool)]), strictObject({ enabled: bool, managed: bool })),
   startupPreferences: coreShell(tuple([startupPreferences.optional()]), startupPreferences.extend({ managed: bool }).strict()),
-  languagePreferences: coreShell(tuple([z.array(str).min(1).max(20).optional()]),
-    strictObject({ selected: z.array(str), effective: z.array(str), forced: z.array(str), managed: bool })),
+  languagePreferences: coreShell(tuple([freshStringArray().min(1).max(20).optional()]),
+    strictObject({ selected: freshStringArray(), effective: freshStringArray(), forced: freshStringArray(), managed: bool })),
   automaticPictureInPicture: coreShell(tuple([z.enum(["ask", "allow", "block"]).optional()]),
     strictObject({ mode: z.enum(["ask", "allow", "block"]), managed: bool })),
-  keepRuntimeInBackground: coreShell(tuple([bool.optional()]),
+  keepRuntimeInBackground: coreShell(tuple([freshOptional(bool)]),
     strictObject({ enabled: bool, available: bool, managed: bool })),
   defaultPageZoom: coreShell(tuple([z.number().int().min(50).max(200).optional()]),
     strictObject({ percentage: z.number().int(), managed: bool })),
@@ -251,9 +256,9 @@ export const BrowserHostMethods = {
     .refine(ids => new Set(ids).size === ids.length, "Stage pages must be unique")]), bool),
   tabsUnsavedWork: coreShell(tuple([z.array(strictObject({ pageId: str, url: str }))]),
     z.record(str, z.enum(["clean", "dirty", "unknown"]))),
-  archiveTab: shell("autoArchive", tuple([str.min(1).max(128), z.string().url().max(8192), str.min(1).max(200), number.nonnegative()]), strictObject({ archived: bool, reason: str.optional() })),
-  tabSleep: shell("tabLifecycle", tuple([str, z.string().url().max(8192)]),
-    strictObject({ slept: bool, reason: str.optional(), estimatedSavedBytes: z.number().int().nonnegative().optional() })),
+  archiveTab: shell("autoArchive", tuple([freshTokenString(), freshWebUrl(), str.min(1).max(200), number.nonnegative()]), strictObject({ archived: bool, reason: freshOptional(str) })),
+  tabSleep: shell("tabLifecycle", tuple([str, freshWebUrl()]),
+    strictObject({ slept: bool, reason: freshOptional(str), estimatedSavedBytes: z.number().int().nonnegative().optional() })),
   // Page surfaces and menus
   preview: coreShell(tuple([str]), nullableString),
   contextMenu: coreShell(tuple([z.union([str, z.null()])]), bool),
@@ -273,10 +278,10 @@ export const BrowserHostMethods = {
   pickEvidenceDocument: conversationShell(noArgs, strictObject({ filename: str, content: str }).nullable()),
   // External agents
   agentConfig: inboundAgentsShell(tuple([AgentConnectionCreateParams]), strictObject({
-    command: str, args: z.array(str), env: z.record(str, str), connection: AgentConnectionSchema })),
+    command: str, args: freshStringArray(), env: z.record(str, str), connection: AgentConnectionSchema })),
   agentConnections: inboundAgentsShell(noArgs, z.array(AgentConnectionSchema)),
   agentClients: inboundAgentsShell(noArgs, z.array(strictObject({
-    client: AgentClientSchema, installed: bool, version: str.optional(), error: str.optional() }))),
+    client: AgentClientSchema, installed: bool, version: freshOptional(str), error: freshOptional(str) }))),
   revokeAgentConnection: inboundAgentsShell(tuple([str]), AgentConnectionSchema),
   // Diagnostics, backup and restore
   exportDiagnostics: coreShell(noArgs, nullableString),
@@ -285,8 +290,8 @@ export const BrowserHostMethods = {
   stageRuntimeRestore: electronMigrationShell(noArgs, stagedRestore.nullable()),
   cancelRuntimeRestore: electronMigrationShell(noArgs, strictObject({ cancelled: z.literal(true) })),
   runtimeRestoreStatus: electronMigrationShell(noArgs, strictObject({
-    pending: bool, lastAppliedAt: number.optional(),
-    managedRecovery: strictObject({ generation: number.int().nonnegative(), freshBackupIssued: bool }),
+    pending: bool, lastAppliedAt: freshOptional(number),
+    managedRecovery: strictObject({ generation: freshWholeNumber(), freshBackupIssued: bool }),
   })),
   healthSummary: coreShell(noArgs, healthSummary),
   clearHealth: coreShell(noArgs, healthSummary),
@@ -294,13 +299,13 @@ export const BrowserHostMethods = {
   httpAuthRequests: coreShell(noArgs, z.array(httpAuthRequest)),
   respondHttpAuth: coreShell(tuple([str, strictObject({ username: str, password: str }).nullable()]), bool),
   clearSiteData: siteShell(tuple([str]), bool),
-  siteDataCount: siteShell(tuple([str]), strictObject({ domain: str, cookies: number.int().nonnegative() })),
-  browsingDataPreview: siteShell(tuple([number.int().nonnegative(), number.int().nonnegative()]),
-    strictObject({ cookies: number.int().nonnegative(), cacheBytes: number.int().nonnegative(), cacheEstimate: bool })),
-  clearBrowsingData: siteShell(tuple([number.int().nonnegative(), number.int().nonnegative(),
+  siteDataCount: siteShell(tuple([str]), strictObject({ domain: str, cookies: freshWholeNumber() })),
+  browsingDataPreview: siteShell(tuple([freshWholeNumber(), freshWholeNumber()]),
+    strictObject({ cookies: freshWholeNumber(), cacheBytes: freshWholeNumber(), cacheEstimate: bool })),
+  clearBrowsingData: siteShell(tuple([freshWholeNumber(), freshWholeNumber(),
     strictObject({ cookies: bool, cache: bool })]), bool),
   sitePermissions: siteShell(noArgs, z.record(str, z.record(str, z.enum(["allow", "deny"])))),
-  clearSitePermission: siteShell(tuple([str, str.optional()]), bool),
+  clearSitePermission: siteShell(tuple([str, freshOptional(str)]), bool),
   cookieControls: siteShell(noArgs, strictObject({ blockThirdParty: bool, managed: bool })),
   setCookieControls: siteShell(tuple([bool]), bool),
   crashReporting: coreShell(noArgs, strictObject({ available: bool, decided: bool, consent: bool })),
@@ -328,21 +333,21 @@ const coreEvent = eventFor("core"), extensionEvent = eventFor("extensions");
 /** Events published by the native browser to an authorized Aux WebUI. */
 export const HostEvents = {
   onEvent: coreEvent(EventSchema),
-  onRunAttentionActivated: coreEvent(strictObject({ runId: str.min(1).max(128), identity: str.min(1).max(128), windowId: str.min(1).max(128) })),
+  onRunAttentionActivated: coreEvent(strictObject({ runId: freshTokenString(), identity: freshTokenString(), windowId: freshTokenString() })),
   onTabsPatch: coreEvent(TabPatchSchema),
   onDictation: event("dictation", strictObject({ sessionId: str,
     type: z.enum(["recording", "finishing", "transcript", "final", "error"]),
-    text: str.optional(), message: str.optional() })),
+    text: freshOptional(str), message: freshOptional(str) })),
   onSidebarEdge: event("floatingSidebar", bool),
   onToolbarEdge: event("autoHideToolbar", bool),
   onOrganizationChanged: event("spaces", number),
   onShortcut: event("commandRegistry", strictObject({ key: str, meta: bool, shift: bool,
-    alt: bool, ctrl: bool.optional(), commandId: str.optional(), websitePassThrough: bool.optional() })),
+    alt: bool, ctrl: freshOptional(bool), commandId: freshOptional(str), websitePassThrough: freshOptional(bool) })),
   onSiteZoomChanged: event("pageZoom", strictObject({})),
-  onRuntimeStatus: coreEvent(strictObject({ connected: bool, detail: str.optional() })),
+  onRuntimeStatus: coreEvent(strictObject({ connected: bool, detail: freshOptional(str) })),
   onLoading: coreEvent(strictObject({ pageId: str, loading: bool })),
   onAudio: coreEvent(strictObject({ pageId: str, muted: bool, audible: bool,
-    removed: bool.optional(), video: bool.optional(), pip: bool.optional() })),
+    removed: freshOptional(bool), video: freshOptional(bool), pip: freshOptional(bool) })),
   onPictureInPicture: event("pictureInPicture", PictureInPictureResultSchema.extend({ pageId: str })),
   onExtensionActionsChanged: extensionEvent(z.array(extensionAction)),
   onSidePanel: extensionEvent(strictObject({ extensionId: str, windowId: str, pageId: str.nullable(), contentId: str.nullable(), title: str, open: bool })),
@@ -355,13 +360,13 @@ export const HostEvents = {
     placement: TabPlacementSchema })),
   onPageAction: extensionEvent(PageQuickActionSchema),
   onVaultOffer: coreEvent(strictObject({ pageId: str, username: str, origin: str,
-    kind: z.enum(["save", "update"]), itemId: str.optional(), offerId: str.optional(),
-    locked: bool.optional() })),
+    kind: z.enum(["save", "update"]), itemId: freshOptional(str), offerId: freshOptional(str),
+    locked: freshOptional(bool) })),
   onQuickAskState: event("quickAsk", bool),
   onHttpAuthChanged: coreEvent(strictObject({})),
   onTranslationChanged: event("aiTranslate", strictObject({ pageId: str, lang: nullableString.optional(),
-    count: number.optional(), truncated: bool.optional(), pending: bool.optional(),
-    error: str.optional() })),
+    count: freshOptional(number), truncated: freshOptional(bool), pending: freshOptional(bool),
+    error: freshOptional(str) })),
 } as const;
 
 export type HostEventId = keyof typeof HostEvents;

@@ -1,0 +1,371 @@
+{
+  "esbuildVersion": "0.28.2",
+  "target": "chrome154",
+  "checks": [
+    {
+      "path": "apps/shell/src/agent/AgentOverlay.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/agent/RunPresence.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ActionConfirmation.tsx",
+      "spans": 2,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/AttachmentTray.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextPicker.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextTray.tsx",
+      "spans": 3,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/BrowserProfiles.tsx",
+      "spans": 2,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ChatSessions.tsx",
+      "spans": 2,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/CommandBar.tsx",
+      "spans": 9,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationHistory.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationPreviewControls.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationQueuedControls.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationRecoveryControls.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationSourceControls.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationViewControls.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ExtensionActions.tsx",
+      "spans": 5,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Extensions.tsx",
+      "spans": 5,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/FileTree.tsx",
+      "spans": 3,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/FilterListManager.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/HomeAsk.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/HorizontalPins.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/HttpAuthPrompt.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Inspector.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/LayoutChoice.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "spans": 2,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemoryExclusionControls.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemoryNoteControls.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemorySettingsControl.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "spans": 2,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/PageSurface.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/PictureInPictureMedia.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/PluginsPanel.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ProfileSwitcher.tsx",
+      "spans": 4,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ResultCard.tsx",
+      "spans": 2,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ReviewedConnectors.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RoutineSchedule.tsx",
+      "spans": 3,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SaveConversationTask.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "spans": 3,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SidebarReveal.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SidebarSection.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SpaceEditor.tsx",
+      "spans": 5,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SplitControls.tsx",
+      "spans": 4,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/StartPage.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/StepTimeline.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SupportingContent.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Toolbar.tsx",
+      "spans": 2,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/icon-elements/PanelLeft.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/icon-elements/deferred.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/extensions/SidePanelSurface.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/mentions/MentionComposer.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Agents.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "spans": 4,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/LinkRouting.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/ui/confirm.tsx",
+      "spans": 2,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/ui/index.tsx",
+      "spans": 8,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/ui/popover.tsx",
+      "spans": 1,
+      "exactInitialSourceInverse": true,
+      "finalWholeNative154LoweringInverse": true
+    }
+  ],
+  "refusedKeyAfter": [
+    {
+      "path": "apps/shell/src/mentions/MentionComposer.tsx",
+      "name": "type",
+      "value": "button",
+      "tag": "button",
+      "start": 11984,
+      "end": 11997,
+      "original": "type=\"button\""
+    }
+  ]
+}

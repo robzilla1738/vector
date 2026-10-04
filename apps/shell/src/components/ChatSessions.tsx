@@ -9,6 +9,10 @@ import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
 import { readChatFolders, writeChatFolder, removeChatFolder, moveChatToFolder, type ChatFolder } from "../chat-folders";
 import { shellIconArchive, shellIconChats, shellIconClose, shellIconDown, shellIconFolder, shellIconPencil, shellIconRight, shellIconTrash } from "./icons";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
+import { staticGhostButtonProps as auxClassGhostButtonProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
 
 /** Shared session organization for both sidebar layouts. Folder entries belong to this browser profile. */
 export function ChatSessions({ compact = false }: { compact?: boolean }) {
@@ -129,10 +133,10 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
     </div>
     {renaming === item.chatId && <form className="session-editor" onSubmit={event => { event.preventDefault(); void rename(item); }}>
       <input autoFocus aria-label="Conversation name" maxLength={160} value={chatName} onChange={event => setChatName(event.target.value)} />
-      <button {...smallButtonProps} disabled={busy || !chatName.trim()}>Save</button><button {...smallGhostButtonProps} type="button" onClick={() => dismiss(item.chatId)}>Cancel</button>
+      <button {...smallButtonProps} disabled={busy || !chatName.trim()}>Save</button><button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={() => dismiss(item.chatId)}>Cancel</button>
     </form>}
     <div className={`session-disclosure${moving === item.chatId ? " open" : ""}`} aria-hidden={moving !== item.chatId} inert={moving !== item.chatId}><div><label className="session-move">Project<select ref={node => { if (node) projectSelectors.current.set(item.chatId, node); else projectSelectors.current.delete(item.chatId); }} aria-label={`Project for ${item.title}`} value={organization.members[item.chatId] && organization.folders.some(f => f.id === organization.members[item.chatId]) ? organization.members[item.chatId] : ""} onChange={event => { organize(() => moveChatToFolder(localStorage, item.chatId, event.target.value)); focusReturn.current = { kind: "chat", id: item.chatId }; setMoving(null); }}><option value="">No project</option>{organization.folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label></div></div>
-    <div className={`session-disclosure${deleting === item.chatId ? " open" : ""}`} aria-hidden={deleting !== item.chatId} inert={deleting !== item.chatId}><div><div className="session-confirm" role="group" aria-label={`Delete ${item.title} permanently?`}><span>Delete this chat permanently?</span><button className="btn ghost danger" disabled={busy} onClick={() => void mutate(item, true)}>Delete permanently</button><button className="btn ghost" onClick={() => dismiss(item.chatId)}>Cancel</button></div></div></div>
+    <div className={`session-disclosure${deleting === item.chatId ? " open" : ""}`} aria-hidden={deleting !== item.chatId} inert={deleting !== item.chatId}><div><div className="session-confirm" role="group" aria-label={`Delete ${item.title} permanently?`}><span>Delete this chat permanently?</span><button className="btn ghost danger" disabled={busy} onClick={() => void mutate(item, true)}>Delete permanently</button><button {...auxClassGhostButtonProps} onClick={() => dismiss(item.chatId)}>Cancel</button></div></div></div>
   </div>;
   return <div ref={root} className="chat-sessions" aria-busy={loading}>
     <div className="session-heading"><span>{archived ? "Archived chats" : compact ? "Recent" : "Chats"}</span><ActionMenu label="Chat options" triggerRef={node => { headingTrigger.current = node; }} actions={[
@@ -143,7 +147,7 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
     {(organization.folders.length > 0 || editing) && <div className="session-heading"><span>Projects</span></div>}
     {editing && <form className="session-editor" onSubmit={event => { event.preventDefault(); if (!name.trim()) return; organize(() => writeChatFolder(localStorage, { ...editing, name: name.trim() })); finishEdit(); }}>
       <input autoFocus aria-label="Chat project name" placeholder="Project name" maxLength={80} value={name} onChange={event => setName(event.target.value)} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finishEdit(); } }} />
-      <button className="btn" disabled={!name.trim()}>Save</button><button type="button" className="btn ghost" onClick={finishEdit}>Cancel</button>
+      <button {...auxClassButtonProps} disabled={!name.trim()}>Save</button><button {...auxNativeButtonTypeProps} {...auxClassGhostButtonProps} onClick={finishEdit}>Cancel</button>
     </form>}
     {organization.folders.map(folder => {
       const children = visibleRows.filter(row => organization.members[row.chatId] === folder.id);
@@ -160,6 +164,6 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
     {compact && rows.length > 3 && <button className="sb-link sb-show-all" onClick={showHistory}>All chats {shellIconRight}</button>}
     {loading && !rows.length && <output className="session-empty" data-block>Loading chats…</output>}
     {!loading && !error && !rows.length && <p className="session-empty">{archived ? "No archived chats." : "Your sessions will appear here."}</p>}
-    {error && <p className="session-empty" role="alert">{error}<button className="btn ghost" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
+    {error && <p className="session-empty" role="alert">{error}<button {...auxClassGhostButtonProps} onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
   </div>;
 }

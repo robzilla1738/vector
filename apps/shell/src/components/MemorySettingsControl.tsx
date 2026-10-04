@@ -3,6 +3,9 @@ import { bridge } from "../bridge";
 import { errToast } from "../store";
 import { executeCommand } from "../commands";
 import { registerScopedControl } from "../scoped-control-commands";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 export function MemorySettingsControl({
   command,
@@ -31,7 +34,7 @@ export function MemorySettingsControl({
   });
   return (
     <button
-      type="button"
+      {...auxNativeButtonTypeProps}
       {...props}
       ref={element}
       data-command-id={command}

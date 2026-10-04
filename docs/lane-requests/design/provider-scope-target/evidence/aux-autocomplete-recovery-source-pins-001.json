@@ -1,0 +1,26 @@
+[
+  {
+    "path": "apps/shell/src/components/CommandBar.tsx",
+    "sha256": "e5bc7c2cb5e638eda14869f64f9e318be30339692b6123872171d6e374027b0d"
+  },
+  {
+    "path": "apps/shell/src/components/CommandBar.css",
+    "sha256": "1ca843878170208798b3b9473a385a5a7ecf4e5fc2abbe07afc925e8b8601925"
+  },
+  {
+    "path": "apps/shell/src/ui/class-props.ts",
+    "sha256": "b5c0ae32e8d9d191a30c555d88a1639c2d389a9dbd3fdad2016d0c2e2be46be9"
+  },
+  {
+    "path": "apps/shell/src/ui/button-props.ts",
+    "sha256": "23a580bbc95060ab70d78845b52f3b41fcc701205f058620d9ea56aac209398e"
+  },
+  {
+    "path": "apps/shell/src/ui/native-attribute-props.ts",
+    "sha256": "5d948e735fde550cc7016c58fff5d43ba2b45c6a3cf23d09bfcf136f58241cc4"
+  },
+  {
+    "path": "apps/shell/src/styles/toolbar.css",
+    "sha256": "1506f92b7902b803ea8fd5c93a4c866cc17b8807ccc1682ca7d7c46e9b3586f8"
+  }
+]

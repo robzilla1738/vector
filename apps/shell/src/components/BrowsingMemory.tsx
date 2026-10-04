@@ -12,6 +12,7 @@ import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
 import { useBrowsingMemoryControl } from "./BrowsingMemoryControls";
 import { MemoryRecoveryNotice } from "./MemoryRecoveryNotice";
+import { staticMetadataKeyProps as auxClassMetadataKeyProps, staticMetadataValueProps as auxClassMetadataValueProps } from "../ui/class-props";
 
 type Owner = { active: boolean; workspaceId: string; revision: number; privateMode: boolean; loadScope: object };
 type Saved = { workspaceId: string; policy: BrowsingMemoryPolicy; pages: BrowsingMemoryPage[] };
@@ -127,7 +128,7 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
           select={record=>{current(record);opener.current=document.activeElement as HTMLElement;setSelectedId(record.memoryId);}}
           open={record=>{current(record);openSource(record.url);}} forget={record=>{current(record);return change("workspaces.browsingMemory.forget",{memoryId:record.memoryId});}} />)}</div>
         {selected && <DetailPane title={selected.title} metadata="Page reference · This Space" actions={<button ref={visitSelectedAttach} {...smallButtonProps} onClick={visitSelectedRun}>Open page</button>} closeRef={closeAttach} onClose={closeRun}>
-          <div className="memory-note-metadata"><span className="meta-k">Source</span><span className="meta-v selectable">{selected.url}</span><span className="meta-k">Last visited</span><span className="meta-v">{new Date(selected.lastVisitedAt).toLocaleString()}</span><span className="meta-k">Use</span><span className="meta-v">{memorySourceExcluded(memory, selected.url) ? "Site excluded" : !saved.policy.enabled || memory.enabled === false ? "Paused" : "Available in this Space"}</span></div>
+          <div className="memory-note-metadata"><span {...auxClassMetadataKeyProps}>Source</span><span className="meta-v selectable">{selected.url}</span><span {...auxClassMetadataKeyProps}>Last visited</span><span {...auxClassMetadataValueProps}>{new Date(selected.lastVisitedAt).toLocaleString()}</span><span {...auxClassMetadataKeyProps}>Use</span><span {...auxClassMetadataValueProps}>{memorySourceExcluded(memory, selected.url) ? "Site excluded" : !saved.policy.enabled || memory.enabled === false ? "Paused" : "Available in this Space"}</span></div>
           <p {...staticHintProps}>Only this page’s title and address are remembered. No page contents or forms were captured.</p>
         </DetailPane>}
         {!!saved.pages.length && !visiblePages.length && <p {...staticHintProps}>No pages match “{query}”.</p>}

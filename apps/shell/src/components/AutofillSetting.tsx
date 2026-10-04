@@ -7,6 +7,9 @@ import type { AutofillProfile } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { useSettingsSaveOwner, type SettingsSaveOwner } from "../settings/sections/use-settings-save-owner";
 import { useScopedCommandControls } from "../scoped-command-controls";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 const FIELDS: { key: keyof AutofillProfile; label: string; auto?: string }[] = [
   { key: "name", label: "Name", auto: "name" },
   { key: "email", label: "Email", auto: "email" },
@@ -159,7 +162,7 @@ export function AutofillSetting({
             <button
               ref={(element) => publish("cancel", "cancel-personal-info", element, cancel)}
               {...smallGhostButtonProps}
-              type="button"
+              {...auxNativeButtonTypeProps}
               data-command-id="cancel-personal-info"
               disabled={busy || disabled}
               onClick={(event) => run("cancel-personal-info", event)}

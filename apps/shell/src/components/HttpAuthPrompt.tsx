@@ -5,6 +5,10 @@ import { bridge, type HttpAuthRequest } from '../bridge';
 import { isScrimOverlay } from '../chrome';
 import { useStore } from '../store';
 import { Dialog } from '../ui';
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
+import { staticButtonProps as auxClassButtonProps, staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
 
 export function HttpAuthPrompt() {
   const [requests,setRequests]=useState<HttpAuthRequest[]>([]);
@@ -53,7 +57,7 @@ function Credentials({request}:{request:HttpAuthRequest}) {
       <label>Password<input {...staticFieldInputProps} type="password" autoComplete="off" disabled={busy} value={password} onChange={event=>setPassword(event.target.value)} maxLength={4096}/></label>
       <p {...staticHintProps}>Aux does not save these credentials. The browser may reuse them during this session.</p>
       {error&&<p role="alert">{error}</p>}
-      <div className="sheet-acts"><button type="button" className="btn" disabled={busy} onClick={()=>void respond(true)}>Cancel</button><button className="btn primary" disabled={busy}>Sign in</button></div>
+      <div className="sheet-acts"><button {...auxNativeButtonTypeProps} {...auxClassButtonProps} disabled={busy} onClick={()=>void respond(true)}>Cancel</button><button {...auxClassPrimaryButtonProps} disabled={busy}>Sign in</button></div>
     </form>
   </Dialog>;
 }

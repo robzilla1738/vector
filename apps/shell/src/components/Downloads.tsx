@@ -11,6 +11,7 @@ import { useStore, errToast, call, toast } from "../store";
 import { bridge } from "../bridge";
 import { shellIconClose, shellIconDownloadSm, shellIconSearch } from "./icons";
 import { canDismissDownload, mergeDownloadSnapshot } from "../downloads";
+import { staticNumericCountProps as auxClassNumericCountProps, staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 
 function fmtSize(bytes: number | undefined): string {
   if (bytes === undefined) return "";
@@ -178,8 +179,8 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
     <section ref={shelfRef} className="shelf slide-up" aria-label="Downloads">
       <div className="shelf-head">
         <span>Downloads</span>
-        <span className="count nums">{itemCount}</span>
-        <span className="sp" />
+        <span {...auxClassNumericCountProps}>{itemCount}</span>
+        <span {...auxClassSpacerProps} />
         {!!dismissibleIds.length&&<button {...smallGhostButtonProps} disabled={busy!==null} title="Remove inactive downloads matching this view. Files remain on your computer." onClick={()=>void dismissDownloads(dismissibleIds)}>Clear list</button>}
         {!bridge.privateMode&&<button {...smallGhostButtonProps} aria-expanded={showFolder} onClick={()=>setShowFolder(!showFolder)}>Save location</button>}
         <button {...smallGhostButtonProps} disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Refresh</button>

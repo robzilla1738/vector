@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { CommandEscalationRequest, Workspace, WorkspaceFolder, WorkspaceFolderAccess, WorkspaceFolderReview } from "@aux/contracts";
 import { call } from "../../store";
 import { SettingsField, SettingsSection } from "../primitives";
+import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
 
 export function WorkspacesSettings({ active }: { active: boolean }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -97,7 +98,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
     <SettingsField label="Bound folders" hint="Archiving immediately removes file and bash access. A changed folder or AGENTS.md pauses access until a fresh review.">
       {!folders.some(item => !item.archivedAt) && <p {...staticHintProps}>No active folders in this Space.</p>}
       {folders.filter(item => !item.archivedAt).map(item => <div className="row" key={item.folderId}>
-        <span className="grow"><code>{item.path}</code> · {item.access === "read" ? "Read only" : "Read and write"}
+        <span {...auxClassGrowProps}><code>{item.path}</code> · {item.access === "read" ? "Read only" : "Read and write"}
           {item.agentsChanged ? " · Folder or AGENTS.md changed; access paused. Archive and review again." : ""}</span>
         <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {
           await call("workspaces.folders.archive", { workspaceId, folderId: item.folderId });
@@ -135,7 +136,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
         </div>
       </div>)}
       {commandRequests.filter(item => item.mode === "prefix" && item.grantActive).map(item => <div className="row" key={item.requestId}>
-        <span className="grow">Reusable prefix <code>{item.prefixRule}</code> in <code>{item.workdir}</code></span>
+        <span {...auxClassGrowProps}>Reusable prefix <code>{item.prefixRule}</code> in <code>{item.workdir}</code></span>
         <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {
           await call("commands.escalations.revoke", { requestId: item.requestId });
           await refreshCommands();

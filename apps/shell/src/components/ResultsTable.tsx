@@ -8,6 +8,7 @@ import { bridge, inNativeHost } from "../bridge";
 import { hostOf } from "../workspace";
 import type { ResultRecord } from "@aux/contracts";
 import { shellIconBack, shellIconDown, shellIconLayers, shellIconSearch, shellIconUp } from "./icons";
+import { staticNumericCountProps as auxClassNumericCountProps, staticSpacerProps as auxClassSpacerProps, staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
 
 function toCsv(results: ResultRecord[], keys: string[]): string {
   const esc = (v: unknown) => {
@@ -119,8 +120,8 @@ export function ResultsTable() {
       <div className="results-head">
         <button {...staticIconButtonProps} title="Back to page" aria-label="Back to page" onClick={() => setMode("focus")}>{shellIconBack}</button>
         <h2>{setName ?? "Set results"}</h2>
-        <span className="count nums">{rowIds.length}{filter ? ` of ${resultCount}` : ""} rows</span>
-        <span className="sp" />
+        <span {...auxClassNumericCountProps}>{rowIds.length}{filter ? ` of ${resultCount}` : ""} rows</span>
+        <span {...auxClassSpacerProps} />
         {resultCount > 0 && (
           <>
             <div className="rail-search compact">
@@ -139,7 +140,7 @@ export function ResultsTable() {
             <h2>No extracted records</h2>
             <p>Collect open tabs into a set, or run a page set. Each row stays tied to its source page.</p>
             <div className="empty-actions">
-              <button className="btn primary" data-command-id="palette" onClick={() => runCommand("palette")}>Collect tabs…</button>
+              <button {...auxClassPrimaryButtonProps} data-command-id="palette" onClick={() => runCommand("palette")}>Collect tabs…</button>
             </div>
           </div>
         </div>

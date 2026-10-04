@@ -4,6 +4,7 @@ import { call } from "../../store";
 import { executeCommand } from "../../commands";
 import { Dialog } from "../../ui/dialog";
 import { useRecording } from "./state";
+import { staticButtonProps as auxClassButtonProps, staticGhostButtonProps as auxClassGhostButtonProps } from "../../ui/class-props";
 export default function ReviewRecording() {
   const { demonstration: demo, busy, error, exported } = useRecording();
   const [tasks, setTasks] = useState<Task[]>([]), [taskId, setTaskId] = useState("");
@@ -41,15 +42,15 @@ export default function ReviewRecording() {
     </li>)}</ol>
     <label>Final success element<input autoComplete="off" placeholder="#success" value={oracle} onChange={event => setOracle(event.target.value)}/></label>
     <p>The Skill stays paused until a replay test passes with fresh values and you review activation.</p>
-    <button className="btn" disabled={busy || !ready} onClick={() => {
+    <button {...auxClassButtonProps} disabled={busy || !ready} onClick={() => {
       const review = { inputs: demo.steps.flatMap((step, index) => step.kind === "input" ? [{ step: index, parameter: names[index]!, confirmed: true as const }] : []),
         targets: demo.steps.flatMap((step, index) => step.kind !== "navigate" ? [{ step: index, selector: selectors[index]!, confirmed: true as const }] : []),
         navigationTemplates: demo.steps.flatMap((step, index) => step.kind === "navigate" ? [{ step: index, url: urls[index] ?? step.url }] : []),
         finalWait: { id: "recording-success", op: "waitFor" as const, condition: { kind: "selector" as const, selector: oracle, state: "visible" as const } } };
       void executeCommand("save-demonstration", { payload: { demonstration: { recordingId: demo.id, taskId, expectedTaskRevision: task!.revision, title, review } } });
     }}>Save as Skill</button>
-    <button className="btn ghost" disabled={busy} onClick={() => void executeCommand("export-demonstration").catch(() => {})}>Export demonstration</button>
-    <button className="btn ghost" disabled={busy} onClick={() => void executeCommand("discard-demonstration")}>Discard</button>
+    <button {...auxClassGhostButtonProps} disabled={busy} onClick={() => void executeCommand("export-demonstration").catch(() => {})}>Export demonstration</button>
+    <button {...auxClassGhostButtonProps} disabled={busy} onClick={() => void executeCommand("discard-demonstration")}>Discard</button>
     {exported && <><output>Skill saved. Open the saved task to run its replay test.</output><label>SKILL.md<textarea readOnly value={exported} rows={8}/></label></>}
     {(error || loadError) && <p role="alert">{error || loadError}</p>}
   </Dialog>;

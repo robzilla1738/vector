@@ -1,5 +1,8 @@
 import type { PageTarget, Run } from "@aux/contracts";
 import "./RunPresence.css";
+import {
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+} from "../ui/native-attribute-props";
 
 export type RunPresenceState = "working" | "waiting" | "paused" | "human" | "review" | "done";
 
@@ -23,6 +26,6 @@ export function RunPresence({ run, pages, compact = false }: { run: Run; pages: 
     working: "Working", waiting: "Waiting", paused: "Paused", human: "You control", review: "Review", done: "Done",
   };
   return <output className={`agent-presence ${presence.state}${compact ? " compact" : ""}`} aria-label="Task presence" title={presence.detail}>
-    <span className="agent-presence-dot" aria-hidden="true" />{compact ? compactLabel[presence.state] : presence.label}{run.config?.taskId && !compact ? " · Saved task" : ""}
+    <span className="agent-presence-dot" {...auxNativeAriaHiddenProps} />{compact ? compactLabel[presence.state] : presence.label}{run.config?.taskId && !compact ? " · Saved task" : ""}
   </output>;
 }

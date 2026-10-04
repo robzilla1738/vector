@@ -37,6 +37,7 @@ import { pushSettingsPath, settingsPath, settingsRouteFromPath, type ConnectionT
 import { availableForFocus, ownsFocus } from "../ui/focus";
 import { moveListFocus } from "../keyboard-list";
 import { useFeature } from "../use-feature";
+import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 
 const categoryDescriptions: Record<string, string> = {
   Downloads: "File names, exclusions and smart downloads.",
@@ -327,7 +328,7 @@ export function Settings() {
                   : categoryDescriptions[category]}
             </p>
           </div>
-          <span className="sp" />
+          <span {...auxClassSpacerProps} />
           {saved && <output className="saved">{shellIconCheck} Saved</output>}
           <button
             {...staticIconButtonProps}

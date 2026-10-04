@@ -13,6 +13,7 @@ import { positionAnchoredPopover } from "../position-context-menu";
 import { requestStageReport } from "../stage-obstruction";
 import { useNativeDialog } from "./native-dialog";
 import "./popover.css";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "./native-attribute-props";
 
 /** Native dialog focus containment, anchored to its shell control and clamped to the viewport. */
 export function Popover({
@@ -75,7 +76,7 @@ export function Popover({
     <>
       <button
         ref={setButton}
-        type="button"
+        {...auxNativeButtonTypeProps}
         className={`anchored-trigger ${className}`}
         disabled={disabled}
         aria-label={label}

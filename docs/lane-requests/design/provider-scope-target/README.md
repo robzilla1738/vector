@@ -1,0 +1,9 @@
+# Search provider target geometry
+
+Request-only two-leaf CSS/test packet. Current actual CommandBar provider scopes measured26px high; the existing `.cb-provider-scopes button` rule gains only `min-height:var(--hit)` and measures32px. No command, feature, callback, query, label, privacy, autocomplete or provider policy changes. Ranking shares the original selector and retains its existing callback. No disabled-state rule is changed.
+
+Supplied06 upstream chrome/browser/ui/layout_constants.cc114–118 separates toolbar target height (desktop34/touch48) from icon geometry. Aux's established tokens.css116 --hit32 supplies this derived target; this is not an upstream32 equivalence claim. Original font, pill geometry, padding, horizontal overflow scroller, focus ring, full labels, colors and Aux branding remain.
+
+Actual installed source preview uses the original installMockBridge bootstrap before dynamically importing current pinned CommandBar; bounded autocomplete refusal exercises its actual failed-request UI. Registered Try again already measures36px, so it is not modified. Narrow720 viewport/document720; all nine provider buttons26→32, full Recently Closed label preserved, query `original query` unchanged, actual click keeps combobox focus and updates pressed state; All restores original results. FontFaceSet verifies Geist loaded. Matched producer and plain constructor prerequisite hashes plus original/result JSON/pixels are retained. No native/F21 acceptance is claimed.
+
+Actual mounted original control fails min-height001; result26cases/3files (new geometry plus original Home and autocomplete Retry) passes001. The new test exercises real mounted provider choices, pressed state, focused original input, exact query, empty closed-provider copy and return to All. Types/lint001 pass. F/R/F exact owned2leaves passes. Source preview tab/server/viewport cleaned. No native App/helper, credential/provider request, production Vite or JS savings claim.

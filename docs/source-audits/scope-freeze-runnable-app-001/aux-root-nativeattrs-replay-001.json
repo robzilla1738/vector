@@ -1,0 +1,9 @@
+{
+  "freezeSha256": "66cec03e2b30c989554e9f63a748b8d064785c028c1fc23c0f7806e13b864e13",
+  "patchSha256": "d20dbbb13d462fef4e5d6e2fad7510ab056d1528af4467df4cd433c4aec8e7af",
+  "files": 61,
+  "actualBefore": true,
+  "forwardReverseForward": true,
+  "actualAfter": true,
+  "budgetAcceptance": false
+}

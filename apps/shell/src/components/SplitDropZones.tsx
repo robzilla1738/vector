@@ -7,6 +7,7 @@ import { getSurfaceState, setSurfaceState, useSurfaceState, type SplitEdge } fro
 import { Dialog } from "../ui/dialog";
 import { addPane } from "../workspace";
 import "./SplitStage.css";
+import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
 
 export function splitDropEdge(x: number, y: number, width: number, height: number): SplitEdge | null {
   const distances = [x / width, 1 - x / width, y / height, 1 - y / height];
@@ -61,6 +62,6 @@ export function SplitPicker() {
   if (!picker) return null;
   return <Dialog label="Split with a tab" onClose={() => setSurfaceState({ picker: false })}>
     <h2>Split with a tab</h2>
-    {pages.length ? pages.map(page => <button key={page.pageId} className="btn" data-command-id="split-add" onClick={() => { runCommand("split-add", { payload: { pageId: page.pageId } }); setSurfaceState({ picker: false }); }}>{page.title}</button>) : <p>Open another browser page in this Space to split it here.</p>}
+    {pages.length ? pages.map(page => <button key={page.pageId} {...auxClassButtonProps} data-command-id="split-add" onClick={() => { runCommand("split-add", { payload: { pageId: page.pageId } }); setSurfaceState({ picker: false }); }}>{page.title}</button>) : <p>Open another browser page in this Space to split it here.</p>}
   </Dialog>;
 }

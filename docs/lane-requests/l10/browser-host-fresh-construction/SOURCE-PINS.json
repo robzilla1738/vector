@@ -1,0 +1,10 @@
+{
+  "files": [
+    {
+      "path": "packages/contracts/src/browser-host-methods.ts",
+      "beforeSha256": "8ddb5fcb6bd8c10d35f3129ded975d180f4171a8b172b2ff96328932601b0e49",
+      "afterSha256": "fa703414a017f087aa25ea995ed0429ab91e8bde3e54a4b941a3f2f5008b0606"
+    }
+  ],
+  "patchSha256": "5d874c9bbef416c475eceb8839c682e7552d84e3e4c1923bc479e56719639677"
+}

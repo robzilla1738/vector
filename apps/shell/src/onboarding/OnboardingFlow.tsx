@@ -26,6 +26,7 @@ import "./onboarding.css";
 import { PastedMemorySetup } from "./PastedMemorySetup";
 import { SetupReview } from "./SetupReview";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
+import { staticGhostButtonProps as auxClassGhostButtonProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
 
 const TITLES = {
   welcome: "Welcome to Aux",
@@ -332,7 +333,7 @@ export function OnboardingFlow({
                 <summary>Setup tips</summary>
                 <p>Your progress stays with this Profile. Replay setup in Settings → General at any time. Press ⌘↩ to finish later.</p>
               </details>
-              <button className="btn ghost" aria-expanded={recovery} onClick={() => setRecovery(!recovery)}>
+              <button {...auxClassGhostButtonProps} aria-expanded={recovery} onClick={() => setRecovery(!recovery)}>
                 Recover an existing Aux Profile
               </button>
               {recovery && (
@@ -355,7 +356,7 @@ export function OnboardingFlow({
               <ModelDataDisclosure reviewed={state.disclosureVersion === ONBOARDING_DISCLOSURE_VERSION} />
               {state.disclosureVersion !== ONBOARDING_DISCLOSURE_VERSION ? (
                 <button
-                  className="btn"
+                  {...auxClassButtonProps}
                   disabled={busy}
                   onClick={() =>
                     void work(async () => {
@@ -442,7 +443,7 @@ export function OnboardingFlow({
                 <p>Aux is your default browser.</p>
               ) : (
                 <button
-                  className="btn"
+                  {...auxClassButtonProps}
                   disabled={busy || !inNativeHost || cooldown || isDefault === null}
                   onClick={() =>
                     void work(async () => {
@@ -508,7 +509,7 @@ export function OnboardingFlow({
                 automatically.
               </p>
               <button
-                className="btn ghost"
+                {...auxClassGhostButtonProps}
                 aria-expanded={showMemoryImport}
                 onClick={() => setShowMemoryImport(!showMemoryImport)}
               >
@@ -538,7 +539,7 @@ export function OnboardingFlow({
               />
               {first?.status === "started" ? (
                 <button
-                  className="btn"
+                  {...auxClassButtonProps}
                   disabled={busy}
                   onClick={() =>
                     void work(async () => {
@@ -673,7 +674,7 @@ export function OnboardingFlow({
                           (entry) => entry.kind === "mcp" && entry.state === "approved",
                         ) && <p {...staticHintProps}>MCP connected · tool approval still required</p>}
                         <button
-                          className="btn"
+                          {...auxClassButtonProps}
                           disabled={
                             busy ||
                             !connected ||
@@ -770,7 +771,7 @@ export function OnboardingFlow({
         </div>
         <footer>
           <button
-            className="btn ghost"
+            {...auxClassGhostButtonProps}
             disabled={busy || !connected}
             onClick={() =>
               void work(async () => {
@@ -783,7 +784,7 @@ export function OnboardingFlow({
           </button>
           {index > 0 && (
             <button
-              className="btn ghost"
+              {...auxClassGhostButtonProps}
               disabled={busy || !connected}
               onClick={() =>
                 void work(async () => {
@@ -795,7 +796,7 @@ export function OnboardingFlow({
             </button>
           )}
           <button
-            className="btn"
+            {...auxClassButtonProps}
             disabled={busy || !connected || restorePending}
             onClick={() =>
               void work(async () => {

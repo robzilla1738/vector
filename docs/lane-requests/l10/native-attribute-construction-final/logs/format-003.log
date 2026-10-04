@@ -1,0 +1,11 @@
+Checking formatting...
+[warn] apps/shell/src/components/PageSurface.tsx
+[warn] apps/shell/src/ui/confirm.tsx
+[warn] apps/shell/src/ui/popover.tsx
+[warn] apps/shell/src/components/SpaceEditor.tsx
+[warn] apps/shell/src/components/RoutineSchedule.tsx
+[warn] apps/shell/src/components/OutboundMcpSettings.tsx
+[warn] apps/shell/src/components/ReviewedConnectors.tsx
+[warn] apps/shell/src/components/PluginsPanel.tsx
+[warn] apps/shell/src/components/FilterListManager.tsx
+[warn] Code style issues found in 9 files. Run Prettier with --write to fix.

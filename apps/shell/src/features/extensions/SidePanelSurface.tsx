@@ -4,6 +4,10 @@ import { runCommand } from "../../commands";
 import { shellIconClose } from "../../components/icons";
 import { extensionPanel } from "./extension-panel";
 import "./extensions.css";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../../ui/native-attribute-props";
+import { staticSpacerProps as auxClassSpacerProps } from "../../ui/class-props";
 
 export function SidePanelSurface() {
   const panel = useBoundStore(extensionPanel, (state) => state.panel);
@@ -12,9 +16,9 @@ export function SidePanelSurface() {
     <div className="rail-inner extension-side-panel">
       <header className="rail-head">
         <span className="rail-title">{panel.title}</span>
-        <span className="sp" />
+        <span {...auxClassSpacerProps} />
         <button
-          type="button"
+          {...auxNativeButtonTypeProps}
           {...staticIconButtonProps}
           aria-label={`Close ${panel.title} side panel`}
           data-command-id="close-extension-panel"

@@ -9,6 +9,11 @@ import { executeCommand } from "../commands";
 import { commandResult } from "../features/profiles/command-result";
 import { SPACE_COLORS } from "../workspace";
 import { bridge, inNativeHost, type BrowserProfile } from "../bridge";
+import {
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
+import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
 
 export function BrowserProfiles() {
   const [profiles,setProfiles]=useState<BrowserProfile[]>([]);
@@ -58,7 +63,7 @@ export function BrowserProfiles() {
     });
   };
   const profileRow=(profile:BrowserProfile)=><div className="browser-profile-item" key={profile.id}>
-    <ListRow title={profile.name} description={profile.current?"Current Profile":profile.archived?"Archived · data kept on this Mac":"Separate sign-ins and browsing data"} leading={<span className="browser-profile-avatar" aria-hidden="true">{profile.name.slice(0,1).toLocaleUpperCase()}</span>} selected={profile.current} disabled={busy||profile.current||profile.archived} onOpen={()=>openProfile(profile)} trailing={<>
+    <ListRow title={profile.name} description={profile.current?"Current Profile":profile.archived?"Archived · data kept on this Mac":"Separate sign-ins and browsing data"} leading={<span className="browser-profile-avatar" {...auxNativeAriaHiddenProps}>{profile.name.slice(0,1).toLocaleUpperCase()}</span>} selected={profile.current} disabled={busy||profile.current||profile.archived} onOpen={()=>openProfile(profile)} trailing={<>
       {profile.current ? <Badge label="Current"/> : !profile.archived && <button {...smallButtonProps} disabled={busy} onClick={()=>openProfile(profile)}>Open</button>}
       <ActionMenu label={`Actions for ${profile.name} Profile`} actions={[
         {label:"Rename",disabled:busy,onSelect:()=>{setEditing(profile.id);setName(profile.name);}},
@@ -94,14 +99,14 @@ export function BrowserProfiles() {
     });}}>
       <input {...staticFieldInputProps} aria-label="Profile name" placeholder="Work, Personal…" autoFocus maxLength={60} disabled={busy} value={name} onChange={event=>setName(event.target.value)}/>
       <button {...smallButtonProps} disabled={busy||!name.trim()}>{busy?(editing==="new"?"Creating…":"Saving…"):(editing==="new"?"Create and open":"Save")}</button>
-      <button {...smallGhostButtonProps} type="button" disabled={busy} onClick={()=>setEditing(null)}>Cancel</button>
+      <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} disabled={busy} onClick={()=>setEditing(null)}>Cancel</button>
     </form>:<button {...smallButtonProps} disabled={busy||loading} onClick={()=>{setEditing("new");setName("");}}>New profile</button>}
     {profiles.some(profile=>profile.archived&&!profile.current)&&<details className="browser-profile-archive">
       <summary>Archived profiles</summary>
       <p {...staticHintProps}>Archiving hides a profile from this list. Browsing data stays on this Mac, and open windows keep working.</p>
       {profiles.filter(profile=>profile.archived&&!profile.current).map(profileRow)}
     </details>}
-    {error&&<div role="alert"><p className="hint err">{error}</p><button {...smallGhostButtonProps} disabled={busy} onClick={()=>void action(async(valid)=>{const items=await commandResult("refresh-browser-profiles",HostMethods.browserProfiles.result);if(valid()){setProfiles(items);setRefresh(value=>value+1);}})}>Refresh profiles</button></div>}
+    {error&&<div role="alert"><p {...auxClassErrorHintProps}>{error}</p><button {...smallGhostButtonProps} disabled={busy} onClick={()=>void action(async(valid)=>{const items=await commandResult("refresh-browser-profiles",HostMethods.browserProfiles.result);if(valid()){setProfiles(items);setRefresh(value=>value+1);}})}>Refresh profiles</button></div>}
     {message&&<output {...staticHintProps} data-block>{message}</output>}
   </div>;
 }

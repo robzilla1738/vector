@@ -13,6 +13,7 @@ import {
 import { call } from "../store";
 import { bridge } from "../bridge";
 import "./ImportDataSetting.css";
+import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
 
 type Selection = Record<string, Record<string, Partial<Record<ImportCategory, boolean>>>>;
 
@@ -311,7 +312,7 @@ export function ImportDataSetting() {
           </button>
         )}
         {error && (
-          <span role="alert" className="hint err">
+          <span role="alert" {...auxClassErrorHintProps}>
             {error}
           </span>
         )}
@@ -321,7 +322,7 @@ export function ImportDataSetting() {
           <output {...staticHintProps} aria-live="polite">
             {completion(job)}
           </output>
-          {job.error && <p className="hint err">{job.error}</p>}
+          {job.error && <p {...auxClassErrorHintProps}>{job.error}</p>}
           {job.progress.length > 0 && (
             <ul className="import-report">
               {job.progress.map((entry) => (
@@ -340,7 +341,7 @@ export function ImportDataSetting() {
             </ul>
           )}
           {progressError && (
-            <p role="alert" className="hint err">
+            <p role="alert" {...auxClassErrorHintProps}>
               {progressError}{" "}
               <button {...smallGhostButtonProps} onClick={() => void syncProgress(job.jobId)}>
                 Check progress

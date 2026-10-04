@@ -16,6 +16,7 @@ import { useMemoryDrafts } from "../memory-drafts";
 import { bridge } from "../bridge";
 import type { ShellCommandId } from "@aux/contracts";
 import "./SpaceMemoryEditor.css";
+import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 
 function MemoryControl({ command, scopeId, action, disabled = false, children, summary = false, checkbox = false, checked = false, className, onError, inputId }: {
   command: ShellCommandId; scopeId: string; onError(reason: unknown): void; action(): unknown; disabled?: boolean; children?: ReactNode;
@@ -107,7 +108,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
     <details className="memory-overview" open={overviewOpen}><MemoryControl onError={controlError} command="toggle-space-memory-overview" scopeId={memory.workspaceId} summary action={() => { if (!mounted.current || !scope.active || bridge.privateMode) throw new Error("The Space changed."); setOverviewOpen(value => !value); }}>Space overview{changed ? " · Unsaved" : ""}</MemoryControl>
     <textarea aria-label="Space memory" value={content} maxLength={16_000} disabled={disabled || busy}
       placeholder="Project context, preferences, and decisions worth keeping…" onChange={event => edit(event.target.value)} />
-    <div className="space-memory-editor-actions"><span {...staticHintProps}>{changed ? "Unsaved notes" : memory.content ? "Saved notes" : "No saved notes"} · {content.length.toLocaleString()}/16,000</span><span className="sp" />
+    <div className="space-memory-editor-actions"><span {...staticHintProps}>{changed ? "Unsaved notes" : memory.content ? "Saved notes" : "No saved notes"} · {content.length.toLocaleString()}/16,000</span><span {...auxClassSpacerProps} />
       {content && <MemoryControl onError={controlError} command="clear-space-memory-draft" scopeId={memory.workspaceId} {...smallGhostButtonProps} disabled={disabled || busy} action={() => { assertDraft(); edit(""); }}>Clear notes</MemoryControl>}
       {draft && <MemoryControl onError={controlError} command="discard-space-memory-draft" scopeId={memory.workspaceId} {...smallGhostButtonProps} disabled={disabled || busy} action={() => { assertDraft(); useMemoryDrafts.getState().write(memory.workspaceId, null); setConflict(null); setError(""); }}>Discard draft</MemoryControl>}
       <MemoryControl onError={controlError} command="save-space-memory" scopeId={memory.workspaceId} disabled={disabled || busy || !changed} action={() => save()}>{busy ? "Saving…" : "Save notes"}</MemoryControl>

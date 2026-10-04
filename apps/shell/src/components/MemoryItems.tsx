@@ -14,6 +14,7 @@ import { call, useStore } from "../store";
 import { bridge } from "../bridge";
 import { MemoryNoteButton, useMemoryNoteControl } from "./MemoryNoteControls";
 import { useMemoryDrafts } from "../memory-drafts";
+import { staticMetadataKeyProps as auxClassMetadataKeyProps, staticMetadataValueProps as auxClassMetadataValueProps } from "../ui/class-props";
 
 type NoteDraft = { itemId: string; content: string; sourceUrl: string; expires: string; selectionTruncated?: boolean };
 type Scope = {active:boolean;identity:object;pending:boolean};
@@ -129,7 +130,7 @@ export function MemoryItems({ memory, disabled, onSaved }: { memory: WorkspaceMe
     {!!items.length && !visibleItems.length && <output {...staticHintProps} data-block>No notes match these filters.</output>}
     {selectedItem && <DetailPane title="Memory note" metadata={noteStatus(selectedItem)} closeRef={closeRef} onClose={closeRun}>
       <p className="memory-note-content selectable">{selectedItem.content}</p>
-      <div className="memory-note-metadata"><span className="meta-k">Scope</span><span className="meta-v">This Space</span><span className="meta-k">Source</span><span className="meta-v selectable">{selectedItem.sourceUrl || "Added directly"}</span><span className="meta-k">Expires</span><span className="meta-v">{selectedItem.expiresAt === undefined ? "No expiry" : new Date(selectedItem.expiresAt).toLocaleDateString()}</span><span className="meta-k">Updated</span><span className="meta-v">{new Date(selectedItem.updatedAt).toLocaleString()}</span></div>
+      <div className="memory-note-metadata"><span {...auxClassMetadataKeyProps}>Scope</span><span {...auxClassMetadataValueProps}>This Space</span><span {...auxClassMetadataKeyProps}>Source</span><span className="meta-v selectable">{selectedItem.sourceUrl || "Added directly"}</span><span {...auxClassMetadataKeyProps}>Expires</span><span {...auxClassMetadataValueProps}>{selectedItem.expiresAt === undefined ? "No expiry" : new Date(selectedItem.expiresAt).toLocaleDateString()}</span><span {...auxClassMetadataKeyProps}>Updated</span><span {...auxClassMetadataValueProps}>{new Date(selectedItem.updatedAt).toLocaleString()}</span></div>
     </DetailPane>}
     {!items.length && !draft && <p {...staticHintProps}>No individual notes yet. Aux only saves notes you explicitly add here.</p>}
     {draft && <form ref={saveFormRef} className="memory-note-form" onSubmit={event => { event.preventDefault();saveFormRun(event); }}>

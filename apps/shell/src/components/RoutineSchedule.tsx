@@ -3,6 +3,8 @@ import { staticHintProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { useState } from "react";
 import type { RoutineTrigger } from "@aux/contracts";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -229,10 +231,18 @@ export function RoutineSchedule({
               <input type="time" required value={time} onChange={(event) => setTime(event.target.value)} />
             </label>
             <div className="routine-day-presets">
-              <button {...smallGhostButtonProps} type="button" onClick={() => setDays([1, 2, 3, 4, 5])}>
+              <button
+                {...smallGhostButtonProps}
+                {...auxNativeButtonTypeProps}
+                onClick={() => setDays([1, 2, 3, 4, 5])}
+              >
                 Weekdays
               </button>
-              <button {...smallGhostButtonProps} type="button" onClick={() => setDays([0, 1, 2, 3, 4, 5, 6])}>
+              <button
+                {...smallGhostButtonProps}
+                {...auxNativeButtonTypeProps}
+                onClick={() => setDays([0, 1, 2, 3, 4, 5, 6])}
+              >
                 Every day
               </button>
             </div>
@@ -240,7 +250,7 @@ export function RoutineSchedule({
               {weekdays.map((day, index) => (
                 <button
                   key={day}
-                  type="button"
+                  {...auxNativeButtonTypeProps}
                   aria-pressed={days.includes(index)}
                   onClick={() =>
                     setDays((current) =>
@@ -290,7 +300,7 @@ export function RoutineSchedule({
         <output className="routine-schedule-summary" data-block>
           {summary}
         </output>
-        <button className="btn" type="submit" disabled={!!saveDisabled}>
+        <button {...auxClassButtonProps} type="submit" disabled={!!saveDisabled}>
           {mode === "create" ? "Create paused Skill" : "Save trigger"}
         </button>
       </fieldset>

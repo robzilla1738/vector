@@ -26,6 +26,10 @@ import { openPeekLink } from "../peek-link";
 import { useFeature } from "../use-feature";
 
 import { LibraryButton, useLibraryReadOwner, useLibraryCurrent, useLibraryControl } from "./LibraryControls";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
+import { staticSpacerProps as auxClassSpacerProps, staticTextProps as auxClassTextProps } from "../ui/class-props";
 
 type SavedPage = { nodeId?: string; url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean };
 const bookmarkKey = (item: SavedPage) => item.nodeId ?? item.url;
@@ -118,7 +122,7 @@ const SavedPageRow = memo(function SavedPageRow({ view, itemKey, position, selec
       <label className="library-edit-field library-edit-folder">Folder<select {...staticFieldInputProps} aria-label="Bookmark folder" disabled={busy} value={JSON.stringify(editing.folderPath ?? [])} onChange={event => setEditing({ ...editing, folderPath: JSON.parse(event.target.value) as string[] })}>
         <option value="[]">Bookmarks</option>{folders.map(path => <option key={JSON.stringify(path)} value={JSON.stringify(path)}>{path.join(" / ")}</option>)}
       </select></label>
-      <div className="library-edit-buttons"><button {...smallGhostButtonProps} type="button" disabled={busy} onClick={cancelEditor}>Cancel</button><button {...smallButtonProps} disabled={busy || !editing.title.trim() || !editing.url.trim()} type="submit">{busy ? "Saving…" : "Save"}</button></div>
+      <div className="library-edit-buttons"><button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} disabled={busy} onClick={cancelEditor}>Cancel</button><button {...smallButtonProps} disabled={busy || !editing.title.trim() || !editing.url.trim()} type="submit">{busy ? "Saving…" : "Save"}</button></div>
     </form>}
   </div>;
 });
@@ -341,7 +345,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }}>
-      <div className="library-head"><h3>Library</h3><span className="sp" /><button {...staticIconButtonProps} aria-label="Close library" data-command-id="close-library" onClick={runClose}>{shellIconClose}</button></div>
+      <div className="library-head"><h3>Library</h3><span {...auxClassSpacerProps} /><button {...staticIconButtonProps} aria-label="Close library" data-command-id="close-library" onClick={runClose}>{shellIconClose}</button></div>
       <div className="library-tabs seg" role="tablist" aria-label="Library views">{views.map(tab => <LibraryButton command="select-library-view" current={current} key={tab} originalRef={node => { if (node) viewButtons.current.set(tab, node); else viewButtons.current.delete(tab); }} id={`library-${tab}`} role="tab" aria-selected={view === tab} aria-controls="library-results" tabIndex={view === tab ? 0 : -1} className={view === tab ? "on" : ""}
         keyboard invoke={event => { if(event instanceof KeyboardEvent && ["ArrowLeft","ArrowRight"].includes(event.key)){const next = views[(views.indexOf(tab) + (event.key === "ArrowRight" ? 1 : views.length - 1)) % views.length]!; choose(next); viewButtons.current.get(next)?.focus();} else choose(tab); }}>{VIEW_NAMES[tab]}</LibraryButton>)}</div>
       <div className="library-field"><span className="library-icon">{shellIconSearch}</span><input ref={search} value={query} aria-label={`Search ${VIEW_NAMES[view].toLowerCase()}`} placeholder={`Search ${VIEW_NAMES[view].toLowerCase()} by title or address…`} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
@@ -373,7 +377,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
         {view === "history" && <><div className="library-ranges" role="group" aria-label="History date range">{[["all","All time"],["today","Today"],["week","7 days"],["month","30 days"]].map(([value,label]) => <LibraryButton key={value} command="select-library-history-range" current={current} {...smallGhostButtonProps} aria-pressed={historyRange === value} invoke={() => setHistoryRange(value!)}>{label}</LibraryButton>)}</div><ClearHistory initiallyOpen={confirmClear} /></>}
       </div>
       {view === "bookmarks" && selecting && <section className="library-selection" aria-label="Move selected bookmarks">
-        <div {...staticRowProps}><strong>{selection.length} selected</strong><span className="sp" />
+        <div {...staticRowProps}><strong>{selection.length} selected</strong><span {...auxClassSpacerProps} />
           <button ref={items.length ? firstSelection : undefined} {...smallGhostButtonProps} disabled={busy || !items.length} onClick={() => setSelection(current => [...current, ...items.filter(item => !current.some(selected => bookmarkKey(selected) === bookmarkKey(item))).map(item => ({...item, folderPath:[...("folderPath" in item ? item.folderPath ?? [] : [])]}))])}>Select this view</button>
           <button ref={!items.length ? firstSelection : undefined} {...smallGhostButtonProps} disabled={busy} onClick={cancelSelection}>Cancel</button>
         </div>
@@ -405,7 +409,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
       {view === "bookmarks" && <nav className="library-breadcrumbs" aria-label="Bookmark folders">
         <button className="btn ghost sm" onClick={() => openFolder([])}>Bookmarks</button>
         {folder.map((part, index) => <span key={index}>{shellIconRight}<button className="btn ghost sm" onClick={() => openFolder(folder.slice(0, index + 1))}>{part}</button></span>)}
-        <span className="sp" />
+        <span {...auxClassSpacerProps} />
         {folder.length > 0 && <><button {...staticIconButtonProps} title="Rename folder" aria-label="Rename folder" onClick={() => setFolderEditor({ mode: "rename", name: folder.at(-1)! })}>{shellIconPencil}</button>
           <button {...staticIconButtonProps} title="Remove empty folder" aria-label="Remove empty folder" disabled={busy} onClick={() => void action(async () => {
             setFolders(await call("bookmarks.folders.remove", { path: folder })); setFolder(folder.slice(0, -1));
@@ -429,14 +433,14 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
       }}>
         <input autoFocus aria-label="Folder name" placeholder="Folder name" value={folderEditor.name} maxLength={200} onChange={event => setFolderEditor({ ...folderEditor, name: event.target.value })} />
         <button {...smallButtonProps} disabled={busy || !folderEditor.name.trim()}>{folderEditor.mode === "create" ? "Create folder" : "Rename"}</button>
-        <button {...smallButtonProps} type="button" onClick={cancelEditor}>Cancel</button>
+        <button {...smallButtonProps} {...auxNativeButtonTypeProps} onClick={cancelEditor}>Cancel</button>
       </form>}
       {error && <p className="library-message" role="alert">{error} {failedLoad && <LibraryButton command="retry-library-load" current={current} {...smallButtonProps} disabled={loading || loadingMore} invoke={() => failedLoad === "more" ? loadMoreHistory() : setRefresh(value => value + 1)}>Retry</LibraryButton>}</p>}
       {notice && <output className="library-message" data-block>{notice}</output>}
       {removed && <div className="library-tools"><span {...staticHintProps}>Removed {removed.title || hostOf(removed.url)}</span><button {...smallButtonProps} disabled={busy} onClick={() => void action(async () => { await save(removed, true); setRemoved(null); setNotice("Bookmark restored."); })}>Undo remove</button></div>}
       <div ref={results} className="library-list" id="library-results" role="tabpanel" aria-labelledby={`library-${view}`} aria-busy={loading} onKeyDown={event => moveListFocus(event, ".library-folder, .library-open")}>
         {view === "bookmarks" && childFolders.map((path, index) => <button key={JSON.stringify(path)} ref={index === 0 ? firstResult : undefined} className="library-folder" onClick={() => openFolder(path)}>
-          <span className="library-folder-icon">{shellIconFolderClosed}</span><span className="t">{q ? path.join(" / ") : path.at(-1)}</span><span {...staticHintProps}>{bookmarks.filter(item => path.every((part, index) => item.folderPath?.[index] === part)).length}</span>{shellIconRight}
+          <span className="library-folder-icon">{shellIconFolderClosed}</span><span {...auxClassTextProps}>{q ? path.join(" / ") : path.at(-1)}</span><span {...staticHintProps}>{bookmarks.filter(item => path.every((part, index) => item.folderPath?.[index] === part)).length}</span>{shellIconRight}
         </button>)}
         {loading && (items.length ? <output className="library-message hint" data-block>Updating…</output> : <SkeletonRows label="Loading…" />)}
         {!loading && !error && !displayItems.length && (view !== "bookmarks" || !childFolders.length) ? <p className="library-empty">{query ? view === "bookmarks" ? "No matching bookmarks or folders." : "No matching pages." : view === "bookmarks" ? `Save a page with Bookmark current page${key("bookmark") ? ` or ${key("bookmark")}` : ""}.` : view === "reading" ? "Save pages to read later — Add to reading list on any tab." : "Pages you visit will appear here."}</p> : displayItems.map((item, index) => view === "bookmarks" ?

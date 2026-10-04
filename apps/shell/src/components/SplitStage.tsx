@@ -7,6 +7,7 @@ import { useStore } from "../store";
 import { hostOf } from "../workspace";
 import { PageSurface } from "./PageSurface";
 import "./SplitStage.css";
+import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 
 function useSpringRects(targets: Box[], ids: string[], immediate: boolean) {
   const [rects, setRects] = useState(targets);
@@ -83,8 +84,8 @@ export function SplitStage({ group, pages }: { group: SplitGroup; pages: PageTar
       const rect = rects[index] ?? geometry.panes[index]!;
       return <section key={id} className={`split-pane ${group.focused === id ? "focused" : ""}`} style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }} aria-label={`Split pane: ${page.title}`}>
         <header className="split-pane-header"><span>{hostOf(page.url)}</span>
-          <button className="icon-btn xs" data-command-id="split-swap" aria-label="Swap split sides" onClick={() => runCommand("split-swap", { payload: { pageId: id } })}>⇄</button>
-          <button className="icon-btn xs" data-command-id="split-close" aria-label={`Close split pane: ${page.title}`} onClick={() => runCommand("split-close", { payload: { pageId: id } })}>×</button>
+          <button {...auxClassExtraSmallIconButtonProps} data-command-id="split-swap" aria-label="Swap split sides" onClick={() => runCommand("split-swap", { payload: { pageId: id } })}>⇄</button>
+          <button {...auxClassExtraSmallIconButtonProps} data-command-id="split-close" aria-label={`Close split pane: ${page.title}`} onClick={() => runCommand("split-close", { payload: { pageId: id } })}>×</button>
         </header><div className="split-pane-page"><PageSurface page={page} /></div>
       </section>;
     })}

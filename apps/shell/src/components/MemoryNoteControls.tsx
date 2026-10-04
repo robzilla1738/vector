@@ -1,5 +1,8 @@
 import { useMemoryCallbackControl } from "./memory-control-construction";
 import { type ButtonHTMLAttributes } from "react";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 
 
@@ -41,5 +44,5 @@ export function MemoryNoteButton({
   invoke(element: HTMLElement): unknown;
 }) {
   const [attach, run] = useMemoryNoteControl(command, scopeId, invoke);
-  return <button type="button" {...props} ref={attach} onClick={run} />;
+  return <button {...auxNativeButtonTypeProps} {...props} ref={attach} onClick={run} />;
 }

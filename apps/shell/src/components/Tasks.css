@@ -11,6 +11,9 @@
   .task-history [role="alert"] > p {
     overflow-wrap: anywhere;
   }
+  .task-content [role="alert"] > details > summary {
+    min-height: var(--hit);
+  }
   .task-content .drawer-head {
     gap: var(--space-3);
   }

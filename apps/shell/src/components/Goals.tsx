@@ -4,6 +4,7 @@ import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Goal } from "@aux/contracts";
 import { call } from "../store";
+import { staticGrowProps as auxClassGrowProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
 
 type Props = {
   workspaceId: string;
@@ -86,7 +87,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
   return (
     <section className="field goals-panel" aria-label="Goals">
       <div {...staticRowProps}>
-        <h4 className="grow">Goals</h4>
+        <h4 {...auxClassGrowProps}>Goals</h4>
         <button {...smallButtonProps} onClick={() => void act(async () => {})} disabled={busy}>
           Refresh
         </button>
@@ -151,7 +152,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
             </label>
           </div>
           <button
-            className="btn"
+            {...auxClassButtonProps}
             disabled={busy || !valid}
             onClick={() =>
               void act(async () => {
@@ -178,7 +179,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
       {goals.map((goal) => (
         <article className="goals-item" key={goal.goalId}>
           <div {...staticRowProps}>
-            <strong className="grow">{goal.objective}</strong>
+            <strong {...auxClassGrowProps}>{goal.objective}</strong>
             <span className="work-status">{goal.status.replaceAll("_", " ")}</span>
           </div>
           {goal.chatId && <p {...staticHintProps}>{goal.chatId === chatId ? "Current conversation" : "Conversation Goal"}</p>}

@@ -19,6 +19,9 @@ import {
   type MentionQuery,
 } from "./tokens";
 import "./mentions.css";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 export function MentionComposer({
   textareaRef,
@@ -251,7 +254,7 @@ export function MentionComposer({
                 <span>{token.text}</span>
                 {status !== "Available" && <small>{status}</small>}
                 <button
-                  type="button"
+                  {...auxNativeButtonTypeProps}
                   disabled={disabled}
                   data-command-id="mention-remove"
                   aria-label={`Remove ${token.text}`}

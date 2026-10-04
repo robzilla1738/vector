@@ -1,0 +1,11 @@
+{
+  "actualStageClosureSha256": "d9039d669614883432ac17accdaca291c5b6c862f4804360aea84233c4d7d143",
+  "rawArtifacts": 24,
+  "actualOriginalChildrenPassed": true,
+  "physicalGeneratedSealsAndRetirement": true,
+  "gnLauncherSha256": "d8c725127c5b2ad71dd926bb6bb265c7425ce6875462d491e601391dcac5e412",
+  "actualGNPins": 11,
+  "unchangedGNPolicyReviewedPreviously": true,
+  "gnOnlyAdmitted": true,
+  "appAdmitted": false
+}

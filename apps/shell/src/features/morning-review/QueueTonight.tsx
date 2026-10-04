@@ -6,6 +6,7 @@ import { call } from "../../store";
 import { executeCommand } from "../../commands";
 import { Dialog } from "../../ui/dialog";
 import { useNightReview } from "./state";
+import { staticButtonProps as auxClassButtonProps } from "../../ui/class-props";
 export default function QueueTonight({ active = true }: { active?: boolean }) {
   const [spaces, setSpaces] = useState<Workspace[]>([]), [workspaceId, setWorkspaceId] = useState("");
   const [goals, setGoals] = useState<Goal[]>([]), [skills, setSkills] = useState<Routine[]>([]);
@@ -32,7 +33,7 @@ export default function QueueTonight({ active = true }: { active?: boolean }) {
     {kind === "routine" && <label>Skill<select value={id} onChange={event => { setId(event.target.value); setParameters({}); }}><option value="">Choose a ready Skill</option>{skills.map(skill => <option key={skill.routineId} value={skill.routineId}>{skill.title}</option>)}</select></label>}
     {kind === "routine" && skill?.parameters.map(parameter => <label key={parameter.name}>{parameter.name}<input aria-label={`Overnight value for ${parameter.name}`} value={parameters[parameter.name] ?? parameter.value ?? ""} onChange={event => setParameters(prior => ({ ...prior, [parameter.name]: event.target.value }))}/></label>)}
     <label>Task limit ($)<input type="number" min="0.01" step="0.01" value={budgetUsd} onChange={event => setBudget(event.target.valueAsNumber)}/></label>
-    <button className="btn" disabled={pending || !!missingVariables || !workspaceId || (kind === "goal" || kind === "routine") && !id || !Number.isFinite(budgetUsd) || budgetUsd <= 0} onClick={async () => {
+    <button {...auxClassButtonProps} disabled={pending || !!missingVariables || !workspaceId || (kind === "goal" || kind === "routine") && !id || !Number.isFinite(budgetUsd) || budgetUsd <= 0} onClick={async () => {
       if (pending) return;
       setPending(true); setError("");
       const skill = skills.find(skill => skill.routineId === id);

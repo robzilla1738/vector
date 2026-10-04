@@ -18,6 +18,7 @@ import { shellIconClose } from "./icons";
 import { ViewerFrame } from "./ViewerFrame";
 import { ActionMenu } from "../ui";
 import { isolatedHtmlDocument } from "../isolated-html";
+import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 
 type Result = { artifactId: string; chatId: string; filename: string; mediaType: string; content: string; createdAt: number; revision?:number;parentArtifactId?:string };
 function IsolatedHtmlResult({html,current}:{html:string;current():boolean}) {
@@ -128,7 +129,7 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
   const [exportTrigger,runExportTrigger]=useResultPreviewCommand("toggle-saved-result-export",loadedCurrent,()=>activateExport.current?.());
   const [exportFileRef,runExportFile]=useResultPreviewCommand("export-saved-result",loadedCurrent,()=>save());
   const [exportExcelRef,runExportExcel]=useResultPreviewCommand("export-saved-result-excel",loadedCurrent,()=>save(true));
-  return <ViewerFrame label="Saved result preview" title={result?.filename ?? "Saved result"} onClose={onClose} closeLabel="Close result preview" closeControl={<ResultPreviewControl command="close-saved-result-preview" current={current} invoke={onClose} className="icon-btn xs" aria-label="Close result preview">{shellIconClose}</ResultPreviewControl>}
+  return <ViewerFrame label="Saved result preview" title={result?.filename ?? "Saved result"} onClose={onClose} closeLabel="Close result preview" closeControl={<ResultPreviewControl command="close-saved-result-preview" current={current} invoke={onClose} {...auxClassExtraSmallIconButtonProps} aria-label="Close result preview">{shellIconClose}</ResultPreviewControl>}
     metadata={result && <>v{result.revision ?? 1} · {result.mediaType} · {new Date(result.createdAt).toLocaleString()}</>}
     toolbar={result && <><ResultPreviewControl command="toggle-saved-result-source" current={loadedCurrent} invoke={()=>setEditing(value=>!value)} {...smallGhostButtonProps} disabled={attaching||saving} aria-pressed={editing}>{editing?"Preview":"Edit copy"}</ResultPreviewControl><ResultPreviewControl command="copy-saved-result" current={loadedCurrent} invoke={copy} {...smallGhostButtonProps}>Copy</ResultPreviewControl><ActionMenu label="Export result" triggerControl={(node,activate)=>{exportTrigger(node);activateExport.current=node?activate:null;}} onTrigger={runExportTrigger} actions={[
       {label:"Export file…",disabled:saving||attaching||!valid,controlRef:exportFileRef,onSelect:event=>{if(event)runExportFile(event);}},

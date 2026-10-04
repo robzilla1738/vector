@@ -1,6 +1,10 @@
 import "./FileTree.css";
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { shellIconCode, shellIconFolder, shellIconFolderClosed, shellIconRight } from './icons';
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+} from "../ui/native-attribute-props";
 
 type Node = { path: string; name: string; directory: boolean; children: Node[] };
 const parents = (path: string) => path.split('/').slice(0, -1).map((_, i) => path.split('/').slice(0, i + 1).join('/'));
@@ -42,7 +46,7 @@ export function FileTree({ paths, selected, onSelect, disabled = false, expandAl
   const focus = (index: number) => { const path = visible[index]?.node.path; if (path) { setFocused(path); buttons.current.get(path)?.focus(); } };
   return <div className="ui-file-tree" role="tree" aria-label="Project files" aria-busy={disabled || undefined}>
     {visible.map(({ node, depth, position, size }, index) => <button key={node.path} ref={element => { if (element) buttons.current.set(node.path, element); else buttons.current.delete(node.path); }}
-      type="button" role="treeitem" aria-level={depth} aria-posinset={position} aria-setsize={size}
+      {...auxNativeButtonTypeProps} role="treeitem" aria-level={depth} aria-posinset={position} aria-setsize={size}
       aria-expanded={node.directory ? expanded.has(node.path) : undefined} aria-selected={!node.directory && node.path === selected}
       tabIndex={node.path === tabStop ? 0 : -1} disabled={disabled} title={node.path}
       style={{ paddingLeft: 8 + (depth - 1) * 14 }} onFocus={() => setFocused(node.path)}
@@ -55,9 +59,9 @@ export function FileTree({ paths, selected, onSelect, disabled = false, expandAl
         else if (event.key === 'ArrowRight' && node.directory) { event.preventDefault(); if (expanded.has(node.path)) focus(index + 1); else toggle(node.path, true); }
         else if (event.key === 'ArrowLeft') { event.preventDefault(); if (node.directory && expanded.has(node.path)) toggle(node.path, false); else focus(visible.findIndex(item => item.node.path === parents(node.path).at(-1))); }
       }}>
-      <span className="ui-file-icon" aria-hidden="true">{node.directory ? expanded.has(node.path) ? shellIconFolder : shellIconFolderClosed : shellIconCode}</span>
+      <span className="ui-file-icon" {...auxNativeAriaHiddenProps}>{node.directory ? expanded.has(node.path) ? shellIconFolder : shellIconFolderClosed : shellIconCode}</span>
       <span className="ui-file-name">{node.name}</span>
-      {node.directory && <span className={`ui-file-disclosure${expanded.has(node.path) ? ' open' : ''}`} aria-hidden="true">{shellIconRight}</span>}
+      {node.directory && <span className={`ui-file-disclosure${expanded.has(node.path) ? ' open' : ''}`} {...auxNativeAriaHiddenProps}>{shellIconRight}</span>}
     </button>)}
   </div>;
 }

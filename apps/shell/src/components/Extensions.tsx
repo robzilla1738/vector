@@ -11,6 +11,10 @@ import { extensionInventory, refreshExtensions } from "../features/extensions/ex
 
 import { guardCommandCompletion } from "../command-completion";
 import { ExtensionLocalButton, ExtensionPermissions, useExtensionsOwner } from "./ExtensionsControls";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticButtonProps as auxClassButtonProps, staticGhostButtonProps as auxClassGhostButtonProps, staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
 
 export function Extensions() {
   const available = useFeature("extensions");
@@ -61,7 +65,7 @@ export function Extensions() {
   const id = storeExtensionId(storeInput);
   return (
     <section className="field extensions-settings" aria-label="Extensions">
-      <div className="drawer-section">Extensions</div>
+      <div {...auxClassDrawerSectionProps}>Extensions</div>
       <p>
         Extensions run in this browser Profile. Their permissions and site access are managed by Chromium.
       </p>
@@ -77,8 +81,8 @@ export function Extensions() {
           spellCheck={false}
         />
         <button
-          type="button"
-          className="btn"
+          {...auxNativeButtonTypeProps}
+          {...auxClassButtonProps}
           disabled={busy || !id}
           data-command-id="install-store-extension"
           onClick={() => {
@@ -88,8 +92,8 @@ export function Extensions() {
           Install from Store
         </button>
         <button
-          type="button"
-          className="btn ghost"
+          {...auxNativeButtonTypeProps}
+          {...auxClassGhostButtonProps}
           disabled={busy}
           data-command-id="install-unpacked-extension"
           onClick={() => runCommand("install-unpacked-extension")}
@@ -103,7 +107,7 @@ export function Extensions() {
       </p>
       {message && <output {...staticHintProps}>{message}</output>}
       {error && (
-        <p className="hint err" role="alert">
+        <p {...auxClassErrorHintProps} role="alert">
           {error}
         </p>
       )}
@@ -122,7 +126,7 @@ export function Extensions() {
                 {extension.enabled ? "Enabled" : "Disabled"}
                 {!extension.managed ? " · Managed outside Aux" : ""}
               </p>
-              {extension.error && <p className="hint err">{extension.error}</p>}
+              {extension.error && <p {...auxClassErrorHintProps}>{extension.error}</p>}
               <details className="extension-details">
                 <ExtensionPermissions current={itemCurrent(extension)}>Permissions</ExtensionPermissions>
                 <p className="hint extension-permissions">
@@ -135,7 +139,7 @@ export function Extensions() {
             {extension.managed && (
               <div className="extension-actions">
                 <button
-                  type="button"
+                  {...auxNativeButtonTypeProps}
                   {...smallGhostButtonProps}
                   disabled={busy}
                   data-command-id="set-extension-enabled"
@@ -148,7 +152,7 @@ export function Extensions() {
                   {extension.enabled ? "Disable" : "Enable"}
                 </button>
                 <button
-                  type="button"
+                  {...auxNativeButtonTypeProps}
                   {...smallGhostButtonProps}
                   disabled={busy || !extension.enabled}
                   data-command-id="reload-extension"
@@ -157,7 +161,7 @@ export function Extensions() {
                   Restart
                 </button>
                 <button
-                  type="button"
+                  {...auxNativeButtonTypeProps}
                   {...smallGhostButtonProps}
                   disabled={busy}
                   data-command-id="update-extension"
@@ -201,7 +205,7 @@ export function Extensions() {
           <div className="extension-confirm-actions">
             <ExtensionLocalButton
               type="button"
-              className="btn"
+              {...auxClassButtonProps}
               disabled={busy}
               command="confirm-extension-removal"
               current={targetCurrent}
@@ -241,7 +245,7 @@ export function Extensions() {
             </ExtensionLocalButton>
             <ExtensionLocalButton
               type="button"
-              className="btn ghost"
+              {...auxClassGhostButtonProps}
               disabled={busy}
               command="cancel-extension-removal"
               current={targetCurrent}

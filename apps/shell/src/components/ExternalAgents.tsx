@@ -6,6 +6,7 @@ import type { AgentConnection, AgentConnectionScope, Task, Workspace } from "@au
 import { mcpCatalogGrouped, type McpCatalogTool } from "@aux/contracts/mcp-catalog";
 import { bridge } from "../bridge";
 import { ExternalAgentOversight } from "./ExternalAgentOversight";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
 
 type Config = Awaited<ReturnType<typeof bridge.agentConfig>>;
 type Installation=Awaited<ReturnType<typeof bridge.agentClients>>[number];
@@ -75,7 +76,7 @@ export function ExternalAgents() {
   };
 
   return <section className="field external-agents" aria-label="External agents">
-    <div className="drawer-section">External agents</div>
+    <div {...auxClassDrawerSectionProps}>External agents</div>
     <p>Connect Codex or Claude Code to one saved task or workspace through MCP. The client uses its own account and model.</p>
     <div role="group" {...staticRowProps} aria-label="Detected agent clients">{installations.map(item=><span className="hint" key={item.client}><strong>{item.client==='codex'?'Codex':'Claude Code'}</strong> · {item.installed?(item.version??(item.error?'version unavailable':'installed')):'not installed'}</span>)}</div>
     <span {...staticHintProps}>The generated token can access only the selected task scope, its attached browser tabs and attached Aux-managed checkouts. File changes, local commands, preview tabs and commits require native approval. It cannot accept evidence, reconcile actions, create workspaces, or expand its own scope. Use the client’s approval controls for its non-Aux tools.</span>
@@ -83,7 +84,7 @@ export function ExternalAgents() {
       <p {...staticHintProps}>{scopeKind === "task" ? "Task-scoped connections see this filtered catalog. Workspace connections add child-task creation." : "Workspace-scoped connections can create tasks inside the selected workspace."} Vault, routines, backups and human review stay in Aux.</p>
       <label>Filter tools<input aria-label="Filter scoped MCP tools" value={catalogQuery} onChange={event => setCatalogQuery(event.target.value)} placeholder="Name or description" /></label>
       <div className="seg" role="group" aria-label="Tool group">{(["all", "browser", "task", "workspace"] as const).map(value => <button key={value} className={catalogGroup === value ? "on" : ""} aria-pressed={catalogGroup === value} onClick={() => setCatalogGroup(value)}>{value === "all" ? "All" : value[0]!.toUpperCase() + value.slice(1)}</button>)}</div>
-      {catalogGroups.map(group => <div className="field" key={group.group}><div className="drawer-section">{group.label}</div>{group.tools.map(tool => <div className="hint" key={tool.name}><strong>{tool.name}</strong> · {tool.description}</div>)}</div>)}
+      {catalogGroups.map(group => <div className="field" key={group.group}><div {...auxClassDrawerSectionProps}>{group.label}</div>{group.tools.map(tool => <div className="hint" key={tool.name}><strong>{tool.name}</strong> · {tool.description}</div>)}</div>)}
       {!catalogGroups.length && <p {...staticHintProps}>No scoped tools match this filter.</p>}
     </details>
     <div className="seg" role="group" aria-label="Agent client">{(["codex", "claude"] as const).map(value => <button key={value} className={client === value ? "on" : ""} aria-pressed={client === value} onClick={() => setClient(value)}>{value === "codex" ? "Codex" : "Claude Code"}</button>)}</div>
@@ -92,7 +93,7 @@ export function ExternalAgents() {
       <label>Workspace<select aria-label="Connection workspace" value={workspaceId} onChange={event => { setWorkspaceId(event.target.value); setConfig(null); }}>{workspaces.map(workspace => <option key={workspace.workspaceId} value={workspace.workspaceId}>{workspace.name}</option>)}</select></label>
       <label>Scope<select aria-label="Connection scope" value={scopeKind} onChange={event => { setScopeKind(event.target.value as "workspace" | "task"); setConfig(null); }}><option value="task">One task</option><option value="workspace">All tasks in workspace</option></select></label>
       {scopeKind === "task" && <label>Task<select aria-label="Connection task" value={taskId} onChange={event => { setTaskId(event.target.value); setConfig(null); }}>{availableTasks.map(task => <option key={task.taskId} value={task.taskId}>{task.title}</option>)}</select></label>}
-      <button className="btn" disabled={busy || !name.trim() || !workspaceId || (scopeKind === "task" && !taskId)} onClick={() => void create()}>Create scoped connection</button>
+      <button {...auxClassButtonProps} disabled={busy || !name.trim() || !workspaceId || (scopeKind === "task" && !taskId)} onClick={() => void create()}>Create scoped connection</button>
     </>}
     {error && <p role="alert">{error}</p>}
     {config && <>
@@ -101,7 +102,7 @@ export function ExternalAgents() {
       <div {...staticRowProps}><button {...smallButtonProps} onClick={() => void navigator.clipboard.writeText(snippet).then(() => setMessage("Configuration copied.")).catch(() => setError("Copy failed. Select and copy the configuration text."))}>Copy configuration</button>
         <button {...smallButtonProps} onClick={() => void bridge.openExternal(client === "codex" ? "https://developers.openai.com/codex/mcp" : "https://code.claude.com/docs/en/mcp")}>Client setup guide</button></div>
     </>}
-    {!!connections.length && <div className="external-agent-connections"><div className="drawer-section">Connections</div>{connections.map(connection => <div className="external-agent-row" key={connection.connectionId}>
+    {!!connections.length && <div className="external-agent-connections"><div {...auxClassDrawerSectionProps}>Connections</div>{connections.map(connection => <div className="external-agent-row" key={connection.connectionId}>
       <div className="external-agent-copy"><strong>{connection.name}</strong><span {...staticHintProps}>{connection.client === "codex" ? "Codex" : "Claude Code"} · {connectionTarget(connection)}{connection.lastUsedAt ? ` · used ${new Date(connection.lastUsedAt).toLocaleString()}` : " · not used yet"}{connection.revokedAt ? " · revoked" : ""}</span></div>
       {!connection.revokedAt && <button {...smallButtonProps} disabled={busy} onClick={() => void revoke(connection.connectionId)}>Revoke</button>}
     </div>)}</div>}

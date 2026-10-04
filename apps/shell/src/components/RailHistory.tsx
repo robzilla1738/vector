@@ -7,6 +7,7 @@ import { isLive, useStore } from "../store";
 import { hostOf } from "../workspace";
 import { VirtualList } from "./VirtualList";
 import { shellIconAgentSm, shellIconAlert, shellIconChat, shellIconCheck, shellIconCircle, shellIconClose, shellIconLayersSm, shellIconSearch } from "./icons";
+import { staticNumericCountProps as auxClassNumericCountProps, staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 
 const ago = (ts: number) => {
   const m = Math.floor((Date.now() - ts) / 60000);
@@ -85,25 +86,25 @@ export function RailHistory() {
     <div className="rail-home">
       {live.length > 0 && (
         <section className="rail-block">
-          <div className="rail-label"><span>Live</span><span className="count nums">{live.length}</span></div>
+          <div className="rail-label"><span>Live</span><span {...auxClassNumericCountProps}>{live.length}</span></div>
           {live.map((runId) => <RunRow key={runId} runId={runId} />)}
         </section>
       )}
       {sets.length > 0 && (
         <section className="rail-block">
-          <div className="rail-label"><span>Sets</span><span className="count nums">{sets.length}</span></div>
+          <div className="rail-label"><span>Sets</span><span {...auxClassNumericCountProps}>{sets.length}</span></div>
           {sets.map((setId) => <SetRow key={setId} setId={setId} />)}
         </section>
       )}
       <section className="rail-block grow">
         <div className="rail-label">
           <span>Recent conversations</span>
-          <span className="count nums">{past.length}</span>
+          <span {...auxClassNumericCountProps}>{past.length}</span>
         </div>
         <div className="rail-search">
           {shellIconSearch}
           <input value={q} placeholder="Find a recent conversation" aria-label="Find a recent conversation" onChange={(e) => setQ(e.target.value)} />
-          {q && <button className="icon-btn xs" aria-label="Clear" onClick={() => setQ("")}>{shellIconClose}</button>}
+          {q && <button {...auxClassExtraSmallIconButtonProps} aria-label="Clear" onClick={() => setQ("")}>{shellIconClose}</button>}
         </div>
         {past.length === 0 ? (
           <div className="rail-empty small">{q ? "No recent conversations match." : "Nothing yet. Ask for something below — the agent works in this window, on your tabs."}</div>

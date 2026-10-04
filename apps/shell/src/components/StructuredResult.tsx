@@ -7,6 +7,7 @@ import { useConversationOwner } from "./ConversationControls";
 import { useConversationAttachmentOwner } from "./ConversationAttachmentControls";
 import { StructuredResultControl, StructuredResultRow } from "./StructuredResultControls";
 import { csvPreview } from "../csv-preview";
+import { staticMetadataKeyProps as auxClassMetadataKeyProps, staticMetadataValueProps as auxClassMetadataValueProps } from "../ui/class-props";
 
 const admitted = () => true;
 export function StructuredResult({
@@ -143,8 +144,8 @@ export function StructuredResult({
           <div className="result-fields">
             {parsed.csv.rows[selected].map((cell, i) => (
               <div key={i} style={{ display: "contents" }}>
-                <span className="meta-k">Column {i + 1}</span>
-                <span className="meta-v">{cell || "Empty"}</span>
+                <span {...auxClassMetadataKeyProps}>Column {i + 1}</span>
+                <span {...auxClassMetadataValueProps}>{cell || "Empty"}</span>
               </div>
             ))}
           </div>

@@ -9,6 +9,9 @@ import { useFeature } from "../use-feature";
 import { useExtensionActions } from "../features/extensions/use-extension-actions";
 import { extensionActionAnchor } from "../features/extensions/action-anchor";
 import "../features/extensions/extensions.css";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 type Action = HostMethodResult<"extensionActions">[number];
 function ActionIcon({ action }: { action: Action }) {
@@ -37,7 +40,7 @@ export function ExtensionActions() {
         .map((item) => (
           <button
             key={item.id}
-            type="button"
+            {...auxNativeButtonTypeProps}
             {...staticIconButtonProps}
             aria-label={`${item.name}${item.badgeText ? ` · ${item.badgeText}` : ""}`}
             title={item.name}
@@ -50,7 +53,7 @@ export function ExtensionActions() {
         ))}
       <button
         ref={anchor}
-        type="button"
+        {...auxNativeButtonTypeProps}
         {...staticIconButtonProps}
         title="Extensions"
         aria-label="Extensions"
@@ -80,7 +83,7 @@ export function ExtensionActions() {
           {items.map((item) => (
             <fieldset key={item.id} aria-label={item.name}>
               <button
-                type="button"
+                {...auxNativeButtonTypeProps}
                 role="menuitem"
                 {...staticMenuItemProps}
                 disabled={!item.enabled}
@@ -94,7 +97,7 @@ export function ExtensionActions() {
                 </span>
               </button>
               <button
-                type="button"
+                {...auxNativeButtonTypeProps}
                 role="menuitemcheckbox"
                 aria-checked={item.pinned}
                 aria-label={`${item.pinned ? "Unpin" : "Pin"} ${item.name}`}
@@ -111,7 +114,7 @@ export function ExtensionActions() {
             </fieldset>
           ))}
           <button
-            type="button"
+            {...auxNativeButtonTypeProps}
             role="menuitem"
             {...staticMenuItemProps}
             data-command-id="show-extensions"

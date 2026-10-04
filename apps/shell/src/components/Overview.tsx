@@ -22,6 +22,10 @@ import { shellIconClose, shellIconGrid, shellIconPlusSm, shellIconSearch } from 
 import { useShortcutLabels } from "../use-shortcut-label";
 import { useFeature } from "../use-feature";
 import "./Overview.css";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
+import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 
 /** A searchable, keyboard-accessible place to organize several tabs together. */
 export function Overview() {
@@ -207,7 +211,7 @@ export function Overview() {
   }}>
     <div className="ov-head">
       <div><h2>Your tabs</h2><p {...staticHintProps}>{visible.length} {visible.length === 1 ? "tab" : "tabs"}{selection.length ? ` · ${selection.length} selected` : " · Everything in its place"}</p></div>
-      <span className="sp" />
+      <span {...auxClassSpacerProps} />
       <button {...smallButtonProps} disabled={busy} data-command-id="new-tab" onClick={() => runCommand("new-tab")}>{shellIconPlusSm} New tab</button>
       <button {...smallGhostButtonProps} disabled={busy} onClick={() => useStore.getState().setMode("focus")}>Done</button>
     </div>
@@ -241,7 +245,7 @@ export function Overview() {
       })}>Select duplicates · {duplicates.length}</button>}
     </div>
     {tidy && <section className="ov-tidy" aria-label="AI Tidy preview">
-      <div className="ov-tidy-head"><strong>Suggested folders</strong><span className="sp" /><span {...staticHintProps}>Review before applying</span></div>
+      <div className="ov-tidy-head"><strong>Suggested folders</strong><span {...auxClassSpacerProps} /><span {...staticHintProps}>Review before applying</span></div>
       <p {...staticHintProps}>Only tab titles and site domains were sent to your configured AI model. Tabs stay open; ungrouped tabs stay where they are.</p>
       <div className="ov-tidy-groups">{tidy.proposal.groups.map((group, index) => <div className="ov-tidy-group" key={`${group.name}-${index}`}>
         <strong>{group.name}</strong><ul>{group.pageIds.map(pageId => <li key={pageId}>{tidy.proposal.pages.find(page => page.pageId === pageId)?.title || "Untitled tab"}</li>)}</ul>
@@ -336,7 +340,7 @@ export function Overview() {
         } finally { setClosing(false); }
       })}>Close tabs</button>
       {closing && <button {...smallGhostButtonProps} onClick={() => { stopClosing.current=true; setProgress("Stopping after the current tab…"); }}>Stop</button>}
-      <span className="sp" /><button {...staticIconButtonProps} disabled={busy} aria-label="Clear tab selection" onClick={() => {duplicateSelection.current=false;setSelected(new Set());setSavingFolder(false);}}>{shellIconClose}</button>
+      <span {...auxClassSpacerProps} /><button {...staticIconButtonProps} disabled={busy} aria-label="Clear tab selection" onClick={() => {duplicateSelection.current=false;setSelected(new Set());setSavingFolder(false);}}>{shellIconClose}</button>
     </section>}
     {savingFolder && selection.length > 0 && <form className="ov-save-folder" onSubmit={event => {
       event.preventDefault(); void act(async () => {
@@ -356,7 +360,7 @@ export function Overview() {
     }}>
       <label>{savingFolder === "tabs" ? "Tab folder" : "Bookmark folder"}<input {...staticFieldInputProps} autoFocus disabled={busy} value={folderName} maxLength={200} placeholder="Reading, trip ideas, project research…" onChange={event=>setFolderName(event.target.value)} /></label>
       <p {...staticHintProps}>{savingFolder === "tabs" ? `Move the selected open tabs into a new folder in ${folderSpace?.name ?? "the selected Space"}. Their pages stay open.` : "Save web pages for later. Existing bookmarks keep their current folders. Open the folder’s pages together from Library."}</p>
-      <div {...staticRowProps}><button {...smallButtonProps} disabled={busy||!folderName.trim()||(savingFolder === "tabs" && !folderSpace)}>{savingFolder === "tabs" ? "Create folder" : "Save folder"}</button><button type="button" {...smallGhostButtonProps} disabled={busy} onClick={()=>setSavingFolder(false)}>Cancel</button></div>
+      <div {...staticRowProps}><button {...smallButtonProps} disabled={busy||!folderName.trim()||(savingFolder === "tabs" && !folderSpace)}>{savingFolder === "tabs" ? "Create folder" : "Save folder"}</button><button {...auxNativeButtonTypeProps} {...smallGhostButtonProps} disabled={busy} onClick={()=>setSavingFolder(false)}>Cancel</button></div>
     </form>}
     {progress && <output className="hint ov-progress" data-block>{progress}</output>}
     {error && <p role="alert" {...staticFieldErrorProps}>{error}</p>}
@@ -379,7 +383,7 @@ export function Overview() {
     {archiveEnabled && !!layout.archivedTabs?.some(entry => entry.state === "archived" && !pages.some(page => page.pageId === entry.pageId)) &&
       <section aria-label="Archived tabs" className="ov-archive"><h2>Archived tabs</h2><p {...staticHintProps}>Saved in this Profile. Restore a tab to reopen it.</p>
         {layout.archivedTabs.filter(entry => entry.state === "archived" && !pages.some(page => page.pageId === entry.pageId)).map(entry =>
-          <div className="row" key={entry.archiveId}><span>{entry.title || hostOf(entry.url)}</span><span className="sp" />
+          <div className="row" key={entry.archiveId}><span>{entry.title || hostOf(entry.url)}</span><span {...auxClassSpacerProps} />
             <button {...smallGhostButtonProps} disabled={busy} onClick={() => void act(() => restoreArchive(entry))}>Restore</button></div>)}</section>}
   </div>;
 }

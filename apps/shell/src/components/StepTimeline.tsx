@@ -5,6 +5,10 @@ import { bridge } from "../bridge";
 import { RunPanelAction, useRunPanelCommand } from "./RunPanelAction";
 import { errToast, useStore } from "../store";
 import { shellIconCheck, shellIconClose, shellIconObs, shellIconRight } from "./icons";
+import {
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+} from "../ui/native-attribute-props";
+import { staticMetadataKeyProps as auxClassMetadataKeyProps, staticMetadataValueProps as auxClassMetadataValueProps } from "../ui/class-props";
 
 export type StepState = "ok" | "failed" | "skipped" | "running";
 
@@ -201,7 +205,7 @@ const StepCard = memo(function StepCard({
           <span className="tl-op">{opLabel(s.op)}</span>
           <span className="tl-detail" title={stepSummary(s)}>{stepSummary(s)}</span>
           <span className={`tl-status ${state}`}>{statusLabel(state)}</span>
-          {hasBody && <span className={`tl-disclosure ${open ? "open" : ""}`} aria-hidden="true">{shellIconRight}</span>}
+          {hasBody && <span className={`tl-disclosure ${open ? "open" : ""}`} {...auxNativeAriaHiddenProps}>{shellIconRight}</span>}
 
         </RunPanelAction>
         {receipt && <span className="tl-receipt" data-testid="tl-receipt" data-receipt={kind}>{receipt}</span>}
@@ -209,7 +213,7 @@ const StepCard = memo(function StepCard({
           <div className="tl-expand">
             {s.outcome && <div className="tl-evidence-summary"><span className="tl-ms nums">{fmtMs(s.outcome.durationMs)}</span>{s.outcome.receipt?.observed && <span>{s.outcome.receipt.observed}</span>}</div>}
             {s.outcome?.error?.code && <code className="tl-code">{s.outcome.error.code}</code>}
-            {s.outcome?.receipt?.identity && <div className="tl-identity"><span className="meta-k">Page</span><span className="meta-v">{s.outcome.receipt.identity.pageId}</span><span className="meta-k">Document</span><span className="meta-v">{s.outcome.receipt.identity.documentEpoch}</span>{s.outcome.receipt.identity.generation !== undefined && <><span className="meta-k">Generation</span><span className="meta-v">{s.outcome.receipt.identity.generation}</span></>}{s.outcome.receipt.identity.target && <><span className="meta-k">Target</span><span className="meta-v">{s.outcome.receipt.identity.target}</span></>}</div>}
+            {s.outcome?.receipt?.identity && <div className="tl-identity"><span {...auxClassMetadataKeyProps}>Page</span><span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.pageId}</span><span {...auxClassMetadataKeyProps}>Document</span><span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.documentEpoch}</span>{s.outcome.receipt.identity.generation !== undefined && <><span {...auxClassMetadataKeyProps}>Generation</span><span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.generation}</span></>}{s.outcome.receipt.identity.target && <><span {...auxClassMetadataKeyProps}>Target</span><span {...auxClassMetadataValueProps}>{s.outcome.receipt.identity.target}</span></>}</div>}
             {chips.length > 0 && <div className="tl-chips">{chips.map(chip => <Chip key={`${chip.kind}:${chip.value}`} chip={chip} run={run} step={s} />)}</div>}
             {detailKeys.length > 0 && <pre className="tl-json">{JSON.stringify(redacted, null, 2)}</pre>}
           </div>

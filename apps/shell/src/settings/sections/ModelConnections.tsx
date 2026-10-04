@@ -16,6 +16,7 @@ import {
   useModelMountedCommand,
   type ModelControlOwner,
 } from "./models-command-controls";
+import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
 
 export function ModelConnections({
   settings,
@@ -233,7 +234,7 @@ function ProviderConnectionRow({
   const name = MODEL_PROVIDER_NAMES[connection.provider];
   return (
     <div {...staticRowProps} data-provider={connection.provider}>
-      <div className="grow">
+      <div {...auxClassGrowProps}>
         <strong>
           {name}
           {connection.selected ? " · Selected" : ""}

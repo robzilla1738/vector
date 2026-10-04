@@ -12,6 +12,8 @@ import { useEffect, useState } from "react";
 import type { OutboundMcpGrant, OutboundMcpServer, OutboundMcpTool, Task, Workspace } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call } from "../store";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
 
 type BundleInspection = {
   path: string;
@@ -363,7 +365,7 @@ export function OutboundMcpSettings() {
 
   return (
     <section className="field outbound-mcp" aria-label="MCP servers" data-setting="MCP servers">
-      <div className="drawer-section">MCP servers</div>
+      <div {...auxClassDrawerSectionProps}>MCP servers</div>
       <p {...staticHintProps}>
         Add a server to a Space, review its exact source, then grant individual tools. Server approval alone
         never grants tool access. Local commands run with network and file writes blocked. OAuth connections
@@ -489,7 +491,7 @@ export function OutboundMcpSettings() {
                 </p>
                 <button
                   {...smallButtonProps}
-                  type="button"
+                  {...auxNativeButtonTypeProps}
                   disabled={busy}
                   onClick={() => void inspectBundle()}
                 >
@@ -524,8 +526,8 @@ export function OutboundMcpSettings() {
               </>
             )}
             <button
-              className="btn"
-              type="button"
+              {...auxClassButtonProps}
+              {...auxNativeButtonTypeProps}
               disabled={
                 busy ||
                 !name.trim() ||
@@ -538,7 +540,7 @@ export function OutboundMcpSettings() {
               Save server for review
             </button>
           </fieldset>
-          <div className="drawer-section">Servers in this Space</div>
+          <div {...auxClassDrawerSectionProps}>Servers in this Space</div>
           {!servers.length && <p {...staticHintProps}>No MCP servers saved in this Space.</p>}
           {!!servers.length && (
             <label>
@@ -696,7 +698,7 @@ export function OutboundMcpSettings() {
                     bundle hash and fingerprint. No tools are granted by this action.
                   </p>
                   <button
-                    className="btn"
+                    {...auxClassButtonProps}
                     disabled={busy}
                     onClick={() =>
                       void action(async () => {
@@ -910,7 +912,7 @@ export function OutboundMcpSettings() {
                             </div>
                           </div>
                           <button
-                            className="btn"
+                            {...auxClassButtonProps}
                             disabled={
                               busy ||
                               grantReview.serverId !== selectedServer.serverId ||

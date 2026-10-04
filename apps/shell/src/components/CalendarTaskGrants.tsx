@@ -4,6 +4,7 @@ import { smallButtonProps } from "../ui/button-props";
 import { useEffect, useState } from "react";
 import type { CalendarConnection, CalendarEvent, CalendarTaskGrant, Task } from "@aux/contracts";
 import { call } from "../store";
+import { staticGrowProps as auxClassGrowProps, staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
 
 type EventPage = { events: CalendarEvent[]; nextPageToken?: string };
 
@@ -69,10 +70,10 @@ export function CalendarTaskGrants({ task, onOpenSettings }: { task: Task; onOpe
     <p {...staticHintProps}>Grant one connected account to this saved task revision. When this task runs, Aux may send event details it reads to your chosen AI model. Scoped external agents can read the same granted events; neither receives provider tokens. Changing or archiving the task revokes its grants.</p>
     {!available && <p {...staticHintProps}>Calendar is unavailable in this desktop profile. Configure a Google OAuth desktop client to connect an account.</p>}
     {!accounts.length && <div {...staticRowProps}><span {...staticHintProps}>No Calendar accounts connected.</span><button {...smallButtonProps} onClick={onOpenSettings}>Open Connections</button></div>}
-    {!!selectable.length && task.state === "open" && <div {...staticRowProps}><select className="grow" aria-label="Grant Calendar account" value={selectedAccount} onChange={event => setChosen(event.target.value)}>{selectable.map(account => <option key={account.connectionId} value={account.connectionId}>{account.label} · {account.accountKey}</option>)}</select><button {...smallButtonProps} disabled={busy} onClick={() => void grant()}>Grant to task</button></div>}
-    {grants.filter(grant => grant.taskRevision === task.revision).map(grant => <div className="field" key={grant.grantId}><div {...staticRowProps}><strong className="grow">{grant.label} · {grant.accountKey}</strong><button {...smallButtonProps} disabled={busy || task.state !== "open"} onClick={() => void preview(grant.grantId)}>Preview events</button><button {...smallButtonProps} disabled={busy} onClick={() => void revoke(grant.grantId)}>Revoke</button></div>
+    {!!selectable.length && task.state === "open" && <div {...staticRowProps}><select {...auxClassGrowProps} aria-label="Grant Calendar account" value={selectedAccount} onChange={event => setChosen(event.target.value)}>{selectable.map(account => <option key={account.connectionId} value={account.connectionId}>{account.label} · {account.accountKey}</option>)}</select><button {...smallButtonProps} disabled={busy} onClick={() => void grant()}>Grant to task</button></div>}
+    {grants.filter(grant => grant.taskRevision === task.revision).map(grant => <div className="field" key={grant.grantId}><div {...staticRowProps}><strong {...auxClassGrowProps}>{grant.label} · {grant.accountKey}</strong><button {...smallButtonProps} disabled={busy || task.state !== "open"} onClick={() => void preview(grant.grantId)}>Preview events</button><button {...smallButtonProps} disabled={busy} onClick={() => void revoke(grant.grantId)}>Revoke</button></div>
       {previewGrant === grant.grantId && page && <div {...staticFieldProps}><span {...staticHintProps}>Next 7 days · source {grant.accountKey}</span>{page.events.length ? page.events.map(event => <p key={event.eventId}><strong>{event.title}</strong> · {new Date(event.start).toLocaleString()}</p>) : <p {...staticHintProps}>No events in this range.</p>}{page.nextPageToken && <button {...smallButtonProps} disabled={busy} onClick={() => void preview(grant.grantId, page.nextPageToken)}>Load more</button>}</div>}</div>)}
     {message && <output {...staticHintProps} data-block>{message}</output>}
-    {error && <p className="hint err" role="alert">{error}</p>}
+    {error && <p {...auxClassErrorHintProps} role="alert">{error}</p>}
   </section>;
 }

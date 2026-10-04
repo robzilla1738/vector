@@ -7,6 +7,7 @@ import { LiveFolderSchema } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { executeCommand } from "../commands";
 import { Dialog } from "../ui/dialog";
+import { staticGhostButtonProps as auxClassGhostButtonProps, staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
 
 export function LiveFolderEditor({ folderId, onClose }: { folderId: string; onClose: () => void }) {
   const folder = useStore(state => state.layout.folders.find(folder => folder.id === folderId));
@@ -51,6 +52,6 @@ export function LiveFolderEditor({ folderId, onClose }: { folderId: string; onCl
     {kind === "github" && <><label>Items<select {...staticFieldInputProps} value={source} onChange={event => setSource(event.target.value as typeof source)}><option value="awaiting-review">Awaiting my review</option><option value="open-prs">My open PRs</option><option value="assigned-issues">Assigned issues</option><option value="query">Custom query</option></select></label>{source === "query" && <label>GitHub search query<input {...staticFieldInputProps} value={query} maxLength={1000} onChange={event => setQuery(event.target.value)} placeholder="is:pr is:open repo:owner/project" /></label>}</>}
     {kind === "routine" && <label>Routine<select {...staticFieldInputProps} value={routineId} onChange={event => setRoutineId(event.target.value)}><option value="">Choose a routine that returns URL rows</option>{routines.map(routine => <option key={routine.id} value={routine.id}>{routine.name}</option>)}</select></label>}
     {error && <p role="alert" className="error-text">{error}</p>}
-    <div className="dialog-actions"><button className="btn ghost" onClick={onClose}>Cancel</button><button className="btn primary" data-command-id="save-live-folder" disabled={busy || !folder} onClick={() => void save()}>{busy ? "Saving…" : "Save live folder"}</button></div>
+    <div className="dialog-actions"><button {...auxClassGhostButtonProps} onClick={onClose}>Cancel</button><button {...auxClassPrimaryButtonProps} data-command-id="save-live-folder" disabled={busy || !folder} onClick={() => void save()}>{busy ? "Saving…" : "Save live folder"}</button></div>
   </Dialog>;
 }

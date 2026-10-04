@@ -34,6 +34,11 @@ import { acquireFloatingSidebarLock, useFloatingSidebar } from "../floating-side
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { useTabMembership, type TabMembership } from "../use-tab-membership";
 import { Menu } from "../ui";
+import {
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
+import { staticTextProps as auxClassTextProps, staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps, staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 
 const IDLE_DRAG = { folderId: null as string | null, from: -1, to: null as number | null, pageId: "", over: null as string | null };
 
@@ -266,28 +271,28 @@ export function SpaceMenu({ anchor, spaces, active, onPick, onNew, onNewFolder, 
       {visibleSpaces.map(space => <div className="space-menu-row" key={space.id} data-space={space.color} style={spaceThemeStyle(space)} role="none">
         <button ref={space.id === visibleSpaces[0]?.id ? firstSpace : undefined} className={`menu-item ${space.id === active ? "on" : ""}`} role="menuitemradio" aria-checked={space.id === active}
           onClick={() => choose(() => onPick(space.id))}>
-          <span className="space-dot" /><span className="t">{space.name}</span>
+          <span className="space-dot" /><span {...auxClassTextProps}>{space.name}</span>
         </button>
         <span className="menu-acts" role="none">
-          <button className="icon-btn xs" role="menuitem" aria-label={`Edit ${space.name}`} onClick={() => choose(() => onEdit(space))}>{shellIconPencil}</button>
-          {spaces.length > 1 && <button className="icon-btn xs" role="menuitem" aria-label={`${bridge.privateMode ? "Delete" : "Archive"} ${space.name}`}
+          <button {...auxClassExtraSmallIconButtonProps} role="menuitem" aria-label={`Edit ${space.name}`} onClick={() => choose(() => onEdit(space))}>{shellIconPencil}</button>
+          {spaces.length > 1 && <button {...auxClassExtraSmallIconButtonProps} role="menuitem" aria-label={`${bridge.privateMode ? "Delete" : "Archive"} ${space.name}`}
             onClick={() => choose(() => onDelete(space.id))}>{shellIconTrash}</button>}
         </span>
       </div>)}
       {archivedSpaces.length > 0 && <>
         <button {...staticMenuItemProps} role="menuitem" aria-expanded={showArchived} onClick={() => setShowArchived(value => !value)}>
-          <span className="menu-ico">{shellIconReload}</span><span className="t">Archived spaces</span><span className="muted">{archivedSpaces.length}</span>
+          <span className="menu-ico">{shellIconReload}</span><span {...auxClassTextProps}>Archived spaces</span><span className="muted">{archivedSpaces.length}</span>
         </button>
         {showArchived && archivedSpaces.filter(matchesSpace).map(space => <button key={space.id} className="menu-item space-restore-item" role="menuitem"
           onClick={() => choose(() => onRestore(space.id))} title="Restore this space and its saved work">
-          <span className="t">{space.name}</span><span className="muted">Restore</span>
+          <span {...auxClassTextProps}>{space.name}</span><span className="muted">Restore</span>
         </button>)}
       </>}
       <div className="menu-sep" role="separator" />
       {actions.map(action => <div key={action.label} role="none">
         {action.separator && <div className="menu-sep" role="separator" />}
         <button {...staticMenuItemProps} role="menuitem" onClick={() => choose(action.run)}>
-          <span className="menu-ico">{action.icon}</span><span className="t">{action.label}</span>{action.key && <kbd>{action.key}</kbd>}
+          <span className="menu-ico">{action.icon}</span><span {...auxClassTextProps}>{action.label}</span>{action.key && <kbd>{action.key}</kbd>}
         </button>
       </div>)}
     </Menu>
@@ -359,8 +364,8 @@ function FolderRow({ folder, count, open, dropOn, renaming, onToggle, onRename, 
       ) : (
         <span className="tab-title">{folder.name}</span>
       )}
-      <span className="folder-count" aria-hidden="true">{count}</span>
-      <span className="folder-chevron" aria-hidden="true">{shellIconDown}</span>
+      <span className="folder-count" {...auxNativeAriaHiddenProps}>{count}</span>
+      <span className="folder-chevron" {...auxNativeAriaHiddenProps}>{shellIconDown}</span>
     </div>
   );
 }
@@ -665,12 +670,12 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                 onKeyDown={event => pinKey(b, event)} onContextMenu={event => pinMenu(b, event)} />
           ))}
           {overflowPins.length > 0 && <div className="pin-overflow">
-            <button ref={pinOverflowTrigger} type="button" aria-label={`${overflowPins.length} more pinned sites`} title="More pinned sites" aria-haspopup="menu" aria-expanded={pinOverflowOpen} onClick={() => setPinOverflowOpen(value => !value)}>+{overflowPins.length}</button>
+            <button ref={pinOverflowTrigger} {...auxNativeButtonTypeProps} aria-label={`${overflowPins.length} more pinned sites`} title="More pinned sites" aria-haspopup="menu" aria-expanded={pinOverflowOpen} onClick={() => setPinOverflowOpen(value => !value)}>+{overflowPins.length}</button>
             {pinOverflowOpen && <Menu className="menu sidebar-native-menu pin-overflow-menu" label="More pinned sites" anchor={pinOverflowTrigger} returnFocus={pinOverflowTrigger} onClose={() => setPinOverflowOpen(false)}>
               {overflowPins.map(pin => <button {...pinDragProps(pin)} className="menu-item" role="menuitem" key={pin.url} title={pin.url}
                 onClick={event => openPin(pin, event)} onAuxClick={event => openPin(pin, event)}
                 onKeyDown={event => pinKey(pin, event)} onContextMenu={event => pinMenu(pin, event)}>
-                <span className="menu-ico">{shellIconPin}</span><span className="t">{pin.title || hostOf(pin.url)}</span>
+                <span className="menu-ico">{shellIconPin}</span><span {...auxClassTextProps}>{pin.title || hostOf(pin.url)}</span>
               </button>)}
             </Menu>}
           </div>}
@@ -765,8 +770,8 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
           />
         )}
       </div>
-        {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button data-command-id="overview" onClick={() => runCommand("overview")} {...staticIconButtonProps} aria-label="Tab overview">{shellIconGrid}</button></> : <>
-        <span className="sp" />
+        {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span {...auxClassSpacerProps} /><button data-command-id="overview" onClick={() => runCommand("overview")} {...staticIconButtonProps} aria-label="Tab overview">{shellIconGrid}</button></> : <>
+        <span {...auxClassSpacerProps} />
         <button {...staticIconButtonProps} title={withShortcut("Search", key("palette"))} aria-label="Search browser" data-command-id="palette" onClick={() => runCommand("palette")}>{shellIconSearch}</button>
         {activeController === "human" && <ReturnControlButton pageId={activePageId!} compact />}
         <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpenNow} data-command-id="agent-rail" onClick={() => runCommand("agent-rail")}>{shellIconAgent}</button>
@@ -865,10 +870,10 @@ export function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename
         })}
       </div>
       <button {...staticMenuItemProps} role="menuitem" onClick={() => { onRename(); finishClose(); }}>
-        <span className="t">Rename</span>
+        <span {...auxClassTextProps}>Rename</span>
       </button>
       <button {...staticMenuItemProps} role="menuitem" onClick={() => { onDelete(); finishClose(); }}>
-        <span className="t">{group ? "Ungroup tabs" : `Delete “${folder.name}”`}</span>
+        <span {...auxClassTextProps}>{group ? "Ungroup tabs" : `Delete “${folder.name}”`}</span>
       </button>
     </Menu>
   );

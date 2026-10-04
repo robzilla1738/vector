@@ -6,6 +6,7 @@ import type { HostMethodResult } from "@aux/contracts";
 import { bridge, inNativeHost } from "../../bridge";
 import { useFeature } from "../../use-feature";
 import { executeCommand } from "../../commands";
+import { staticErrorHintProps as auxClassErrorHintProps } from "../../ui/class-props";
 
 type ExtensionCommand = HostMethodResult<"extensionCommands">[number];
 function CommandShortcut({ command, refresh }: { command: ExtensionCommand; refresh: () => Promise<void> }) {
@@ -56,7 +57,7 @@ function CommandShortcut({ command, refresh }: { command: ExtensionCommand; refr
         Save shortcut
       </button>
       {error && (
-        <p role="alert" className="hint err">
+        <p role="alert" {...auxClassErrorHintProps}>
           {error}
         </p>
       )}
@@ -109,7 +110,7 @@ export function ExtensionShortcuts({ active = true }: { active?: boolean }) {
         Aux shortcuts take priority. Enter a Chromium shortcut, or leave it empty to unbind.
       </p>
       {error && (
-        <p className="hint err" role="alert">
+        <p {...auxClassErrorHintProps} role="alert">
           {error}
         </p>
       )}

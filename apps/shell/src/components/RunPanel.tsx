@@ -19,6 +19,7 @@ import { AnswerMarkdown } from "./AnswerMarkdown";
 import { RunTranscriptDetails } from "../transcript/RunTranscriptDetails";
 
 import { STATUS_LABEL } from "../run-status";
+import { staticSpacerProps as auxClassSpacerProps, staticNumericCountProps as auxClassNumericCountProps } from "../ui/class-props";
 
 /** Ticks on its own so a live run's clock never re-renders the whole panel. */
 function Elapsed({ run }: { run: Run }) {
@@ -253,7 +254,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
             {run.pageIds.length > 1 ? ` +${run.pageIds.length - 1}` : ""}
           </RunPanelAction>
         )}
-        <span className="sp" />
+        <span {...auxClassSpacerProps} />
         <span className="run-acts">
           {!live && (run.config?.taskId
             ? <RunPanelAction command="open-run-task" run={run} {...staticSmallIconButtonProps} title="Open saved task" aria-label="Open saved task" invoke={() => openSavedTask(run.config!.taskId!)}>{shellIconLayersSm}</RunPanelAction>
@@ -313,7 +314,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
         <RunPanelAction command="toggle-run-steps" run={run} className="run-section-head toggle" aria-expanded={showSteps} invoke={() => setShowSteps((v) => !v)}>
           <span className={`chev ${showSteps ? "open" : ""}`}>{shellIconRight}</span>
           <span>{conversation ? "Work history" : "Steps"}</span>
-          <span className="count nums">{steps?.length ?? 0}</span>
+          <span {...auxClassNumericCountProps}>{steps?.length ?? 0}</span>
           {steps && steps.length > 0 && <span className="sum nums">{fmtMs(steps.reduce((a, s) => a + (s.outcome?.durationMs ?? 0), 0))}</span>}
         </RunPanelAction>
         {showSteps && (!!steps?.length || live) && <StepTimeline run={run} windowId={bridge.windowId} privateMode={bridge.privateMode} windowKind={bridge.windowKind} compact steps={steps ?? []} live={live && !humanHolds && run.status !== "paused"} onInspect={onInspect} />}
@@ -324,7 +325,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
           <RunPanelAction command="toggle-run-page" run={run} className="run-section-head toggle" aria-expanded={showObs} invoke={(current) => { if(!showObs && !obs && observationArtifact)return inspect(observationArtifact, current);else setShowObs(value=>!value); }}>
             <span className={`chev ${showObs ? "open" : ""}`}>{shellIconRight}</span>
             <span>Page</span>
-            {obs && <span className="count nums">{obs.refs.length}</span>}
+            {obs && <span {...auxClassNumericCountProps}>{obs.refs.length}</span>}
           </RunPanelAction>
           {showObs && (obsLoading ? <output {...staticHintProps} data-block>Loading saved page…</output> : obsError ? <p {...staticFieldErrorProps} role="alert">{obsError} {(inspectedArtifact || observationArtifact) && <RunPanelAction command="retry-run-page-observation" run={run} {...smallButtonProps} invoke={(current)=>inspect((inspectedArtifact || observationArtifact)!, current)}>Retry</RunPanelAction>}</p> : obs ? <ObservationPanel compact obs={obs} /> : null)}
         </section>

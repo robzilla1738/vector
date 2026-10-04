@@ -9,6 +9,7 @@ import { DocumentSnapshotControl } from "./DocumentSnapshotControls";
 import { shellIconClose } from "./icons";
 import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
 import { ViewerFrame } from "./ViewerFrame";
+import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 
 type Snapshot = { attachment: ConversationAttachment; content: string; contextCharacters: number; contextText?: string; contextTotalCharacters?: number };
 
@@ -34,7 +35,7 @@ export function DocumentSnapshot({ chatId, attachmentId, onClose }: { chatId: st
       .catch(reason => { if (live && current()) setError(String(reason)); });
     return () => { live = false; };
   }, [chatId, attachmentId, retry, current]);
-  return <ViewerFrame label="Document snapshot" title={snapshot?.attachment.filename ?? "Document snapshot"} onClose={onClose} closeLabel="Close document preview" closeControl={<DocumentSnapshotControl command="close-conversation-document-preview" current={current} invoke={onClose} className="icon-btn xs" aria-label="Close document preview">{shellIconClose}</DocumentSnapshotControl>} metadata={snapshot && `Saved ${new Date(snapshot.attachment.createdAt).toLocaleString()}`}>
+  return <ViewerFrame label="Document snapshot" title={snapshot?.attachment.filename ?? "Document snapshot"} onClose={onClose} closeLabel="Close document preview" closeControl={<DocumentSnapshotControl command="close-conversation-document-preview" current={current} invoke={onClose} {...auxClassExtraSmallIconButtonProps} aria-label="Close document preview">{shellIconClose}</DocumentSnapshotControl>} metadata={snapshot && `Saved ${new Date(snapshot.attachment.createdAt).toLocaleString()}`}>
     {error ? <p role="alert">{error} <DocumentSnapshotControl {...smallButtonProps} command="retry-conversation-document-read" current={()=>current() && !!error} invoke={() => setRetry(value => value + 1)}>Retry</DocumentSnapshotControl></p> : !snapshot ? <output {...staticHintProps} data-block>Loading snapshot…</output> : <>
       <div className="document-snapshot-scope"><span>{!snapshot.attachment.included ? "Excluded from new replies" : snapshot.contextCharacters === (snapshot.contextTotalCharacters ?? snapshot.content.length) ? "Entire text reference included in new replies" : `${snapshot.contextCharacters.toLocaleString()} of ${(snapshot.contextTotalCharacters ?? snapshot.content.length).toLocaleString()} characters included · shared context limit`}</span>
         {snapshot.contextCharacters > 0 && (snapshot.contextText !== undefined || snapshot.contextCharacters < snapshot.content.length) && <DocumentSnapshotControl {...smallGhostButtonProps} aria-pressed={includedOnly} command="toggle-conversation-document-text" current={loadedCurrent} invoke={() => setIncludedOnly(value => !value)}>{includedOnly ? "Show full snapshot" : "Show included text"}</DocumentSnapshotControl>}

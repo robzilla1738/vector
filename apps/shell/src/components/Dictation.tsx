@@ -5,6 +5,7 @@ import { Mic } from "./central-icons";
 import { setDictationDraft, useDictationDrafts } from "../dictation-drafts";
 import { bridge } from "../bridge";
 import { parseVoiceCommand, runVoiceCommand, voiceCommandLabels } from "../voice-commands";
+import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
 
 /** Dictated words remain a local, editable preview until the user inserts them. */
 export function Dictation({
@@ -227,7 +228,7 @@ export function Dictation({
         <span>{statusHint}</span>
       </div>
       {error && (
-        <p role="alert" className="hint err">
+        <p role="alert" {...auxClassErrorHintProps}>
           {error}
         </p>
       )}

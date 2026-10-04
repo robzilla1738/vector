@@ -11,6 +11,7 @@ import { SuspensionPanel } from "../composer/SuspensionPanel";
 import { TextProposal } from "./TextProposal";
 import { ErrorItem, ToolFold, WaitingItem } from "./TranscriptActivity";
 import { IsolatedArtifactHtml } from "./IsolatedArtifactHtml";
+import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 
 const MAX_TEXT_BYTES = 128 * 1024;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -180,7 +181,7 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
     {errorItem && (run.failure || run.error ? <RunPanelDisclosure command="toggle-run-evidence-error" run={run} className="transcript-error-details" summary="Error details"><ErrorItem item={errorItem} /></RunPanelDisclosure> : <ErrorItem item={errorItem} />)}
     {recovery?.kind === "recovery" && recovery.state !== "needs_input" && !errorItem && <output className="run-failure"><strong>{recovery.state.replaceAll("_", " ")}</strong> {recovery.description} {RECOVERY_GUIDANCE[recovery.action]}</output>}
     {selected && <ViewerFrame label="Saved run artifact" title={selected.mediaType} closeLabel="Close artifact" onClose={closeArtifact}
-      closeControl={<RunPanelAction command="close-run-artifact" run={run} className="icon-btn xs" aria-label="Close artifact" invoke={closeArtifact}>{shellIconClose}</RunPanelAction>}
+      closeControl={<RunPanelAction command="close-run-artifact" run={run} {...auxClassExtraSmallIconButtonProps} aria-label="Close artifact" invoke={closeArtifact}>{shellIconClose}</RunPanelAction>}
       metadata={`${Math.max(1, Math.ceil(selected.size / 1024))} KB · ${selected.artifactId}`}>
       {loading ? <output data-block>Loading artifact…</output> : preview?.image ? <img src={preview.image} alt="Saved run artifact" style={{ maxWidth: "100%" }} />
         : preview?.html !== undefined ? <IsolatedArtifactHtml key={selected.artifactId} html={preview.html} />

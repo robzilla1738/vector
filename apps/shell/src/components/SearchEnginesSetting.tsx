@@ -6,6 +6,7 @@ import { useScopedCommandControls } from "../scoped-command-controls";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "@aux/contracts/search-engine";
 import { bridge } from "../bridge";
+import { staticGrowProps as auxClassGrowProps } from "../ui/class-props";
 export interface EngineRow {
   keyword: string;
   name: string;
@@ -130,7 +131,7 @@ export function SearchEnginesSetting({
           />
           <input
             ref={(element) => publish("input", "add-keyword-search-engine", element, add)}
-            className="grow"
+            {...auxClassGrowProps}
             aria-label="Search URL"
             placeholder="https://example.com/search?q=%s"
             value={draft.template}

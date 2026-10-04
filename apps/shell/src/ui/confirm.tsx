@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Dialog } from "./dialog";
 import "./confirm.css";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "./native-attribute-props";
+import { staticButtonProps as auxClassButtonProps } from "./class-props";
 
 export type ConfirmControls = {
   confirmControl?(node: HTMLButtonElement | null, settle: () => void): void;
@@ -47,15 +49,15 @@ export function AlertDialog({
             cancel.current = node;
             controls?.cancelControl?.(node, onCancel);
           }}
-          type="button"
-          className="btn"
+          {...auxNativeButtonTypeProps}
+          {...auxClassButtonProps}
           onClick={(event) => (controls?.onCancel ? controls.onCancel(event) : onCancel())}
         >
           {options.cancelLabel ?? "Cancel"}
         </button>
         <button
           ref={(node) => controls?.confirmControl?.(node, onConfirm)}
-          type="button"
+          {...auxNativeButtonTypeProps}
           className={`btn ${options.danger ? "danger" : "primary"}`}
           onClick={(event) => (controls?.onConfirm ? controls.onConfirm(event) : onConfirm())}
         >

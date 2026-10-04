@@ -7,6 +7,7 @@ import type { Artifact } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { ImageViewer } from "./ImageViewer";
 import { shellIconResult } from "./icons";
+import { staticNumericCountProps as auxClassNumericCountProps } from "../ui/class-props";
 
 function RunImage({artifact}:{artifact:Artifact}) {
   const [url,setUrl]=useState("");
@@ -47,7 +48,7 @@ export function RunImages({runId}:{runId:string}) {
   const previews=artifacts.filter(item=>item.size<8_000_000);
   const large=artifacts.length-previews.length;
   return <details className="conversation-sources conversation-images" onToggle={event=>setOpen(event.currentTarget.open)}>
-    <summary>{shellIconResult}<span>Images</span>{artifacts.length>0 && <span className="count nums">{artifacts.length}</span>}</summary>
+    <summary>{shellIconResult}<span>Images</span>{artifacts.length>0 && <span {...auxClassNumericCountProps}>{artifacts.length}</span>}</summary>
     {open && <div>
       {error && <p {...staticFieldErrorProps} role="alert">Couldn’t refresh images. {error} <button {...smallGhostButtonProps} onClick={()=>setRetry(value=>value+1)}>Retry</button></p>}
       {previews.slice(0,limit).map(artifact=><RunImage key={artifact.artifactId} artifact={artifact}/>)}

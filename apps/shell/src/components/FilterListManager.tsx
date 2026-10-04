@@ -6,6 +6,8 @@ import "./FilterListManager.css";
 import { useEffect, useState } from "react";
 import { filterSourceUrl } from "@aux/contracts";
 import { bridge, type FilterListStatus } from "../bridge";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/class-props";
 
 const messageOf = (reason: unknown) => errorMessage(reason);
 
@@ -65,7 +67,7 @@ export function FilterListManager() {
 
   return (
     <section className="filter-manager" aria-label="Filter lists">
-      <div className="drawer-section">Filter lists</div>
+      <div {...auxClassDrawerSectionProps}>Filter lists</div>
       <p {...staticHintProps}>
         Choose HTTPS hosts or cookie-banner lists you trust. Downloads update in Aux while it is open. The
         built-in protection works without a download.
@@ -82,7 +84,7 @@ export function FilterListManager() {
           {status?.sources.map((source) => (
             <button
               key={source.id}
-              type="button"
+              {...auxNativeButtonTypeProps}
               aria-current={selectedId === source.id ? "true" : undefined}
               onClick={() => setSelectedId(source.id)}
             >

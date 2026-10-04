@@ -15,6 +15,7 @@ import { useConversationAttachmentOwner } from "./ConversationAttachmentControls
 import { ResultPreviewControl } from "./ResultPreviewControls";
 import { shellIconClose } from "./icons";
 import { ViewerFrame } from "./ViewerFrame";
+import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 
 /** Office files render a bounded, inert summary. Only verified PNG bytes are embedded as an image. */
 export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved,contextDisabled=false}:{artifactId:string;chatId:string;onClose():void;onVersionSaved?:(artifactId:string)=>void;contextDisabled?:boolean}) {
@@ -74,7 +75,7 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
     })();
     return guardCommandCompletion(completion,()=>delivering()&&!errorHandled);
   }
-  return <ViewerFrame label="Generated result preview" title={result?.filename??"Generated result"} onClose={onClose} closeLabel="Close result preview" closeControl={<ResultPreviewControl command="close-generated-result-preview" current={current} invoke={onClose} className="icon-btn xs" aria-label="Close result preview">{shellIconClose}</ResultPreviewControl>}
+  return <ViewerFrame label="Generated result preview" title={result?.filename??"Generated result"} onClose={onClose} closeLabel="Close result preview" closeControl={<ResultPreviewControl command="close-generated-result-preview" current={current} invoke={onClose} {...auxClassExtraSmallIconButtonProps} aria-label="Close result preview">{shellIconClose}</ResultPreviewControl>}
     metadata={result&&<>v{result.revision} · {result.kind.toUpperCase()} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB · {new Date(result.createdAt).toLocaleString()}</>}
     toolbar={result&&<><ResultPreviewControl command="toggle-generated-result-source" current={()=>loadedCurrent(result)} invoke={()=>setEditing(value=>!value)} {...smallGhostButtonProps} disabled={busy||contextDisabled||result.revision>=20} aria-pressed={editing}>{editing?"Preview":"Revise"}</ResultPreviewControl><ResultPreviewControl command="export-generated-result" current={()=>loadedCurrent(result)} invoke={()=>operation(false)} {...smallGhostButtonProps} disabled={busy}>Export file…</ResultPreviewControl></>}>
     {error&&<p role="alert" {...auxReserveStaticFieldErrorProps}>{error}</p>}

@@ -49,6 +49,10 @@ import { commandTabRows } from "./command-tab-rows";
 import { featureStage } from "../use-feature";
 import { openCommandSurface, type CommandSurfaceMode } from "../command-surface-state";
 import "./CommandBar.css";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+} from "../ui/native-attribute-props";
 const askBreaker = new AskCircuitBreaker();
 let pendingAsk: Promise<Run | null> | null = null;
 
@@ -1162,7 +1166,7 @@ export function CommandBar({
         {compact ? (
           hasPage && !editing ? (
             <button
-              type="button"
+              {...auxNativeButtonTypeProps}
               className="cb-ico cb-site-trigger"
               title="Site controls"
               aria-label="Site controls"
@@ -1184,7 +1188,7 @@ export function CommandBar({
         )}
         {hasPage && !editing && !hero && !compact && (
           <button
-            type="button"
+            {...auxNativeButtonTypeProps}
             className={`cb-lock ${secure ? "secure" : ""}`}
             title="Site controls"
             aria-label="Site controls"
@@ -1297,7 +1301,7 @@ export function CommandBar({
         </div>
       ) : showIntent ? (
         <button
-          type="button"
+          {...auxNativeButtonTypeProps}
           className={`cb-chip ${intent.kind}`}
           tabIndex={-1}
           title={
@@ -1330,7 +1334,7 @@ export function CommandBar({
         !bridge.privateMode &&
         key("palette") && (
           <button
-            type="button"
+            {...auxNativeButtonTypeProps}
             className="cb-kbd"
             tabIndex={-1}
             title={withShortcut("Command palette", key("palette"))}
@@ -1344,7 +1348,7 @@ export function CommandBar({
       )}
       {hero && typedSomething && (
         <button
-          type="button"
+          {...auxNativeButtonTypeProps}
           className="cb-send"
           tabIndex={-1}
           title="Go (↵)"
@@ -1390,7 +1394,7 @@ export function CommandBar({
               )}
               {preferSearchOffer && (
                 <button
-                  type="button"
+                  {...auxNativeButtonTypeProps}
                   {...auxReserveSmallGhostButtonProps}
                   onClick={() => {
                     void call("settings.set", { commandRouting: "prefer-search" })
@@ -1409,7 +1413,7 @@ export function CommandBar({
             {PROVIDER_SCOPES.filter((scope) => scope !== "extensions" || extensionEnabled).map((scope) => (
               <button
                 key={scope}
-                type="button"
+                {...auxNativeButtonTypeProps}
                 aria-pressed={providerScope === scope}
                 title={`Alt+${PROVIDER_SCOPES.indexOf(scope) + 1}`}
                 onMouseDown={(event) => event.preventDefault()}
@@ -1438,7 +1442,7 @@ export function CommandBar({
             ))}
             {!bridge.privateMode && (
               <button
-                type="button"
+                {...auxNativeButtonTypeProps}
                 className="cb-ranking-toggle"
                 aria-expanded={rankingOpen}
                 onMouseDown={(event) => event.preventDefault()}
@@ -1499,7 +1503,7 @@ export function CommandBar({
                     }}
                     trailing={
                       s.hint === "↵" ? (
-                        <span className="cb-go" aria-hidden="true">
+                        <span className="cb-go" {...auxNativeAriaHiddenProps}>
                           {shellIconSend}
                         </span>
                       ) : s.hint ? (

@@ -7,6 +7,7 @@ import { call, toast, useStore } from "../store";
 import { shellIconAgentSm, shellIconClose } from "./icons";
 import { bridge } from "../bridge";
 import "./inline-assist.css";
+import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 
 /** In-flow editor; the browser page remains visible while a person reviews the draft. */
 export function InlineAssist() {
@@ -72,7 +73,7 @@ export function InlineAssist() {
   }
 
   return <section className="shelf slide-up inline-assist" aria-label="Assist writing">
-    <div className="shelf-head"><span>{shellIconAgentSm} Assist writing</span><span className="sp" />
+    <div className="shelf-head"><span>{shellIconAgentSm} Assist writing</span><span {...auxClassSpacerProps} />
       <button {...staticSmallIconButtonProps} aria-label="Close Assist writing" onClick={close}>{shellIconClose}</button></div>
     <div className="inline-assist-body">
       {loading ? <output>Reading the focused field…</output> : capture ? <>

@@ -1,0 +1,39 @@
+{
+  "owned": [
+    {
+      "path": "apps/shell/src/components/Tasks.css",
+      "before": "c64817ce2d8f5b7c3e6556c847f6fdaa534cdec94eb9bf8d1f5ceb5302ed726c",
+      "after": "4c843d708985292c561f9f09ae32cad3095965d78471f1bba6ec96b2f38229e2"
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.conflict-target.test.tsx",
+      "before": null,
+      "after": "f75a66c11943ebb2b4adc9206d921928d546c8ca1324fa55fc7772cbdc9ec35e"
+    }
+  ],
+  "patchSHA256": "69aac69b13e68ad82be86dcf7c40a1cbce2ba9fef74a154a496764720a88c706",
+  "replay": {
+    "forwardReverseForward": "PASS",
+    "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-conflict-target-replay-h428g1ac"
+  },
+  "excludedPrerequisites": [
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "sha256": "27386568b0bd9e8668e60137671f3aeb9968141318bbc3390ae41ef275a60419"
+    },
+    {
+      "path": "apps/shell/src/components/TaskResources.tsx",
+      "sha256": "566672426279a276fdcf2598d6dcd029a53246cff51c9ca707791912e16b5128"
+    }
+  ],
+  "references": [
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/layout_constants.cc",
+      "sha256": "354a0a83efda3d2782c00285b900940ddc0e185393efd90807e8a0d2b2f1b6f8"
+    },
+    {
+      "path": "/private/tmp/aux-design-task-conflict-target/apps/shell/src/tokens.css",
+      "sha256": "c0036220218afbe4bd7ff1fe395cf842504b849e6df2e7dd668c5a056a251c1f"
+    }
+  ]
+}

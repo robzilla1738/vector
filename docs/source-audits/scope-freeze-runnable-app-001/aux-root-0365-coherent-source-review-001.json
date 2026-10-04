@@ -1,0 +1,8 @@
+{
+  "aggregateSha256": "807293a5b5cb33da824fc0f4b5852bb6a17231f7941f4df103aad8ff104c567f",
+  "exactComponentsCompose": true,
+  "twoLeafForwardReverseForward": true,
+  "sourceOnly": true,
+  "temporaryDiagnosticsRemovalRequired": true,
+  "nativeExecution": false
+}

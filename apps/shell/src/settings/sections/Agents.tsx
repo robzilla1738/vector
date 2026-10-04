@@ -3,6 +3,9 @@ import { executeCommand } from "../../commands";
 import { useFeature } from "../../use-feature";
 import { SiteRulesTable } from "../../features/trust/SiteRulesTable";
 import { SettingsField, SettingsSection } from "../primitives";
+import {
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../../ui/native-attribute-props";
 
 export function AgentsSettings({
   active,
@@ -31,7 +34,7 @@ export function AgentsSettings({
             return (
               <button
                 key={key}
-                type="button"
+                {...auxNativeButtonTypeProps}
                 aria-pressed={on}
                 className={on ? "on" : ""}
                 disabled={locked}

@@ -1,0 +1,10 @@
+apps/shell/src/components/PageSurface.tsx 27ms
+apps/shell/src/ui/confirm.tsx 9ms
+apps/shell/src/ui/popover.tsx 7ms
+apps/shell/src/components/CommandRankingDebug.tsx 4ms
+apps/shell/src/components/RoutineSchedule.tsx 16ms
+apps/shell/src/components/OutboundMcpSettings.tsx 33ms
+apps/shell/src/components/ReviewedConnectors.tsx 11ms
+apps/shell/src/components/PluginsPanel.tsx 9ms
+apps/shell/src/components/FilterListManager.tsx 8ms
+apps/shell/src/ui/native-attribute-props.test.tsx 5ms

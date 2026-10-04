@@ -1,6 +1,9 @@
 import type { Props } from "./svg-props";
 import { joinedStrokeProps, roundStrokeProps, strokeProps } from "./svg-props";
 import { icon, svg, svgPath } from "./render";
+import {
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+} from "../../ui/native-attribute-props";
 
 export const Archive = (props: Props) => (svg(props, svgPath("M20.255 17.05V10.35C20.255 9.78995 20.255 9.50992 20.146 9.29601C20.0501 9.10785 19.8972 8.95487 19.709 8.85899C19.4951 8.75 19.2151 8.75 18.655 8.75H5.35C4.78995 8.75 4.50992 8.75 4.29601 8.85899C4.10785 8.95487 3.95487 9.10785 3.85899 9.29601C3.75 9.50992 3.75 9.78995 3.75 10.35V17.05C3.75 18.1701 3.75 18.7302 3.96799 19.158C4.15973 19.5343 4.46569 19.8403 4.84202 20.032C5.26984 20.25 5.82989 20.25 6.95 20.25H17.055C18.1751 20.25 18.7352 20.25 19.163 20.032C19.5393 19.8403 19.8453 19.5343 20.037 19.158C20.255 18.7302 20.255 18.1701 20.255 17.05Z"), svgPath("M5.75 8V3.75C5.75 3.19772 6.19772 2.75 6.75 2.75H9.67157C10.202 2.75 10.7107 2.96071 11.0858 3.33579L12.2071 4.45711C12.3946 4.64464 12.649 4.75 12.9142 4.75H17.25C17.8023 4.75 18.25 5.19772 18.25 5.75V8"), svgPath("M7.75 12.75L11.75 12.75")));
 
@@ -66,7 +69,7 @@ export const MessagesSquare = (props: Props) => (svg(props, svgPath("M4.75195 7.
 
 export const shellIconChats = /* @__PURE__ */ icon(MessagesSquare);
 
-export const PanelRight = (props: Props) => (<svg width="1em" height="1em" aria-hidden="true" {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M15.75 5V19" {...strokeProps}/><path d="M2.75 6.75C2.75 5.64543 3.64543 4.75 4.75 4.75H19.25C20.3546 4.75 21.25 5.64543 21.25 6.75V17.25C21.25 18.3546 20.3546 19.25 19.25 19.25H4.75C3.64543 19.25 2.75 18.3546 2.75 17.25V6.75Z" {...strokeProps}/></svg>);
+export const PanelRight = (props: Props) => (<svg width="1em" height="1em" {...auxNativeAriaHiddenProps} {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M15.75 5V19" {...strokeProps}/><path d="M2.75 6.75C2.75 5.64543 3.64543 4.75 4.75 4.75H19.25C20.3546 4.75 21.25 5.64543 21.25 6.75V17.25C21.25 18.3546 20.3546 19.25 19.25 19.25H4.75C3.64543 19.25 2.75 18.3546 2.75 17.25V6.75Z" {...strokeProps}/></svg>);
 
 export const shellIconRail = /* @__PURE__ */ icon(PanelRight);
 

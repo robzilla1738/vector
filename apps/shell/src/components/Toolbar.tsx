@@ -10,6 +10,10 @@ import { deferNamedSurface } from "./DeferredSurface";
 const CommandBar = deferNamedSurface(() => import("./CommandBar"), "CommandBar", "Address field", true, true);
 import { shellIconAgent, shellIconAgentSm, shellIconBookmark, shellIconBookmarkFill, shellIconGear, shellIconGrid, shellIconSidebarOpen } from "./icons";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
+import {
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+  nativeButtonTypeProps as auxNativeButtonTypeProps,
+} from "../ui/native-attribute-props";
 
 export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: boolean }) {
   const key = useShortcutLabels();
@@ -45,7 +49,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
       </div>
 
       <CommandBar compact />
-      {!horizontal && <div className="toolbar-drag-space" title="Drag to move window" aria-hidden="true" />}
+      {!horizontal && <div className="toolbar-drag-space" title="Drag to move window" {...auxNativeAriaHiddenProps} />}
 
       <div className="tb-right">
         <FeatureSlots slot="toolbarItems" />
@@ -53,7 +57,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button {...staticIconButtonProps} title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{shellIconGear}</button>}
         {page?.controller === "human" && <ReturnControlButton pageId={page.pageId} />}
         {page && (page.controller === "agent" || page.controller === "external") && (
-          <button type="button" className="ctl-chip agent" title={withShortcut("Take control of this page", key("take-page-control"))} aria-label="Take control of this page" data-command-id="take-page-control" onClick={() => void takeControl(page.pageId)}>
+          <button {...auxNativeButtonTypeProps} className="ctl-chip agent" title={withShortcut("Take control of this page", key("take-page-control"))} aria-label="Take control of this page" data-command-id="take-page-control" onClick={() => void takeControl(page.pageId)}>
             {shellIconAgentSm}
             <span className="ctl-chip-label">Agent</span>
             <span className="ctl-take">Take over</span>

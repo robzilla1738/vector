@@ -4,6 +4,7 @@ import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Hook, HookInvocation, OutboundMcpGrant, OutboundMcpServer, WorkspaceFolder } from "@aux/contracts";
 import { call } from "../store";
+import { staticGrowProps as auxClassGrowProps } from "../ui/class-props";
 
 type GrantChoice = { grant: OutboundMcpGrant; server: OutboundMcpServer };
 
@@ -99,7 +100,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
   return (
     <section className="field hooks-panel" aria-label="Hooks">
       <div {...staticRowProps}>
-        <h4 className="grow">Hooks</h4>
+        <h4 {...auxClassGrowProps}>Hooks</h4>
         <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {})}>
           Refresh
         </button>

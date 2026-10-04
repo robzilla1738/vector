@@ -13,6 +13,7 @@ import { useConfirm } from "../../ui/confirm";
 import { SettingsField } from "../primitives";
 import { MemoryPasteImport } from "../../components/MemoryPasteImport";
 import { MemoryRecoveryNotice } from "../../components/MemoryRecoveryNotice";
+import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
 
 type Source = { runId: string; goal: string; endedAt: number };
 type Revision = { revisionId: string; capturedAt: number; claimCount: number; summary: string; sourceRunIds: string[] };
@@ -170,7 +171,7 @@ function SpaceMemoryContent({ workspaceId, includePasteImport }: { workspaceId: 
         </PipelineControl>)}
       </div>}
       {claims.map(claim => <div className="row" key={claim.claimId}>
-        <span className="grow">{claim.text} <span {...staticHintProps}>[{claim.source?.kind === "owner-paste" ? `pasted import ${claim.source.importId.slice(0, 8)} · unverified` : `run:${claim.sourceRunId}${claim.source ? `#${claim.source.quoteSha256.slice(0, 12)}` : ""}`}]</span></span>
+        <span {...auxClassGrowProps}>{claim.text} <span {...staticHintProps}>[{claim.source?.kind === "owner-paste" ? `pasted import ${claim.source.importId.slice(0, 8)} · unverified` : `run:${claim.sourceRunId}${claim.source ? `#${claim.source.quoteSha256.slice(0, 12)}` : ""}`}]</span></span>
         <PipelineControl command="forget-space-memory-note" scopeId={`${workspaceId}:${claim.claimId}`} onError={report} disabled={busy} action={() => forget({ claimId: claim.claimId },
           "This note will be removed from current memory and every restorable revision. This cannot be undone.")}>Forget note</PipelineControl>
       </div>)}

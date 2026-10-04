@@ -23,6 +23,7 @@ import { shellIconBack, shellIconClock, shellIconSearch } from "./icons";
 import { RoutineSchedule, routineScheduleSummary, type CalendarTriggerAccounts } from "./RoutineSchedule";
 import { SkillMetadata } from "./SkillMetadata";
 import { SkillReplayPanel } from "./SkillReplayPanel";
+import { staticGhostButtonProps as auxClassGhostButtonProps } from "../ui/class-props";
 
 export function Routines({ workspaceId, task }: { workspaceId: string; task?: Task }) {
   const currentPageUrl = useStore(
@@ -551,7 +552,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
                   </p>
                   {(query || status !== "all") && (
                     <button
-                      className="btn ghost"
+                      {...auxClassGhostButtonProps}
                       onClick={() => {
                         setQuery("");
                         setStatus("all");
@@ -569,7 +570,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       {selected && (
         <div className="routine-detail">
           <button
-            className="btn ghost"
+            {...auxClassGhostButtonProps}
             disabled={busy}
             onClick={() => {
               setSelected(null);

@@ -11,6 +11,7 @@ import { bridge, type ReaderArticle, type ReaderNode } from '../bridge';
 import { useStore, call, errToast } from '../store';
 import { openPeekLink } from '../peek-link';
 import { useFeature } from '../use-feature';
+import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 
 const tags = new Set(['div','span','p','h1','h2','h3','h4','h5','h6','blockquote','pre','code','ul','ol','li','strong','em','b','i','a','br','hr','table','thead','tbody','tr','th','td','figcaption']);
 function renderNode(node: ReaderNode, key = 'article'): ReactNode {
@@ -118,7 +119,7 @@ export function ReaderView() {
     <header className="reader-toolbar">
       <button {...smallButtonProps} ref={close} onClick={back}>Back to page</button>
       {sections.length > 1 && <button ref={contentsButton} {...smallGhostButtonProps} aria-expanded={contentsOpen} aria-controls="reader-contents" onClick={() => setContentsOpen(value => !value)}>Contents</button>}
-      <span className="sp" />
+      <span {...auxClassSpacerProps} />
       <select aria-label="Reading font" value={preferences.font} onChange={event=>preference({...preferences,font:event.target.value})}><option value="serif">Serif</option><option value="sans">Sans serif</option></select>
       <button {...smallButtonProps} aria-label="Smaller reading text" disabled={preferences.size<=16} onClick={() => preference({...preferences,size:preferences.size-2})}>A−</button>
       <button {...smallButtonProps} aria-label="Larger reading text" disabled={preferences.size>=26} onClick={() => preference({...preferences,size:preferences.size+2})}>A+</button>

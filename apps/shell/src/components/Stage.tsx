@@ -17,6 +17,7 @@ import { visibleSplitGroup } from "../features/surfaces/split-actions";
 import { useSurfaceState } from "../features/surfaces/drag-state";
 import { useFeature } from "../use-feature";
 import { isLocal, ownPages } from "../tab-window-transfer";
+import { staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
 
 const StartPage = deferNamedSurface(() => import("./StartPage"), "StartPage", "New tab", true);
 const TranslationBar = deferNamedSurface(() => import("./TranslationBar"), "TranslationBar", "Translation", true, true);
@@ -85,7 +86,7 @@ export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<H
               <h2>This tab lives in your Chrome</h2>
               <p>Aux drives it over CDP. Type, click, and upload in the real Chrome window — the agent sees the same page.</p>
               <div className="empty-actions">
-                <button className="btn primary" onClick={() => void call("pages.openLive", { pageId: page.pageId }).catch(errToast)}>
+                <button {...auxClassPrimaryButtonProps} onClick={() => void call("pages.openLive", { pageId: page.pageId }).catch(errToast)}>
                   Open live in Chrome
                 </button>
               </div>

@@ -6,6 +6,8 @@ import "./PluginsPanel.css";
 import { useEffect, useState } from "react";
 import type { MethodResult, Plugin, PluginAsset, PluginSkillGrant, Workspace } from "@aux/contracts";
 import { bridge } from "../bridge";
+import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/class-props";
 
 type Inspection = MethodResult<"plugins.inspect"> & { path: string };
 const messageOf = (reason: unknown) => errorMessage(reason);
@@ -108,7 +110,7 @@ export function PluginsPanel() {
 
   return (
     <section className="plugin-review field" aria-label="Plugins">
-      <div className="drawer-section">Plugins</div>
+      <div {...auxClassDrawerSectionProps}>Plugins</div>
       <p {...staticHintProps}>
         Review a portable Aux bundle or Claude Code plugin folder before installing it into one Space.
       </p>
@@ -199,7 +201,7 @@ export function PluginsPanel() {
           {visible.map((plugin) => (
             <button
               key={plugin.pluginId}
-              type="button"
+              {...auxNativeButtonTypeProps}
               aria-current={selectedId === plugin.pluginId ? "true" : undefined}
               onClick={() => setSelectedId(plugin.pluginId)}
             >

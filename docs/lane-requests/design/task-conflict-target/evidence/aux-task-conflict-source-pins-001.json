@@ -1,0 +1,14 @@
+[
+  {
+    "path": "apps/shell/src/components/Tasks.tsx",
+    "sha256": "27386568b0bd9e8668e60137671f3aeb9968141318bbc3390ae41ef275a60419"
+  },
+  {
+    "path": "apps/shell/src/components/Tasks.css",
+    "sha256": "c64817ce2d8f5b7c3e6556c847f6fdaa534cdec94eb9bf8d1f5ceb5302ed726c"
+  },
+  {
+    "path": "apps/shell/src/components/TaskResources.tsx",
+    "sha256": "566672426279a276fdcf2598d6dcd029a53246cff51c9ca707791912e16b5128"
+  }
+]

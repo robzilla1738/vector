@@ -1,0 +1,15 @@
+import {createRoot} from "react-dom/client";
+import {installMockBridge} from "./mock/bridge";
+installMockBridge(new URLSearchParams("scenario=start"));
+const {CommandBar}=await import("./components/CommandBar");
+const {bridge}=await import("./bridge");
+const {useStore}=await import("./store");
+import "@fontsource-variable/geist";
+import "./tokens.css";
+import "./styles.css";
+bridge.autocomplete=async()=>{throw new Error("Original bounded source autocomplete refusal");};
+bridge.invoke=(async()=>[]) as typeof bridge.invoke;
+bridge.extensions=async()=>[];
+bridge.focusShell=async()=>{};
+const initial=useStore.getState();useStore.setState({...initial,settings:{homeEntryMode:"search"},pages:[],runs:[],toasts:[]},true);
+createRoot(document.getElementById("root")!).render(<main style={{width:360,maxWidth:"100%",margin:"24px auto"}}><CommandBar surfaceMode="new-tab"/></main>);
