@@ -56,3 +56,13 @@ test('original capture retirement preserves UI cleanup debt without acting on re
 test('fresh actual channel kind/window/duplicate-key or retired awaited read refuses before UI',async()=>{
  for(const kind of ['private','window','duplicate','retired']){const{t,records,captures}=context();const observe=t.app.observeAppearance;t.app.observeAppearance=async selection=>{const raw=await observe(selection);if(kind==='retired'){t.app={pid:881};return raw}if(kind==='duplicate')return raw.replace('{','{"windowKind":"normal",');const value=JSON.parse(raw);if(kind==='private')value.windowKind='private';else value.windowId=18;return JSON.stringify(value)};await assert.rejects(captureMountedImageAppearance(t));assert.deepEqual(records,[]);assert.deepEqual(captures,[])}
 });
+
+test('replacement call ledger cannot conceal original requests after chooser or capture',async()=>{
+ for(const phase of ['chooser','capture']){const{t,state,records,paths}=context();const calls=t.model.calls;
+  if(phase==='chooser'){const panel=t.ax.openPanel;t.ax.openPanel=async path=>{await panel(path);calls.push({originalOwnedRequest:true});t.model.calls=[]}}else t.capture=async name=>{if(name==='home-mounted-image-tray'){calls.push({originalOwnedRequest:true});t.model.calls=[]}};
+  await assert.rejects(captureMountedImageAppearance(t),error=>phase==='capture'?error instanceof AggregateError&&error.errors.length===2:error instanceof Error);
+  assert.equal(calls.length,1);assert.notEqual(t.model.calls,calls);
+  if(phase==='chooser'){assert.ok(!records.some(x=>x.name==='Attach image'));assert.equal(state.attached,false)}else assert.ok(!records.some(x=>x.name==='Remove valid-image.png'));
+  await assert.rejects(readFile(paths[0]),{code:'ENOENT'});
+ }
+});

@@ -40,7 +40,7 @@ export async function captureModelSettingsAppearance(t) {
     opened=true;await owned(()=>ax.key('command+,','hid'));await owned(()=>ax.press(shell('Models','AXButton')));
     await owned(()=>ax.waitFor(shell('Discover models','AXButton'),'enabled'));
     for(const name of ['Model provider','OpenAI-compatible endpoint','Provider API key','Planner model','Vision model','Fast model ID','Standard model ID','Deep model ID','Visual model ID','Parallel worker pages','Max model turns per run']) await one(shell(name));
-    assert.equal((await one(shell('Provider API key'))).value,'');
+    const keyField=await one(shell('Provider API key','AXTextField'));assert.equal(keyField.subrole,'AXSecureTextField');assert.equal(Object.hasOwn(keyField,'value'),false,'Original helper must suppress secure field values');
     assert.equal((await one(shell('Save key','AXButton'))).enabled,false);
     assert.equal((await one(shell('Planner model'))).value,settings.plannerModel);
     await unchanged();captures.push(await owned(()=>captureHomeState(t,'models-local-provider-roles-limits','models-local-provider-readonly')));await unchanged();

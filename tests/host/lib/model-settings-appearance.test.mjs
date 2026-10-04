@@ -6,7 +6,7 @@ function fixture(){
   const app={pid:123,observeAppearance:async()=>JSON.stringify({producer:'aux-native-appearance-snapshot',version:1,pid:123,windowId:12,windowKind:'normal',observedAtUnixMs:Date.now()})};const ax={pid:123,windows:async()=>[{id:12,layer:0,width:900,height:700}],query:async s=>{
     if(s.name==='Search settings')return state.opened?[{name:s.name}]:[];
     if(s.name==='Reply to conversation')return [{value:'kept unsent draft',focused:state.focused}];
-    if(s.name==='Provider API key')return [{value:''}];
+    if(s.name==='Provider API key')return [{role:'AXTextField',subrole:'AXSecureTextField'}];
     if(s.name==='Planner model')return [{value:'fixture-model'}];
     if(s.name==='Save key')return [{enabled:false}];
     if(s.name==='Remove saved key')return state.menu?[{enabled:false}]:[];
@@ -53,4 +53,13 @@ test('foreign or stale native window cannot supply a normal Models capture',asyn
     const {t,state}=fixture();t.app.observeAppearance=async()=>JSON.stringify({producer:'aux-native-appearance-snapshot',version:1,pid:123,windowId:12,windowKind:'normal',observedAtUnixMs:Date.now(),...fields});
     await assert.rejects(()=>captureModelSettingsAppearance(t));assert.equal(state.captures.length,0);assert.equal(state.actions.length,0);
   }
+});
+test('unexpected password-field subrole refuses without reading a value',async()=>{
+  const {t,state}=fixture();const query=t.ax.query;t.ax.query=async selector=>selector.name==='Provider API key'?[{role:'AXTextField',subrole:'AXSearchField'}]:query(selector);
+  await assert.rejects(()=>captureModelSettingsAppearance(t));assert.equal(state.captures.length,0);
+});
+test('a fabricated secure value is refused without inspecting its getter',async()=>{
+  const {t,state}=fixture();const query=t.ax.query;let reads=0;const field={role:'AXTextField',subrole:'AXSecureTextField'};Object.defineProperty(field,'value',{get(){reads++;throw new Error('Secure value must not be read');}});
+  t.ax.query=async selector=>selector.name==='Provider API key'?[field]:query(selector);
+  await assert.rejects(()=>captureModelSettingsAppearance(t));assert.equal(reads,0);assert.equal(state.captures.length,0);
 });
