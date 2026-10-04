@@ -3,6 +3,7 @@
 import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
+import { assertNativeSlotOwned } from '../scripts/native-slot.mjs';
 
 const chromium = import.meta.dirname;
 const repo = resolve(chromium, '..');
@@ -38,7 +39,7 @@ function manifestFor(root) {
   }
   const csp = html.indexOf('Content-Security-Policy');
   const bootstrap = html.indexOf('<script type="module" src="/aux_host_bootstrap.js"></script>');
-  const entry = html.search(/<script type="module"[^>]+src="\/assets\/index-[^\"]+\.js"/);
+  const entry = html.search(/<script type="module"[^>]+src="\/assets\/index-[^"]+\.js"/);
   if (entry < 0 || !(csp < bootstrap && bootstrap < entry)) {
     throw new Error('Chromium shell must load its CSP and Mojo bootstrap before the app entry');
   }
@@ -74,20 +75,31 @@ function verify(root) {
 }
 
 function replaceDirectory(from, to) {
+  requireOriginalOwner();
   mkdirSync(dirname(to), { recursive: true });
   const temporary = `${to}.staging-${process.pid}`;
+  requireOriginalOwner();
   rmSync(temporary, { recursive: true, force: true });
+  requireOriginalOwner();
   mkdirSync(temporary, { recursive: true });
   for (const path of files(from)) {
     const target = join(temporary, path);
+    requireOriginalOwner();
     mkdirSync(dirname(target), { recursive: true });
+    requireOriginalOwner();
     cpSync(join(from, path), target);
   }
+  requireOriginalOwner();
   rmSync(to, { recursive: true, force: true });
+  requireOriginalOwner();
   renameSync(temporary, to);
 }
 
 const mode = process.argv[2];
+const originalOwner = mode === 'install' ? assertNativeSlotOwned() : undefined;
+const requireOriginalOwner = () => {
+  if (originalOwner) assertNativeSlotOwned({ expectedOwner: originalOwner });
+};
 const output = process.argv[3] ? resolve(process.argv[3]) : mode === 'capture' ? pinned : mode === 'verify' ? pinned : destination;
 if (mode === 'capture') {
   if (!existsSync(join(dist, '.vite/manifest.json'))) throw new Error('Build the Chromium renderer first');
@@ -110,6 +122,7 @@ if (mode === 'capture') {
   const manifest = verify(pinned);
   replaceDirectory(pinned, output);
   verify(output);
+  requireOriginalOwner();
   console.log(`Installed ${manifest.files.length} verified WebUI assets at ${output}`);
 } else {
   throw new Error('Usage: node chromium/stage-shell.mjs capture [destination] | verify [directory] | install [destination]');
