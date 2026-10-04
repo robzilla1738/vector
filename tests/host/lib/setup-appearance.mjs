@@ -55,7 +55,26 @@ export async function captureSetupDisclosures(t) {
     await t.ax.click(shell('6. permissions'));
     await t.ax.waitFor(shell('You stay in charge'), 'visible');
     await t.ax.waitFor({ name: 'Setup does not enable Memory', match: 'contains', scope: 'shell', index: 0 }, 'visible');
+    const policies = [
+      'Review the source, recipient and action when Aux asks for approval.',
+      'Connected services need their own reviewed grants.',
+      'Browser tasks use a separate, temporary browsing session.',
+      'You can stop a task, take control of a page, or change permissions in Settings.',
+      'Memory is optional. Review remembered information and pasted assistant notes',
+    ];
+    const policy = name => ({ name, match: 'contains', scope: 'shell', index: 0 });
+    await t.ax.waitFor(shell('How permissions and browsing work'), 'enabled');
+    for (const name of policies) await t.ax.waitFor(policy(name), 'absent');
+    await unchanged();
     await captureHomeState(t, 'setup-permissions-ungranted', 'setup-permissions-ungranted');
+    await t.ax.click(shell('How permissions and browsing work'));
+    for (const name of policies) await t.ax.waitFor(policy(name), 'visible');
+    await unchanged();
+    await captureHomeState(t, 'setup-permissions-details-expanded', 'setup-permissions-details-expanded-ungranted');
+    await t.ax.click(shell('How permissions and browsing work'));
+    for (const name of policies) await t.ax.waitFor(policy(name), 'absent');
+    await unchanged();
+    await captureHomeState(t, 'setup-permissions-details-collapsed', 'setup-permissions-details-collapsed-ungranted');
     await t.ax.click(shell('1. welcome'));
     await t.ax.waitFor(shell('Welcome to Aux'), 'visible');
     return { ax: await t.ax.dump(), rpc: await unchanged() };

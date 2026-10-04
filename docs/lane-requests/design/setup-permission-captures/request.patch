@@ -1,0 +1,83 @@
+diff --git a/tests/host/lib/setup-appearance.mjs b/tests/host/lib/setup-appearance.mjs
+--- a/tests/host/lib/setup-appearance.mjs
++++ b/tests/host/lib/setup-appearance.mjs
+@@ -55,7 +55,26 @@
+     await t.ax.click(shell('6. permissions'));
+     await t.ax.waitFor(shell('You stay in charge'), 'visible');
+     await t.ax.waitFor({ name: 'Setup does not enable Memory', match: 'contains', scope: 'shell', index: 0 }, 'visible');
++    const policies = [
++      'Review the source, recipient and action when Aux asks for approval.',
++      'Connected services need their own reviewed grants.',
++      'Browser tasks use a separate, temporary browsing session.',
++      'You can stop a task, take control of a page, or change permissions in Settings.',
++      'Memory is optional. Review remembered information and pasted assistant notes',
++    ];
++    const policy = name => ({ name, match: 'contains', scope: 'shell', index: 0 });
++    await t.ax.waitFor(shell('How permissions and browsing work'), 'enabled');
++    for (const name of policies) await t.ax.waitFor(policy(name), 'absent');
++    await unchanged();
+     await captureHomeState(t, 'setup-permissions-ungranted', 'setup-permissions-ungranted');
++    await t.ax.click(shell('How permissions and browsing work'));
++    for (const name of policies) await t.ax.waitFor(policy(name), 'visible');
++    await unchanged();
++    await captureHomeState(t, 'setup-permissions-details-expanded', 'setup-permissions-details-expanded-ungranted');
++    await t.ax.click(shell('How permissions and browsing work'));
++    for (const name of policies) await t.ax.waitFor(policy(name), 'absent');
++    await unchanged();
++    await captureHomeState(t, 'setup-permissions-details-collapsed', 'setup-permissions-details-collapsed-ungranted');
+     await t.ax.click(shell('1. welcome'));
+     await t.ax.waitFor(shell('Welcome to Aux'), 'visible');
+     return { ax: await t.ax.dump(), rpc: await unchanged() };
+diff --git a/tests/host/setup-appearance.test.mjs b/tests/host/setup-appearance.test.mjs
+--- a/tests/host/setup-appearance.test.mjs
++++ b/tests/host/setup-appearance.test.mjs
+@@ -23,7 +23,7 @@
+   const events = [], settings = { modelConfigured: false, theme: 'system', memory: false };
+   const t = { appearanceEnabled: true, app: { pid: 711 }, assert,
+     ax: { pid: 711, windows: async () => [{ id: 73, layer: 0, width: 810, height: 700 }],
+-      waitFor: async selector => events.push(['wait', selector.name]), click: async selector => events.push(['click', selector.name]),
++      waitFor: async (selector, state) => events.push(['wait', selector.name, state]), click: async selector => events.push(['click', selector.name]),
+       dump: async () => ({ current: 'controlled source fixture only' }) },
+     rpc: async method => method === 'settings.get' ? { ...settings } : [],
+     capture: async (name, options) => events.push(['capture', name, options]),
+@@ -36,10 +36,10 @@
+   await run(t);
+   assert.equal(run, captureSetupDisclosures);
+   assert.deepEqual(events.filter(row => row[0] === 'capture').map(row => row[1]),
+-    ['setup-welcome', 'setup-welcome-tips-expanded', 'setup-welcome-tips-collapsed', 'setup-model-data-unreviewed', 'setup-permissions-ungranted']);
++    ['setup-welcome', 'setup-welcome-tips-expanded', 'setup-welcome-tips-collapsed', 'setup-model-data-unreviewed', 'setup-permissions-ungranted', 'setup-permissions-details-expanded', 'setup-permissions-details-collapsed']);
+   for (const row of events.filter(row => row[0] === 'capture')) assert.equal(row[2].windowId, 73);
+   assert.deepEqual(events.filter(row => row[0] === 'click').map(row => row[1]),
+-    ['Setup tips', 'Setup tips', '3. model', '6. permissions', '1. welcome']);
++    ['Setup tips', 'Setup tips', '3. model', '6. permissions', 'How permissions and browsing work', 'How permissions and browsing work', '1. welcome']);
+   assert.deepEqual(journey.launch, {});
+ });
+ 
+@@ -72,3 +72,27 @@
+   const registry = readFileSync(new URL('./journeys/index.mjs', import.meta.url), 'utf8');
+   assert.ok(!registry.includes(SETUP_APPEARANCE_ID));
+ });
++
++test('permission captures require all five genuinely observed policy states before each capture', async () => {
++  for (const state of ['visible', 'absent']) {
++    const {t, events}=fixture(),wait=t.ax.waitFor;
++    t.ax.waitFor=async (selector, requested)=> {
++      if (selector.name.startsWith('Browser tasks use') && requested===state) throw new Error('Original policy readiness refused');
++      return wait(selector,requested);
++    };
++    await assert.rejects(run(t),/policy readiness refused/);
++    assert.ok(!events.some(row=>row[0]==='capture' && row[1]==='setup-permissions-details-expanded'));
++    assert.ok(!events.some(row=>row[0]==='capture' && row[1]==='setup-permissions-details-collapsed'));
++  }
++});
++
++test('permission disclosure changes cannot be captured as ungranted after settings drift', async () => {
++  const {t,events,settings}=fixture(),click=t.ax.click;
++  t.ax.click=async selector=> {
++    const result=await click(selector);
++    if(selector.name==='How permissions and browsing work') settings.memory=true;
++    return result;
++  };
++  await assert.rejects(run(t),/change model, theme or permissions/);
++  assert.ok(!events.some(row=>row[0]==='capture' && row[1]==='setup-permissions-details-expanded'));
++});

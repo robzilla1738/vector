@@ -23,7 +23,7 @@ function fixture() {
   const events = [], settings = { modelConfigured: false, theme: 'system', memory: false };
   const t = { appearanceEnabled: true, app: { pid: 711 }, assert,
     ax: { pid: 711, windows: async () => [{ id: 73, layer: 0, width: 810, height: 700 }],
-      waitFor: async selector => events.push(['wait', selector.name]), click: async selector => events.push(['click', selector.name]),
+      waitFor: async (selector, state) => events.push(['wait', selector.name, state]), click: async selector => events.push(['click', selector.name]),
       dump: async () => ({ current: 'controlled source fixture only' }) },
     rpc: async method => method === 'settings.get' ? { ...settings } : [],
     capture: async (name, options) => events.push(['capture', name, options]),
@@ -36,10 +36,10 @@ test('actual disclosure helper drives only tips and navigation, with original wi
   await run(t);
   assert.equal(run, captureSetupDisclosures);
   assert.deepEqual(events.filter(row => row[0] === 'capture').map(row => row[1]),
-    ['setup-welcome', 'setup-welcome-tips-expanded', 'setup-welcome-tips-collapsed', 'setup-model-data-unreviewed', 'setup-permissions-ungranted']);
+    ['setup-welcome', 'setup-welcome-tips-expanded', 'setup-welcome-tips-collapsed', 'setup-model-data-unreviewed', 'setup-permissions-ungranted', 'setup-permissions-details-expanded', 'setup-permissions-details-collapsed']);
   for (const row of events.filter(row => row[0] === 'capture')) assert.equal(row[2].windowId, 73);
   assert.deepEqual(events.filter(row => row[0] === 'click').map(row => row[1]),
-    ['Setup tips', 'Setup tips', '3. model', '6. permissions', '1. welcome']);
+    ['Setup tips', 'Setup tips', '3. model', '6. permissions', 'How permissions and browsing work', 'How permissions and browsing work', '1. welcome']);
   assert.deepEqual(journey.launch, {});
 });
 
@@ -71,4 +71,28 @@ test('runner keeps setup outside functional registry and only retains admitted a
   assert.match(runner, /setupDisposition\(journey.id, Boolean\(values.appearance\), appearancePair\)/);
   const registry = readFileSync(new URL('./journeys/index.mjs', import.meta.url), 'utf8');
   assert.ok(!registry.includes(SETUP_APPEARANCE_ID));
+});
+
+test('permission captures require all five genuinely observed policy states before each capture', async () => {
+  for (const state of ['visible', 'absent']) {
+    const {t, events}=fixture(),wait=t.ax.waitFor;
+    t.ax.waitFor=async (selector, requested)=> {
+      if (selector.name.startsWith('Browser tasks use') && requested===state) throw new Error('Original policy readiness refused');
+      return wait(selector,requested);
+    };
+    await assert.rejects(run(t),/policy readiness refused/);
+    assert.ok(!events.some(row=>row[0]==='capture' && row[1]==='setup-permissions-details-expanded'));
+    assert.ok(!events.some(row=>row[0]==='capture' && row[1]==='setup-permissions-details-collapsed'));
+  }
+});
+
+test('permission disclosure changes cannot be captured as ungranted after settings drift', async () => {
+  const {t,events,settings}=fixture(),click=t.ax.click;
+  t.ax.click=async selector=> {
+    const result=await click(selector);
+    if(selector.name==='How permissions and browsing work') settings.memory=true;
+    return result;
+  };
+  await assert.rejects(run(t),/change model, theme or permissions/);
+  assert.ok(!events.some(row=>row[0]==='capture' && row[1]==='setup-permissions-details-expanded'));
 });

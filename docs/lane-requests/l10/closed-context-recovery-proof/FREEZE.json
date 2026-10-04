@@ -1,0 +1,48 @@
+{
+  "beforeCommit": "10d2ce61",
+  "sourceCommit": "54ae87d148182a103fc8d23a3b7a86b2aca7d18f",
+  "files": [
+    {
+      "path": "tests/host/lib/closed-context-recovery-proof.mjs",
+      "beforeSha256": null,
+      "afterSha256": "04f9bad9d86ea11e6d219e08b7ac6853ce2165f6d3678704af353c1cbfb00a5a",
+      "beforeSize": null,
+      "afterSize": 2239
+    },
+    {
+      "path": "tests/host/lib/closed-context-recovery-proof.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "5474545bf286551f4e8d67964e1bbdaa8e9483e715a29e210d046de919264e10",
+      "beforeSize": null,
+      "afterSize": 4300
+    },
+    {
+      "path": "tests/host/journeys/first-chat.mjs",
+      "beforeSha256": "b0f8332017d1aa1ea5e4a161fa0493abaa794234f02ba51526eaa251ab377743",
+      "afterSha256": "e60b35dbd31f42df7dda10c955bc64bdc15fe6ade589d857cb55f37d989f01a4",
+      "beforeSize": 13971,
+      "afterSize": 14460
+    }
+  ],
+  "patches": [
+    {
+      "path": "owned.request.patch",
+      "sha256": "ed3a442e5a6c4d3227d6c028e509f9ebdad3fc9a17e1cb443918ef3f15b57c72",
+      "files": [
+        "tests/host/lib/closed-context-recovery-proof.mjs",
+        "tests/host/lib/closed-context-recovery-proof.test.mjs"
+      ]
+    },
+    {
+      "path": "journey.request.patch",
+      "sha256": "32833c1c4890120062b1185871a70f8e3d192237569e1f4d2f5c2195645d355b",
+      "files": [
+        "tests/host/journeys/first-chat.mjs"
+      ]
+    }
+  ],
+  "replay": "PASS independent 3-leaf forward/reverse/forward",
+  "controls": "8 new +8 integrated retry Node controls PASS",
+  "journeyMetadata": "Original declaration byte-exact; 150s/30s deadlines unchanged; registry/runner untouched",
+  "nativeQualification": false
+}

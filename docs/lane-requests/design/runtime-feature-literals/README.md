@@ -1,0 +1,3 @@
+Generated runtime feature literals
+
+Repeated feature values now use private const literals. All 129 original ordered method keys, actual feature values and per-key literal types remain exact. The actual generator body reproduces the held output byte-for-byte; all unrelated generator bytes restore exactly. No schemas, native policy, method name, authority, loading boundary or validators change. Three installed esbuild/TypeScript/source controls pass. Isolated Chrome154 minified ESM module saves 1,139 bytes (4,469→3,330); this is not a whole-renderer budget or native acceptance result. Parent must rebuild original contracts and the combined renderer after adoption.
