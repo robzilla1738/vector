@@ -1,0 +1,34 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+ ❯ |unit| apps/shell/src/settings/sections/Models.test.tsx (2 tests | 1 failed) 37ms
+   × keeps an unsaved provider key in the editor and indexes model controls 28ms
+     → expected "spy" to be called with arguments: [ { modelCredential: { …(2) } } ]
+
+Number of calls: 0
+
+   ✓ resets one model role to Automatic without dropping another override 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| apps/shell/src/settings/sections/Models.test.tsx > keeps an unsaved provider key in the editor and indexes model controls
+AssertionError: expected "spy" to be called with arguments: [ { modelCredential: { …(2) } } ]
+
+Number of calls: 0
+
+ ❯ apps/shell/src/settings/sections/Models.test.tsx:31:20
+     29|     const save = [...container.querySelectorAll("button")].find(button…
+     30|     await act(async () => save.click());
+     31|     expect(onSave).toHaveBeenCalledWith({ modelCredential: { provider:…
+       |                    ^
+     32|     expect(key.value).toBe("test-key");
+     33|     expect(container.querySelector('[role="alert"]')?.textContent).toC…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  23:53:24
+   Duration  4.96s (transform 493ms, setup 0ms, collect 1.65s, tests 37ms, environment 2.92s, prepare 182ms)
+

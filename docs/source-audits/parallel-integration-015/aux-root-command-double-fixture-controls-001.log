@@ -1,0 +1,23 @@
+✔ all actual mode/source pairs retain fractional native hardware interval and no cardinality label (1.559333ms)
+✔ original command pair refuses foreign READY mode (0.503792ms)
+✔ original command pair refuses changed sample (0.165083ms)
+✔ original command pair refuses changed document (0.126084ms)
+✔ original command pair refuses software feedback (0.416917ms)
+✔ original command pair refuses failed feedback (0.092125ms)
+✔ original command pair refuses different renderer input (0.127375ms)
+✔ original command pair refuses receipt before input (1.493791ms)
+✔ original command pair refuses received before submit (0.107875ms)
+✔ original command pair refuses missing activation (0.128ms)
+✔ original command pair refuses failed submit (0.242375ms)
+✔ original command pair refuses invented elapsed (0.107959ms)
+✔ original command pair refuses overflow timestamp (0.501958ms)
+✔ duplicate/extra fields and unobserved or inconsistent READY refuse (0.405375ms)
+✔ actual Chromium integer-valued double serialization remains original (0.065083ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.994959

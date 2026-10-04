@@ -1,0 +1,18 @@
+{
+  "freezeSha256": "bafcd3d5845a96c672419ee59b0062481522ddd5980f739f67bd97f78f9b45ff",
+  "rows": [
+    {
+      "path": "apps/shell/src/settings/sections/Models.tsx",
+      "beforeSha256": "c72881bb369e665dcd853a5f06b358bf7c3a3c5e0d850d4e58ee950c3d924d57",
+      "afterSha256": "5ac3c8fa68c080ef133e9fec22e940af76698796d3b775adf9569216d3745d57"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Models.retirement.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "8422428d1a22b41abdd6b309b2995be4ae291858a9be89f82a3ce0489c8af19a"
+    }
+  ],
+  "exactForwardReverseForward": true,
+  "originalSaveAndProbeAuthorityPreserved": true,
+  "nativeExecuted": false
+}

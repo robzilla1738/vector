@@ -1,0 +1,67 @@
+{
+  "passed": true,
+  "records": [
+    {
+      "packet": "native-command-protocol",
+      "freezeSha256": "e981cc98d2d4ceaeec4be49c88a373447f9f4d87f45a7ce8106c5f12504b7921",
+      "files": [
+        {
+          "path": "tests/host/lib/native-command-presentation.mjs",
+          "ownership": "new-owned",
+          "beforeSha256": null,
+          "afterSha256": "145c42c78ded7cf6f158cafb83bce56d295589d161b29d3003a1f3452223319c"
+        },
+        {
+          "path": "tests/host/lib/native-command-presentation.test.mjs",
+          "ownership": "new-owned",
+          "beforeSha256": null,
+          "afterSha256": "07e64e5ae4fdcf19e4ba56261c4df3a738b001efa912af49b7dc0bbd23394b36"
+        },
+        {
+          "path": "tests/tools/command-performance-mailbox.test.mjs",
+          "ownership": "new-owned",
+          "beforeSha256": null,
+          "afterSha256": "63488303a4df91a625594ffb79fe19eb40b08871d96951f02c48f86d542e4c57"
+        },
+        {
+          "path": "tests/host/lib/performance-mailbox.mjs",
+          "ownership": "shared-request-only",
+          "beforeSha256": "b6830938c802100131a97c658f1f35cc718602a93e7fa294ee74684b35285c3e",
+          "afterSha256": "3dc742be68008be8256d2976f60fa68853540bdf9ff09285a22ab4ae82405f9d"
+        },
+        {
+          "path": "tests/host/lib/performance-mailbox-writer.py",
+          "ownership": "shared-request-only",
+          "beforeSha256": "6779a83bdfb7043736864dfd9c1eb3796533f03ec809a312177ebf1472e6bc68",
+          "afterSha256": "8103a0777e69dc916b6f8d544f4eb70948eb3db2f340435b85a25c5dedd52add"
+        }
+      ],
+      "forwardReverseForward": true
+    },
+    {
+      "packet": "native-command-original-bytes",
+      "freezeSha256": "2319f1786953f01b9f847d10b67b8d03ea3484d36a24894578e3b6998601a994",
+      "files": [
+        {
+          "path": "tests/host/lib/native-command-presentation.mjs",
+          "beforeSha256": "145c42c78ded7cf6f158cafb83bce56d295589d161b29d3003a1f3452223319c",
+          "afterSha256": "e86f0086471277892b6046ce03a69a0056736df3e3eeaad1118e97f47893db60"
+        },
+        {
+          "path": "tests/host/lib/performance-mailbox.mjs",
+          "beforeSha256": "3dc742be68008be8256d2976f60fa68853540bdf9ff09285a22ab4ae82405f9d",
+          "afterSha256": "64956c78338808c871e610b93b3138b0ded4a186b1912f1dd27b11bc496c9594"
+        },
+        {
+          "path": "tests/tools/command-performance-mailbox.test.mjs",
+          "beforeSha256": "63488303a4df91a625594ffb79fe19eb40b08871d96951f02c48f86d542e4c57",
+          "afterSha256": "5c21328527627627baa980d97acde3bdab774f00414ade2b6460412bff3fde9f"
+        }
+      ],
+      "forwardReverseForward": true
+    }
+  ],
+  "nativeExecuted": false,
+  "datasetCardinalityQualified": false,
+  "cohortQualified": false
+}

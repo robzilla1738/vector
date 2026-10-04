@@ -1,0 +1,79 @@
+{
+  "records": [
+    {
+      "packet": "cold-startup-admission",
+      "freezeSha256": "85d6b7bc414f45d1a253fd4640c4aa857d9156eeda21cdf5b150fe2b682262d2",
+      "rows": [
+        {
+          "path": "tests/host/lib/native-cold-startup-admission.mjs",
+          "beforeSha256": null,
+          "afterSha256": "8ed9fb77e66397ea39e8d0a32c51e033ca3b6ddb628d40678d433419dadb93b3"
+        },
+        {
+          "path": "tests/host/lib/native-cold-startup-admission.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "80f2fa8feb1724d21fc539dcfc88ecd8d4c4f5341b07c57bf968e02f59a45757"
+        }
+      ],
+      "exactForwardReverseForward": true
+    },
+    {
+      "packet": "cold-startup-retention",
+      "freezeSha256": "397983669445f7ed6b4858ad1a480c2e076926e7e87c72ee1fabfae59a1c8c84",
+      "rows": [
+        {
+          "path": "tests/host/lib/startup-helper-launch.mjs",
+          "beforeSha256": "1459efc009a3f6b43c33ef97dd0915b706c8f2c87301651d618f62025fbf75d2",
+          "afterSha256": "9327f201b0aac1553e078e130bd9d25a9ce7d8a42c1eae43844b8add8c80b28e",
+          "scope": "request-only"
+        },
+        {
+          "path": "tests/host/lib/native-aux-warm-observation.mjs",
+          "beforeSha256": "3e73b845d303182ea9accfff75c13aca9e92d585a069d4ded427e0833306487f",
+          "afterSha256": "25d30dfb1618b4c071c3401673d8d22cb86f687fc29c36d5711c83b5f0a8f156",
+          "scope": "request-only"
+        },
+        {
+          "path": "tests/host/lib/native-cold-startup-admission.test.mjs",
+          "beforeSha256": "80f2fa8feb1724d21fc539dcfc88ecd8d4c4f5341b07c57bf968e02f59a45757",
+          "afterSha256": "edcf166b0eb79c34b7849d13666b3d23043f53d8fcdea4771dbbc0f161399741",
+          "scope": "owned-test"
+        }
+      ],
+      "exactForwardReverseForward": true
+    },
+    {
+      "packet": "actual-cold-startup-caller",
+      "freezeSha256": "7f2abc396f6fa573edda6e189aec1a5664300035dbbf78ee61fcce2431aa1d08",
+      "rows": [
+        {
+          "path": "tests/host/lib/native-aux-cold-caller.mjs",
+          "beforeSha256": null,
+          "afterSha256": "c7bc5e8ca4e9cbce0c3f8eb7724d793e97efef606c60de6e9203fddfaead0025",
+          "scope": "new-owned"
+        },
+        {
+          "path": "tests/host/lib/native-aux-cold-caller.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "21f6f9f12512b8bd45658350d2e26c64cdf5de29ecc70f2fac58d0760a3d47b5",
+          "scope": "new-owned"
+        },
+        {
+          "path": "tests/host/lib/native-cold-startup-admission.mjs",
+          "beforeSha256": "8ed9fb77e66397ea39e8d0a32c51e033ca3b6ddb628d40678d433419dadb93b3",
+          "afterSha256": "d6085dc978e24e97a08af38cd43c71a1131f66f44ddaad6cf40a0b0747427f95",
+          "scope": "guard-successor-request"
+        },
+        {
+          "path": "tests/host/lib/native-cold-startup-admission.test.mjs",
+          "beforeSha256": "edcf166b0eb79c34b7849d13666b3d23043f53d8fcdea4771dbbc0f161399741",
+          "afterSha256": "5276706a11f67f9657dc79417a41d407bc8326d3dee41d7ce22e79dbafce9aa5",
+          "scope": "guard-successor-request"
+        }
+      ],
+      "exactForwardReverseForward": true
+    }
+  ],
+  "nativeExecuted": false,
+  "firstFrameAndOrdinaryNavigationQualification": false
+}

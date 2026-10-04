@@ -1,0 +1,12 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+(node:25819) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/ConversationImages.filename-wrap.test.tsx (1 test) 106ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  00:11:54
+   Duration  18.35s (transform 2.13s, setup 0ms, collect 6.99s, tests 106ms, environment 10.75s, prepare 234ms)
+

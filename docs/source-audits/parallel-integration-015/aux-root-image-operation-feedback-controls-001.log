@@ -1,0 +1,18 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+(node:24791) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24792) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24793) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/ConversationImages.retirement.test.tsx (4 tests) 79ms
+ ✓ |unit| apps/shell/src/components/Composer.image-parent-feedback.test.tsx (1 test) 109ms
+ ✓ |unit| apps/shell/src/components/Composer.context-lifecycle.test.tsx (13 tests) 243ms
+
+ Test Files  3 passed (3)
+      Tests  18 passed (18)
+   Start at  00:09:34
+   Duration  42.92s (transform 6.22s, setup 0ms, collect 48.10s, tests 431ms, environment 64.41s, prepare 1.17s)
+

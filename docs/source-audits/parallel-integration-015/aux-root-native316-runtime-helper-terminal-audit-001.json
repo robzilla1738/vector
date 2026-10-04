@@ -1,0 +1,80 @@
+{
+  "producer": "aux-root-native316-runtime-helper-independent-audit",
+  "passed": true,
+  "utc": "2026-10-04T05:05:24.200060+00:00",
+  "pairProof": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/pair-proof.json",
+    "sha256": "2f19b718c74f6075731585e0802c9685d1901b9cf74ac11f3faaa511adf4f93a"
+  },
+  "helperCompilerManifest": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/native-window-helper-compiler-manifest.json",
+    "sha256": "03893c0d8a64ffd2391ca8aeda25825a1d975eaef96a66384a5b952f255aa59f"
+  },
+  "outerTerminal": {
+    "path": "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/native316-runtime-helper-original-launch-001/original-terminal.json",
+    "sha256": "317a2fd78cb519aa35907f02749acccb783b7f549d802ccbfc51560808fe8ab2"
+  },
+  "artifactHashesChecked": {
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/swift-frontend-location.stdout": "1bb7d531805dd97e187dda595661edb45e0b1d85efca948f226efa54198fe92f",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/sdk-version.stdout": "7b01c549928398a045692f24bcac7803b348524cdd76f21265b02984b2ba556a",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/helper-mach-o-readback.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/sdk-location.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/stage-runtime.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/watch-arm": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/sdk-location.stdout": "71d2d22cf2f2d1a4606d2b131f4f1cc22ab8f2f05df7e76fb6298e428ace92e6",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/stage-runtime.stdout": "974fd8f4c25689d2a110e23a61f5d521e58333006063ec6a6a377c7a8ac25bc2",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/sdk-version.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/watch-config.json": "4fd4e6a95d5f8f6159a1f57ae3dbf129e809fca723d34b8961a267d1ad04f8f8",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/helper-mach-o-readback.stdout": "2478fc7de42cb0bfb3d2aea197d532a88e2e6d1ea63690b61b509072d9bf7be3",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/swift-frontend-location.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/stage-no-network.cjs": "a18dd6a311b6309d6e1c429f7c4b69e50bf082d1df4920e711faec2510dde995",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/swiftc-location.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/swiftc-version.stderr": "bbc8b176d3c74d4c5a7fd00b40280f98168e116d5272273bfe8e71407625540e",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/helper-compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/helper-trusted.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/watch.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/watch-done": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/staged-node-version.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/native-window-helper-compiler-manifest.json": "03893c0d8a64ffd2391ca8aeda25825a1d975eaef96a66384a5b952f255aa59f",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/watch-ready": "2e1fa7b8192b5a0df8d206b34bafca91007bbc6ef4953f2aa2721b899ab9b9c5",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/staged-node-version.stdout": "fe9da612097c5b1f2808feef32b5685e7a19a607fd96c7d6abe1454f0edc7e1c",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/watch.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/helper-trusted.stdout": "5617615077610df206605ada4cd15daa30884d5c99c040d4fe6d8d61dd16b498",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/active-child.json": "6a77e7398d30dd7b7ce02edc4f67950ce414706efc64f8350f6a9d6d8a3993c2",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/children.json": "08d6480b191ed6d64593c012877ca010db3398a7787d0f165afb62f18a95d999",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/swiftc-version.stdout": "6209827dfa6db08f6ba1c23dd8d13562cad113e739cfa8b072f9cb387cbc4b29",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/swiftc-location.stdout": "b1729e5d6c3d17cd201ac5566590adee563c11548d168b5abb5d5e1be8e9f995",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/pair-proof.json": "2f19b718c74f6075731585e0802c9685d1901b9cf74ac11f3faaa511adf4f93a",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/helper-compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/watch/events.jsonl": "dd4681b890201be5606c03591ba0a14a90deb3e17200cb1b5d1cc8f69d532602",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/native316-runtime-helper-original-launch-001/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/native316-runtime-helper-original-launch-001/stdout.log": "917ed1e30dccce06258dd8a6154065164bfbe205f1af575584b5545975dd2e15",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/native316-runtime-helper-original-launch-001/original-terminal.json": "317a2fd78cb519aa35907f02749acccb783b7f549d802ccbfc51560808fe8ab2",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/native316-runtime-helper-original-launch-001/original-launch.json": "fcdadbe2eb0adafe6901de3a5f3fafa5bbd7def724ce07a1ab5d5cfa28ac30f6"
+  },
+  "unchangedCompiledMapsJoinedToOriginalGuard": true,
+  "priorPhysicalAudit": {
+    "path": "/tmp/aux-root-native316-current-compiled-physical-audit-001.json",
+    "sha256": "10eafeeae53f789844dfac97bded5ae7a33cb5d1ad0be32ad0435364f906d511"
+  },
+  "actualRuntimeFilesChecked": 92,
+  "actualRuntimeIdentity": {
+    "commit": "2a014c6ee2f9ef2295a6591f10c2d57d1a45bb18",
+    "tree": "2122a28dca5fac8442b78960aa1a84b21d77deba",
+    "dirty": false,
+    "label": "2a014c6ee2f9ef2295a6591f10c2d57d1a45bb18"
+  },
+  "helperActualMachO": {
+    "uuid": "8cb835410be33949bcc779556083f55b",
+    "buildVersion": [
+      1,
+      1769472,
+      1769472
+    ]
+  },
+  "originalProcessesAndGroupsAbsent": true,
+  "slotAbsent": true,
+  "appLaunched": false,
+  "assertionsExecuted": false,
+  "performanceQualified": false
+}

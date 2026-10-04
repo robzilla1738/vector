@@ -1,0 +1,8 @@
+{
+  "file": "/private/tmp/aux-browser-runtime-following-batch/tests/host/lib/native-command-presentation.test.mjs",
+  "beforeSha256": "07e64e5ae4fdcf19e4ba56261c4df3a738b001efa912af49b7dc0bbd23394b36",
+  "afterSha256": "683a999cc667d7ec91ccb0b78e0d5ac05f7abc795ab52f8d129a7e625e510c37",
+  "originalAssertionsPreserved": true,
+  "actualReplacementNowAsserted": true,
+  "genuineLint015FailureRetained": true
+}
