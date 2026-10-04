@@ -1,0 +1,22 @@
+apps/shell/src/components/Settings.new-chat-focus.test.tsx(230,13): error TS2322: Type 'Promise<{ default: ComponentType<never>; }>' is not assignable to type 'Promise<{ default: ComponentType<object>; }>'.
+  Type '{ default: ComponentType<never>; }' is not assignable to type '{ default: ComponentType<object>; }'.
+    Types of property 'default' are incompatible.
+      Type 'ComponentType<never>' is not assignable to type 'ComponentType<object>'.
+        Type 'ComponentClass<never, any>' is not assignable to type 'ComponentType<object>'.
+          Type 'ComponentClass<never, any>' is not assignable to type 'ComponentClass<object, any>'.
+            Types of property 'getDerivedStateFromProps' are incompatible.
+              Type 'GetDerivedStateFromProps<never, any> | undefined' is not assignable to type 'GetDerivedStateFromProps<object, any> | undefined'.
+                Type 'GetDerivedStateFromProps<never, any>' is not assignable to type 'GetDerivedStateFromProps<object, any>'.
+                  Types of parameters 'nextProps' and 'nextProps' are incompatible.
+                    Type 'object' is not assignable to type 'never'.
+apps/shell/src/components/Settings.new-chat-focus.test.tsx(252,38): error TS2322: Type 'Promise<{ default: ComponentType<never>; }>' is not assignable to type 'Promise<{ default: ComponentType<object>; }>'.
+  Type '{ default: ComponentType<never>; }' is not assignable to type '{ default: ComponentType<object>; }'.
+    Types of property 'default' are incompatible.
+      Type 'ComponentType<never>' is not assignable to type 'ComponentType<object>'.
+        Type 'ComponentClass<never, any>' is not assignable to type 'ComponentType<object>'.
+          Type 'ComponentClass<never, any>' is not assignable to type 'ComponentClass<object, any>'.
+            Types of property 'getDerivedStateFromProps' are incompatible.
+              Type 'GetDerivedStateFromProps<never, any> | undefined' is not assignable to type 'GetDerivedStateFromProps<object, any> | undefined'.
+                Type 'GetDerivedStateFromProps<never, any>' is not assignable to type 'GetDerivedStateFromProps<object, any>'.
+                  Types of parameters 'nextProps' and 'nextProps' are incompatible.
+                    Type 'object' is not assignable to type 'never'.

@@ -1,0 +1,22 @@
+
+ RUN  v3.2.4 /private/tmp/aux-design-task-library-focus
+
+(node:63322) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63319) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63320) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63321) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Tasks.receipt-lifetime.test.tsx (5 tests) 130ms
+ ✓ |unit| apps/shell/src/components/Library.test.tsx (4 tests) 130ms
+ ✓ |unit| apps/shell/src/components/Library.commands.test.tsx (12 tests) 686ms
+   ✓ actual pagination cursor and more Retry remain original and serial  321ms
+ ✓ |unit| apps/shell/src/components/TasksLibrary.new-chat-focus.test.tsx (8 tests) 301ms
+
+ Test Files  4 passed (4)
+      Tests  29 passed (29)
+   Start at  16:44:38
+   Duration  12.69s (transform 2.71s, setup 0ms, collect 25.53s, tests 1.25s, environment 12.19s, prepare 496ms)
+

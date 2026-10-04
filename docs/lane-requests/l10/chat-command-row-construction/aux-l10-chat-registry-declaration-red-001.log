@@ -1,0 +1,811 @@
+node:internal/assert/utils:146
+  throw error;
+  ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+... Skipped lines
+
+  'import type { AuxFeature } from "./aux-features.js";\n' +
+    'import type { ShortcutBinding, ShortcutCommandDef } from "./shortcut-defs.js";\n' +
+    'export interface CommandDef extends ShortcutCommandDef {\n' +
+    '    section: "Agent" | "Application" | "Developer" | "Layout" | "Page" | "Tabs" | "Windows";\n' +
+    '    keywords?: readonly string[];\n' +
+...
+    '        readonly section: "Application";\n' +
++   '     '... 358132 more characters
+-   '     '... 359392 more characters
+
+    at Object.<anonymous> (/private/tmp/aux-l10-chat-registry-equivalence.cjs:9:8)
+    at Module._compile (node:internal/modules/cjs/loader:1934:14)
+    at Object..js (node:internal/modules/cjs/loader:2074:10)
+    at Module.load (node:internal/modules/cjs/loader:1656:32)
+    at Module._load (node:internal/modules/cjs/loader:1448:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'import type { AuxFeature } from "./aux-features.js";\n' +
+    'import type { ShortcutBinding, ShortcutCommandDef } from "./shortcut-defs.js";\n' +
+    'export interface CommandDef extends ShortcutCommandDef {\n' +
+    '    section: "Agent" | "Application" | "Developer" | "Layout" | "Page" | "Tabs" | "Windows";\n' +
+    '    keywords?: readonly string[];\n' +
+    '    handler: "native" | "shell";\n' +
+    '    feature?: AuxFeature;\n' +
+    '    dispatch?: "scoped";\n' +
+    '    focusShell?: boolean;\n' +
+    '    palette?: boolean;\n' +
+    '    windows?: readonly ("little" | "normal" | "private" | "quick-ask")[];\n' +
+    '}\n' +
+    'export declare const COMMANDS: readonly [\n' +
+    '    {\n' +
+    '        id: "save-selection-capture-settings";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "reload-selection-capture-settings";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "toggle-selection-action";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "move-selection-action-up";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "move-selection-action-down";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "preview-selection-action";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "remove-selection-action";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "add-selection-action";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "close-selection-action-preview";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "record-selection-capture-shortcut";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "disable-selection-capture-shortcut";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "toggle-inline-assist";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "select-model-provider";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "save-model-endpoint";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "discover-provider-models";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "save-provider-model-key";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "save-planner-model";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "probe-model-connection";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "show-model-probe-details";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "save-vision-model";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "save-model-role";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "use-automatic-model-role";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '     '... 358132 more characters,
+  expected: 'import type { AuxFeature } from "./aux-features.js";\n' +
+    'import type { ShortcutBinding, ShortcutCommandDef } from "./shortcut-defs.js";\n' +
+    'export interface CommandDef extends ShortcutCommandDef {\n' +
+    '    section: "Agent" | "Application" | "Developer" | "Layout" | "Page" | "Tabs" | "Windows";\n' +
+    '    keywords?: readonly string[];\n' +
+    '    handler: "native" | "shell";\n' +
+    '    feature?: AuxFeature;\n' +
+    '    dispatch?: "scoped";\n' +
+    '    focusShell?: boolean;\n' +
+    '    palette?: boolean;\n' +
+    '    windows?: readonly ("little" | "normal" | "private" | "quick-ask")[];\n' +
+    '}\n' +
+    'export declare const COMMANDS: readonly [\n' +
+    '    {\n' +
+    '        id: "save-selection-capture-settings";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "reload-selection-capture-settings";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "toggle-selection-action";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "move-selection-action-up";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "move-selection-action-down";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "preview-selection-action";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "remove-selection-action";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "add-selection-action";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "close-selection-action-preview";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "record-selection-capture-shortcut";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "disable-selection-capture-shortcut";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "toggle-inline-assist";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal"\n' +
+    '        ];\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "select-model-provider";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "save-model-endpoint";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "discover-provider-models";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "save-provider-model-key";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "save-planner-model";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "probe-model-connection";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "show-model-probe-details";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "save-vision-model";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "save-model-role";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '        readonly handler: "shell";\n' +
+    '        readonly focusShell: true;\n' +
+    '        readonly palette: false;\n' +
+    '        readonly bindings: readonly [\n' +
+    '        ];\n' +
+    '        readonly intercept: true;\n' +
+    '    } & {\n' +
+    '        readonly dispatch: "scoped";\n' +
+    '    },\n' +
+    '    {\n' +
+    '        id: "use-automatic-model-role";\n' +
+    '        label: string;\n' +
+    '    } & {\n' +
+    '        readonly windows: readonly [\n' +
+    '            "normal",\n' +
+    '            "private"\n' +
+    '        ];\n' +
+    '        readonly section: "Application";\n' +
+    '     '... 359392 more characters,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.7.0

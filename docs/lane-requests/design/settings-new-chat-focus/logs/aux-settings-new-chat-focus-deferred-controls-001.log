@@ -1,0 +1,14 @@
+
+ RUN  v3.2.4 /private/tmp/aux-design-settings-new-chat-focus
+
+ ✓ |unit| apps/shell/src/components/DeferredSurface.test.tsx (2 tests) 26ms
+ ✓ |unit| apps/shell/src/components/DeferredSurface.named.test.tsx (4 tests) 28ms
+(node:57658) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Settings.new-chat-focus.test.tsx (4 tests) 101ms
+
+ Test Files  3 passed (3)
+      Tests  10 passed (10)
+   Start at  16:26:25
+   Duration  2.49s (transform 769ms, setup 0ms, collect 2.19s, tests 156ms, environment 663ms, prepare 122ms)
+

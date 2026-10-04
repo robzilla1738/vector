@@ -1,0 +1,35 @@
+
+  VITE v7.3.6   mock   ready in 186 ms
+
+  ➜  Local:   http://127.0.0.1:5248/
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist/index.css, use /source-fonts/geist/index.css.
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist-mono/index.css, use /source-fonts/geist-mono/index.css.
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist/files/geist-latin-wght-normal.woff2, use /source-fonts/geist/files/geist-latin-wght-normal.woff2.
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist-mono/files/geist-mono-latin-wght-normal.woff2, use /source-fonts/geist-mono/files/geist-mono-latin-wght-normal.woff2.
+4:22:10 PM [vite] (client) hmr update /src/components/Conversation.tsx
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist/index.css, use /source-fonts/geist/index.css.
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist-mono/index.css, use /source-fonts/geist-mono/index.css.
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist/files/geist-latin-wght-normal.woff2, use /source-fonts/geist/files/geist-latin-wght-normal.woff2.
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist-mono/files/geist-mono-latin-wght-normal.woff2, use /source-fonts/geist-mono/files/geist-mono-latin-wght-normal.woff2.
+4:22:57 PM [vite] (client) hmr update /src/components/Conversation.tsx
+4:23:30 PM [vite] (client) hmr update /src/components/Conversation.tsx
+4:23:48 PM [vite] (client) hmr update /src/components/Settings.tsx
+4:26:48 PM [vite] (client) hmr update /src/components/Conversation.tsx
+4:26:48 PM [vite] (client) hmr update /src/components/Settings.tsx
+4:26:48 PM [vite] (client) hmr update /src/components/DeferredSurface.tsx
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist/index.css, use /source-fonts/geist/index.css.
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist-mono/index.css, use /source-fonts/geist-mono/index.css.
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist/files/geist-latin-wght-normal.woff2, use /source-fonts/geist/files/geist-latin-wght-normal.woff2.
+Files in the public directory are served at the root path.
+Instead of /public/source-fonts/geist-mono/files/geist-mono-latin-wght-normal.woff2, use /source-fonts/geist-mono/files/geist-mono-latin-wght-normal.woff2.

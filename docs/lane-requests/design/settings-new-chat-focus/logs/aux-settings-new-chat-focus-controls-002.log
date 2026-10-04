@@ -1,0 +1,18 @@
+
+ RUN  v3.2.4 /private/tmp/aux-design-settings-new-chat-focus
+
+ ✓ |unit| apps/shell/src/command-execution.test.ts (4 tests) 3ms
+ ✓ |unit| apps/shell/src/components/HomeAsk.test.tsx (7 tests) 27ms
+ ✓ |unit| apps/shell/src/components/Settings.changed-surface-focus.test.tsx (1 test) 27ms
+(node:55381) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55382) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Settings.new-chat-focus.test.tsx (4 tests) 95ms
+ ✓ |unit| apps/shell/src/components/Composer.integration.test.tsx (10 tests) 185ms
+
+ Test Files  5 passed (5)
+      Tests  26 passed (26)
+   Start at  16:19:25
+   Duration  2.76s (transform 907ms, setup 0ms, collect 4.66s, tests 338ms, environment 1.24s, prepare 337ms)
+

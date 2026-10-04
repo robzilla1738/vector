@@ -1,0 +1,117 @@
+
+ RUN  v3.2.4 /private/tmp/aux-design-settings-new-chat-focus
+
+(node:60016) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |unit| apps/shell/src/components/Settings.new-chat-focus.test.tsx (8 tests | 4 failed) 119ms
+   × the actual New chat dispatcher focuses the retained composer after Settings retires 58ms
+     → expected +0 to be 1 // Object.is equality
+   ✓ ordinary Settings close restores its original opener without refocusing the covered chat 15ms
+   × Settings retirement retains a newer outside focus owner 18ms
+     → expected <button …(1)></button> to be <button …(1)></button> // Object.is equality
+   ✓ toolbar focus requests do not pull focus back to the conversation 7ms
+   × deferred Settings teardown preserves a still-connected newer modal focus owner 13ms
+     → expected <button …(1)></button> to be <button></button> // Object.is equality
+   ✓ deferred loading teardown restores only physically retired focus 1ms
+   ✓ deferred error teardown restores only physically retired focus 5ms
+   × deferred teardown does not interpret an unrelated BODY focus as owned removal 1ms
+     → expected <button></button> to be <body><div></div>
+…(1)</body> // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| apps/shell/src/components/Settings.new-chat-focus.test.tsx > the actual New chat dispatcher focuses the retained composer after Settings retires
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ apps/shell/src/components/Settings.new-chat-focus.test.tsx:168:44
+    166|   expect(input()).toBe(original);
+    167|   expect(useStore.getState().overlay).toBeNull();
+    168|   expect(useStore.getState().focusRequest).toBe(1);
+       |                                            ^
+    169|   expect(useStore.getState().focusSlot).toBe("hero");
+    170|   expect(document.activeElement).toBe(original);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |unit| apps/shell/src/components/Settings.new-chat-focus.test.tsx > Settings retirement retains a newer outside focus owner
+AssertionError: expected <button …(1)></button> to be <button …(1)></button> // Object.is equality
+
+- Expected
++ Received
+
+  <button
+-   aria-label="External newer owner"
++   aria-label="Original Settings opener"
+  >
+-   External newer owner
++   Settings
+  </button>
+
+ ❯ apps/shell/src/components/Settings.new-chat-focus.test.tsx:189:34
+    187|     useStore.getState().setOverlay(null);
+    188|   });
+    189|   expect(document.activeElement).toBe(external);
+       |                                  ^
+    190| });
+    191| it("toolbar focus requests do not pull focus back to the conversation"…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |unit| apps/shell/src/components/Settings.new-chat-focus.test.tsx > deferred Settings teardown preserves a still-connected newer modal focus owner
+AssertionError: expected <button …(1)></button> to be <button></button> // Object.is equality
+
+- Expected
++ Received
+
+- <button>
+-   Original newer modal
++ <button
++   aria-label="Original Settings opener"
++ >
++   Settings
+  </button>
+
+ ❯ apps/shell/src/components/Settings.new-chat-focus.test.tsx:214:36
+    212|       useStore.getState().setOverlay(null);
+    213|     });
+    214|     expect(document.activeElement).toBe(button);
+       |                                    ^
+    215|     expect(dialog.isConnected).toBe(true);
+    216|   } finally {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |unit| apps/shell/src/components/Settings.new-chat-focus.test.tsx > deferred teardown does not interpret an unrelated BODY focus as owned removal
+AssertionError: expected <button></button> to be <body><div></div>
+…(1)</body> // Object.is equality
+
+- Expected
++ Received
+
+- <body>
+-   <div />
+- </body>
++ <button />
+
+ ❯ apps/shell/src/components/Settings.new-chat-focus.test.tsx:264:36
+    262|     expect(document.activeElement).toBe(document.body);
+    263|     await act(async () => root.render(null));
+    264|     expect(document.activeElement).toBe(document.body);
+       |                                    ^
+    265|   } finally {
+    266|     opener.remove();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 4 passed (8)
+   Start at  16:32:01
+   Duration  2.68s (transform 744ms, setup 0ms, collect 2.19s, tests 119ms, environment 186ms, prepare 38ms)
+
