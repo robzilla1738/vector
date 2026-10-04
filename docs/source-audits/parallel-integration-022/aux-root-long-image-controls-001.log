@@ -1,0 +1,30 @@
+✔ ordinary mode performs no chooser or filesystem work (0.660209ms)
+✔ fixed owned file lacks native supported magic and exact cleanup removes it (22.15675ms)
+✔ source sequence uses original chooser and owned Home captures, preserving draft/state (8.103166ms)
+✔ retired original owner prevents capture while exact owned fixture cleanup remains possible (10.636667ms)
+✔ changed original fixture refuses removal instead of hiding cleanup debt (10.221334ms)
+✔ original chooser failure and changed fixture preserve both failures (10.91475ms)
+✔ same-PID replacement native window and changed state refuse before appearance capture (18.7135ms)
+✔ closed long filename retains original valid PNG bytes and exact inode cleanup after unknown entry refusal (23.574292ms)
+✔ ordinary mode does not mint a file or issue an action (0.823958ms)
+✔ fixed PNG is genuine16×16 RGBA and original retained lease disposes idempotently (26.021583ms)
+✔ mounted original UI flow produces only visual states and no private identity assertion (17.702542ms)
+✔ original preview capture failure preserves primary and uses actual close/remove cleanup (10.875417ms)
+✔ retired samePID App and unexpected run refuse subsequent captures and native mutations (23.037667ms)
+✔ duplicate mounted preview controls refuse; original known UI cleanup still completes (9.053291ms)
+✔ changed fixture retains original primary+cleanup lease and exact restored inode retry (11.021333ms)
+✔ unchanged Include checkbox cannot be relabeled as successful exclusion (9.760084ms)
+✔ original capture retirement preserves UI cleanup debt without acting on replacement owner (7.879791ms)
+✔ fresh actual channel kind/window/duplicate-key or retired awaited read refuses before UI (0.357167ms)
+✔ replacement call ledger cannot conceal original requests after chooser or capture (13.643291ms)
+✔ unobserved zoom and details transitions cannot be labeled as captured success (38.457917ms)
+✔ Preview action retirement preserves original UI debt and never acts through replacement (7.556375ms)
+✔ fixed long filename chooser tray Preview tools and removal preserve full original name and visual limits (10.49275ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 233.707375
