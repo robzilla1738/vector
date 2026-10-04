@@ -1,0 +1,27 @@
+{
+  "sourceOnly": true,
+  "stageApproved": true,
+  "gnApproved": false,
+  "buildApproved": false,
+  "appAdmission": false,
+  "qualification": false,
+  "controllerSha256": "d3941da11286484210694368118915001091c062768f0f3a54138f83e8cdd2b4",
+  "sourceSha256": "9c890e14663e8e07799d1ce8a7cd26ae659e7cd207a148131f29d6c170398c95",
+  "candidateHead": "c18b8df0bf59b2d2d23511e98dd639e009b82795",
+  "candidateFilteredTree": "2fedae160f768f290bb214505424662474b936b4",
+  "actualNovelStableBeforeLeaves": 43,
+  "original321PrefixAndFinal79CompositionRetained": true,
+  "actualGeneratedScratchFourAndRawClosure": true,
+  "actualStrictRendererBytes": {
+    "startupJs": 499092,
+    "startupCss": 179368,
+    "totalJs": 1843175
+  },
+  "unchangedByteLimits": {
+    "startupJs": 501760,
+    "startupCss": 184320,
+    "totalJs": 1843200
+  },
+  "immutableOriginal130SourceGateByteJoin": true,
+  "review": "Same original stage policy/compiled caches/owner ledger retained; sole79 transition with original full733 before guard, real asset/bindings installation, actual watcher. Original failed453 and no App qualification retained."
+}
