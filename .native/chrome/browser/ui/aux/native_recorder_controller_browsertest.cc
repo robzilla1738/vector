@@ -84,7 +84,7 @@ IN_PROC_BROWSER_TEST_F(NativeRecorderControllerBrowserTest,
                        FixedWorldCapturesTrustedInputAndRejectsProgrammaticClick) {
   auto started = Start();
   auto* result = started.FindDict("result");
-  ASSERT_NE(result, nullptr);
+  ASSERT_NE(result, nullptr) << started.DebugString();
   const auto* id = result->FindString("recorderId");
   ASSERT_NE(id, nullptr);
   const std::string original_id = *id;

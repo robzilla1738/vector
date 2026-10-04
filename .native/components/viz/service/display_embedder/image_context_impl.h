@@ -15,6 +15,7 @@
 #include "components/viz/common/quads/aggregated_render_pass.h"
 #include "components/viz/common/resources/shared_image_format.h"
 #include "components/viz/service/display/external_use_client.h"
+#include "components/viz/service/viz_service_export.h"
 #include "gpu/command_buffer/common/mailbox.h"
 #include "gpu/command_buffer/common/sync_token.h"
 #include "gpu/command_buffer/service/shared_image/shared_image_representation.h"
@@ -43,7 +44,7 @@ struct NativeStockBackingRead;
 //
 // ImageContextImpl adds functionality for use by SkiaOutputSurfaceImpl and
 // SkiaOutputSurfaceImplOnGpu. {Begin,End}Access is called from the GPU thread.
-class ImageContextImpl final : public ExternalUseClient::ImageContext {
+class VIZ_SERVICE_EXPORT ImageContextImpl final : public ExternalUseClient::ImageContext {
  public:
   ImageContextImpl(const TransferableResource& resource,
                    bool maybe_concurrent_reads,

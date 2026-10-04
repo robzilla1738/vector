@@ -303,7 +303,12 @@ class PermissionBrokerTest : public BrowserWithTestWindowTest {
         browser()->tab_strip_model()->GetIndexOfWebContents(page_));
     page_ = nullptr; manager_ = nullptr; contents.reset();
   }
-  void RevokeLease() { controller_->Revoke(base::DictValue().Set("leaseId", "lease")); }
+  void RevokeLease() {
+    auto reply = controller_->Revoke(base::DictValue().Set("lease", lease_.Clone()));
+    const auto* result = reply.FindDict("result");
+    ASSERT_TRUE(result);
+    ASSERT_EQ(result->FindBool("accepted"), true);
+  }
   bool RevokeAndCheckAuthority() {
     RevokeLease();
     return !controller_->PermissionAuthority(page_->GetPrimaryMainFrame()).empty();
@@ -419,7 +424,7 @@ TEST_F(PermissionBrokerTest, UnrelatedSuccessfulMutationResumesOnlyAfterReceipt)
 }
 TEST_F(PermissionBrokerTest, MatchingRevocationDropsQueuedAllow) {
   Prompt(); Mutate("safety.grants.revoke"); Allow(); EXPECT_FALSE(state_.granted);
-  controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
+  RevokeLease();
   Reply("safety.grants.revoke", true, base::DictValue());
   EXPECT_FALSE(state_.granted); EXPECT_NE(Find("permission.invalidate"), nullptr);
 }
@@ -506,12 +511,12 @@ TEST_F(PermissionBrokerTest, VisiblePromptCanBecomeBackgroundWhileOwnerMutationH
 }
 TEST_F(PermissionBrokerTest, BackgroundMatchingRevocationStillPreventsEffects) {
   AddFixtureTab(GURL("https://other.test/")); page_->WasHidden();
-  Prompt(); Mutate(); Allow(); controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
+  Prompt(); Mutate(); Allow(); RevokeLease();
   Reply("safety.originPolicies.set", true, base::DictValue()); EXPECT_FALSE(state_.granted);
   EXPECT_NE(Find("permission.invalidate"), nullptr);
 }
 TEST_F(PermissionBrokerTest, HiddenPersonRequestWaitsForAttendedNativePrompt) {
-  controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
+  RevokeLease();
   AddFixtureTab(GURL("https://other.test/")); page_->WasHidden();
   manager_->AddRequest(page_->GetPrimaryMainFrame(), MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr()));
   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
@@ -553,7 +558,7 @@ TEST_F(PermissionBrokerTest, ReplacementRequestCannotReceiveAlreadyQueuedAllow) 
   manager_->Dismiss(std::monostate());
 }
 TEST_F(PermissionBrokerTest, PersonPageWithoutRealLeaseStaysAttended) {
-  controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
+  RevokeLease();
   manager_->AddRequest(page_->GetPrimaryMainFrame(), MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr()));
   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(manager_->IsRequestInProgress());

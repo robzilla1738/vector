@@ -769,21 +769,32 @@ void WebFrameWidgetImpl::MeasureNativeCommandPresentation(
   if (document->Url().Protocol() != "chrome" ||
       document->Url().Host() != "aux" || document->Token() != scope->document)
     return;
-  if (scope->source == mojom::blink::NativeCommandPresentationSource::kObserveCurrent) {
-    if (document->Lifecycle().GetState() != DocumentLifecycle::kPaintClean)
-      return;
-    auto* surfaces = document->QuerySelectorAll(AtomicString(
-        "dialog.command-surface[open][data-command-surface-sequence]"));
-    if (!surfaces || surfaces->length() != 1)
-      return;
-    const auto mode = surfaces->item(0)->getAttribute(AtomicString("data-mode"));
-    if (mode == "command")
-      scope->source = mojom::blink::NativeCommandPresentationSource::kRegistry;
-    else if (mode == "new-tab" || mode == "edit")
-      scope->source = mojom::blink::NativeCommandPresentationSource::kHistory;
-    else
-      return;
+  if (document->Lifecycle().GetState() != DocumentLifecycle::kPaintClean)
+    return;
+  auto* surfaces = document->QuerySelectorAll(AtomicString(
+      "dialog.command-surface[open][data-command-surface-sequence]"));
+  if (!surfaces || surfaces->length() != 1)
+    return;
+  const AtomicString mode = surfaces->item(0)->getAttribute(AtomicString("data-mode"));
+  auto observed_mode = mojom::blink::NativeCommandPresentationMode::kObserveCurrent;
+  auto observed_source = mojom::blink::NativeCommandPresentationSource::kObserveCurrent;
+  if (mode == "command") {
+    observed_mode = mojom::blink::NativeCommandPresentationMode::kCommand;
+    observed_source = mojom::blink::NativeCommandPresentationSource::kRegistry;
+  } else if (mode == "new-tab" || mode == "edit") {
+    observed_mode = mode == "new-tab" ? mojom::blink::NativeCommandPresentationMode::kNewTab
+                                     : mojom::blink::NativeCommandPresentationMode::kEdit;
+    observed_source = mojom::blink::NativeCommandPresentationSource::kHistory;
+  } else {
+    return;
   }
+  if ((scope->source != mojom::blink::NativeCommandPresentationSource::kObserveCurrent &&
+       scope->source != observed_source) ||
+      (scope->surface_mode != mojom::blink::NativeCommandPresentationMode::kObserveCurrent &&
+       scope->surface_mode != observed_mode))
+    return;
+  scope->source = observed_source;
+  scope->surface_mode = observed_mode;
   // Never replace an armed request. Completed instances may be released.
   if ((native_startup_frame_ && native_startup_frame_->leased()) ||
       native_command_measurement_pending_ || native_guest_stage_pending_ || native_created_guest_pending_ ||
@@ -819,15 +830,21 @@ void WebFrameWidgetImpl::MeasureNativeCommandPresentation(
       }, WrapWeakPersistent(this), document->Token(), actual_scope);
   auto matches = base::BindRepeating(
       [](WeakPersistent<WebFrameWidgetImpl> self,
-         NativeCommandResultsWitness before, NativeCommandResultsSource source) {
+         NativeCommandResultsWitness before, NativeCommandResultsSource source,
+         AtomicString original_mode) {
         if (!self || !self->local_root_ || !self->local_root_->GetFrame())
           return false;
         Document* current = self->local_root_->GetFrame()->GetDocument();
         if (!current || current->Token() != before.document)
           return false;
+        auto* surfaces = current->QuerySelectorAll(AtomicString(
+            "dialog.command-surface[open][data-command-surface-sequence]"));
+        if (!surfaces || surfaces->length() != 1 ||
+            surfaces->item(0)->getAttribute(AtomicString("data-mode")) != original_mode)
+          return false;
         auto witness = ReadNativeCommandResultsWitness(*current, source);
         return witness && NativeCommandResultsMatchNextInput(before, *witness);
-      }, WrapWeakPersistent(this), *baseline, source);
+      }, WrapWeakPersistent(this), *baseline, source, mode);
   native_command_measurement_ =
       std::make_unique<NativePerformanceWidgetMeasurement>(widget_base_.get(),
           std::move(read_scope), std::move(matches));

@@ -595,7 +595,10 @@ void AuxRuntimeHost::NativeConnectionPublished(uint64_t generation) {
         generation <= retired_native_generation_)
       return;
   }
-  if (!aux::EgressController::ForProfile(profile_)->AdmitRuntimeConnection(generation, native_owner_incarnation_)) return;
+  auto* original_egress = aux::EgressController::ForProfile(profile_);
+  if (!original_egress->AdmitRuntimeConnection(generation, native_owner_incarnation_))
+    return;
+  native_connection_egress_ = original_egress->GetWeakPtr();
   admitted_native_generation_ = generation;
   native_person_connection_id_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
 }
@@ -607,7 +610,12 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
     return;
   admitted_native_generation_ = 0;
   const auto retirement_weak = weak_factory_.GetWeakPtr();
-  aux::EgressController::ForProfile(profile_)->Disconnect();
+  // Profile teardown has already removed its user-data map. Retire only the
+  // original admitting controller, if it still exists; never recreate it.
+  auto original_egress = native_connection_egress_;
+  native_connection_egress_.reset();
+  if (original_egress)
+    original_egress->Disconnect();
   if (!retirement_weak) return;
   native_person_connection_id_.clear();
   ++native_recorder_session_generation_;

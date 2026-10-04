@@ -28,6 +28,8 @@ import "ui/base/mojom/menu_source_type.mojom";
 // Internal browser-owned fixture request on the ALREADY bound actual widget.
 // Tokens are continuity fences, never lookup selectors or authority grants.
 enum NativeCommandPresentationSource { kHistory, kRegistry, kObserveCurrent };
+// Observed only by the fixed renderer witness; browser requests use the sentinel.
+enum NativeCommandPresentationMode { kNewTab, kEdit, kCommand, kObserveCurrent };
 struct NativeCommandPresentationScope {
   int32 window_id;
   int32 content_id;
@@ -36,6 +38,7 @@ struct NativeCommandPresentationScope {
   DocumentToken document;
   viz.mojom.FrameSinkId frame_sink;
   NativeCommandPresentationSource source;
+  NativeCommandPresentationMode surface_mode;
 };
 struct NativeCommandPresentationResult {
   NativeCommandPresentationScope scope;

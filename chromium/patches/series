@@ -309,3 +309,13 @@ aux/runtime/0337-original-appearance-channel-retirement.patch
 0339-native-appearance-dict-value-api.patch
 0340-native-appearance-declaration-and-measurement-dict-api.patch
 0341-auto-pip-fixture-current-isolation-api.patch
+0342-native-fixture-objc-and-dict-api.patch
+0343-native-stock-root-coverage-rawptr.patch
+0344-native-fixture-referrer-and-viz-component-export.patch
+0345-native-assertion-fixtures-and-backing-witness.patch
+0346-native-interactive-witness-rect-header.patch
+0347-native-command-observed-mode.patch
+0348-native-runtime-connection-teardown.patch
+0349-native-creator-original-fault-diagnostic.patch
+0350-native-original-fault-diagnostics.patch
+0351-pip-isolation-diagnostic-browser-interface.patch

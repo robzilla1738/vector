@@ -3505,7 +3505,7 @@ if (!is_android) {
           "../browser/ui/aux/link_router_browsertest.cc",
           "../browser/ui/aux/native_performance_mailbox_browsertest.cc",
           "../browser/ui/aux/native_creator_close_receipt_browsertest.cc",
-          "../browser/ui/aux/native_input_ack_browsertest.cc",
+          "../browser/ui/aux/native_input_ack_browsertest.mm",
           "../browser/ui/aux/native_person_observer_controller_browsertest.cc",
           "../browser/ui/aux/native_recorder_controller_browsertest.cc",
         ]

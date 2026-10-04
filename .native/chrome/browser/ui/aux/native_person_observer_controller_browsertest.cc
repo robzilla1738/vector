@@ -11,6 +11,7 @@
 #include "base/test/test_future.h"
 #include "base/uuid.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/aux/egress_controller.h"
 #include "chrome/browser/ui/aux/page_identity.h"
 #include "chrome/browser/ui/aux/runtime_host.h"
 #include "chrome/browser/ui/aux/tab_catalog.h"
@@ -18,10 +19,11 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/test/base/in_process_browser_test.h"
+#include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/navigation_controller.h"
-#include "content/public/browser/referrer.h"
+#include "content/public/common/referrer.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "net/http/http_status_code.h"
@@ -35,6 +37,21 @@
 // generation is synthetic; these cases do not qualify Worker socket/hello.
 class NativePersonReadHostTestPeer {
  public:
+  static AuxRuntimeHost* Install(Profile* profile) {
+    return AuxRuntimeHost::InstallTestDispatch(profile, base::BindRepeating(
+        [](bool, std::string, std::string, AuxRuntimeHost::ResponseCallback done) {
+          std::move(done).Run({false, "", "unsupported", "fixture transport unavailable"});
+        }));
+  }
+  static void Remove(Profile* profile) {
+    AuxRuntimeHost::RemoveTestDispatch(profile);
+  }
+  static base::WeakPtr<AuxRuntimeHost> Weak(AuxRuntimeHost* host) {
+    return host->weak_factory_.GetWeakPtr();
+  }
+  static std::string Incarnation(AuxRuntimeHost* host) {
+    return host->native_owner_incarnation_;
+  }
   static uint64_t PublishNext(AuxRuntimeHost* host) {
     const uint64_t generation = std::max(host->admitted_native_generation_,
                                         host->retired_native_generation_) + 1;
@@ -106,7 +123,7 @@ IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
                        FixedReadReturnsOriginalDocumentWithoutFieldValues) {
   auto reply = Read();
   auto* result = reply.FindDict("result");
-  ASSERT_NE(result, nullptr);
+  ASSERT_NE(result, nullptr) << reply.DebugString();
   auto* value = result->FindDict("value");
   ASSERT_NE(value, nullptr);
   ASSERT_NE(value->FindString("title"), nullptr);
@@ -347,5 +364,61 @@ IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
   ASSERT_NE(fresh.FindDict("result"), nullptr);
   EXPECT_NE(fresh.FindDict("result")->FindString("sessionId"), nullptr);
   EXPECT_EQ(NativePersonReadHostTestPeer::Pending(host), 0u);
+}
+}  // namespace aux
+
+namespace aux {
+namespace {
+class NativeConnectionTeardownProfile : public TestingProfile {
+ public:
+  void ClearOriginalUserData() { ClearAllUserData(); }
+  size_t OriginalUserDataCount() const { return UserDataCount(); }
+};
+}  // namespace
+
+IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
+                       ProfileUserDataClearRetiresOriginalPublishedConnection) {
+  NativeConnectionTeardownProfile profile;
+  auto* host = NativePersonReadHostTestPeer::Install(&profile);
+  const auto original_host = NativePersonReadHostTestPeer::Weak(host);
+  const auto original_egress = EgressController::ForProfile(&profile)->GetWeakPtr();
+  ASSERT_NE(NativePersonReadHostTestPeer::PublishNext(host), 0u);
+  ASSERT_TRUE(original_egress);
+  profile.ClearOriginalUserData();
+  EXPECT_FALSE(original_host);
+  EXPECT_FALSE(original_egress);
+  EXPECT_EQ(profile.OriginalUserDataCount(), 0u);
+}
+
+IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
+                       HostFirstDestructionRetiresExistingControllerAuthority) {
+  NativeConnectionTeardownProfile profile;
+  auto* host = NativePersonReadHostTestPeer::Install(&profile);
+  const auto original_host = NativePersonReadHostTestPeer::Weak(host);
+  const auto original_egress = EgressController::ForProfile(&profile)->GetWeakPtr();
+  const auto incarnation = NativePersonReadHostTestPeer::Incarnation(host);
+  const auto generation = NativePersonReadHostTestPeer::PublishNext(host);
+  ASSERT_TRUE(original_egress);
+  EXPECT_FALSE(original_egress->AdmitRuntimeConnection(generation + 1, incarnation));
+  NativePersonReadHostTestPeer::Remove(&profile);
+  EXPECT_FALSE(original_host);
+  ASSERT_TRUE(original_egress);
+  EXPECT_TRUE(original_egress->AdmitRuntimeConnection(generation + 1, incarnation));
+  original_egress->Disconnect();
+  profile.ClearOriginalUserData();
+  EXPECT_FALSE(original_egress);
+  EXPECT_EQ(profile.OriginalUserDataCount(), 0u);
+}
+
+IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
+                       UnpublishedHostUserDataClearDoesNotCreateAuthority) {
+  NativeConnectionTeardownProfile profile;
+  auto* host = NativePersonReadHostTestPeer::Install(&profile);
+  const auto original_host = NativePersonReadHostTestPeer::Weak(host);
+  const auto original_egress = EgressController::ForProfile(&profile)->GetWeakPtr();
+  profile.ClearOriginalUserData();
+  EXPECT_FALSE(original_host);
+  EXPECT_FALSE(original_egress);
+  EXPECT_EQ(profile.OriginalUserDataCount(), 0u);
 }
 }  // namespace aux

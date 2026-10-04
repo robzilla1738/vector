@@ -13,6 +13,12 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/html/forms/html_text_area_element.h"
+#include "third_party/blink/renderer/core/layout/hit_test_location.h"
+#include "third_party/blink/renderer/core/layout/hit_test_result.h"
+#include "third_party/blink/renderer/core/layout/layout_view.h"
+#include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
+#include "ui/gfx/geometry/point_conversions.h"
+#include "ui/gfx/geometry/rect.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/core/timing/performance_entry.h"
@@ -89,7 +95,24 @@ std::optional<NativeStartupInteractiveWitness> ReadNativeStartupInteractiveWitne
   const double top = std::max(0.0, static_cast<double>(rect.y()));
   const double right = std::min(static_cast<double>(viewport.width()), static_cast<double>(rect.right()));
   const double bottom = std::min(static_cast<double>(viewport.height()), static_cast<double>(rect.bottom()));
-  if (right <= left || bottom <= top || document.ElementFromPoint((left + right) / 2, (top + bottom) / 2) != input ||
+  if (right <= left || bottom <= top || !document.GetLayoutView()) return std::nullopt;
+  // ElementFromPoint updates to pre-paint and invalidates the paint-clean
+  // witness itself. Hit-test the already painted original document instead,
+  // retaining TreeScope's viewport/zoom and web-exposed retarget semantics.
+  gfx::PointF point((left + right) / 2, (top + bottom) / 2);
+  const float zoom = document.GetFrame()->LayoutZoomFactor();
+  if (!std::isfinite(zoom) || zoom <= 0) return std::nullopt;
+  auto* scrollable_area = document.View()->LayoutViewport();
+  if (!scrollable_area) return std::nullopt;
+  const auto visible = gfx::ScaleToRoundedRect(
+      gfx::Rect(scrollable_area->VisibleContentRect(kExcludeScrollbars).size()),
+      1 / zoom);
+  if (!visible.Contains(gfx::ToRoundedPoint(point))) return std::nullopt;
+  point.Scale(zoom);
+  const HitTestLocation location(point);
+  HitTestResult hit(HitTestRequest::kReadOnly | HitTestRequest::kActive, location);
+  if (!document.GetLayoutView()->HitTestNoLifecycleUpdate(location, hit) ||
+      document.ElementForHitTest(hit.InnerNode(), TreeScope::kWebExposed) != input ||
       document.Lifecycle().GetState() != DocumentLifecycle::kPaintClean || !MatchesActualMark(document, instance))
     return std::nullopt;
   return NativeStartupInteractiveWitness{document.Token(), instance.Utf8(), base::TimeTicks::Now()};

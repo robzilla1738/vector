@@ -1,0 +1,138 @@
+--- a/chrome/browser/ui/aux/native_person_observer_controller_browsertest.cc
++++ b/chrome/browser/ui/aux/native_person_observer_controller_browsertest.cc
+@@ -11,6 +11,7 @@
+ #include "base/test/test_future.h"
+ #include "base/uuid.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
+ #include "chrome/browser/ui/aux/runtime_host.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+@@ -18,6 +19,7 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/test/base/in_process_browser_test.h"
++#include "chrome/test/base/testing_profile.h"
+ #include "chrome/test/base/ui_test_utils.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/navigation_controller.h"
+@@ -35,6 +37,21 @@
+ // generation is synthetic; these cases do not qualify Worker socket/hello.
+ class NativePersonReadHostTestPeer {
+  public:
++  static AuxRuntimeHost* Install(Profile* profile) {
++    return AuxRuntimeHost::InstallTestDispatch(profile, base::BindRepeating(
++        [](bool, std::string, std::string, AuxRuntimeHost::ResponseCallback done) {
++          std::move(done).Run({false, "", "unsupported", "fixture transport unavailable"});
++        }));
++  }
++  static void Remove(Profile* profile) {
++    AuxRuntimeHost::RemoveTestDispatch(profile);
++  }
++  static base::WeakPtr<AuxRuntimeHost> Weak(AuxRuntimeHost* host) {
++    return host->weak_factory_.GetWeakPtr();
++  }
++  static std::string Incarnation(AuxRuntimeHost* host) {
++    return host->native_owner_incarnation_;
++  }
+   static uint64_t PublishNext(AuxRuntimeHost* host) {
+     const uint64_t generation = std::max(host->admitted_native_generation_,
+                                         host->retired_native_generation_) + 1;
+@@ -349,3 +366,59 @@
+   EXPECT_EQ(NativePersonReadHostTestPeer::Pending(host), 0u);
+ }
+ }  // namespace aux
++
++namespace aux {
++namespace {
++class NativeConnectionTeardownProfile : public TestingProfile {
++ public:
++  void ClearOriginalUserData() { ClearAllUserData(); }
++  size_t OriginalUserDataCount() const { return UserDataCount(); }
++};
++}  // namespace
++
++IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
++                       ProfileUserDataClearRetiresOriginalPublishedConnection) {
++  NativeConnectionTeardownProfile profile;
++  auto* host = NativePersonReadHostTestPeer::Install(&profile);
++  const auto original_host = NativePersonReadHostTestPeer::Weak(host);
++  const auto original_egress = EgressController::ForProfile(&profile)->GetWeakPtr();
++  ASSERT_NE(NativePersonReadHostTestPeer::PublishNext(host), 0u);
++  ASSERT_TRUE(original_egress);
++  profile.ClearOriginalUserData();
++  EXPECT_FALSE(original_host);
++  EXPECT_FALSE(original_egress);
++  EXPECT_EQ(profile.OriginalUserDataCount(), 0u);
++}
++
++IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
++                       HostFirstDestructionRetiresExistingControllerAuthority) {
++  NativeConnectionTeardownProfile profile;
++  auto* host = NativePersonReadHostTestPeer::Install(&profile);
++  const auto original_host = NativePersonReadHostTestPeer::Weak(host);
++  const auto original_egress = EgressController::ForProfile(&profile)->GetWeakPtr();
++  const auto incarnation = NativePersonReadHostTestPeer::Incarnation(host);
++  const auto generation = NativePersonReadHostTestPeer::PublishNext(host);
++  ASSERT_TRUE(original_egress);
++  EXPECT_FALSE(original_egress->AdmitRuntimeConnection(generation + 1, incarnation));
++  NativePersonReadHostTestPeer::Remove(&profile);
++  EXPECT_FALSE(original_host);
++  ASSERT_TRUE(original_egress);
++  EXPECT_TRUE(original_egress->AdmitRuntimeConnection(generation + 1, incarnation));
++  original_egress->Disconnect();
++  profile.ClearOriginalUserData();
++  EXPECT_FALSE(original_egress);
++  EXPECT_EQ(profile.OriginalUserDataCount(), 0u);
++}
++
++IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
++                       UnpublishedHostUserDataClearDoesNotCreateAuthority) {
++  NativeConnectionTeardownProfile profile;
++  auto* host = NativePersonReadHostTestPeer::Install(&profile);
++  const auto original_host = NativePersonReadHostTestPeer::Weak(host);
++  const auto original_egress = EgressController::ForProfile(&profile)->GetWeakPtr();
++  profile.ClearOriginalUserData();
++  EXPECT_FALSE(original_host);
++  EXPECT_FALSE(original_egress);
++  EXPECT_EQ(profile.OriginalUserDataCount(), 0u);
++}
++}  // namespace aux
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -595,7 +595,10 @@
+         generation <= retired_native_generation_)
+       return;
+   }
+-  if (!aux::EgressController::ForProfile(profile_)->AdmitRuntimeConnection(generation, native_owner_incarnation_)) return;
++  auto* original_egress = aux::EgressController::ForProfile(profile_);
++  if (!original_egress->AdmitRuntimeConnection(generation, native_owner_incarnation_))
++    return;
++  native_connection_egress_ = original_egress->GetWeakPtr();
+   admitted_native_generation_ = generation;
+   native_person_connection_id_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+ }
+@@ -607,7 +610,12 @@
+     return;
+   admitted_native_generation_ = 0;
+   const auto retirement_weak = weak_factory_.GetWeakPtr();
+-  aux::EgressController::ForProfile(profile_)->Disconnect();
++  // Profile teardown has already removed its user-data map. Retire only the
++  // original admitting controller, if it still exists; never recreate it.
++  auto original_egress = native_connection_egress_;
++  native_connection_egress_.reset();
++  if (original_egress)
++    original_egress->Disconnect();
+   if (!retirement_weak) return;
+   native_person_connection_id_.clear();
+   ++native_recorder_session_generation_;
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -316,6 +316,7 @@
+   bool pump_scheduled_ = false;
+   bool runtime_connected_ = false;
+   const std::string native_owner_incarnation_ = base::UnguessableToken::Create().ToString();
++  base::WeakPtr<aux::EgressController> native_connection_egress_;
+   uint64_t admitted_native_generation_ = 0;
+   uint64_t retired_native_generation_ = 0;
+   uint64_t native_recorder_session_generation_ = 0;

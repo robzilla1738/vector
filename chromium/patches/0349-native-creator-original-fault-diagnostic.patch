@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/aux/native_creator_close_receipt_unittest.cc
++++ b/chrome/browser/ui/aux/native_creator_close_receipt_unittest.cc
+@@ -50,7 +50,7 @@
+     auto created = controller_->RegisterCreatorPage(page_.get(),
+         navigation_->GetNavigationHandle()->GetNavigationId(), kGeneration, nullptr);
+     const auto* result = created.FindDict("result");
+-    ASSERT_TRUE(result);
++    ASSERT_TRUE(result) << created.DebugString();
+     const auto* id_value = result->FindString("creationId");
+     ASSERT_TRUE(id_value);
+     creation_id_ = *id_value;

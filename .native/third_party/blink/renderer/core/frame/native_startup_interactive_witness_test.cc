@@ -4,6 +4,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_performance_mark_options.h"
 #include "third_party/blink/renderer/core/dom/document.h"
+#include "third_party/blink/renderer/core/dom/document_lifecycle.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
 #include "third_party/blink/renderer/core/timing/window_performance.h"
@@ -41,9 +42,12 @@ class NativeStartupInteractiveWitnessTest : public PageTestBase {
 };
 TEST_F(NativeStartupInteractiveWitnessTest, GenuineCurrentMarkAndEnabledInputMatch) {
   Fixture("<textarea data-aux-interactive-instance=composer-1></textarea><button disabled>Send</button>");
+  ASSERT_EQ(GetDocument().Lifecycle().GetState(), DocumentLifecycle::kPaintClean);
   EXPECT_FALSE(ReadNativeStartupInteractiveWitness(GetDocument()));
+  EXPECT_EQ(GetDocument().Lifecycle().GetState(), DocumentLifecycle::kPaintClean);
   Mark("composer-1");
   const auto sample = ReadNativeStartupInteractiveWitness(GetDocument());
+  EXPECT_EQ(GetDocument().Lifecycle().GetState(), DocumentLifecycle::kPaintClean);
   ASSERT_TRUE(sample);
   EXPECT_EQ(sample->document, GetDocument().Token());
   EXPECT_EQ(sample->composer_instance, "composer-1");

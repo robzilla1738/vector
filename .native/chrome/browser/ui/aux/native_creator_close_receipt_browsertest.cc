@@ -6,6 +6,10 @@
 #include <memory>
 #include <optional>
 #include "base/functional/bind.h"
+#include "base/scoped_observation.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/browser/profiles/profile_manager.h"
+#include "chrome/browser/profiles/profile_manager_observer.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
 #include "base/run_loop.h"
@@ -18,6 +22,7 @@
 #include "chrome/browser/ui/aux/runtime_host.h"
 #include "chrome/browser/ui/aux/tab_catalog.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -148,16 +153,30 @@ class NativeCreatorCloseReceiptBrowserTestPeer {
         }, receipt->GetWeakPtr(), std::move(original), std::move(effect));
   }
 };
-class NativeCreatorCloseReceiptBrowserTest : public InProcessBrowserTest {
+class NativeCreatorCloseReceiptBrowserTest : public InProcessBrowserTest,
+                                          public ProfileManagerObserver {
  protected:
   void SetUpInProcessBrowserTestFixture() override {
     InProcessBrowserTest::SetUpInProcessBrowserTestFixture();
     profile_creation_ = BrowserContextDependencyManager::GetInstance()
         ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
-            [](content::BrowserContext* context) {
-              auto* profile = Profile::FromBrowserContext(context);
-              if (!profile->IsOffTheRecord()) AuxCreatorCloseBrowserTestPeer::Install(profile);
-            }));
+            [](NativeCreatorCloseReceiptBrowserTest* fixture, content::BrowserContext*) {
+              if (!fixture->profile_manager_observation_.IsObserving()) {
+                fixture->profile_manager_observation_.Observe(
+                    g_browser_process->profile_manager());
+              }
+            }, base::Unretained(this)));
+  }
+  void OnProfileAdded(Profile* profile) override {
+    if (!profile->IsOffTheRecord()) AuxCreatorCloseBrowserTestPeer::Install(profile);
+  }
+  void OnProfileManagerDestroying() override {
+    profile_manager_observation_.Reset();
+  }
+  void TearDownInProcessBrowserTestFixture() override {
+    profile_creation_ = {};
+    profile_manager_observation_.Reset();
+    InProcessBrowserTest::TearDownInProcessBrowserTestFixture();
   }
   void SetUpOnMainThread() override {
     TabCatalog::EnsureFactoryBuilt();
@@ -228,11 +247,14 @@ class NativeCreatorCloseReceiptBrowserTest : public InProcessBrowserTest {
     lease.Remove("isolation");
     lease.Remove("personControlled");
     const auto now = static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch());
-    lease.Set("leaseId", "creator-original-native-lease")
-        .Set("runId", "creator-browser-run").Set("taskId", "creator-browser-task")
-        .Set("taskRevision", 3).Set("documentEpoch", 1)
-        .Set("isolationId", isolation_id)
-        .Set("issuedAt", now).Set("expiresAt", now + 30000);
+    lease.Set("leaseId", "creator-original-native-lease");
+    lease.Set("runId", "creator-browser-run");
+    lease.Set("taskId", "creator-browser-task");
+    lease.Set("taskRevision", 3);
+    lease.Set("documentEpoch", 1);
+    lease.Set("isolationId", isolation_id);
+    lease.Set("issuedAt", now);
+    lease.Set("expiresAt", now + 30000);
     auto installed = controller_->Install(base::DictValue().Set("lease", lease.Clone())
         .Set("expectedUrl", "about:blank"));
     if (!installed.FindDict("result") ||
@@ -309,6 +331,8 @@ class NativeCreatorCloseReceiptBrowserTest : public InProcessBrowserTest {
     ASSERT_TRUE(content::ExecJs(page_.get(), "window.onbeforeunload = null;"));
   }
   base::CallbackListSubscription profile_creation_;
+  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
+      profile_manager_observation_{this};
   raw_ptr<Profile> profile_ = nullptr;
   raw_ptr<AuxRuntimeHost> host_ = nullptr;
   raw_ptr<EgressController> controller_ = nullptr;
@@ -476,11 +500,14 @@ IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
   lease.Remove("isolation");
   lease.Remove("personControlled");
   const auto now = static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch());
-  lease.Set("leaseId", "creator-actual-install-with-lost-runtime-response")
-      .Set("runId", "creator-browser-run").Set("taskId", "creator-browser-task")
-      .Set("taskRevision", 3).Set("documentEpoch", 1)
-      .Set("isolationId", *isolation->FindString("isolationId"))
-      .Set("issuedAt", now).Set("expiresAt", now + 30000);
+  lease.Set("leaseId", "creator-actual-install-with-lost-runtime-response");
+  lease.Set("runId", "creator-browser-run");
+  lease.Set("taskId", "creator-browser-task");
+  lease.Set("taskRevision", 3);
+  lease.Set("documentEpoch", 1);
+  lease.Set("isolationId", *isolation->FindString("isolationId"));
+  lease.Set("issuedAt", now);
+  lease.Set("expiresAt", now + 30000);
   // The native effect succeeds. No runtime ActivePage/ACK is manufactured.
   auto installed = controller_->Install(base::DictValue().Set("lease", lease.Clone())
       .Set("expectedUrl", "about:blank"));

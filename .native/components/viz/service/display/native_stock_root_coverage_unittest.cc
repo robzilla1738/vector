@@ -22,7 +22,7 @@ TEST(NativeStockRootCoverageTest, ExactAdjacentPaintTilesCoverWithoutBoundingBox
 TEST(NativeStockRootCoverageTest, RealClipAndTranslucentPaintCannotFillMissingArea) {
   AggregatedRenderPass pass; pass.output_rect = gfx::Rect(0, 0, 100, 100);
   auto* clipped = Solid(pass, pass.output_rect);
-  auto* state = const_cast<SharedQuadState*>(clipped->shared_quad_state);
+  auto* state = const_cast<SharedQuadState*>(clipped->shared_quad_state.get());
   state->clip_rect = gfx::Rect(0, 0, 100, 99);
   auto* translucent = Solid(pass, pass.output_rect); translucent->color.fA = 0.5f;
   EXPECT_FALSE(NativeStockRootHasFullCoverage(pass));
@@ -31,7 +31,7 @@ TEST(NativeStockRootCoverageTest, RealClipAndTranslucentPaintCannotFillMissingAr
 TEST(NativeStockRootCoverageTest, TransformsAndNonSourceBlendNeverBecomeFullBacking) {
   AggregatedRenderPass pass; pass.output_rect = gfx::Rect(0, 0, 100, 100);
   auto* quad = Solid(pass, pass.output_rect);
-  auto* state = const_cast<SharedQuadState*>(quad->shared_quad_state);
+  auto* state = const_cast<SharedQuadState*>(quad->shared_quad_state.get());
   state->quad_to_target_transform.Translate(1, 0);
   EXPECT_FALSE(NativeStockRootHasFullCoverage(pass));
   state->quad_to_target_transform.MakeIdentity(); state->blend_mode = SkBlendMode::kClear;
@@ -42,14 +42,14 @@ TEST(NativeStockRootCoverageTest, DestructiveForegroundInvalidatesEarlierFullBac
   AggregatedRenderPass pass; pass.output_rect = gfx::Rect(0, 0, 100, 100);
   Solid(pass, pass.output_rect); EXPECT_TRUE(NativeStockRootHasFullCoverage(pass));
   auto* foreground = Solid(pass, gfx::Rect(40, 40, 20, 20));
-  auto* state = const_cast<SharedQuadState*>(foreground->shared_quad_state);
+  auto* state = const_cast<SharedQuadState*>(foreground->shared_quad_state.get());
   state->blend_mode = SkBlendMode::kClear;
   EXPECT_FALSE(NativeStockRootHasFullCoverage(pass));
 }
 TEST(NativeStockRootCoverageTest, RoundedMaskCannotProveRectangularRootCoverage) {
   AggregatedRenderPass pass; pass.output_rect = gfx::Rect(0, 0, 100, 100);
   auto* quad = Solid(pass, pass.output_rect);
-  auto* state = const_cast<SharedQuadState*>(quad->shared_quad_state);
+  auto* state = const_cast<SharedQuadState*>(quad->shared_quad_state.get());
   state->mask_filter_info = gfx::MaskFilterInfo(gfx::RRectF(gfx::RectF(pass.output_rect), 6.f));
   EXPECT_FALSE(NativeStockRootHasFullCoverage(pass));
   state->mask_filter_info = gfx::MaskFilterInfo(); state->mask_filter_info.set_clip_id(1);

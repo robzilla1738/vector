@@ -1,0 +1,11 @@
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
+@@ -4493,7 +4493,7 @@
+ 
+ namespace {
+ std::string OriginalPiPIsolationDiagnostic(content::WebContents* page,
+-    Browser* browser, const content::StoragePartitionConfig& expected) {
++    BrowserWindowInterface* browser, const content::StoragePartitionConfig& expected) {
+   auto* original_frame = page ? page->GetPrimaryMainFrame() : nullptr;
+   auto* original_site = original_frame ? original_frame->GetSiteInstance() : nullptr;
+   auto* original_partition = original_frame ? original_frame->GetStoragePartition() : nullptr;

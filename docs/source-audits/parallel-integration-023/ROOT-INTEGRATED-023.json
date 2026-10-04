@@ -65,9 +65,14 @@
     {
       "path": "docs/source-audits/parallel-integration-023/aux-root-pip-owned-integrated-controls-002.log",
       "sha256": "150decfa07bd618a7ab775cfec7cff6cc78d9ac3873f5e8e27b979e5f00c5fd8"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-following-native321-prefix-integration-001.json",
+      "sha256": "f8bdeb4d5b83d29e62b0fa5ab9b6d124ec4ed493f5d01a898fb5b732538f185e"
     }
   ],
   "nativeOperationConcurrentOwners": 1,
   "allRoadmapGatesPreserved": true,
-  "qualification": false
+  "qualification": false,
+  "futureFollowingNative321Prefix": "exact32 canonical/mirror leaves from55de integrated; shellassets not copied; currentverificationcandidate untouched"
 }

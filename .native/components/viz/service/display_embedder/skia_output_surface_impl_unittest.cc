@@ -21,6 +21,9 @@
 #include "components/viz/service/display/native_stock_raster_draw.h"
 #include "components/viz/service/display_embedder/skia_output_surface_dependency_impl.h"
 #include "components/viz/service/display_embedder/image_context_impl.h"
+#include "gpu/command_buffer/client/client_shared_image.h"
+#include "gpu/command_buffer/common/shared_image_info.h"
+#include "components/viz/common/resources/transferable_resource.h"
 #include "gpu/config/gpu_preferences.h"
 #include "third_party/skia/include/core/SkSamplingOptions.h"
 #include "components/viz/service/gl/gpu_service_impl.h"
@@ -30,6 +33,7 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/gpu_fence_handle.h"
+#include "ui/gl/gl_bindings.h"
 #include "ui/gl/gl_implementation.h"
 
 namespace viz {
@@ -480,8 +484,22 @@ class NativeStockGraphiteBackingTest : public testing::Test {
     // is not a synthetic opacity callback or an imported metadata assertion.
     const auto mailbox = output_->CreateSolidColorSharedImage(
         SkColor4f{1.f, 0.f, 0.f, alpha}, space);
-    auto image = std::make_unique<ImageContextImpl>(mailbox, gfx::Size(1, 1),
-        SinglePlaneFormat::kRGBA_8888, space);
+    // Describe the SAME actually created backing as a transferable resource.
+    // The mailbox constructor is render-pass-only and correctly refuses this
+    // root source image before stored-alpha readback.
+    const gpu::SharedImageMetadata metadata{
+        SinglePlaneFormat::kRGBA_8888, gfx::Size(1, 1), space,
+        kTopLeft_GrSurfaceOrigin, kPremul_SkAlphaType,
+        gpu::SHARED_IMAGE_USAGE_SCANOUT | gpu::SHARED_IMAGE_USAGE_DISPLAY_READ};
+    auto shared_image = gpu::ClientSharedImage::CreateForTesting(
+        mailbox, metadata, gpu::SyncToken(), GL_TEXTURE_2D);
+    const auto resource = TransferableResource::Make(
+        shared_image, TransferableResource::ResourceSource::kTest,
+        gpu::SyncToken());
+    ASSERT_EQ(resource.mailbox(), mailbox);
+    auto image = std::make_unique<ImageContextImpl>(
+        resource, /*maybe_concurrent_reads=*/false,
+        /*raw_draw_if_possible=*/false, /*client_id=*/0);
     if (advertised_opaque) image->set_alpha_type(kOpaque_SkAlphaType);
     auto pack = std::make_unique<NativeStockRasterDraw>(kSurfaceRect,
         base::BindOnce([](std::shared_ptr<Result> retained, bool full, bool readback) {

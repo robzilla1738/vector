@@ -17,6 +17,8 @@
 #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/common/content_client.h"
 #include "content/public/test/mock_navigation_handle.h"
@@ -32,6 +34,25 @@
 
 namespace aux {
 namespace {
+
+// Diagnostic-only fixed preview fixture: no token/path/query/user text.
+class PreviewFixtureNavigationDiagnostic final : public content::WebContentsObserver {
+ public:
+  explicit PreviewFixtureNavigationDiagnostic(content::WebContents* contents)
+      : content::WebContentsObserver(contents) {}
+  void DidFinishNavigation(content::NavigationHandle* navigation) override {
+    if (records_.size() >= 8) return;
+    records_.Append(base::DictValue()
+        .Set("primary", navigation->IsInPrimaryMainFrame())
+        .Set("committed", navigation->HasCommitted())
+        .Set("errorPage", navigation->IsErrorPage())
+        .Set("netError", static_cast<int>(navigation->GetNetErrorCode()))
+        .Set("scheme", navigation->GetURL().scheme().substr(0, 32)));
+  }
+  std::string Describe() const { return records_.DebugString(); }
+ private:
+  base::ListValue records_;
+};
 
 class ResultPreviewBrowserTest : public InProcessBrowserTest {
  public:
@@ -154,13 +175,14 @@ IN_PROC_BROWSER_TEST_F(ResultPreviewBrowserTest,
   auto* shell = Shell();
   ASSERT_TRUE(shell);
   ASSERT_TRUE(content::WaitForLoadStop(shell));
+  PreviewFixtureNavigationDiagnostic diagnostic(shell);
   auto url = ResultPreviewStore::Create(shell, "<script>window.loaded=true</script>");
   ASSERT_TRUE(url);
   const GURL preview(*url);
   content::TestNavigationManager first(shell, preview);
   ASSERT_TRUE(BeginPreview(shell, preview));
-  ASSERT_TRUE(first.WaitForNavigationFinished());
-  ASSERT_TRUE(first.was_successful());
+  ASSERT_TRUE(first.WaitForNavigationFinished()) << diagnostic.Describe();
+  ASSERT_TRUE(first.was_successful()) << diagnostic.Describe();
   auto* frame = PreviewFrame(shell, preview);
   ASSERT_TRUE(frame);
   const auto first_origin = frame->GetLastCommittedOrigin();
@@ -176,8 +198,8 @@ IN_PROC_BROWSER_TEST_F(ResultPreviewBrowserTest,
   // frame. In-preview navigation remains blocked by the existing throttle.
   content::TestNavigationManager second(shell, preview);
   ASSERT_TRUE(BeginPreview(shell, preview));
-  ASSERT_TRUE(second.WaitForNavigationFinished());
-  ASSERT_TRUE(second.was_successful());
+  ASSERT_TRUE(second.WaitForNavigationFinished()) << diagnostic.Describe();
+  ASSERT_TRUE(second.was_successful()) << diagnostic.Describe();
   frame = PreviewFrame(shell, preview);
   ASSERT_TRUE(frame);
   EXPECT_TRUE(frame->GetLastCommittedOrigin().opaque());
@@ -220,22 +242,23 @@ IN_PROC_BROWSER_TEST_F(ResultPreviewBrowserTest,
   auto* shell = Shell();
   ASSERT_TRUE(shell);
   ASSERT_TRUE(content::WaitForLoadStop(shell));
+  PreviewFixtureNavigationDiagnostic diagnostic(shell);
   auto url = ResultPreviewStore::Create(shell, "<script>window.loaded=true</script>");
   ASSERT_TRUE(url);
   const GURL preview(*url);
   const auto original = shell->GetPrimaryMainFrame()->GetWeakDocumentPtr();
   content::TestNavigationManager pending(shell, preview);
   ASSERT_TRUE(BeginPreview(shell, preview));
-  ASSERT_TRUE(pending.WaitForResponse());
+  ASSERT_TRUE(pending.WaitForResponse()) << diagnostic.Describe();
   ASSERT_TRUE(content::NavigateToURL(shell, GURL("chrome://aux/")));
-  ASSERT_TRUE(pending.WaitForNavigationFinished());
-  EXPECT_FALSE(pending.was_successful());
+  ASSERT_TRUE(pending.WaitForNavigationFinished()) << diagnostic.Describe();
+  EXPECT_FALSE(pending.was_successful()) << diagnostic.Describe();
   EXPECT_NE(original.AsRenderFrameHostIfValid(), shell->GetPrimaryMainFrame());
   EXPECT_FALSE(ResultPreviewStore::Read(shell, preview));
   content::TestNavigationManager replacement(shell, preview);
   ASSERT_TRUE(BeginPreview(shell, preview));
-  ASSERT_TRUE(replacement.WaitForNavigationFinished());
-  EXPECT_FALSE(replacement.was_successful());
+  ASSERT_TRUE(replacement.WaitForNavigationFinished()) << diagnostic.Describe();
+  EXPECT_FALSE(replacement.was_successful()) << diagnostic.Describe();
 }
 
 IN_PROC_BROWSER_TEST_F(ResultPreviewBrowserTest,

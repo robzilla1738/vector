@@ -28,8 +28,13 @@
 #include "components/tabs/public/tab_interface.h"
 
 #include "base/path_service.h"
+#include "base/values.h"
+#include "content/public/browser/storage_partition_config.h"
 #include "base/uuid.h"
 #include "content/public/browser/site_instance.h"
+#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/storage_partition.h"
+#include "content/public/browser/security_principal.h"
 #include "base/scoped_observation.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/run_until.h"
@@ -4486,6 +4491,24 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
   EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
 }
 
+namespace {
+std::string OriginalPiPIsolationDiagnostic(content::WebContents* page,
+    BrowserWindowInterface* browser, const content::StoragePartitionConfig& expected) {
+  auto* original_frame = page ? page->GetPrimaryMainFrame() : nullptr;
+  auto* original_site = original_frame ? original_frame->GetSiteInstance() : nullptr;
+  auto* original_partition = original_frame ? original_frame->GetStoragePartition() : nullptr;
+  return base::DictValue().Set("fixedGeneration", 1)
+      .Set("originalActiveTab", page && page == browser->GetTabStripModel()->GetActiveWebContents())
+      .Set("originalFramePresent", original_frame != nullptr)
+      .Set("originalFrameActive", original_frame && original_frame->IsActive())
+      .Set("originalSitePresent", original_site != nullptr)
+      .Set("originalPartitionPresent", original_partition != nullptr)
+      .Set("originalStoragePartitionMatches", original_partition && original_partition->GetConfig() == expected)
+      .Set("originalSitePartitionMatches", original_site && original_site->GetSecurityPrincipal().GetStoragePartitionConfig() == expected)
+      .DebugString();
+}
+}  // namespace
+
 IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
                        NativeProtectionInstalledBeforeActualAutomaticEffectRefusesWindow) {
   auto* profile = browser()->GetProfile();
@@ -4505,8 +4528,10 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
       content::WebContents::Create(content::WebContents::CreateParams(profile, site)), true);
   ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
   ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  const auto original_isolation_diagnostic =
+      OriginalPiPIsolationDiagnostic(page, browser(), partition);
   ASSERT_TRUE(controller->RegisterIsolation(page, isolation_id, run, task, 1,
-                                           {run}, 1));
+                                           {run}, 1)) << original_isolation_diagnostic;
   const auto page_id = aux::PageIdentity::GetOrCreate(profile, page);
   const auto expected_url = page->GetLastCommittedURL().spec();
   auto response = controller->Context(base::DictValue().Set("tabId", page_id)
@@ -4792,8 +4817,10 @@ IN_PROC_BROWSER_TEST_F(AuxAutoPictureInPictureEligibilityBrowserTest,
       content::WebContents::Create(content::WebContents::CreateParams(profile, site)), true);
   ASSERT_NO_FATAL_FAILURE(PrepareOwnedVideo());
   ASSERT_TRUE(helper->IsEligibleForAutoPictureInPicture(false));
+  const auto original_isolation_diagnostic =
+      OriginalPiPIsolationDiagnostic(page, browser(), partition);
   ASSERT_TRUE(controller->RegisterIsolation(page, isolation_id, run, task, 1,
-                                           {run}, 1));
+                                           {run}, 1)) << original_isolation_diagnostic;
   const auto page_id = aux::PageIdentity::GetOrCreate(profile, page);
   const auto expected_url = page->GetLastCommittedURL().spec();
   auto response = controller->Context(base::DictValue().Set("tabId", page_id)

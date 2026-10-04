@@ -316,6 +316,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
   bool pump_scheduled_ = false;
   bool runtime_connected_ = false;
   const std::string native_owner_incarnation_ = base::UnguessableToken::Create().ToString();
+  base::WeakPtr<aux::EgressController> native_connection_egress_;
   uint64_t admitted_native_generation_ = 0;
   uint64_t retired_native_generation_ = 0;
   uint64_t native_recorder_session_generation_ = 0;

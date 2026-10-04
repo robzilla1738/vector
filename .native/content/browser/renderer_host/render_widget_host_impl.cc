@@ -2348,7 +2348,14 @@ void RenderWidgetHostImpl::MeasureNativeCommandPresentationForTesting(
                 (expected->source == blink::mojom::NativeCommandPresentationSource::kObserveCurrent
                     ? (result->scope->source != blink::mojom::NativeCommandPresentationSource::kHistory &&
                        result->scope->source != blink::mojom::NativeCommandPresentationSource::kRegistry)
-                    : result->scope->source != expected->source)) {
+                    : result->scope->source != expected->source) ||
+                (expected->surface_mode != blink::mojom::NativeCommandPresentationMode::kObserveCurrent &&
+                 result->scope->surface_mode != expected->surface_mode) ||
+                !((result->scope->surface_mode == blink::mojom::NativeCommandPresentationMode::kCommand &&
+                   result->scope->source == blink::mojom::NativeCommandPresentationSource::kRegistry) ||
+                  ((result->scope->surface_mode == blink::mojom::NativeCommandPresentationMode::kNewTab ||
+                    result->scope->surface_mode == blink::mojom::NativeCommandPresentationMode::kEdit) &&
+                   result->scope->source == blink::mojom::NativeCommandPresentationSource::kHistory))) {
               std::move(reply).Run(nullptr);
               return;
             }
