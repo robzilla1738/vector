@@ -1,0 +1,7 @@
+# NEXT Memory control construction request
+
+A shared closed native-tag constructor and original mounted control registration replace duplicated Memory button/input/summary/select and callback-ref code. Original wrapper identities remain. Local semantic owners, queries, native Space mapping, drafts, loaded snapshots, confirmations, transport/ACKs and late-delivery policy are untouched; their surface suffixes are byte-identical. Original DOM prop order, explicit/implicit button type, IDs/labels, checkbox/select values and real nativeEvent remain. Editor retains raw completion .catch; other controls retain invocation-bound report. Browsing retains one-use Retry; callback refs retain Private refusal and original messages. No command rows, loading, compiler/directive, CSS, native or schema changes.
+
+Actual original179 mounted cases pass, plus3 constructor/native summary/detach/callback incarnation/Private/Retry controls; types pass; lint preserves only2 existing Editor warnings. Trust independently reviewed policy/ref boundaries. Exact10leaf forward/reverse/forward replay passes.
+
+One native154 strict-CSP/no-map measure: startup500369 unchanged, CSS179427 unchanged, total1846274 (1066 saved from exact shared-save+Page prerequisite1847340; still3074 over1843200). This remains source-only request until coherent NEXT passes unchanged caps. Root PageRecovery prerequisite19067 is excluded; root save+parent prerequisite is already frozen separately. Source-only tests are not native/F21 acceptance. Aux names/glyphs/classes/06-derived geometry remain unchanged.

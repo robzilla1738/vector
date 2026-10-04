@@ -1,15 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useCallback, useRef, useState, type ReactNode } from "react";
-import {
-  MEMORY_PASTE_MAX_BYTES,
-  type MemoryPastePreview,
-  type MemoryPasteStatus,
-  type ShellCommandId,
-} from "@aux/contracts";
+import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
+import { useEffect, useLayoutEffect, useMemo, useCallback, useState, type ReactNode } from "react";
+import { MEMORY_PASTE_MAX_BYTES, type MemoryPastePreview, type MemoryPasteStatus, type ShellCommandId,  } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
-import { executeCommand } from "../commands";
-import { registerScopedControl } from "../scoped-control-commands";
-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
+
+
+import { guardCommandCompletion } from "../command-completion";
 
 class PasteOwner {
   readonly workspaceId: string | null;
@@ -98,53 +94,13 @@ function PasteControl({
   value?: string;
   className?: string;
 }) {
-  const ref = useRef<HTMLElement | null>(null);
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (element)
-      return registerScopedControl(element, command, scopeId, () => {
-        if (!current()) throw new Error("The original Memory import controls changed.");
-        return action(element);
-      });
-  });
-  const attach = (node: HTMLElement | null) => {
-    ref.current = node;
-  };
-  const run = (
-    event: React.MouseEvent<HTMLElement> | React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
-    void completion.catch((reason) => reportCommandCompletionFailure(completion, reason, report));
-  };
-  if (kind === "checkbox")
-    return (
-      <input
-        type="checkbox"
-        ref={attach}
-        data-command-id={command}
-        checked={checked}
-        disabled={disabled}
-        onChange={run}
-      />
-    );
-  if (kind === "select")
-    return (
-      <select ref={attach} data-command-id={command} value={value} disabled={disabled} onChange={run}>
-        {children}
-      </select>
-    );
-  return (
-    <button
-      type="button"
-      ref={attach}
-      data-command-id={command}
-      className={className}
-      disabled={disabled}
-      onClick={run}
-    >
-      {children}
-    </button>
-  );
+  const [attach, run] = useMemoryElementControl(command, scopeId, element => {
+    if (!current()) throw new Error("The original Memory import controls changed.");
+    return action(element);
+  }, report);
+  if (kind === "checkbox") return memoryControlElement("input", { type: "checkbox", ref: attach, "data-command-id": command, checked, disabled, onChange: run });
+  if (kind === "select") return memoryControlElement("select", { ref: attach, "data-command-id": command, value, disabled, onChange: run }, children);
+  return memoryControlElement("button", { type: "button", ref: attach, "data-command-id": command, className, disabled, onClick: run }, children);
 }
 /** Pasted drafts live only in this mounted form. Preview and commit are separate owner actions. */
 export function MemoryPasteImport({

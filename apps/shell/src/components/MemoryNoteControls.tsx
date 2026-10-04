@@ -1,9 +1,10 @@
-import { useCallback, useRef, type SyntheticEvent, type ButtonHTMLAttributes } from "react";
-import { bridge } from "../bridge";
-import { executeCommand } from "../commands";
-import { errToast } from "../store";
-import { reportCommandCompletionFailure } from "../command-completion";
-import { registerScopedControl } from "../scoped-control-commands";
+import { useMemoryCallbackControl } from "./memory-control-construction";
+import { type ButtonHTMLAttributes } from "react";
+
+
+
+
+
 
 export const MEMORY_NOTE_COMMANDS = [
   "add-memory-note",
@@ -26,33 +27,7 @@ export function useMemoryNoteControl(
   scopeId: string,
   invoke: (element: HTMLElement) => unknown,
 ) {
-  const retire = useRef<(() => void) | undefined>(undefined);
-  const attach = useCallback(
-    (element: HTMLElement | null) => {
-      retire.current?.();
-      retire.current = undefined;
-      if (!element) return;
-      let active = true;
-      const unregister = registerScopedControl(element, command, scopeId, () => {
-        if (!active || bridge.privateMode) throw new Error("Choose the current memory note control.");
-        return invoke(element);
-      });
-      retire.current = () => {
-        active = false;
-        unregister();
-      };
-    },
-    [command, scopeId, invoke],
-  );
-  const run = useCallback(
-    (event?: SyntheticEvent) => {
-      if (!event) throw new Error("Choose the original memory note control.");
-      const completion = executeCommand(command, { nativeInputEvent: event.nativeEvent });
-      void completion.catch((reason) => reportCommandCompletionFailure(completion, reason, errToast));
-    },
-    [command],
-  );
-  return [attach, run] as const;
+  return useMemoryCallbackControl(command, scopeId, invoke, "Choose the current memory note control.", "Choose the original memory note control.", false);
 }
 
 export function MemoryNoteButton({

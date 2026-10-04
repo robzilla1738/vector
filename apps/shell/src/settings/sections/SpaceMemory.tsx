@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, useId, type ReactNode } from "react";
+import { memoryControlElement, useMemoryElementControl } from "../../components/memory-control-construction";
+import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useId, type ReactNode } from "react";
 import type { MemoryClaim, MemoryPipelineOverview, ShellCommandId } from "@aux/contracts";
 import { bridge } from "../../bridge";
 import { call, useStore } from "../../store";
-import { guardCommandCompletion, reportCommandCompletionFailure } from "../../command-completion";
+import { guardCommandCompletion } from "../../command-completion";
 import { executeCommand } from "../../commands";
 import { registerScopedControl } from "../../scoped-control-commands";
 import { useConfirm } from "../../ui/confirm";
@@ -36,18 +37,11 @@ function PipelineControl({ command, scopeId, action, onError, children, disabled
   command: ShellCommandId; scopeId: string; action(element: HTMLElement): unknown; onError(reason: unknown): void; children?: ReactNode;
   disabled?: boolean; className?: string; kind?: "button" | "checkbox" | "select" | "summary"; checked?: boolean; value?: string; inputId?: string; expanded?: boolean;
 }) {
-  const ref = useRef<HTMLElement | null>(null);
-  useLayoutEffect(() => { const element = ref.current; if (element) return registerScopedControl(element, command, scopeId, () => action(element)); });
-  const attach = (node: HTMLElement | null) => { ref.current = node; };
-  const invoke = (event: React.MouseEvent<HTMLElement> | React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    if (kind === "summary") event.preventDefault();
-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
-    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, onError));
-  };
-  if (kind === "checkbox") return <input id={inputId} ref={attach} data-command-id={command} aria-label="Enable Space memory" type="checkbox" checked={checked} disabled={disabled} onChange={invoke}/>;
-  if (kind === "select") return <select ref={attach} data-command-id={command} aria-label="Completed run for memory" value={value} disabled={disabled} onChange={invoke}>{children}</select>;
-  if (kind === "summary") return <summary ref={attach} data-command-id={command} onClick={invoke}>{children}</summary>;
-  return <button type="button" aria-expanded={expanded} ref={attach} data-command-id={command} className={className} disabled={disabled} onClick={invoke}>{children}</button>;
+  const [attach, invoke] = useMemoryElementControl(command, scopeId, action, onError, kind === "summary");
+  if (kind === "checkbox") return memoryControlElement("input", { id: inputId, ref: attach, "data-command-id": command, "aria-label": "Enable Space memory", type: "checkbox", checked, disabled, onChange: invoke });
+  if (kind === "select") return memoryControlElement("select", { ref: attach, "data-command-id": command, "aria-label": "Completed run for memory", value, disabled, onChange: invoke }, children);
+  if (kind === "summary") return memoryControlElement("summary", { ref: attach, "data-command-id": command, onClick: invoke }, children);
+  return memoryControlElement("button", { type: "button", "aria-expanded": expanded, ref: attach, "data-command-id": command, className, disabled, onClick: invoke }, children);
 }
 class DecisionControls {
   #retire = new Map<string, () => void>();

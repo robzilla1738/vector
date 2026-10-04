@@ -1,0 +1,10 @@
+{
+  "unchangedOriginalSurfaceSuffixes": {
+    "apps/shell/src/components/ContentMemory.tsx": "10a0058d36c2eab885da8a584691b60bc846b3a552f2d9cbe32a2c48936bd55d",
+    "apps/shell/src/components/SpaceMemoryEditor.tsx": "d028b3e43112ca5aa20e8069c813f05b1aa0189044452f276744054b5414d8c5",
+    "apps/shell/src/components/MemoryPasteImport.tsx": "07c66dddc77fb9d51cbcf6aeb6cd24bafc1fed50b906bd3867d824db3ef8221d",
+    "apps/shell/src/components/MemoryRecoveryNotice.tsx": "6f0ad0cb85b7de2c9bab90a7cc982a5260b04a1dc420b212155ad045d3854c6e",
+    "apps/shell/src/settings/sections/SpaceMemory.tsx": "7a570c7e990aec1cb876d027dcc89e472096a5c64666e1f36977591aef517f09"
+  },
+  "meaning": "every noncontrol owner/producer/state/effect/confirmation/render caller after extraction boundary byte-identical"
+}

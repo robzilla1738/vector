@@ -1,10 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useId, type ReactNode } from "react";
+import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
+import { useEffect, useLayoutEffect, useMemo, useState, useId, type ReactNode } from "react";
 import type { ShellCommandId } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
-import { executeCommand } from "../commands";
-import { registerScopedControl } from "../scoped-control-commands";
-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
+
+
+import { guardCommandCompletion } from "../command-completion";
 
 class RecoveryOwner {
   #active = true;
@@ -22,15 +23,11 @@ function RecoveryControl({command,scopeId,owner,action,report,children,disabled,
   command:ShellCommandId;scopeId:string;owner:RecoveryOwner;action():unknown;report(reason:unknown):void;
   children:ReactNode;disabled?:boolean;className:string;
 }) {
-  const ref=useRef<HTMLButtonElement|null>(null);
-  useLayoutEffect(()=>{const original=ref.current;if(original)return registerScopedControl(original,command,scopeId,()=>{
-    if(!owner.current())throw new Error("The original recovery controls changed.");
+  const [ref, run] = useMemoryElementControl(command, scopeId, () => {
+    if (!owner.current()) throw new Error("The original recovery controls changed.");
     return action();
-  });});
-  return <button type="button" ref={ref} data-command-id={command} className={className} disabled={disabled} onClick={event=>{
-    const completion=executeCommand(command,{payload:{scopeId},nativeInputEvent:event.nativeEvent});
-    void completion.catch(reason=>reportCommandCompletionFailure(completion,reason,report));
-  }}>{children}</button>;
+  }, report);
+  return memoryControlElement("button", { type: "button", ref, "data-command-id": command, className, disabled, onClick: run }, children);
 }
 /** Displayed after a user action invalidates older Aux-managed backups. */
 export function MemoryRecoveryNotice({ possible = false }: { possible?: boolean }) {

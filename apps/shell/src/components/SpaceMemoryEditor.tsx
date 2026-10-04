@@ -1,3 +1,4 @@
+import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
 import { BrowsingMemory } from "./BrowsingMemory";
 import { ContentMemory } from "./ContentMemory";
 import { MemoryItems } from "./MemoryItems";
@@ -6,8 +7,8 @@ import { useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type Reac
 import type { WorkspaceMemory } from "@aux/contracts";
 import { call } from "../store";
 import { useMemoryDrafts } from "../memory-drafts";
-import { executeCommand } from "../commands";
-import { registerScopedControl } from "../scoped-control-commands";
+
+
 import { bridge } from "../bridge";
 import type { ShellCommandId } from "@aux/contracts";
 import "./SpaceMemoryEditor.css";
@@ -16,19 +17,10 @@ function MemoryControl({ command, scopeId, action, disabled = false, children, s
   command: ShellCommandId; scopeId: string; onError(reason: unknown): void; action(): unknown; disabled?: boolean; children?: ReactNode;
   inputId?: string; summary?: boolean; checkbox?: boolean; checked?: boolean; className?: string;
 }) {
-  const ref = useRef<HTMLElement | null>(null);
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    return registerScopedControl(element, command, scopeId, action);
-  });
-  const invoke = (event: React.MouseEvent<HTMLElement> | React.ChangeEvent<HTMLInputElement>) => {
-    if (summary) event.preventDefault();
-    void executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent }).catch(onError);
-  };
-  if (summary) return <summary data-command-id={command} ref={node => { ref.current = node; }} onClick={invoke}>{children}</summary>;
-  if (checkbox) return <input data-command-id={command} id={inputId} ref={node => { ref.current = node; }} type="checkbox" checked={checked} disabled={disabled} onChange={invoke} />;
-  return <button data-command-id={command} ref={node => { ref.current = node; }} className={className ?? "btn sm"} disabled={disabled} onClick={invoke}>{children}</button>;
+  const [ref, invoke] = useMemoryElementControl(command, scopeId, action, onError, summary, false);
+  if (summary) return memoryControlElement("summary", { "data-command-id": command, ref, onClick: invoke }, children);
+  if (checkbox) return memoryControlElement("input", { "data-command-id": command, id: inputId, ref, type: "checkbox", checked, disabled, onChange: invoke });
+  return memoryControlElement("button", { "data-command-id": command, ref, className: className ?? "btn sm", disabled, onClick: invoke }, children);
 }
 
 export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {

@@ -1,3 +1,4 @@
+import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
 import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
 import { shellIconGlobe } from "./icons";
 import { useEffect, useLayoutEffect, useMemo, useId, useRef, useState, useCallback, type ReactNode } from "react";
@@ -39,17 +40,11 @@ function ContentControl({ command, scopeId, action, onError, children, disabled 
   command: ShellCommandId; scopeId: string; action(value?: string): unknown; onError(reason: unknown): void; children?: ReactNode;
   disabled?: boolean; className?: string; kind?: "button" | "checkbox" | "select" | "summary"; checked?: boolean; value?: number; inputId?: string;
 }) {
-  const ref = useRef<HTMLElement | null>(null);
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (element) return registerScopedControl(element, command, scopeId, () => action(element instanceof HTMLSelectElement ? element.value : undefined));
-  });
-  const attach = (node: HTMLElement | null) => { ref.current = node; };
-  const run = (event: InputEvent) => { const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent }); void completion.catch(reason => reportCommandCompletionFailure(completion, reason, onError)); };
-  if (kind === "checkbox") return <input id={inputId} type="checkbox" data-command-id={command} ref={attach} checked={checked} disabled={disabled} onChange={run} />;
-  if (kind === "select") return <select id={inputId} aria-label="Page-content retention" data-command-id={command} ref={attach} disabled={disabled} value={value} onChange={run}>{children}</select>;
-  if (kind === "summary") return <summary data-command-id={command} ref={attach} onClick={event => { event.preventDefault(); run(event); }}>{children}</summary>;
-  return <button data-command-id={command} ref={attach} className={className} disabled={disabled} onClick={run}>{children}</button>;
+  const [attach, run] = useMemoryElementControl(command, scopeId, element => action(element instanceof HTMLSelectElement ? element.value : undefined), onError, kind === "summary");
+  if (kind === "checkbox") return memoryControlElement("input", { id: inputId, type: "checkbox", "data-command-id": command, ref: attach, checked, disabled, onChange: run });
+  if (kind === "select") return memoryControlElement("select", { id: inputId, "aria-label": "Page-content retention", "data-command-id": command, ref: attach, disabled, value, onChange: run }, children);
+  if (kind === "summary") return memoryControlElement("summary", { "data-command-id": command, ref: attach, onClick: run }, children);
+  return memoryControlElement("button", { "data-command-id": command, ref: attach, className, disabled, onClick: run }, children);
 }
 class MenuActivations {
   #actions = new WeakMap<HTMLElement, () => void>();
