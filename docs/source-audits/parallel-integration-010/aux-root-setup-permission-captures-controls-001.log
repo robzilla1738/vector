@@ -1,0 +1,16 @@
+✔ only exact paired appearance setup retains the dialog (0.858583ms)
+✔ ordinary and unpaired setup cannot skip mandatory dismissal (0.092167ms)
+✔ actual disclosure helper drives only tips and navigation, with original window-bound capture states (0.678375ms)
+✔ actual disclosure helper refuses configured model, page/run creation and changed settings (0.528084ms)
+✔ capture refuses original owner retirement and ambiguous native inventory (0.453458ms)
+✔ runner keeps setup outside functional registry and only retains admitted appearance scope (3.518917ms)
+✔ permission captures require all five genuinely observed policy states before each capture (0.329666ms)
+✔ permission disclosure changes cannot be captured as ungranted after settings drift (0.233417ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 51.067833
