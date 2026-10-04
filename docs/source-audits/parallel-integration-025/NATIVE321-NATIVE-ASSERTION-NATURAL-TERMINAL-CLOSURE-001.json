@@ -1,0 +1,552 @@
+{
+  "producer": "aux-native321-native-assertion-natural-terminal-closure",
+  "version": 1,
+  "terminal": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/terminal-proof.json",
+    "sha256": "31f98ad0889de610feaf82375cc0f0c9afb558aca9f0382d6e0ee34dd186c6b5"
+  },
+  "outer": {
+    "path": "/private/tmp/aux-builder-native321-preparation-001/native321-assertions-original-launch-001/original-terminal.json",
+    "sha256": "34b239dc2b4c350a16523a4a7540e5bfd3b94464ee2a7294e0679abc88dbe5a7"
+  },
+  "state": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/state.json",
+    "sha256": "b5a4e34da66de9750e83d520a8b72bdf3426435c901b44de3c269786de03d97a"
+  },
+  "actualArtifactHashes": {
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/guards.json": "7d64276546c184d1a706f1fa35893faa0dc16dc92fa54cb6ed4d8bd5bda3e4c7",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/auto_pip_site_policy_unittests/assertion-validation.json": "63891b2f33a373bd476df924371c055226d0100893a8f6c58c5175f99f1c9e8b",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/auto_pip_site_policy_unittests/controller-result.json": "7f85f90e34b9ac0350948efa01d6b1289fba1c98c937dcf43af954f04e748d47",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/auto_pip_site_policy_unittests/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/auto_pip_site_policy_unittests/stdout.log": "1bfe12610fa907818d8cbdfb7bd2995d255980728e61751c1a29128f27992c9a",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_common_unittests/assertion-validation.json": "c66980f8cc7a250d6726ea9cd4f1c3b632f25bcf1922158c5a349a18d91dfd68",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_common_unittests/controller-result.json": "db1873d2d8b1d4ac75a736144252865dadc04bc296dba19dbe8062bb2bebc739",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_common_unittests/launcher-summary.json": "ae83682fd4a74bb01dbba47e03b1afd99971de971dc50cc5438d9e982a9bb911",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_common_unittests/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_common_unittests/stdout.log": "8a367171d9fccee2677b16a7d35f6548c4420d45253c990d36dbe854e3c0a2d6",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_platform_unittests/assertion-validation.json": "997fea782ad4084aa11df704e642a8a082a78fc87b2608462de36c2786eb2891",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_platform_unittests/controller-result.json": "0ae4229aef8a66a55da3ced6b230d22e0d509801be33a15445784ab6ba4c944a",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_platform_unittests/launcher-summary.json": "cdeaa0806de7d51c326c637053a18398114c47a7aae604a682072949e0349176",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_platform_unittests/stderr.log": "c632838a05121e0eb7a15ad03933a3690beb90db5e568e073fb2eb4ce5215be7",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_platform_unittests/stdout.log": "ec4f10b2a5e743e75517d22137a419c170e6d18191cc4acaba164bc5b68f5e5c",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_unittests/assertion-validation.json": "6c693b826ddd9c208f1170be6cefe23c082bc1380e3e1c18f5d250820a9f0ae6",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_unittests/controller-result.json": "9feb9d8fed5d95614cdd2da562b0a0b132ba39934fb4b698388d6c46be81a9e1",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_unittests/launcher-summary.json": "940968519446616453aa1fdf02302d0f7930687542a6199253c575045f0867e3",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_unittests/stderr.log": "230bd87273b24d74c5bbadf2d1ee40451dcaf58d265f0967f584c0eb7cf15190",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_unittests/stdout.log": "6af4945c630f75e9b3abb45908364d21b14f6061a002f08fdf33ab3d55ef402a",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/browser_tests/assertion-validation.json": "a5e902e5f4f6a44914d20826c9d2ea2305c9da3afd96deacc0c4021315ed7b66",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/browser_tests/controller-result.json": "37a8be7a02024abb833139f6b749505f252fc2255967de9613778949b7e1709d",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/browser_tests/launcher-summary.json": "47a9d2239d2883225fd4201e64d4e295006b36a3853a149c28cdaccff79c83d5",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/browser_tests/stderr.log": "c7e82b1de5e08fa8aa4db818a15f7a4443fcf32a1b560e9e2863b932d0597205",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/browser_tests/stdout.log": "e1133fa9ca379b4a6f2afa4f50927c732bc10d91c66225efbe98b255a07f14ab",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/cc_unittests/assertion-validation.json": "b82ffd884c44eee33e9a08115e8c62dda2ad52cadc09f8bcc37513cfcf8a4543",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/cc_unittests/controller-result.json": "d1ed625736573f1062106e4c45ace1e02686b321e579b695f6ac651a86d90d9e",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/cc_unittests/launcher-summary.json": "b5bfba333df177aeb33ad59ed2842a1b855af6d76d3c756b8cc3147896c3c63d",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/cc_unittests/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/cc_unittests/stdout.log": "be63bc27216d76eee688acd1bbebecbbc11e3302ef352c2440326456599d777a",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_browsertests/assertion-validation.json": "8033780bbc4860397213f3f7dcae3a7466e49e2e412807c16ec99c9b617fe944",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_browsertests/controller-result.json": "128cf48e5999488683dcd625b31f5d1236cf6078784ea649723183dded41d214",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_browsertests/launcher-summary.json": "925bf9d90c28f05124a347ebc978f72abb60a6e9729a29836d049774536c0ad5",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_browsertests/stderr.log": "6df02a5752d581753031a98fbebe992f0e0134ec929baca1e675cbc4f6a9aaaa",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_browsertests/stdout.log": "c2c9cd867d8b42a124831ed3913533b392bcda4769f7bccd5c36c7501071c432",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_unittests/assertion-validation.json": "2848f1784a62468a937c98c988381094c206448f5963e1f8eb6b8605e499bf14",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_unittests/controller-result.json": "174ccfa67c9384b021c2961808d1098990f89864ccfb7852a0b0a22d1749c046",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_unittests/launcher-summary.json": "3b8cdf06d50786a484b7e0f87538af86fbb5b1f53c73e6e9b6e1b9f2f6ec0ada",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_unittests/stderr.log": "56f9ae99b110a71eb14fd0afc3ffd182fe6b31bd87eecf920619e889f0a1ca85",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_unittests/stdout.log": "3ef5cad5cda9783d4e43684b5d7b280951ddeca37d8b2a32529cd5d6f433af71",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/content_unittests/assertion-validation.json": "7522222c81db2aad58492b45a81c764aa9f0c0e614de9509dd6ce98fa7a86a96",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/content_unittests/controller-result.json": "447097c033363cb4f9e89fac0786487690a7c402b7bef33cbe8a4e6e060a1962",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/content_unittests/launcher-summary.json": "05be78f5594500041fa777b649470d8e54883c063eccf047baae23121ce2c25b",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/content_unittests/stderr.log": "5250df3bc86bd4433ae23812e3570c13d37b28bc63090b08fd6a7ae9e7d57e66",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/content_unittests/stdout.log": "1a6ebaabf9be3008989314bd843ce8a8a7d4c220d2a4b56783ead2904e823215",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/interactive_ui_tests/assertion-validation.json": "dd276d7f4bc0e335b53f94e53c07060cb52e581155a392e742d73d124df045f7",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/interactive_ui_tests/controller-result.json": "6af202d1a4539cd8b80aa127def70b4f932d3427c249e1347413f0243ccc194f",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/interactive_ui_tests/launcher-summary.json": "669a3d4628e337533bcbb0a5cd031036b85378e63aa8e7a1b4d4f34deeb6b0aa",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/interactive_ui_tests/stderr.log": "67312ef19d3bf55817ae6996cce5625f5677cd0e49a16f5bee80cd96e749bc29",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/interactive_ui_tests/stdout.log": "6b3528517552cf676ca129d753ce725e12e950185e9881e3dccc5e689be0066a",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/journey_fixture_path_unittests/assertion-validation.json": "b79030c654e7f38da92237cc3b81b23211496e2c1089d8023d51bf2a427617d3",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/journey_fixture_path_unittests/controller-result.json": "7140c60f4f12943a4c51de8173d08dac6185829bf5d01fbca51e15d8863457d7",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/journey_fixture_path_unittests/launcher-summary.json": "5539c40453f5cb1ba67facd26d70af3a84f5c178a98b9b7e37c3c60faaf47718",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/journey_fixture_path_unittests/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/journey_fixture_path_unittests/stdout.log": "95d411a0ae8c1ecc83277acb1a8ee81d5f154e4ad9af6e5324b98506cfdd6e4e",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/link_routing_unittests/assertion-validation.json": "0fcc6023b3d10804bacabd6b7a0d0867904316454a0bb88d8803e9952311800e",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/link_routing_unittests/controller-result.json": "96d961618af65cbf6929fb0fe4639cb1e29901883d9bb4b57d87fce619890f2a",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/link_routing_unittests/stderr.log": "f8d43247d0e690d82da88185b066d1018537f662124769b01e4601eca8f5b9c8",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/link_routing_unittests/stdout.log": "b0c27b73837c08ca05b091b4494247b6db68adc1392a8990de7ab6ad01dcbc16",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/owner_mutation_fence_unittests/assertion-validation.json": "2d85f34d473399a19424927769544f506b986658deccdbd5505bf47a024ae65c",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/owner_mutation_fence_unittests/controller-result.json": "f1b69e1766d1beee124428a78ee4565e00ec671c3443a9fb315c2629ad00c053",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/owner_mutation_fence_unittests/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/owner_mutation_fence_unittests/stdout.log": "3ed6913b32e381b2048ce11f99cb96e103f47b41ba677d9d751f95d3bf51b48b",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/profile_spaces_unittests/assertion-validation.json": "327cd4583684c5cef2c85628998a1c312df5e5bf18291b1b8999bb7af34237cc",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/profile_spaces_unittests/controller-result.json": "61bb5f0511cd1dd9d58adeecc069da9f4c276325e17e09b9a07fa9ac53980872",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/profile_spaces_unittests/launcher-summary.json": "efa9a0800d4b10036ac5f4d9e5a51d4396e6b12898d81a3887e539fcced0de9f",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/profile_spaces_unittests/stderr.log": "07c5df697be28d5850fcf5e35af2a2b96ad2215ed15bae2636b46d36e7aa6f5d",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/profile_spaces_unittests/stdout.log": "1795dbf2fcffa1c0e827e6177b06af3bdd28ef27988edd6d725c2c82380c0ffa",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/unit_tests/assertion-validation.json": "dd0d1210e8dfbfa6bfd3615deaafb63a239a6c02efcf8c8f30a8230c24d357cc",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/unit_tests/controller-result.json": "1676093976e029a778f6db9d03a3a2accd42af8bf72f88024655f1c12ad100f3",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/unit_tests/launcher-summary.json": "dfd031d51c5095320451e0c3b3c9c703e70c2f35354501bf7193fa87e46f3386",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/unit_tests/stderr.log": "8020acbc5e85479e14984f4dfdfa715b62606cba5eb315ce802b00456c283006",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/unit_tests/stdout.log": "74a4aaa96604aa96fb2a7a43ffec53bae40749c62456d18b36e4cd345fed73d9",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/viz_unittests/assertion-validation.json": "91c72abd269efbaf61c718b764a30f1dfe9ef31240dc5a7f8dbfb9d7d98fb953",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/viz_unittests/controller-result.json": "6096aaa8c6cee0bc306706913230419906228de0fb9c89c151f3f8b541e1bf33",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/viz_unittests/launcher-summary.json": "b8542c4ba9672acf4fa9193b30cfacffdc43cbae721cc402a05d70328c8631e1",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/viz_unittests/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/viz_unittests/stdout.log": "db07e58804c5c24937e944a34453a9ef42b49234a5a0cf19423d32d78ebb8169",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/state.json": "b5a4e34da66de9750e83d520a8b72bdf3426435c901b44de3c269786de03d97a",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/terminal-proof.json": "31f98ad0889de610feaf82375cc0f0c9afb558aca9f0382d6e0ee34dd186c6b5",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/watch/events.jsonl": "6a4e3bb97e27c0465fb85a6d3caba2e5a9c979eea35604871b6afdfa68a32f05",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/watch-arm": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/watch-config.json": "e908e4e26eb14bfd29d741687fa1d58bff4a0cf7a093d306d923c83283ac0f56",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/watch-done": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/watch-ready": "b69b5dc61764e433c9cb109cab8045dbf72686293b473b8cd1d052dd6da57628",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/watch.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/watch.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-builder-native321-preparation-001/native321-assertions-original-launch-001/original-launch.json": "395453b2e5507bfb28b6ed48f95ee1b7e8bbfc59a1c02307e3c8037abf39ee0a",
+    "/private/tmp/aux-builder-native321-preparation-001/native321-assertions-original-launch-001/original-terminal.json": "34b239dc2b4c350a16523a4a7540e5bfd3b94464ee2a7294e0679abc88dbe5a7",
+    "/private/tmp/aux-builder-native321-preparation-001/native321-assertions-original-launch-001/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-builder-native321-preparation-001/native321-assertions-original-launch-001/stdout.log": "b041292e0546d511cb06025b9022027f5374ed4bf468bb09e7dea9e2c306b205"
+  },
+  "actualOriginalPids": [
+    50434,
+    50436,
+    50447,
+    50465,
+    51005,
+    56664,
+    56711,
+    56720,
+    56797,
+    56814,
+    56848,
+    56987,
+    56997,
+    57012,
+    57033,
+    57054,
+    57080,
+    57192
+  ],
+  "actualOriginalGroups": [
+    50434,
+    50447,
+    50465,
+    51005,
+    56664,
+    56711,
+    56720,
+    56797,
+    56814,
+    56848,
+    56987,
+    56997,
+    57012,
+    57033,
+    57054,
+    57080,
+    57192
+  ],
+  "actualRows": [],
+  "slotAbsent": true,
+  "selectedCases": 453,
+  "statusCounts": {
+    "SUCCESS": 395,
+    "FAILURE": 55,
+    "CRASH": 3
+  },
+  "targetResults": [
+    {
+      "target": "cc_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 13,
+      "statusCounts": {
+        "SUCCESS": 13
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/cc_unittests/launcher-summary.json",
+        "sha256": "b5bfba333df177aeb33ad59ed2842a1b855af6d76d3c756b8cc3147896c3c63d"
+      }
+    },
+    {
+      "target": "unit_tests",
+      "exitCode": 1,
+      "selectedCaseCount": 168,
+      "statusCounts": {
+        "SUCCESS": 154,
+        "FAILURE": 14
+      },
+      "failedCases": {
+        "NativeCreatorCloseReceiptTest.CreationDeadlineCannotBeRearmedByReady": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.DisconnectRetiresPendingReadyExactlyOnce": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.EarlyBlankReadyRetirementCannotReuseOriginalCreatorIterator": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.MoreThan128TerminalFamiliesReclaimOnlyAfterGenuinePageDestruction": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.OriginalConnectionCannotBeReplaced": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.OriginalResumeDeadlineCannotExtendAfterConsumption": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.OwnerMutationRefusesOriginalProofAndHumanCanClose": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.ParentRetirementRetainsOriginalRegisteredAncestry": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.ReadyRequiresOriginalCommittedNavigation": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.ReleasedChildRetainsHistoricalParentStopWithoutAuthority": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.ResumeOriginalIntentCannotConsumeReplacedStopOrReplay": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.TerminalChildCannotDiscardActiveParentHistoricalRegistration": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptTest.UnsupportedInputViewRefusesCleanupAndRetainsOriginalPage": [
+          "FAILURE"
+        ],
+        "NativeRuntimeMemoryWorkerTest.RefusedUnknownOrOversizedOriginalRecordsNeverBecomeMemoryProof": [
+          "FAILURE"
+        ]
+      },
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/unit_tests/launcher-summary.json",
+        "sha256": "dfd031d51c5095320451e0c3b3c9c703e70c2f35354501bf7193fa87e46f3386"
+      }
+    },
+    {
+      "target": "browser_tests",
+      "exitCode": 1,
+      "selectedCaseCount": 90,
+      "statusCounts": {
+        "SUCCESS": 46,
+        "FAILURE": 41,
+        "CRASH": 3
+      },
+      "failedCases": {
+        "AuxAutoPictureInPictureEligibilityBrowserTest.NativeProtectedDocumentRefusesEntry": [
+          "FAILURE"
+        ],
+        "AuxQueuedAutomaticPictureInPictureBrowserTest.ExpiredAutomaticActivationCannotBecomeManualEntry": [
+          "FAILURE"
+        ],
+        "AuxQueuedAutomaticPictureInPictureBrowserTest.NativeManualDocumentSupersedesQueuedAutomaticWithoutClockAdvance": [
+          "FAILURE"
+        ],
+        "AuxQueuedAutomaticPictureInPictureBrowserTest.NativeProtectionInstalledBeforeActualAutomaticEffectRefusesWindow": [
+          "FAILURE"
+        ],
+        "AuxQueuedAutomaticPictureInPictureBrowserTest.ReplacedDocumentRefusesHeldAutomaticPayload": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.AttachRetirementCallbackDestroysOriginalWebContents": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.AttachRetirementCallbackReplacesSameUrlDocument": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.ConnectionRetirementRefusesOriginalAndHumanCanClose": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.FinalRealPredicateUserdataDestructionRefusesWithoutDeletion": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.GenuineBeforeUnloadContinuationDeletesOnlyOriginal": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.GenuineCreationMacAckAndFinalDeletionAreOneUse": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.GenuineLocalPersonReturnControlCreatesFreshOneUseNativeContext": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.GenuineParentOwnerStopRetiresOnlyRegisteredDescendantAndResumeIsOneUse": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.GenuineStartReadyTakeProducesCommittedCloseOnlyReceipt": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.HeldBeforeUnloadOwnerRetirementCannotDeleteOriginal": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.IndependentHumanCloseNeverBecomesAgentSuccess": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.NativeInstalledLeaseWithoutRuntimeAckRetiresToCloseOnly": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.NativePersonRetirementRefusesOriginalCleanup": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.NativeStartDeadlineCannotBeExtendedByDelayedTake": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.ObserverRetirementRefusesBeforeDestroyTabFeatures": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.SameProfileHostRecreationRetiresOriginalAuthority": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.TakeoverPreparationWaitsForRealOriginalFinalDispatch": [
+          "FAILURE"
+        ],
+        "NativeCreatorCloseReceiptBrowserTest.UserdataRemovalIsNotSuccessfulWebContentsDestruction": [
+          "FAILURE"
+        ],
+        "NativePersonObserverControllerBrowserTest.ActualEightPendingHostReadsRefuseNinthAndRetirementClearsAll": [
+          "FAILURE"
+        ],
+        "NativePersonObserverControllerBrowserTest.ClosedRequestRejectsCallerScriptAndValueAttribute": [
+          "FAILURE"
+        ],
+        "NativePersonObserverControllerBrowserTest.FixedReadReturnsOriginalDocumentWithoutFieldValues": [
+          "FAILURE"
+        ],
+        "NativePersonObserverControllerBrowserTest.HostFirstDestructionRetiresExistingControllerAuthority": [
+          "CRASH"
+        ],
+        "NativePersonObserverControllerBrowserTest.NativeReadSessionRetainsOriginalDocumentAndConnection": [
+          "FAILURE"
+        ],
+        "NativePersonObserverControllerBrowserTest.NavigationRetiresOriginalBeforeReplacementDocumentRead": [
+          "FAILURE"
+        ],
+        "NativePersonObserverControllerBrowserTest.OriginalDisconnectCannotClearReplacementRead": [
+          "FAILURE"
+        ],
+        "NativePersonObserverControllerBrowserTest.OriginalHostPublicationIsIdempotentAndRetiredGenerationRefuses": [
+          "FAILURE"
+        ],
+        "NativePersonObserverControllerBrowserTest.OriginalRetirementCallbackRetainsReentrantReplacementRead": [
+          "FAILURE"
+        ],
+        "NativePersonObserverControllerBrowserTest.ProfileUserDataClearRetiresOriginalPublishedConnection": [
+          "CRASH"
+        ],
+        "NativePersonObserverControllerBrowserTest.SettledOwnerMutationRetiresPendingOriginalRead": [
+          "FAILURE"
+        ],
+        "NativePersonObserverControllerBrowserTest.SettledOwnerMutationRotatesNativeReadSession": [
+          "FAILURE"
+        ],
+        "NativePersonObserverControllerBrowserTest.UnpublishedHostUserDataClearDoesNotCreateAuthority": [
+          "CRASH"
+        ],
+        "NativeRecorderControllerBrowserTest.FixedWorldCapturesTrustedInputAndRejectsProgrammaticClick": [
+          "FAILURE"
+        ],
+        "NativeRecorderControllerBrowserTest.OldRecordingReceiptCannotStopOrDrainReplacement": [
+          "FAILURE"
+        ],
+        "NativeRecorderControllerBrowserTest.PreservesTrustedInputAndImmediateSubmitBeforeNavigation": [
+          "FAILURE"
+        ],
+        "NativeRecorderControllerBrowserTest.RefusesForeignConnectionAndRuntimeOwnedPage": [
+          "FAILURE"
+        ],
+        "NativeRecorderControllerBrowserTest.RetiredPendingReplyCannotOverwriteReplacementCleanup": [
+          "FAILURE"
+        ],
+        "NativeRecorderControllerBrowserTest.SettledOwnerMutationCannotReplayPersonRecorderReceipt": [
+          "FAILURE"
+        ],
+        "ResultPreviewBrowserTest.OriginalParentLoadsHaveDistinctOpaqueDestinationNonces": [
+          "FAILURE"
+        ],
+        "ResultPreviewBrowserTest.ReplacedOriginalParentCannotReuseOriginalToken": [
+          "FAILURE"
+        ]
+      },
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/browser_tests/launcher-summary.json",
+        "sha256": "47a9d2239d2883225fd4201e64d4e295006b36a3853a149c28cdaccff79c83d5"
+      }
+    },
+    {
+      "target": "profile_spaces_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 1,
+      "statusCounts": {
+        "SUCCESS": 1
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/profile_spaces_unittests/launcher-summary.json",
+        "sha256": "efa9a0800d4b10036ac5f4d9e5a51d4396e6b12898d81a3887e539fcced0de9f"
+      }
+    },
+    {
+      "target": "owner_mutation_fence_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 5,
+      "statusCounts": {
+        "SUCCESS": 5
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/owner_mutation_fence_unittests/stdout.log",
+        "sha256": "3ed6913b32e381b2048ce11f99cb96e103f47b41ba677d9d751f95d3bf51b48b"
+      }
+    },
+    {
+      "target": "blink_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 53,
+      "statusCounts": {
+        "SUCCESS": 53
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_unittests/launcher-summary.json",
+        "sha256": "940968519446616453aa1fdf02302d0f7930687542a6199253c575045f0867e3"
+      }
+    },
+    {
+      "target": "blink_platform_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 6,
+      "statusCounts": {
+        "SUCCESS": 6
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_platform_unittests/launcher-summary.json",
+        "sha256": "cdeaa0806de7d51c326c637053a18398114c47a7aae604a682072949e0349176"
+      }
+    },
+    {
+      "target": "viz_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 60,
+      "statusCounts": {
+        "SUCCESS": 60
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/viz_unittests/launcher-summary.json",
+        "sha256": "b8542c4ba9672acf4fa9193b30cfacffdc43cbae721cc402a05d70328c8631e1"
+      }
+    },
+    {
+      "target": "content_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 33,
+      "statusCounts": {
+        "SUCCESS": 33
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/content_unittests/launcher-summary.json",
+        "sha256": "05be78f5594500041fa777b649470d8e54883c063eccf047baae23121ce2c25b"
+      }
+    },
+    {
+      "target": "journey_fixture_path_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 6,
+      "statusCounts": {
+        "SUCCESS": 6
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/journey_fixture_path_unittests/launcher-summary.json",
+        "sha256": "5539c40453f5cb1ba67facd26d70af3a84f5c178a98b9b7e37c3c60faaf47718"
+      }
+    },
+    {
+      "target": "link_routing_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 4,
+      "statusCounts": {
+        "SUCCESS": 4
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/link_routing_unittests/stdout.log",
+        "sha256": "b0c27b73837c08ca05b091b4494247b6db68adc1392a8990de7ab6ad01dcbc16"
+      }
+    },
+    {
+      "target": "auto_pip_site_policy_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 3,
+      "statusCounts": {
+        "SUCCESS": 3
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/auto_pip_site_policy_unittests/stdout.log",
+        "sha256": "1bfe12610fa907818d8cbdfb7bd2995d255980728e61751c1a29128f27992c9a"
+      }
+    },
+    {
+      "target": "blink_common_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 5,
+      "statusCounts": {
+        "SUCCESS": 5
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/blink_common_unittests/launcher-summary.json",
+        "sha256": "ae83682fd4a74bb01dbba47e03b1afd99971de971dc50cc5438d9e982a9bb911"
+      }
+    },
+    {
+      "target": "components_unittests",
+      "exitCode": 0,
+      "selectedCaseCount": 3,
+      "statusCounts": {
+        "SUCCESS": 3
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_unittests/launcher-summary.json",
+        "sha256": "3b8cdf06d50786a484b7e0f87538af86fbb5b1f53c73e6e9b6e1b9f2f6ec0ada"
+      }
+    },
+    {
+      "target": "interactive_ui_tests",
+      "exitCode": 0,
+      "selectedCaseCount": 2,
+      "statusCounts": {
+        "SUCCESS": 2
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/interactive_ui_tests/launcher-summary.json",
+        "sha256": "669a3d4628e337533bcbb0a5cd031036b85378e63aa8e7a1b4d4f34deeb6b0aa"
+      }
+    },
+    {
+      "target": "components_browsertests",
+      "exitCode": 0,
+      "selectedCaseCount": 1,
+      "statusCounts": {
+        "SUCCESS": 1
+      },
+      "failedCases": {},
+      "rawSummaryOrStdout": {
+        "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-assertion-batch-002/native/components_browsertests/launcher-summary.json",
+        "sha256": "925bf9d90c28f05124a347ebc978f72abb60a6e9729a29836d049774536c0ad5"
+      }
+    }
+  ],
+  "allRequiredCasesExactlyOnce": true,
+  "assertionsPassed": false,
+  "originalRetries": 0,
+  "watcherExitCode": 0,
+  "qualification": false,
+  "appExecuted": false,
+  "helperExecutedDuringAssertions": false
+}

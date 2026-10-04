@@ -1,0 +1,13 @@
+{
+  "actualBytes": {
+    "startupJs": 498689,
+    "startupCss": 179368,
+    "totalJs": 1842805
+  },
+  "limitsUnchanged": {
+    "startupJs": 501760,
+    "startupCss": 184320,
+    "totalJs": 1843200
+  },
+  "pass": true
+}

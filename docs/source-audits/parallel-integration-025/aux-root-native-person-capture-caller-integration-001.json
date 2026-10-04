@@ -1,0 +1,54 @@
+{
+  "producer": "root-native-person-capture-caller-integration",
+  "manifestSha256": "f39ecd998626cb766b2e930b4648f34871f8cd535dda0d50ca5701622755a9bb",
+  "patchSha256": "1c6a118d5f8fa81015c4da0ad458471c3c0aa5a1ecb77620659bfd3695ea5d98",
+  "allTenExactBeforeAfterLeavesVerified": true,
+  "actualForwardReverseForward": true,
+  "originalDriverCaptureUnchanged": true,
+  "nativePersonOriginalLiveDocumentControllerWindowSessionFencesRetained": true,
+  "fixedMaskedReceiptAndCanonicalBoundedPngRequired": true,
+  "integratedRoot": "/private/tmp/aux-browser-runtime-following-batch",
+  "workspaceRebuildAndTestsPending": false,
+  "nativeProducerPending": true,
+  "nativeCaptureQualified": false,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-capture-caller-review-xr7tcgml",
+  "ownRuntimeRebuildPassedBeforeUnit": true,
+  "meaningfulOriginalDriverAndNativeCallerControlsPassed": true,
+  "shellTypesBindingsScopedLintPassed": true,
+  "strictNative154RendererBudgetPassed": true,
+  "rendererActualBytes": {
+    "startupJs": 498689,
+    "startupCss": 179368,
+    "totalJs": 1842805
+  },
+  "evidence": [
+    {
+      "path": "/tmp/aux-root-person-capture-integrated-build-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-root-person-capture-integrated-controls-001.log",
+      "sha256": "547aa4e2a1932677d6c96b94963af743f0a33e87dbd83453b5e26fc1f713d5c1"
+    },
+    {
+      "path": "/tmp/aux-root-person-capture-shell-types-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-root-person-capture-scoped-lint-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-root-person-capture-bindings-001.log",
+      "sha256": "c4a14e6acaddae6c161794ddd8df215ae5ff2f13dafd0188a26a5220757fab0c"
+    },
+    {
+      "path": "/tmp/aux-root-person-capture-native154-renderer-001.log",
+      "sha256": "a7c487be1921b2db9127c91320a57732529cd73e83b436abdb9c0168b20fff6c"
+    },
+    {
+      "path": "/tmp/aux-root-person-capture-native154-strict-budget-001.json",
+      "sha256": "040c0083bdcbb5011c2793c81f243de26a7c2b30240cb208ba3a7362718285b4"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "producer": "root-person-scope-teardown-metadata-source-review",
+  "freezeSha256": "e2a9d5624c8cd5525d6e9ddd73272b5855617ecadec1b8a252f8eafc12a02c5b",
+  "actualAllBeforeAfterPatchAndApiPinsVerified": true,
+  "actualForwardReverseForward": true,
+  "originalNativeTestDefinitionsPreserved": true,
+  "originalZeroUserDataAndAuthorityRetirementAssertionsRetained": true,
+  "derivedDestructorRestoresOnlyActualOriginalBrowserProfileTypeBeforeBaseDestruction": true,
+  "diagnosticNotProductionBypass": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-person-metadata-yl83slk1",
+  "allThreeOriginalTestBodiesByteExact": [
+    "ProfileUserDataClearRetiresOriginalPublishedConnection",
+    "HostFirstDestructionRetiresExistingControllerAuthority",
+    "UnpublishedHostUserDataClearDoesNotCreateAuthority"
+  ]
+}
