@@ -1,0 +1,16 @@
+✔ every closed named export binds the exact installed React value without a wrapper (23.467834ms)
+✔ app named imports retain aliases and statement evaluation source exactly (7.749666ms)
+✔ default, namespace, mixed, unknown named and foreign imports stay untouched (4.837042ms)
+✔ dependencies, sibling-prefix paths, virtual IDs and symlink escape cannot be retargeted (4.441708ms)
+✔ Vite serve omits the named-value transform and original imports remain original (8.100209ms)
+✔ actual installed hooks preserve state/context/memo/ref and identical server markup (13.471666ms)
+✔ named imports are snapshots of original CJS exports, never a mutable namespace proxy (3.850791ms)
+✔ multiple imports and Unicode offsets preserve all original evaluation code (2.980958ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 162.220625

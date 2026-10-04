@@ -1,0 +1,31 @@
+{
+  "status": "ROOT EXACT STAGE REQUEST REVIEW PASS; BUILDER MAY DISPATCH ONLY THIS STAGE",
+  "launchSha256": "e0f7ac284c13db992258df6c096342d018e22e63b18b698e21211e4175c5e96f",
+  "controllerSha256": "8a5e788662c3985e8cfd7726ef0d86c657f9e8c752b66238e69d57de724db5c4",
+  "requestSha256": "2f27a1d88b54feaf599ae5717586374150af7fb81bba6b18dbea96a8ead32bbc",
+  "exactDelta": {
+    "path": "/private/tmp/aux-builder-native313-source-preparation-001/stage-native313-versus-reviewed311.diff",
+    "sha256": "60270d748d76049a97b8e829ec8cde49d7f095d05697c05359c7907af116f15b"
+  },
+  "sourceRootAudit": {
+    "status": "ROOT SOURCE AND ACTUAL PHYSICAL TRANSITION PASS; NO EXECUTION ADMITTED",
+    "candidate": {
+      "commit": "61daef2db06cb78392a84ee4723fa447e04f2150",
+      "tree": "ad1ff3ba2431fdc8ffedd40b984398666ff56766",
+      "dirty": false,
+      "label": "61daef2db06cb78392a84ee4723fa447e04f2150"
+    },
+    "sourceSha256": "1f35a2f4f3d41f252a0914333a8356e8bba1c9d69d8e58f4a3e9b79af75890dc",
+    "native": 690,
+    "beforeIncludingAbsence": 691,
+    "packets": 313,
+    "assets": 175,
+    "dependencyRows": 286,
+    "workspaceJoins": 75,
+    "actualPhysicalForwardReverseForward": true,
+    "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-native313-actual-transition-0w0tdjlk",
+    "naturalTerminalRootAudit": "/tmp/aux-root-native311-natural-terminal-audit-001.json"
+  },
+  "naturalTerminalRootAudit": "/tmp/aux-root-native311-natural-terminal-audit-001.json",
+  "scope": "joint0342+0343 actual native311-to313 transition and generated3; existing175 assets; preserve compiled/cache/runtime/helper; no GN/build/App admission"
+}

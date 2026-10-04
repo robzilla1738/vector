@@ -1,0 +1,14 @@
+{
+  "sourceOnlyTerminalAudit": true,
+  "originalFailedGraphStillFailed": true,
+  "compiledActual": 8801,
+  "exactDylibPakSet": 8784,
+  "nativeBefore": 690,
+  "generated": 3,
+  "runtimeOldAndHelperUnchanged": true,
+  "cacheAndDerivedMetadataExact": true,
+  "originalPidsAndBothGroupsActuallyAbsent": true,
+  "slotAbsent": true,
+  "terminalReceiptSha256": "de89f42c413e2d18fc83e6721a620f2886e57509c037b6c0d265a0a48f7d1601",
+  "noRuntimeOrAppAdmission": true
+}

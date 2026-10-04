@@ -1,0 +1,18 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+(node:26282) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26281) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26280) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/RunPanel.retry-context.test.tsx (14 tests) 134ms
+ ✓ |unit| apps/shell/src/components/RunPanel.commands.test.tsx (9 tests) 138ms
+ ✓ |unit| apps/shell/src/transcript/run-transcript.test.tsx (8 tests) 163ms
+
+ Test Files  3 passed (3)
+      Tests  31 passed (31)
+   Start at  20:04:31
+   Duration  8.70s (transform 1.70s, setup 0ms, collect 21.21s, tests 435ms, environment 3.09s, prepare 347ms)
+
