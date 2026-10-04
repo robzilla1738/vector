@@ -1,0 +1,13 @@
+{
+  "sourceOnly": true,
+  "executionAdmission": false,
+  "freezeSha256": "a8942941131b079e4023d517776d91304393116c927fa5f25d46b10b1712af90",
+  "installedApiPins": 4,
+  "actualRawFirstFailureBlocks": 2,
+  "exactWholeFileInverse": true,
+  "exactForwardReverseForward": true,
+  "capturingSites": 17,
+  "semanticReview": "Installed test helper binds const capturing lambdas as repeating callbacks; original Capture OnceCallback result interface retains one-use conversion. Every capture/body/assertion/deadline and stateless callback byte-exact.",
+  "requiredAssertions": 524,
+  "nativeExecution": false
+}

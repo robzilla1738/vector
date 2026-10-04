@@ -1,0 +1,8 @@
+{
+  "rootAbsentCachedMirrors": [
+    "chrome/browser/ui/aux/native_person_capture_controller_unittest.cc",
+    "chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc"
+  ],
+  "authority": "All327 root canonical packet hashes equal independently reviewed candidate prefix; actual before mirrors pinned there. Added full reviewed result mirrors, not a change to historical canonical tests.",
+  "sourceOnly": true
+}
