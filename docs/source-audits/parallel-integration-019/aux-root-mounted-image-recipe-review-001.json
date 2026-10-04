@@ -1,0 +1,13 @@
+{
+  "schema": "aux-root-mounted-image-recipe-review/v1",
+  "recipe": "/private/tmp/aux-browser-runtime-following-batch/docs/lane-requests/design/mounted-image-success-recipe",
+  "actualSourcePins": 9,
+  "sourceInventoryStates": 7,
+  "nativeAcceptedCells": 0,
+  "fixedOriginalPngFixtureIdentityRequired": true,
+  "actualPermittedUnsentChatAndImageMetadataSeamStillMissing": true,
+  "originalChooserCaptureRegionAndSavedReadFailureDistinct": true,
+  "sourcePreviewSuccessorAlreadyAdoptedButNativePending": true,
+  "geometryMustBeActual": true,
+  "qualification": false
+}
