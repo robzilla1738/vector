@@ -1,6 +1,6 @@
 import { smallButtonProps } from "../ui/button-props";
 import type { ConversationSource } from "@aux/contracts";
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import type { BrowserProfile } from "../bridge";
 import { Dialog } from "../ui";
 import { shellIconClose } from "./icons";
@@ -15,9 +15,19 @@ interface Props {
   initialFocus: RefObject<HTMLButtonElement | null>;
   onClose(): void;
   onChoose(profile: BrowserProfile): void;
+  cancelControl?: ReactNode;
+  profileControl?: (profile: BrowserProfile) => ReactNode;
 }
 
-export function CalendarSourceChoiceDialog({ choice, returnFocus, initialFocus, onClose, onChoose }: Props) {
+export function CalendarSourceChoiceDialog({
+  choice,
+  returnFocus,
+  initialFocus,
+  onClose,
+  onChoose,
+  cancelControl,
+  profileControl,
+}: Props) {
   return (
     <Dialog
       label="Open Calendar source"
@@ -27,9 +37,11 @@ export function CalendarSourceChoiceDialog({ choice, returnFocus, initialFocus, 
     >
       <header>
         <h3>Open Calendar source</h3>
-        <button ref={initialFocus} className="icon-btn" aria-label="Cancel" onClick={onClose}>
-          {shellIconClose}
-        </button>
+        {cancelControl ?? (
+          <button ref={initialFocus} className="icon-btn" aria-label="Cancel" onClick={onClose}>
+            {shellIconClose}
+          </button>
+        )}
       </header>
       <p>
         <b>{choice.source.title}</b>
@@ -38,12 +50,16 @@ export function CalendarSourceChoiceDialog({ choice, returnFocus, initialFocus, 
       </p>
       <p>Choose the browser Profile signed in to this account.</p>
       <div className="conversation-calendar-profiles">
-        {choice.profiles.map((profile) => (
-          <button key={profile.id} {...smallButtonProps} onClick={() => onChoose(profile)}>
-            {profile.name}
-            {profile.current ? " · current" : ""}
-          </button>
-        ))}
+        {choice.profiles.map((profile) =>
+          profileControl ? (
+            profileControl(profile)
+          ) : (
+            <button key={profile.id} {...smallButtonProps} onClick={() => onChoose(profile)}>
+              {profile.name}
+              {profile.current ? " · current" : ""}
+            </button>
+          ),
+        )}
       </div>
     </Dialog>
   );

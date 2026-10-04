@@ -1,0 +1,27 @@
+{
+  "result": "SOURCE_PASS_BUNDLE_TOTAL_FAIL_RETAINED",
+  "feature": "Five remappable recorded-source/Calendar choice actions preserve original source identity, Profile/account/URL/document reuse and background-citation routing; stale owners stop before later native operations. Original ACK/rejection retained.",
+  "rootReplay": "Exact6 contextual rebase F/R/F. Refused first Calendarbefore mismatch preserved. Rebased before/result inverted to original6Sourcebehavior and original staticbutton props.",
+  "completeChatControls": {
+    "files": 11,
+    "passed": 130
+  },
+  "workspaceBuildExit": 0,
+  "shellTypesExit": 0,
+  "scopedLintExit": 0,
+  "ratchetFormat": "FirstFAIL Calendar two longlines retained; narrow Calendar format exact native154 loweredcode proven; finalPASS.",
+  "renderer": {
+    "startupJS": 501694,
+    "startupCSS": 179481,
+    "totalJS": 1846901,
+    "manifestSHA256": "e8a625bccda6be96e012a8a86ed7db5a9289d3db9623aec16b16c028b9978e4b",
+    "limits": {
+      "startupJS": 501760,
+      "startupCSS": 184320,
+      "totalJS": 1843200
+    },
+    "strictPass": false
+  },
+  "native": "Actual full18 PASS, matching current92runtime/freshd7SDK27/helper/compiler independentauditPASS, original17binarylists/524requiredcasesactualpresencePASS. Originalserial524 safetyassertions running; noApp/qualification claimed.",
+  "next": "Document/result attachment commands + source-backed metadata wrapping + cohesive construction reserve. No gate changes or following adoption."
+}

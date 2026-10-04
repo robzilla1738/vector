@@ -1,0 +1,362 @@
+[
+  {
+    "link": "node_modules/@aux/shell",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/shell",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/shell"
+  },
+  {
+    "link": "node_modules/@aux/contracts",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/contracts",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/contracts"
+  },
+  {
+    "link": "node_modules/@aux/runtime",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/runtime",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/runtime"
+  },
+  {
+    "link": "node_modules/@aux/mcp",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/mcp",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/mcp"
+  },
+  {
+    "link": "node_modules/@aux/cli",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/cli",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/cli"
+  },
+  {
+    "link": "node_modules/@aux/sdk",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/sdk",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/sdk"
+  },
+  {
+    "link": "node_modules/@aux/chromium-driver",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/chromium-driver",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/chromium-driver"
+  },
+  {
+    "link": "node_modules/@aux/filter-lists",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/filter-lists",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/filter-lists"
+  },
+  {
+    "link": "apps/shell/node_modules/@aux/shell",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/shell",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/shell"
+  },
+  {
+    "link": "apps/shell/node_modules/@aux/contracts",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/contracts",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/contracts"
+  },
+  {
+    "link": "apps/shell/node_modules/@aux/runtime",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/runtime",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/runtime"
+  },
+  {
+    "link": "apps/shell/node_modules/@aux/mcp",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/mcp",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/mcp"
+  },
+  {
+    "link": "apps/shell/node_modules/@aux/cli",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/cli",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/cli"
+  },
+  {
+    "link": "apps/shell/node_modules/@aux/sdk",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/sdk",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/sdk"
+  },
+  {
+    "link": "apps/shell/node_modules/@aux/chromium-driver",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/chromium-driver",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/chromium-driver"
+  },
+  {
+    "link": "apps/shell/node_modules/@aux/filter-lists",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/filter-lists",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/filter-lists"
+  },
+  {
+    "link": "apps/runtime/node_modules/@aux/shell",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/shell",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/shell"
+  },
+  {
+    "link": "apps/runtime/node_modules/@aux/contracts",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/contracts",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/contracts"
+  },
+  {
+    "link": "apps/runtime/node_modules/@aux/runtime",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/runtime",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/runtime"
+  },
+  {
+    "link": "apps/runtime/node_modules/@aux/mcp",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/mcp",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/mcp"
+  },
+  {
+    "link": "apps/runtime/node_modules/@aux/cli",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/cli",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/cli"
+  },
+  {
+    "link": "apps/runtime/node_modules/@aux/sdk",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/sdk",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/sdk"
+  },
+  {
+    "link": "apps/runtime/node_modules/@aux/chromium-driver",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/chromium-driver",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/chromium-driver"
+  },
+  {
+    "link": "apps/runtime/node_modules/@aux/filter-lists",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/filter-lists",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/filter-lists"
+  },
+  {
+    "link": "packages/contracts/node_modules/@aux/shell",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/shell",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/shell"
+  },
+  {
+    "link": "packages/contracts/node_modules/@aux/contracts",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/contracts",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/contracts"
+  },
+  {
+    "link": "packages/contracts/node_modules/@aux/runtime",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/runtime",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/runtime"
+  },
+  {
+    "link": "packages/contracts/node_modules/@aux/mcp",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/mcp",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/mcp"
+  },
+  {
+    "link": "packages/contracts/node_modules/@aux/cli",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/cli",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/cli"
+  },
+  {
+    "link": "packages/contracts/node_modules/@aux/sdk",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/sdk",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/sdk"
+  },
+  {
+    "link": "packages/contracts/node_modules/@aux/chromium-driver",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/chromium-driver",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/chromium-driver"
+  },
+  {
+    "link": "packages/contracts/node_modules/@aux/filter-lists",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/filter-lists",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/filter-lists"
+  },
+  {
+    "link": "packages/mcp/node_modules/@aux/shell",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/shell",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/shell"
+  },
+  {
+    "link": "packages/mcp/node_modules/@aux/contracts",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/contracts",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/contracts"
+  },
+  {
+    "link": "packages/mcp/node_modules/@aux/runtime",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/runtime",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/runtime"
+  },
+  {
+    "link": "packages/mcp/node_modules/@aux/mcp",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/mcp",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/mcp"
+  },
+  {
+    "link": "packages/mcp/node_modules/@aux/cli",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/cli",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/cli"
+  },
+  {
+    "link": "packages/mcp/node_modules/@aux/sdk",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/sdk",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/sdk"
+  },
+  {
+    "link": "packages/mcp/node_modules/@aux/chromium-driver",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/chromium-driver",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/chromium-driver"
+  },
+  {
+    "link": "packages/mcp/node_modules/@aux/filter-lists",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/filter-lists",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/filter-lists"
+  },
+  {
+    "link": "packages/cli/node_modules/@aux/shell",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/shell",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/shell"
+  },
+  {
+    "link": "packages/cli/node_modules/@aux/contracts",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/contracts",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/contracts"
+  },
+  {
+    "link": "packages/cli/node_modules/@aux/runtime",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/runtime",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/runtime"
+  },
+  {
+    "link": "packages/cli/node_modules/@aux/mcp",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/mcp",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/mcp"
+  },
+  {
+    "link": "packages/cli/node_modules/@aux/cli",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/cli",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/cli"
+  },
+  {
+    "link": "packages/cli/node_modules/@aux/sdk",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/sdk",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/sdk"
+  },
+  {
+    "link": "packages/cli/node_modules/@aux/chromium-driver",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/chromium-driver",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/chromium-driver"
+  },
+  {
+    "link": "packages/cli/node_modules/@aux/filter-lists",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/filter-lists",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/filter-lists"
+  },
+  {
+    "link": "packages/sdk/node_modules/@aux/shell",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/shell",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/shell"
+  },
+  {
+    "link": "packages/sdk/node_modules/@aux/contracts",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/contracts",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/contracts"
+  },
+  {
+    "link": "packages/sdk/node_modules/@aux/runtime",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/runtime",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/runtime"
+  },
+  {
+    "link": "packages/sdk/node_modules/@aux/mcp",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/mcp",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/mcp"
+  },
+  {
+    "link": "packages/sdk/node_modules/@aux/cli",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/cli",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/cli"
+  },
+  {
+    "link": "packages/sdk/node_modules/@aux/sdk",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/sdk",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/sdk"
+  },
+  {
+    "link": "packages/sdk/node_modules/@aux/chromium-driver",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/chromium-driver",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/chromium-driver"
+  },
+  {
+    "link": "packages/sdk/node_modules/@aux/filter-lists",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/filter-lists",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/filter-lists"
+  },
+  {
+    "link": "packages/chromium-driver/node_modules/@aux/shell",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/shell",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/shell"
+  },
+  {
+    "link": "packages/chromium-driver/node_modules/@aux/contracts",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/contracts",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/contracts"
+  },
+  {
+    "link": "packages/chromium-driver/node_modules/@aux/runtime",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/runtime",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/runtime"
+  },
+  {
+    "link": "packages/chromium-driver/node_modules/@aux/mcp",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/mcp",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/mcp"
+  },
+  {
+    "link": "packages/chromium-driver/node_modules/@aux/cli",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/cli",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/cli"
+  },
+  {
+    "link": "packages/chromium-driver/node_modules/@aux/sdk",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/sdk",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/sdk"
+  },
+  {
+    "link": "packages/chromium-driver/node_modules/@aux/chromium-driver",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/chromium-driver",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/chromium-driver"
+  },
+  {
+    "link": "packages/chromium-driver/node_modules/@aux/filter-lists",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/filter-lists",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/filter-lists"
+  },
+  {
+    "link": "packages/filter-lists/node_modules/@aux/shell",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/shell",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/shell"
+  },
+  {
+    "link": "packages/filter-lists/node_modules/@aux/contracts",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/contracts",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/contracts"
+  },
+  {
+    "link": "packages/filter-lists/node_modules/@aux/runtime",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/apps/runtime",
+    "after": "/private/tmp/aux-design-static-props-baseline/apps/runtime"
+  },
+  {
+    "link": "packages/filter-lists/node_modules/@aux/mcp",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/mcp",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/mcp"
+  },
+  {
+    "link": "packages/filter-lists/node_modules/@aux/cli",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/cli",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/cli"
+  },
+  {
+    "link": "packages/filter-lists/node_modules/@aux/sdk",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/sdk",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/sdk"
+  },
+  {
+    "link": "packages/filter-lists/node_modules/@aux/chromium-driver",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/chromium-driver",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/chromium-driver"
+  },
+  {
+    "link": "packages/filter-lists/node_modules/@aux/filter-lists",
+    "before": "/private/tmp/aux-root-sidebar-selection-next/packages/filter-lists",
+    "after": "/private/tmp/aux-design-static-props-baseline/packages/filter-lists"
+  }
+]

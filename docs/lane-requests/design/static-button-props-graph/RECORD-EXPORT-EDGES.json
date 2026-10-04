@@ -1,0 +1,378 @@
+{
+  "appFile": "assets/App-CWGCn7AR.js",
+  "records": [
+    {
+      "local": "_t",
+      "className": "btn sm",
+      "exports": [
+        "s"
+      ]
+    },
+    {
+      "local": "Nn",
+      "className": "btn sm ghost",
+      "exports": [
+        "a"
+      ]
+    }
+  ],
+  "imports": [
+    {
+      "manifestKey": "_0jTsFleT.js",
+      "label": "chunk:SiteAgentAccess",
+      "local": "R",
+      "className": "btn sm",
+      "uses": 2
+    },
+    {
+      "manifestKey": "_C0hYbtrz.js",
+      "label": "chunk:AnswerMarkdown",
+      "local": "Nn",
+      "className": "btn sm ghost",
+      "uses": 3
+    },
+    {
+      "manifestKey": "_C0hYbtrz.js",
+      "label": "chunk:AnswerMarkdown",
+      "local": "Ui",
+      "className": "btn sm",
+      "uses": 1
+    },
+    {
+      "manifestKey": "_CfMxeRmU.js",
+      "label": "chunk:ConversationDrafts",
+      "local": "m",
+      "className": "btn sm ghost",
+      "uses": 4
+    },
+    {
+      "manifestKey": "_CfMxeRmU.js",
+      "label": "chunk:ConversationDrafts",
+      "local": "H",
+      "className": "btn sm",
+      "uses": 1
+    },
+    {
+      "manifestKey": "_CfmW_WSm.js",
+      "label": "chunk:ObservationPanel",
+      "local": "v",
+      "className": "btn sm ghost",
+      "uses": 1
+    },
+    {
+      "manifestKey": "_Cl8RtxS7.js",
+      "label": "chunk:ChatSessions",
+      "local": "Ne",
+      "className": "btn sm",
+      "uses": 1
+    },
+    {
+      "manifestKey": "_Cl8RtxS7.js",
+      "label": "chunk:ChatSessions",
+      "local": "Se",
+      "className": "btn sm ghost",
+      "uses": 1
+    },
+    {
+      "manifestKey": "_DO8fT9MF.js",
+      "label": "chunk:RoutineSchedule",
+      "local": "$",
+      "className": "btn sm ghost",
+      "uses": 2
+    },
+    {
+      "manifestKey": "_D_-KDbe6.js",
+      "label": "chunk:SessionRecovery",
+      "local": "B",
+      "className": "btn sm ghost",
+      "uses": 2
+    },
+    {
+      "manifestKey": "_D_-KDbe6.js",
+      "label": "chunk:SessionRecovery",
+      "local": "F",
+      "className": "btn sm",
+      "uses": 2
+    },
+    {
+      "manifestKey": "_Dw1FNSMQ.js",
+      "label": "chunk:replay",
+      "local": "le",
+      "className": "btn sm ghost",
+      "uses": 11
+    },
+    {
+      "manifestKey": "_Dw1FNSMQ.js",
+      "label": "chunk:replay",
+      "local": "re",
+      "className": "btn sm",
+      "uses": 14
+    },
+    {
+      "manifestKey": "_OyW7AQFv.js",
+      "label": "chunk:RunAttentionFeed",
+      "local": "D",
+      "className": "btn sm ghost",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/CommandSurface.tsx",
+      "label": "source:src/components/CommandSurface.tsx",
+      "local": "ue",
+      "className": "btn sm ghost",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/Conversation.tsx",
+      "label": "source:src/components/Conversation.tsx",
+      "local": "ge",
+      "className": "btn sm",
+      "uses": 32
+    },
+    {
+      "manifestKey": "src/components/Conversation.tsx",
+      "label": "source:src/components/Conversation.tsx",
+      "local": "me",
+      "className": "btn sm ghost",
+      "uses": 31
+    },
+    {
+      "manifestKey": "src/components/Downloads.tsx",
+      "label": "source:src/components/Downloads.tsx",
+      "local": "i",
+      "className": "btn sm ghost",
+      "uses": 16
+    },
+    {
+      "manifestKey": "src/components/FindBar.tsx",
+      "label": "source:src/components/FindBar.tsx",
+      "local": "D",
+      "className": "btn sm ghost",
+      "uses": 2
+    },
+    {
+      "manifestKey": "src/components/InlineAssist.tsx",
+      "label": "source:src/components/InlineAssist.tsx",
+      "local": "L",
+      "className": "btn sm",
+      "uses": 2
+    },
+    {
+      "manifestKey": "src/components/InlineAssist.tsx",
+      "label": "source:src/components/InlineAssist.tsx",
+      "local": "W",
+      "className": "btn sm ghost",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/Inspector.tsx",
+      "label": "source:src/components/Inspector.tsx",
+      "local": "C",
+      "className": "btn sm",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/Inspector.tsx",
+      "label": "source:src/components/Inspector.tsx",
+      "local": "w",
+      "className": "btn sm ghost",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/Library.tsx",
+      "label": "source:src/components/Library.tsx",
+      "local": "A",
+      "className": "btn sm",
+      "uses": 21
+    },
+    {
+      "manifestKey": "src/components/Library.tsx",
+      "label": "source:src/components/Library.tsx",
+      "local": "X",
+      "className": "btn sm ghost",
+      "uses": 8
+    },
+    {
+      "manifestKey": "src/components/LinkPeek.tsx",
+      "label": "source:src/components/LinkPeek.tsx",
+      "local": "b",
+      "className": "btn sm",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/LittleWindow.tsx",
+      "label": "source:src/components/LittleWindow.tsx",
+      "local": "j",
+      "className": "btn sm",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/Overview.tsx",
+      "label": "source:src/components/Overview.tsx",
+      "local": "C",
+      "className": "btn sm",
+      "uses": 8
+    },
+    {
+      "manifestKey": "src/components/Overview.tsx",
+      "label": "source:src/components/Overview.tsx",
+      "local": "T",
+      "className": "btn sm ghost",
+      "uses": 8
+    },
+    {
+      "manifestKey": "src/components/QuickAsk.tsx",
+      "label": "source:src/components/QuickAsk.tsx",
+      "local": "m",
+      "className": "btn sm ghost",
+      "uses": 2
+    },
+    {
+      "manifestKey": "src/components/RailHistory.tsx",
+      "label": "source:src/components/RailHistory.tsx",
+      "local": "F",
+      "className": "btn sm ghost",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/ReaderView.tsx",
+      "label": "source:src/components/ReaderView.tsx",
+      "local": "R",
+      "className": "btn sm",
+      "uses": 4
+    },
+    {
+      "manifestKey": "src/components/ReaderView.tsx",
+      "label": "source:src/components/ReaderView.tsx",
+      "local": "re",
+      "className": "btn sm ghost",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/ResultsTable.tsx",
+      "label": "source:src/components/ResultsTable.tsx",
+      "local": "C",
+      "className": "btn sm",
+      "uses": 2
+    },
+    {
+      "manifestKey": "src/components/ResultsTable.tsx",
+      "label": "source:src/components/ResultsTable.tsx",
+      "local": "A",
+      "className": "btn sm ghost",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/SetPanel.tsx",
+      "label": "source:src/components/SetPanel.tsx",
+      "local": "I",
+      "className": "btn sm",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/Settings.tsx",
+      "label": "source:src/components/Settings.tsx",
+      "local": "j",
+      "className": "btn sm",
+      "uses": 98
+    },
+    {
+      "manifestKey": "src/components/Settings.tsx",
+      "label": "source:src/components/Settings.tsx",
+      "local": "W",
+      "className": "btn sm ghost",
+      "uses": 89
+    },
+    {
+      "manifestKey": "src/components/SiteControls.tsx",
+      "label": "source:src/components/SiteControls.tsx",
+      "local": "f",
+      "className": "btn sm",
+      "uses": 10
+    },
+    {
+      "manifestKey": "src/components/SiteCustomization.tsx",
+      "label": "source:src/components/SiteCustomization.tsx",
+      "local": "j",
+      "className": "btn sm",
+      "uses": 2
+    },
+    {
+      "manifestKey": "src/components/StartPage.tsx",
+      "label": "source:src/components/StartPage.tsx",
+      "local": "H",
+      "className": "btn sm ghost",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/StartPage.tsx",
+      "label": "source:src/components/StartPage.tsx",
+      "local": "$",
+      "className": "btn sm",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/Tasks.tsx",
+      "label": "source:src/components/Tasks.tsx",
+      "local": "T",
+      "className": "btn sm",
+      "uses": 64
+    },
+    {
+      "manifestKey": "src/components/Tasks.tsx",
+      "label": "source:src/components/Tasks.tsx",
+      "local": "ge",
+      "className": "btn sm ghost",
+      "uses": 14
+    },
+    {
+      "manifestKey": "src/components/VaultOfferBanner.tsx",
+      "label": "source:src/components/VaultOfferBanner.tsx",
+      "local": "w",
+      "className": "btn sm ghost",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/components/WorkbookPreview.tsx",
+      "label": "source:src/components/WorkbookPreview.tsx",
+      "local": "p",
+      "className": "btn sm ghost",
+      "uses": 5
+    },
+    {
+      "manifestKey": "src/components/WorkbookPreview.tsx",
+      "label": "source:src/components/WorkbookPreview.tsx",
+      "local": "T",
+      "className": "btn sm",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/features/download-naming/Settings.tsx",
+      "label": "source:src/features/download-naming/Settings.tsx",
+      "local": "D",
+      "className": "btn sm",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/features/morning-review/NightSettings.tsx",
+      "label": "source:src/features/morning-review/NightSettings.tsx",
+      "local": "T",
+      "className": "btn sm",
+      "uses": 1
+    },
+    {
+      "manifestKey": "src/onboarding/OnboardingHost.tsx",
+      "label": "source:src/onboarding/OnboardingHost.tsx",
+      "local": "D",
+      "className": "btn sm ghost",
+      "uses": 10
+    },
+    {
+      "manifestKey": "src/onboarding/OnboardingHost.tsx",
+      "label": "source:src/onboarding/OnboardingHost.tsx",
+      "local": "re",
+      "className": "btn sm",
+      "uses": 3
+    }
+  ]
+}

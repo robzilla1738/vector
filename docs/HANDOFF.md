@@ -1,3 +1,13 @@
+## Current continuation — 2026-10-04, recorded sources and native safety
+
+Recorded browser, saved article and Calendar source actions now use five remappable scoped commands. They preserve original URLs, page/document and account/Profile identity, background citations, chooser text and focus, and admitted native ACK/rejections. Retired chats/windows stop before later opens or chooser publication. Exact contextual integration retains the previously verified static button construction. Workspace build, assembled chat controls, shell types, scoped lint and ratchet format pass.
+
+The combined Preview + Sources native154 renderer measures 501694 startup JavaScript and 179481 CSS (both pass), and 1846901 total JavaScript (3701 over the unchanged limit). This measured failure is retained; source success is not bundle acceptance or following adoption. Design is preparing a coherent construction reduction and wrapping full source metadata using supplied06 references. Document/result attachment controls are the next owned implementation batch.
+
+Native331 full18 compilation and the matching runtime/fresh current-d7 SDK27 helper are independently verified. Actual original17 binary lists contain all524 required cases exactly once. The sole builder runs the original serial safety assertions with unchanged retries, jobs, deadlines and ownership guards. App journeys, final native design/performance evidence, qualification and local main promotion remain open.
+
+Evidence: `docs/source-audits/parallel-integration-032/`. Earlier entries below remain historical; no app, qualification, push, signing or release is claimed.
+
 ## Current continuation — 2026-10-04, preview controls and native compilation
 
 Browser preview menu, page activation and split actions now use registered, remappable scoped commands. They retain original page, space and document identity, stop stale continuations, preserve original focus and native arguments, and avoid presenting errors in a retired chat/window. The assembled chat controls, workspace build, shell types and scoped lint pass. Source-choice controls are the next owned feature batch.

@@ -1,0 +1,43 @@
+{
+  "result": "PASS",
+  "actualCurrentAssetFullHashesChecked": 169,
+  "nodes": 118,
+  "actualBaseline": {
+    "startupJS": 501104,
+    "startupCSS": 179481,
+    "totalJS": 1848478,
+    "startupLabels": [
+      "chunk:App",
+      "chunk:feature-stage-reconciliation",
+      "source:index.html"
+    ]
+  },
+  "actualCurrent": {
+    "startupJS": 501058,
+    "startupCSS": 179481,
+    "totalJS": 1840983,
+    "startupLabels": [
+      "chunk:App",
+      "chunk:feature-stage-reconciliation",
+      "source:index.html"
+    ]
+  },
+  "delta": {
+    "startupJS": -46,
+    "startupCSS": 0,
+    "totalJS": -7495
+  },
+  "dynamicEdgesAndOrderEqual": true,
+  "startupClosureAndPreloadOrderEqual": true,
+  "orderedStaticImportsOutsideAlreadyBootNodesEqual": true,
+  "rawChangedGraphNodes": [
+    "chunk:ChatSessions",
+    "chunk:RoutineSchedule",
+    "chunk:ConversationDrafts",
+    "source:src/components/RailHistory.tsx",
+    "source:src/components/Tasks.tsx",
+    "source:src/components/WorkbookPreview.tsx"
+  ],
+  "graphProofSHA256": "3c7186ca0a2969fec6730bfde600e497fd702303b4915eb5fbfeceb56ec43b27",
+  "limit": "Source-equivalence and bundle attribution only. Not native appearance/performance acceptance."
+}

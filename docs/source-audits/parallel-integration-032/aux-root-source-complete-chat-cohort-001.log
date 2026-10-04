@@ -1,0 +1,52 @@
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:86422) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:86428) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:86423) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:86429) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:86424) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:86425) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:86427) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:86430) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:86426) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Conversation.controls.test.tsx (13 tests) 451ms
+ ✓ |unit| apps/shell/src/components/Conversation.queued-controls.test.tsx (11 tests) 551ms
+ ✓ |unit| apps/shell/src/components/Conversation.live-controls.test.tsx (12 tests) 569ms
+ ✓ |unit| apps/shell/src/components/Composer.integration.test.tsx (10 tests) 510ms
+ ✓ |unit| apps/shell/src/components/Conversation.view-controls.test.tsx (14 tests) 715ms
+ ✓ |unit| apps/shell/src/components/Conversation.recovery-controls.test.tsx (16 tests) 847ms
+ ✓ |unit| apps/shell/src/components/Conversation.context-controls.test.tsx (12 tests) 1173ms
+   ✓ original nested browser-tab Popover Escape/cancel keeps outer choices and restores each actual opener  815ms
+(node:86502) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:86501) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| tests/unit/command-registry.test.ts (3 tests) 71ms
+ ✓ |unit| apps/shell/src/components/CalendarSourceChoiceDialog.test.tsx (2 tests) 602ms
+   ✓ retains long account and Profile identity with bounded wrapping and unchanged choice/focus  317ms
+ ✓ |unit| apps/shell/src/components/Conversation.source-controls.test.tsx (20 tests) 2485ms
+   ✓ Calendar account choice preserves real text, explicit Cancel command, Escape and opener focus  667ms
+   ✓ explicit original Calendar Profile choice revalidates metadata and retains chosen URL/ACK  306ms
+   ✓ held Calendar choice Profile read after owner retirement cannot issue chosen URL open  329ms
+ ✓ |unit| apps/shell/src/components/Conversation.preview-controls.test.tsx (17 tests) 5603ms
+   ✓ title retains toggle and thumbnail retains show-menu through the same registered command  957ms
+   ✓ original Menu Escape/cancel returns focus to original title trigger  884ms
+   ✓ Open in tab dispatch retains exact original activate argument and ACK while disconnected  336ms
+   ✓ Split activates original primary then executes real registered split with original companion  310ms
+   ✓ held activation after original chat drift cannot start a split  349ms
+
+ Test Files  11 passed (11)
+      Tests  130 passed (130)
+   Start at  14:00:53
+   Duration  9.79s (transform 1.56s, setup 0ms, collect 28.90s, tests 13.58s, environment 7.48s, prepare 916ms)
+

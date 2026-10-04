@@ -1,0 +1,11 @@
+{
+  "result": "PASS",
+  "proposalSHA256": "e1e3aa05a13eaf8a5b56815231c7ffffd323bc2890fb0d93ae31ec9e96e83506",
+  "controllerSHA256": "0f3671ed28049f3a6cb6ede9056b9864aa3fef873c2e4df3601495f739587a88",
+  "requiredCases": 524,
+  "original453FiltersExactPrefix": true,
+  "original453ArgumentsExact": true,
+  "actualEnumerationJoined": true,
+  "physicalJourneys": [],
+  "scope": "Assertion source review; launcher admission pending."
+}

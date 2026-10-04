@@ -1,0 +1,1 @@
+Exact root-current contextual six-leaf Source6 request. Retains immutable ea7d mounted/type/lint/falsifier evidence; Calendar import/className static-props transformation applied equally to original/result, inverse proven. Exact F/R/F and result byte checks pass. No Vite/native/root writes.

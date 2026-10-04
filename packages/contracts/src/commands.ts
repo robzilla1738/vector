@@ -132,6 +132,11 @@ export const COMMANDS = [
   S("toggle-conversation-preview-menu", "Choose where to open conversation preview", browserContextControl),
   S("activate-conversation-preview-page", "Open conversation preview in tab", browserContextControl),
   S("split-conversation-preview-page", "Open conversation preview in split view", browserContextControl),
+  S("toggle-conversation-sources", "Toggle recorded conversation sources", browserContextControl),
+  S("select-conversation-source", "Show recorded conversation source details", browserContextControl),
+  S("open-conversation-recorded-source", "Open recorded conversation source", browserContextControl),
+  S("choose-conversation-source-profile", "Open Calendar source in chosen Profile", browserContextControl),
+  S("cancel-conversation-source-profile", "Cancel Calendar source Profile choice", browserContextControl),
   ...G(pageRecoveryControl, "-page-recovery", [
     ["retry", "", "Retry this page"],
     ["edit", "-address", "Edit failing page address"],

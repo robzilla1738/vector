@@ -1,0 +1,8 @@
+$ node scripts/check-budgets.mjs bundle
+ok   renderer startup JS                490 KB  (budget 490 KB)
+ok   renderer startup CSS               175 KB  (budget 180 KB)
+FAIL renderer total JS                 1804 KB  (budget 1800 KB)
+       247 KB  assets/App-fFM5_xs8.js
+       203 KB  assets/index-DT5FU21v.js
+        40 KB  assets/BvMOzFyo.js
+[ELIFECYCLE] Command failed with exit code 1.

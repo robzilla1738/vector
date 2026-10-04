@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import type { ConversationSource } from "@aux/contracts";
 import { hostOf } from "../workspace";
 import { shellIconGlobe, shellIconOpen } from "./icons";
@@ -9,6 +10,6 @@ export function sourceDescription(source: ConversationSource, profileNames: Reco
 }
 
 /** Display only recorded provenance; never fetch a remote favicon or invent a snippet. */
-export function SourceRow({ source, profileNames, onOpen }: { source: ConversationSource; profileNames?: Record<string, string>; onOpen(): void }) {
-  return <ListRow title={source.title || hostOf(source.url)} description={sourceDescription(source, profileNames)} leading={shellIconGlobe} trailing={shellIconOpen} onOpen={onOpen} />;
+export function SourceRow({ source, profileNames, onOpen, openRef }: { source: ConversationSource; profileNames?: Record<string, string>; onOpen(event?: MouseEvent<HTMLButtonElement>): void; openRef?: (node: HTMLButtonElement | null) => void }) {
+  return <ListRow title={source.title || hostOf(source.url)} description={sourceDescription(source, profileNames)} leading={shellIconGlobe} trailing={shellIconOpen} onOpen={onOpen} openRef={openRef} />;
 }

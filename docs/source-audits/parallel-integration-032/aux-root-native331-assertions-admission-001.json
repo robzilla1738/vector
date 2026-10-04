@@ -1,0 +1,10 @@
+{
+  "result": "PASS",
+  "launcher": "/private/tmp/aux-builder-native331-preparation-001/assert-native331-required524-launch-001.json",
+  "launcherSHA256": "8a64f0f12e235e2eeb4ea17dec2c5e241ebe0aaf659ee7dd0d0e60896a9e139b",
+  "outerSHA256": "2387af673cace75fa958e19c0a4fac2202eb9ba296dec8ef4be9d1488e7040a4",
+  "actualPinnedInputs": 14,
+  "requiredActualCases": 524,
+  "original453FiltersAndArgumentsRetained": true,
+  "scope": "One original serial17 native assertions batch, retry0/jobs1 and original deadlines, actual selected524cases. No App/journeys/qualification; terminal independent audit required."
+}

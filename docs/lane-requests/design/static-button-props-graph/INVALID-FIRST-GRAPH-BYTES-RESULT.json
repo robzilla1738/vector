@@ -1,0 +1,3982 @@
+{
+  "baselineSource": "6a52c99ff",
+  "baselineManifestSHA256": "0a641f07bd113cdcfa07720ee7718652f7156e4d7c6fb48c2649786c9d7f3c38",
+  "currentManifestSHA256": "db753c91b057ade6027f473c3753b73cc83b602dc9fa1f3c699659097fbce0a4",
+  "baseline": {
+    "startupJS": 501345,
+    "startupCSS": 179481,
+    "totalJS": 1880676,
+    "startupLabels": [
+      "chunk:App",
+      "chunk:feature-stage-reconciliation",
+      "source:index.html"
+    ]
+  },
+  "current": {
+    "startupJS": 501058,
+    "startupCSS": 179481,
+    "totalJS": 1840983,
+    "startupLabels": [
+      "chunk:App",
+      "chunk:feature-stage-reconciliation",
+      "source:index.html"
+    ]
+  },
+  "delta": {
+    "startupJS": -287,
+    "startupCSS": 0,
+    "totalJS": -39693
+  },
+  "baselineGraph": {
+    "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/demonstration.js": {
+      "imports": [
+        "chunk:program",
+        "chunk:schemas",
+        "chunk:observation",
+        "chunk:feature-stage-reconciliation",
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/download-naming.js": {
+      "imports": [
+        "chunk:schemas",
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/index.js": {
+      "imports": [
+        "chunk:App",
+        "chunk:feature-stage-reconciliation",
+        "chunk:program",
+        "chunk:entities",
+        "chunk:method-feature",
+        "chunk:observation",
+        "chunk:browser-host-methods",
+        "chunk:shortcuts",
+        "chunk:generated-results",
+        "chunk:live-folders",
+        "chunk:mentions",
+        "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/download-naming.js",
+        "chunk:night-shift",
+        "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/demonstration.js",
+        "chunk:command-ranking-query",
+        "chunk:memory-sensitivity",
+        "chunk:import",
+        "chunk:workbook-snapshot",
+        "chunk:csv",
+        "chunk:inline-assist",
+        "chunk:selection-capture",
+        "chunk:clock",
+        "chunk:onboarding",
+        "chunk:night-shift-defaults",
+        "source:index.html",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "chunk:task-navigation": {
+      "imports": [
+        "chunk:App",
+        "chunk:task-drafts"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:ConversationDrafts": {
+      "imports": [
+        "source:index.html",
+        "chunk:csv",
+        "chunk:App",
+        "chunk:ArrowUpRight",
+        "chunk:task-navigation",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:CommandBar": {
+      "imports": [
+        "source:index.html",
+        "chunk:HomeEntryControls",
+        "chunk:App",
+        "chunk:preference-command",
+        "chunk:command-ranking-query",
+        "chunk:Lock",
+        "chunk:Search",
+        "chunk:ArrowUpRight",
+        "chunk:conversations",
+        "chunk:site-controls-opener"
+      ],
+      "dynamicImports": [
+        "source:src/components/HomeAsk.tsx",
+        "source:src/components/CommandRankingDebug.tsx",
+        "source:src/components/CommandProviderRows.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "chunk:ChatSessions": {
+      "imports": [
+        "source:index.html",
+        "chunk:index",
+        "chunk:run-status",
+        "chunk:App",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:reader-article": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:App": {
+      "imports": [
+        "source:index.html",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [
+        "source:src/features/apple-script/preference.tsx",
+        "source:src/store/organization-persistence.ts",
+        "source:src/store/organization-layout.ts",
+        "source:src/tidy-layout.ts",
+        "source:src/tidy-commit.ts",
+        "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/demonstration.js",
+        "source:src/features/demonstration/ReviewRecording.tsx",
+        "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/download-naming.js",
+        "source:src/features/download-naming/Settings.tsx",
+        "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/download-naming.js",
+        "source:src/components/ExtensionActions.tsx",
+        "source:src/features/extensions/SidePanelSurface.tsx",
+        "source:src/settings/sections/LinkRouting.tsx",
+        "source:src/settings/sections/LinkRouting.tsx",
+        "source:src/features/little-window/ExternalLinksSetting.tsx",
+        "source:src/mentions/MentionComposer.tsx",
+        "source:src/features/morning-review/QueueTonight.tsx",
+        "source:src/features/morning-review/NightSettings.tsx",
+        "source:src/clock.ts",
+        "source:src/archive-actions.ts",
+        "source:src/clock.ts",
+        "source:src/components/LiveFolderEditor.tsx",
+        "source:src/components/Library.tsx",
+        "source:src/archive-actions.ts",
+        "source:src/archive-actions.ts",
+        "source:src/archive-actions.ts",
+        "source:src/archive-actions.ts",
+        "source:src/archive-actions.ts",
+        "source:src/components/GithubConnections.tsx",
+        "source:src/components/ProfileSwitcher.tsx",
+        "source:src/components/ProfileSwitcher.tsx",
+        "source:src/components/ProfileSwitcher.tsx",
+        "source:src/components/MovedTabPlaceholder.tsx",
+        "source:src/components/Conversation.tsx",
+        "chunk:AnswerMarkdown",
+        "chunk:CommandBar",
+        "source:src/components/StartPage.tsx",
+        "source:src/components/TranslationBar.tsx",
+        "source:src/components/PageSurface.tsx",
+        "source:src/components/SplitStage.tsx",
+        "source:src/components/Overview.tsx",
+        "source:src/components/ResultsTable.tsx",
+        "source:src/components/ReaderView.tsx",
+        "source:src/components/Settings.tsx",
+        "source:src/components/Library.tsx",
+        "source:src/components/Inspector.tsx",
+        "source:src/components/Tasks.tsx",
+        "source:src/components/CommandSurface.tsx",
+        "source:src/components/Downloads.tsx",
+        "source:src/components/InlineAssist.tsx",
+        "source:src/components/SiteControls.tsx",
+        "source:src/components/SiteCustomization.tsx",
+        "source:src/components/LittleWindow.tsx",
+        "source:src/components/QuickAsk.tsx",
+        "source:src/components/HorizontalTabs.tsx",
+        "source:src/components/HttpAuthPrompt.tsx",
+        "source:src/components/ActionConfirmation.tsx",
+        "source:src/components/VaultOfferBanner.tsx",
+        "source:src/components/FindBar.tsx",
+        "chunk:Sidebar",
+        "source:src/components/ChatSidebar.tsx",
+        "source:src/components/AgentRail.tsx",
+        "source:src/components/LinkPeek.tsx",
+        "source:src/onboarding/OnboardingHost.tsx",
+        "source:src/native-performance-fixture-observer.ts",
+        "source:src/native-appearance-observer.ts",
+        "source:src/selection-action-draft.ts"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "chunk:command-ranking-query": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:AnswerMarkdown": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:ArrowUpRight",
+        "chunk:index",
+        "chunk:answer-table",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "chunk:ResizeHandle": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:replay": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:confirm",
+        "chunk:primitives",
+        "chunk:import",
+        "chunk:index",
+        "chunk:preference-command"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:DocumentContent": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [
+        "source:src/components/WorkbookPreview.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:Lock": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:primitives": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:task-drafts": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:workbook-snapshot": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:run-status": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:selection-capture": {
+      "imports": [
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:live-folders": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:entities": {
+      "imports": [
+        "chunk:mentions",
+        "chunk:schemas",
+        "chunk:program"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:SessionRecovery": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:site-controls-opener": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:import": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:method-feature": {
+      "imports": [
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:RoutineSchedule": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:run-history": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:AuxMark": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:drafts": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [
+        "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/index.js"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:inline-assist": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:night-shift-defaults": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:browser-host-methods": {
+      "imports": [
+        "chunk:schemas",
+        "chunk:live-folders",
+        "chunk:entities",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:command-result": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:answer-table": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:Sidebar": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:ChatSessions",
+        "chunk:TabCardCaption",
+        "chunk:ResizeHandle",
+        "chunk:deferred",
+        "chunk:memory-sensitivity",
+        "chunk:feature-stage-reconciliation",
+        "chunk:Search",
+        "chunk:index"
+      ],
+      "dynamicImports": [
+        "source:src/components/SpaceEditor.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "chunk:ArrowUpRight": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:mentions": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:onboarding": {
+      "imports": [
+        "chunk:entities",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:night-shift": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:memory-sensitivity": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:preference-command": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:program": {
+      "imports": [
+        "chunk:observation",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:conversations": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:SiteAgentAccess": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:schemas": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:confirm": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:feature-stage-reconciliation": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:deferred": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:ObservationPanel": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:clock": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:RunAttentionFeed": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:shortcuts": {
+      "imports": [
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:index": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:observation": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:csv": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:HomeEntryControls": {
+      "imports": [
+        "chunk:App",
+        "source:index.html",
+        "chunk:preference-command"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:Search": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:TabCardCaption": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:generated-results": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "source:index.html": {
+      "imports": [],
+      "dynamicImports": [
+        "source:src/chromium-bridge.ts",
+        "chunk:App"
+      ],
+      "isEntry": true,
+      "isDynamicEntry": false
+    },
+    "source:src/archive-actions.ts": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "source:src/clock.ts",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/chromium-bridge.ts": {
+      "imports": [
+        "chunk:feature-stage-reconciliation",
+        "chunk:browser-host-methods",
+        "chunk:method-feature",
+        "chunk:schemas",
+        "source:index.html",
+        "chunk:live-folders",
+        "chunk:entities",
+        "chunk:mentions",
+        "chunk:program",
+        "chunk:observation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/clock.ts": {
+      "imports": [
+        "chunk:clock"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ActionConfirmation.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/AgentRail.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:ResizeHandle",
+        "chunk:deferred",
+        "chunk:ArrowUpRight",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [
+        "source:src/components/SetPanel.tsx",
+        "source:src/components/RailHistory.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ChatSidebar.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:ChatSessions",
+        "chunk:ResizeHandle",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation",
+        "chunk:index",
+        "chunk:run-status"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/CommandProviderRows.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:command-ranking-query",
+        "chunk:CommandBar",
+        "chunk:task-navigation",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation",
+        "chunk:HomeEntryControls",
+        "chunk:preference-command",
+        "chunk:Lock",
+        "chunk:ArrowUpRight",
+        "chunk:conversations",
+        "chunk:site-controls-opener",
+        "chunk:task-drafts"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/CommandRankingDebug.tsx": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/CommandSurface.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:CommandBar",
+        "chunk:task-navigation",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation",
+        "chunk:HomeEntryControls",
+        "chunk:preference-command",
+        "chunk:command-ranking-query",
+        "chunk:Lock",
+        "chunk:Search",
+        "chunk:ArrowUpRight",
+        "chunk:conversations",
+        "chunk:site-controls-opener",
+        "chunk:task-drafts"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Conversation.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:preference-command",
+        "chunk:App",
+        "chunk:HomeEntryControls",
+        "chunk:drafts",
+        "chunk:run-status",
+        "chunk:deferred",
+        "chunk:index",
+        "chunk:task-navigation",
+        "chunk:AnswerMarkdown",
+        "chunk:ArrowUpRight",
+        "chunk:ConversationDrafts",
+        "chunk:generated-results",
+        "chunk:DocumentContent",
+        "chunk:AuxMark",
+        "chunk:task-drafts",
+        "chunk:Search",
+        "chunk:run-history",
+        "chunk:ObservationPanel",
+        "chunk:Lock",
+        "chunk:observation",
+        "chunk:feature-stage-reconciliation",
+        "chunk:answer-table",
+        "chunk:csv",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Downloads.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ExtensionActions.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/FindBar.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/GithubConnections.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/HomeAsk.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:HomeEntryControls",
+        "source:src/components/Conversation.tsx",
+        "chunk:App",
+        "chunk:preference-command",
+        "chunk:drafts",
+        "chunk:run-status",
+        "chunk:deferred",
+        "chunk:index",
+        "chunk:task-navigation",
+        "chunk:task-drafts",
+        "chunk:AnswerMarkdown",
+        "chunk:ArrowUpRight",
+        "chunk:answer-table",
+        "chunk:ConversationDrafts",
+        "chunk:csv",
+        "chunk:generated-results",
+        "chunk:schemas",
+        "chunk:DocumentContent",
+        "chunk:AuxMark",
+        "chunk:Search",
+        "chunk:run-history",
+        "chunk:ObservationPanel",
+        "chunk:Lock",
+        "chunk:observation",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/HorizontalTabs.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:Sidebar",
+        "chunk:AuxMark",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation",
+        "chunk:ChatSessions",
+        "chunk:index",
+        "chunk:run-status",
+        "chunk:TabCardCaption",
+        "chunk:ResizeHandle",
+        "chunk:memory-sensitivity",
+        "chunk:Search"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/HttpAuthPrompt.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/InlineAssist.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:selection-capture",
+        "chunk:inline-assist",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Inspector.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:ObservationPanel",
+        "chunk:index",
+        "chunk:feature-stage-reconciliation",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Library.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:reader-article",
+        "chunk:SessionRecovery",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/LinkPeek.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "source:src/components/PageSurface.tsx",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/LittleWindow.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "source:src/store/organization-layout.ts",
+        "chunk:Lock",
+        "chunk:deferred",
+        "chunk:CommandBar",
+        "chunk:feature-stage-reconciliation",
+        "source:src/tidy-layout.ts",
+        "chunk:HomeEntryControls",
+        "chunk:preference-command",
+        "chunk:command-ranking-query",
+        "chunk:Search",
+        "chunk:ArrowUpRight",
+        "chunk:conversations",
+        "chunk:site-controls-opener"
+      ],
+      "dynamicImports": [
+        "source:src/components/PageSurface.tsx",
+        "source:src/components/Downloads.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/LiveFolderEditor.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:live-folders",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/MovedTabPlaceholder.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Overview.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:TabCardCaption",
+        "source:src/tidy-layout.ts",
+        "source:src/tidy-commit.ts",
+        "source:src/archive-actions.ts",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/PageSurface.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ProfileSwitcher.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:confirm",
+        "chunk:deferred",
+        "chunk:browser-host-methods",
+        "chunk:command-result",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas",
+        "chunk:live-folders",
+        "chunk:entities",
+        "chunk:mentions",
+        "chunk:program",
+        "chunk:observation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/QuickAsk.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "source:src/components/Conversation.tsx",
+        "chunk:ArrowUpRight",
+        "chunk:feature-stage-reconciliation",
+        "chunk:preference-command",
+        "chunk:HomeEntryControls",
+        "chunk:drafts",
+        "chunk:run-status",
+        "chunk:deferred",
+        "chunk:index",
+        "chunk:task-navigation",
+        "chunk:task-drafts",
+        "chunk:AnswerMarkdown",
+        "chunk:answer-table",
+        "chunk:ConversationDrafts",
+        "chunk:csv",
+        "chunk:generated-results",
+        "chunk:schemas",
+        "chunk:DocumentContent",
+        "chunk:AuxMark",
+        "chunk:Search",
+        "chunk:run-history",
+        "chunk:ObservationPanel",
+        "chunk:Lock",
+        "chunk:observation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/RailHistory.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:run-status",
+        "chunk:conversations",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ReaderView.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:reader-article",
+        "source:src/components/FindBar.tsx",
+        "chunk:feature-stage-reconciliation",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ResultsTable.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/SetPanel.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Settings.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:replay",
+        "chunk:index",
+        "chunk:deferred",
+        "chunk:shortcuts",
+        "chunk:feature-stage-reconciliation",
+        "chunk:primitives",
+        "chunk:preference-command",
+        "chunk:SiteAgentAccess",
+        "chunk:task-navigation",
+        "chunk:RoutineSchedule",
+        "chunk:selection-capture",
+        "chunk:run-history",
+        "chunk:browser-host-methods",
+        "chunk:command-result",
+        "chunk:Search",
+        "chunk:Lock",
+        "chunk:confirm",
+        "chunk:import",
+        "chunk:schemas",
+        "chunk:task-drafts",
+        "chunk:live-folders",
+        "chunk:entities",
+        "chunk:mentions",
+        "chunk:program",
+        "chunk:observation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/SiteControls.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:Lock",
+        "chunk:deferred",
+        "chunk:SiteAgentAccess",
+        "chunk:site-controls-opener",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/SiteCustomization.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:site-controls-opener",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/SpaceEditor.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/SplitStage.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "source:src/components/PageSurface.tsx",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/StartPage.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:SessionRecovery",
+        "chunk:AuxMark",
+        "chunk:CommandBar",
+        "chunk:ConversationDrafts",
+        "chunk:run-history",
+        "chunk:run-status",
+        "chunk:ArrowUpRight",
+        "chunk:task-navigation",
+        "chunk:deferred",
+        "chunk:index",
+        "chunk:RunAttentionFeed",
+        "chunk:feature-stage-reconciliation",
+        "chunk:HomeEntryControls",
+        "chunk:preference-command",
+        "chunk:command-ranking-query",
+        "chunk:Lock",
+        "chunk:Search",
+        "chunk:conversations",
+        "chunk:site-controls-opener",
+        "chunk:csv",
+        "chunk:task-drafts"
+      ],
+      "dynamicImports": [
+        "source:src/components/HomeAsk.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Tasks.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:index",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:task-drafts",
+        "chunk:preference-command",
+        "chunk:DocumentContent",
+        "chunk:Search",
+        "chunk:RoutineSchedule",
+        "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/demonstration.js",
+        "chunk:RunAttentionFeed",
+        "chunk:feature-stage-reconciliation",
+        "chunk:program",
+        "chunk:observation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/TranslationBar.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:index",
+        "chunk:feature-stage-reconciliation",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/VaultOfferBanner.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/WorkbookPreview.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:workbook-snapshot",
+        "chunk:answer-table",
+        "chunk:App",
+        "chunk:schemas",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/apple-script/preference.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:browser-host-methods",
+        "chunk:command-result",
+        "chunk:App",
+        "chunk:primitives",
+        "chunk:schemas",
+        "chunk:live-folders",
+        "chunk:entities",
+        "chunk:mentions",
+        "chunk:program",
+        "chunk:observation",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/demonstration/ReviewRecording.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/download-naming/Settings.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:primitives",
+        "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/download-naming.js",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/extensions/SidePanelSurface.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/little-window/ExternalLinksSetting.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:primitives",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/morning-review/NightSettings.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:night-shift-defaults",
+        "chunk:night-shift",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/morning-review/QueueTonight.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:night-shift-defaults",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/mentions/MentionComposer.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:mentions",
+        "chunk:drafts",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/native-appearance-observer.ts": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/native-performance-fixture-observer.ts": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/onboarding/OnboardingHost.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:index",
+        "chunk:replay",
+        "chunk:import",
+        "chunk:onboarding",
+        "chunk:preference-command",
+        "chunk:feature-stage-reconciliation",
+        "chunk:deferred",
+        "chunk:confirm",
+        "chunk:primitives",
+        "chunk:schemas",
+        "chunk:entities",
+        "chunk:mentions",
+        "chunk:program",
+        "chunk:observation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/selection-action-draft.ts": {
+      "imports": [
+        "chunk:App",
+        "chunk:entities",
+        "chunk:selection-capture",
+        "source:index.html",
+        "chunk:feature-stage-reconciliation",
+        "chunk:mentions",
+        "chunk:schemas",
+        "chunk:program",
+        "chunk:observation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/settings/sections/LinkRouting.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:browser-host-methods",
+        "chunk:App",
+        "chunk:primitives",
+        "chunk:command-result",
+        "chunk:schemas",
+        "chunk:live-folders",
+        "chunk:entities",
+        "chunk:mentions",
+        "chunk:program",
+        "chunk:observation",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/store/organization-layout.ts": {
+      "imports": [
+        "source:src/tidy-layout.ts",
+        "chunk:App",
+        "source:index.html",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/store/organization-persistence.ts": {
+      "imports": [
+        "source:src/tidy-layout.ts",
+        "source:src/store/organization-layout.ts",
+        "chunk:App",
+        "source:index.html",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/tidy-commit.ts": {
+      "imports": [
+        "source:src/tidy-layout.ts",
+        "chunk:App",
+        "source:index.html",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/tidy-layout.ts": {
+      "imports": [
+        "chunk:App",
+        "source:index.html",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    }
+  },
+  "currentGraph": {
+    "source:../../packages/contracts/dist/download-naming.js": {
+      "imports": [
+        "chunk:schemas",
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:../../packages/contracts/dist/index.js": {
+      "imports": [
+        "chunk:App",
+        "chunk:feature-stage-reconciliation",
+        "chunk:demonstration",
+        "chunk:method-feature",
+        "chunk:generated-results",
+        "chunk:entities",
+        "chunk:browser-host-methods",
+        "chunk:shortcuts",
+        "chunk:live-folders",
+        "chunk:mentions",
+        "source:../../packages/contracts/dist/download-naming.js",
+        "chunk:night-shift",
+        "chunk:command-ranking-query",
+        "chunk:memory-sensitivity",
+        "chunk:import",
+        "chunk:workbook-snapshot",
+        "chunk:csv",
+        "chunk:inline-assist",
+        "chunk:selection-capture",
+        "chunk:clock",
+        "chunk:onboarding",
+        "chunk:night-shift-defaults",
+        "source:index.html",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "chunk:SiteAgentAccess": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:primitives": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:App": {
+      "imports": [
+        "source:index.html",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [
+        "source:src/features/apple-script/preference.tsx",
+        "source:src/store/organization-persistence.ts",
+        "source:src/store/organization-layout.ts",
+        "source:src/tidy-layout.ts",
+        "source:src/tidy-commit.ts",
+        "chunk:demonstration",
+        "source:src/features/demonstration/ReviewRecording.tsx",
+        "source:../../packages/contracts/dist/download-naming.js",
+        "source:src/features/download-naming/Settings.tsx",
+        "source:../../packages/contracts/dist/download-naming.js",
+        "source:src/components/ExtensionActions.tsx",
+        "source:src/features/extensions/SidePanelSurface.tsx",
+        "source:src/settings/sections/LinkRouting.tsx",
+        "source:src/settings/sections/LinkRouting.tsx",
+        "source:src/features/little-window/ExternalLinksSetting.tsx",
+        "source:src/mentions/MentionComposer.tsx",
+        "source:src/features/morning-review/QueueTonight.tsx",
+        "source:src/features/morning-review/NightSettings.tsx",
+        "source:src/clock.ts",
+        "source:src/archive-actions.ts",
+        "source:src/clock.ts",
+        "source:src/components/LiveFolderEditor.tsx",
+        "source:src/components/Library.tsx",
+        "source:src/archive-actions.ts",
+        "source:src/archive-actions.ts",
+        "source:src/archive-actions.ts",
+        "source:src/archive-actions.ts",
+        "source:src/archive-actions.ts",
+        "source:src/components/GithubConnections.tsx",
+        "source:src/components/ProfileSwitcher.tsx",
+        "source:src/components/ProfileSwitcher.tsx",
+        "source:src/components/ProfileSwitcher.tsx",
+        "source:src/components/MovedTabPlaceholder.tsx",
+        "source:src/components/Conversation.tsx",
+        "chunk:AnswerMarkdown",
+        "chunk:CommandBar",
+        "source:src/components/StartPage.tsx",
+        "source:src/components/TranslationBar.tsx",
+        "source:src/components/PageSurface.tsx",
+        "source:src/components/SplitStage.tsx",
+        "source:src/components/Overview.tsx",
+        "source:src/components/ResultsTable.tsx",
+        "source:src/components/ReaderView.tsx",
+        "source:src/components/Settings.tsx",
+        "source:src/components/Library.tsx",
+        "source:src/components/Inspector.tsx",
+        "source:src/components/Tasks.tsx",
+        "source:src/components/CommandSurface.tsx",
+        "source:src/components/Downloads.tsx",
+        "source:src/components/InlineAssist.tsx",
+        "source:src/components/SiteControls.tsx",
+        "source:src/components/SiteCustomization.tsx",
+        "source:src/components/LittleWindow.tsx",
+        "source:src/components/QuickAsk.tsx",
+        "source:src/components/HorizontalTabs.tsx",
+        "source:src/components/HttpAuthPrompt.tsx",
+        "source:src/components/ActionConfirmation.tsx",
+        "source:src/components/VaultOfferBanner.tsx",
+        "source:src/components/FindBar.tsx",
+        "chunk:Sidebar",
+        "source:src/components/ChatSidebar.tsx",
+        "source:src/components/AgentRail.tsx",
+        "source:src/components/LinkPeek.tsx",
+        "source:src/onboarding/OnboardingHost.tsx",
+        "source:src/native-performance-fixture-observer.ts",
+        "source:src/native-appearance-observer.ts",
+        "source:src/selection-action-draft.ts"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "chunk:command-ranking-query": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:workbook-snapshot": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:mentions": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:run-history": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:selection-capture": {
+      "imports": [
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:task-drafts": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:DocumentContent": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [
+        "source:src/components/WorkbookPreview.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:ArrowUpRight": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:run-status": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:Sidebar": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:ChatSessions",
+        "chunk:TabCardCaption",
+        "chunk:ResizeHandle",
+        "chunk:deferred",
+        "chunk:memory-sensitivity",
+        "chunk:feature-stage-reconciliation",
+        "chunk:Search",
+        "chunk:index"
+      ],
+      "dynamicImports": [
+        "source:src/components/SpaceEditor.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "chunk:task-navigation": {
+      "imports": [
+        "chunk:App",
+        "chunk:task-drafts"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:site-controls-opener": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:AnswerMarkdown": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:ArrowUpRight",
+        "chunk:index",
+        "chunk:answer-table",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "chunk:demonstration": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "chunk:method-feature": {
+      "imports": [
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:browser-host-methods": {
+      "imports": [
+        "chunk:schemas",
+        "chunk:live-folders",
+        "chunk:feature-stage-reconciliation",
+        "chunk:entities"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:command-result": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:Lock": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:night-shift-defaults": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:answer-table": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:preference-command": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:drafts": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [
+        "source:../../packages/contracts/dist/index.js"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:ConversationDrafts": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:csv",
+        "chunk:ArrowUpRight",
+        "chunk:task-navigation",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:ObservationPanel": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:onboarding": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:AuxMark": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:live-folders": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:ChatSessions": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:index",
+        "chunk:run-status",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:feature-stage-reconciliation": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:reader-article": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:CommandBar": {
+      "imports": [
+        "source:index.html",
+        "chunk:HomeEntryControls",
+        "chunk:App",
+        "chunk:preference-command",
+        "chunk:command-ranking-query",
+        "chunk:Lock",
+        "chunk:Search",
+        "chunk:ArrowUpRight",
+        "chunk:conversations",
+        "chunk:site-controls-opener"
+      ],
+      "dynamicImports": [
+        "source:src/components/HomeAsk.tsx",
+        "source:src/components/CommandRankingDebug.tsx",
+        "source:src/components/CommandProviderRows.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "chunk:index": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:import": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:memory-sensitivity": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:conversations": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:RoutineSchedule": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:night-shift": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:Search": {
+      "imports": [
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:SessionRecovery": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:TabCardCaption": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:schemas": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:clock": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:replay": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:confirm",
+        "chunk:primitives",
+        "chunk:import",
+        "chunk:index",
+        "chunk:preference-command"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:deferred": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:RunAttentionFeed": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:confirm": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:ResizeHandle": {
+      "imports": [
+        "source:index.html",
+        "chunk:App"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:entities": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:shortcuts": {
+      "imports": [
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:csv": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:generated-results": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:inline-assist": {
+      "imports": [
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "chunk:HomeEntryControls": {
+      "imports": [
+        "chunk:App",
+        "source:index.html",
+        "chunk:preference-command"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": false
+    },
+    "source:index.html": {
+      "imports": [],
+      "dynamicImports": [
+        "source:src/chromium-bridge.ts",
+        "chunk:App"
+      ],
+      "isEntry": true,
+      "isDynamicEntry": false
+    },
+    "source:src/archive-actions.ts": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "source:src/clock.ts",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App",
+        "chunk:App"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/chromium-bridge.ts": {
+      "imports": [
+        "chunk:feature-stage-reconciliation",
+        "chunk:browser-host-methods",
+        "chunk:method-feature",
+        "chunk:schemas",
+        "source:index.html",
+        "chunk:live-folders",
+        "chunk:entities"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/clock.ts": {
+      "imports": [
+        "chunk:clock"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ActionConfirmation.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/AgentRail.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:ResizeHandle",
+        "chunk:deferred",
+        "chunk:ArrowUpRight",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [
+        "source:src/components/SetPanel.tsx",
+        "source:src/components/RailHistory.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ChatSidebar.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:ChatSessions",
+        "chunk:ResizeHandle",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation",
+        "chunk:index",
+        "chunk:run-status"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/CommandProviderRows.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:command-ranking-query",
+        "chunk:CommandBar",
+        "chunk:task-navigation",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation",
+        "chunk:HomeEntryControls",
+        "chunk:preference-command",
+        "chunk:Lock",
+        "chunk:ArrowUpRight",
+        "chunk:conversations",
+        "chunk:site-controls-opener",
+        "chunk:task-drafts"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/CommandRankingDebug.tsx": {
+      "imports": [
+        "source:index.html"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/CommandSurface.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:CommandBar",
+        "chunk:task-navigation",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation",
+        "chunk:HomeEntryControls",
+        "chunk:preference-command",
+        "chunk:command-ranking-query",
+        "chunk:Lock",
+        "chunk:Search",
+        "chunk:ArrowUpRight",
+        "chunk:conversations",
+        "chunk:site-controls-opener",
+        "chunk:task-drafts"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Conversation.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:preference-command",
+        "chunk:App",
+        "chunk:HomeEntryControls",
+        "chunk:drafts",
+        "chunk:run-status",
+        "chunk:deferred",
+        "chunk:index",
+        "chunk:task-navigation",
+        "chunk:AnswerMarkdown",
+        "chunk:ArrowUpRight",
+        "chunk:ConversationDrafts",
+        "chunk:generated-results",
+        "chunk:DocumentContent",
+        "chunk:AuxMark",
+        "chunk:task-drafts",
+        "chunk:Search",
+        "chunk:run-history",
+        "chunk:ObservationPanel",
+        "chunk:Lock",
+        "chunk:feature-stage-reconciliation",
+        "chunk:answer-table",
+        "chunk:csv",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Downloads.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ExtensionActions.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/FindBar.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/GithubConnections.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/HomeAsk.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:HomeEntryControls",
+        "source:src/components/Conversation.tsx",
+        "chunk:App",
+        "chunk:preference-command",
+        "chunk:drafts",
+        "chunk:run-status",
+        "chunk:deferred",
+        "chunk:index",
+        "chunk:task-navigation",
+        "chunk:task-drafts",
+        "chunk:AnswerMarkdown",
+        "chunk:ArrowUpRight",
+        "chunk:answer-table",
+        "chunk:ConversationDrafts",
+        "chunk:csv",
+        "chunk:generated-results",
+        "chunk:schemas",
+        "chunk:DocumentContent",
+        "chunk:AuxMark",
+        "chunk:Search",
+        "chunk:run-history",
+        "chunk:ObservationPanel",
+        "chunk:Lock",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/HorizontalTabs.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:Sidebar",
+        "chunk:AuxMark",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation",
+        "chunk:ChatSessions",
+        "chunk:index",
+        "chunk:run-status",
+        "chunk:TabCardCaption",
+        "chunk:ResizeHandle",
+        "chunk:memory-sensitivity",
+        "chunk:Search"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/HttpAuthPrompt.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/InlineAssist.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:selection-capture",
+        "chunk:inline-assist",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Inspector.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:ObservationPanel",
+        "chunk:index",
+        "chunk:feature-stage-reconciliation",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Library.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:reader-article",
+        "chunk:SessionRecovery",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/LinkPeek.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "source:src/components/PageSurface.tsx",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/LittleWindow.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "source:src/store/organization-layout.ts",
+        "chunk:Lock",
+        "chunk:deferred",
+        "chunk:CommandBar",
+        "chunk:feature-stage-reconciliation",
+        "source:src/tidy-layout.ts",
+        "chunk:HomeEntryControls",
+        "chunk:preference-command",
+        "chunk:command-ranking-query",
+        "chunk:Search",
+        "chunk:ArrowUpRight",
+        "chunk:conversations",
+        "chunk:site-controls-opener"
+      ],
+      "dynamicImports": [
+        "source:src/components/PageSurface.tsx",
+        "source:src/components/Downloads.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/LiveFolderEditor.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:live-folders",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/MovedTabPlaceholder.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Overview.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:TabCardCaption",
+        "source:src/tidy-layout.ts",
+        "source:src/tidy-commit.ts",
+        "source:src/archive-actions.ts",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/PageSurface.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ProfileSwitcher.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:confirm",
+        "chunk:deferred",
+        "chunk:browser-host-methods",
+        "chunk:command-result",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas",
+        "chunk:live-folders",
+        "chunk:entities"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/QuickAsk.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "source:src/components/Conversation.tsx",
+        "chunk:ArrowUpRight",
+        "chunk:feature-stage-reconciliation",
+        "chunk:preference-command",
+        "chunk:HomeEntryControls",
+        "chunk:drafts",
+        "chunk:run-status",
+        "chunk:deferred",
+        "chunk:index",
+        "chunk:task-navigation",
+        "chunk:task-drafts",
+        "chunk:AnswerMarkdown",
+        "chunk:answer-table",
+        "chunk:ConversationDrafts",
+        "chunk:csv",
+        "chunk:generated-results",
+        "chunk:schemas",
+        "chunk:DocumentContent",
+        "chunk:AuxMark",
+        "chunk:Search",
+        "chunk:run-history",
+        "chunk:ObservationPanel",
+        "chunk:Lock"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/RailHistory.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:run-status",
+        "chunk:conversations",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ReaderView.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:reader-article",
+        "source:src/components/FindBar.tsx",
+        "chunk:feature-stage-reconciliation",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/ResultsTable.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:Search",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/SetPanel.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:deferred",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Settings.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:replay",
+        "chunk:index",
+        "chunk:deferred",
+        "chunk:shortcuts",
+        "chunk:feature-stage-reconciliation",
+        "chunk:primitives",
+        "chunk:preference-command",
+        "chunk:SiteAgentAccess",
+        "chunk:task-navigation",
+        "chunk:RoutineSchedule",
+        "chunk:selection-capture",
+        "chunk:run-history",
+        "chunk:browser-host-methods",
+        "chunk:command-result",
+        "chunk:Search",
+        "chunk:Lock",
+        "chunk:confirm",
+        "chunk:import",
+        "chunk:schemas",
+        "chunk:task-drafts",
+        "chunk:live-folders",
+        "chunk:entities"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/SiteControls.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:Lock",
+        "chunk:deferred",
+        "chunk:SiteAgentAccess",
+        "chunk:site-controls-opener",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/SiteCustomization.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:site-controls-opener",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/SpaceEditor.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/SplitStage.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "source:src/components/PageSurface.tsx",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/StartPage.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:SessionRecovery",
+        "chunk:AuxMark",
+        "chunk:CommandBar",
+        "chunk:ConversationDrafts",
+        "chunk:run-history",
+        "chunk:run-status",
+        "chunk:ArrowUpRight",
+        "chunk:task-navigation",
+        "chunk:deferred",
+        "chunk:index",
+        "chunk:RunAttentionFeed",
+        "chunk:feature-stage-reconciliation",
+        "chunk:HomeEntryControls",
+        "chunk:preference-command",
+        "chunk:command-ranking-query",
+        "chunk:Lock",
+        "chunk:Search",
+        "chunk:conversations",
+        "chunk:site-controls-opener",
+        "chunk:csv",
+        "chunk:task-drafts"
+      ],
+      "dynamicImports": [
+        "source:src/components/HomeAsk.tsx"
+      ],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/Tasks.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:index",
+        "chunk:deferred",
+        "chunk:task-drafts",
+        "chunk:preference-command",
+        "chunk:DocumentContent",
+        "chunk:Search",
+        "chunk:RoutineSchedule",
+        "chunk:demonstration",
+        "chunk:RunAttentionFeed",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/TranslationBar.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:index",
+        "chunk:feature-stage-reconciliation",
+        "chunk:deferred"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/VaultOfferBanner.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/components/WorkbookPreview.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:workbook-snapshot",
+        "chunk:answer-table",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/apple-script/preference.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:browser-host-methods",
+        "chunk:command-result",
+        "chunk:App",
+        "chunk:primitives",
+        "chunk:schemas",
+        "chunk:live-folders",
+        "chunk:feature-stage-reconciliation",
+        "chunk:entities"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/demonstration/ReviewRecording.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/download-naming/Settings.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:primitives",
+        "source:../../packages/contracts/dist/download-naming.js",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/extensions/SidePanelSurface.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/little-window/ExternalLinksSetting.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:primitives",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/morning-review/NightSettings.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:night-shift-defaults",
+        "chunk:night-shift",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/features/morning-review/QueueTonight.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:night-shift-defaults",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/mentions/MentionComposer.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:mentions",
+        "chunk:drafts",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/native-appearance-observer.ts": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/native-performance-fixture-observer.ts": {
+      "imports": [],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/onboarding/OnboardingHost.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:App",
+        "chunk:index",
+        "chunk:replay",
+        "chunk:import",
+        "chunk:onboarding",
+        "chunk:preference-command",
+        "chunk:feature-stage-reconciliation",
+        "chunk:deferred",
+        "chunk:confirm",
+        "chunk:primitives",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/selection-action-draft.ts": {
+      "imports": [
+        "chunk:App",
+        "chunk:entities",
+        "chunk:selection-capture",
+        "source:index.html",
+        "chunk:feature-stage-reconciliation",
+        "chunk:schemas"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/settings/sections/LinkRouting.tsx": {
+      "imports": [
+        "source:index.html",
+        "chunk:browser-host-methods",
+        "chunk:App",
+        "chunk:primitives",
+        "chunk:command-result",
+        "chunk:schemas",
+        "chunk:live-folders",
+        "chunk:feature-stage-reconciliation",
+        "chunk:entities"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/store/organization-layout.ts": {
+      "imports": [
+        "source:src/tidy-layout.ts",
+        "chunk:App",
+        "source:index.html",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/store/organization-persistence.ts": {
+      "imports": [
+        "source:src/tidy-layout.ts",
+        "source:src/store/organization-layout.ts",
+        "chunk:App",
+        "source:index.html",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/tidy-commit.ts": {
+      "imports": [
+        "source:src/tidy-layout.ts",
+        "chunk:App",
+        "source:index.html",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    },
+    "source:src/tidy-layout.ts": {
+      "imports": [
+        "chunk:App",
+        "source:index.html",
+        "chunk:feature-stage-reconciliation"
+      ],
+      "dynamicImports": [],
+      "isEntry": false,
+      "isDynamicEntry": true
+    }
+  },
+  "graphDifferences": {
+    "chunk:onboarding": {
+      "before": {
+        "imports": [
+          "chunk:entities",
+          "chunk:schemas"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      },
+      "after": {
+        "imports": [],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      }
+    },
+    "source:src/components/Conversation.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:preference-command",
+          "chunk:App",
+          "chunk:HomeEntryControls",
+          "chunk:drafts",
+          "chunk:run-status",
+          "chunk:deferred",
+          "chunk:index",
+          "chunk:task-navigation",
+          "chunk:AnswerMarkdown",
+          "chunk:ArrowUpRight",
+          "chunk:ConversationDrafts",
+          "chunk:generated-results",
+          "chunk:DocumentContent",
+          "chunk:AuxMark",
+          "chunk:task-drafts",
+          "chunk:Search",
+          "chunk:run-history",
+          "chunk:ObservationPanel",
+          "chunk:Lock",
+          "chunk:observation",
+          "chunk:feature-stage-reconciliation",
+          "chunk:answer-table",
+          "chunk:csv",
+          "chunk:schemas"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:preference-command",
+          "chunk:App",
+          "chunk:HomeEntryControls",
+          "chunk:drafts",
+          "chunk:run-status",
+          "chunk:deferred",
+          "chunk:index",
+          "chunk:task-navigation",
+          "chunk:AnswerMarkdown",
+          "chunk:ArrowUpRight",
+          "chunk:ConversationDrafts",
+          "chunk:generated-results",
+          "chunk:DocumentContent",
+          "chunk:AuxMark",
+          "chunk:task-drafts",
+          "chunk:Search",
+          "chunk:run-history",
+          "chunk:ObservationPanel",
+          "chunk:Lock",
+          "chunk:feature-stage-reconciliation",
+          "chunk:answer-table",
+          "chunk:csv",
+          "chunk:schemas"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "source:src/components/HomeAsk.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:HomeEntryControls",
+          "source:src/components/Conversation.tsx",
+          "chunk:App",
+          "chunk:preference-command",
+          "chunk:drafts",
+          "chunk:run-status",
+          "chunk:deferred",
+          "chunk:index",
+          "chunk:task-navigation",
+          "chunk:task-drafts",
+          "chunk:AnswerMarkdown",
+          "chunk:ArrowUpRight",
+          "chunk:answer-table",
+          "chunk:ConversationDrafts",
+          "chunk:csv",
+          "chunk:generated-results",
+          "chunk:schemas",
+          "chunk:DocumentContent",
+          "chunk:AuxMark",
+          "chunk:Search",
+          "chunk:run-history",
+          "chunk:ObservationPanel",
+          "chunk:Lock",
+          "chunk:observation",
+          "chunk:feature-stage-reconciliation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:HomeEntryControls",
+          "source:src/components/Conversation.tsx",
+          "chunk:App",
+          "chunk:preference-command",
+          "chunk:drafts",
+          "chunk:run-status",
+          "chunk:deferred",
+          "chunk:index",
+          "chunk:task-navigation",
+          "chunk:task-drafts",
+          "chunk:AnswerMarkdown",
+          "chunk:ArrowUpRight",
+          "chunk:answer-table",
+          "chunk:ConversationDrafts",
+          "chunk:csv",
+          "chunk:generated-results",
+          "chunk:schemas",
+          "chunk:DocumentContent",
+          "chunk:AuxMark",
+          "chunk:Search",
+          "chunk:run-history",
+          "chunk:ObservationPanel",
+          "chunk:Lock",
+          "chunk:feature-stage-reconciliation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "source:src/settings/sections/LinkRouting.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:browser-host-methods",
+          "chunk:App",
+          "chunk:primitives",
+          "chunk:command-result",
+          "chunk:schemas",
+          "chunk:live-folders",
+          "chunk:entities",
+          "chunk:mentions",
+          "chunk:program",
+          "chunk:observation",
+          "chunk:feature-stage-reconciliation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:browser-host-methods",
+          "chunk:App",
+          "chunk:primitives",
+          "chunk:command-result",
+          "chunk:schemas",
+          "chunk:live-folders",
+          "chunk:feature-stage-reconciliation",
+          "chunk:entities"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "source:src/components/QuickAsk.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "source:src/components/Conversation.tsx",
+          "chunk:ArrowUpRight",
+          "chunk:feature-stage-reconciliation",
+          "chunk:preference-command",
+          "chunk:HomeEntryControls",
+          "chunk:drafts",
+          "chunk:run-status",
+          "chunk:deferred",
+          "chunk:index",
+          "chunk:task-navigation",
+          "chunk:task-drafts",
+          "chunk:AnswerMarkdown",
+          "chunk:answer-table",
+          "chunk:ConversationDrafts",
+          "chunk:csv",
+          "chunk:generated-results",
+          "chunk:schemas",
+          "chunk:DocumentContent",
+          "chunk:AuxMark",
+          "chunk:Search",
+          "chunk:run-history",
+          "chunk:ObservationPanel",
+          "chunk:Lock",
+          "chunk:observation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "source:src/components/Conversation.tsx",
+          "chunk:ArrowUpRight",
+          "chunk:feature-stage-reconciliation",
+          "chunk:preference-command",
+          "chunk:HomeEntryControls",
+          "chunk:drafts",
+          "chunk:run-status",
+          "chunk:deferred",
+          "chunk:index",
+          "chunk:task-navigation",
+          "chunk:task-drafts",
+          "chunk:AnswerMarkdown",
+          "chunk:answer-table",
+          "chunk:ConversationDrafts",
+          "chunk:csv",
+          "chunk:generated-results",
+          "chunk:schemas",
+          "chunk:DocumentContent",
+          "chunk:AuxMark",
+          "chunk:Search",
+          "chunk:run-history",
+          "chunk:ObservationPanel",
+          "chunk:Lock"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "chunk:RoutineSchedule": {
+      "before": {
+        "imports": [
+          "source:index.html"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:App"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      }
+    },
+    "source:src/chromium-bridge.ts": {
+      "before": {
+        "imports": [
+          "chunk:feature-stage-reconciliation",
+          "chunk:browser-host-methods",
+          "chunk:method-feature",
+          "chunk:schemas",
+          "source:index.html",
+          "chunk:live-folders",
+          "chunk:entities",
+          "chunk:mentions",
+          "chunk:program",
+          "chunk:observation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "chunk:feature-stage-reconciliation",
+          "chunk:browser-host-methods",
+          "chunk:method-feature",
+          "chunk:schemas",
+          "source:index.html",
+          "chunk:live-folders",
+          "chunk:entities"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "chunk:browser-host-methods": {
+      "before": {
+        "imports": [
+          "chunk:schemas",
+          "chunk:live-folders",
+          "chunk:entities",
+          "chunk:feature-stage-reconciliation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      },
+      "after": {
+        "imports": [
+          "chunk:schemas",
+          "chunk:live-folders",
+          "chunk:feature-stage-reconciliation",
+          "chunk:entities"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      }
+    },
+    "chunk:ChatSessions": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:index",
+          "chunk:run-status",
+          "chunk:App",
+          "chunk:deferred"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:index",
+          "chunk:run-status",
+          "chunk:deferred"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      }
+    },
+    "chunk:entities": {
+      "before": {
+        "imports": [
+          "chunk:mentions",
+          "chunk:schemas",
+          "chunk:program"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      },
+      "after": {
+        "imports": [
+          "chunk:schemas"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      }
+    },
+    "source:src/components/Tasks.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:index",
+          "chunk:App",
+          "chunk:deferred",
+          "chunk:task-drafts",
+          "chunk:preference-command",
+          "chunk:DocumentContent",
+          "chunk:Search",
+          "chunk:RoutineSchedule",
+          "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/demonstration.js",
+          "chunk:RunAttentionFeed",
+          "chunk:feature-stage-reconciliation",
+          "chunk:program",
+          "chunk:observation",
+          "chunk:schemas"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:index",
+          "chunk:deferred",
+          "chunk:task-drafts",
+          "chunk:preference-command",
+          "chunk:DocumentContent",
+          "chunk:Search",
+          "chunk:RoutineSchedule",
+          "chunk:demonstration",
+          "chunk:RunAttentionFeed",
+          "chunk:feature-stage-reconciliation",
+          "chunk:schemas"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "chunk:ConversationDrafts": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:csv",
+          "chunk:App",
+          "chunk:ArrowUpRight",
+          "chunk:task-navigation",
+          "chunk:deferred"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:csv",
+          "chunk:ArrowUpRight",
+          "chunk:task-navigation",
+          "chunk:deferred"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": false
+      }
+    },
+    "source:src/components/ProfileSwitcher.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:confirm",
+          "chunk:deferred",
+          "chunk:browser-host-methods",
+          "chunk:command-result",
+          "chunk:feature-stage-reconciliation",
+          "chunk:schemas",
+          "chunk:live-folders",
+          "chunk:entities",
+          "chunk:mentions",
+          "chunk:program",
+          "chunk:observation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:confirm",
+          "chunk:deferred",
+          "chunk:browser-host-methods",
+          "chunk:command-result",
+          "chunk:feature-stage-reconciliation",
+          "chunk:schemas",
+          "chunk:live-folders",
+          "chunk:entities"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "chunk:App": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:feature-stage-reconciliation"
+        ],
+        "dynamicImports": [
+          "source:src/features/apple-script/preference.tsx",
+          "source:src/store/organization-persistence.ts",
+          "source:src/store/organization-layout.ts",
+          "source:src/tidy-layout.ts",
+          "source:src/tidy-commit.ts",
+          "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/demonstration.js",
+          "source:src/features/demonstration/ReviewRecording.tsx",
+          "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/download-naming.js",
+          "source:src/features/download-naming/Settings.tsx",
+          "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/download-naming.js",
+          "source:src/components/ExtensionActions.tsx",
+          "source:src/features/extensions/SidePanelSurface.tsx",
+          "source:src/settings/sections/LinkRouting.tsx",
+          "source:src/settings/sections/LinkRouting.tsx",
+          "source:src/features/little-window/ExternalLinksSetting.tsx",
+          "source:src/mentions/MentionComposer.tsx",
+          "source:src/features/morning-review/QueueTonight.tsx",
+          "source:src/features/morning-review/NightSettings.tsx",
+          "source:src/clock.ts",
+          "source:src/archive-actions.ts",
+          "source:src/clock.ts",
+          "source:src/components/LiveFolderEditor.tsx",
+          "source:src/components/Library.tsx",
+          "source:src/archive-actions.ts",
+          "source:src/archive-actions.ts",
+          "source:src/archive-actions.ts",
+          "source:src/archive-actions.ts",
+          "source:src/archive-actions.ts",
+          "source:src/components/GithubConnections.tsx",
+          "source:src/components/ProfileSwitcher.tsx",
+          "source:src/components/ProfileSwitcher.tsx",
+          "source:src/components/ProfileSwitcher.tsx",
+          "source:src/components/MovedTabPlaceholder.tsx",
+          "source:src/components/Conversation.tsx",
+          "chunk:AnswerMarkdown",
+          "chunk:CommandBar",
+          "source:src/components/StartPage.tsx",
+          "source:src/components/TranslationBar.tsx",
+          "source:src/components/PageSurface.tsx",
+          "source:src/components/SplitStage.tsx",
+          "source:src/components/Overview.tsx",
+          "source:src/components/ResultsTable.tsx",
+          "source:src/components/ReaderView.tsx",
+          "source:src/components/Settings.tsx",
+          "source:src/components/Library.tsx",
+          "source:src/components/Inspector.tsx",
+          "source:src/components/Tasks.tsx",
+          "source:src/components/CommandSurface.tsx",
+          "source:src/components/Downloads.tsx",
+          "source:src/components/InlineAssist.tsx",
+          "source:src/components/SiteControls.tsx",
+          "source:src/components/SiteCustomization.tsx",
+          "source:src/components/LittleWindow.tsx",
+          "source:src/components/QuickAsk.tsx",
+          "source:src/components/HorizontalTabs.tsx",
+          "source:src/components/HttpAuthPrompt.tsx",
+          "source:src/components/ActionConfirmation.tsx",
+          "source:src/components/VaultOfferBanner.tsx",
+          "source:src/components/FindBar.tsx",
+          "chunk:Sidebar",
+          "source:src/components/ChatSidebar.tsx",
+          "source:src/components/AgentRail.tsx",
+          "source:src/components/LinkPeek.tsx",
+          "source:src/onboarding/OnboardingHost.tsx",
+          "source:src/native-performance-fixture-observer.ts",
+          "source:src/native-appearance-observer.ts",
+          "source:src/selection-action-draft.ts"
+        ],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:feature-stage-reconciliation"
+        ],
+        "dynamicImports": [
+          "source:src/features/apple-script/preference.tsx",
+          "source:src/store/organization-persistence.ts",
+          "source:src/store/organization-layout.ts",
+          "source:src/tidy-layout.ts",
+          "source:src/tidy-commit.ts",
+          "chunk:demonstration",
+          "source:src/features/demonstration/ReviewRecording.tsx",
+          "source:../../packages/contracts/dist/download-naming.js",
+          "source:src/features/download-naming/Settings.tsx",
+          "source:../../packages/contracts/dist/download-naming.js",
+          "source:src/components/ExtensionActions.tsx",
+          "source:src/features/extensions/SidePanelSurface.tsx",
+          "source:src/settings/sections/LinkRouting.tsx",
+          "source:src/settings/sections/LinkRouting.tsx",
+          "source:src/features/little-window/ExternalLinksSetting.tsx",
+          "source:src/mentions/MentionComposer.tsx",
+          "source:src/features/morning-review/QueueTonight.tsx",
+          "source:src/features/morning-review/NightSettings.tsx",
+          "source:src/clock.ts",
+          "source:src/archive-actions.ts",
+          "source:src/clock.ts",
+          "source:src/components/LiveFolderEditor.tsx",
+          "source:src/components/Library.tsx",
+          "source:src/archive-actions.ts",
+          "source:src/archive-actions.ts",
+          "source:src/archive-actions.ts",
+          "source:src/archive-actions.ts",
+          "source:src/archive-actions.ts",
+          "source:src/components/GithubConnections.tsx",
+          "source:src/components/ProfileSwitcher.tsx",
+          "source:src/components/ProfileSwitcher.tsx",
+          "source:src/components/ProfileSwitcher.tsx",
+          "source:src/components/MovedTabPlaceholder.tsx",
+          "source:src/components/Conversation.tsx",
+          "chunk:AnswerMarkdown",
+          "chunk:CommandBar",
+          "source:src/components/StartPage.tsx",
+          "source:src/components/TranslationBar.tsx",
+          "source:src/components/PageSurface.tsx",
+          "source:src/components/SplitStage.tsx",
+          "source:src/components/Overview.tsx",
+          "source:src/components/ResultsTable.tsx",
+          "source:src/components/ReaderView.tsx",
+          "source:src/components/Settings.tsx",
+          "source:src/components/Library.tsx",
+          "source:src/components/Inspector.tsx",
+          "source:src/components/Tasks.tsx",
+          "source:src/components/CommandSurface.tsx",
+          "source:src/components/Downloads.tsx",
+          "source:src/components/InlineAssist.tsx",
+          "source:src/components/SiteControls.tsx",
+          "source:src/components/SiteCustomization.tsx",
+          "source:src/components/LittleWindow.tsx",
+          "source:src/components/QuickAsk.tsx",
+          "source:src/components/HorizontalTabs.tsx",
+          "source:src/components/HttpAuthPrompt.tsx",
+          "source:src/components/ActionConfirmation.tsx",
+          "source:src/components/VaultOfferBanner.tsx",
+          "source:src/components/FindBar.tsx",
+          "chunk:Sidebar",
+          "source:src/components/ChatSidebar.tsx",
+          "source:src/components/AgentRail.tsx",
+          "source:src/components/LinkPeek.tsx",
+          "source:src/onboarding/OnboardingHost.tsx",
+          "source:src/native-performance-fixture-observer.ts",
+          "source:src/native-appearance-observer.ts",
+          "source:src/selection-action-draft.ts"
+        ],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "chunk:drafts": {
+      "before": {
+        "imports": [
+          "source:index.html"
+        ],
+        "dynamicImports": [
+          "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/index.js"
+        ],
+        "isEntry": false,
+        "isDynamicEntry": false
+      },
+      "after": {
+        "imports": [
+          "source:index.html"
+        ],
+        "dynamicImports": [
+          "source:../../packages/contracts/dist/index.js"
+        ],
+        "isEntry": false,
+        "isDynamicEntry": false
+      }
+    },
+    "source:src/components/Settings.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:replay",
+          "chunk:index",
+          "chunk:deferred",
+          "chunk:shortcuts",
+          "chunk:feature-stage-reconciliation",
+          "chunk:primitives",
+          "chunk:preference-command",
+          "chunk:SiteAgentAccess",
+          "chunk:task-navigation",
+          "chunk:RoutineSchedule",
+          "chunk:selection-capture",
+          "chunk:run-history",
+          "chunk:browser-host-methods",
+          "chunk:command-result",
+          "chunk:Search",
+          "chunk:Lock",
+          "chunk:confirm",
+          "chunk:import",
+          "chunk:schemas",
+          "chunk:task-drafts",
+          "chunk:live-folders",
+          "chunk:entities",
+          "chunk:mentions",
+          "chunk:program",
+          "chunk:observation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:replay",
+          "chunk:index",
+          "chunk:deferred",
+          "chunk:shortcuts",
+          "chunk:feature-stage-reconciliation",
+          "chunk:primitives",
+          "chunk:preference-command",
+          "chunk:SiteAgentAccess",
+          "chunk:task-navigation",
+          "chunk:RoutineSchedule",
+          "chunk:selection-capture",
+          "chunk:run-history",
+          "chunk:browser-host-methods",
+          "chunk:command-result",
+          "chunk:Search",
+          "chunk:Lock",
+          "chunk:confirm",
+          "chunk:import",
+          "chunk:schemas",
+          "chunk:task-drafts",
+          "chunk:live-folders",
+          "chunk:entities"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "source:src/components/RailHistory.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:run-status",
+          "chunk:conversations",
+          "chunk:App",
+          "chunk:deferred",
+          "chunk:Search",
+          "chunk:feature-stage-reconciliation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:run-status",
+          "chunk:conversations",
+          "chunk:deferred",
+          "chunk:Search",
+          "chunk:feature-stage-reconciliation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "source:src/selection-action-draft.ts": {
+      "before": {
+        "imports": [
+          "chunk:App",
+          "chunk:entities",
+          "chunk:selection-capture",
+          "source:index.html",
+          "chunk:feature-stage-reconciliation",
+          "chunk:mentions",
+          "chunk:schemas",
+          "chunk:program",
+          "chunk:observation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "chunk:App",
+          "chunk:entities",
+          "chunk:selection-capture",
+          "source:index.html",
+          "chunk:feature-stage-reconciliation",
+          "chunk:schemas"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "source:src/onboarding/OnboardingHost.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:index",
+          "chunk:replay",
+          "chunk:import",
+          "chunk:onboarding",
+          "chunk:preference-command",
+          "chunk:feature-stage-reconciliation",
+          "chunk:deferred",
+          "chunk:confirm",
+          "chunk:primitives",
+          "chunk:schemas",
+          "chunk:entities",
+          "chunk:mentions",
+          "chunk:program",
+          "chunk:observation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:index",
+          "chunk:replay",
+          "chunk:import",
+          "chunk:onboarding",
+          "chunk:preference-command",
+          "chunk:feature-stage-reconciliation",
+          "chunk:deferred",
+          "chunk:confirm",
+          "chunk:primitives",
+          "chunk:schemas"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "source:src/components/WorkbookPreview.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:workbook-snapshot",
+          "chunk:answer-table",
+          "chunk:App",
+          "chunk:schemas",
+          "chunk:feature-stage-reconciliation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:workbook-snapshot",
+          "chunk:answer-table",
+          "chunk:feature-stage-reconciliation",
+          "chunk:schemas"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "source:src/features/download-naming/Settings.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:primitives",
+          "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/download-naming.js",
+          "chunk:feature-stage-reconciliation",
+          "chunk:schemas"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:App",
+          "chunk:primitives",
+          "source:../../packages/contracts/dist/download-naming.js",
+          "chunk:feature-stage-reconciliation",
+          "chunk:schemas"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    },
+    "source:src/features/apple-script/preference.tsx": {
+      "before": {
+        "imports": [
+          "source:index.html",
+          "chunk:browser-host-methods",
+          "chunk:command-result",
+          "chunk:App",
+          "chunk:primitives",
+          "chunk:schemas",
+          "chunk:live-folders",
+          "chunk:entities",
+          "chunk:mentions",
+          "chunk:program",
+          "chunk:observation",
+          "chunk:feature-stage-reconciliation"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      },
+      "after": {
+        "imports": [
+          "source:index.html",
+          "chunk:browser-host-methods",
+          "chunk:command-result",
+          "chunk:App",
+          "chunk:primitives",
+          "chunk:schemas",
+          "chunk:live-folders",
+          "chunk:feature-stage-reconciliation",
+          "chunk:entities"
+        ],
+        "dynamicImports": [],
+        "isEntry": false,
+        "isDynamicEntry": true
+      }
+    }
+  },
+  "newLabels": [
+    "chunk:demonstration",
+    "source:../../packages/contracts/dist/download-naming.js",
+    "source:../../packages/contracts/dist/index.js"
+  ],
+  "lostLabels": [
+    "chunk:observation",
+    "chunk:program",
+    "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/demonstration.js",
+    "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/download-naming.js",
+    "source:../../../aux-root-sidebar-selection-next/packages/contracts/dist/index.js"
+  ]
+}

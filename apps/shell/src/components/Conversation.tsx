@@ -1,3 +1,4 @@
+import { ConversationSourceAction, ConversationSourceRow, ConversationSourcesSummary, useConversationSourcesOwner } from "./ConversationSourceControls";
 import { ConversationPreviewAction, previewPageIdentity, useConversationPreviewOwner } from "./ConversationPreviewControls";
 import { useConversationContextControls } from "./ConversationContextControls";
 import { ConversationViewAction } from "./ConversationViewControls";
@@ -16,7 +17,6 @@ import { RunControls } from "./RunControls";
 import { CalendarSourceChoiceDialog } from "./CalendarSourceChoiceDialog";
 import { AttachmentTray, type AttachmentItem } from "./AttachmentTray";
 import { SupportingContent } from "./SupportingContent";
-import { SourceRow } from "./SourceRow";
 import { ComposerFrame } from "../ui";
 import { Tooltip } from "../ui/tooltip";
 import { Menu } from "../ui/dialog";
@@ -117,10 +117,10 @@ function LivePage({ pageId }: { pageId: string }) {
   </>;
 }
 
-function RunSources({ sources, profileNames, onOpen }: { sources: ConversationSource[]; profileNames: Record<string, string>; onOpen: (source: ConversationSource) => void }) {
+function RunSources({ sources, profileNames, onOpen, current }: { sources: ConversationSource[]; profileNames: Record<string, string>; onOpen: (source: ConversationSource) => void; current(source?: ConversationSource): boolean }) {
   if (!sources.length) return null;
-  return <details className="conversation-sources"><summary>{shellIconGlobe}<span>Sources</span><span className="count nums">{sources.length}</span></summary><div>
-    {sources.map(source => <SourceRow key={source.sourceId} source={source} profileNames={profileNames} onOpen={() => onOpen(source)} />)}
+  return <details className="conversation-sources"><ConversationSourcesSummary current={() => current()}>{shellIconGlobe}<span>Sources</span><span className="count nums">{sources.length}</span></ConversationSourcesSummary><div>
+    {sources.map(source => <ConversationSourceRow key={source.sourceId} command="select-conversation-source" current={() => current(source)} source={source} profileNames={profileNames} invoke={() => onOpen(source)} />)}
     <p>Sources record what Aux read; verify external outcomes in the source account.</p>
   </div></details>;
 }
@@ -198,6 +198,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     return Object.fromEntries(generated.map(item=>[item.artifactId,version(item,new Set())]));
   },[generated]);
   const [conversationSources, setConversationSources] = useState<ConversationSource[]>([]);
+  const sourceCurrent = useConversationSourcesOwner(conversationCurrent, conversationSources);
   const sourcesByRun = useMemo(() => {
     const grouped = new Map<string, ConversationSource[]>();
     for (const source of conversationSources) {
@@ -206,21 +207,22 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     }
     return grouped;
   }, [conversationSources]);
-  const [calendarSourceChoice, setCalendarSourceChoice] = useState<{ source: Extract<ConversationSource, { kind: "calendar" }>; profiles: BrowserProfile[]; background: boolean } | null>(null);
+  const [calendarSourceChoice, setCalendarSourceChoice] = useState<{ source: Extract<ConversationSource, { kind: "calendar" }>; profiles: BrowserProfile[]; background: boolean; owner(): boolean } | null>(null);
   const calendarChoiceOpen = !!calendarSourceChoice;
   const calendarChoiceOpener = useRef<HTMLElement | null>(null);
   const calendarChoiceCancel = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (!calendarChoiceOpen) return;
+    if (!calendarChoiceOpen || !calendarSourceChoice) return;
+    const choice = calendarSourceChoice;
     let live = true;
-    void bridge.overlay(true).then(() => live ? bridge.focusShell() : undefined).then(() => {
-      if (live) calendarChoiceCancel.current?.focus();
+    void bridge.overlay(true).then(() => live && choice.owner() ? bridge.focusShell() : undefined).then(() => {
+      if (live && choice.owner()) calendarChoiceCancel.current?.focus();
     }).catch(() => {});
     return () => {
       live = false;
       void bridge.overlay(isScrimOverlay(useStore.getState().overlay));
     };
-  }, [calendarChoiceOpen]);
+  }, [calendarChoiceOpen, calendarSourceChoice]);
   const [sourceProfileNames, setSourceProfileNames] = useState<Record<string, string>>({});
   useEffect(() => {
     if (!conversationSources.some(source => source.profileId)) return;
@@ -372,41 +374,60 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     else if(id)useStore.getState().setConversationDraft(id,value);
     else useStore.getState().setAgentDraft(value);
   };
-  const openSource = useCallback(async (source: ConversationSource, background=false) => {
+  const sourceOpening = useRef<{ owner: typeof sourceCurrent } | null>(null);
+  const openSource = useCallback((source: ConversationSource, background=false) => {
+    if (!sourceCurrent(source)) return guardCommandCompletion(Promise.reject(new Error("Choose the original recorded conversation source.")), () => sourceCurrent(source));
+    if (sourceOpening.current?.owner === sourceCurrent) return guardCommandCompletion(Promise.reject(new Error("Wait for the original source to open.")), () => sourceCurrent(source));
+    const original = { owner: sourceCurrent, source: structuredClone(source) };
+    sourceOpening.current = original;
+    let active = true;
+    const current = () => {
+      if (active && sourceOpening.current === original && original.owner(original.source)) return true;
+      active = false; return false;
+    };
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    try {
-      if (source.kind === "calendar") {
-        const profiles = (await bridge.browserProfiles()).filter(profile => !profile.archived);
-        if (!profiles.length) throw new Error("No browser Profile is available to open this Calendar event.");
+    const completion = (async () => {
+      try {
+        if (source.kind === "calendar") {
+          const profiles = (await bridge.browserProfiles()).filter(profile => !profile.archived);
+          if (!current()) return;
+          if (!profiles.length) throw new Error("No browser Profile is available to open this Calendar event.");
+          if (source.profileId) {
+            const owner = profiles.find(profile => profile.id === source.profileId);
+            if (!owner) throw new Error("The Profile that read this Calendar event is unavailable. Restore it before opening the source.");
+            if (owner.current) {
+              if (background) return await useStore.getState().openBackgroundTab(source.url,useStore.getState().layout.activeSpaceId,false);
+              return await useStore.getState().newTab(source.url);
+            }
+            const ack = await bridge.openBrowserProfileUrl(owner.id, source.url);
+            if (!ack) throw new Error("The source Profile could not open this Calendar event.");
+            return ack;
+          }
+          calendarChoiceOpener.current = opener;
+          setCalendarSourceChoice({ source: structuredClone(source), profiles: structuredClone(profiles), background, owner: () => original.owner(original.source) });
+          return;
+        }
         if (source.profileId) {
-          const owner = profiles.find(profile => profile.id === source.profileId);
-          if (!owner) throw new Error("The Profile that read this Calendar event is unavailable. Restore it before opening the source.");
-          if (owner.current) {
-            if (background) await useStore.getState().openBackgroundTab(source.url,useStore.getState().layout.activeSpaceId,false);
-            else await useStore.getState().newTab(source.url);
-          } else if (!await bridge.openBrowserProfileUrl(owner.id, source.url)) throw new Error("The source Profile could not open this Calendar event.");
-          return;
+          const profiles = await bridge.browserProfiles();
+          if (!current()) return;
+          if (!profiles.some(profile => profile.id === source.profileId && profile.current)) {
+            if (!profiles.some(profile => profile.id === source.profileId)) throw new Error("The source browser Profile is unavailable on this device.");
+            const ack = await bridge.openBrowserProfileUrl(source.profileId, source.url);
+            if (!ack) throw new Error("The source Profile could not open this page.");
+            return ack;
+          }
         }
-        calendarChoiceOpener.current = opener;
-        setCalendarSourceChoice({ source, profiles, background });
-        return;
-      }
-      if (source.profileId) {
-        const profiles = await bridge.browserProfiles();
-        if (!profiles.some(profile => profile.id === source.profileId && profile.current)) {
-          if (!profiles.some(profile => profile.id === source.profileId)) throw new Error("The source browser Profile is unavailable on this device.");
-          if (!await bridge.openBrowserProfileUrl(source.profileId, source.url)) throw new Error("The source Profile could not open this page.");
-          return;
-        }
-      }
-      const existing = useStore.getState().pages.find(page => page.pageId === source.pageId && page.url === source.url
-        && page.documentEpoch === source.documentEpoch && !page.ownedByRuntime
-        && !["crashed", "detached"].includes(page.viewStatus ?? ""));
-      if (existing) { if (!background) await useStore.getState().activate(existing.pageId); }
-      else if (background) await useStore.getState().openBackgroundTab(source.url,useStore.getState().layout.activeSpaceId,false);
-      else await useStore.getState().newTab(source.url);
-    } catch (error) { errToast(error); }
-  },[setCalendarSourceChoice]);
+        if (!current()) return;
+        const existing = useStore.getState().pages.find(page => page.pageId === source.pageId && page.url === source.url
+          && page.documentEpoch === source.documentEpoch && !page.ownedByRuntime
+          && !["crashed", "detached"].includes(page.viewStatus ?? ""));
+        if (existing) { if (!background) return await useStore.getState().activate(existing.pageId); }
+        else if (background) return await useStore.getState().openBackgroundTab(source.url,useStore.getState().layout.activeSpaceId,false);
+        else return await useStore.getState().newTab(source.url);
+      } finally { if (sourceOpening.current === original) sourceOpening.current = null; }
+    })();
+    return guardCommandCompletion(completion, () => original.owner(original.source));
+  },[sourceCurrent, setCalendarSourceChoice]);
   const openCitation = useCallback((url:string,background:boolean,runId?:string):boolean => {
     const matching=conversationSources.filter(source=>answerUrl(source.url)===url && (!runId || source.runId===runId));
     if (!matching.length) {
@@ -418,20 +439,38 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       : source.kind === "memory" ? `memory\0${source.memoryId}`
       : `browser\0${source.profileId??""}\0${source.pageId}\0${source.documentEpoch}\0${source.url}`,source]));
     if (distinct.size!==1) { toast("This link has multiple sources. Choose the exact account or tab from Sources."); return true; }
-    void openSource([...distinct.values()][0]!,background);
+    const source = [...distinct.values()][0]!;
+    const completion = openSource(source,background);
+    void completion.catch(reason => { if (sourceCurrent(source)) errToast(reason); });
     return true;
-  },[conversationSources,openSource]);
-  const openCalendarSourceInProfile = useCallback(async (profile: BrowserProfile) => {
+  },[conversationSources,openSource,sourceCurrent]);
+  const calendarOpening = useRef<{ choice: NonNullable<typeof calendarSourceChoice> } | null>(null);
+  const currentCalendarChoice = () => !!calendarSourceChoice && calendarSourceChoice.owner();
+  const openCalendarSourceInProfile = (profile: BrowserProfile) => {
     const choice = calendarSourceChoice;
-    if (!choice) return;
+    if (!choice || !choice.owner() || !choice.profiles.some(value => JSON.stringify(value) === JSON.stringify(profile)))
+      return guardCommandCompletion(Promise.reject(new Error("Choose the original Calendar source Profile.")), () => !!choice?.owner());
+    if (calendarOpening.current?.choice === choice) return guardCommandCompletion(Promise.reject(new Error("Wait for the original Calendar source to open.")), choice.owner);
+    const original = { choice }; calendarOpening.current = original;
     setCalendarSourceChoice(null);
-    try {
-      if (profile.current) {
-        if (choice.background) await useStore.getState().openBackgroundTab(choice.source.url,useStore.getState().layout.activeSpaceId,false);
-        else await useStore.getState().newTab(choice.source.url);
-      } else if (!await bridge.openBrowserProfileUrl(profile.id, choice.source.url)) throw new Error("The selected Profile could not open this Calendar event.");
-    } catch (error) { errToast(error); }
-  }, [calendarSourceChoice, setCalendarSourceChoice]);
+    const current = () => choice.owner() && calendarOpening.current === original;
+    const completion = (async () => {
+      try {
+        const profiles = await bridge.browserProfiles();
+        if (!current()) return;
+        const actual = profiles.find(value => value.id === profile.id && !value.archived);
+        if (!actual || JSON.stringify(actual) !== JSON.stringify(profile)) throw new Error("The chosen Calendar source Profile changed. Choose it again.");
+        if (profile.current) {
+          if (choice.background) return await useStore.getState().openBackgroundTab(choice.source.url,useStore.getState().layout.activeSpaceId,false);
+          return await useStore.getState().newTab(choice.source.url);
+        }
+        const ack = await bridge.openBrowserProfileUrl(profile.id, choice.source.url);
+        if (!ack) throw new Error("The selected Profile could not open this Calendar event.");
+        return ack;
+      } finally { if (calendarOpening.current === original) calendarOpening.current = null; }
+    })();
+    return guardCommandCompletion(completion, choice.owner);
+  };
   const linked = pages.find(p => p.pageId === last?.pageIds[0] && !["crashed", "detached"].includes(p.viewStatus ?? ""));
   const selectedContext = conversationPage(pages, contextPage, activePageId, linked?.pageId);
   const splitPlan = selectedContext ? previewSplit(layout, pages, selectedContext.pageId, activePageId) : null;
@@ -846,7 +885,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   const supporting = id && resultPreview ? (generated.find(item=>item.artifactId===resultPreview && item.generatedKind) ? <GeneratedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onClose={() => useStore.setState({resultPreview:null})} onVersionSaved={artifactId=>useStore.setState({resultPreview:artifactId})}/> : <SavedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onCitationOpen={openCitation} onClose={() => useStore.setState({resultPreview:null})} onVersionSaved={artifactId=>useStore.setState({resultPreview:artifactId})}/>)
     : id && imagePreview && images.some(image => image.imageId === imagePreview) ? <ImageSnapshot key={`${id}:${imagePreview}`} chatId={id} imageId={imagePreview} current={currentImagePreview} onClose={() => setImagePreview(null)} closeControl={<ConversationImageAction command="cancel-conversation-image" current={currentImagePreview} invoke={() => setImagePreview(null)} type="button" className="icon-btn xs" aria-label="Close image preview">{shellIconClose}</ConversationImageAction>}/>
     : id && documentPreview ? <DocumentSnapshot key={`${id}:${documentPreview}`} chatId={id} attachmentId={documentPreview} onClose={() => setDocumentPreview(null)}/>
-    : sourceDetail ? <><SourceRow source={sourceDetail} profileNames={sourceProfileNames} onOpen={() => void openSource(sourceDetail)}/><p className="hint selectable">{sourceDetail.url}</p><button className="btn" onClick={() => void openSource(sourceDetail)}>Open recorded source {shellIconOpen}</button></>
+    : sourceDetail ? <><ConversationSourceRow command="open-conversation-recorded-source" current={() => sourceCurrent(sourceDetail)} source={sourceDetail} profileNames={sourceProfileNames} invoke={() => openSource(sourceDetail)}/><p className="hint selectable">{sourceDetail.url}</p><ConversationSourceAction command="open-conversation-recorded-source" current={() => sourceCurrent(sourceDetail)} className="btn" invoke={() => openSource(sourceDetail)}>Open recorded source {shellIconOpen}</ConversationSourceAction></>
     : browserPreview;
   const supportingKey = resultPreview || imagePreview || documentPreview || sourceDetail?.sourceId || "browser";
   const closeSupporting = () => { useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(null); setSourceDetail(null); setPreviewOpen(false); };
@@ -858,7 +897,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       {historyError && <div className="field-error"><p role="alert">Conversation history couldn’t be loaded. Your draft is kept.</p><ConversationAction command="load-conversation-history" current={() => conversationCurrent() && !!historyError && !historyLoading} disabled={historyLoading} invoke={() => loadTurns(earlier ?? undefined)}>Try again</ConversationAction><ConversationDetails current={conversationCurrent} text={historyError} /></div>}
       {earlier && !historyError && <ConversationAction command="load-conversation-history" current={() => conversationCurrent() && !!earlier && !historyError && !historyLoading} disabled={historyLoading} invoke={() => loadTurns(earlier)}>Load earlier messages</ConversationAction>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
-      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel savedAnswerIds={generated.filter(item => item.runId === run.runId && item.automaticReport === true).map(item => item.artifactId)} runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last} questionInComposer={run === last && answering} controlsInComposer={run === last} composerRef={textareaRef} sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} onCitationOpen={openCitation}/><RunSources sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} profileNames={sourceProfileNames} onOpen={source => { setSourceDetail(source); setImagePreview(null); setDocumentPreview(null); useStore.setState({ resultPreview: null }); }}/>{generated.some(item=>item.runId===run.runId) && <div role="group" className="conversation-results" aria-label="Saved results">{generated.filter(item=>item.runId===run.runId).map(item=><ResultCard key={item.artifactId} compact={item.automaticReport === true} result={item} revision={item.revision ?? artifactVersions[item.artifactId]} onOpen={()=>{setSourceDetail(null);setImagePreview(null);setDocumentPreview(null);useStore.setState({resultPreview:item.artifactId});}}/>)}</div>}<RunImages runId={run.runId}/></article>)}
+      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel savedAnswerIds={generated.filter(item => item.runId === run.runId && item.automaticReport === true).map(item => item.artifactId)} runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last} questionInComposer={run === last && answering} controlsInComposer={run === last} composerRef={textareaRef} sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} onCitationOpen={openCitation}/><RunSources current={sourceCurrent} sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} profileNames={sourceProfileNames} onOpen={source => { setSourceDetail(source); setImagePreview(null); setDocumentPreview(null); useStore.setState({ resultPreview: null }); }}/>{generated.some(item=>item.runId===run.runId) && <div role="group" className="conversation-results" aria-label="Saved results">{generated.filter(item=>item.runId===run.runId).map(item=><ResultCard key={item.artifactId} compact={item.automaticReport === true} result={item} revision={item.revision ?? artifactVersions[item.artifactId]} onOpen={()=>{setSourceDetail(null);setImagePreview(null);setDocumentPreview(null);useStore.setState({resultPreview:item.artifactId});}}/>)}</div>}<RunImages runId={run.runId}/></article>)}
       {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><output className="hint">Starting…</output></article>)}
 
     </div></div>
@@ -894,6 +933,6 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       </ComposerFrame>
     </div></div>
     </div>{supporting && <SupportingContent key={imagePreview ? `${supportingKey}:${imagePreviewGeneration}` : supportingKey} container={conversationRoot} viewer={!!(resultPreview || documentPreview || imagePreview)} title={supportingKey === "browser" ? "Browser preview" : sourceDetail && supportingKey === sourceDetail.sourceId ? "Source details" : "Result details"} initiallyExpanded={supportingKey !== "browser"} onClose={closeSupporting}>{supporting}</SupportingContent>}</div>
-    {calendarSourceChoice && <CalendarSourceChoiceDialog choice={calendarSourceChoice} returnFocus={calendarChoiceOpener} initialFocus={calendarChoiceCancel} onClose={() => setCalendarSourceChoice(null)} onChoose={profile => void openCalendarSourceInProfile(profile)} />}
+    {calendarSourceChoice && <CalendarSourceChoiceDialog choice={calendarSourceChoice} returnFocus={calendarChoiceOpener} initialFocus={calendarChoiceCancel} onClose={() => setCalendarSourceChoice(null)} onChoose={profile => void openCalendarSourceInProfile(profile)} cancelControl={<ConversationSourceAction command="cancel-conversation-source-profile" current={currentCalendarChoice} controlRef={calendarChoiceCancel} className="icon-btn" aria-label="Cancel" invoke={() => setCalendarSourceChoice(null)}>{shellIconClose}</ConversationSourceAction>} profileControl={profile => <ConversationSourceAction key={profile.id} command="choose-conversation-source-profile" current={currentCalendarChoice} className="btn sm" invoke={() => openCalendarSourceInProfile(profile)}>{profile.name}{profile.current ? " · current" : ""}</ConversationSourceAction>} />}
   </section>;
 }
