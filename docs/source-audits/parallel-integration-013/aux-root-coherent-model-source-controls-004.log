@@ -1,0 +1,29 @@
+✔ actual App retains channel through original retirement and removes it before guardian/slot release (1.291917ms)
+✔ unknown original generation or signed channel cleanup refusal retains guardian/slot and primary failure (0.603708ms)
+✔ actual failed owner construction retains original authentication error and blocks guardian/slot cleanup (0.401417ms)
+✔ original paired LS process with no authenticated channel owner cannot infer absent-channel cleanup (0.22925ms)
+✔ actual successful original channel cleanup is idempotent across quit twice (0.265042ms)
+✔ channel-success then guardian-failure retry retains exact successful receipt without repeated deletion (0.260083ms)
+✔ retained removal receipt cannot authorize replacement PID, LS generation or App generation (1.154208ms)
+✔ original lease contains only actual synthetic Chrome bookmark and SQLite visit, with stable restart readback (17.182459ms)
+✔ forged, copied and foreign-owner lease cannot read or clean original files (9.292ms)
+✔ changed file refuses admission and cleanup without deleting original source (11.60175ms)
+✔ unknown secret-shaped file refuses cleanup and retains lease for original inspection (11.275833ms)
+✔ symlink, hardlink and permissive source files are refused (13.291708ms)
+✔ replaced source tree cannot be adopted or cleaned (9.585583ms)
+✔ real HOME, foreign root, symlinked Profile and non-loopback sources are never admitted (11.327042ms)
+✔ inherited override stripped, caller override refused, unrelated environment preserved (0.108125ms)
+✔ original App proxy adapter refuses source env even alongside all three legitimate transport keys (22.147333ms)
+✔ App-original Profile identity captured before preparation refuses later replacement (2.144333ms)
+✔ drops every supported inherited model key without reading values (0.556875ms)
+✔ keeps owned source/transport flags and strips explicit model overrides after merging (0.069958ms)
+✔ does not widen existing source-home env admission (0.085417ms)
+✔ actual App sends the same hermetic environment to child and original LS helper (0.429167ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 157.994417
