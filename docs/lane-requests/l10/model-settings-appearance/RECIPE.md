@@ -1,0 +1,26 @@
+# Original Models appearance preparation
+
+Source-only, no native/App/provider/auth operation executed. New helper captures only the genuinely existing read-only local-provider surface and disabled removal menu. Five source falsification controls exercise sequence ownership/restoration; their simulated captures are not native evidence.
+
+## Runnable subset / runner request
+
+Request a fixed outside-functional-registry `model-settings-appearance` selector, gated exactly like existing `model-discovery-appearance`: `--appearance`, the original externally admitted matching App/native/runtime/helper pair, original owned fresh regular Profile and fixture transport, normal owned browser window. Call requireModelSettingsAppearance on actual selected ID and admitted pair before App start. Configure using the existing configureModel producer and original t.model endpoint/model; never raw environment override. After actual Settings are configured, call captureModelSettingsAppearance. Keep original runner deadlines/abort/helper leases and cleanup unchanged. No runner edit or registry addition is in this packet.
+
+The helper begins with Settings closed, zero pages/runs, original composer draft and owned loopback endpoint. It opens Settings using HID Command-comma and actual Models category, reads the mounted provider/key/planner/vision/role/limits controls, captures via existing captureHomeState -> evidence.capture -> native before/pixels/after producer, opens the real Manage OpenAI-compatible trigger and captures its genuinely disabled Remove saved key item. It never invokes key save/removal, discovery, probe, provider authentication, model requests, setting writes, page/attachment mutation or a command by caller-shaped authority. Native window/App/AX owner and full settings/pages/runs/workspace/model-call count bracket both captures. Settings close/draft/focus restoration errors aggregate with the original failure; a replaced owner is never operated on.
+
+The existing source command packet links actual mounted button/input/menu controls to 20 scoped commands. Capture labels do not certify command dispatch: retain its 26 actual mounted component controls and independently run command invariant/remap checks after root composition. Input typing stays local. Remapped shortcuts require the original focused visible owner; source and capture cannot manufacture that owner.
+
+## Already prepared genuine discovery / required separate cohorts
+
+- Pending discovery and released focused planner: reuse existing model-discovery-appearance and holdModelDiscovery. Its actual one-use GET remains pending until release; do not duplicate the fixture or call a delayed mock a native proof.
+- Probe success/failure/Details: models.probe makes structured JSON and a separate vision request, and persists modelProbe. A new fresh disposable Profile cohort must intentionally retain that mutation through completion, with actual original loopback HTTP request receipts. Configure structured response {"ok":true} and actual synthetic vision reply through current createModelFixture; a separate source-backed rejected/malformed HTTP response can naturally produce the failure. Capture Testing…, actual resulting probe record and genuine Details. Do not assert full settings restoration after this persisted write or fabricate probing status.
+- Saved mask/removal review: current fixture controls HTTP only, not an admitted disposable credential lease. No real credential/Keychain read, arbitrary save/auth, or claimed mask/review is permitted. This state remains pending a separately reviewed synthetic credential-store producer and genuine explicit confirmation/cancel path; never click Remove in this read-only subset.
+- Private: source commands retain original normal/private policy. The existing private observation App is runtime-inactive and its descriptor refuses RPC, so this live Settings helper does not certify Private. Need an actual supported original private mounted Settings producer/transport and native private window receipt before extending the helper; do not use a normal window as Private evidence.
+- Long model labels: current original fixture-model is short. Pending a fixed bounded loopback GET catalog with real returned long ID, then genuine mounted datalist selection/rendering. Do not seed an expected visual label into the capture record.
+- Disabled controls: this subset proves actual empty-key Save key and no-key Remove disabled via AX enabled=false, not source metadata. Busy/disconnected disabled states need their actual original held request or real connection ACK, not fake booleans.
+
+## Supplied 06 source references
+
+Use actual supplied model-select-B8KjUQe5.js and model-categories-B6QO8F-x.js for model chooser/disabled/long-label visual reference and settings-BkS4XNAB.js for ordinary Settings pending-control form layout. Exact paths/hashes are retained in SOURCE-PINS.json. The assets are read-only source references, not proof Aux implements that upstream provider/auth business logic. Preserve Aux branding and existing contributor/image spend/destination/no-fallback disclosures; compare native pixels only after matching pair admission.
+
+All native acceptance/performance/F21 qualification remains pending builder execution. No 20 AC/hardware timing is derived from this appearance helper.

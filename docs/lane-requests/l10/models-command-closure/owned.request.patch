@@ -1,0 +1,1884 @@
+--- a/apps/shell/src/settings/sections/Models.tsx
++++ b/apps/shell/src/settings/sections/Models.tsx
+@@ -1,6 +1,12 @@
+-import { useEffect, useLayoutEffect, useRef, useState } from "react";
++import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
+ import { MODEL_PROVIDER_NAMES, type ModelConnectionStatus, type ModelProvider } from "@aux/contracts";
+ import { ModelConnections } from "./ModelConnections";
++import { PreferenceAction, usePreferenceCommand } from "./preference-command";
++import {
++  useModelControlOwner,
++  useModelDraftCommand,
++  type ModelControlOwner,
++} from "./models-command-controls";
+ import "./ModelProbeStatus.css";
+ import {
+   DEFAULT_PLANNER_MODEL_ID,
+@@ -39,8 +45,10 @@
+   overrides,
+   options,
+   disabled,
++  active,
+   onSave,
+ }: {
++  active: boolean;
+   role: (typeof MODEL_ROLES)[number];
+   route: AgentModelRoute;
+   override?: AgentModelRouteChain;
+@@ -52,19 +60,24 @@
+   const [modelId, setModelId] = useState(route.modelId);
+   const [reasoning, setReasoning] = useState<AgentModelRoute["reasoning"]>(route.reasoning);
+   const [busy, setBusy] = useState(false);
++  const roleOwner = useModelControlOwner(active, `${role.id}:${route.modelId}:${route.reasoning}`);
++  const roleScope = useId();
+   const selectedOverride = Array.isArray(override) ? override[0] : override;
+-  const save = async (automatic: boolean) => {
+-    if (busy || disabled || (!automatic && !modelId.trim())) return;
+-    const next = { ...overrides };
+-    if (automatic) delete next[role.id];
+-    else next[role.id] = { modelId: modelId.trim(), reasoning };
+-    setBusy(true);
+-    try {
+-      await onSave({ agentModelRoutes: next });
+-    } finally {
+-      setBusy(false);
+-    }
+-  };
++  const save = (automatic: boolean) =>
++    roleOwner.completion(async () => {
++      if (busy || disabled || (!automatic && !modelId.trim()) || !roleOwner.reserve("route"))
++        throw new Error("Choose the current model route.");
++      const next = { ...overrides };
++      if (automatic) delete next[role.id];
++      else next[role.id] = { modelId: modelId.trim(), reasoning };
++      setBusy(true);
++      try {
++        return await onSave({ agentModelRoutes: next });
++      } finally {
++        roleOwner.finish("route");
++        if (roleOwner.current()) setBusy(false);
++      }
++    });
+   return (
+     <IndexedField label={`${role.label} model`} hint={role.hint}>
+       <div className="row">
+@@ -93,7 +106,10 @@
+           <option value="medium">Medium</option>
+           <option value="xhigh">Extra high</option>
+         </select>
+-        <button
++        <PreferenceAction
++          command="save-model-role"
++          scopeId={roleScope}
++          invoke={() => save(false)}
+           className="btn sm"
+           disabled={
+             busy ||
+@@ -103,14 +119,19 @@
+               modelId.trim() === selectedOverride.modelId &&
+               reasoning === selectedOverride.reasoning)
+           }
+-          onClick={() => void save(false)}
+         >
+           Save route
+-        </button>
++        </PreferenceAction>
+         {override && (
+-          <button className="btn sm ghost" disabled={busy || disabled} onClick={() => void save(true)}>
++          <PreferenceAction
++            command="use-automatic-model-role"
++            scopeId={roleScope}
++            invoke={() => save(true)}
++            className="btn sm ghost"
++            disabled={busy || disabled}
++          >
+             Automatic
+-          </button>
++          </PreferenceAction>
+         )}
+       </div>
+       <span className="hint">
+@@ -163,7 +184,11 @@
+   const providerNames = MODEL_PROVIDER_NAMES;
+   const keyInput = useRef<HTMLInputElement>(null),
+     modelInput = useRef<HTMLInputElement>(null);
+-  const focusRequest = useRef<{ provider: ModelProvider; field: "model" | "key" } | null>(null);
++  const focusRequest = useRef<{
++    provider: ModelProvider;
++    field: "model" | "key";
++    owner: ModelControlOwner;
++  } | null>(null);
+   const [connectionError, setConnectionError] = useState("");
+   const [modelDraft, setModelDraft] = useState(() => plannerModelSelection(settings, provider));
+   const [endpointDraft, setEndpointDraft] = useState(String(settings.compatibleEndpoint ?? ""));
+@@ -182,39 +207,60 @@
+     setProbe(saved ? { ...saved, error: saved.ok ? undefined : "Last connection test failed" } : null);
+   }, [settings.modelProbe, provider]);
+   const [probing, setProbing] = useState(false);
+-  const operationOwner = useRef({ active: true, keyPending: false, probePending: false });
++  const owner = useModelControlOwner(active, provider);
++  const windowOwner = useModelControlOwner(active, "model-window");
++  const probeOwner = useModelControlOwner(
++    active,
++    JSON.stringify([
++      provider,
++      settings.plannerModel,
++      settings.compatibleEndpoint,
++      settings.modelApiKey,
++      settings.modelConnections,
++    ]),
++  );
++  useEffect(() => {
++    setProbing(false);
++    probeSequence.current++;
++  }, [probeOwner]);
++  const scopeId = useId();
++  const providerCommit = useRef({ provider, epoch: 0 });
+   useLayoutEffect(() => {
+-    const owner = { active: true, keyPending: false, probePending: false };
+-    operationOwner.current = owner;
+-    return () => { owner.active = false; };
+-  }, [active, provider]);
++    providerCommit.current = { provider, epoch: providerCommit.current.epoch + 1 };
++  }, [owner]);
++  const keyDraft = useRef(key);
++  const keyGeneration = useRef(0);
+   const connection = (settings.modelConnections as ModelConnectionStatus[] | undefined)?.find(
+     (item) => item.provider === provider,
+   );
+   const connected = connection?.enabled !== false;
+   useEffect(() => {
++    if (focusRequest.current && !focusRequest.current.owner.current()) {
++      focusRequest.current = null;
++      return;
++    }
+     if (switchingProvider || focusRequest.current?.provider !== provider) return;
+     const field = focusRequest.current.field;
+     focusRequest.current = null;
+     (field === "key" ? keyInput.current : modelInput.current)?.focus();
+-  }, [provider, switchingProvider]);
++  }, [provider, switchingProvider, windowOwner]);
+   useEffect(() => {
+-    if (!active) return;
++    if (!active || !owner.current()) return;
+     const sequence = ++modelsSequence.current;
+     setModels([]);
+     setModelsBusy(true);
+     void call("models.list")
+       .then((result) => {
+-        if (sequence === modelsSequence.current) setModels(result.models);
++        if (owner.current() && sequence === modelsSequence.current) setModels(result.models);
+       })
+       .catch(() => {})
+       .finally(() => {
+-        if (sequence === modelsSequence.current) setModelsBusy(false);
++        if (owner.current() && sequence === modelsSequence.current) setModelsBusy(false);
+       });
+     return () => {
+       ++modelsSequence.current;
+     };
+-  }, [active, provider, settings.compatibleEndpoint, settings.modelApiKey]);
++  }, [active, provider, settings.compatibleEndpoint, settings.modelApiKey, owner]);
+ 
+   const keyProvider = useRef(provider);
+   useEffect(() => {
+@@ -226,12 +272,24 @@
+     setProbing(false);
+     setConnectionError("");
+     probeSequence.current++;
+-  }, [active, provider]);
++  }, [active, provider, owner]);
++  const previousModel = useRef({ provider, value: plannerModelSelection(settings, provider) });
++  const previousEndpoint = useRef({ provider, value: String(settings.compatibleEndpoint ?? "") });
+   useEffect(() => {
+-    setModelDraft(plannerModelSelection(settings, provider));
++    const previous = previousModel.current,
++      next = plannerModelSelection(settings, provider);
++    setModelDraft((current) =>
++      previous.provider !== provider || current === previous.value ? next : current,
++    );
++    previousModel.current = { provider, value: next };
+   }, [settings.plannerModel, provider]);
+   useEffect(() => {
+-    setEndpointDraft(String(settings.compatibleEndpoint ?? ""));
++    const previous = previousEndpoint.current,
++      next = String(settings.compatibleEndpoint ?? "");
++    setEndpointDraft((current) =>
++      previous.provider !== provider || current === previous.value ? next : current,
++    );
++    previousEndpoint.current = { provider, value: next };
+   }, [settings.compatibleEndpoint, provider]);
+   useEffect(
+     () => () => {
+@@ -240,106 +298,219 @@
+     [],
+   );
+ 
+-  const set = async (patch: Record<string, unknown>) => {
+-    if (
+-      [
+-        "gatewayApiKey",
+-        "plannerModel",
+-        "modelProvider",
+-        "modelCredential",
+-        "modelConnection",
+-        "compatibleEndpoint",
+-      ].some((key) => key in patch)
+-    ) {
+-      probeSequence.current++;
+-      setProbe(null);
+-    }
+-    return onSave(patch);
++  const set = (patch: Record<string, unknown>) =>
++    owner.completion(async () => {
++      const action = Object.keys(patch).join(":");
++      if (!owner.reserve(action)) throw new Error("Choose the current model control.");
++      try {
++        if (
++          [
++            "gatewayApiKey",
++            "plannerModel",
++            "modelProvider",
++            "modelCredential",
++            "modelConnection",
++            "compatibleEndpoint",
++          ].some((key) => key in patch)
++        ) {
++          probeSequence.current++;
++          setProbe(null);
++        }
++        return await onSave(patch);
++      } finally {
++        owner.finish(action);
++      }
++    });
++
++  const editConnection = (target: ModelProvider, focus: "model" | "key") => {
++    const originalProviderEpoch = providerCommit.current.epoch;
++    return windowOwner.completion(
++      async () => {
++        if (!owner.current() || !windowOwner.reserve("provider-edit"))
++          throw new Error("Choose the current provider connection.");
++        if (target === provider) {
++          if (focus === "key") setKey("");
++          (focus === "key" ? keyInput.current : modelInput.current)?.focus();
++          windowOwner.finish("provider-edit");
++          return;
++        }
++        setSwitchingProvider(true);
++        try {
++          if (!(await set({ modelProvider: target })))
++            throw new Error(
++              "Could not select this provider. Stop active tasks or resolve the Settings error first.",
++            );
++          const committed = providerCommit.current;
++          if (
++            !windowOwner.current() ||
++            !(
++              owner.current() ||
++              (committed.provider === target && committed.epoch === originalProviderEpoch + 1)
++            )
++          )
++            return;
++          setKey("");
++          setModels([]);
++          setConnectionError("");
++          focusRequest.current = { provider: target, field: focus, owner: windowOwner };
++        } finally {
++          windowOwner.finish("provider-edit");
++          if (windowOwner.current()) setSwitchingProvider(false);
++        }
++      },
++      () =>
++        owner.current() ||
++        (providerCommit.current.provider === target &&
++          providerCommit.current.epoch === originalProviderEpoch + 1),
++    );
+   };
+ 
+-  const editConnection = async (target: ModelProvider, focus: "model" | "key") => {
+-    if (target === provider) {
+-      if (focus === "key") setKey("");
+-      (focus === "key" ? keyInput.current : modelInput.current)?.focus();
+-      return;
+-    }
+-    setSwitchingProvider(true);
+-    try {
+-      if (!(await set({ modelProvider: target })))
+-        throw new Error(
+-          "Could not select this provider. Stop active tasks or resolve the Settings error first.",
+-        );
+-      setKey("");
+-      setModels([]);
++  const saveKey = () => {
++    const originalGeneration = keyGeneration.current;
++    return owner.completion(
++      async () => {
++        if (!owner.current() || savingKey || !key.trim() || key === KEY_MASK || !owner.reserve("key"))
++          throw new Error("Choose the current model key draft.");
++        const originalDraft = key;
++        setSavingKey(true);
++        setConnectionError("");
++        try {
++          const ok = await set({ modelCredential: { provider, key: key.trim() } });
++          if (
++            !owner.current() ||
++            keyDraft.current !== originalDraft ||
++            keyGeneration.current !== originalGeneration
++          )
++            return ok;
++          if (ok) setKey("");
++          else
++            setConnectionError(
++              "The key was not saved. Your entry is still here; resolve the storage error and try again.",
++            );
++          return ok;
++        } catch (reason) {
++          if (
++            !owner.current() ||
++            keyDraft.current !== originalDraft ||
++            keyGeneration.current !== originalGeneration
++          )
++            throw reason;
++          setConnectionError(
++            "The key was not saved. Your entry is still here; resolve the storage error and try again.",
++          );
++          throw reason;
++        } finally {
++          owner.finish("key");
++          if (owner.current()) setSavingKey(false);
++        }
++      },
++      () => keyGeneration.current === originalGeneration,
++    );
++  };
++
++  const runProbe = () => {
++    let sequence = 0;
++    return probeOwner.completion(
++      async () => {
++        if (!probeOwner.reserve("probe")) throw new Error("Choose the current model connection test.");
++        sequence = ++probeSequence.current;
++        setProbing(true);
++        setProbe(null);
++        try {
++          const result = await call("models.probe", {
++            modelId: (settings.plannerModel as string) || undefined,
++          });
++          if (probeOwner.current() && sequence === probeSequence.current)
++            setProbe({ ...result, checkedAt: Date.now() });
++          return result;
++        } catch (e) {
++          if (probeOwner.current() && sequence === probeSequence.current)
++            setProbe({ ok: false, modelId: "", error: e instanceof Error ? e.message : String(e) });
++          throw e;
++        } finally {
++          probeOwner.finish("probe");
++          if (probeOwner.current()) setProbing(false);
++        }
++      },
++      () => sequence === probeSequence.current,
++    );
++  };
++
++  const [keyInputRef, keyButtonRef, keyControlRef, keyRun] = useModelDraftCommand(
++    "save-provider-model-key",
++    scopeId,
++    owner,
++    saveKey,
++    key,
++  );
++  const [endpointInputRef, endpointButtonRef, endpointControlRef, endpointRun] = useModelDraftCommand(
++    "save-model-endpoint",
++    scopeId,
++    owner,
++    () => set({ compatibleEndpoint: endpointDraft.trim() }),
++    endpointDraft,
++  );
++  const [plannerInputRef, plannerButtonRef, plannerControlRef, plannerRun] = useModelDraftCommand(
++    "save-planner-model",
++    scopeId,
++    owner,
++    () => set({ plannerModel: modelDraft.trim() }),
++    modelDraft,
++  );
++  const discoverModels = () =>
++    owner.completion(async () => {
++      if (modelsBusy || !owner.reserve("discovery")) throw new Error("Choose the current provider models.");
++      const sequence = ++modelsSequence.current;
++      setModelsBusy(true);
+       setConnectionError("");
+-      focusRequest.current = { provider: target, field: focus };
+-    } finally {
+-      setSwitchingProvider(false);
+-    }
+-  };
+-
+-  const saveKey = async () => {
+-    const owner = operationOwner.current;
+-    if (!owner.active || owner.keyPending || savingKey || !key.trim() || key === KEY_MASK) return;
+-    owner.keyPending = true;
+-    setSavingKey(true);
+-    setConnectionError("");
+-    try {
+-      const ok = await set({ modelCredential: { provider, key: key.trim() } });
+-      if (!owner.active) return;
+-      if (ok) setKey("");
+-      else
+-        setConnectionError(
+-          "The key was not saved. Your entry is still here; resolve the storage error and try again.",
+-        );
+-    } catch {
+-      if (!owner.active) return;
+-      setConnectionError(
+-        "The key was not saved. Your entry is still here; resolve the storage error and try again.",
+-      );
+-    } finally {
+-      owner.keyPending = false;
+-      if (owner.active) setSavingKey(false);
+-    }
+-  };
+-
+-  const runProbe = async () => {
+-    const owner = operationOwner.current;
+-    if (!owner.active || owner.probePending) return;
+-    owner.probePending = true;
+-    const sequence = ++probeSequence.current;
+-    setProbing(true);
+-    setProbe(null);
+-    try {
+-      const result = await call("models.probe", { modelId: (settings.plannerModel as string) || undefined });
+-      if (owner.active && sequence === probeSequence.current) setProbe({ ...result, checkedAt: Date.now() });
+-    } catch (e) {
+-      if (owner.active && sequence === probeSequence.current)
+-        setProbe({ ok: false, modelId: "", error: e instanceof Error ? e.message : String(e) });
+-    } finally {
+-      owner.probePending = false;
+-      if (owner.active) setProbing(false);
+-    }
+-  };
+-
+-  const discoverModels = async () => {
+-    if (modelsBusy) return;
+-    const sequence = ++modelsSequence.current;
+-    setModelsBusy(true);
+-    setConnectionError("");
+-    try {
+-      const result = await call("models.list");
+-      if (sequence !== modelsSequence.current) return;
+-      setModels(result.models);
+-      if (!result.models.length) setConnectionError("The endpoint returned no models.");
+-    } catch (error) {
+-      if (sequence === modelsSequence.current)
+-        setConnectionError(error instanceof Error ? error.message : String(error));
+-    } finally {
+-      if (sequence === modelsSequence.current) setModelsBusy(false);
+-    }
+-  };
+-
++      try {
++        const result = await call("models.list");
++        if (!owner.current() || sequence !== modelsSequence.current) return result;
++        setModels(result.models);
++        if (!result.models.length) setConnectionError("The endpoint returned no models.");
++        return result;
++      } catch (error) {
++        if (owner.current() && sequence === modelsSequence.current)
++          setConnectionError(error instanceof Error ? error.message : String(error));
++        throw error;
++      } finally {
++        owner.finish("discovery");
++        if (owner.current() && sequence === modelsSequence.current) setModelsBusy(false);
++      }
++    });
++
++  const [providerRef, selectProvider] = usePreferenceCommand<HTMLSelectElement>(
++    "select-model-provider",
++    scopeId,
++    (original) => editConnection(original.value as ModelProvider, "model"),
++  );
++  const [visionRef, saveVision] = usePreferenceCommand<HTMLInputElement>(
++    "save-vision-model",
++    scopeId,
++    (original) => {
++      if (original.value === String(settings.visionModel ?? "")) return;
++      return set({ visionModel: original.value.trim() });
++    },
++  );
++  const [workerRef, saveWorkers] = usePreferenceCommand<HTMLInputElement>(
++    "set-model-worker-limit",
++    scopeId,
++    (original) => set({ maxWorkers: Number(original.value) }),
++  );
++  const [turnRef, saveTurns] = usePreferenceCommand<HTMLSelectElement>(
++    "set-model-turn-limit",
++    scopeId,
++    (original) => set({ maxModelCalls: Number(original.value) }),
++  );
++  const [detailsRef, showDetails] = usePreferenceCommand<HTMLElement>(
++    "show-model-probe-details",
++    scopeId,
++    (original) => {
++      if (!owner.current() || !probe || probe.ok || !probe.error || !(original instanceof HTMLDetailsElement))
++        throw new Error("Choose the current model test details.");
++      original.open = !original.open;
++    },
++  );
+   const plannerModel = plannerModelSelection(settings, provider);
+   const plannerOptions: ModelEntry[] =
+     provider === "gateway"
+@@ -390,6 +561,7 @@
+       </output>
+       <ModelConnections
+         settings={settings}
++        active={active}
+         disabled={savingKey || probing || switchingProvider}
+         onSave={set}
+         onEdit={editConnection}
+@@ -402,18 +574,9 @@
+           aria-label="Model provider"
+           value={provider}
+           disabled={savingKey || probing || switchingProvider}
+-          onChange={(event) => {
+-            setSwitchingProvider(true);
+-            void set({ modelProvider: event.target.value })
+-              .then((ok) => {
+-                if (ok) {
+-                  setKey("");
+-                  setModels([]);
+-                  setConnectionError("");
+-                }
+-              })
+-              .finally(() => setSwitchingProvider(false));
+-          }}
++          ref={providerRef}
++          data-command-id="select-model-provider"
++          onChange={selectProvider}
+         >
+           {Object.entries(providerNames).map(([id, name]) => (
+             <option key={id} value={id}>
+@@ -427,8 +590,9 @@
+           label="Endpoint"
+           hint="Prompts and screenshots are sent here. Remote endpoints must use HTTPS; localhost may use HTTP."
+         >
+-          <div className="row">
++          <div className="row" ref={endpointControlRef}>
+             <input
++              ref={endpointInputRef}
+               className="grow"
+               aria-label="OpenAI-compatible endpoint"
+               inputMode="url"
+@@ -437,13 +601,14 @@
+               value={endpointDraft}
+               disabled={probing || savingKey || switchingProvider}
+               onChange={(event) => {
++                probeSequence.current++;
+                 setEndpointDraft(event.target.value);
+                 setProbe(null);
+               }}
+               onKeyDown={(event) => {
+                 if (event.key === "Enter" && endpointDraft.trim()) {
+                   event.preventDefault();
+-                  void set({ compatibleEndpoint: endpointDraft.trim() });
++                  endpointRun(event);
+                 }
+               }}
+             />
+@@ -456,11 +621,16 @@
+                 !endpointDraft.trim() ||
+                 endpointDraft.trim() === String(settings.compatibleEndpoint ?? "")
+               }
+-              onClick={() => void set({ compatibleEndpoint: endpointDraft.trim() })}
++              ref={endpointButtonRef}
++              data-command-id="save-model-endpoint"
++              onClick={endpointRun}
+             >
+               Save endpoint
+             </button>
+-            <button
++            <PreferenceAction
++              command="discover-provider-models"
++              scopeId={scopeId}
++              invoke={discoverModels}
+               className="btn sm"
+               disabled={
+                 probing ||
+@@ -471,10 +641,9 @@
+                 !connectionReady ||
+                 endpointDraft.trim() !== String(settings.compatibleEndpoint ?? "")
+               }
+-              onClick={() => void discoverModels()}
+             >
+               {modelsBusy ? "Discovering…" : "Discover models"}
+-            </button>
++            </PreferenceAction>
+           </div>
+         </IndexedField>
+       )}
+@@ -503,9 +672,12 @@
+           </>
+         }
+       >
+-        <div className="row">
++        <div className="row" ref={keyControlRef}>
+           <input
+-            ref={keyInput}
++            ref={(node) => {
++              keyInput.current = node;
++              keyInputRef(node);
++            }}
+             type="password"
+             aria-label="Provider API key"
+             autoComplete="off"
+@@ -520,6 +692,9 @@
+                   : "Enter this provider’s API key"
+             }
+             onChange={(e) => {
++              probeSequence.current++;
++              keyGeneration.current++;
++              keyDraft.current = e.target.value;
+               setKey(e.target.value);
+               setProbe(null);
+               setConnectionError("");
+@@ -527,14 +702,16 @@
+             onKeyDown={(e) => {
+               if (e.key === "Enter") {
+                 e.preventDefault();
+-                void saveKey();
++                keyRun(e);
+               }
+             }}
+           />
+           <button
+             className="btn sm"
+             disabled={savingKey || probing || switchingProvider || !key.trim() || key === KEY_MASK}
+-            onClick={() => void saveKey()}
++            ref={keyButtonRef}
++            data-command-id="save-provider-model-key"
++            onClick={keyRun}
+           >
+             {savingKey ? "Saving…" : "Save key"}
+           </button>
+@@ -550,18 +727,28 @@
+         label="Planner model"
+         hint="Enter the exact model ID for the selected provider. Availability depends on your account."
+       >
+-        <div className="row">
++        <div className="row" ref={plannerControlRef}>
+           <input
+             className="grow"
+-            ref={modelInput}
++            ref={(node) => {
++              modelInput.current = node;
++              plannerInputRef(node);
++            }}
+             aria-label="Planner model"
+             aria-describedby={contributorSelected ? "contributor-data-use" : undefined}
+             list="agent-model-options"
+             value={modelDraft}
+             disabled={probing || savingKey || switchingProvider}
+             onChange={(event) => {
++              probeSequence.current++;
+               setModelDraft(event.target.value);
+               setProbe(null);
++            }}
++            onKeyDown={(event) => {
++              if (event.key === "Enter") {
++                event.preventDefault();
++                plannerRun(event);
++              }
+             }}
+           />
+           <datalist id="agent-model-options">
+@@ -580,11 +767,16 @@
+               !modelDraft.trim() ||
+               modelDraft.trim() === plannerModel
+             }
+-            onClick={() => void set({ plannerModel: modelDraft.trim() })}
++            ref={plannerButtonRef}
++            data-command-id="save-planner-model"
++            onClick={plannerRun}
+           >
+             Save model
+           </button>
+-          <button
++          <PreferenceAction
++            command="probe-model-connection"
++            scopeId={scopeId}
++            invoke={runProbe}
+             className="btn sm"
+             disabled={
+               probing ||
+@@ -595,10 +787,9 @@
+               !!key.trim() ||
+               modelDraft.trim() !== plannerModel
+             }
+-            onClick={() => void runProbe()}
+           >
+             {probing ? "Testing…" : "Test connection"}
+-          </button>
++          </PreferenceAction>
+         </div>
+         {contributorSelected && (
+           <p className="hint" id="contributor-data-use">
+@@ -615,8 +806,16 @@
+               {probe.checkedAt ? ` · ${new Date(probe.checkedAt).toLocaleString()}` : ""}
+             </output>
+             {!probe.ok && probe.error && (
+-              <details className="hint model-probe-details">
+-                <summary>Connection test details</summary>
++              <details className="hint model-probe-details" ref={detailsRef}>
++                <summary
++                  data-command-id="show-model-probe-details"
++                  onClick={(event) => {
++                    event.preventDefault();
++                    showDetails(event);
++                  }}
++                >
++                  Connection test details
++                </summary>
+                 <p>{probe.error}</p>
+               </details>
+             )}
+@@ -638,10 +837,9 @@
+           defaultValue={String(settings.visionModel ?? "")}
+           placeholder="Same as planner"
+           disabled={switchingProvider || probing || savingKey}
+-          onBlur={(event) => {
+-            if (event.target.value !== String(settings.visionModel ?? ""))
+-              void set({ visionModel: event.target.value.trim() });
+-          }}
++          ref={visionRef}
++          data-command-id="save-vision-model"
++          onBlur={saveVision}
+         />
+       </IndexedField>
+ 
+@@ -657,6 +855,7 @@
+           <ModelRoleField
+             key={`${provider}:${role.id}:${route.modelId}:${route.reasoning}:${JSON.stringify(override)}`}
+             role={role}
++            active={active}
+             route={route}
+             override={override}
+             overrides={roleOverrides}
+@@ -675,7 +874,9 @@
+             min={1}
+             max={16}
+             defaultValue={(settings.maxWorkers as number) ?? 4}
+-            onBlur={(e) => void set({ maxWorkers: Number(e.target.value) })}
++            ref={workerRef}
++            data-command-id="set-model-worker-limit"
++            onBlur={saveWorkers}
+           />
+         </IndexedField>
+         <IndexedField
+@@ -685,7 +886,9 @@
+           <select
+             aria-label="Max model turns per run"
+             value={String(turnValue)}
+-            onChange={(e) => void set({ maxModelCalls: Number(e.target.value) })}
++            ref={turnRef}
++            data-command-id="set-model-turn-limit"
++            onChange={saveTurns}
+           >
+             {turnOptions.map((n) => (
+               <option key={n} value={n}>
+--- a/apps/shell/src/settings/sections/ModelConnections.tsx
++++ b/apps/shell/src/settings/sections/ModelConnections.tsx
+@@ -1,47 +1,139 @@
+-import { useRef, useState } from "react";
++import { useId, useLayoutEffect, useRef, useState } from "react";
+ import {
+   IMAGE_MODELS,
+   MODEL_PROVIDER_NAMES,
+   ModelConnectionStatusSchema,
+   type ModelProvider,
++  type ModelConnectionStatus,
+ } from "@aux/contracts";
+ import { ActionMenu } from "../../ui";
+ import { useConfirm } from "../../ui/confirm";
+ import { SettingsField } from "../primitives";
++import { usePreferenceCommand } from "./preference-command";
++import {
++  useModelControlOwner,
++  useModelMountedCommand,
++  type ModelControlOwner,
++} from "./models-command-controls";
+ 
+ export function ModelConnections({
+   settings,
++  active,
+   disabled,
+   onSave,
+   onEdit,
+ }: {
+   settings: Record<string, unknown>;
++  active: boolean;
+   disabled: boolean;
+   onSave(patch: Record<string, unknown>): Promise<boolean>;
+   onEdit(provider: ModelProvider, focus: "model" | "key"): Promise<void>;
+ }) {
+   const parsed = ModelConnectionStatusSchema.array().length(5).safeParse(settings.modelConnections);
+-  const [busy, setBusy] = useState(false),
+-    [error, setError] = useState("");
+-  const busyRef = useRef(false);
+-  const { confirm, confirmation } = useConfirm();
+-  const work = async (action: () => Promise<unknown>) => {
+-    if (disabled || busyRef.current) return;
+-    busyRef.current = true;
+-    setBusy(true);
+-    setError("");
+-    try {
+-      if ((await action()) === false)
+-        setError(
+-          "The connection change was not saved. Check the storage or active-task error, then try again.",
+-        );
+-    } catch (cause) {
+-      setError(cause instanceof Error ? cause.message : "Could not update this connection.");
+-    } finally {
+-      busyRef.current = false;
+-      setBusy(false);
+-    }
+-  };
++  const owner = useModelControlOwner(
++    active,
++    JSON.stringify([settings.modelProvider, settings.modelConnections, settings.imageModel]),
++  );
++  const reviewOwner = useModelControlOwner(active, "key-removal-review");
++  const scopeId = useId();
++  const [pending, setPending] = useState<ModelControlOwner | null>(null);
++  const [failure, setFailure] = useState<{ owner: ModelControlOwner; message: string } | null>(null);
++  const busy = pending === owner,
++    error = failure?.owner === owner ? failure.message : "";
++  const decision = useRef<{
++    owner: ModelControlOwner;
++    reviewOwner: ModelControlOwner;
++    confirm?: () => void;
++    cancel?: () => void;
++  } | null>(null);
++  const [confirmRef, accept] = usePreferenceCommand<HTMLButtonElement>(
++    "confirm-model-key-removal",
++    scopeId,
++    () => {
++      if (!owner.current() || decision.current?.owner !== owner || !decision.current.confirm)
++        throw new Error("Choose the original key removal review.");
++      decision.current.confirm();
++    },
++  );
++  const [cancelRef, cancel] = usePreferenceCommand<HTMLButtonElement>(
++    "cancel-model-key-removal",
++    scopeId,
++    () => {
++      if (!reviewOwner.current() || decision.current?.reviewOwner !== reviewOwner || !decision.current.cancel)
++        throw new Error("Choose the original key removal review.");
++      decision.current.cancel();
++    },
++  );
++  useLayoutEffect(
++    () => () => {
++      const original = decision.current;
++      if (original?.reviewOwner === reviewOwner) original.cancel?.();
++    },
++    [reviewOwner],
++  );
++  const { confirm, confirmation } = useConfirm({
++    confirmControl: (node, settle) => {
++      confirmRef(node);
++      if (decision.current) decision.current.confirm = settle;
++    },
++    cancelControl: (node, settle) => {
++      cancelRef(node);
++      if (decision.current) decision.current.cancel = settle;
++    },
++    onConfirm: accept,
++    onCancel: cancel,
++  });
++  const work = (action: () => Promise<unknown>) =>
++    owner.completion(async () => {
++      if (disabled || !owner.reserve("connection"))
++        throw new Error("Choose the current provider connection.");
++      setPending(owner);
++      setFailure(null);
++      try {
++        const result = await action();
++        if (result === false && owner.current())
++          setFailure({
++            owner,
++            message:
++              "The connection change was not saved. Check the storage or active-task error, then try again.",
++          });
++        return result;
++      } catch (cause) {
++        if (owner.current())
++          setFailure({
++            owner,
++            message: cause instanceof Error ? cause.message : "Could not update this connection.",
++          });
++        throw cause;
++      } finally {
++        owner.finish("connection");
++        if (owner.current()) setPending(null);
++      }
++    });
++  const remove = (connection: ModelConnectionStatus) =>
++    work(async () => {
++      const original = { owner, reviewOwner };
++      decision.current = original;
++      const accepted = await confirm({
++        title: `Remove ${MODEL_PROVIDER_NAMES[connection.provider]} key?`,
++        description:
++          "This disconnects the provider in this Profile and removes its saved OS credential. Environment credentials remain unused until you explicitly reconnect. Model choices are kept.",
++        confirmLabel: "Remove saved key",
++        danger: true,
++      });
++      if (decision.current === original) decision.current = null;
++      if (!accepted) return;
++      if (!owner.current()) throw new Error("The original provider connection changed before removal.");
++      return onSave({
++        modelCredential: { provider: connection.provider, key: "" },
++        modelConnection: { provider: connection.provider, enabled: false },
++      });
++    });
++  const [imageRef, chooseImage] = usePreferenceCommand<HTMLSelectElement>(
++    "set-image-generation-model",
++    scopeId,
++    (original) => work(() => onSave({ imageModel: original.value === "off" ? null : original.value })),
++  );
+   const gateway = parsed.success ? parsed.data.find((item) => item.provider === "gateway") : undefined;
+   return (
+     <>
+@@ -52,82 +144,18 @@
+         {!parsed.success ? (
+           <p className="hint">Provider management is unavailable until the runtime reconnects.</p>
+         ) : (
+-          parsed.data.map((connection) => {
+-            const name = MODEL_PROVIDER_NAMES[connection.provider];
+-            return (
+-              <div className="row" key={connection.provider} data-provider={connection.provider}>
+-                <div className="grow">
+-                  <strong>
+-                    {name}
+-                    {connection.selected ? " · Selected" : ""}
+-                  </strong>
+-                  <p className="hint">
+-                    {!connection.enabled
+-                      ? "Disconnected"
+-                      : connection.credentialUnavailable
+-                        ? "Saved credential unavailable"
+-                        : connection.credentialSource === "saved"
+-                          ? "Saved key"
+-                          : connection.credentialSource === "environment"
+-                            ? "Environment key"
+-                            : connection.localEndpoint
+-                              ? "Local endpoint"
+-                              : "No key configured"}
+-                  </p>
+-                </div>
+-                <ActionMenu
+-                  label={`Manage ${name}`}
+-                  actions={[
+-                    {
+-                      label: "Set models",
+-                      disabled: disabled || busy,
+-                      onSelect: () => void work(() => onEdit(connection.provider, "model")),
+-                    },
+-                    {
+-                      label: "Reauthenticate",
+-                      disabled: disabled || busy,
+-                      onSelect: () => void work(() => onEdit(connection.provider, "key")),
+-                    },
+-                    {
+-                      label: connection.enabled ? "Disconnect" : "Reconnect",
+-                      disabled: disabled || busy,
+-                      onSelect: () =>
+-                        void work(() =>
+-                          onSave({
+-                            modelConnection: { provider: connection.provider, enabled: !connection.enabled },
+-                          }),
+-                        ),
+-                    },
+-                    {
+-                      label: "Remove saved key",
+-                      danger: true,
+-                      disabled:
+-                        disabled ||
+-                        busy ||
+-                        (connection.credentialSource !== "saved" && !connection.credentialUnavailable),
+-                      onSelect: () =>
+-                        void work(async () => {
+-                          if (
+-                            !(await confirm({
+-                              title: `Remove ${name} key?`,
+-                              description:
+-                                "This disconnects the provider in this Profile and removes its saved OS credential. Environment credentials remain unused until you explicitly reconnect. Model choices are kept.",
+-                              confirmLabel: "Remove saved key",
+-                              danger: true,
+-                            }))
+-                          )
+-                            return;
+-                          return onSave({
+-                            modelCredential: { provider: connection.provider, key: "" },
+-                            modelConnection: { provider: connection.provider, enabled: false },
+-                          });
+-                        }),
+-                    },
+-                  ]}
+-                />
+-              </div>
+-            );
+-          })
++          parsed.data.map((connection) => (
++            <ProviderConnectionRow
++              key={connection.provider}
++              connection={connection}
++              owner={owner}
++              disabled={disabled || busy}
++              onEdit={onEdit}
++              onSave={onSave}
++              work={work}
++              remove={remove}
++            />
++          ))
+         )}
+         {error && <p role="alert">{error}</p>}
+       </SettingsField>
+@@ -139,10 +167,9 @@
+           aria-label="Image-generation model"
+           disabled={disabled || busy || !parsed.success}
+           value={String(settings.imageModel ?? "off")}
+-          onChange={(event) => {
+-            const value = event.target.value;
+-            void work(() => onSave({ imageModel: value === "off" ? null : value }));
+-          }}
++          ref={imageRef}
++          data-command-id="set-image-generation-model"
++          onChange={chooseImage}
+         >
+           <option value="off">Off</option>
+           {IMAGE_MODELS.map((model) => (
+@@ -165,3 +192,113 @@
+     </>
+   );
+ }
++
++function ProviderConnectionRow({
++  connection,
++  owner,
++  disabled,
++  onEdit,
++  onSave,
++  work,
++  remove,
++}: {
++  connection: ModelConnectionStatus;
++  owner: ModelControlOwner;
++  disabled: boolean;
++  onEdit(provider: ModelProvider, focus: "model" | "key"): Promise<void>;
++  onSave(patch: Record<string, unknown>): Promise<boolean>;
++  work(action: () => Promise<unknown>): Promise<unknown>;
++  remove(connection: ModelConnectionStatus): Promise<unknown>;
++}) {
++  const scopeId = useId(),
++    activate = useRef<(() => void) | null>(null);
++  const [triggerRef, trigger] = useModelMountedCommand("manage-model-provider", scopeId, owner, () => {
++    if (!owner.current() || disabled || !activate.current)
++      throw new Error("Choose the current provider menu.");
++    activate.current();
++  });
++  const [editRef, edit] = useModelMountedCommand("edit-provider-models", scopeId, owner, () =>
++    work(() => onEdit(connection.provider, "model")),
++  );
++  const [authRef, auth] = useModelMountedCommand("reauthenticate-model-provider", scopeId, owner, () =>
++    work(() => onEdit(connection.provider, "key")),
++  );
++  const [toggleRef, toggle] = useModelMountedCommand("toggle-model-provider-connection", scopeId, owner, () =>
++    work(() => onSave({ modelConnection: { provider: connection.provider, enabled: !connection.enabled } })),
++  );
++  const [removeRef, removeKey] = useModelMountedCommand("remove-saved-model-key", scopeId, owner, () =>
++    remove(connection),
++  );
++  const name = MODEL_PROVIDER_NAMES[connection.provider];
++  return (
++    <div className="row" data-provider={connection.provider}>
++      <div className="grow">
++        <strong>
++          {name}
++          {connection.selected ? " · Selected" : ""}
++        </strong>
++        <p className="hint">
++          {!connection.enabled
++            ? "Disconnected"
++            : connection.credentialUnavailable
++              ? "Saved credential unavailable"
++              : connection.credentialSource === "saved"
++                ? "Saved key"
++                : connection.credentialSource === "environment"
++                  ? "Environment key"
++                  : connection.localEndpoint
++                    ? "Local endpoint"
++                    : "No key configured"}
++        </p>
++      </div>
++      <ActionMenu
++        label={`Manage ${name}`}
++        triggerControl={(node, originalActivate) => {
++          triggerRef(node);
++          activate.current = node ? originalActivate : null;
++        }}
++        onTrigger={trigger}
++        actions={[
++          {
++            label: "Set models",
++            disabled,
++            controlRef: editRef,
++            onSelect: (event) => {
++              if (!event) throw new Error("Choose the original provider control.");
++              edit(event);
++            },
++          },
++          {
++            label: "Reauthenticate",
++            disabled,
++            controlRef: authRef,
++            onSelect: (event) => {
++              if (!event) throw new Error("Choose the original provider control.");
++              auth(event);
++            },
++          },
++          {
++            label: connection.enabled ? "Disconnect" : "Reconnect",
++            disabled,
++            controlRef: toggleRef,
++            onSelect: (event) => {
++              if (!event) throw new Error("Choose the original provider control.");
++              toggle(event);
++            },
++          },
++          {
++            label: "Remove saved key",
++            danger: true,
++            disabled:
++              disabled || (connection.credentialSource !== "saved" && !connection.credentialUnavailable),
++            controlRef: removeRef,
++            onSelect: (event) => {
++              if (!event) throw new Error("Choose the original provider control.");
++              removeKey(event);
++            },
++          },
++        ]}
++      />
++    </div>
++  );
++}
+--- /dev/null
++++ b/apps/shell/src/settings/sections/models-command-controls.tsx
+@@ -0,0 +1,152 @@
++import { useCallback, useLayoutEffect, useMemo, useRef, type SyntheticEvent } from "react";
++import { bridge, inMock, inNativeHost } from "../../bridge";
++import { guardCommandCompletion, reportCommandCompletionFailure } from "../../command-completion";
++import { executeCommand } from "../../commands";
++import { registerScopedControl } from "../../scoped-control-commands";
++import { usePreferenceCommand } from "./preference-command";
++
++type WindowSnapshot = {
++  identity: string;
++  active: boolean;
++  available: boolean;
++  windowId: string;
++  kind: typeof bridge.windowKind;
++  privateMode: boolean;
++};
++/** Presentation lifetime only. Runtime producers retain all credential,
++ * destination, authentication and settings-write policies. */
++export class ModelControlOwner {
++  #live = true;
++  #pending = new Set<string>();
++  constructor(readonly snapshot: Readonly<WindowSnapshot>) {}
++  current() {
++    const original = this.snapshot;
++    if (!this.#live) return false;
++    if (
++      !original.active ||
++      !original.available ||
++      !(inNativeHost || inMock) ||
++      bridge.windowId !== original.windowId ||
++      bridge.windowKind !== original.kind ||
++      bridge.privateMode !== original.privateMode
++    ) {
++      this.retire();
++      return false;
++    }
++    return true;
++  }
++  retire() {
++    this.#live = false;
++  }
++  reserve(action: string) {
++    if (!this.current() || this.#pending.has(action)) return false;
++    this.#pending.add(action);
++    return true;
++  }
++  finish(action: string) {
++    this.#pending.delete(action);
++  }
++  completion<T>(producer: () => Promise<T>, currentDraft: () => boolean = () => true) {
++    let original: Promise<T>;
++    try {
++      original = producer();
++    } catch (reason) {
++      original = Promise.reject(reason);
++    }
++    return guardCommandCompletion(original, () => this.current() && currentDraft());
++  }
++}
++
++export function useModelControlOwner(active: boolean, identity: string) {
++  const available = inNativeHost || inMock,
++    windowId = bridge.windowId,
++    kind = bridge.windowKind,
++    privateMode = bridge.privateMode;
++  const owner = useMemo(
++    () => new ModelControlOwner({ active, available, windowId, kind, privateMode, identity }),
++    [active, available, windowId, kind, privateMode, identity],
++  );
++  useLayoutEffect(() => () => owner.retire(), [owner]);
++  return owner;
++}
++
++/** One mounted input+button group per save command; Enter and the button share
++ * the registration. No hidden owner or duplicate input/button capability. */
++export function useModelDraftCommand(
++  command: string,
++  scopeId: string,
++  owner: ModelControlOwner,
++  invoke: () => unknown,
++  expected: string,
++) {
++  const input = useRef<HTMLInputElement>(null),
++    button = useRef<HTMLButtonElement>(null);
++  const draft = useMemo(() => ({ live: true, owner, expected }), [owner, expected]);
++  useLayoutEffect(
++    () => () => {
++      draft.live = false;
++    },
++    [draft],
++  );
++  const [controlRef, run] = usePreferenceCommand<HTMLElement>(command, scopeId, (_, originalEvent) => {
++    const target = originalEvent?.target ?? document.activeElement;
++    if (
++      !owner.current() ||
++      input.current?.value !== expected ||
++      !(target instanceof Node) ||
++      !(input.current?.contains(target) || button.current?.contains(target))
++    )
++      throw new Error("Choose the original current model draft.");
++    return owner.completion(
++      () => Promise.resolve(invoke()),
++      () => draft.live,
++    );
++  });
++  const inputRef = useCallback((node: HTMLInputElement | null) => {
++    input.current = node;
++  }, []);
++  const buttonRef = useCallback((node: HTMLButtonElement | null) => {
++    button.current = node;
++  }, []);
++  return [inputRef, buttonRef, controlRef, run] as const;
++}
++
++/** ActionMenu mounts its items in its own local state. Enroll the actual item
++ * at callback-ref commit, rather than assuming its parent's effect rerenders. */
++export function useModelMountedCommand(
++  command: string,
++  scopeId: string,
++  owner: ModelControlOwner,
++  invoke: () => unknown,
++) {
++  const unregister = useRef<(() => void) | null>(null);
++  const element = useRef<HTMLButtonElement | null>(null);
++  const controlRef = useCallback(
++    (node: HTMLButtonElement | null) => {
++      unregister.current?.();
++      unregister.current = null;
++      element.current = node;
++      if (node) {
++        node.dataset.commandId = command;
++        unregister.current = registerScopedControl(node, command, scopeId, () => {
++          if (element.current !== node || !owner.current())
++            throw new Error("Choose the original current provider control.");
++          return invoke();
++        });
++      }
++    },
++    [command, scopeId, owner, invoke],
++  );
++  useLayoutEffect(
++    () => () => {
++      unregister.current?.();
++      unregister.current = null;
++    },
++    [],
++  );
++  const run = (event: SyntheticEvent<HTMLButtonElement>) => {
++    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
++    void completion.catch((reason) => reportCommandCompletionFailure(completion, reason, () => {}));
++  };
++  return [controlRef, run] as const;
++}
+--- a/apps/shell/src/settings/sections/Models.test.tsx
++++ b/apps/shell/src/settings/sections/Models.test.tsx
+@@ -3,8 +3,17 @@
+ import { createRoot } from "react-dom/client";
+ import { expect, it, vi } from "vitest";
+ import { collectSettingsFields } from "../search";
++import { call } from "../../store";
+ import { ModelsSettings } from "./Models";
+ 
++
++vi.mock("../../bridge", () => ({ bridge: { windowId: "models-fixture", windowKind: "normal", privateMode: false }, inNativeHost: false, inMock: true }));
++vi.mock("../../commands", async () => {
++  const { invokeScopedControl } = await import("../../scoped-control-commands");
++  return { executeCommand: (command: string, context: Parameters<typeof invokeScopedControl>[1]) => {
++    try { return Promise.resolve(invokeScopedControl(command, context)); } catch (reason) { return Promise.reject(reason); }
++  } };
++});
+ vi.mock("../../store", () => ({
+   call: vi.fn(),
+   toast: vi.fn(),
+@@ -12,11 +21,14 @@
+ 
+ it("keeps an unsaved provider key in the editor and indexes model controls", async () => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+   const container = document.createElement("div");
+   const root = createRoot(container);
++  vi.mocked(call).mockResolvedValue({ models: [] });
+   const onSave = vi.fn(async () => false);
+   try {
+-    await act(async () => root.render(<ModelsSettings active={false} settings={{ modelProvider: "gateway" }} onSave={onSave} />));
++    document.body.append(container);
++    await act(async () => root.render(<ModelsSettings active settings={{ modelProvider: "gateway" }} onSave={onSave} />));
+     const fields = collectSettingsFields(container);
+     expect(fields.some(field => field.category === "Models" && field.label === "Planner model")).toBe(true);
+     expect(fields.some(field => field.category === "Models" && field.label === "Model provider")).toBe(true);
+@@ -33,19 +45,24 @@
+     expect(container.querySelector('[role="alert"]')?.textContent).toContain("not saved");
+   } finally {
+     await act(async () => root.unmount());
++    container.remove();
++    rects.mockRestore();
+     vi.unstubAllGlobals();
+   }
+ });
+ 
+ it("resets one model role to Automatic without dropping another override", async () => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+   const container = document.createElement("div");
+   const root = createRoot(container);
++  vi.mocked(call).mockResolvedValue({ models: [] });
+   const onSave = vi.fn(async () => true);
+   const fast = { modelId: "fixture-fast", reasoning: "low" } as const;
+   const deep = [{ modelId: "fixture-deep", reasoning: "xhigh" as const }, { modelId: "fixture-backup", reasoning: "low" as const }];
+   try {
+-    await act(async () => root.render(<ModelsSettings active={false} settings={{
++    document.body.append(container);
++    await act(async () => root.render(<ModelsSettings active settings={{
+       modelProvider: "gateway",
+       agentModelRoutes: { fast, deep: deep[0] },
+       agentModelRouteOverrides: { fast, deep },
+@@ -57,6 +74,8 @@
+     expect(onSave).toHaveBeenCalledWith({ agentModelRoutes: { deep } });
+   } finally {
+     await act(async () => root.unmount());
++    container.remove();
++    rects.mockRestore();
+     vi.unstubAllGlobals();
+   }
+ });
+--- a/apps/shell/src/settings/sections/Models.probe.test.tsx
++++ b/apps/shell/src/settings/sections/Models.probe.test.tsx
+@@ -4,15 +4,24 @@
+ import { afterEach, beforeEach, expect, it, vi } from "vitest";
+ import { call } from "../../store";
+ import { ModelsSettings } from "./Models";
++
++vi.mock("../../bridge", () => ({ bridge: { windowId: "models-fixture", windowKind: "normal", privateMode: false }, inNativeHost: false, inMock: true }));
++vi.mock("../../commands", async () => {
++  const { invokeScopedControl } = await import("../../scoped-control-commands");
++  return { executeCommand: (command: string, context: Parameters<typeof invokeScopedControl>[1]) => {
++    try { return Promise.resolve(invokeScopedControl(command, context)); } catch (reason) { return Promise.reject(reason); }
++  } };
++});
+ vi.mock("../../store", () => ({ call: vi.fn(), toast: vi.fn() }));
+ let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
+ beforeEach(() => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+   vi.mocked(call).mockReset();
+ });
+ afterEach(async () => {
+-  await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals();
++  await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals();
+ });
+ async function mount() {
+   await act(async () => root.render(<ModelsSettings active settings={{ modelProvider: "openai-compatible", compatibleEndpoint: "http://127.0.0.1:12345", plannerModel: "fixture-model" }} onSave={vi.fn(async () => true)} />));
+--- a/apps/shell/src/settings/sections/Models.retirement.test.tsx
++++ b/apps/shell/src/settings/sections/Models.retirement.test.tsx
+@@ -4,10 +4,19 @@
+ import { afterEach, beforeEach, expect, it, vi } from "vitest";
+ import { call } from "../../store";
+ import { ModelsSettings } from "./Models";
++
++vi.mock("../../bridge", () => ({ bridge: { windowId: "models-fixture", windowKind: "normal", privateMode: false }, inNativeHost: false, inMock: true }));
++vi.mock("../../commands", async () => {
++  const { invokeScopedControl } = await import("../../scoped-control-commands");
++  return { executeCommand: (command: string, context: Parameters<typeof invokeScopedControl>[1]) => {
++    try { return Promise.resolve(invokeScopedControl(command, context)); } catch (reason) { return Promise.reject(reason); }
++  } };
++});
+ vi.mock("../../store", () => ({ call: vi.fn(), toast: vi.fn() }));
+ let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
+ beforeEach(() => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+   host = document.createElement("div");
+   document.body.append(host);
+   root = createRoot(host);
+@@ -16,7 +25,7 @@
+ afterEach(async () => {
+   await act(async () => root.unmount());
+   host.remove();
+-  vi.unstubAllGlobals();
++  vi.restoreAllMocks(); vi.unstubAllGlobals();
+ });
+ function button(text: string) {
+   return [...host.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === text)!;
+--- /dev/null
++++ b/apps/shell/src/settings/sections/Models.commands.test.tsx
+@@ -0,0 +1,304 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { ModelsSettings } from "./Models";
++import { invokeScopedControl } from "../../scoped-control-commands";
++import { reportCommandCompletionFailure } from "../../command-completion";
++import { ModelProviderSchema } from "@aux/contracts";
++const fixture = vi.hoisted(() => ({
++  windowId: "models-original-window",
++  windowKind: "normal",
++  privateMode: false,
++}));
++const call = vi.hoisted(() => vi.fn());
++vi.mock("../../bridge", () => ({ bridge: fixture, inNativeHost: false, inMock: true }));
++vi.mock("../../store", () => ({ call }));
++vi.mock("../../commands", async () => {
++  const { invokeScopedControl } = await import("../../scoped-control-commands");
++  return {
++    executeCommand: (command: string, context: Parameters<typeof invokeScopedControl>[1]) => {
++      try {
++        return Promise.resolve(invokeScopedControl(command, context));
++      } catch (reason) {
++        return Promise.reject(reason);
++      }
++    },
++  };
++});
++let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
++const settings = {
++  modelProvider: "openai-compatible",
++  compatibleEndpoint: "http://127.0.0.1:12345",
++  plannerModel: "synthetic-loopback-model",
++};
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
++  Object.assign(fixture, { windowId: "models-original-window", windowKind: "normal", privateMode: false });
++  call.mockReset().mockResolvedValue({ models: [] });
++  host = document.createElement("div");
++  document.body.append(host);
++  root = createRoot(host);
++});
++afterEach(async () => {
++  await act(async () => root.unmount());
++  host.remove();
++  vi.restoreAllMocks();
++  vi.unstubAllGlobals();
++});
++const keyField = () => host.querySelector<HTMLInputElement>('[aria-label="Provider API key"]')!;
++const button = (text: string) =>
++  [...host.querySelectorAll<HTMLButtonElement>("button")].find((node) => node.textContent === text)!;
++async function typeKey(value: string) {
++  await act(async () => {
++    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(keyField(), value);
++    keyField().dispatchEvent(new Event("input", { bubbles: true }));
++  });
++}
++it("input Enter and remapped focused Save share one actual registration and original boolean ACK", async () => {
++  const save = vi.fn(async () => true);
++  await act(async () => root.render(<ModelsSettings active settings={settings} onSave={save} />));
++  await typeKey("synthetic-not-a-credential");
++  await act(async () =>
++    keyField().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })),
++  );
++  expect(save).toHaveBeenCalledTimes(1);
++  expect(keyField().value).toBe("");
++  await typeKey("synthetic-second-entry");
++  let completion!: Promise<boolean>;
++  await act(async () => {
++    button("Save key").focus();
++    completion = invokeScopedControl("save-provider-model-key") as Promise<boolean>;
++  });
++  await expect(completion).resolves.toBe(true);
++  expect(save).toHaveBeenCalledTimes(2);
++});
++it("same-tick duplicate invocation refuses without issuing a second credential write", async () => {
++  let resolve!: (ack: boolean) => void;
++  const save = vi.fn(
++    () =>
++      new Promise<boolean>((done) => {
++        resolve = done;
++      }),
++  );
++  await act(async () => root.render(<ModelsSettings active settings={settings} onSave={save} />));
++  await typeKey("synthetic-reserved-entry");
++  let first!: Promise<boolean>, second!: Promise<unknown>;
++  await act(async () => {
++    button("Save key").focus();
++    first = invokeScopedControl("save-provider-model-key") as Promise<boolean>;
++    second = invokeScopedControl("save-provider-model-key") as Promise<unknown>;
++    second.catch(() => {});
++  });
++  expect(save).toHaveBeenCalledTimes(1);
++  await expect(second).rejects.toThrow("current model key draft");
++  await act(async () => resolve(true));
++  await expect(first).resolves.toBe(true);
++});
++it("committed native Private ABA retires original result/error delivery without clearing a fresh pending draft", async () => {
++  const completions: { resolve(ack: boolean): void; reject(reason: unknown): void }[] = [];
++  const save = vi.fn(() => new Promise<boolean>((resolve, reject) => completions.push({ resolve, reject })));
++  const mount = () => root.render(<ModelsSettings active settings={settings} onSave={save} />);
++  await act(async () => mount());
++  await typeKey("synthetic-original-entry");
++  let original!: Promise<boolean>;
++  await act(async () => {
++    button("Save key").focus();
++    original = invokeScopedControl("save-provider-model-key") as Promise<boolean>;
++    original.catch(() => {});
++  });
++  fixture.privateMode = true;
++  await act(async () => mount());
++  fixture.privateMode = false;
++  await act(async () => mount());
++  await typeKey("synthetic-fresh-entry");
++  let fresh!: Promise<boolean>;
++  await act(async () => {
++    button("Save key").focus();
++    fresh = invokeScopedControl("save-provider-model-key") as Promise<boolean>;
++  });
++  const reason = new Error("original-retired-rejection");
++  await act(async () => completions[0]!.reject(reason));
++  await expect(original).rejects.toBe(reason);
++  const report = vi.fn();
++  reportCommandCompletionFailure(original, reason, report);
++  expect(report).not.toHaveBeenCalled();
++  expect(keyField().value).toBe("synthetic-fresh-entry");
++  expect(keyField().disabled).toBe(true);
++  await act(async () => completions[1]!.resolve(false));
++  await expect(fresh).resolves.toBe(false);
++  expect(keyField().value).toBe("synthetic-fresh-entry");
++});
++it("draft ABA cannot revive original key clearing after the genuine write ACK", async () => {
++  let resolve!: (ack: boolean) => void;
++  const save = vi.fn(
++    () =>
++      new Promise<boolean>((done) => {
++        resolve = done;
++      }),
++  );
++  await act(async () => root.render(<ModelsSettings active settings={settings} onSave={save} />));
++  await typeKey("synthetic-A");
++  let completion!: Promise<boolean>;
++  await act(async () => {
++    button("Save key").focus();
++    completion = invokeScopedControl("save-provider-model-key") as Promise<boolean>;
++  });
++  await typeKey("synthetic-B");
++  await typeKey("synthetic-A");
++  await act(async () => resolve(true));
++  await expect(completion).resolves.toBe(true);
++  expect(keyField().value).toBe("synthetic-A");
++});
++it("hidden/inactive and foreign focused owners cannot issue actual model producers", async () => {
++  const save = vi.fn(async () => true);
++  await act(async () => root.render(<ModelsSettings active={false} settings={settings} onSave={save} />));
++  await typeKey("synthetic-hidden-entry");
++  button("Save key").focus();
++  expect(() => invokeScopedControl("save-provider-model-key")).toThrow();
++  expect(save).not.toHaveBeenCalled();
++  expect(call).not.toHaveBeenCalled();
++  await act(async () => root.render(<ModelsSettings active settings={settings} onSave={save} />));
++  const foreign = document.createElement("button");
++  document.body.append(foreign);
++  foreign.focus();
++  expect(() => invokeScopedControl("save-provider-model-key")).toThrow();
++  foreign.remove();
++});
++it("retired connection review cannot remove a saved key, while its original Cancel remains usable", async () => {
++  const save = vi.fn(async () => true);
++  const status = ModelProviderSchema.options.map((provider) => ({
++    provider,
++    selected: provider === "gateway",
++    enabled: true,
++    credentialSource: provider === "gateway" ? "saved" : "none",
++    credentialUnavailable: false,
++    localEndpoint: false,
++  }));
++  const props = { modelProvider: "gateway", modelConnections: status };
++  await act(async () => root.render(<ModelsSettings active settings={props} onSave={save} />));
++  await act(async () =>
++    host.querySelector<HTMLButtonElement>('[aria-label="Manage Vercel AI Gateway"]')!.click(),
++  );
++  await act(async () =>
++    [...document.querySelectorAll<HTMLButtonElement>("button")]
++      .find((node) => node.textContent?.trim() === "Remove saved key")!
++      .click(),
++  );
++  expect(document.querySelector('[role="alertdialog"]')).not.toBeNull();
++  await act(async () =>
++    root.render(
++      <ModelsSettings
++        active
++        settings={{ ...props, modelConnections: status.map((row) => ({ ...row, enabled: false })) }}
++        onSave={save}
++      />,
++    ),
++  );
++  await act(async () => document.querySelector<HTMLButtonElement>('[role="alertdialog"] .danger')!.click());
++  expect(save).not.toHaveBeenCalled();
++  await act(async () =>
++    [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')]
++      .find((node) => node.textContent === "Cancel")!
++      .click(),
++  );
++  expect(document.querySelector('[role="alertdialog"]')).toBeNull();
++  expect(save).not.toHaveBeenCalled();
++});
++it("retains the original endpoint rejection but suppresses reporting into a newer committed draft", async () => {
++  let reject!: (reason: unknown) => void;
++  const save = vi.fn(
++    () =>
++      new Promise<boolean>((_, fail) => {
++        reject = fail;
++      }),
++  );
++  await act(async () => root.render(<ModelsSettings active settings={settings} onSave={save} />));
++  const endpoint = host.querySelector<HTMLInputElement>('[aria-label="OpenAI-compatible endpoint"]')!;
++  const edit = async (value: string) =>
++    act(async () => {
++      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(endpoint, value);
++      endpoint.dispatchEvent(new Event("input", { bubbles: true }));
++    });
++  await edit("http://127.0.0.1:12346");
++  let original!: Promise<boolean>;
++  await act(async () => {
++    endpoint.focus();
++    original = invokeScopedControl("save-model-endpoint") as Promise<boolean>;
++    original.catch(() => {});
++  });
++  await edit("http://127.0.0.1:12347");
++  const reason = new Error("original endpoint rejection");
++  await act(async () => reject(reason));
++  await expect(original).rejects.toBe(reason);
++  const report = vi.fn();
++  reportCommandCompletionFailure(original, reason, report);
++  expect(report).not.toHaveBeenCalled();
++  expect(endpoint.value).toBe("http://127.0.0.1:12347");
++  expect(save).toHaveBeenCalledTimes(1);
++});
++it("late provider selection ACK cannot clear a newer draft after an external provider ABA", async () => {
++  let resolve!: (ack: boolean) => void;
++  const save = vi.fn(
++    () =>
++      new Promise<boolean>((done) => {
++        resolve = done;
++      }),
++  );
++  await act(async () => root.render(<ModelsSettings active settings={settings} onSave={save} />));
++  const select = host.querySelector<HTMLSelectElement>('[data-command-id="select-model-provider"]')!;
++  select.value = "anthropic";
++  let original!: Promise<void>;
++  await act(async () => {
++    select.focus();
++    original = invokeScopedControl("select-model-provider") as Promise<void>;
++  });
++  await act(async () =>
++    root.render(<ModelsSettings active settings={{ ...settings, modelProvider: "gateway" }} onSave={save} />),
++  );
++  await act(async () => root.render(<ModelsSettings active settings={settings} onSave={save} />));
++  await typeKey("synthetic-new-draft");
++  await act(async () => resolve(true));
++  await expect(original).resolves.toBeUndefined();
++  expect(keyField().value).toBe("synthetic-new-draft");
++  expect(save).toHaveBeenCalledTimes(1);
++});
++it("an observed native mismatch permanently retires the original callback even without a render", async () => {
++  const save = vi.fn(async () => true);
++  await act(async () => root.render(<ModelsSettings active settings={settings} onSave={save} />));
++  await typeKey("synthetic-original-entry");
++  button("Save key").focus();
++  fixture.privateMode = true;
++  expect(() => invokeScopedControl("save-provider-model-key")).toThrow("original current model draft");
++  fixture.privateMode = false;
++  expect(() => invokeScopedControl("save-provider-model-key")).toThrow("original current model draft");
++  expect(save).not.toHaveBeenCalled();
++  expect(keyField().value).toBe("synthetic-original-entry");
++});
++it("retiring the native review window cancels only its original removal and never writes", async () => {
++  const save = vi.fn(async () => true);
++  const status = ModelProviderSchema.options.map((provider) => ({
++    provider,
++    selected: provider === "gateway",
++    enabled: true,
++    credentialSource: "saved",
++    credentialUnavailable: false,
++    localEndpoint: false,
++  }));
++  const props = { modelProvider: "gateway", modelConnections: status };
++  await act(async () => root.render(<ModelsSettings active settings={props} onSave={save} />));
++  await act(async () =>
++    host.querySelector<HTMLButtonElement>('[aria-label="Manage Vercel AI Gateway"]')!.click(),
++  );
++  await act(async () =>
++    [...document.querySelectorAll<HTMLButtonElement>("button")]
++      .find((node) => node.textContent?.trim() === "Remove saved key")!
++      .click(),
++  );
++  expect(document.querySelector('[role="alertdialog"]')).not.toBeNull();
++  fixture.windowId = "foreign-native-window";
++  await act(async () => root.render(<ModelsSettings active settings={props} onSave={save} />));
++  expect(document.querySelector('[role="alertdialog"]')).toBeNull();
++  expect(save).not.toHaveBeenCalled();
++});
+--- a/apps/shell/src/settings/sections/ModelConnections.test.tsx
++++ b/apps/shell/src/settings/sections/ModelConnections.test.tsx
+@@ -7,6 +7,14 @@
+ import { collectSettingsFields } from "../search";
+ 
+ const call = vi.hoisted(() => vi.fn());
++
++vi.mock("../../bridge", () => ({ bridge: { windowId: "models-fixture", windowKind: "normal", privateMode: false }, inNativeHost: false, inMock: true }));
++vi.mock("../../commands", async () => {
++  const { invokeScopedControl } = await import("../../scoped-control-commands");
++  return { executeCommand: (command: string, context: Parameters<typeof invokeScopedControl>[1]) => {
++    try { return Promise.resolve(invokeScopedControl(command, context)); } catch (reason) { return Promise.reject(reason); }
++  } };
++});
+ vi.mock("../../store", () => ({ call }));
+ let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
+ const save = vi.fn();
+@@ -30,7 +38,7 @@
+   });
+   return (
+     <ModelsSettings
+-      active={false}
++      active
+       settings={settings}
+       onSave={async (change) => {
+         const ok = await save(change);
+@@ -55,8 +63,9 @@
+ }
+ beforeEach(() => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+   save.mockReset().mockResolvedValue(true);
+-  call.mockReset();
++  call.mockReset().mockResolvedValue({ models: [] });
+   host = document.createElement("div");
+   document.body.append(host);
+   root = createRoot(host);
+@@ -64,7 +73,7 @@
+ afterEach(async () => {
+   await act(async () => root.unmount());
+   host.remove();
+-  vi.unstubAllGlobals();
++  vi.restoreAllMocks(); vi.unstubAllGlobals();
+ });
+ const button = (label: string) =>
+   [...document.querySelectorAll<HTMLButtonElement>("button")].find(
+@@ -79,6 +88,7 @@
+ 
+ it("shows only masked connection status and performs explicit disconnect/reconnect without a request", async () => {
+   await act(async () => root.render(<Fixture />));
++  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
+   expect(call).not.toHaveBeenCalled();
+   expect(save).not.toHaveBeenCalled();
+   expect(collectSettingsFields(host).map((field) => field.label)).toEqual(
+@@ -96,17 +106,20 @@
+ 
+ it("selects the exact provider and focuses its empty key editor for reauthentication", async () => {
+   await act(async () => root.render(<Fixture />));
++  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
+   await menu("Anthropic");
+   await chooseAction("Reauthenticate");
+   expect(save).toHaveBeenCalledWith({ modelProvider: "anthropic" });
+   const key = host.querySelector<HTMLInputElement>('[aria-label="Provider API key"]')!;
+   expect(document.activeElement).toBe(key);
+   expect(key.value).toBe("");
+-  expect(call).not.toHaveBeenCalled();
++  // Active Anthropic selection enumerates configured IDs only; no probe/request action.
++  expect(call.mock.calls.map(([method]) => method)).toEqual(["models.list"]);
+ });
+ 
+ it("keeps a failed credential replacement editable and does not claim success", async () => {
+   await act(async () => root.render(<Fixture />));
++  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
+   save.mockRejectedValueOnce(new Error("Synthetic storage failure"));
+   const key = host.querySelector<HTMLInputElement>('[aria-label="Provider API key"]')!;
+   await act(async () => {
+@@ -121,6 +134,7 @@
+ 
+ it("requires confirmation to remove a saved key and combines removal with disconnect", async () => {
+   await act(async () => root.render(<Fixture />));
++  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
+   await menu();
+   await chooseAction("Remove saved key");
+   expect(save).not.toHaveBeenCalled();
+@@ -139,6 +153,7 @@
+ 
+ it("saves the exact image selection or Off without a provider request and displays the spend-cap limit", async () => {
+   await act(async () => root.render(<Fixture />));
++  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
+   const select = host.querySelector<HTMLSelectElement>('[aria-label="Image-generation model"]')!;
+   expect(select.value).toBe("off");
+   await act(async () => {
+@@ -156,7 +171,7 @@
+ });
+ 
+ it("does not expose unavailable provider management as functional controls", async () => {
+-  await act(async () => root.render(<ModelsSettings active={false} settings={{}} onSave={save} />));
++  await act(async () => root.render(<ModelsSettings active settings={{}} onSave={save} />));
+   expect(host.querySelector('[aria-label="Manage Vercel AI Gateway"]')).toBeNull();
+   expect(host.querySelector<HTMLSelectElement>('[aria-label="Image-generation model"]')!.disabled).toBe(true);
+ });
+@@ -165,7 +180,7 @@
+   await act(async () =>
+     root.render(
+       <ModelsSettings
+-        active={false}
++        active
+         settings={{ modelProvider: "gateway", modelProbe: { ok: true, modelId: "fixture" } }}
+         onSave={save}
+       />,
+@@ -180,7 +195,7 @@
+     input.dispatchEvent(new Event("input", { bubbles: true }));
+   });
+   await act(async () =>
+-    root.render(<ModelsSettings active={false} settings={{ modelProvider: "anthropic" }} onSave={save} />),
++    root.render(<ModelsSettings active settings={{ modelProvider: "anthropic" }} onSave={save} />),
+   );
+   expect(input.value).toBe("");
+   expect(host.textContent).not.toContain("is ready.");

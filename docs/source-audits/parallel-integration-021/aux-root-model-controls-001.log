@@ -1,0 +1,16 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+ ✓ |unit| tests/unit/command-metadata-constructors.test.ts (2 tests) 2911ms
+   ✓ preserves original ordered command values and metadata reference relationships  2909ms
+ ✓ |unit| apps/shell/src/settings/sections/Models.test.tsx (2 tests) 141ms
+ ✓ |unit| apps/shell/src/settings/sections/Models.probe.test.tsx (2 tests) 176ms
+ ✓ |unit| apps/shell/src/settings/sections/Models.retirement.test.tsx (5 tests) 499ms
+ ✓ |unit| apps/shell/src/settings/sections/ModelConnections.test.tsx (7 tests) 545ms
+ ✓ |unit| apps/shell/src/settings/sections/Models.commands.test.tsx (10 tests) 737ms
+
+ Test Files  6 passed (6)
+      Tests  28 passed (28)
+   Start at  02:54:41
+   Duration  25.71s (transform 2.56s, setup 0ms, collect 37.98s, tests 5.01s, environment 81.06s, prepare 4.77s)
+

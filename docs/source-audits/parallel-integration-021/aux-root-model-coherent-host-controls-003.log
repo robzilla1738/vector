@@ -1,0 +1,36 @@
+✔ ordinary mode performs no chooser or filesystem work (1.514459ms)
+✔ fixed owned file lacks native supported magic and exact cleanup removes it (53.580458ms)
+✔ source sequence uses original chooser and owned Home captures, preserving draft/state (43.579625ms)
+✔ retired original owner prevents capture while exact owned fixture cleanup remains possible (28.6175ms)
+✔ changed original fixture refuses removal instead of hiding cleanup debt (38.426459ms)
+✔ original chooser failure and changed fixture preserve both failures (37.872917ms)
+✔ same-PID replacement native window and changed state refuse before appearance capture (45.792458ms)
+✔ exact fixed appearance admission refuses unpaired/generic modes (2.852458ms)
+✔ read-only source sequence retains settings/draft/no-model calls and original window captures (6.255167ms)
+✔ foreign endpoint or credential mask refuses before any Settings action (0.649958ms)
+✔ capture owner replacement retains refusal and cleanup debt, not a success label (0.785875ms)
+✔ settings drift during capture fails exact before/after equality and retains original captured record (0.9945ms)
+✔ equal-shaped model, call-ledger or fixture replacement is not original ownership (0.869916ms)
+✔ duplicate original AX matches refuse instead of selecting index zero (0.473375ms)
+✔ foreign or stale native window cannot supply a normal Models capture (4.711042ms)
+✔ unexpected password-field subrole refuses without reading a value (0.692209ms)
+✔ a fabricated secure value is refused without inspecting its getter (0.657875ms)
+✔ ordinary mode does not mint a file or issue an action (1.589083ms)
+✔ fixed PNG is genuine16×16 RGBA and original retained lease disposes idempotently (44.496167ms)
+✔ mounted original UI flow produces only visual states and no private identity assertion (52.564709ms)
+✔ original preview capture failure preserves primary and uses actual close/remove cleanup (44.664584ms)
+✔ retired samePID App and unexpected run refuse subsequent captures and native mutations (57.081084ms)
+✔ duplicate mounted preview controls refuse; original known UI cleanup still completes (35.962208ms)
+✔ changed fixture retains original primary+cleanup lease and exact restored inode retry (26.83275ms)
+✔ unchanged Include checkbox cannot be relabeled as successful exclusion (27.193584ms)
+✔ original capture retirement preserves UI cleanup debt without acting on replacement owner (32.299333ms)
+✔ fresh actual channel kind/window/duplicate-key or retired awaited read refuses before UI (0.975625ms)
+✔ replacement call ledger cannot conceal original requests after chooser or capture (50.256042ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 498.365666

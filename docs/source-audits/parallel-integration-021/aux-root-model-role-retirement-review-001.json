@@ -1,0 +1,25 @@
+{
+  "originalPacket": "600235a31e0352cef15af35a78979c43d6eecfb7",
+  "rows": [
+    {
+      "path": "apps/shell/src/settings/sections/Models.tsx",
+      "beforeSha256": "3120a9ceac47bf1427acaf408ba31b636251b6317f45006a328c318dc7c2eaf7",
+      "afterSha256": "f7f419cec1501e9ecb48cebda8d2fc6dc30687d7dc310016e7e30c06c0a2e528"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Models.commands.test.tsx",
+      "beforeSha256": "63531f258b2102634061135ffefa84443566fa15e260fa283be0137d33765f34",
+      "afterSha256": "fe92d2e1845121d0887955ab6e1c03473c4d647cb9feb98f36114d60a93cb547"
+    }
+  ],
+  "patchSha256": "3af60ec8d8961efc3b3f78be592ab9c372df0cf18465fa88531ab513dd2e0f64",
+  "change": "role busy bound to original pending owner; retired old ACK cannot disable or clear fresh active role work",
+  "focusedControlLog": "/tmp/aux-root-model-role-retirement-001.log",
+  "focusedPass": true,
+  "failedWholeRun": "/tmp/aux-root-model-whole-unit-001.log",
+  "failedWholeRunRetained": true,
+  "sourceChangedDuringWholeRun": true,
+  "freshCoherentWholeRequired": true,
+  "qualification": false,
+  "rootExactReverseForward": true
+}
