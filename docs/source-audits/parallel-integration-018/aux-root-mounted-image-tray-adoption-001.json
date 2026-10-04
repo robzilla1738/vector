@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "sourceOnly": true,
+  "freezeSha256": "b25c3534cb84b090aed84f2d6e3fe60627b051dd44f5f4bf485a55787c91a612",
+  "patchSha256": "f83ce692f4b54dfc9d420d7922cd7b01ae90875bbc8a1938573aee5d9ef58e21",
+  "actualBeforeAfterAndDependencies": true,
+  "forwardReverseForward": true,
+  "nativeVerified": false,
+  "budgetPending": true
+}

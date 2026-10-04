@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "scope": "Source only, exact original pixels/zoom/metadata/read ACK fence",
+  "patchSha256": "06b6b8bc67fa6179886a63e386a25da54be35dc7ae74e853927e59ab069d4cc7",
+  "actualBeforeAfterPins": true,
+  "registryPrerequisitePinned": true,
+  "forwardReverseForward": true,
+  "nativeVerified": false,
+  "budgetPending": true
+}
