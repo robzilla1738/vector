@@ -1,0 +1,27 @@
+✔ retirement reader requires actual original browser and guardian completion and remains read-only after disposal (63.755167ms)
+✔ failed original guardian cleanup never becomes a retirement receipt (32.604042ms)
+✔ original credential pair creates only its admitted helper and closes it if the original endpoint retires during ACK (22.533166ms)
+✔ actual App prepares retained endpoint/guardian before original spawn and slot release follows original cleanup ACK (65.269167ms)
+✔ fixed source refuses LS, private/foreign/raw opt-in and duplicate start before effects (27.203833ms)
+✔ lost preparation ACK and original cleanup failure retain slot with original rejection debt (39.765666ms)
+✔ actual runner cleanup callbacks retain endpoint/server/slot when original App retirement rejects (1.964125ms)
+✔ actual runner closes server and releases outer slot eligibility only after retained App retirement proof (0.127209ms)
+✔ fixture-close failure after genuine guardian completion retains outer cleanup debt (0.091625ms)
+✔ saved-state original source helper returns actual UI envelope without Save/removal/provider use (5.634292ms)
+✔ missing original saved ACK or wrong mask/source refuses before Settings actions (1.119917ms)
+✔ same PID generation mutation and equal-shaped endpoint replacement refuse retained capture (5.313459ms)
+✔ unexpected secure value is not read and actionable saved removal stays explicit no-consent (0.637584ms)
+✔ provider request, foreign native window and duplicate selection are not accepted (1.022959ms)
+✔ actual fixed wrapper invokes its UI callback and returns the runner-required real helper observations (2.400125ms)
+✔ actual original late fixture creation could claim after abort; successor refuses before endpoint/App preparation (0.931166ms)
+✔ original pending execution is retained with no fresh deadline; late helper cleanup failure remains exact debt (0.138166ms)
+✔ original settled primary rejection or successful execution can proceed to existing cleanup (0.079875ms)
+✔ actual cleanup callback cannot close late original fixture or release outer slot while execution is pending (0.142917ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 310.57675

@@ -1,0 +1,17 @@
+{
+  "native154": true,
+  "dist": "/tmp/aux-root-focus-reopen-native154-build-002",
+  "bytes": {
+    "startupJs": 499092,
+    "startupCss": 179368,
+    "totalJs": 1843175
+  },
+  "limits": {
+    "startupJs": 501760,
+    "startupCss": 184320,
+    "totalJs": 1843200
+  },
+  "passed": true,
+  "manifestSha256": "4acca803b06da7ec6c6b1af75351aafbd1769b9ff1203dda7c769725be92f612",
+  "sourceIncludesFocusReopenOwnershipDedupAndConciseSettingsCopy": true
+}

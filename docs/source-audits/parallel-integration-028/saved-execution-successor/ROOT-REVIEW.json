@@ -1,0 +1,17 @@
+{
+  "sourceOnly": true,
+  "nativeEffects": false,
+  "qualification": false,
+  "exactOriginalResultPins": true,
+  "forwardReverseForward": true,
+  "freezeSha256": "75dd18535489805b0c206b90b66dfdd11d3c2c8ad4075e72cd1923a678a2a45d",
+  "review": "Retains original losing promise and distinct late cleanup debt; checks original abort immediately after fixture await; no fresh deadline or effects; blocks fixture/pair/slot retirement while original execution unresolved.",
+  "retainedHistoricalInverseControlSource": {
+    "path": "docs/lane-requests/l10/saved-credential-execution-retention/runner.before.mjs",
+    "sha256": "d91d383943ac07c8deb9655f421e7c5ac628b8a76e2b63e4716ae1d9158da207"
+  },
+  "rootControlsPassed": true,
+  "lintPassed": true,
+  "rootTestCorrection": "Removed unused fixturePreparation parameter; no assertion changed",
+  "finalTestSha256": "4472abbaef950b23f22d03be83c725db75e46cac0db007171b4d84173570e938"
+}

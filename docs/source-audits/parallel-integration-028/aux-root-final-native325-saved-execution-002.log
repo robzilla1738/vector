@@ -1,0 +1,27 @@
+✔ retirement reader requires actual original browser and guardian completion and remains read-only after disposal (59.286625ms)
+✔ failed original guardian cleanup never becomes a retirement receipt (26.898333ms)
+✔ original credential pair creates only its admitted helper and closes it if the original endpoint retires during ACK (22.645333ms)
+✔ actual App prepares retained endpoint/guardian before original spawn and slot release follows original cleanup ACK (60.084042ms)
+✔ fixed source refuses LS, private/foreign/raw opt-in and duplicate start before effects (30.008834ms)
+✔ lost preparation ACK and original cleanup failure retain slot with original rejection debt (40.320917ms)
+✔ actual runner cleanup callbacks retain endpoint/server/slot when original App retirement rejects (1.8425ms)
+✔ actual runner closes server and releases outer slot eligibility only after retained App retirement proof (0.115625ms)
+✔ fixture-close failure after genuine guardian completion retains outer cleanup debt (0.097916ms)
+✔ saved-state original source helper returns actual UI envelope without Save/removal/provider use (6.0255ms)
+✔ missing original saved ACK or wrong mask/source refuses before Settings actions (0.824042ms)
+✔ same PID generation mutation and equal-shaped endpoint replacement refuse retained capture (3.767167ms)
+✔ unexpected secure value is not read and actionable saved removal stays explicit no-consent (0.66175ms)
+✔ provider request, foreign native window and duplicate selection are not accepted (0.79375ms)
+✔ actual fixed wrapper invokes its UI callback and returns the runner-required real helper observations (1.598375ms)
+✔ actual original late fixture creation could claim after abort; successor refuses before endpoint/App preparation (1.083167ms)
+✔ original pending execution is retained with no fresh deadline; late helper cleanup failure remains exact debt (0.136792ms)
+✔ original settled primary rejection or successful execution can proceed to existing cleanup (0.080125ms)
+✔ actual cleanup callback cannot close late original fixture or release outer slot while execution is pending (0.136917ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 292.582542

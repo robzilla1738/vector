@@ -1,0 +1,23 @@
+✔ retirement reader requires actual original browser and guardian completion and remains read-only after disposal (58.271708ms)
+✔ failed original guardian cleanup never becomes a retirement receipt (31.941042ms)
+✔ original credential pair creates only its admitted helper and closes it if the original endpoint retires during ACK (23.2555ms)
+✔ actual App prepares retained endpoint/guardian before original spawn and slot release follows original cleanup ACK (63.980708ms)
+✔ fixed source refuses LS, private/foreign/raw opt-in and duplicate start before effects (28.389084ms)
+✔ lost preparation ACK and original cleanup failure retain slot with original rejection debt (38.04675ms)
+✔ actual runner cleanup callbacks retain endpoint/server/slot when original App retirement rejects (0.897416ms)
+✔ actual runner closes server and releases outer slot eligibility only after retained App retirement proof (0.733416ms)
+✔ fixture-close failure after genuine guardian completion retains outer cleanup debt (0.114ms)
+✔ saved-state original source helper returns actual UI envelope without Save/removal/provider use (7.280667ms)
+✔ missing original saved ACK or wrong mask/source refuses before Settings actions (1.60325ms)
+✔ same PID generation mutation and equal-shaped endpoint replacement refuse retained capture (5.461833ms)
+✔ unexpected secure value is not read and actionable saved removal stays explicit no-consent (1.857833ms)
+✔ provider request, foreign native window and duplicate selection are not accepted (3.001083ms)
+✔ actual fixed wrapper invokes its UI callback and returns the runner-required real helper observations (5.056125ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 344.515625

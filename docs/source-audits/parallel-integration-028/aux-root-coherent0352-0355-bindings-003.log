@@ -1,0 +1,27 @@
+Scope: all 10 workspace projects
+✓ Lockfile passes supply-chain policies (verified 3d ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+[ELOOP] ELOOP: too many symbolic links encountered, mkdir '/private/tmp/aux-browser-runtime-following-batch/tests/node_modules/.bin'
+
+pnpm: ELOOP: too many symbolic links encountered, mkdir '/private/tmp/aux-browser-runtime-following-batch/tests/node_modules/.bin'
+    at async Object.mkdir (node:internal/fs/promises:1605:10)
+    at async _linkBins (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:58719:3)
+    at async file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:213521:13
+    at async Promise.all (index 9)
+    at async headlessInstall (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:213502:9)
+    at async tryFrozenInstall (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:218662:56)
+    at async _install (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:218281:33)
+[ERROR] Command failed with exit code 194: /opt/homebrew/Cellar/node/26.7.0/bin/node '/Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/bin/pnpm.mjs' install
+
+pnpm: Command failed with exit code 194: /opt/homebrew/Cellar/node/26.7.0/bin/node '/Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/bin/pnpm.mjs' install
+    at getFinalError (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:115719:14)
+    at makeError (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:118026:21)
+    at getSyncResult (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:119721:10)
+    at spawnSubprocessSync (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:119681:14)
+    at execaCoreSync (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:119611:23)
+    at callBoundExeca (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:122139:23)
+    at boundExeca (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:122116:49)
+    at sync2 (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:122275:10)
+    at runPnpmCli (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:278601:5)
+    at runDepsStatusCheck (file:///Users/rcourson/Library/pnpm/store/v11/links/@/pnpm/11.27.1/2fd8de3e82e118f650a085dccc94ddbd46950a05d431cdd8b2d4c5b894b79e99/node_modules/pnpm/dist/pnpm.mjs:279754:7)

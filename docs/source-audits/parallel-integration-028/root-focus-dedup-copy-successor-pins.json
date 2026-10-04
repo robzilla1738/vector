@@ -1,0 +1,27 @@
+{
+  "sourceOnly": true,
+  "rows": [
+    {
+      "path": "apps/shell/src/ui/focus.ts",
+      "beforeSha256": "e93c5c6b2786f9c98bf139c97813619b612aa788379cebdd07baf920d509be55",
+      "resultSha256": "222929301e855ce632390feeb1593de68336ee78e6cfd582c0c129837a0b2e2c"
+    },
+    {
+      "path": "apps/shell/src/ui/native-dialog.ts",
+      "beforeSha256": "9c20c31d3da520427a5cf8f2b3f87953935579dd43ed6bf321e45d288080bcef",
+      "resultSha256": "a8c2a77081c3328116cb23320c8be38050c9a8d2276fec8362fd4e8148daf005"
+    },
+    {
+      "path": "apps/shell/src/components/Settings.tsx",
+      "beforeSha256": "e154da90473065f40573591015e251439423c37fb80f0a9695bcf46a9fea1274",
+      "resultSha256": "dc1d4eb08a786b7de8128e895ad9d791935b70d7e8da1cac036fe7f63e077ebe"
+    },
+    {
+      "path": "apps/shell/src/components/SupportingContent.tsx",
+      "beforeSha256": "3d877bfa766d6520065f9721695ae5f94ecf2b9331edc31010664bd52a530e51",
+      "resultSha256": "ab27c294d981d52209bbe4e229b6efc0a0590b2b35c12de2f40929444607b527"
+    }
+  ],
+  "patchSha256": "6da913ed7d71907891a427f1301155bbd7e40859b6ead9e55bbf4b1dcc6c0438",
+  "reverseForwardVerified": true
+}
