@@ -1,15 +1,14 @@
+import { useSettingsSaveOwner } from "../settings/sections/use-settings-save-owner";
 import { useScopedCommandControls } from "../scoped-command-controls";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "@aux/contracts/search-engine";
 import { bridge } from "../bridge";
-import { guardCommandCompletion } from "../command-completion";
 export interface EngineRow {
   keyword: string;
   name: string;
   template: string;
 }
 type Draft = { keyword: string; name: string; template: string };
-type Owner = { active: boolean; identity: object; pending: boolean };
 const emptyDraft = (): Draft => ({ keyword: "", name: "", template: "" });
 /** Keyword engines merge over built-ins; saving an existing keyword replaces it. */
 export function SearchEnginesSetting({
@@ -24,69 +23,31 @@ export function SearchEnginesSetting({
     snapshot = JSON.stringify(value);
   const identity = useMemo(() => ({ snapshot, windowId, privateMode }), [snapshot, windowId, privateMode]);
   const draftIdentity = useMemo(() => ({ windowId, privateMode }), [windowId, privateMode]);
-  const owner = useRef<Owner>({ active: false, identity, pending: false });
-  useLayoutEffect(() => {
-    const original = { active: true, identity, pending: false };
-    owner.current = original;
-    return () => {
-      original.active = false;
-    };
-  }, [identity]);
+  const [getOwner,current,busy,error,fail,clearFailure,perform] = useSettingsSaveOwner(identity,windowId,privateMode);
   const [editing, setEditing] = useState({ identity: draftIdentity, draft: emptyDraft() });
   const draft = editing.identity === draftIdentity ? editing.draft : emptyDraft();
   const draftRef = useRef(draft);
   useLayoutEffect(() => {
     draftRef.current = draft;
   }, [draft]);
-  const [busyOwner, setBusyOwner] = useState<Owner | null>(null),
-    [failure, setFailure] = useState<{ owner: Owner; message: string } | null>(null);
-  const busy = !!busyOwner && busyOwner.active && busyOwner.identity === identity;
-  const error = failure?.owner.active && failure.owner.identity === identity ? failure.message : "";
-  const current = useCallback(
-    (original: Owner) =>
-      original.active &&
-      owner.current === original &&
-      original.identity === identity &&
-      bridge.windowId === windowId &&
-      bridge.privateMode === privateMode,
-    [identity, windowId, privateMode],
-  );
   const save = useCallback(
     (next: EngineRow[], clearDraft = false) => {
-      const original = owner.current,
+      const original = getOwner(),
         savedDraft = draftRef.current;
       if (!current(original) || original.pending)
         throw new Error("Choose the current keyword engine control.");
-      original.pending = true;
-      setBusyOwner(original);
-      setFailure(null);
-      const delivering = () => current(original) && draftRef.current === savedDraft;
-      const completion = (async () => {
-        try {
-          const ack = await onSave(next);
-          if (delivering()) {
-            if (!ack) setFailure({ owner: original, message: "The engines weren’t saved. Try again." });
-            else if (clearDraft) {
-              const fresh = emptyDraft();
-              draftRef.current = fresh;
-              setEditing({ identity: draftIdentity, draft: fresh });
-            }
-          }
-          return ack;
-        } catch (reason) {
-          if (delivering()) setFailure({ owner: original, message: "The engines weren’t saved. Try again." });
-          throw reason;
-        } finally {
-          original.pending = false;
-          setBusyOwner((active) => (active === original ? null : active));
+      return perform(original, savedDraft, draftRef, () => onSave(next), () => {
+        if (clearDraft) {
+          const fresh = emptyDraft();
+          draftRef.current = fresh;
+          setEditing({ identity: draftIdentity, draft: fresh });
         }
-      })();
-      return guardCommandCompletion(completion, delivering);
+      }, "The engines weren’t saved. Try again.");
     },
-    [current, onSave, draftIdentity],
+    [getOwner, current, onSave, draftIdentity, perform],
   );
   function add() {
-    const original = owner.current;
+    const original = getOwner();
     if (!current(original) || original.pending) throw new Error("Choose the current keyword engine control.");
     const { keyword, name, template } = draftRef.current,
       kw = keyword.trim().toLowerCase();
@@ -98,7 +59,7 @@ export function SearchEnginesSetting({
           ? SEARCH_ENGINE_TEMPLATE_ERROR
           : "";
     if (invalid) {
-      setFailure({ owner: original, message: invalid });
+      fail(original, invalid);
       return false;
     }
     return save(
@@ -110,15 +71,15 @@ export function SearchEnginesSetting({
     );
   }
   const [publish, run] = useScopedCommandControls(`${windowId}:keyword-engines`, () => {
-    const original = owner.current;
+    const original = getOwner();
     return current(original) ? () => current(original) : undefined;
   });
   function change(field: keyof Draft, text: string) {
-    if (!current(owner.current) || owner.current.pending) return;
+    if (!current(getOwner()) || getOwner().pending) return;
     const next = { ...draftRef.current, [field]: text };
     draftRef.current = next;
     setEditing({ identity: draftIdentity, draft: next });
-    setFailure(null);
+    clearFailure();
   }
   return (
     <div className="search-engines-setting">

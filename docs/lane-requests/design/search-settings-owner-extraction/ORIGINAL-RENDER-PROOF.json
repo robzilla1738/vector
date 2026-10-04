@@ -1,0 +1,10 @@
+[
+  {
+    "path": "apps/shell/src/components/SearchEngineSetting.tsx",
+    "originalRenderedCopyPropsRefsHandlers": "PASS after closed original-owner getter substitution"
+  },
+  {
+    "path": "apps/shell/src/components/SearchEnginesSetting.tsx",
+    "originalRenderedCopyPropsRefsHandlers": "PASS after closed original-owner getter substitution"
+  }
+]

@@ -2,91 +2,31 @@ import { useScopedCommandControls } from "../scoped-command-controls";
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
-  useRef,
-  useState,
 } from "react";
 import { bridge, inNativeHost } from "../bridge";
-import { guardCommandCompletion } from "../command-completion";
+import { useSettingsStatusOwner } from "../settings/sections/use-settings-status-owner";
 import { useShortcutLabels } from "../use-shortcut-label";
 import "./QuickAskSetting.css";
 
 type Status = { enabled: boolean; registered: boolean; error: string };
-type Owner = { active: boolean; identity: object; pending: boolean; sequence: number; status: Status | null };
 export function QuickAskSetting() {
   const key = useShortcutLabels(),
     windowId = bridge.windowId,
     privateMode = bridge.privateMode;
   const identity = useMemo(() => ({ windowId, privateMode }), [windowId, privateMode]);
-  const lifetime = useRef<Owner>({ active: false, identity, pending: false, sequence: 0, status: null });
-  useLayoutEffect(() => {
-    const owner = { active: true, identity, pending: false, sequence: 0, status: null };
-    lifetime.current = owner;
-    return () => {
-      owner.active = false;
-    };
-  }, [identity]);
-  const [measured, setMeasured] = useState<{ owner: Owner; value: Status } | null>(null);
-  const [failure, setFailure] = useState<{ owner: Owner; message: string } | null>(null);
-  const [busyOwner, setBusyOwner] = useState<Owner | null>(null);
-  const status = measured?.owner.active && measured.owner.identity === identity ? measured.value : null;
-  const error = failure?.owner.active && failure.owner.identity === identity ? failure.message : "";
-  const busy = !!busyOwner && busyOwner.active && busyOwner.identity === identity;
-  const current = useCallback(
-    (owner: Owner) =>
-      owner.active &&
-      owner === lifetime.current &&
-      owner.identity === identity &&
-      bridge.windowId === windowId &&
-      bridge.privateMode === privateMode,
-    [identity, windowId, privateMode],
-  );
+  const [getOwner, current, status, busy, error, read, perform] = useSettingsStatusOwner<Status>(identity, windowId, privateMode);
   useEffect(() => {
-    const owner = lifetime.current,
-      sequence = ++owner.sequence;
-    void (async () => {
-      try {
-        const value = await bridge.quickAskShortcut();
-        if (current(owner) && owner.sequence === sequence) {
-          owner.status = value;
-          setMeasured({ owner, value });
-        }
-      } catch (reason) {
-        if (current(owner) && owner.sequence === sequence)
-          setFailure({ owner, message: reason instanceof Error ? reason.message : String(reason) });
-      }
-    })();
-  }, [current]);
+    read(getOwner(), () => bridge.quickAskShortcut(), (value) => value);
+  }, [getOwner, read]);
   const change = useCallback(
     (enabled: boolean) => {
-      const owner = lifetime.current;
-      if (!inNativeHost || !current(owner) || owner.pending || owner.status !== status)
+      const owner = getOwner();
+      if (!inNativeHost || !current(owner) || owner.pending || owner.value !== status)
         throw new Error("Choose the current Quick Ask shortcut control.");
-      owner.pending = true;
-      ++owner.sequence;
-      setBusyOwner(owner);
-      setFailure(null);
-      const completion = (async () => {
-        try {
-          const value = await bridge.quickAskShortcut(enabled);
-          if (current(owner)) {
-            owner.status = value;
-            setMeasured({ owner, value });
-          }
-          return value;
-        } catch (reason) {
-          if (current(owner))
-            setFailure({ owner, message: reason instanceof Error ? reason.message : String(reason) });
-          throw reason;
-        } finally {
-          owner.pending = false;
-          setBusyOwner((value) => (value === owner ? null : value));
-        }
-      })();
-      return guardCommandCompletion(completion, () => current(owner));
+      return perform(owner, () => bridge.quickAskShortcut(enabled), (value) => value);
     },
-    [current, status],
+    [getOwner, current, status, perform],
   );
   const toggle = useCallback(() => {
     if (!status) throw new Error("Wait for the Quick Ask shortcut status.");
@@ -97,7 +37,7 @@ export function QuickAskSetting() {
     return change(true);
   }, [change, error, status]);
   const [publish, run] = useScopedCommandControls(`${windowId}:quick-ask`, (command) => {
-    const owner = lifetime.current;
+    const owner = getOwner();
     if (!current(owner) || !inNativeHost || (command === "quick-ask" && privateMode)) return;
     return () => current(owner);
   });

@@ -1,3 +1,4 @@
+import { PreferenceAction } from "../settings/sections/preference-command";
 import { SearchResultRow } from "./SearchResultRow";
 import {
   lazy,
@@ -464,16 +465,21 @@ export function CommandBar({
     };
   }, [editing, extensionEnabled]);
 
+  const autocompleteWindow = bridge.windowId;
+  const autocompleteKind = bridge.windowKind;
+  const autocompletePrivate = bridge.privateMode;
   useLayoutEffect(() => {
     if (!browserAutocomplete || !typedSomething || raw.length < 2) return;
     let live = true;
-    void bridge
-      .autocomplete(raw)
+    const current = () => live && bridge.windowId === autocompleteWindow &&
+      bridge.windowKind === autocompleteKind && bridge.privateMode === autocompletePrivate;
+    void Promise.resolve()
+      .then(() => current() ? bridge.autocomplete(raw) : EMPTY_BROWSER)
       .then((items) => {
-        if (live) setBrowserResult({ query: raw, generation: queryGeneration, items, error: null });
+        if (current()) setBrowserResult({ query: raw, generation: queryGeneration, items, error: null });
       })
       .catch((error) => {
-        if (live)
+        if (current())
           setBrowserResult({
             query: raw,
             generation: queryGeneration,
@@ -484,10 +490,20 @@ export function CommandBar({
     return () => {
       live = false;
     };
-  }, [browserAutocomplete, typedSomething, raw, queryGeneration, intent.kind, autocompleteRetry]);
+  }, [browserAutocomplete, typedSomething, raw, queryGeneration, intent.kind, autocompleteRetry, autocompleteWindow, autocompleteKind, autocompletePrivate]);
   const currentBrowserResult = browserResult.query === raw && browserResult.generation === queryGeneration;
   const browserMatches = currentBrowserResult ? browserResult.items : EMPTY_BROWSER;
   const browserError = currentBrowserResult ? browserResult.error : null;
+  const retriedBrowserResult = useRef<typeof browserResult | null>(null);
+  const retryAutocomplete = () => {
+    if (retriedBrowserResult.current === browserResult || !editing || !browserError ||
+      !currentBrowserResult || !browserAutocomplete || !typedSomething || raw.length < 2 ||
+      bridge.windowId !== autocompleteWindow || bridge.windowKind !== autocompleteKind ||
+      bridge.privateMode !== autocompletePrivate)
+      throw new Error("Choose the current browser suggestions Retry control.");
+    retriedBrowserResult.current = browserResult;
+    setAutocompleteRetry((value) => value + 1);
+  };
 
   // The local indexed query is cheap; dispatch it immediately and only display
   // a response that belongs to the exact text still in the field.
@@ -1431,9 +1447,9 @@ export function CommandBar({
           {browserError && (
             <div className="cb-provider-error" role="alert">
               Browser suggestions couldn’t load. You can still search.
-              <button type="button" onClick={() => setAutocompleteRetry((value) => value + 1)}>
+              <PreferenceAction type="button" command="retry-browser-autocomplete" scopeId={listId} invoke={retryAutocomplete}>
                 Try again
-              </button>
+              </PreferenceAction>
             </div>
           )}
           {suggestions.length === 0 && (

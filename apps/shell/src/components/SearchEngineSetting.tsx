@@ -1,3 +1,4 @@
+import { useSettingsSaveOwner } from "../settings/sections/use-settings-save-owner";
 import { useScopedCommandControls } from "../scoped-command-controls";
 /* oxlint-disable jsx-a11y/prefer-tag-over-role -- Preserve the original Search engine group and its existing Settings layout. */
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -7,13 +8,11 @@ import {
   SEARCH_ENGINE_TEMPLATE_ERROR,
 } from "@aux/contracts/search-engine";
 import { bridge } from "../bridge";
-import { guardCommandCompletion } from "../command-completion";
 const ENGINES = [
   { name: "DuckDuckGo", url: DEFAULT_SEARCH_ENGINE },
   { name: "Google", url: "https://www.google.com/search?q=%s" },
   { name: "Bing", url: "https://www.bing.com/search?q=%s" },
 ];
-type Owner = { active: boolean; identity: object; pending: boolean };
 export function SearchEngineSetting({
   value,
   onSave,
@@ -24,28 +23,16 @@ export function SearchEngineSetting({
   const windowId = bridge.windowId,
     privateMode = bridge.privateMode;
   const identity = useMemo(() => ({ value, windowId, privateMode }), [value, windowId, privateMode]);
-  const owner = useRef<Owner>({ active: false, identity, pending: false });
   const initial = { identity, draft: value, custom: !ENGINES.some((engine) => engine.url === value) };
   const [editing, setEditing] = useState(initial);
   const { draft, custom } = editing.identity === identity ? editing : initial;
-  const setDraft = useCallback(
-    (draft: string) =>
-      setEditing((previous) => ({
-        ...(previous.identity === identity
-          ? previous
-          : { identity, draft: value, custom: !ENGINES.some((engine) => engine.url === value) }),
-        draft,
-      })),
-    [identity, value],
-  );
-  const setCustom = useCallback(
-    (next: boolean | ((previous: boolean) => boolean)) =>
+  const edit = useCallback(
+    (change: Partial<Pick<typeof initial, "draft" | "custom">> | ((active: typeof initial) => Partial<Pick<typeof initial, "draft" | "custom">>)) =>
       setEditing((previous) => {
-        const active =
-          previous.identity === identity
-            ? previous
-            : { identity, draft: value, custom: !ENGINES.some((engine) => engine.url === value) };
-        return { ...active, custom: typeof next === "function" ? next(active.custom) : next };
+        const active = previous.identity === identity
+          ? previous
+          : { identity, draft: value, custom: !ENGINES.some((engine) => engine.url === value) };
+        return { ...active, ...(typeof change === "function" ? change(active) : change) };
       }),
     [identity, value],
   );
@@ -53,75 +40,33 @@ export function SearchEngineSetting({
   useLayoutEffect(() => {
     draftRef.current = draft;
   }, [draft]);
-  const [busyOwner, setBusyOwner] = useState<Owner | null>(null),
-    [failure, setFailure] = useState<{ owner: Owner; message: string } | null>(null);
-  useLayoutEffect(() => {
-    const current = { active: true, identity, pending: false };
-    owner.current = current;
-    return () => {
-      current.active = false;
-    };
-  }, [identity, value]);
-  const current = useCallback(
-    (original: Owner) =>
-      original.active &&
-      owner.current === original &&
-      original.identity === identity &&
-      bridge.windowId === windowId &&
-      bridge.privateMode === privateMode,
-    [identity, windowId, privateMode],
-  );
-  const busy = !!busyOwner && busyOwner.active && busyOwner.identity === identity;
-  const error = failure?.owner.active && failure.owner.identity === identity ? failure.message : "";
+  const [getOwner,current,busy,error,fail,clearFailure,perform] = useSettingsSaveOwner(identity,windowId,privateMode);
   const save = useCallback(
     (next: string) => {
-      const original = owner.current,
+      const original = getOwner(),
         savedDraft = draftRef.current;
       if (!current(original) || original.pending)
         throw new Error("Choose the current search engine control.");
       const template = next.trim();
       if (!isSearchEngineTemplate(template)) {
-        setFailure({ owner: original, message: SEARCH_ENGINE_TEMPLATE_ERROR });
+        fail(original, SEARCH_ENGINE_TEMPLATE_ERROR);
         return false;
       }
-      original.pending = true;
-      setBusyOwner(original);
-      setFailure(null);
-      const delivering = () => current(original) && draftRef.current === savedDraft;
-      const completion = (async () => {
-        try {
-          const saved = await onSave(template);
-          if (delivering()) {
-            if (!saved)
-              setFailure({ owner: original, message: "The search engine wasn’t saved. Try again." });
-            else {
-              setDraft(template);
-              setCustom(!ENGINES.some((engine) => engine.url === template));
-            }
-          }
-          return saved;
-        } catch (reason) {
-          if (delivering())
-            setFailure({ owner: original, message: "The search engine wasn’t saved. Try again." });
-          throw reason;
-        } finally {
-          original.pending = false;
-          setBusyOwner((active) => (active === original ? null : active));
-        }
-      })();
-      return guardCommandCompletion(completion, delivering);
+      return perform(original, savedDraft, draftRef, () => onSave(template), () => {
+        edit({ draft: template, custom: !ENGINES.some((engine) => engine.url === template) });
+      }, "The search engine wasn’t saved. Try again.");
     },
-    [current, onSave, setDraft, setCustom],
+    [getOwner, current, onSave, edit, fail, perform],
   );
   const [publish, run] = useScopedCommandControls(`${windowId}:search-engine`, () => {
-    const original = owner.current;
+    const original = getOwner();
     return current(original) ? () => current(original) : undefined;
   });
   function changeDraft(next: string) {
-    if (!current(owner.current) || owner.current.pending) return;
+    if (!current(getOwner()) || getOwner().pending) return;
     draftRef.current = next;
-    setDraft(next);
-    setFailure(null);
+    edit({ draft: next });
+    clearFailure();
   }
   return (
     <div className="search-engine-setting">
@@ -141,9 +86,9 @@ export function SearchEngineSetting({
         <button
           ref={(element) =>
             publish("custom", "toggle-custom-search-engine", element, () => {
-              if (!current(owner.current) || owner.current.pending)
+              if (!current(getOwner()) || getOwner().pending)
                 throw new Error("Choose the current search engine control.");
-              setCustom((active) => !active);
+              edit((active) => ({ custom: !active.custom }));
             })
           }
           className="btn sm ghost"

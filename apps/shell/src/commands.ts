@@ -260,6 +260,8 @@ export const COMMAND_ACTIONS = {
     if (page) return navigator.clipboard.writeText(page.url).then(() => st.toast("Link copied"));
   },
   "new-chat": st => st.openConversation(null),
+  "open-chat-history": st => { st.openConversation(null); useStore.setState({ conversationId: "history" }); },
+  "open-tasks": st => st.setOverlay("tasks"),
   "quick-ask": () => bridge.quickAsk("open"),
 
   "new-tab": () => openCommandSurface({ mode: "new-tab" }),

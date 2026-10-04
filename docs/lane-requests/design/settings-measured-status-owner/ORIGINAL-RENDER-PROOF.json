@@ -1,0 +1,6 @@
+{
+  "completeBothRenderedTailsByteExact": true,
+  "originalTestBodiesRetained": true,
+  "newMountedInterleavedReadMutationControl": 1,
+  "originalReadSequenceAndPendingReservationsRetained": true
+}

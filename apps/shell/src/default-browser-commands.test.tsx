@@ -251,3 +251,39 @@ it("fresh focus read synchronously retires readiness before React commits disabl
   expect(mocks.set).not.toHaveBeenCalled();
   await act(async () => finish({ isDefault: false }));
 });
+
+it("reports a synchronous initial read failure and retries through the original focus recheck", async () => {
+  const reason = new Error("Original initial OS transport <complete diagnostic>");
+  mocks.read.mockImplementationOnce(() => { throw reason; });
+  await mount();
+  expect(host.textContent).toContain(reason.message);
+  expect(host.querySelector("complete")).toBeNull();
+  expect(original().disabled).toBe(true);
+  expect(() => invokeScopedControl("set-default-browser")).toThrow();
+  expect(mocks.set).not.toHaveBeenCalled();
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  expect(mocks.read).toHaveBeenCalledTimes(2);
+  expect(original().disabled).toBe(false);
+  expect(host.textContent).not.toContain(reason.message);
+  expect(mocks.set).not.toHaveBeenCalled();
+});
+
+it("retires the original initial-read rejection across window ABA and removes focus retry on unmount", async () => {
+  let reject!: (reason: unknown) => void;
+  mocks.read.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  await mount();
+  mocks.windowId = "replacement";
+  await mount();
+  mocks.windowId = "original-window";
+  await mount();
+  const reason = new Error("Original retired OS transport diagnostic");
+  await act(async () => reject(reason));
+  expect(host.textContent).not.toContain(reason.message);
+  expect(original().disabled).toBe(false);
+  expect(mocks.set).not.toHaveBeenCalled();
+  expect(mocks.errors).not.toHaveBeenCalled();
+  const reads = mocks.read.mock.calls.length;
+  await act(async () => root.render(null));
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  expect(mocks.read).toHaveBeenCalledTimes(reads);
+});

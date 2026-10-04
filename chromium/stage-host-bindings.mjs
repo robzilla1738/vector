@@ -5,12 +5,15 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+import { assertNativeSlotOwned } from '../scripts/native-slot.mjs';
 import { productIdentity } from '../scripts/lib/product-identity.mjs';
 import { qualifiedFeatures } from '../scripts/lib/qualification.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const source = resolve(process.env.AUX_CHROMIUM_SRC ??
     join(process.env.HOME, 'aux-chromium-stable/chromium/src'));
+const originalOwner = assertNativeSlotOwned();
+const requireOriginalOwner = () => assertNativeSlotOwned({ expectedOwner: originalOwner });
 const check = spawnSync('node', ['scripts/gen-host-bindings.mjs', '--check'],
     {cwd: root, stdio: 'inherit'});
 if (check.status !== 0) process.exit(check.status ?? 1);
@@ -21,6 +24,7 @@ const qualification = JSON.parse(readFileSync(join(root, 'docs/qualification.jso
 const qualified = qualifiedFeatures(qualification, identity);
 const generated = ['BUILD.gn', 'aux_host_methods.h', 'aux_host_methods.cc'];
 const output = join(source, 'chrome/browser/ui/aux/generated');
+requireOriginalOwner();
 mkdirSync(output, {recursive: true});
 for (const file of generated) {
   const from = join(root, 'chromium/generated', file);
@@ -30,6 +34,7 @@ for (const file of generated) {
     ? Buffer.from(bytes.toString('utf8').replace('__AUX_SOURCE_COMMIT__', identity.label)
       .replace('__AUX_QUALIFIED_FEATURES__', qualified.join(',')))
     : bytes;
+  requireOriginalOwner();
   if (!existsSync(to) || !readFileSync(to).equals(expected)) writeFileSync(to, expected);
   if (createHash('sha256').update(expected).digest('hex') !==
       createHash('sha256').update(readFileSync(to)).digest('hex')) {
@@ -39,9 +44,11 @@ for (const file of generated) {
 const featureSource = join(root, 'chromium/generated/aux_feature_stages.ts');
 const featureTarget = join(source, 'chrome/browser/resources/aux_host/aux_feature_stages.ts');
 const featureBytes = readFileSync(featureSource);
+requireOriginalOwner();
 if (!existsSync(featureTarget) || !readFileSync(featureTarget).equals(featureBytes))
   writeFileSync(featureTarget, featureBytes);
 if (!readFileSync(featureTarget, 'utf8').includes('featureStagesFor')) {
   throw new Error('Feature stage binding was not staged');
 }
+requireOriginalOwner();
 console.log(`Staged Aux host methods ${pinned.slice(0, 12)}`);

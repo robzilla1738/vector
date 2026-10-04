@@ -1,0 +1,16 @@
+{
+  "sourceOnly": true,
+  "budgetAccepted": false,
+  "nativeAccepted": false,
+  "files": {
+    "controls.log": "913d4a4dc35a9a025e38aa57889b1c80edaec441e4026f5a8a80e856542b4e10",
+    "types.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "original-failure.log": "0ac7d0ae7ebe4fcfebbd13d1aa342deb339f1d2149314f7f7a535591be58fe43",
+    "SOURCE-PINS.json": "5ac529160a3fa525e76aa7292b485453190d76d467a17f0528e547a84497c4df",
+    "lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "REPLAY.json": "09a0c1a0899d4d170af49b10cbc59b7a3f91da351b83d6a42a0726f826acbb3c",
+    "README.md": "db1645301b1054a9c91fadced85e5010164e76865ef22d4fe931ece8b56b9209",
+    "request.patch": "d433f361e9a692d28582559c253ad0bee5ef1a89977de8a38160504af7fd3202",
+    "ORIGINAL-RESTORATION-PROOF.json": "7ad99ad16d1d4315e5ef0c42a96d232e7fa7770c7f16e4ae4f647b80b822512f"
+  }
+}

@@ -258,3 +258,53 @@ it("retains original rejected import identity without stale error after changed 
   expect(errors).not.toHaveBeenCalled();
   expect(save).not.toHaveBeenCalled();
 });
+
+it("preserves undefined setter success and original synchronous rejected completion", async () => {
+  await render();
+  await click("Add personal info");
+  await edit("  Ada  ");
+  save.mockResolvedValueOnce(undefined);
+  button("Save").focus();
+  let completion: Promise<unknown>;
+  await act(async () => { completion = invokeScopedControl("save-personal-info") as Promise<unknown>; });
+  expect(await completion!).toBeUndefined();
+  expect(save).toHaveBeenLastCalledWith({ name: "Ada" });
+  expect(host.querySelector("form")).toBeNull();
+  await click("Add personal info");
+  await edit("Kept draft");
+  const reason = new Error("original synchronous setter failure");
+  save.mockImplementationOnce(() => { throw reason; });
+  button("Save").focus();
+  let observed: Promise<unknown>;
+  await act(async () => {
+    observed = (invokeScopedControl("save-personal-info") as Promise<unknown>).catch((error) => error);
+  });
+  expect(await observed!).toBe(reason);
+  expect(host.querySelector('[role="alert"]')!.textContent).toBe(reason.message);
+  expect(host.querySelector<HTMLInputElement>('input[autocomplete="name"]')!.value).toBe("Kept draft");
+  expect(button("Save").disabled).toBe(false);
+});
+
+it("checks live normal-kind admission before dispatch and a held completion without rerender", async () => {
+  await render();
+  await click("Add personal info");
+  await edit("Retained original draft");
+  button("Save").focus();
+  native.windowKind = "little";
+  expect(() => invokeScopedControl("save-personal-info")).toThrow("current");
+  expect(save).not.toHaveBeenCalled();
+  native.windowKind = "normal";
+  const pending = held<unknown>();
+  save.mockReturnValueOnce(pending.promise);
+  let completion: Promise<unknown>;
+  await act(async () => { completion = invokeScopedControl("save-personal-info") as Promise<unknown>; });
+  const originalInput = host.querySelector<HTMLInputElement>('input[autocomplete="name"]')!;
+  native.windowKind = "little";
+  await act(async () => pending.resolve(undefined));
+  expect(await completion!).toBeUndefined();
+  expect(originalInput.value).toBe("Retained original draft");
+  expect(originalInput.isConnected).toBe(false);
+  expect(button("Add personal info").disabled).toBe(true);
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  expect(errors).not.toHaveBeenCalled();
+});

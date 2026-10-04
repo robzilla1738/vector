@@ -1,0 +1,14 @@
+{
+  "native154": true,
+  "CSP": "original strict",
+  "sourceMaps": false,
+  "startup": 499218,
+  "css": 179427,
+  "total": 1843569,
+  "limits": {
+    "startup": 501760,
+    "css": 184320,
+    "total": 1843200
+  },
+  "strictAccepted": false
+}

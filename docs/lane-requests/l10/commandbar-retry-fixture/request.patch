@@ -1,0 +1,14 @@
+--- a/apps/shell/src/command-bar-browser.test.tsx
++++ b/apps/shell/src/command-bar-browser.test.tsx
+@@ -110,7 +110,11 @@
+   const retry = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+     (button) => button.textContent === "Try again",
+   )!;
++  expect(retry.dataset.commandId).toBe("retry-browser-autocomplete");
++  vi.spyOn(retry, "getClientRects").mockReturnValue([{ width: 200, height: 32 }] as unknown as DOMRectList);
++  expect(autocomplete).toHaveBeenCalledTimes(1);
+   await act(async () => retry.click());
++  expect(autocomplete).toHaveBeenCalledTimes(2);
+   expect(autocomplete).toHaveBeenLastCalledWith("alpha");
+   expect(input.value).toBe("alpha");
+   expect(host.textContent).toContain("Recovered history");

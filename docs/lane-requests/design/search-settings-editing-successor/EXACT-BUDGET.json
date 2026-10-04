@@ -1,0 +1,12 @@
+{
+  "native154": true,
+  "strictCSP": true,
+  "sourceMaps": false,
+  "startup": 499218,
+  "css": 179427,
+  "total": 1843490,
+  "strictTotalLimit": 1843200,
+  "strictAccepted": false,
+  "deltaFrom289df99": -79,
+  "prerequisites": "unchanged 289df99 EXCLUDED-PREREQUISITES"
+}

@@ -1,117 +1,41 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { bridge, inNativeHost } from "../bridge";
 import { executeCommand } from "../commands";
 import { errToast } from "../store";
-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
+import { reportCommandCompletionFailure } from "../command-completion";
 import { registerScopedControl } from "../scoped-control-commands";
+import { useSettingsStatusOwner } from "../settings/sections/use-settings-status-owner";
 
-type Owner = {
-  active: boolean;
-  pending: boolean;
-  readSequence: number;
-  measuredDefault: boolean | null;
-  identity: object;
-};
 /** Registers Aux as the http/https handler; reports the measured OS state. */
 export function DefaultBrowserSetting() {
   const privateMode = bridge.privateMode,
     windowId = bridge.windowId;
   const identity = useMemo(() => ({ privateMode, windowId }), [privateMode, windowId]);
-  const lifetime = useRef<Owner>({
-    active: false,
-    pending: false,
-    readSequence: 0,
-    measuredDefault: null,
-    identity,
-  });
-  useLayoutEffect(() => {
-    const owner = { active: true, pending: false, readSequence: 0, measuredDefault: null, identity };
-    lifetime.current = owner;
-    return () => {
-      owner.active = false;
-    };
-  }, [identity]);
-  const [measured, setMeasured] = useState<{ owner: Owner; isDefault: boolean } | null>(null);
-  const [failure, setFailure] = useState<{ owner: Owner; message: string } | null>(null);
-  const [busyOwner, setBusyOwner] = useState<Owner | null>(null);
-  const isDefault =
-    measured?.owner.active && measured.owner.identity === identity ? measured.isDefault : null;
-  const error = failure?.owner.active && failure.owner.identity === identity ? failure.message : "";
-  const busy = !!busyOwner && busyOwner.active && busyOwner.identity === identity;
-  const current = useCallback(
-    (original: Owner) =>
-      original.active &&
-      original === lifetime.current &&
-      original.identity === identity &&
-      inNativeHost &&
-      !bridge.privateMode &&
-      bridge.windowId === windowId,
-    [identity, windowId],
-  );
+  const admitted = useCallback(() => inNativeHost && !bridge.privateMode, []);
+  const [getOwner, current, isDefault, busy, error, measure, perform, fail] = useSettingsStatusOwner<boolean>(identity, windowId, privateMode, admitted);
   useEffect(() => {
-    const original = lifetime.current;
+    const original = getOwner();
     if (!current(original)) return;
     const read = () => {
       if (!current(original)) return;
-      const sequence = ++original.readSequence;
-      original.measuredDefault = null;
-      setMeasured(null);
-      void bridge
-        .defaultBrowser()
-        .then((state) => {
-          if (current(original) && sequence === original.readSequence) {
-            original.measuredDefault = state.isDefault;
-            setMeasured({ owner: original, isDefault: state.isDefault });
-            setFailure(null);
-          }
-        })
-        .catch((reason) => {
-          if (current(original) && sequence === original.readSequence)
-            setFailure({
-              owner: original,
-              message: reason instanceof Error ? reason.message : String(reason),
-            });
-        });
+      measure(original, () => bridge.defaultBrowser(), (state) => state.isDefault, true);
     };
     read();
     // The OS dialog completes outside this window — re-check on return.
     window.addEventListener("focus", read);
     return () => window.removeEventListener("focus", read);
-  }, [current]);
+  }, [getOwner, current, measure]);
   const change = useCallback(() => {
-    const original = lifetime.current;
-    if (!current(original) || original.pending || original.measuredDefault !== false || isDefault !== false)
+    const original = getOwner();
+    if (!current(original) || original.pending || original.value !== false || isDefault !== false)
       throw new Error("Choose the current default browser control.");
-    original.pending = true;
-    ++original.readSequence;
-    setBusyOwner(original);
-    setFailure(null);
-    const completion = (async () => {
-      try {
-        const state = await bridge.setDefaultBrowser();
-        if (current(original)) {
-          ++original.readSequence;
-          original.measuredDefault = state.isDefault;
-          setMeasured({ owner: original, isDefault: state.isDefault });
-          if (!state.isDefault)
-            setFailure({
-              owner: original,
-              message:
-                "The system did not confirm the change. Check your default browser setting in System Settings.",
-            });
-        }
-        return state;
-      } catch (reason) {
-        if (current(original))
-          setFailure({ owner: original, message: reason instanceof Error ? reason.message : String(reason) });
-        throw reason;
-      } finally {
-        original.pending = false;
-        setBusyOwner((value) => (value === original ? null : value));
-      }
-    })();
-    return guardCommandCompletion(completion, () => current(original));
-  }, [current, isDefault]);
+    return perform(original, () => bridge.setDefaultBrowser(), (state, original) => {
+      ++original.sequence;
+      if (!state.isDefault)
+        fail(original, "The system did not confirm the change. Check your default browser setting in System Settings.");
+      return state.isDefault;
+    });
+  }, [getOwner, current, isDefault, perform, fail]);
   const unregister = useRef<(() => void) | undefined>(undefined);
   const controlRef = useCallback(
     (element: HTMLButtonElement | null) => {

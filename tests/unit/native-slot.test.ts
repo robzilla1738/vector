@@ -1,10 +1,10 @@
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync, readFileSync, renameSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { expect, it } from 'vitest';
-import { acquireNativeSlot, withNativeSlot } from '../../scripts/native-slot.mjs';
+import { expect, it, vi } from 'vitest';
+import { acquireNativeSlot, withNativeSlot, assertNativeSlotOwned } from '../../scripts/native-slot.mjs';
 
 it('serializes native work and releases the slot after a failed operation', async () => {
   const root = mkdtempSync(join(tmpdir(), 'aux-native-slot-'));
@@ -66,4 +66,76 @@ it('recognizes a symlinked CLI entrypoint without treating an imported module as
       expect(imported.stderr).toBe('');
     }
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+
+it('refuses unowned, dead and replaced native writers without taking or changing a slot', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'aux-native-writer-'));
+  const path = join(root, 'slot');
+  try {
+    expect(() => assertNativeSlotOwned({ path })).toThrow();
+    const slot = await acquireNativeSlot({ path });
+    const original = assertNativeSlotOwned({ path, token: slot.token });
+    expect(original.pid).toBe(process.pid);
+    expect(() => assertNativeSlotOwned({ path, token: 'foreign' })).toThrow('original live slot');
+    expect(() => assertNativeSlotOwned({ path, token: '', expectedOwner: original })).toThrow('original live slot');
+    writeFileSync(join(path, 'owner.json'), JSON.stringify({ pid: 2147483647, token: slot.token }));
+    expect(() => assertNativeSlotOwned({ path, token: slot.token })).toThrow('original live slot');
+    writeFileSync(join(path, 'owner.json'), JSON.stringify({ pid: process.pid, token: 'replacement' }));
+    expect(() => assertNativeSlotOwned({ path, token: 'replacement', expectedOwner: original })).toThrow('original live slot');
+    writeFileSync(join(path, 'owner.json'), JSON.stringify({ pid: process.pid, token: slot.token }));
+    expect(assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toEqual(original);
+    slot.release();
+    expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow();
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+it('native writer refuses quarantine without acquiring or clearing its original slot', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'aux-writer-quarantine-')), path = join(root, 'slot');
+  try {
+    const slot = await acquireNativeSlot({ path }), original = assertNativeSlotOwned({ path, token: slot.token });
+    const marker = join(path, 'quarantine.json'); writeFileSync(marker, '{}');
+    expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
+    expect(readFileSync(marker, 'utf8')).toBe('{}');
+    unlinkSync(marker); expect(assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toEqual(original); slot.release();
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+it('native writer refuses recreated slot and owner file with unchanged original PID/token labels', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'aux-writer-recreated-')), path = join(root, 'slot');
+  try {
+    const slot = await acquireNativeSlot({ path }), original = assertNativeSlotOwned({ path, token: slot.token });
+    const owner = join(path, 'owner.json'), bytes = readFileSync(owner);
+    renameSync(owner, join(path, 'original-owner.json')); writeFileSync(owner, bytes);
+    expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
+    renameSync(path, join(root, 'original-slot')); mkdirSync(path); writeFileSync(join(path, 'owner.json'), bytes);
+    expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
+    expect(readFileSync(join(path, 'owner.json'))).toEqual(bytes);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+it('native writer refuses symlinked owner and directory without following or changing their receipts', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'aux-writer-symlink-')), path = join(root, 'slot');
+  try {
+    const slot = await acquireNativeSlot({ path }), original = assertNativeSlotOwned({ path, token: slot.token });
+    const owner = join(path, 'owner.json'), bytes = readFileSync(owner), foreign = join(root, 'foreign-owner.json');
+    writeFileSync(foreign, bytes); unlinkSync(owner); symlinkSync(foreign, owner);
+    expect(() => assertNativeSlotOwned({ path, token: slot.token })).toThrow('original live slot');
+    expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
+    renameSync(path, join(root, 'original-slot')); symlinkSync(join(root, 'original-slot'), path, 'dir');
+    expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
+    expect(readFileSync(foreign)).toEqual(bytes);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+it('native writer bounds original receipt reads and refuses changed inherited token with no slot mutation', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'aux-writer-bounds-')), path = join(root, 'slot');
+  try {
+    const slot = await acquireNativeSlot({ path }), owner = join(path, 'owner.json'), bytes = readFileSync(owner);
+    vi.stubEnv('AUX_NATIVE_SLOT_TOKEN', slot.token); const original = assertNativeSlotOwned({ path });
+    vi.stubEnv('AUX_NATIVE_SLOT_TOKEN', 'foreign');
+    expect(() => assertNativeSlotOwned({ path, expectedOwner: original })).toThrow('original live slot');
+    expect(readFileSync(owner)).toEqual(bytes);
+    for (const invalid of ['', 'x'.repeat(4097)]) {
+      writeFileSync(owner, invalid); expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
+    }
+    writeFileSync(owner, bytes); expect(assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toEqual(original); slot.release();
+  } finally { vi.unstubAllEnvs(); rmSync(root, { recursive: true, force: true }); }
 });

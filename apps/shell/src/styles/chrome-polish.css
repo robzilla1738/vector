@@ -23,6 +23,7 @@
 .icon-btn:not(:disabled):active, .btn:not(:disabled):active { scale: 1; opacity: 1; }
 :is(.icon-btn, .btn):disabled { opacity: .4; }
 .icon-btn > .ci { width: 16px; height: 16px; }
+.horizontal-tab-tools .icon-btn > .ci { width: 18px; height: 18px; }
 :is(.session-actions, .session-heading, .settings-search-box) .icon-btn > .ci,
 :is(.tab-close, .horizontal-tab-close) > .ci { width: 14px; height: 14px; }
 :is(.session-actions, .session-heading, .settings-search-box) .icon-btn { min-width: 24px; min-height: 24px; }

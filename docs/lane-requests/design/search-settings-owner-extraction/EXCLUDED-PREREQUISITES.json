@@ -1,0 +1,18 @@
+{
+  "rootLibraryPatch": "5ab227fbb97e64794dcb6b79314040c74b3ea0cb5c5f52ec7bb072f27d32abc3",
+  "rootSidebar003Patch": "19889f26fd9c20792db871ef122df8de18f284fcbc5dd4a6331e539ceb88e420",
+  "leaves": [
+    {
+      "path": "apps/shell/src/components/Toolbar.tsx",
+      "sha256": "8ba509e18d0c65a50c7de190eb782662bd33d6526628be37194ffff455964110"
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "sha256": "e01f14ddb0038f8957ad4ef36b0306787d63099cda379c79a698d18d7b268dc1"
+    }
+  ],
+  "earlierP2Packets": [
+    "32b9a173",
+    "2a5d78c2"
+  ]
+}

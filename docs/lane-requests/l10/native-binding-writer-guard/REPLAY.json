@@ -1,0 +1,24 @@
+{
+  "forwardReverseForward": [
+    true,
+    true,
+    true
+  ],
+  "rows": [
+    {
+      "path": "scripts/native-slot.mjs",
+      "before": "8e7e7e96013654802e69c102aea6db3e9c4a62a57c982a23767d03b993abab4d",
+      "after": "4ec29345d6a9b61781a99316a242fe128bb208ae5caf2b73be8e769a9255b547"
+    },
+    {
+      "path": "chromium/stage-host-bindings.mjs",
+      "before": "426f5572a76e87e134d6c3f6b31b7c99a010b3e5a1f9905e1b24beb93c250d1c",
+      "after": "2d94b4235e5c93042f36fec97a7102f15481703cef892eb47208dc315eb75501"
+    },
+    {
+      "path": "tests/unit/native-slot.test.ts",
+      "before": "cf08150c8a7bd9c1e750f68cd6b50216df4f49f3ba5d17a914d74795c577a19d",
+      "after": "5fdf467dcebb659b40515928fbcdd7c244df5981b7fb6cc57d358ef2ea6c028e"
+    }
+  ]
+}

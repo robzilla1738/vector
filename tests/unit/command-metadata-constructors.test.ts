@@ -39,3 +39,11 @@ it("adds only the mounted image and model commands with their original window po
       intercept: true, focusShell: true, bindings: [], dispatch: "scoped" });
   }
 });
+
+it("registers chat history, Tasks and the focused More control with exact normal-window policy", () => {
+  expect(COMMANDS.filter(row => ["open-chat-history", "open-tasks", "toggle-sidebar-more"].includes(row.id))).toEqual([
+    { id: "open-chat-history", label: "Chats", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
+    { id: "open-tasks", label: "Tasks", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
+    { id: "toggle-sidebar-more", label: "Toggle browser tools", section: "Application", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [], intercept: true, dispatch: "scoped" },
+  ]);
+});

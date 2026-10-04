@@ -271,6 +271,7 @@ export const COMMANDS = [
     ["review", "import-space", "Review imported Space notes"],
   ]),
   S("toggle-quick-ask-shortcut", "Change global Quick Ask shortcut", quickAskControl),
+  S("retry-browser-autocomplete", "Retry browser suggestions", searchEngineControl),
   S("retry-quick-ask-shortcut", "Retry global Quick Ask shortcut", quickAskControl),
   ...G(searchEngineControl, "-search-engine", [
     ["select", "", "Choose search engine"],
@@ -379,6 +380,10 @@ export const COMMANDS = [
   S("update-browser-source", "Use current browser source", browserContextControl),
   C("mention-insert", "Mention source", mentionControl),
   C("mention-remove", "Remove source mention", mentionControl),
+
+  C("open-chat-history", "Chats", normalApplication),
+  C("open-tasks", "Tasks", normalApplication),
+  S("toggle-sidebar-more", "Toggle browser tools", memoryControl),
 
   C("command-tabs", "Search open tabs", shellApplication),
   C("command-observe", "Inspect what the agent sees", normalApplication),

@@ -1,5 +1,6 @@
 import { ReturnControlButton } from "./ReturnControlButton";
 import { runCommand } from "../commands";
+import { registerScopedControl } from "../scoped-control-commands";
 import { windowTabHint } from "../tab-window-transfer";
 import { FeatureSlots } from "../features/registry";
 import "./Sidebar.css";
@@ -7,7 +8,7 @@ import { ChatSessions } from "./ChatSessions";
 import { TabPreview, useSidebarTabPreview } from "./TabPreview";
 import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { PageTarget } from "@aux/contracts";
+import type { PageTarget, ShellCommandId } from "@aux/contracts";
 import type { SpaceTheme } from "@aux/contracts/spaces";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast, toast } from "../store";
@@ -400,7 +401,7 @@ const SidebarBookmarks = memo(function SidebarBookmarks({ onOpen, onDropped }: {
       void Promise.all(added.map(tab => call("bookmarks.add", tab))).then(() => toast(added.length === 1 ? "Bookmarked" : `Bookmarked ${added.length} tabs`)).catch(errToast);
     }}>
     {bookmarkCount ? <div className="sb-bookmark-list">{shownUrls.map(url => <SidebarBookmarkRow key={url} url={url} onOpen={onOpen} />)}
-      {bookmarkCount > shownUrls.length && <button className="sb-link sb-show-all" onClick={() => useStore.getState().setOverlay("bookmarks")}>Show all {bookmarkCount}</button>}
+      {bookmarkCount > shownUrls.length && <button className="sb-link sb-show-all" data-command-id="command-bookmarks" onClick={() => runCommand("command-bookmarks")}>Show all {bookmarkCount}</button>}
     </div> : <div className="sb-bookmarks-empty">Drag tabs here to add bookmarks</div>}
   </div>;
 });
@@ -421,7 +422,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const railOpenNow = useStore((s) => s.railOpen && s.overlay !== "settings");
   const sidebar = minimal ? "hidden" : sidebarPref;
   const peek = useStore(s => s.sidebarPeek);
-  const toggleRail = useStore((s) => s.toggleRail);
   const layout = useStore((s) => s.layout);
   const pages = useTabMembership();
   /** 0 not saved · 1 bookmarked · 2 also on the reading list — for the active page. */
@@ -433,7 +433,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   useFloatingSidebar(sidebar, floatingPanel);
   const activate = useStore((s) => s.activate);
   const closeTab = useStore((s) => s.closeTab);
-  const setOverlay = useStore((s) => s.setOverlay);
   const switchSpace = useStore((s) => s.switchSpace);
   const addSpace = useStore((s) => s.addSpace);
   const editSpace = useStore((s) => s.editSpace);
@@ -446,7 +445,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const moveTabToFolder = useStore((s) => s.moveTabToFolder);
   const sidebarWidth = useStore((s) => s.sidebarWidth);
   const setSidebarWidth = useStore((s) => s.setSidebarWidth);
-  const setMode = useStore((s) => s.setMode);
 
   const space = layout.spaces.find((s) => s.id === layout.activeSpaceId) ?? layout.spaces[0]!;
   const tabs = useMemo(() => tabsInSpace(layout, pages, space.id), [layout, pages, space.id]);
@@ -485,6 +483,21 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const pinOverflowTrigger = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreTrigger = useRef<HTMLButtonElement>(null);
+  const privateMode = bridge.privateMode, windowKind = bridge.windowKind, windowId = bridge.windowId;
+  useLayoutEffect(() => {
+    const original = moreTrigger.current;
+    if (!original || privateMode || windowKind !== "normal") return;
+    let active = true;
+    const retire = registerScopedControl(original, "toggle-sidebar-more", "sidebar-more", () => {
+      if (!active || moreTrigger.current !== original || bridge.privateMode || bridge.windowKind !== windowKind || bridge.windowId !== windowId) {
+        active = false;
+        throw new Error("The original browser tools changed.");
+      }
+      setMoreOpen(value => !value);
+    });
+    return () => { active = false; retire(); };
+  }, [privateMode, windowKind, windowId]);
+  function chooseMore(id: ShellCommandId) { setMoreOpen(false); runCommand(id); }
   const [editing, setEditing] = useState<Space | null | "new">(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const pinDrag = useRef<{ url: string; spaceId: string } | null>(null);
@@ -750,40 +763,30 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
             onEdit={(s) => setEditing(s)}
             onDelete={id => void deleteSpace(id).catch(errToast)}
             onCollapse={() => runCommand("sidebar")}
-            onHistory={() => setOverlay("history")}
-            onDownloads={() => setOverlay("downloads")}
-            onSettings={() => setOverlay("settings")}
+            onHistory={() => runCommand("history")}
+            onDownloads={() => runCommand("downloads")}
+            onSettings={() => runCommand("settings")}
             onClose={() => setMenuOpen(false)}
           />
         )}
       </div>
-        {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button onClick={() => setMode(mode === "overview" ? "focus" : "overview")} className="icon-btn" aria-label="Tab overview">{shellIconGrid}</button></> : <>
+        {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button data-command-id="overview" onClick={() => runCommand("overview")} className="icon-btn" aria-label="Tab overview">{shellIconGrid}</button></> : <>
         <span className="sp" />
         <button className="icon-btn" title={withShortcut("Search", key("palette"))} aria-label="Search browser" data-command-id="palette" onClick={() => runCommand("palette")}>{shellIconSearch}</button>
         {activeController === "human" && <ReturnControlButton pageId={activePageId!} compact />}
-        <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpenNow} onClick={toggleRail}>{shellIconAgent}</button>
+        <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpenNow} data-command-id="agent-rail" onClick={() => runCommand("agent-rail")}>{shellIconAgent}</button>
         <div className="sb-more">
-          <button ref={moreTrigger} className="icon-btn" aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More" title="More" onClick={() => setMoreOpen(value => !value)}>{shellIconMore}</button>
+          <button ref={moreTrigger} className="icon-btn" aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More" title={withShortcut("More", key("toggle-sidebar-more"))} data-command-id="toggle-sidebar-more" onClick={event => runCommand("toggle-sidebar-more", { nativeInputEvent: event.nativeEvent })}>{shellIconMore}</button>
           {moreOpen && <Menu className="sidebar-native-menu sb-more-menu" label="Browser tools" anchor={moreTrigger} placement="above-end" returnFocus={moreTrigger} onClose={() => setMoreOpen(false)}>
-            <button role="menuitem" aria-label="Chats" onClick={() => { setMoreOpen(false); useStore.getState().openConversation(null); useStore.setState({conversationId:"history"}); }}>{shellIconAgentSm}<span>Chats</span></button>
-            <button role="menuitem" aria-label="Tasks" onClick={() => { setMoreOpen(false); setOverlay("tasks"); }}>{shellIconLayersSm}<span>Tasks</span></button>
-            <button role="menuitem" aria-label="Library" onClick={() => { setMoreOpen(false); setOverlay("bookmarks"); }}>{shellIconBookmark}<span>Library</span></button>
-            <button role="menuitem" aria-label="Downloads" onClick={() => { setMoreOpen(false); setOverlay("downloads"); }}>{shellIconDownloadSm}<span>Downloads</span></button>
+            <button role="menuitem" aria-label="Chats" data-command-id="open-chat-history" onClick={() => chooseMore("open-chat-history")}>{shellIconAgentSm}<span>Chats</span>{key("open-chat-history") && <kbd>{key("open-chat-history")}</kbd>}</button>
+            <button role="menuitem" aria-label="Tasks" data-command-id="open-tasks" onClick={() => chooseMore("open-tasks")}>{shellIconLayersSm}<span>Tasks</span>{key("open-tasks") && <kbd>{key("open-tasks")}</kbd>}</button>
+            <button role="menuitem" aria-label="Library" data-command-id="command-bookmarks" onClick={() => chooseMore("command-bookmarks")}>{shellIconBookmark}<span>Library</span>{key("command-bookmarks") && <kbd>{key("command-bookmarks")}</kbd>}</button>
+            <button role="menuitem" aria-label="Downloads" data-command-id="downloads" onClick={() => chooseMore("downloads")}>{shellIconDownloadSm}<span>Downloads</span>{key("downloads") && <kbd>{key("downloads")}</kbd>}</button>
             <hr />
-            <button role="menuitem" aria-label={saved ? "Remove bookmark" : "Bookmark this page"} disabled={!web} onClick={() => {
-              setMoreOpen(false);
-              const current = useStore.getState().pages.find(item => item.pageId === activePageId);
-              if (!current) return;
-              void useStore.getState().toggleBookmark(current.url,current.title).catch(errToast);
-            }}>{shellIconBookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span>{key("bookmark") && <kbd>{key("bookmark")}</kbd>}</button>
-            <button role="menuitem" aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"} disabled={!web} onClick={() => {
-              setMoreOpen(false);
-              const current = useStore.getState().pages.find(item => item.pageId === activePageId);
-              if (!current) return;
-              void useStore.getState().toggleReadingList(current.url, current.title).catch(errToast);
-            }}>{shellIconClock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span></button>
-            <button role="menuitem" aria-label="Tab overview" onClick={() => { setMoreOpen(false); setMode(mode === "overview" ? "focus" : "overview"); }}>{shellIconGrid}<span>Tab overview</span></button>
-            <button role="menuitem" aria-label="Settings" onClick={() => { setMoreOpen(false); setOverlay("settings"); }}>{shellIconGear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>
+            <button role="menuitem" aria-label={saved ? "Remove bookmark" : "Bookmark this page"} disabled={!web} data-command-id="bookmark" onClick={() => chooseMore("bookmark")}>{shellIconBookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span>{key("bookmark") && <kbd>{key("bookmark")}</kbd>}</button>
+            <button role="menuitem" aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"} disabled={!web} data-command-id="command-reading-list" onClick={() => chooseMore("command-reading-list")}>{shellIconClock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span>{key("command-reading-list") && <kbd>{key("command-reading-list")}</kbd>}</button>
+            <button role="menuitem" aria-label="Tab overview" data-command-id="overview" onClick={() => chooseMore("overview")}>{shellIconGrid}<span>Tab overview</span>{key("overview") && <kbd>{key("overview")}</kbd>}</button>
+            <button role="menuitem" aria-label="Settings" data-command-id="settings" onClick={() => chooseMore("settings")}>{shellIconGear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>
           </Menu>}
         </div>
         </>}

@@ -48,7 +48,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
 
       <div className="tb-right">
         <FeatureSlots slot="toolbarItems" />
-        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{shellIconBookmark}</button>}
+        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title={withShortcut("Library", key("command-bookmarks"))} aria-label="Library" data-command-id="command-bookmarks" onClick={() => runCommand("command-bookmarks")}>{shellIconBookmark}</button>}
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{shellIconGear}</button>}
         {page?.controller === "human" && <ReturnControlButton pageId={page.pageId} />}
         {page && (page.controller === "agent" || page.controller === "external") && (

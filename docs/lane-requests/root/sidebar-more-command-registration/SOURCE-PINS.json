@@ -28,5 +28,17 @@
   "originalRowsUnchanged": true,
   "coherentByteGatePending": true,
   "nativeExecuted": false,
-  "finalMountedChecksPending": true
+  "finalMountedChecksPending": false,
+  "original12AndExtended24MountedPassed": true,
+  "originalOrderedMetadataAndRegistryPassed": true,
+  "shellTypesPassed": true,
+  "scopedLintPassedWithExistingWarnings": true,
+  "menuSelectionSuccessor": "docs/lane-requests/root/sidebar-menu-selection-successor/SOURCE-PINS.json",
+  "actualTestSha256": "688646aebbedead00aff94fb49770ef0bd8a3011969526b19f3e387ecef964d0",
+  "coherentTotalBytes": 1843883,
+  "unchangedTotalLimit": 1843200,
+  "coherentByteGatePassed": false,
+  "finalControlsLogSha256": "64070098b14ef5e064ccdcb5f213debc0b4e9b23710b36eeb1c38fc1ab2c7acc",
+  "finalTypesLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "finalLintLogSha256": "2232e48dfe8513abeb58775bd10a2dcdf905b718d684d5b9e99dca8f29c543f7"
 }

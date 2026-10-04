@@ -1,7 +1,7 @@
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { AutofillProfile } from "@aux/contracts";
 import { bridge } from "../bridge";
-import { guardCommandCompletion } from "../command-completion";
+import { useSettingsSaveOwner, type SettingsSaveOwner } from "../settings/sections/use-settings-save-owner";
 import { useScopedCommandControls } from "../scoped-command-controls";
 const FIELDS: { key: keyof AutofillProfile; label: string; auto?: string }[] = [
   { key: "name", label: "Name", auto: "name" },
@@ -14,7 +14,10 @@ const FIELDS: { key: keyof AutofillProfile; label: string; auto?: string }[] = [
   { key: "postal", label: "ZIP or postal code", auto: "postal-code" },
   { key: "country", label: "Country", auto: "country-name" },
 ];
-type Owner = { active: boolean; pending: boolean; identity: object };
+const SAVE_POLICY = {
+  accepted: (ack: unknown) => ack !== false,
+  rejected: (reason: unknown) => reason instanceof Error ? reason.message : String(reason),
+};
 /** Contact/address data only; original explicit form filling excludes credentials/payment. */
 export function AutofillSetting({
   value,
@@ -33,44 +36,25 @@ export function AutofillSetting({
     () => ({ snapshot, windowId, privateMode, kind, active }),
     [snapshot, windowId, privateMode, kind, active],
   );
-  const owner = useRef<Owner>({ active: false, pending: false, identity });
-  useLayoutEffect(() => {
-    const original = { active: true, pending: false, identity };
-    owner.current = original;
-    return () => {
-      original.active = false;
-    };
-  }, [identity]);
-  const current = useCallback(
-    (original: Owner) =>
-      original.active &&
-      owner.current === original &&
-      original.identity === identity &&
-      active &&
-      !privateMode &&
-      kind === "normal" &&
-      !bridge.privateMode &&
-      bridge.windowId === windowId &&
-      bridge.windowKind === kind,
-    [identity, active, privateMode, kind, windowId],
+  const admitted = useCallback(
+    () => active && !privateMode && kind === "normal" && !bridge.privateMode && bridge.windowKind === kind,
+    [active, privateMode, kind],
   );
-  const [editing, setEditing] = useState<{ owner: Owner; draft: AutofillProfile } | null>(null);
-  const [failure, setFailure] = useState<{ owner: Owner; message: string } | null>(null);
-  const [pending, setPending] = useState<Owner | null>(null);
+  const [getOwner, current, busy, error, , clearFailure, perform] =
+    useSettingsSaveOwner(identity, windowId, privateMode, admitted);
+  const [editing, setEditing] = useState<{ owner: SettingsSaveOwner; draft: AutofillProfile } | null>(null);
   const draft = editing?.owner.active && editing.owner.identity === identity ? editing.draft : null;
   const draftRef = useRef(draft);
   useLayoutEffect(() => {
     draftRef.current = draft;
   }, [draft]);
-  const busy = pending?.active && pending.identity === identity;
-  const error = failure?.owner.active && failure.owner.identity === identity ? failure.message : "";
   const scopeId = useId();
   const [publish, run] = useScopedCommandControls(scopeId, () => {
-    const original = owner.current;
+    const original = getOwner();
     return current(original) ? () => current(original) : undefined;
   });
   function requireOwner() {
-    const original = owner.current;
+    const original = getOwner();
     if (!current(original) || original.pending) throw new Error("Choose the current personal info control.");
     return original;
   }
@@ -79,13 +63,13 @@ export function AutofillSetting({
     const next = { ...value };
     draftRef.current = next;
     setEditing({ owner: original, draft: next });
-    setFailure(null);
+    clearFailure();
   }
   function cancel() {
     requireOwner();
     draftRef.current = null;
     setEditing(null);
-    setFailure(null);
+    clearFailure();
   }
   function change(key: keyof AutofillProfile, text: string) {
     const original = requireOwner();
@@ -98,38 +82,19 @@ export function AutofillSetting({
     const original = requireOwner(),
       savedDraft = draftRef.current;
     if (!savedDraft) throw new Error("Edit the current personal info first.");
-    original.pending = true;
-    setPending(original);
-    setFailure(null);
-    const delivering = () => current(original) && draftRef.current === savedDraft;
-    const completion = (async () => {
-      try {
-        const clean = {} as AutofillProfile;
-        for (const field of FIELDS) {
-          const text = savedDraft[field.key]?.trim();
-          if (text) clean[field.key] = text;
-        }
-        const ack = await onSave(clean);
-        if (delivering()) {
-          if (ack === false)
-            setFailure({ owner: original, message: "Personal info wasn’t saved. Try again." });
-          else {
-            draftRef.current = null;
-            setEditing(null);
-          }
-        }
-        return ack;
-      } catch (reason) {
-        if (delivering())
-          setFailure({ owner: original, message: reason instanceof Error ? reason.message : String(reason) });
-        throw reason;
-      } finally {
-        original.pending = false;
-        setPending((previous) => (previous === original ? null : previous));
+    return perform(original, savedDraft, draftRef, () => {
+      const clean = {} as AutofillProfile;
+      for (const field of FIELDS) {
+        const text = savedDraft[field.key]?.trim();
+        if (text) clean[field.key] = text;
       }
-    })();
-    return guardCommandCompletion(completion, delivering);
+      return onSave(clean);
+    }, () => {
+      draftRef.current = null;
+      setEditing(null);
+    }, "Personal info wasn’t saved. Try again.", SAVE_POLICY);
   }
+
   const filled = FIELDS.filter((field) => value?.[field.key]?.trim());
   const disabled = !active || privateMode || kind !== "normal";
   return (

@@ -19,6 +19,55 @@ function alive(pid) {
   catch (error) { return error.code === 'EPERM'; }
 }
 
+/** @typedef {{dev: number, ino: number}} NativeSlotIdentity */
+/** @typedef {{pid: number, token: string, directory: NativeSlotIdentity, file: NativeSlotIdentity}} NativeSlotOwner */
+/** Native writers must already belong to the original live build/journey owner.
+ * @param {{path?: string, token?: string, expectedOwner?: NativeSlotOwner}} [options]
+ * @returns {Readonly<NativeSlotOwner>}
+ */
+export function assertNativeSlotOwned({ path = nativeSlotPath, token = process.env.AUX_NATIVE_SLOT_TOKEN, expectedOwner } = {}) {
+  const fail = () => { throw new Error('Native writer does not own the original live slot'); };
+  const same = (left, right) => left.dev === right.dev && left.ino === right.ino;
+  const namedDirectory = lstatSync(path);
+  if (!namedDirectory.isDirectory() || namedDirectory.isSymbolicLink() || hasQuarantine(path)) fail();
+  const directory = openSync(path, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
+  let file;
+  try {
+    const heldDirectory = fstatSync(directory);
+    if (!same(namedDirectory, heldDirectory)) fail();
+    const filename = join(path, 'owner.json'), namedFile = lstatSync(filename);
+    if (!namedFile.isFile() || namedFile.isSymbolicLink()) fail();
+    file = openSync(filename, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const heldFile = fstatSync(file);
+    if (!heldFile.isFile() || !same(namedFile, heldFile) ||
+        !Number.isSafeInteger(heldFile.size) || heldFile.size <= 0 || heldFile.size > 4096) fail();
+    const bytes = Buffer.alloc(heldFile.size);
+    if (readSync(file, bytes, 0, bytes.length, 0) !== bytes.length) fail();
+    const owner = JSON.parse(bytes.toString('utf8'));
+    if (!Number.isSafeInteger(owner.pid) || owner.pid <= 0 || typeof owner.token !== 'string' || !owner.token ||
+        !token || owner.token !== token || !alive(owner.pid) ||
+        (expectedOwner && (!expectedOwner.directory || !expectedOwner.file || owner.pid !== expectedOwner.pid || owner.token !== expectedOwner.token ||
+          !same(heldDirectory, expectedOwner.directory) || !same(heldFile, expectedOwner.file)))) fail();
+    const afterDirectory = lstatSync(path), afterFile = lstatSync(filename), afterHeld = fstatSync(file);
+    if (!afterDirectory.isDirectory() || afterDirectory.isSymbolicLink() || !same(afterDirectory, heldDirectory) ||
+        !afterFile.isFile() || afterFile.isSymbolicLink() || !same(afterFile, heldFile) || !same(afterHeld, heldFile) ||
+        afterHeld.size !== bytes.length || afterFile.size !== bytes.length || hasQuarantine(path)) fail();
+    const confirm = Buffer.alloc(bytes.length);
+    if (readSync(file, confirm, 0, confirm.length, 0) !== confirm.length || !confirm.equals(bytes)) fail();
+    const finalDirectory = lstatSync(path), finalFile = lstatSync(filename);
+    if (!finalDirectory.isDirectory() || finalDirectory.isSymbolicLink() || !same(finalDirectory, heldDirectory) ||
+        !finalFile.isFile() || finalFile.isSymbolicLink() || !same(finalFile, heldFile) ||
+        finalFile.size !== bytes.length || hasQuarantine(path) || !alive(owner.pid)) fail();
+    return Object.freeze({ pid: owner.pid, token: owner.token,
+      directory: Object.freeze({ dev: heldDirectory.dev, ino: heldDirectory.ino }),
+      file: Object.freeze({ dev: heldFile.dev, ino: heldFile.ino }),
+    });
+  } finally {
+    if (file !== undefined) closeSync(file);
+    closeSync(directory);
+  }
+}
+
 /** A child build/journey may reuse its live parent's slot; unrelated work waits. */
 export async function acquireNativeSlot({ path = nativeSlotPath, timeoutMs = 30 * 60_000, signal } = {}) {
   const started = Date.now();

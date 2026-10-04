@@ -1,0 +1,16 @@
+{
+  "base": "5b6e3202697e4f79d4bcc4d568c01c9b146830ea",
+  "leaves": [
+    {
+      "path": "apps/shell/src/components/DefaultBrowserSetting.tsx",
+      "before": "83189d5dc50bf87a6ee8d3febcfe15b9483727ca9546b16fa31495bd461c866c",
+      "after": "8fe54c59609d306b613c21f099d903c7d22e928e9a8ad21a7d96512707240aa8"
+    },
+    {
+      "path": "apps/shell/src/default-browser-commands.test.tsx",
+      "before": "1ef3a30b2d9f0cc4200c72dd9a689d46dc20e0488c106d5cc811eae5f211b253",
+      "after": "b461087ea53919a7c1f0501777c23413466a83beefc0b0920f2ebb11b046cdab"
+    }
+  ],
+  "patchSha256": "d433f361e9a692d28582559c253ad0bee5ef1a89977de8a38160504af7fd3202"
+}

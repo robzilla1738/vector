@@ -1,0 +1,49 @@
+{
+  "sourceOnly": true,
+  "prerequisite": "0722b673",
+  "composed": [
+    {
+      "packet": "autocomplete-retry-glyph",
+      "patchSha256": "d981e288c520567c5ff63f0a48c35b0b0af2449e621ef0cea9c6ff872b086fb9",
+      "allExactSourcePinsPassed": true
+    },
+    {
+      "packet": "autocomplete-retry-owner-successor",
+      "patchSha256": "42d7b47fdd8914bc46e685caabb5e1e5a7055049a252edc4502ec18c36b8ce70",
+      "allExactSourcePinsPassed": true
+    },
+    {
+      "packet": "search-settings-owner-extraction",
+      "patchSha256": "e820f7d2133ad6c710b48efea0b007f84efc406e29ff17835d31f9f99733e656",
+      "allExactSourcePinsPassed": true
+    },
+    {
+      "packet": "search-settings-editing-successor",
+      "patchSha256": "796e8b9b3ea08b1bb60c1e273c779be85f54c2ae3662675221c433b3c9c72b4e",
+      "allExactSourcePinsPassed": true
+    },
+    {
+      "packet": "autofill-shared-save-owner",
+      "patchSha256": "4c5ae62c9ce267f4116a7a80c65a3784c1f354a398c8e18bb77bbe304d08ee54",
+      "allExactSourcePinsPassed": true
+    },
+    {
+      "packet": "default-browser-initial-read",
+      "patchSha256": "d433f361e9a692d28582559c253ad0bee5ef1a89977de8a38160504af7fd3202",
+      "allExactSourcePinsPassed": true
+    }
+  ],
+  "rootThreeRegistryRowsPreserved": true,
+  "coherentByteGatePending": true,
+  "nativeAccepted": false,
+  "rootCoherentMountedChecksPassed": true,
+  "rootShellTypesPassed": true,
+  "rootScopedLintPassedWithExistingWarnings": true,
+  "lastMeasuredTotalBytes": 1843883,
+  "lastMeasurementExcludesDefaultBrowserCorrection": true,
+  "unchangedTotalLimit": 1843200,
+  "strictByteGatePassed": false,
+  "controlsLogSha256": "af2abe93db0438c1abd30b2ac476085b8b70bd898d71e6471df5a375db41c406",
+  "typesLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "lintLogSha256": "fc6fa715bc57de0b32bd0fb29351ff24776fea6dd085189fc7830e4e1d01f198"
+}

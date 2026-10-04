@@ -1,0 +1,139 @@
+--- a/scripts/native-slot.mjs
++++ b/scripts/native-slot.mjs
+@@ -19,14 +19,53 @@
+   catch (error) { return error.code === 'EPERM'; }
+ }
+ 
+-/** Native writers must already belong to the original live build/journey owner. */
++/** @typedef {{dev: number, ino: number}} NativeSlotIdentity */
++/** @typedef {{pid: number, token: string, directory: NativeSlotIdentity, file: NativeSlotIdentity}} NativeSlotOwner */
++/** Native writers must already belong to the original live build/journey owner.
++ * @param {{path?: string, token?: string, expectedOwner?: NativeSlotOwner}} [options]
++ * @returns {Readonly<NativeSlotOwner>}
++ */
+ export function assertNativeSlotOwned({ path = nativeSlotPath, token = process.env.AUX_NATIVE_SLOT_TOKEN, expectedOwner } = {}) {
+-  const owner = JSON.parse(readFileSync(join(path, 'owner.json'), 'utf8'));
+-  if (!Number.isSafeInteger(owner.pid) || owner.pid <= 0 || typeof owner.token !== 'string' || !owner.token ||
+-      !token || owner.token !== token || !alive(owner.pid) ||
+-      (expectedOwner && (owner.pid !== expectedOwner.pid || owner.token !== expectedOwner.token)))
+-    throw new Error('Native writer does not own the original live slot');
+-  return Object.freeze({ pid: owner.pid, token: owner.token });
++  const fail = () => { throw new Error('Native writer does not own the original live slot'); };
++  const same = (left, right) => left.dev === right.dev && left.ino === right.ino;
++  const namedDirectory = lstatSync(path);
++  if (!namedDirectory.isDirectory() || namedDirectory.isSymbolicLink() || hasQuarantine(path)) fail();
++  const directory = openSync(path, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
++  let file;
++  try {
++    const heldDirectory = fstatSync(directory);
++    if (!same(namedDirectory, heldDirectory)) fail();
++    const filename = join(path, 'owner.json'), namedFile = lstatSync(filename);
++    if (!namedFile.isFile() || namedFile.isSymbolicLink()) fail();
++    file = openSync(filename, constants.O_RDONLY | constants.O_NOFOLLOW);
++    const heldFile = fstatSync(file);
++    if (!heldFile.isFile() || !same(namedFile, heldFile) ||
++        !Number.isSafeInteger(heldFile.size) || heldFile.size <= 0 || heldFile.size > 4096) fail();
++    const bytes = Buffer.alloc(heldFile.size);
++    if (readSync(file, bytes, 0, bytes.length, 0) !== bytes.length) fail();
++    const owner = JSON.parse(bytes.toString('utf8'));
++    if (!Number.isSafeInteger(owner.pid) || owner.pid <= 0 || typeof owner.token !== 'string' || !owner.token ||
++        !token || owner.token !== token || !alive(owner.pid) ||
++        (expectedOwner && (!expectedOwner.directory || !expectedOwner.file || owner.pid !== expectedOwner.pid || owner.token !== expectedOwner.token ||
++          !same(heldDirectory, expectedOwner.directory) || !same(heldFile, expectedOwner.file)))) fail();
++    const afterDirectory = lstatSync(path), afterFile = lstatSync(filename), afterHeld = fstatSync(file);
++    if (!afterDirectory.isDirectory() || afterDirectory.isSymbolicLink() || !same(afterDirectory, heldDirectory) ||
++        !afterFile.isFile() || afterFile.isSymbolicLink() || !same(afterFile, heldFile) || !same(afterHeld, heldFile) ||
++        afterHeld.size !== bytes.length || afterFile.size !== bytes.length || hasQuarantine(path)) fail();
++    const confirm = Buffer.alloc(bytes.length);
++    if (readSync(file, confirm, 0, confirm.length, 0) !== confirm.length || !confirm.equals(bytes)) fail();
++    const finalDirectory = lstatSync(path), finalFile = lstatSync(filename);
++    if (!finalDirectory.isDirectory() || finalDirectory.isSymbolicLink() || !same(finalDirectory, heldDirectory) ||
++        !finalFile.isFile() || finalFile.isSymbolicLink() || !same(finalFile, heldFile) ||
++        finalFile.size !== bytes.length || hasQuarantine(path) || !alive(owner.pid)) fail();
++    return Object.freeze({ pid: owner.pid, token: owner.token,
++      directory: Object.freeze({ dev: heldDirectory.dev, ino: heldDirectory.ino }),
++      file: Object.freeze({ dev: heldFile.dev, ino: heldFile.ino }),
++    });
++  } finally {
++    if (file !== undefined) closeSync(file);
++    closeSync(directory);
++  }
+ }
+ 
+ /** A child build/journey may reuse its live parent's slot; unrelated work waits. */
+--- a/chromium/stage-host-bindings.mjs
++++ b/chromium/stage-host-bindings.mjs
+@@ -50,4 +50,5 @@
+ if (!readFileSync(featureTarget, 'utf8').includes('featureStagesFor')) {
+   throw new Error('Feature stage binding was not staged');
+ }
++requireOriginalOwner();
+ console.log(`Staged Aux host methods ${pinned.slice(0, 12)}`);
+--- a/tests/unit/native-slot.test.ts
++++ b/tests/unit/native-slot.test.ts
+@@ -1,9 +1,9 @@
+-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
++import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync, readFileSync, renameSync, unlinkSync } from 'node:fs';
+ import { join } from 'node:path';
+ import { fileURLToPath } from 'node:url';
+ import { spawnSync } from 'node:child_process';
+ import { tmpdir } from 'node:os';
+-import { expect, it } from 'vitest';
++import { expect, it, vi } from 'vitest';
+ import { acquireNativeSlot, withNativeSlot, assertNativeSlotOwned } from '../../scripts/native-slot.mjs';
+ 
+ it('serializes native work and releases the slot after a failed operation', async () => {
+@@ -89,3 +89,53 @@
+     expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow();
+   } finally { rmSync(root, { recursive: true, force: true }); }
+ });
++
++it('native writer refuses quarantine without acquiring or clearing its original slot', async () => {
++  const root = mkdtempSync(join(tmpdir(), 'aux-writer-quarantine-')), path = join(root, 'slot');
++  try {
++    const slot = await acquireNativeSlot({ path }), original = assertNativeSlotOwned({ path, token: slot.token });
++    const marker = join(path, 'quarantine.json'); writeFileSync(marker, '{}');
++    expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
++    expect(readFileSync(marker, 'utf8')).toBe('{}');
++    unlinkSync(marker); expect(assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toEqual(original); slot.release();
++  } finally { rmSync(root, { recursive: true, force: true }); }
++});
++it('native writer refuses recreated slot and owner file with unchanged original PID/token labels', async () => {
++  const root = mkdtempSync(join(tmpdir(), 'aux-writer-recreated-')), path = join(root, 'slot');
++  try {
++    const slot = await acquireNativeSlot({ path }), original = assertNativeSlotOwned({ path, token: slot.token });
++    const owner = join(path, 'owner.json'), bytes = readFileSync(owner);
++    renameSync(owner, join(path, 'original-owner.json')); writeFileSync(owner, bytes);
++    expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
++    renameSync(path, join(root, 'original-slot')); mkdirSync(path); writeFileSync(join(path, 'owner.json'), bytes);
++    expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
++    expect(readFileSync(join(path, 'owner.json'))).toEqual(bytes);
++  } finally { rmSync(root, { recursive: true, force: true }); }
++});
++it('native writer refuses symlinked owner and directory without following or changing their receipts', async () => {
++  const root = mkdtempSync(join(tmpdir(), 'aux-writer-symlink-')), path = join(root, 'slot');
++  try {
++    const slot = await acquireNativeSlot({ path }), original = assertNativeSlotOwned({ path, token: slot.token });
++    const owner = join(path, 'owner.json'), bytes = readFileSync(owner), foreign = join(root, 'foreign-owner.json');
++    writeFileSync(foreign, bytes); unlinkSync(owner); symlinkSync(foreign, owner);
++    expect(() => assertNativeSlotOwned({ path, token: slot.token })).toThrow('original live slot');
++    expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
++    renameSync(path, join(root, 'original-slot')); symlinkSync(join(root, 'original-slot'), path, 'dir');
++    expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
++    expect(readFileSync(foreign)).toEqual(bytes);
++  } finally { rmSync(root, { recursive: true, force: true }); }
++});
++it('native writer bounds original receipt reads and refuses changed inherited token with no slot mutation', async () => {
++  const root = mkdtempSync(join(tmpdir(), 'aux-writer-bounds-')), path = join(root, 'slot');
++  try {
++    const slot = await acquireNativeSlot({ path }), owner = join(path, 'owner.json'), bytes = readFileSync(owner);
++    vi.stubEnv('AUX_NATIVE_SLOT_TOKEN', slot.token); const original = assertNativeSlotOwned({ path });
++    vi.stubEnv('AUX_NATIVE_SLOT_TOKEN', 'foreign');
++    expect(() => assertNativeSlotOwned({ path, expectedOwner: original })).toThrow('original live slot');
++    expect(readFileSync(owner)).toEqual(bytes);
++    for (const invalid of ['', 'x'.repeat(4097)]) {
++      writeFileSync(owner, invalid); expect(() => assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toThrow('original live slot');
++    }
++    writeFileSync(owner, bytes); expect(assertNativeSlotOwned({ path, token: slot.token, expectedOwner: original })).toEqual(original); slot.release();
++  } finally { vi.unstubAllEnvs(); rmSync(root, { recursive: true, force: true }); }
++});

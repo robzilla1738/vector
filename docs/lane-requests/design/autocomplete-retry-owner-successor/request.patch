@@ -1,0 +1,27 @@
+diff --git a/apps/shell/src/components/CommandBar.tsx b/apps/shell/src/components/CommandBar.tsx
+index ff5a39f4e..484fda277 100644
+--- a/apps/shell/src/components/CommandBar.tsx
++++ b/apps/shell/src/components/CommandBar.tsx
+@@ -494,19 +494,14 @@ export function CommandBar({
+   const currentBrowserResult = browserResult.query === raw && browserResult.generation === queryGeneration;
+   const browserMatches = currentBrowserResult ? browserResult.items : EMPTY_BROWSER;
+   const browserError = currentBrowserResult ? browserResult.error : null;
+-  const autocompleteOwner = useMemo(() => ({ live: false, used: false, browserResult, raw, queryGeneration, kind: intent.kind, editing, autocompleteWindow, autocompleteKind, autocompletePrivate }),
+-    [browserResult, raw, queryGeneration, intent.kind, editing, autocompleteWindow, autocompleteKind, autocompletePrivate]);
+-  useLayoutEffect(() => {
+-    autocompleteOwner.live = true;
+-    return () => { autocompleteOwner.live = false; };
+-  }, [autocompleteOwner]);
++  const retriedBrowserResult = useRef<typeof browserResult | null>(null);
+   const retryAutocomplete = () => {
+-    if (!autocompleteOwner.live || autocompleteOwner.used || !editing || !browserError ||
++    if (retriedBrowserResult.current === browserResult || !editing || !browserError ||
+       !currentBrowserResult || !browserAutocomplete || !typedSomething || raw.length < 2 ||
+       bridge.windowId !== autocompleteWindow || bridge.windowKind !== autocompleteKind ||
+       bridge.privateMode !== autocompletePrivate)
+       throw new Error("Choose the current browser suggestions Retry control.");
+-    autocompleteOwner.used = true;
++    retriedBrowserResult.current = browserResult;
+     setAutocompleteRetry((value) => value + 1);
+   };
+ 

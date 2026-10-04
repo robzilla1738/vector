@@ -1,0 +1,309 @@
+diff --git a/apps/shell/src/components/CommandBar.autocomplete-retry.test.tsx b/apps/shell/src/components/CommandBar.autocomplete-retry.test.tsx
+new file mode 100644
+index 000000000..0cdbedce8
+--- /dev/null
++++ b/apps/shell/src/components/CommandBar.autocomplete-retry.test.tsx
+@@ -0,0 +1,142 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { bridge } from "../bridge";
++import { useStore } from "../store";
++import { executeCommand } from "../commands";
++import { COMMANDS } from "@aux/contracts";
++import { CommandBar } from "./CommandBar";
++vi.mock("../bridge", async (original) => ({
++  ...(await original<typeof import("../bridge")>()),
++  inMock: true,
++}));
++const initial = useStore.getState();
++const originalWindow = { id: bridge.windowId, kind: bridge.windowKind, private: bridge.privateMode };
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.stubGlobal(
++    "ResizeObserver",
++    class {
++      observe() {}
++      disconnect() {}
++    },
++  );
++  Element.prototype.scrollIntoView ??= () => {};
++  vi.spyOn(Element.prototype, "getClientRects").mockReturnValue([{ width: 40, height: 28 }] as never);
++  bridge.windowId = "original";
++  bridge.windowKind = "normal";
++  bridge.privateMode = false;
++  useStore.setState(
++    { ...initial, settings: { homeEntryMode: "search" }, pages: [], runs: [], toasts: [] },
++    true,
++  );
++  vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
++  vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
++  vi.spyOn(bridge, "extensions").mockResolvedValue([]);
++  vi.spyOn(bridge, "autocomplete").mockRejectedValue(new Error("Original failure"));
++  host = document.createElement("div");
++  document.body.append(host);
++  root = createRoot(host);
++});
++afterEach(async () => {
++  await act(async () => root.unmount());
++  host.remove();
++  useStore.setState(initial, true);
++  bridge.windowId = originalWindow.id;
++  bridge.windowKind = originalWindow.kind;
++  bridge.privateMode = originalWindow.private;
++  vi.restoreAllMocks();
++  vi.unstubAllGlobals();
++});
++async function query(value = "original query") {
++  await act(async () => root.render(<CommandBar surfaceMode="new-tab" />));
++  const input = host.querySelector("input[role=combobox]") as HTMLInputElement;
++  await act(async () => {
++    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
++    input.dispatchEvent(new Event("input", { bubbles: true }));
++  });
++  return input;
++}
++function retry() {
++  return host.querySelector('[data-command-id="retry-browser-autocomplete"]') as HTMLButtonElement;
++}
++it("registers one focused remappable retry preserving original query and private policy", async () => {
++  bridge.windowKind = "private";
++  bridge.privateMode = true;
++  await query();
++  expect(retry()).not.toBeNull();
++  retry().focus();
++  await act(async () => {
++    await executeCommand("retry-browser-autocomplete");
++  });
++  expect(bridge.autocomplete).toHaveBeenCalledTimes(2);
++  expect(bridge.autocomplete).toHaveBeenLastCalledWith("original query");
++  const row = COMMANDS.find((row) => row.id === "retry-browser-autocomplete")!;
++  expect(row.dispatch).toBe("scoped");
++  expect(row.bindings).toEqual([]);
++  expect("windows" in row).toBe(false);
++});
++it("recovers a synchronous original transport failure through the same Retry", async () => {
++  vi.mocked(bridge.autocomplete).mockImplementation(() => {
++    throw new Error("Synchronous original failure");
++  });
++  await query();
++  expect(host.textContent).toContain("Browser suggestions couldn’t load");
++  vi.mocked(bridge.autocomplete).mockResolvedValue([]);
++  await act(async () => retry().click());
++  expect(bridge.autocomplete).toHaveBeenCalledTimes(2);
++  expect(retry()).toBeNull();
++});
++it("reserves an original failed owner once before held response and refuses foreign window", async () => {
++  await query();
++  retry().focus();
++  bridge.windowId = "replacement";
++  await expect(executeCommand("retry-browser-autocomplete")).rejects.toThrow("current browser suggestions");
++  expect(bridge.autocomplete).toHaveBeenCalledTimes(1);
++  bridge.windowId = "original";
++  let release!: (value: never[]) => void;
++  vi.mocked(bridge.autocomplete).mockImplementation(
++    () =>
++      new Promise((resolve) => {
++        release = resolve;
++      }),
++  );
++  await act(async () => {
++    await executeCommand("retry-browser-autocomplete");
++    await expect(executeCommand("retry-browser-autocomplete")).rejects.toThrow("current browser suggestions");
++  });
++  expect(bridge.autocomplete).toHaveBeenCalledTimes(2);
++  await act(async () => release([]));
++  expect(retry()).toBeNull();
++});
++it("retires an old failed query through A B A and retains current input", async () => {
++  const input = await query("query A");
++  const old = retry();
++  await query("query B");
++  await query("query A");
++  old.focus();
++  await expect(executeCommand("retry-browser-autocomplete")).rejects.toThrow();
++  expect(input.value).toBe("query A");
++  retry().focus();
++  await act(async () => {
++    await executeCommand("retry-browser-autocomplete");
++  });
++  expect(bridge.autocomplete).toHaveBeenLastCalledWith("query A");
++});
++
++it("does not publish original suggestions after its native window retires", async () => {
++  let fail!: (reason: Error) => void;
++  vi.mocked(bridge.autocomplete).mockImplementation(
++    () =>
++      new Promise((_, reject) => {
++        fail = reject;
++      }),
++  );
++  await query();
++  bridge.windowId = "replacement";
++  await act(async () => fail(new Error("Retired protected failure")));
++  expect(retry()).toBeNull();
++  expect(host.textContent).not.toContain("Retired protected failure");
++});
+diff --git a/apps/shell/src/components/CommandBar.tsx b/apps/shell/src/components/CommandBar.tsx
+index bcd75101a..ff5a39f4e 100644
+--- a/apps/shell/src/components/CommandBar.tsx
++++ b/apps/shell/src/components/CommandBar.tsx
+@@ -1,3 +1,4 @@
++import { PreferenceAction } from "../settings/sections/preference-command";
+ import { SearchResultRow } from "./SearchResultRow";
+ import {
+   lazy,
+@@ -464,16 +465,21 @@ export function CommandBar({
+     };
+   }, [editing, extensionEnabled]);
+ 
++  const autocompleteWindow = bridge.windowId;
++  const autocompleteKind = bridge.windowKind;
++  const autocompletePrivate = bridge.privateMode;
+   useLayoutEffect(() => {
+     if (!browserAutocomplete || !typedSomething || raw.length < 2) return;
+     let live = true;
+-    void bridge
+-      .autocomplete(raw)
++    const current = () => live && bridge.windowId === autocompleteWindow &&
++      bridge.windowKind === autocompleteKind && bridge.privateMode === autocompletePrivate;
++    void Promise.resolve()
++      .then(() => current() ? bridge.autocomplete(raw) : EMPTY_BROWSER)
+       .then((items) => {
+-        if (live) setBrowserResult({ query: raw, generation: queryGeneration, items, error: null });
++        if (current()) setBrowserResult({ query: raw, generation: queryGeneration, items, error: null });
+       })
+       .catch((error) => {
+-        if (live)
++        if (current())
+           setBrowserResult({
+             query: raw,
+             generation: queryGeneration,
+@@ -484,10 +490,25 @@ export function CommandBar({
+     return () => {
+       live = false;
+     };
+-  }, [browserAutocomplete, typedSomething, raw, queryGeneration, intent.kind, autocompleteRetry]);
++  }, [browserAutocomplete, typedSomething, raw, queryGeneration, intent.kind, autocompleteRetry, autocompleteWindow, autocompleteKind, autocompletePrivate]);
+   const currentBrowserResult = browserResult.query === raw && browserResult.generation === queryGeneration;
+   const browserMatches = currentBrowserResult ? browserResult.items : EMPTY_BROWSER;
+   const browserError = currentBrowserResult ? browserResult.error : null;
++  const autocompleteOwner = useMemo(() => ({ live: false, used: false, browserResult, raw, queryGeneration, kind: intent.kind, editing, autocompleteWindow, autocompleteKind, autocompletePrivate }),
++    [browserResult, raw, queryGeneration, intent.kind, editing, autocompleteWindow, autocompleteKind, autocompletePrivate]);
++  useLayoutEffect(() => {
++    autocompleteOwner.live = true;
++    return () => { autocompleteOwner.live = false; };
++  }, [autocompleteOwner]);
++  const retryAutocomplete = () => {
++    if (!autocompleteOwner.live || autocompleteOwner.used || !editing || !browserError ||
++      !currentBrowserResult || !browserAutocomplete || !typedSomething || raw.length < 2 ||
++      bridge.windowId !== autocompleteWindow || bridge.windowKind !== autocompleteKind ||
++      bridge.privateMode !== autocompletePrivate)
++      throw new Error("Choose the current browser suggestions Retry control.");
++    autocompleteOwner.used = true;
++    setAutocompleteRetry((value) => value + 1);
++  };
+ 
+   // The local indexed query is cheap; dispatch it immediately and only display
+   // a response that belongs to the exact text still in the field.
+@@ -1431,9 +1452,9 @@ export function CommandBar({
+           {browserError && (
+             <div className="cb-provider-error" role="alert">
+               Browser suggestions couldn’t load. You can still search.
+-              <button type="button" onClick={() => setAutocompleteRetry((value) => value + 1)}>
++              <PreferenceAction type="button" command="retry-browser-autocomplete" scopeId={listId} invoke={retryAutocomplete}>
+                 Try again
+-              </button>
++              </PreferenceAction>
+             </div>
+           )}
+           {suggestions.length === 0 && (
+diff --git a/apps/shell/src/components/HorizontalTabs.new-tab-geometry.test.tsx b/apps/shell/src/components/HorizontalTabs.new-tab-geometry.test.tsx
+new file mode 100644
+index 000000000..a7eee63dd
+--- /dev/null
++++ b/apps/shell/src/components/HorizontalTabs.new-tab-geometry.test.tsx
+@@ -0,0 +1,57 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { expect, it, vi } from "vitest";
++import { readFileSync } from "node:fs";
++import { useStore } from "../store";
++import { HorizontalTabs } from "./HorizontalTabs";
++import { runCommand } from "../commands";
++vi.mock("../commands", () => ({ runCommand: vi.fn() }));
++it("keeps the original registered New tab in its 28px hit area with the supplied 18px glyph", async () => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  const initial = useStore.getState();
++  useStore.setState({ pages: [], layout: { ...initial.layout, folders: [] } });
++  const host = document.createElement("div");
++  document.body.append(host);
++  const root = createRoot(host);
++  try {
++    await act(async () => root.render(<HorizontalTabs />));
++    const button = host.querySelector(
++      '.horizontal-tab-tools button[aria-label="New tab"]',
++    ) as HTMLButtonElement;
++    expect(button).not.toBeNull();
++    expect(button.className).toBe("icon-btn");
++    const glyph = button.querySelector(".ci")!;
++    expect(glyph).not.toBeNull();
++    const style = document.createElement("style");
++    const workspace = readFileSync("apps/shell/src/styles/workspace.css", "utf8");
++    const polish = readFileSync("apps/shell/src/styles/chrome-polish.css", "utf8");
++    const rule = (text: string, selector: string) =>
++      text.match(new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\{([^}]+)\\}"))![0];
++    style.textContent =
++      rule(workspace, ".horizontal-tab-tools .icon-btn") +
++      "\n" +
++      rule(workspace, ".horizontal-tab-tools .ci") +
++      "\n" +
++      rule(polish, ".icon-btn > .ci") +
++      "\n" +
++      rule(polish, ".horizontal-tab-tools .icon-btn > .ci");
++    document.head.append(style);
++    try {
++      expect(getComputedStyle(button).width).toBe("28px");
++      expect(getComputedStyle(button).height).toBe("28px");
++      expect(getComputedStyle(glyph).width).toBe("18px");
++      expect(getComputedStyle(glyph).height).toBe("18px");
++    } finally {
++      style.remove();
++    }
++    await act(async () => button.click());
++    expect(runCommand).toHaveBeenCalledWith("new-tab");
++  } finally {
++    await act(async () => root.unmount());
++    host.remove();
++    useStore.setState(initial, true);
++    vi.unstubAllGlobals();
++    vi.restoreAllMocks();
++  }
++});
+diff --git a/apps/shell/src/styles/chrome-polish.css b/apps/shell/src/styles/chrome-polish.css
+index c1d3eb5c3..d7afc40c1 100644
+--- a/apps/shell/src/styles/chrome-polish.css
++++ b/apps/shell/src/styles/chrome-polish.css
+@@ -23,6 +23,7 @@
+ .icon-btn:not(:disabled):active, .btn:not(:disabled):active { scale: 1; opacity: 1; }
+ :is(.icon-btn, .btn):disabled { opacity: .4; }
+ .icon-btn > .ci { width: 16px; height: 16px; }
++.horizontal-tab-tools .icon-btn > .ci { width: 18px; height: 18px; }
+ :is(.session-actions, .session-heading, .settings-search-box) .icon-btn > .ci,
+ :is(.tab-close, .horizontal-tab-close) > .ci { width: 14px; height: 14px; }
+ :is(.session-actions, .session-heading, .settings-search-box) .icon-btn { min-width: 24px; min-height: 24px; }
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index 7c3e3c872..057234a6c 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -271,6 +271,7 @@ export const COMMANDS = [
+     ["review", "import-space", "Review imported Space notes"],
+   ]),
+   S("toggle-quick-ask-shortcut", "Change global Quick Ask shortcut", quickAskControl),
++  S("retry-browser-autocomplete", "Retry browser suggestions", searchEngineControl),
+   S("retry-quick-ask-shortcut", "Retry global Quick Ask shortcut", quickAskControl),
+   ...G(searchEngineControl, "-search-engine", [
+     ["select", "", "Choose search engine"],

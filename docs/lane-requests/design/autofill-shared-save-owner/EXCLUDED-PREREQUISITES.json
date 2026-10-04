@@ -1,0 +1,17 @@
+{
+  "prerequisiteOrder": [
+    "32b9a173 + 2a5d78c2",
+    "root Library initial5ab227fb",
+    "root Sidebar00319889f26",
+    "root More86c68787"
+  ],
+  "actualSource": {
+    "apps/shell/src/components/Toolbar.tsx": "8ba509e18d0c65a50c7de190eb782662bd33d6526628be37194ffff455964110",
+    "apps/shell/src/components/Sidebar.tsx": "c114af8183c08b70704f33663971b9a58de24a1f21d0f2bc29514ad3def5d1f3",
+    "apps/shell/src/commands.ts": "14909d2804944009ad36ecb1730bec592f3f6b6f2dad6227bdcd34775ef8bef7",
+    "packages/contracts/src/commands.ts": "122fdcf4e95cd25b6811661d9856e328faecdb3366246238b5b93b196c7d1eba"
+  },
+  "ownRetryRowRetained": "retry-browser-autocomplete",
+  "includedInRequest": false,
+  "contractsRebuiltLocally": true
+}

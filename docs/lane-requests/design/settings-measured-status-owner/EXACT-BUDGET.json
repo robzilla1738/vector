@@ -1,0 +1,19 @@
+{
+  "native154": true,
+  "strictCSP": true,
+  "sourceMaps": false,
+  "startup": 499454,
+  "css": 179427,
+  "total": 1843147,
+  "limits": {
+    "startup": 501760,
+    "css": 184320,
+    "total": 1843200
+  },
+  "strictAcceptedInHeldCohort": true,
+  "totalMargin": 53,
+  "priorChooseMoreCohortTotal": 1843883,
+  "heldCohortReduction": 736,
+  "rootUpcomingTwoRowsIncluded": false,
+  "finalRootAdmission": false
+}

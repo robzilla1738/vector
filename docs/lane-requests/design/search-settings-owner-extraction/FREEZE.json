@@ -1,0 +1,19 @@
+{
+  "sourceOnly": true,
+  "strictAccepted": false,
+  "nativeAccepted": false,
+  "files": {
+    "controls.log": "a994caa6c1187b44d8e1e0e44293171b836530a35641d15574bd0bb446e00bf3",
+    "types.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "EXCLUDED-PREREQUISITES.json": "8a4d481c0ba28f52d74fd82f1909f57b05ea69078811132b6fc482f24070ea12",
+    "SOURCE-PINS.json": "40eff78b6e59bfc8127b308a69c7e1071f4cb629bf8a20720543da947164ca19",
+    "lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "REPLAY.json": "f7bfadd0081260ea516a9172b53f89a4ecef278c933d8fe90b565cac9b7723c6",
+    "EXACT-BUDGET.json": "c860f473a23a37c09baa2f50c3ecf4915d2b0e9cd004431e51c3256280f082de",
+    "README.md": "fc41f339787a8c9f75ec735be079f2b5423a1a4d2a595c55bc3ecc045d6e5ebc",
+    "request.patch": "e820f7d2133ad6c710b48efea0b007f84efc406e29ff17835d31f9f99733e656",
+    "ORIGINAL-RENDER-PROOF.json": "ec8fe4ce311a992579020d5db7b4617b66e116b58e7b96810284389f1b051e21",
+    "renderer.log": "05a3571f16b23391decedda66968d9cd5d7c6ba8852d6e6a86b05031fa2afe3e",
+    "rounded-budget.log": "0cfa9e237f3c4656bf97711ee9bdb0f2f7beca2a1be3f92c3e6661b91425fd53"
+  }
+}

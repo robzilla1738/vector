@@ -20,6 +20,8 @@ vi.mock("./bridge", () => ({
       return state.privateMode;
     },
     quickAskShortcut: vi.fn(),
+    defaultBrowser: vi.fn(),
+    setDefaultBrowser: vi.fn(),
   },
 }));
 vi.mock("./store", () => ({ errToast: state.toast }));
@@ -39,6 +41,7 @@ vi.mock("./commands", async () => {
 import { bridge } from "./bridge";
 import { invokeScopedControl } from "./scoped-control-commands";
 import { QuickAskSetting } from "./components/QuickAskSetting";
+import { DefaultBrowserSetting } from "./components/DefaultBrowserSetting";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement, root: Root;
 const status = { enabled: false, registered: false, error: "" };
@@ -61,6 +64,8 @@ beforeEach(() => {
   state.toast.mockReset();
   state.open.mockReset();
   vi.mocked(bridge.quickAskShortcut).mockReset().mockResolvedValue(status);
+  vi.mocked(bridge.defaultBrowser).mockReset().mockResolvedValue({ isDefault: false });
+  vi.mocked(bridge.setDefaultBrowser).mockReset().mockResolvedValue({ isDefault: true });
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -206,4 +211,30 @@ it("recovers an original synchronous initial transport throw through Try again",
   expect(shortcut().checked).toBe(true);
   expect(host.querySelector('[role="alert"]')).toBeNull();
   expect(state.toast).not.toHaveBeenCalled();
+});
+
+it("keeps the two measured owners independent during a real OS focus read and held shortcut mutation", async () => {
+  await act(async () => root.render(<><QuickAskSetting /><DefaultBrowserSetting /></>));
+  const defaultButton = () => [...host.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Make Aux the default browser")!;
+  const heldShortcut = deferred<typeof status>();
+  vi.mocked(bridge.quickAskShortcut).mockReturnValueOnce(heldShortcut.promise);
+  shortcut().focus();
+  let completion!: Promise<unknown>;
+  await act(async () => { completion = invokeScopedControl("toggle-quick-ask-shortcut") as Promise<unknown>; });
+  const heldRead = deferred<{ isDefault: boolean }>();
+  vi.mocked(bridge.defaultBrowser).mockReturnValueOnce(heldRead.promise);
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  expect(shortcut().disabled).toBe(true);
+  expect(defaultButton().disabled).toBe(true);
+  await act(async () => heldRead.resolve({ isDefault: false }));
+  expect(defaultButton().disabled).toBe(false);
+  expect(shortcut().disabled).toBe(true);
+  const originalAck = { enabled: true, registered: false, error: "Original application owns shortcut" };
+  await act(async () => heldShortcut.resolve(originalAck));
+  expect(await completion).toBe(originalAck);
+  expect(shortcut().disabled).toBe(false);
+  expect(shortcut().checked).toBe(true);
+  expect(host.textContent).toContain(originalAck.error);
+  expect(defaultButton().disabled).toBe(false);
+  expect(bridge.setDefaultBrowser).not.toHaveBeenCalled();
 });

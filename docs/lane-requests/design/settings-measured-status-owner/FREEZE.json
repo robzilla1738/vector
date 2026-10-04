@@ -1,0 +1,18 @@
+{
+  "sourceOnly": true,
+  "nativeAccepted": false,
+  "finalRootBudgetAccepted": false,
+  "files": {
+    "controls.log": "0018774732defd00ecb3b31b24dd44712fd1e90b54e6f545144a3352ddda5762",
+    "types.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "EXCLUDED-PREREQUISITES.json": "bc3f7d852b8632cd4b01325db786078c5f2e2260983150533bd613d0956fe01a",
+    "SOURCE-PINS.json": "116989f1693a3b3a57ed16f43edf96a4178ed48625a45b9814b0a1e4506298e9",
+    "lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "REPLAY.json": "1ebf83df8e1eb627e076eb6d7e6449bf0af932a88f1d58a1a49e510d1db13c79",
+    "EXACT-BUDGET.json": "17cca29d706db2a64a331425af629977ba17f430fffd269e06ba7169e49480ea",
+    "README.md": "777110c18ce1a3aa3367fbd308832772f4b78f4ac1180fe69b85dfe78b0b4895",
+    "request.patch": "71d777c7aa3fe4e80945c773dcbd7a4430c73bc2d5c39499abe59f9e8444b722",
+    "ORIGINAL-RENDER-PROOF.json": "cc49e3dfa51209807ede7118fa5b5ec45ff4605e3678c0dcfe033101f56c047d",
+    "renderer.log": "16882a3cf397e1d5e149c33685a9ba64727848ad69c7e0dac0a9f3042631bb04"
+  }
+}

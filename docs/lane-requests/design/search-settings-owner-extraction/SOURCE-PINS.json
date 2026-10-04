@@ -1,0 +1,55 @@
+{
+  "baseCommit": "2a5d78c28e4c4c693023b9e84f64ffd6ff52a2a5",
+  "leaves": [
+    {
+      "path": "apps/shell/src/components/SearchEngineSetting.tsx",
+      "before": "e19e7039f5ab2864ac7d8b385133204d120cb177c8d048a0a75855d240f9264e",
+      "after": "3c3f015bfdeb81c8b5c1ecf5e527714f0447d88097253c654f8d580050e89f1b"
+    },
+    {
+      "path": "apps/shell/src/components/SearchEnginesSetting.tsx",
+      "before": "708d91aa5d44359e46c4d277643626e2d9ea312b6632182dd75b36a26d22085f",
+      "after": "9be698d182c7339efcef58186cb9f6663b8249dafa3d432e4fda5adf20eede2e"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/use-settings-save-owner.ts",
+      "before": null,
+      "after": "9fa4ca16612f9d42ebeede16d3cf6d1e468634db2eba0e71cb43f228ed5d25c6"
+    },
+    {
+      "path": "apps/shell/src/search-settings-save-owner.test.tsx",
+      "before": null,
+      "after": "e0f640c32ff1aac758ac6d8b798547f76d2b24c62b9feff38116ea0e9c63eb5b"
+    }
+  ],
+  "unchangedOriginalAuthoritiesAndControls": [
+    {
+      "path": "apps/shell/src/scoped-command-controls.ts",
+      "sha256": "0408dda2582e48994070cc0a6e4acc4ce9a56ac6e1382764c709af2ca4371bb9"
+    },
+    {
+      "path": "apps/shell/src/command-completion.ts",
+      "sha256": "01527b9f86c227ab5f7e6cd2721ccb5f4d5a6fbc34aaba358e73c9ba07ba8e9d"
+    },
+    {
+      "path": "apps/shell/src/search-engine-setting-commands.test.tsx",
+      "sha256": "a716ec66bd0cc4f40fee044065deb834f33d729ef4258ffc2b73c8e39a6c894f"
+    },
+    {
+      "path": "apps/shell/src/keyword-search-commands.test.tsx",
+      "sha256": "484d614c51134b1ccd7b3a9cdc74b466b7d9e314a3860611839a725a99ca7095"
+    },
+    {
+      "path": "apps/shell/src/keyword-engine-layout.test.tsx",
+      "sha256": "ec2c2dd9e587160936ebbd4babcdbc582306ab5d8ee9733ec6e47bb13cd40b6c"
+    },
+    {
+      "path": "apps/shell/src/components/Settings.css",
+      "sha256": "b46519cda5a4ed082ea73076fc1be4d67bcc160ad1be0bdc82534725f0f06416"
+    },
+    {
+      "path": "packages/contracts/src/search-engine.ts",
+      "sha256": "573abb52d1f787de49a2ce4a9889629025fba8c0e01012988b52b88a71b674c0"
+    }
+  ]
+}
