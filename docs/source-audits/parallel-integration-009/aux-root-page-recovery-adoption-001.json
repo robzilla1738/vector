@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "sourceOnly": true,
+  "exact6LeafReplay": true,
+  "actual5OwnedSharedBeforePins": true,
+  "all6ReferencePins": true,
+  "newScopedCommands": [
+    "retry-page-recovery",
+    "edit-page-recovery-address",
+    "back-page-recovery",
+    "continue-page-over-http",
+    "proceed-page-certificate",
+    "toggle-page-connection-details"
+  ],
+  "nativeSecurityAuthority": "unchanged native interstitial producer pinned",
+  "nativeQualified": false
+}
