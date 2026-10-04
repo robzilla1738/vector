@@ -1,0 +1,12 @@
+{
+  "sourceOnly": true,
+  "executionAdmission": false,
+  "sourceRequestSha256": "85d0c3989503f91db5888ae84517dd88c3c516bc7da72fcd267919a4e1d22d4c",
+  "exactInverseExceptHoldAndEnv": true,
+  "originalRetainedOwnerSerialization": true,
+  "fixedHomeMatchesSealHelper": true,
+  "exactAstOwnedChildEnvFakeOwnerControl": true,
+  "unchangedSeparateWatcherSpawn": true,
+  "guardInstallerCounterpartPending": true,
+  "nativeEffects": false
+}
