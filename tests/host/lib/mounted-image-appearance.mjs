@@ -9,6 +9,9 @@ const remove=shell(`Remove ${filename}`,'AXButton');
 const include=shell(`Use ${filename} in next reply`,'AXCheckBox');
 const preview={...shell('^valid-image\\.png\\s*(?:·\\s*)?16\\s*×\\s*16$','AXButton'),match:'regex'};
 const close=shell('Close image preview','AXButton');
+const fit=shell('Fit','AXCheckBox'),actualSize=shell('100%','AXCheckBox');
+const details=shell('Image details','AXButton');
+const saved={...shell('^Saved\\s+.+$','AXStaticText'),match:'regex'};
 
 /** UI-only preparation: no private chat/image ID is inferred from AX or pixels. */
 export async function captureMountedImageAppearance(t){
@@ -43,8 +46,20 @@ export async function captureMountedImageAppearance(t){
   assert.equal((await unique(include)).checked,true);
   await capture('home-mounted-image-tray','home-mounted-image-tray-included-visual-only');
   await click(preview);previewOpen=true;await ax.waitFor(close,'enabled');await ax.waitFor(shell('Loading image…'),'absent');
-  await ax.waitFor(shell('Fit','AXButton'),'enabled');await unique(shell(filename,'AXImage'));
+  await ax.waitFor(fit,'enabled');assert.equal((await unique(fit)).checked,true);assert.equal((await unique(actualSize)).checked,false);await unique(shell(filename,'AXImage'));
   await capture('home-mounted-image-preview','home-mounted-image-preview-visual-only');
+  await click(actualSize);await t.until('Original Preview is at actual size',async()=> (await unique(actualSize)).checked===true);assert.equal((await unique(fit)).checked,false);
+  await capture('home-mounted-image-preview-actual-size','home-mounted-image-preview-actual-size-visual-only');
+  await click(shell('Zoom image in','AXButton'));await t.until('Original Preview reports 125 percent',async()=>{live();const rows=await ax.query(shell('125%','AXStaticText'));live();return rows.length===1});assert.equal((await unique(actualSize)).checked,false);assert.equal((await unique(fit)).checked,false);
+  await capture('home-mounted-image-preview-zoom-in','home-mounted-image-preview-zoom-125-visual-only');
+  await click(shell('Zoom image out','AXButton'));await t.until('Original Preview returns to actual size',async()=> (await unique(actualSize)).checked===true);
+  await capture('home-mounted-image-preview-zoom-restored','home-mounted-image-preview-zoom-restored-visual-only');
+  await click(fit);await t.until('Original Preview returns to Fit',async()=> (await unique(fit)).checked===true);assert.equal((await unique(actualSize)).checked,false);
+  await capture('home-mounted-image-preview-fit-restored','home-mounted-image-preview-fit-restored-visual-only');
+  await unique(saved,false);await click(details);await ax.waitFor(saved,'present');await unique(saved);
+  await capture('home-mounted-image-preview-details-expanded','home-mounted-image-preview-details-expanded-visual-only');
+  await click(details);await ax.waitFor(saved,'absent');await unique(saved,false);
+  await capture('home-mounted-image-preview-details-collapsed','home-mounted-image-preview-details-collapsed-visual-only');
   await click(close);previewOpen=false;await ax.waitFor(close,'absent');
   await capture('home-mounted-image-preview-closed','home-mounted-image-preview-closed-visual-only');
   await click(include);await t.until('Original mounted image checkbox is unchecked',async()=>{await unchanged();return (await unique(include)).checked===false});

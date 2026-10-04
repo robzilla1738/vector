@@ -6,18 +6,27 @@ import {createValidImageFixture} from './lib/composer-image-appearance.mjs';
 import {captureMountedImageAppearance} from './lib/mounted-image-appearance.mjs';
 function context(){
  const records=[],captures=[],paths=[];const snapshots={'pages.list':[],'runs.list':[],'workspace.get':{id:'original'},'settings.get':{modelConfigured:false}};
- const state={attached:false,preview:false,included:true,review:false,focused:true};
+ const state={attached:false,preview:false,included:true,review:false,focused:true,zoom:null,details:false};
  const t={appearanceEnabled:true,signal:new AbortController().signal,app:{pid:881,observeAppearance:async()=>JSON.stringify({producer:'aux-native-appearance-snapshot',version:1,pid:881,windowId:17,windowKind:'normal',observedAtUnixMs:Date.now()})},model:{calls:[]},rpc:async method=>structuredClone(snapshots[method]),until:async(_name,condition)=>assert.equal(await condition(),true),capture:async(name,options)=>captures.push([name,options]),ax:{pid:881,
   windows:async()=>[{id:17,layer:0,width:800,height:700}],dump:async()=>({sourceFixtureOnly:true}),focus:async()=>{state.focused=true},
   query:async selector=>{
    const n=selector.name;if(n==='Reply to conversation')return [{value:'Original unsent draft',focused:state.focused,enabled:true}];
    if(n==='Remove valid-image.png'||n==='Use valid-image.png in next reply')return state.attached?[{enabled:true,checked:state.included}]:[];
+   if(selector.match==='regex'&&selector.role==='AXStaticText')return state.preview&&state.details?[{name:'Saved original timestamp',enabled:true}]:[];
    if(selector.match==='regex')return state.attached?[{name:'valid-image.png16 × 16',enabled:true}]:[];
-   if(n==='Close image preview'||n==='Fit'||(n==='valid-image.png'&&selector.role==='AXImage'))return state.preview?[{enabled:true}]:[];
+   if(n==='Fit'||n==='100%'){assert.equal(selector.role,'AXCheckBox');return state.preview?[{enabled:true,checked:n==='Fit'?state.zoom===null:state.zoom===1}]:[]}
+   if(n==='Image details')assert.equal(selector.role,'AXButton');
+   if(n==='125%'&&selector.role==='AXStaticText')return state.preview&&state.zoom===1.25?[{name:'125%',enabled:true}]:[];
+   if(n==='Close image preview'||(n==='valid-image.png'&&selector.role==='AXImage'))return state.preview?[{enabled:true}]:[];
    return [{enabled:true}];
   },click:async selector=>{records.push(selector);const n=selector.name;
    if(n==='Attach image'){assert.equal(state.review,true);state.attached=true;state.review=false}
    else if(selector.match==='regex')state.preview=true;
+   else if(n==='100%')state.zoom=1;
+   else if(n==='Fit')state.zoom=null;
+   else if(n==='Zoom image in')state.zoom=Math.min(4,(state.zoom??1)+0.25);
+   else if(n==='Zoom image out')state.zoom=Math.max(0.25,(state.zoom??1)-0.25);
+   else if(n==='Image details')state.details=!state.details;
    else if(n==='Close image preview')state.preview=false;
    else if(n==='Use valid-image.png in next reply')state.included=false;
    else if(n==='Remove valid-image.png')state.attached=false;
@@ -32,7 +41,7 @@ test('fixed PNG is genuine16×16 RGBA and original retained lease disposes idemp
  let offset=8,pixels;while(offset<bytes.length){const length=bytes.readUInt32BE(offset),name=bytes.toString('ascii',offset+4,offset+8),data=bytes.subarray(offset+8,offset+8+length);let crc=0xffffffff;for(const value of bytes.subarray(offset+4,offset+8+length)){crc^=value;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}assert.equal((crc^0xffffffff)>>>0,bytes.readUInt32BE(offset+8+length));if(name==='IDAT')pixels=inflateSync(data);offset+=12+length}assert.equal(offset,bytes.length);assert.equal(pixels.length,16*65);for(let row=0;row<16;row++){assert.equal(pixels[row*65],0);for(let col=0;col<16;col++)assert.deepEqual([...pixels.subarray(row*65+1+col*4,row*65+5+col*4)],[54,121,199,255])}await f.validate()}finally{await f.dispose()}await f.dispose();await assert.rejects(readFile(f.path),{code:'ENOENT'});
 });
 test('mounted original UI flow produces only visual states and no private identity assertion',async()=>{
- const{t,state,captures,paths,records}=context();const result=await captureMountedImageAppearance(t);assert.equal(result.status,'observed-visual-only');assert.equal(result.qualification,'none');assert.equal(result.privateImageIdentity,'unobserved');assert.equal(captures.length,7);for(const[,options]of captures){assert.equal(options.windowId,17);assert.ok(options.state.endsWith('visual-only'))}assert.equal(state.attached,false);assert.equal(state.preview,false);assert.deepEqual(t.model.calls,[]);assert.ok(records.some(x=>x.role==='AXCheckBox'));await assert.rejects(readFile(paths[0]),{code:'ENOENT'});
+ const{t,state,captures,paths,records}=context();const result=await captureMountedImageAppearance(t);assert.equal(result.status,'observed-visual-only');assert.equal(result.qualification,'none');assert.equal(result.privateImageIdentity,'unobserved');assert.equal(captures.length,13);assert.equal(state.zoom,null);assert.equal(state.details,false);for(const[,options]of captures){assert.equal(options.windowId,17);assert.ok(options.state.endsWith('visual-only'))}assert.equal(state.attached,false);assert.equal(state.preview,false);assert.deepEqual(t.model.calls,[]);assert.ok(records.some(x=>x.role==='AXCheckBox'));await assert.rejects(readFile(paths[0]),{code:'ENOENT'});
 });
 test('original preview capture failure preserves primary and uses actual close/remove cleanup',async()=>{
  const{t,state,paths}=context();const primary=new Error('original capture refusal');t.capture=async name=>{if(name==='home-mounted-image-preview')throw primary};await assert.rejects(captureMountedImageAppearance(t),error=>error===primary);assert.equal(state.attached,false);assert.equal(state.preview,false);await assert.rejects(readFile(paths[0]),{code:'ENOENT'});
@@ -66,3 +75,6 @@ test('replacement call ledger cannot conceal original requests after chooser or 
   await assert.rejects(readFile(paths[0]),{code:'ENOENT'});
  }
 });
+
+test('unobserved zoom and details transitions cannot be labeled as captured success',async()=>{for(const target of ['100%','Zoom image in','Zoom image out','Fit','Image details']){const{t,state,captures,paths}=context();const click=t.ax.click;t.ax.click=async selector=>{if(selector.name!==target)await click(selector)};await assert.rejects(captureMountedImageAppearance(t));assert.equal(state.attached,false);assert.equal(state.preview,false);const refused={'100%':'home-mounted-image-preview-actual-size','Zoom image in':'home-mounted-image-preview-zoom-in','Zoom image out':'home-mounted-image-preview-zoom-restored','Fit':'home-mounted-image-preview-fit-restored','Image details':'home-mounted-image-preview-details-expanded'};assert.ok(!captures.some(([name])=>name===refused[target]));await assert.rejects(readFile(paths[0]),{code:'ENOENT'})}});
+test('Preview action retirement preserves original UI debt and never acts through replacement',async()=>{const{t,records,paths}=context();const click=t.ax.click;t.ax.click=async selector=>{await click(selector);if(selector.name==='Zoom image in')t.app={pid:881}};await assert.rejects(captureMountedImageAppearance(t),error=>error instanceof AggregateError&&error.errors.length===2);assert.ok(!records.some(row=>row.name==='Close image preview'||row.name==='Remove valid-image.png'));await assert.rejects(readFile(paths[0]),{code:'ENOENT'})});
