@@ -1,3 +1,4 @@
+import { ConversationRecoveryAction } from "./ConversationRecoveryControls";
 import { ConversationQueuedControls } from "./ConversationQueuedControls";
 import { ConversationLiveAction, useConversationLiveOwner } from "./ConversationLiveControls";
 import { HomeEntryAction } from "./HomeEntryControls";
@@ -259,7 +260,9 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); }, [id]);
   const [taskTitle, setTaskTitle] = useState("");
   const [archived, setArchived] = useState(false);
-  const [restoring, setRestoring] = useState(false);
+  type RecoveryOperation = { owner: typeof conversationCurrent };
+  const restorePending = useRef<RecoveryOperation | null>(null);
+  const [restoring, setRestoring] = useState<RecoveryOperation | null>(null);
   const metadataRequest=useRef(0);
   const [savedTitle, setSavedTitle] = useState("");
   useEffect(() => {
@@ -276,10 +279,26 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     if(typeof event.payload.title==="string")setSavedTitle(event.payload.title);
     if(typeof event.payload.archived==="boolean")setArchived(event.payload.archived);
   }),[id]);
-  const restoreConversation=async()=>{
-    if(!id||restoring)return;setRestoring(true);
-    try{const value=await call("conversations.archive",{chatId:id,archived:false});if(activeChat.current===id)setArchived(value.archived);}
-    catch(error){errToast(error);}finally{setRestoring(false);}
+  const restoreConversation = () => {
+    if (!id || !conversationCurrent() || restorePending.current?.owner === conversationCurrent) return;
+    const original = { owner: conversationCurrent }, chatId = id;
+    restorePending.current = original; setRestoring(original);
+    const completion = (async () => {
+      try {
+        const value = await call("conversations.archive", { chatId, archived: false });
+        if (original.owner() && restorePending.current === original) {
+          if (value.chatId !== chatId || value.archived) throw new Error("The restore acknowledgment does not match this conversation.");
+          setArchived(value.archived);
+        }
+        return value;
+      } finally {
+        if (restorePending.current === original) {
+          restorePending.current = null;
+          if (original.owner()) setRestoring(value => value === original ? null : value);
+        }
+      }
+    })();
+    return guardCommandCompletion(completion, original.owner);
   };
   const contexts = useStore(s => s.conversationContexts);
   const contextPage = contexts[id ? draftKey(id) : "new"] ?? (id ? "linked" : "none");
@@ -287,7 +306,8 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   const selectedBrowserSources = useStore(s => s.conversationBrowserSources[browserSourcesKey(id)]);
   const browserSources = selectedBrowserSources ?? [];
   const setBrowserSources = (sources: typeof browserSources) => useStore.getState().setConversationBrowserSources(id,sources);
-  const [reopening, setReopening] = useState(false);
+  const reopenPending = useRef<RecoveryOperation | null>(null);
+  const [reopening, setReopening] = useState<RecoveryOperation | null>(null);
   const last = turns.at(-1);
   useEffect(() => {
     setGenerated([]);
@@ -633,15 +653,32 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     }
     finally { sendPending.current = false; setSending(false); setSendingChat(null); }
   };
-  const reopen = async () => {
-    if (!recoverUrl || reopening || !last) return;
-    setReopening(true);
-    try {
-      const existing = pages.find(p => p.url === recoverUrl && !p.ownedByRuntime && !["crashed", "detached"].includes(p.viewStatus ?? ""));
-      const page = existing ?? await useStore.getState().newTab(recoverUrl);
-      if (page) { setContextPage(page.pageId); useStore.getState().openConversation(last.runId); }
-    } catch (error) { errToast(error); }
-    finally { setReopening(false); }
+  const reopen = () => {
+    if (!recoverUrl || !last || !conversationCurrent() || reopenPending.current?.owner === conversationCurrent) return;
+    const original = { owner: conversationCurrent, runId: last.runId, url: recoverUrl, observation: lastObservation };
+    const current = () => {
+      if (!original.owner()) return false;
+      const state = useStore.getState();
+      const currentTurns = state.runs.filter(run => (run.config?.chatId ?? run.runId) === id).sort((a, b) => a.createdAt - b.createdAt);
+      const observation = [...currentTurns].reverse().map(run => state.observations[run.runId]).find(value => value && answerUrl(value.url));
+      return currentTurns.at(-1)?.runId === original.runId && observation === original.observation && answerUrl(observation?.url ?? "") === original.url;
+    };
+    if (!current()) throw new Error("Choose the current conversation page to reopen.");
+    reopenPending.current = original; setReopening(original);
+    const completion = (async () => {
+      try {
+        const existing = pages.find(p => p.url === original.url && !p.ownedByRuntime && !["crashed", "detached"].includes(p.viewStatus ?? ""));
+        const page = existing ?? await useStore.getState().newTab(original.url);
+        if (page && current() && reopenPending.current === original) { setContextPage(page.pageId); useStore.getState().openConversation(original.runId); }
+        return page;
+      } finally {
+        if (reopenPending.current === original) {
+          reopenPending.current = null;
+          if (original.owner()) setReopening(value => value === original ? null : value);
+        }
+      }
+    })();
+    return guardCommandCompletion(completion, current);
   };
   type QueueOperation = { owner: typeof conversationCurrent; messageId: string };
   const queueChange = useRef<QueueOperation | null>(null);
@@ -794,8 +831,8 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     </div></div>
     {scrolling.awayFromLatest && <div className="conversation-jump"><button className="icon-btn" aria-label="Jump to latest" title="Jump to latest" onClick={scrolling.jumpToLatest}>{shellIconArrowDown}</button></div>}
     <div className="conversation-compose"><div className="conversation-compose-content">
-      {closedPage ? <div className="conversation-context-note"><span>{selectedContext ? selectedContext.title || selectedContext.url : "This chat’s page is closed."}</span>{recoverUrl && <button className="btn sm" disabled={reopening || live || taskBound} title={recoverUrl} onClick={() => void reopen()}>{reopening ? "Opening…" : "Reopen"}</button>}</div> : null}
-      {archived && <output className="conversation-archive-notice" data-block><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <button className="btn sm" disabled={restoring} onClick={()=>void restoreConversation()}>{restoring?"Restoring…":"Restore to reply"}</button>}</output>}
+      {closedPage ? <div className="conversation-context-note"><span>{selectedContext ? selectedContext.title || selectedContext.url : "This chat’s page is closed."}</span>{recoverUrl && <ConversationRecoveryAction command="reopen-conversation-page" current={conversationCurrent} invoke={reopen} disabled={reopening?.owner === conversationCurrent || live || taskBound} title={recoverUrl}>{reopening?.owner === conversationCurrent ? "Opening…" : "Reopen"}</ConversationRecoveryAction>}</div> : null}
+      {archived && <output className="conversation-archive-notice" data-block><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <ConversationRecoveryAction command="restore-archived-conversation" current={conversationCurrent} invoke={restoreConversation} disabled={restoring?.owner === conversationCurrent}>{restoring?.owner === conversationCurrent ? "Restoring…" : "Restore to reply"}</ConversationRecoveryAction>}</output>}
       {queued.length > 0 && <section className="composer-queue" aria-label="Queued follow-ups"><header>Up next <span className="count nums">{queued.length}</span></header><ol>{queued.map(message => <li key={message.messageId} data-message-id={message.messageId}><p>{message.text}</p><div className="queued-message-state"><span role={message.status === "needs_attention" ? "alert" : undefined}>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><ConversationQueuedControls message={message} current={conversationCurrent} disabled={archived || queueBusy?.owner === conversationCurrent} onCancel={cancelQueued}/></>}</div></li>)}</ol></section>}
       <ComposerFrame notices={<>{last && <RunControls runId={last.runId}/>}{answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{suspension?.request.instruction}</p></div>}{last?.status === "needs_input" && !answering && suspension?.kind !== "handoff" && <div className="composer-question" role="status"><strong>{suspension ? "Decision needed" : suspensionLoaded ? "Current request unavailable" : "Loading current request"}</strong><p>{suspension ? "Review the approval prompt before Aux continues." : suspensionLoaded ? "Refresh the request before continuing." : "Checking the durable request…"}</p>{suspensionLoaded && !suspension && <ConversationLiveAction command="reload-conversation-request" current={liveControlCurrent} className="btn sm" invoke={() => setSuspensionRefresh(value => value + 1)}>Retry loading request</ConversationLiveAction>}</div>}</>}>
       <div className="composer-context">

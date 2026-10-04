@@ -1,0 +1,321 @@
+diff --git a/apps/shell/src/components/Conversation.recovery-controls.test.tsx b/apps/shell/src/components/Conversation.recovery-controls.test.tsx
+new file mode 100644
+index 000000000..8dce8c9e8
+--- /dev/null
++++ b/apps/shell/src/components/Conversation.recovery-controls.test.tsx
+@@ -0,0 +1,163 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { COMMANDS, type PageTarget } from "@aux/contracts";
++import { bridge } from "../bridge";
++import { useStore } from "../store";
++import { executeCommand, dispatchShortcut } from "../commands";
++import { makePage, makeRun } from "../mock/fixtures";
++import { Conversation } from "./Conversation";
++
++const initial = useStore.getState(), windowId = bridge.windowId;
++const scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
++const url = "http://127.0.0.1:3210/original";
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
++  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
++  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { callback(0); return 1; }); vi.stubGlobal("cancelAnimationFrame", () => {});
++  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
++  const runs = ["a", "b"].map(chat => makeRun({ runId: `run-${chat}`, config: { chatId: chat }, pageIds: [`closed-${chat}`], status: "completed" }));
++  const observation = (chat: string) => ({ pageId: `closed-${chat}`, url, title: "Original page", documentEpoch: 1, revision: 1, text: "Original", refs: [] });
++  useStore.setState({ ...initial, runs, steps: {}, pages: [], connected: true, toasts: [], pendingTurns: [], prompt: null, conversationContexts: {}, observations: { "run-a": observation("a"), "run-b": observation("b") }, conversationDrafts: { "chat:a": "Keep A draft", "chat:b": "Keep B draft" } }, true);
++  vi.spyOn(bridge, "onEvent").mockImplementation(() => () => {});
++  vi.spyOn(bridge, "invoke").mockImplementation(async (method, params) => {
++    const chat = (params as { chatId?: string }).chatId;
++    if (method === "runs.list") return runs.filter(run => run.config?.chatId === chat);
++    if (method === "runs.get") return { run: runs.find(run => run.runId === (params as { runId: string }).runId)!, steps: [], suspension: null };
++    if (method === "conversations.get") return { title: "Archived", archived: true };
++    if (method === "conversations.archive") return { chatId: chat, archived: false };
++    if (method === "runs.messages.list") return [];
++    if (method === "conversations.artifacts.get") return { artifacts: [] };
++    if (method === "conversations.images.get") return { images: [] };
++    if (method === "conversations.attachments.get") return { attachments: [] };
++    if (method === "conversations.sources.get") return { sources: [] };
++    if (method === "runs.context.get") return { entries: [], historyEnabled: true };
++    return { workspace: null, memory: null };
++  });
++  vi.spyOn(bridge, "overlay").mockResolvedValue(false);
++  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
++});
++afterEach(async () => {
++  await act(async () => root.unmount()); host.remove(); useStore.setState(initial, true); bridge.windowId = windowId;
++  vi.restoreAllMocks(); vi.unstubAllGlobals();
++  if (scroll) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", scroll);
++  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
++});
++async function render(chat = "a") { await act(async () => root.render(<Conversation chatId={chat} embedded/>)); }
++function button(reopen = false) { return host.querySelector<HTMLButtonElement>(`[data-command-id="${reopen ? "reopen-conversation-page" : "restore-archived-conversation"}"]`)!; }
++async function dispatch(reopen = false) {
++  button(reopen).focus(); let completion!: Promise<unknown>;
++  await act(async () => { completion = executeCommand(reopen ? "reopen-conversation-page" : "restore-archived-conversation"); void completion.catch(() => {}); });
++  return { completion };
++}
++function heldRestore() {
++  const pending: { resolve(value: unknown): void; reject(reason: unknown): void }[] = [];
++  const fallback = vi.mocked(bridge.invoke).getMockImplementation()!;
++  vi.mocked(bridge.invoke).mockImplementation((method, params) => method === "conversations.archive" ? new Promise((resolve, reject) => pending.push({ resolve, reject })) : fallback(method, params));
++  return pending;
++}
++function heldOpen() {
++  const pending: { resolve(value: PageTarget | null): void; reject(reason: unknown): void }[] = [];
++  const newTab = vi.fn<(url?: string) => Promise<PageTarget | null>>(() => new Promise((resolve, reject) => pending.push({ resolve, reject })));
++  useStore.setState({ newTab }); return { pending, newTab };
++}
++it("Restore returns the actual original ACK, retains drafts and the original archive arguments", async () => {
++  await render(); const pending = heldRestore(), call = await dispatch();
++  const ack = { chatId: "a", archived: false };
++  await act(async () => { pending[0]!.resolve(ack); await expect(call.completion).resolves.toBe(ack); });
++  expect(button()).toBeNull(); expect(useStore.getState().conversationDrafts).toEqual({ "chat:a": "Keep A draft", "chat:b": "Keep B draft" });
++  expect(bridge.invoke).toHaveBeenCalledWith("conversations.archive", { chatId: "a", archived: false });
++});
++it("focused remapped Restore remains available disconnected", async () => {
++  useStore.setState({ connected: false, settings: { shortcutOverrides: { "restore-archived-conversation": [{ key: "j", command: true, alt: true }] } } });
++  await render(); button().focus();
++  await act(async () => { expect(dispatchShortcut({ key: "j", meta: true, alt: true, shift: false })).toBe(true); });
++  expect(button()).toBeNull(); expect(useStore.getState().conversationDrafts["chat:a"]).toBe("Keep A draft");
++});
++it("Restore synchronously reserves same-tick native clicks", async () => {
++  await render(); const pending = heldRestore(), original = button();
++  await act(async () => { original.click(); original.click(); });
++  expect(pending).toHaveLength(1); expect(button().disabled).toBe(true);
++  await act(async () => pending[0]!.resolve({ chatId: "a", archived: false })); expect(button()).toBeNull();
++});
++it("an old Restore ACK after A to B to A cannot restore the current archive or clear newer busy", async () => {
++  await render(); const pending = heldRestore(), old = await dispatch(); await render("b"); await render("a");
++  const fresh = await dispatch(); const ack = { chatId: "a", archived: false };
++  await act(async () => { pending[0]!.resolve(ack); await expect(old.completion).resolves.toBe(ack); });
++  expect(button().disabled).toBe(true); expect(host.textContent).toContain("This conversation is archived.");
++  await act(async () => { pending[1]!.resolve(ack); await expect(fresh.completion).resolves.toBe(ack); }); expect(button()).toBeNull();
++});
++it("Restore preserves retired rejection without toast or clearing newer busy, and current failure reports once", async () => {
++  await render(); const pending = heldRestore(), old = await dispatch(); await render("b"); await render("a");
++  await act(async () => button().click()); const error = new Error("Original retired restore");
++  await act(async () => { pending[0]!.reject(error); await expect(old.completion).rejects.toBe(error); });
++  expect(button().disabled).toBe(true); expect(useStore.getState().toasts).toEqual([]);
++  await act(async () => pending[1]!.reject(new Error("Current restore failed")));
++  expect(button().disabled).toBe(false); expect(useStore.getState().toasts).toHaveLength(1);
++});
++it("Restore refuses a foreign acknowledgment without publishing a successful archive change", async () => {
++  await render(); const pending = heldRestore(), original = await dispatch();
++  await act(async () => { pending[0]!.resolve({ chatId: "b", archived: false }); await expect(original.completion).rejects.toThrow("acknowledgment"); });
++  expect(button().disabled).toBe(false); expect(host.textContent).toContain("This conversation is archived.");
++});
++it("Reopen returns the original newTab ACK and selects its page and exact original run", async () => {
++  await render(); const { pending, newTab } = heldOpen(), open = vi.spyOn(useStore.getState(), "openConversation"), original = await dispatch(true);
++  const page = makePage(0, { url }); await act(async () => { pending[0]!.resolve(page); await expect(original.completion).resolves.toBe(page); });
++  expect(newTab).toHaveBeenCalledExactlyOnceWith(url); expect(useStore.getState().conversationContexts["chat:a"]).toBe(page.pageId);
++  expect(open).toHaveBeenCalledExactlyOnceWith("run-a"); expect(useStore.getState().conversationDrafts["chat:a"]).toBe("Keep A draft");
++});
++it("Reopen reserves same-tick clicks and leaves an old A ACK out of the new chat and busy operation", async () => {
++  await render(); const { pending, newTab } = heldOpen(), originalButton = button(true);
++  await act(async () => { originalButton.click(); originalButton.click(); }); expect(newTab).toHaveBeenCalledTimes(1);
++  await render("b"); await render("a"); const fresh = await dispatch(true), page = makePage(0, { url });
++  await act(async () => pending[0]!.resolve(page));
++  expect(useStore.getState().conversationContexts["chat:a"]).toBeUndefined(); expect(button(true).disabled).toBe(true);
++  await act(async () => { pending[1]!.resolve(page); await expect(fresh.completion).resolves.toBe(page); });
++  expect(useStore.getState().conversationContexts["chat:a"]).toBe(page.pageId);
++});
++it("held Reopen refuses changed original observation and preserves its actual page ACK", async () => {
++  await render(); const { pending } = heldOpen(), open = vi.spyOn(useStore.getState(), "openConversation"), original = await dispatch(true);
++  await act(async () => useStore.setState(state => ({ observations: { ...state.observations, "run-a": { ...state.observations["run-a"]!, url: "http://127.0.0.1:3210/new" } } })));
++  const page = makePage(0, { url }); await act(async () => { pending[0]!.resolve(page); await expect(original.completion).resolves.toBe(page); });
++  expect(open).not.toHaveBeenCalled(); expect(useStore.getState().conversationContexts["chat:a"]).toBeUndefined(); expect(button(true).disabled).toBe(false);
++});
++it("observed foreign-window ABA cannot grant recovery again or publish a held original ACK", async () => {
++  await render(); const pending = heldRestore(), original = await dispatch();
++  bridge.windowId = "foreign"; button(true).focus(); await expect(executeCommand("reopen-conversation-page")).rejects.toThrow(); bridge.windowId = windowId;
++  const ack = { chatId: "a", archived: false }; await act(async () => { pending[0]!.resolve(ack); await expect(original.completion).resolves.toBe(ack); });
++  expect(host.textContent).toContain("This conversation is archived.");
++  await expect(executeCommand("reopen-conversation-page")).rejects.toThrow(); expect(useStore.getState().conversationContexts["chat:a"]).toBeUndefined();
++});
++it("retired Reopen leaves the original authorized tab creation intact but cannot open the old conversation", async () => {
++  await render(); const pending: { resolve(value: unknown): void }[] = [];
++  vi.spyOn(bridge, "tabCommand").mockImplementation(() => new Promise(resolve => pending.push({ resolve })));
++  vi.spyOn(bridge, "bindTabSpace").mockResolvedValue({ spaceId: initial.layout.activeSpaceId, workspaceId: "workspace" });
++  const open = vi.spyOn(useStore.getState(), "openConversation"), original = await dispatch(true);
++  const created = useStore.getState().pages.find(page => page.url === url)!; expect(created).toBeDefined();
++  await render("b");
++  await act(async () => { pending[0]!.resolve({ status: "accepted", pageId: created.pageId }); await original.completion; });
++  expect(useStore.getState().pages.some(page => page.pageId === created.pageId)).toBe(true); expect(open).not.toHaveBeenCalled();
++  expect(useStore.getState().conversationContexts["chat:a"]).toBeUndefined(); expect(useStore.getState().conversationDrafts["chat:b"]).toBe("Keep B draft");
++});
++it("Reopen retains original current and retired rejection identities and suppresses retired delivery", async () => {
++  await render(); const { pending } = heldOpen(), old = await dispatch(true);
++  await render("b"); await render("a"); await act(async () => button(true).click());
++  const reason = new Error("Retired original page open");
++  await act(async () => { pending[0]!.reject(reason); await expect(old.completion).rejects.toBe(reason); });
++  expect(button(true).disabled).toBe(true); expect(useStore.getState().toasts).toEqual([]);
++  await act(async () => pending[1]!.reject(new Error("Current original page open")));
++  expect(button(true).disabled).toBe(false); expect(useStore.getState().toasts).toHaveLength(1);
++});
++it("Reopen reuses an original usable person page without a duplicate open and remains callable disconnected", async () => {
++  const page = makePage(0, { url, ownedByRuntime: false, viewStatus: "hidden" });
++  useStore.setState({ connected: false, pages: [page] }); await render();
++  const newTab = vi.fn(); useStore.setState({ newTab }); const original = await dispatch(true);
++  await expect(original.completion).resolves.toBe(page); expect(newTab).not.toHaveBeenCalled();
++  expect(useStore.getState().conversationContexts["chat:a"]).toBe(page.pageId);
++});
++it("both recovery rows remain normal scoped remappable controls", () => {
++  for (const id of ["restore-archived-conversation", "reopen-conversation-page"]) expect(COMMANDS.find(row => row.id === id)).toMatchObject({ windows: ["normal"], palette: false, bindings: [], intercept: true });
++});
+diff --git a/apps/shell/src/components/Conversation.tsx b/apps/shell/src/components/Conversation.tsx
+index c6ce9304a..16acdcc7c 100644
+--- a/apps/shell/src/components/Conversation.tsx
++++ b/apps/shell/src/components/Conversation.tsx
+@@ -1,3 +1,4 @@
++import { ConversationRecoveryAction } from "./ConversationRecoveryControls";
+ import { ConversationQueuedControls } from "./ConversationQueuedControls";
+ import { ConversationLiveAction, useConversationLiveOwner } from "./ConversationLiveControls";
+ import { HomeEntryAction } from "./HomeEntryControls";
+@@ -259,7 +260,9 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+   useEffect(() => { setIncomingImage(null); setImagePreview(null); setDocumentPreview(null); setImages([]); setAttachments([]); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); }, [id]);
+   const [taskTitle, setTaskTitle] = useState("");
+   const [archived, setArchived] = useState(false);
+-  const [restoring, setRestoring] = useState(false);
++  type RecoveryOperation = { owner: typeof conversationCurrent };
++  const restorePending = useRef<RecoveryOperation | null>(null);
++  const [restoring, setRestoring] = useState<RecoveryOperation | null>(null);
+   const metadataRequest=useRef(0);
+   const [savedTitle, setSavedTitle] = useState("");
+   useEffect(() => {
+@@ -276,10 +279,26 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+     if(typeof event.payload.title==="string")setSavedTitle(event.payload.title);
+     if(typeof event.payload.archived==="boolean")setArchived(event.payload.archived);
+   }),[id]);
+-  const restoreConversation=async()=>{
+-    if(!id||restoring)return;setRestoring(true);
+-    try{const value=await call("conversations.archive",{chatId:id,archived:false});if(activeChat.current===id)setArchived(value.archived);}
+-    catch(error){errToast(error);}finally{setRestoring(false);}
++  const restoreConversation = () => {
++    if (!id || !conversationCurrent() || restorePending.current?.owner === conversationCurrent) return;
++    const original = { owner: conversationCurrent }, chatId = id;
++    restorePending.current = original; setRestoring(original);
++    const completion = (async () => {
++      try {
++        const value = await call("conversations.archive", { chatId, archived: false });
++        if (original.owner() && restorePending.current === original) {
++          if (value.chatId !== chatId || value.archived) throw new Error("The restore acknowledgment does not match this conversation.");
++          setArchived(value.archived);
++        }
++        return value;
++      } finally {
++        if (restorePending.current === original) {
++          restorePending.current = null;
++          if (original.owner()) setRestoring(value => value === original ? null : value);
++        }
++      }
++    })();
++    return guardCommandCompletion(completion, original.owner);
+   };
+   const contexts = useStore(s => s.conversationContexts);
+   const contextPage = contexts[id ? draftKey(id) : "new"] ?? (id ? "linked" : "none");
+@@ -287,7 +306,8 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+   const selectedBrowserSources = useStore(s => s.conversationBrowserSources[browserSourcesKey(id)]);
+   const browserSources = selectedBrowserSources ?? [];
+   const setBrowserSources = (sources: typeof browserSources) => useStore.getState().setConversationBrowserSources(id,sources);
+-  const [reopening, setReopening] = useState(false);
++  const reopenPending = useRef<RecoveryOperation | null>(null);
++  const [reopening, setReopening] = useState<RecoveryOperation | null>(null);
+   const last = turns.at(-1);
+   useEffect(() => {
+     setGenerated([]);
+@@ -633,15 +653,31 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+     }
+     finally { sendPending.current = false; setSending(false); setSendingChat(null); }
+   };
+-  const reopen = async () => {
+-    if (!recoverUrl || reopening || !last) return;
+-    setReopening(true);
+-    try {
+-      const existing = pages.find(p => p.url === recoverUrl && !p.ownedByRuntime && !["crashed", "detached"].includes(p.viewStatus ?? ""));
+-      const page = existing ?? await useStore.getState().newTab(recoverUrl);
+-      if (page) { setContextPage(page.pageId); useStore.getState().openConversation(last.runId); }
+-    } catch (error) { errToast(error); }
+-    finally { setReopening(false); }
++  const reopen = () => {
++    if (!recoverUrl || !last || !conversationCurrent() || reopenPending.current?.owner === conversationCurrent) return;
++    const original = { owner: conversationCurrent, runId: last.runId, url: recoverUrl, observation: lastObservation };
++    const current = () => {
++      if (!original.owner()) return false;
++      const state = useStore.getState();
++      const currentTurns = state.runs.filter(run => (run.config?.chatId ?? run.runId) === id).sort((a, b) => a.createdAt - b.createdAt);
++      const observation = [...currentTurns].reverse().map(run => state.observations[run.runId]).find(value => value && answerUrl(value.url));
++      return currentTurns.at(-1)?.runId === original.runId && observation === original.observation && answerUrl(observation?.url ?? "") === original.url;
++    };
++    reopenPending.current = original; setReopening(original);
++    const completion = (async () => {
++      try {
++        const existing = pages.find(p => p.url === original.url && !p.ownedByRuntime && !["crashed", "detached"].includes(p.viewStatus ?? ""));
++        const page = existing ?? await useStore.getState().newTab(original.url);
++        if (page && current() && reopenPending.current === original) { setContextPage(page.pageId); useStore.getState().openConversation(original.runId); }
++        return page;
++      } finally {
++        if (reopenPending.current === original) {
++          reopenPending.current = null;
++          if (original.owner()) setReopening(value => value === original ? null : value);
++        }
++      }
++    })();
++    return guardCommandCompletion(completion, current);
+   };
+   type QueueOperation = { owner: typeof conversationCurrent; messageId: string };
+   const queueChange = useRef<QueueOperation | null>(null);
+@@ -794,8 +830,8 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+     </div></div>
+     {scrolling.awayFromLatest && <div className="conversation-jump"><button className="icon-btn" aria-label="Jump to latest" title="Jump to latest" onClick={scrolling.jumpToLatest}>{shellIconArrowDown}</button></div>}
+     <div className="conversation-compose"><div className="conversation-compose-content">
+-      {closedPage ? <div className="conversation-context-note"><span>{selectedContext ? selectedContext.title || selectedContext.url : "This chat’s page is closed."}</span>{recoverUrl && <button className="btn sm" disabled={reopening || live || taskBound} title={recoverUrl} onClick={() => void reopen()}>{reopening ? "Opening…" : "Reopen"}</button>}</div> : null}
+-      {archived && <output className="conversation-archive-notice" data-block><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <button className="btn sm" disabled={restoring} onClick={()=>void restoreConversation()}>{restoring?"Restoring…":"Restore to reply"}</button>}</output>}
++      {closedPage ? <div className="conversation-context-note"><span>{selectedContext ? selectedContext.title || selectedContext.url : "This chat’s page is closed."}</span>{recoverUrl && <ConversationRecoveryAction command="reopen-conversation-page" current={conversationCurrent} invoke={reopen} disabled={reopening?.owner === conversationCurrent || live || taskBound} title={recoverUrl}>{reopening?.owner === conversationCurrent ? "Opening…" : "Reopen"}</ConversationRecoveryAction>}</div> : null}
++      {archived && <output className="conversation-archive-notice" data-block><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <ConversationRecoveryAction command="restore-archived-conversation" current={conversationCurrent} invoke={restoreConversation} disabled={restoring?.owner === conversationCurrent}>{restoring?.owner === conversationCurrent ? "Restoring…" : "Restore to reply"}</ConversationRecoveryAction>}</output>}
+       {queued.length > 0 && <section className="composer-queue" aria-label="Queued follow-ups"><header>Up next <span className="count nums">{queued.length}</span></header><ol>{queued.map(message => <li key={message.messageId} data-message-id={message.messageId}><p>{message.text}</p><div className="queued-message-state"><span role={message.status === "needs_attention" ? "alert" : undefined}>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><ConversationQueuedControls message={message} current={conversationCurrent} disabled={archived || queueBusy?.owner === conversationCurrent} onCancel={cancelQueued}/></>}</div></li>)}</ol></section>}
+       <ComposerFrame notices={<>{last && <RunControls runId={last.runId}/>}{answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{suspension?.request.instruction}</p></div>}{last?.status === "needs_input" && !answering && suspension?.kind !== "handoff" && <div className="composer-question" role="status"><strong>{suspension ? "Decision needed" : suspensionLoaded ? "Current request unavailable" : "Loading current request"}</strong><p>{suspension ? "Review the approval prompt before Aux continues." : suspensionLoaded ? "Refresh the request before continuing." : "Checking the durable request…"}</p>{suspensionLoaded && !suspension && <ConversationLiveAction command="reload-conversation-request" current={liveControlCurrent} className="btn sm" invoke={() => setSuspensionRefresh(value => value + 1)}>Retry loading request</ConversationLiveAction>}</div>}</>}>
+       <div className="composer-context">
+diff --git a/apps/shell/src/components/ConversationRecoveryControls.tsx b/apps/shell/src/components/ConversationRecoveryControls.tsx
+new file mode 100644
+index 000000000..8fd80cd49
+--- /dev/null
++++ b/apps/shell/src/components/ConversationRecoveryControls.tsx
+@@ -0,0 +1,20 @@
++import { useId, type ButtonHTMLAttributes } from "react";
++import { usePreferenceCommand } from "../settings/sections/preference-command";
++import { executeCommand } from "../commands";
++import { reportCommandCompletionFailure } from "../command-completion";
++import { errToast } from "../store";
++
++export function ConversationRecoveryAction({ command, current, invoke, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
++  command: "restore-archived-conversation" | "reopen-conversation-page";
++  current(): boolean; invoke(): unknown;
++}) {
++  const scopeId = useId();
++  const [controlRef] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
++    if (!current()) throw new Error("Choose the current conversation recovery control.");
++    return invoke();
++  });
++  return <button {...props} type="button" className="btn sm" ref={controlRef} data-command-id={command} onClick={event => {
++    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
++    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, errToast));
++  }}/>;
++}
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index ef4681b97..71550f5cd 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -122,6 +122,8 @@ export const COMMANDS = [
+   S("reload-conversation-request", "Retry the current conversation request", browserContextControl),
+   S("edit-conversation-queued-message", "Edit queued conversation message", browserContextControl),
+   S("remove-conversation-queued-message", "Remove queued conversation message", browserContextControl),
++  S("restore-archived-conversation", "Restore archived conversation", browserContextControl),
++  S("reopen-conversation-page", "Reopen conversation page", browserContextControl),
+   ...G(pageRecoveryControl, "-page-recovery", [
+     ["retry", "", "Retry this page"],
+     ["edit", "-address", "Edit failing page address"],

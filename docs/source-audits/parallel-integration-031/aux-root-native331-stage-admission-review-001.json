@@ -1,0 +1,14 @@
+{
+  "actual14LaunchPins": true,
+  "exactReviewed326ControllerDelta": true,
+  "finalSourceMatchesReviewed331NativePackets": true,
+  "originalAuthenticArgsGuardRetainedNoRewrite": true,
+  "originalOwnerEnvironmentAndHomeTransport": true,
+  "originalSealWatcherDrainDebtRetained": true,
+  "sourceAndNaturalClosurePreviouslyVerified": true,
+  "stageOnlyAdmission": true,
+  "launchSha256": "2fcf0fe5fd4e8264e4db7740569f30121e2d79ffc7c6f5b9fb4e2edfb56d8f0a",
+  "outerSha256": "5ce68d482b5e3ae7c4834928ffd4b7728091e1b1810e675029792555b24c8b16",
+  "exactPacketCountOnlyCorrection": true,
+  "exactControllerRepinOnly": true
+}

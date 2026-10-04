@@ -1,0 +1,84 @@
+{
+  "sourceOnly": true,
+  "base": "d86ca976ad6f0e2aaf35939e928e2bf129aac573",
+  "owned": [
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "beforeSha256": "9cb130e5adf32095ee9740217826377a0773d72f6781f3ec689dbdb9ea8736ff",
+      "afterSha256": "f41896ab024e8e95b90215311b2a26f21a40d20f6dd3ecc7bae1706d83b096d6"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationRecoveryControls.tsx",
+      "beforeSha256": null,
+      "afterSha256": "df1bf4d68b6b7f09654912a25be9b78ce213e5804cff62ccb9eddbefe44320b3"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.recovery-controls.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "7fdf682754658de73627292d540d2ecbfab5370c162ee84bcb1e455999f742c7"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "da731c94029f27bdbc04ee1a420f1a0e1100b7a1bf7ffdb87fdbff92fa79679e",
+      "afterSha256": "a1c0e11ee4b73312d08646921cce563fe791418c6388ad9db30983ab4cb229bd"
+    }
+  ],
+  "patchSha256": "4f4ce9dbe19df5caa4fb0c22d856fa8996b00e1d9b12bab983842a724fb72e6a",
+  "exactForwardReverseForward": true,
+  "controls": {
+    "final": "60 PASS: recovery14 +unchanged queued11/live12/Conversation13/Composer10",
+    "oldLifecyclePolicy": "2 RED: old restore publishes into current archive/clears new busy; old reopen assigns old page context",
+    "types": "shell noEmit PASS after strict fixture corrections; historical failures retained",
+    "lint": "scoped PASS, original Conversation warnings"
+  },
+  "logs": [
+    {
+      "path": "docs/lane-requests/l10/conversation-recovery-command-closure/logs/aux-l10-conversation-recovery-controls-001.log",
+      "sha256": "41a31860d0b32e6a470aa41a49ddedd7df5bd9a1e07ef1530c5f65a18508dbb9"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-recovery-command-closure/logs/aux-l10-conversation-recovery-final-controls.log",
+      "sha256": "6b654f44d2623465857d4c43a9eb8235fccc1f1efd6ffde4d93aaf99ecfc955f"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-recovery-command-closure/logs/aux-l10-conversation-recovery-old-policy-red.log",
+      "sha256": "afcabcea82d52435a0a5c58127fa398989922c69997003b71288aab37bb494a3"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-recovery-command-closure/logs/aux-l10-conversation-recovery-types.log",
+      "sha256": "85b4ab58be935b4ddeffac13163b765452583b31c5757beb6689939d8984a580"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-recovery-command-closure/logs/aux-l10-conversation-recovery-types-final.log",
+      "sha256": "4e5328456c03b1465e8b5cc06e6de42d0f9c36cae20c8a2b507d86559990c559"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-recovery-command-closure/logs/aux-l10-conversation-recovery-types-003.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-recovery-command-closure/logs/aux-l10-conversation-recovery-controls-003.log",
+      "sha256": "18bd687cc9fdc94bd37ca423009db45e3642a0be101d2f2bddebc6adc460554c"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-recovery-command-closure/logs/aux-l10-conversation-recovery-lint.log",
+      "sha256": "5ad91bbbb6d7d4e04299bbd5b93945dbdc4868ef978af255d9c610a63018d315"
+    }
+  ],
+  "originalProducerPins": [
+    {
+      "path": "apps/runtime/src/api/methods/conversations.ts",
+      "sha256": "95019c5e54f4abc8e5f8a91d2660c9526d311486784a16ff3d73151fa4129676"
+    },
+    {
+      "path": "apps/runtime/src/services/runs.ts",
+      "sha256": "6035bbe9f3334c299dbe28121fd5ae7baf9ab69728565ead26b868a9fedd00f9"
+    },
+    {
+      "path": "apps/shell/src/store/tabs-slice.ts",
+      "sha256": "d7c4ab98919d00a652fc2785939b99d620261a41ee070973bfdb9c6739c0b53a"
+    }
+  ],
+  "rendererBudgetVerified": false,
+  "nativeExecution": false
+}

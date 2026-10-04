@@ -122,6 +122,8 @@ export const COMMANDS = [
   S("reload-conversation-request", "Retry the current conversation request", browserContextControl),
   S("edit-conversation-queued-message", "Edit queued conversation message", browserContextControl),
   S("remove-conversation-queued-message", "Remove queued conversation message", browserContextControl),
+  S("restore-archived-conversation", "Restore archived conversation", browserContextControl),
+  S("reopen-conversation-page", "Reopen conversation page", browserContextControl),
   ...G(pageRecoveryControl, "-page-recovery", [
     ["retry", "", "Retry this page"],
     ["edit", "-address", "Edit failing page address"],
