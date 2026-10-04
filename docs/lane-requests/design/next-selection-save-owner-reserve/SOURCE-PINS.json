@@ -1,0 +1,29 @@
+{
+  "baseSource": "27a10a781; exact context d7effb622",
+  "negativeDiagnostic": false,
+  "files": [
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "before": "a09778e3ed1497a4a076af035aaf9593d3132f50ed402a1d6ab461b14acb15a0",
+      "after": "7c73ae8d4458f0b7839f6744f045120cc92206db6ed1a786bb0977e3dd4688c5"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/use-settings-save-owner.ts",
+      "before": "e5b91b31aec88fc9d2cc5a9d803a044088d9e8f691f1811e470a07075e5e1524",
+      "after": "ea29e7d8632c9d88db8a9ce41cbcf8f07f2d03599b4e22f127ebb520f0f25f09"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.equivalence.test.tsx",
+      "before": null,
+      "after": "92d0a9a0e7ecff67333a6e8bfb3eed4317043c18074b05e60143252a552ee9f1"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.original-dom.json",
+      "before": null,
+      "after": "0a33c7bf5e193884836c750d1afbc1b78ee8502ea39f23d88bb1322a42c0ae64"
+    }
+  ],
+  "patchSha256": "03e96136232883132c06b51d48ef770018f2b136384ae8176f3c990df8be42ca",
+  "replay": "forward/reverse/forward exact",
+  "excludedPagePrerequisite": "19067e524e9d3fbe4ba05141e6817d53bdb37f54aa2f61ccfbea3d11994f6057"
+}

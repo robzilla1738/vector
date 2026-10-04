@@ -1,0 +1,33 @@
+{
+  "base": "28ac0d0cb",
+  "exactFrozenProduction2Leaves": "verified",
+  "actualOriginalAndAddedControls": "PASS",
+  "shellTypes": "PASS",
+  "lint": "original2warnings retained; new conditional-expect error corrected",
+  "correction": "Remove completed fixture recorder/env branch and write import; assert immutable original DOM ledger unconditionally; original fixture unchanged",
+  "testAfterSha256": "5117aaf2a2fe8e021c02d95abba19fde215b035c5947ec1050d385bacab82f6e",
+  "logs": [
+    {
+      "path": "/tmp/aux-root-next-shared-save-equivalence-controls-001.log",
+      "sha256": "31032afdfdfa42301b98656fe80fdcd14fadea7f01127f221928b77a1c689e0b"
+    },
+    {
+      "path": "/tmp/aux-root-next-shared-save-equivalence-controls-002.log",
+      "sha256": "fda998e1b66c9999392b3a2c9a12d6209c6fb6ffa56018915eda6a915e2b36d5"
+    },
+    {
+      "path": "/tmp/aux-root-next-shared-save-types-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-root-next-shared-save-writer-lint-001.log",
+      "sha256": "7434d5f43a9042c8995075d90db39bc22191ac79bb3d27775b0fe5a600fb6432"
+    },
+    {
+      "path": "/tmp/aux-root-next-shared-save-writer-lint-002.log",
+      "sha256": "d5b300eca50e7e9f4fb6c3f561d82f765599c1b8f62e50f2f5a40db5a3169624"
+    }
+  ],
+  "budget": "Native154 coherent prior source after production2+Page total1847340 fails4140; further memory control construction core in progress; no following admission",
+  "native326": "unchanged separate candidate"
+}

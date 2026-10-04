@@ -6,7 +6,7 @@ import {
 } from "@aux/contracts";
 import { bridge } from "../../bridge";
 import { useStore } from "../../store";
-import { guardCommandCompletion } from "../../command-completion";
+import { useSettingsSaveOwner } from "./use-settings-save-owner";
 import { useScopedCommandControls } from "../../scoped-command-controls";
 import { PreferenceAction } from "./preference-command";
 import { bindingFromKeydown } from "../../components/ShortcutsSetting";
@@ -45,6 +45,25 @@ function Hotkey({ label, value, disabled, active, onChange, current, scopeId }: 
   </div>;
 }
 
+function ActionRow({action,index,count,disabled,scopeId,publish,run,toggle,change,move,preview,remove}: {
+  action: Preferences["actions"][number]; index:number; count:number; disabled:boolean; scopeId:string;
+  publish: ReturnType<typeof useScopedCommandControls>[0]; run: ReturnType<typeof useScopedCommandControls>[1];
+  toggle(id:string):void; change(id:string,patch:Partial<Preferences["actions"][number]>):void;
+  move(id:string,delta:number):void; preview(id:string):void; remove(id:string):void;
+}) {
+  return <li className="field">
+          <div className="row wrap">
+            <label><input type="checkbox" checked={action.enabled} disabled={disabled} ref={element => publish(`enabled:${action.id}`, "toggle-selection-action", element, () => toggle(action.id))} onChange={event => run("toggle-selection-action", event)}/> Enabled</label>
+            <input aria-label={`Action ${index + 1} name`} maxLength={60} value={action.name} disabled={disabled} onChange={event => change(action.id, { name: event.target.value })}/>
+            <PreferenceAction command="move-selection-action-up" scopeId={scopeId} className="btn sm ghost" aria-label={`Move ${action.name || "action"} up`} disabled={disabled || index === 0} invoke={() => move(action.id, -1)}>↑</PreferenceAction>
+            <PreferenceAction command="move-selection-action-down" scopeId={scopeId} className="btn sm ghost" aria-label={`Move ${action.name || "action"} down`} disabled={disabled || index === count - 1} invoke={() => move(action.id, 1)}>↓</PreferenceAction>
+            <PreferenceAction command="preview-selection-action" scopeId={scopeId} className="btn sm ghost" disabled={disabled} invoke={() => preview(action.id)}>Preview {action.name || "action"}</PreferenceAction>
+            <PreferenceAction command="remove-selection-action" scopeId={scopeId} className="btn sm ghost" aria-label={`Remove ${action.name || "action"}`} disabled={disabled} invoke={() => remove(action.id)}>Remove</PreferenceAction>
+          </div>
+          <textarea aria-label={`Action ${index + 1} template`} maxLength={2000} rows={3} value={action.template} disabled={disabled} onChange={event => change(action.id, { template: event.target.value })}/>
+        </li>;
+}
+
 export function SelectionCaptureSettings({ active, settings, onSave, nativeStatus }: {
   active: boolean; settings: Record<string, unknown>; onSave(patch: Record<string, unknown>, present?: () => boolean): Promise<boolean>;
   nativeStatus?: SelectionCaptureNativeStatus;
@@ -55,30 +74,17 @@ export function SelectionCaptureSettings({ active, settings, onSave, nativeStatu
   const connected = useStore(state => state.connected);
   const unavailable = !active || privateMode || kind !== "normal";
   const identity = useMemo(() => ({ active, savedKey, windowId, kind, privateMode, connected }), [active, savedKey, windowId, kind, privateMode, connected]);
-  const owner = useRef({ active: false, pending: false, identity });
-  useLayoutEffect(() => {
-    const original = { active: true, pending: false, identity };
-    owner.current = original;
-    return () => { original.active = false; };
-  }, [identity]);
-  const current = useCallback((original = owner.current) => {
-    if (!original.active || original !== owner.current || original.identity !== identity) return false;
-    if (!active || privateMode || kind !== "normal" || bridge.windowId !== windowId || bridge.windowKind !== kind || bridge.privateMode || useStore.getState().connected !== connected) { owner.current.active = false; return false; }
-    return true;
-  }, [identity, active, privateMode, kind, windowId, connected]);
-  const requireCurrent = () => { const original = owner.current; if (!current(original) || original.pending) throw new Error("Choose the current Selection & Capture control."); return original; };
+  const admitted = useCallback(() => active && !privateMode && kind === "normal" && bridge.windowKind === kind && !bridge.privateMode && useStore.getState().connected === connected, [active, privateMode, kind, connected]);
+  const [getOwner, current, busy, error, fail, clearFailure, perform] = useSettingsSaveOwner(identity, windowId, privateMode, admitted, true);
+  const requireCurrent = () => { const original = getOwner(); if (!current(original) || original.pending) throw new Error("Choose the current Selection & Capture control."); return original; };
   const scopeId = useId();
   const [publish, run] = useScopedCommandControls(scopeId, () => {
-    const original = owner.current;
+    const original = getOwner();
     return current(original) ? () => current(original) : undefined;
   });
   const [draft, setDraft] = useState<Preferences>(saved);
   const [baseKey, setBaseKey] = useState(savedKey);
-  const [pendingOwner, setPendingOwner] = useState<typeof owner.current | null>(null);
-  const busy = !!pendingOwner?.active && pendingOwner.identity === identity;
-  const [failure, setFailure] = useState<{owner: typeof owner.current; message: string}|null>(null);
-  const error = failure?.owner.active && failure.owner.identity === identity ? failure.message : "";
-  const setError = (message: string) => setFailure(message ? {owner: owner.current, message} : null);
+  const setError = (message: string) => message ? fail(getOwner(), message) : clearFailure();
   const [message, setMessage] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
@@ -106,32 +112,22 @@ export function SelectionCaptureSettings({ active, settings, onSave, nativeStatu
     [actions[index], actions[index + delta]] = [actions[index + delta]!, actions[index]!];
     update({ actions });
   };
+  const toggleAction = (id:string) => { requireCurrent(); updateAction(id, {enabled:!readAction(id).action.enabled}); };
+  const moveAction = (id:string,delta:number) => { requireCurrent(); move(id,delta); };
+  const previewAction = (id:string) => { readAction(id); setPreviewId(id); };
+  const removeAction = (id:string) => { readAction(id); update({actions:draftRef.current.actions.filter(value=>value.id!==id)}); addButton.current?.focus(); };
   const validation = SelectionCaptureSettingsSchema.safeParse(draft);
   const conflict = captureShortcutConflict(draft, settings.shortcutOverrides as ShortcutOverrides | undefined, bridge.platform);
   const save = () => {
     const original = requireCurrent(), savedDraft = draftRef.current;
     const saveValidation = SelectionCaptureSettingsSchema.safeParse(savedDraft);
     if (changedElsewhere || !saveValidation.success || captureShortcutConflict(savedDraft, settings.shortcutOverrides as ShortcutOverrides | undefined, bridge.platform)) return;
-    original.pending = true; setPendingOwner(original); setError(""); setMessage("");
-    const delivering = () => current(original) && draftRef.current === savedDraft;
-    const completion = (async () => {
-      try {
-        const ack = await onSave({ selectionCapture: saveValidation.data }, delivering);
-        if (delivering()) {
-          if (!ack) { setError("Selection & Capture was not saved. Your edits are still here."); return ack; }
-          const next = { ...saveValidation.data, revision: saveValidation.data.revision + 1 };
-          draftRef.current = next; setDraft(next); setBaseKey(JSON.stringify(next)); setMessage("Saved for this Profile. New selections use these actions.");
-        }
-        return ack;
-      } catch (reason) {
-        if (delivering()) setError(reason instanceof Error ? reason.message : "Selection & Capture was not saved. Your edits are still here.");
-        throw reason;
-      } finally {
-        original.pending = false;
-        setPendingOwner(previous => previous === original ? null : previous);
-      }
-    })();
-    return guardCommandCompletion(completion, delivering);
+    setMessage("");
+    const refusal = "Selection & Capture was not saved. Your edits are still here.";
+    return perform(original, savedDraft, draftRef, present => onSave({ selectionCapture: saveValidation.data }, present), () => {
+      const next = { ...saveValidation.data, revision: saveValidation.data.revision + 1 };
+      draftRef.current = next; setDraft(next); setBaseKey(JSON.stringify(next)); setMessage("Saved for this Profile. New selections use these actions.");
+    }, refusal, { accepted: ack => !!ack, rejected: reason => reason instanceof Error ? reason.message : refusal });
   };
   const registration = (key: "selectionDoubleTap" | "regionCapture") => {
     if (!saved[key]) return "Off. No capture shortcut requested.";
@@ -149,17 +145,7 @@ export function SelectionCaptureSettings({ active, settings, onSave, nativeStatu
     <p className="hint">Actions open an editable chat draft. Nothing is sent to a model until you send it. Capture is unavailable in Private windows and must respect the source site’s policy.</p>
     <SettingsField label="Selection actions" hint="Order controls the selection menu. Use {text} for quoted text, {code} for quoted code, or {image} for a captured image. No page scripts or template commands run." searchTerms={["Lasso", "prompt", "template", "sort", "double tap"]}>
       <ol className="plain-list">
-        {draft.actions.map((action, index) => <li key={action.id} className="field">
-          <div className="row wrap">
-            <label><input type="checkbox" checked={action.enabled} disabled={busy || unavailable} ref={element => publish(`enabled:${action.id}`, "toggle-selection-action", element, () => { requireCurrent(); updateAction(action.id, { enabled: !readAction(action.id).action.enabled }); })} onChange={event => run("toggle-selection-action", event)}/> Enabled</label>
-            <input aria-label={`Action ${index + 1} name`} maxLength={60} value={action.name} disabled={busy || unavailable} onChange={event => updateAction(action.id, { name: event.target.value })}/>
-            <PreferenceAction command="move-selection-action-up" scopeId={scopeId} className="btn sm ghost" aria-label={`Move ${action.name || "action"} up`} disabled={busy || unavailable || index === 0} invoke={() => { requireCurrent(); move(action.id, -1); }}>↑</PreferenceAction>
-            <PreferenceAction command="move-selection-action-down" scopeId={scopeId} className="btn sm ghost" aria-label={`Move ${action.name || "action"} down`} disabled={busy || unavailable || index === draft.actions.length - 1} invoke={() => { requireCurrent(); move(action.id, 1); }}>↓</PreferenceAction>
-            <PreferenceAction command="preview-selection-action" scopeId={scopeId} className="btn sm ghost" disabled={busy || unavailable} invoke={() => { readAction(action.id); setPreviewId(action.id); }}>Preview {action.name || "action"}</PreferenceAction>
-            <PreferenceAction command="remove-selection-action" scopeId={scopeId} className="btn sm ghost" aria-label={`Remove ${action.name || "action"}`} disabled={busy || unavailable} invoke={() => { readAction(action.id); update({ actions: draftRef.current.actions.filter(value => value.id !== action.id) }); addButton.current?.focus(); }}>Remove</PreferenceAction>
-          </div>
-          <textarea aria-label={`Action ${index + 1} template`} maxLength={2000} rows={3} value={action.template} disabled={busy || unavailable} onChange={event => updateAction(action.id, { template: event.target.value })}/>
-        </li>)}
+        {draft.actions.map((action,index)=><ActionRow key={action.id} action={action} index={index} count={draft.actions.length} disabled={busy || unavailable} scopeId={scopeId} publish={publish} run={run} toggle={toggleAction} change={updateAction} move={moveAction} preview={previewAction} remove={removeAction}/>)}
       </ol>
       <button ref={element => { addButton.current = element; publish("add", "add-selection-action", element, () => update({ actions: [...draftRef.current.actions, { id: crypto.randomUUID(), name: "New action", enabled: true, template: "Explain this selection.\n\n{text}" }] })); }} className="btn sm" disabled={busy || unavailable || draft.actions.length >= 12} data-command-id="add-selection-action" onClick={event => run("add-selection-action", event)}>Add selection action</button>
       {selectedPreview && <section aria-label="Selection action preview"><strong>Local preview · example content</strong><pre style={{ whiteSpace: "pre-wrap" }}>{preview}</pre><PreferenceAction command="close-selection-action-preview" scopeId={scopeId} className="btn sm ghost" invoke={() => { if (!current()) throw new Error("Choose the current Selection & Capture preview."); setPreviewId(null); }}>Close preview</PreferenceAction></section>}
