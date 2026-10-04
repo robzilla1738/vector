@@ -1,0 +1,22 @@
+{
+  "request": {
+    "path": "third_party/blink/renderer/core/frame/native_startup_interactive_witness.cc",
+    "beforeSha256": "57e98f82a3af1519334f7b888f1112827c2c0c7f1c7f6ff0155153fa002bc7da",
+    "afterSha256": "c780540ab35b876bb7e9b05b643ebd60147cf813034b80aa88609e326db1d637",
+    "patchSha256": "fec6b2281d2f98a7386dc7a3a0e67bff7c3a5ba807915219995b8736f0b23cb2",
+    "api": {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/ui/gfx/geometry/rect.h",
+      "sha256": "76fac1435f7dcb774fbdb2370460464ed2394681e0a41daf0863c237e234dcdc",
+      "declarations": [
+        350,
+        362
+      ]
+    },
+    "replay": "forward/reverse/forward byte-exact",
+    "scope": "source-only direct declaration dependency; no observed compile failure or native execution"
+  },
+  "actualCandidateBefore": true,
+  "actualDeclarationPin": true,
+  "replay": "exact forward/reverse/forward",
+  "qualification": false
+}

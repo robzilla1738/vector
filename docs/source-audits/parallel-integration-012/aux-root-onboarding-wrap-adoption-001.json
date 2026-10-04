@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "sourceOnly": true,
+  "patchSha256": "5d0ad9a7c9f234b5ae8d80f3c09c62d29b151ffd6b06607f171deb96c8b5b1cc",
+  "exactTwoLeafForwardReverseForward": true,
+  "actual06ReferenceRulesAndPins": true,
+  "startupJavascriptChanged": false,
+  "nativeGeometryPassed": false,
+  "qualification": false
+}

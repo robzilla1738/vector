@@ -1,0 +1,11 @@
+{
+  "candidateHead": "176383a40fe10cad19e62399f3a8b176f4d5591e",
+  "proofSha256": "abb6d4b0b734addbd31949eb5dbf4b080e0e85d69bc47544a5f1d81362dac40c",
+  "actualNativeLeaves": 690,
+  "packetCount": 316,
+  "exactPins": true,
+  "changed": [
+    "third_party/blink/renderer/core/frame/native_startup_interactive_witness.cc"
+  ],
+  "qualification": false
+}

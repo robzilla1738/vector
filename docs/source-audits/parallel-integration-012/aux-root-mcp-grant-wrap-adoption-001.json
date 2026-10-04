@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "sourceOnly": true,
+  "twoPacketExactForwardReverseForward": true,
+  "actualDecodedReferenceRulesAndPins": true,
+  "startupJavascriptChanged": false,
+  "nativeGeometryPassed": false,
+  "qualification": false
+}
