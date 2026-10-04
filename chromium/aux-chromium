@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import shutil
@@ -195,7 +196,35 @@ def format_sources(paths: list[str]) -> None:
     run("git", "clang-format", "--", *paths, cwd=SRC)
 
 
+def stage_shell_owner() -> None:
+    original = ENV.get("AUX_NATIVE_SLOT_EXPECTED_OWNER")
+    if original is not None:
+        if len(original.encode()) > 4096:
+            raise SystemExit("Stage shell requires the original outer owner receipt")
+        def identity(value):
+            return isinstance(value, dict) and set(value) == {"dev", "ino"} and all(
+                type(value[key]) is int and 0 <= value[key] <= 2**53 - 1 for key in ("dev", "ino")) and value["ino"] > 0
+        try:
+            owner = json.loads(original)
+            valid = isinstance(owner, dict) and set(owner) == {"pid", "token", "directory", "file"} and \
+                type(owner["pid"]) is int and 0 < owner["pid"] <= 2**53 - 1 and isinstance(owner["token"], str) and owner["token"] and \
+                identity(owner["directory"]) and identity(owner["file"]) and json.dumps(owner, separators=(",", ":"), ensure_ascii=False) == original
+            if not valid:
+                raise ValueError("Invalid original owner receipt")
+        except (ValueError, TypeError):
+            raise SystemExit("Stage shell requires the original outer owner receipt") from None
+    receipt = run("node", "--input-type=module", "-e",
+                  "import {assertNativeSlotOwned} from './scripts/native-slot.mjs';"
+                  "const raw=process.env.AUX_NATIVE_SLOT_EXPECTED_OWNER;"
+                  "console.log(JSON.stringify(assertNativeSlotOwned(raw===undefined?{}:{expectedOwner:JSON.parse(raw)})));",
+                  cwd=REPO, capture=True)
+    if original is not None and receipt != original:
+        raise SystemExit("Stage shell original owner receipt changed")
+    ENV["AUX_NATIVE_SLOT_EXPECTED_OWNER"] = original if original is not None else receipt
+
+
 def stage_shell() -> None:
+    stage_shell_owner()
     # Workspace packages export compiled modules; build them before Vite reads
     # feature gates and bridge contracts to avoid packaging stale behavior.
     run("pnpm", "exec", "tsc", "-b", "packages/contracts", cwd=REPO)
@@ -205,6 +234,7 @@ def stage_shell() -> None:
     subprocess.run(["pnpm", "--filter", "@aux/shell", "build"],
                    cwd=REPO, env=build_env, check=True)
     run("node", str(ROOT / "stage-shell.mjs"), "capture", cwd=REPO)
+    stage_shell_owner()
     run("node", str(ROOT / "stage-shell.mjs"), "install", cwd=REPO)
 
 

@@ -20,13 +20,14 @@ function seed(root: string) {
   fs.writeFileSync(paths.join(root, "manifest.json"), JSON.stringify(manifest));
   return manifest;
 }
-function run(root: string, mode: string, token: string | undefined, onCopy?: () => void, onRename?: () => void) {
+function run(root: string, mode: string, token: string | undefined, onCopy?: () => void, onRename?: () => void, expectedReceipt?: string) {
   const logs: string[] = [], mutations: string[] = [];
   const mutate = <A extends unknown[], R>(name: string, action: (...args: A) => R) => (...args: A) => { mutations.push(name); return action(...args); };
   const pinned = paths.join(root, "pinned"), output = paths.join(root, "output");
+  const receipt = expectedReceipt ?? (token ? JSON.stringify(assertNativeSlotOwned({ path: paths.join(root, "slot"), token })) : undefined);
   const context = {
     ...paths, createHash, fixtureChromium: paths.join(root, "chromium"), Buffer,
-    process: { pid: process.pid, argv: ["node", "stage-shell.mjs", mode, output], env: { AUX_SHELL_PIN_DIR: pinned, AUX_CHROMIUM_SRC: paths.join(root, "source"), HOME: root } },
+    process: { pid: process.pid, argv: ["node", "stage-shell.mjs", mode, output], env: { AUX_SHELL_PIN_DIR: pinned, AUX_CHROMIUM_SRC: paths.join(root, "source"), HOME: root, AUX_NATIVE_SLOT_EXPECTED_OWNER: receipt } },
     console: { log: (line: string) => logs.push(line) },
     ...Object.fromEntries(["existsSync", "readFileSync", "readdirSync", "statSync"].map(name => [name, fs[name as "existsSync"]])),
     mkdirSync: mutate("mkdir", fs.mkdirSync), rmSync: mutate("remove", fs.rmSync), writeFileSync: mutate("write", fs.writeFileSync),
@@ -79,5 +80,35 @@ it("keeps original capture and verify independent of a native writer slot", () =
     fs.mkdirSync(paths.join(root, "apps", "shell", "src"), { recursive: true });
     const capture = run(root, "capture", undefined); capture.execute(); expect(capture.logs[0]).toContain("Pinned 2 WebUI assets");
     const verify = run(root, "verify", undefined); verify.execute(); expect(verify.mutations).toEqual([]); expect(verify.logs[0]).toContain("Verified 2 pinned WebUI assets");
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+it("refuses same-token owner replacement between outer capture and installer entry", async () => {
+  const root = fs.mkdtempSync(paths.join(tmpdir(), "aux-shell-writer-"));
+  try {
+    seed(paths.join(root, "pinned")); const slot = await acquireNativeSlot({ path: paths.join(root, "slot") });
+    const receipt = JSON.stringify(assertNativeSlotOwned({ path: paths.join(root, "slot"), token: slot.token }));
+    const owner = paths.join(root, "slot", "owner.json");
+    fs.renameSync(owner, paths.join(root, "original-owner")); fs.copyFileSync(paths.join(root, "original-owner"), owner);
+    const trial = run(root, "install", slot.token, undefined, undefined, receipt);
+    expect(trial.execute).toThrow("Native writer does not own the original live slot");
+    expect(trial.mutations).toEqual([]); expect(trial.logs).toEqual([]);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+it("refuses absent, malformed, duplicate or widened outer receipts before mutation", async () => {
+  const root = fs.mkdtempSync(paths.join(tmpdir(), "aux-shell-writer-"));
+  try {
+    seed(paths.join(root, "pinned")); const slot = await acquireNativeSlot({ path: paths.join(root, "slot") });
+    const owner = assertNativeSlotOwned({ path: paths.join(root, "slot"), token: slot.token });
+    const exact = JSON.stringify(owner);
+    for (const raw of ["", "{", "[]", "null", "x".repeat(4097), JSON.stringify({ ...owner, extra: true }),
+      JSON.stringify({ ...owner, directory: { ...owner.directory, ino: -1 } }),
+      JSON.stringify({ ...owner, file: { dev: owner.file.dev } }),
+      exact.replace('{', '{"pid":1,'), exact.replace('"pid":', '"pid": ')]) {
+      const trial = run(root, "install", slot.token, undefined, undefined, raw);
+      expect(trial.execute).toThrow("Native installer requires the original outer owner receipt");
+      expect(trial.mutations).toEqual([]); expect(trial.logs).toEqual([]);
+    }
+    slot.release();
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

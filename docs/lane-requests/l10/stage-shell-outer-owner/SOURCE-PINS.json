@@ -1,0 +1,54 @@
+{
+  "base": "3a523ffa7ad94fb493d9805a7d68aa1cf3d2f6bc",
+  "sourceOnly": true,
+  "owned": [
+    {
+      "path": "chromium/stage-shell.mjs",
+      "beforeSha256": "8effa4a57e68f8fd11383b92b261cc1dcb1f93d98ffe2c32aea7622972acf023",
+      "afterSha256": "1e9a8422758fded6d88af364667027cf9eb3aeb33d41b5e2fd2090314c801396"
+    },
+    {
+      "path": "tests/unit/stage-shell-writer.test.ts",
+      "beforeSha256": "d7aed58f9d70b7c5fcb32ab410ec0afb3c7f6916cfcb3733b36779dd8b76828b",
+      "afterSha256": "aea6b1f6dce96d7b7376857636b013a233fabcd2a3e06d600dc2079f766ab048"
+    }
+  ],
+  "patchSha256": "d88bcf7a3f63ddde1db072f6e323521668525f3435b3b86a17a51e17ec69ff0c",
+  "guardSha256": "4ec29345d6a9b61781a99316a242fe128bb208ae5caf2b73be8e769a9255b547",
+  "replay": "forward/reverse/forward PASS",
+  "controls": "original5 PASS +new2 FAIL before; all7 PASS after",
+  "types": "focused strict imported-source closure PASS",
+  "lint": "0 errors/warnings PASS",
+  "logs": [
+    {
+      "path": "docs/lane-requests/l10/stage-shell-outer-owner/logs/aux-l10-shell-outer-owner-red-001.log",
+      "sha256": "caae4c81764f652512c1a4ca8bd2d53df4cee94dd3aeb8d600e3d99140d2a95e"
+    },
+    {
+      "path": "docs/lane-requests/l10/stage-shell-outer-owner/logs/aux-l10-shell-outer-owner-controls-001.log",
+      "sha256": "11b1283268e3992f215960e561e891f6f06959790e42df0bb1072af1f7cf3e1a"
+    },
+    {
+      "path": "docs/lane-requests/l10/stage-shell-outer-owner/logs/aux-l10-shell-outer-owner-types-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/lane-requests/l10/stage-shell-outer-owner/logs/aux-l10-shell-outer-owner-lint-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "builderTransport": {
+    "requestPath": "/private/tmp/aux-builder-native327-preparation-001/NATIVE327-ORIGINAL-OWNER-CONTINUITY-SOURCE-REQUEST-001.json",
+    "sha256": "85d0c3989503f91db5888ae84517dd88c3c516bc7da72fcd267919a4e1d22d4c",
+    "controller": {
+      "path": "/private/tmp/aux-builder-native327-preparation-001/stage-native327-original-owner-continuity-001-TEMPLATE-ONLY.py",
+      "sha256": "89a913a693af78e0fd43180b3adb3dc1fefdd95ba70f3f6089ad2fc06b2146e6"
+    },
+    "delta": {
+      "path": "/private/tmp/aux-builder-native327-preparation-001/stage-native326-to327-original-owner-continuity-001.diff",
+      "sha256": "c5230c5ca0994f0437f888515e910250665f4a82a1beb172f20521a132e0d269"
+    },
+    "executionAdmission": false
+  },
+  "nativeExecuted": false
+}

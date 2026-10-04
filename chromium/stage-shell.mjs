@@ -96,7 +96,22 @@ function replaceDirectory(from, to) {
 }
 
 const mode = process.argv[2];
-const originalOwner = mode === 'install' ? assertNativeSlotOwned() : undefined;
+function installOwner() {
+  const raw = process.env.AUX_NATIVE_SLOT_EXPECTED_OWNER;
+  const refuse = () => { throw new Error('Native installer requires the original outer owner receipt'); };
+  if (!raw || Buffer.byteLength(raw) > 4096) refuse();
+  let owner;
+  try { owner = JSON.parse(raw); } catch { refuse(); }
+  const keys = (value, names) => value && typeof value === 'object' && !Array.isArray(value) &&
+    Object.keys(value).sort().join(',') === names;
+  const identity = value => keys(value, 'dev,ino') && Number.isSafeInteger(value.dev) && value.dev >= 0 &&
+    Number.isSafeInteger(value.ino) && value.ino > 0;
+  if (!keys(owner, 'directory,file,pid,token') || !Number.isSafeInteger(owner.pid) || owner.pid <= 0 ||
+      typeof owner.token !== 'string' || !owner.token || !identity(owner.directory) || !identity(owner.file) ||
+      JSON.stringify(owner) !== raw) refuse();
+  return assertNativeSlotOwned({ expectedOwner: owner });
+}
+const originalOwner = mode === 'install' ? installOwner() : undefined;
 const requireOriginalOwner = () => {
   if (originalOwner) assertNativeSlotOwned({ expectedOwner: originalOwner });
 };
