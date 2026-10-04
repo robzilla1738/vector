@@ -124,6 +124,10 @@ export const COMMANDS = [
   S("remove-conversation-queued-message", "Remove queued conversation message", browserContextControl),
   S("restore-archived-conversation", "Restore archived conversation", browserContextControl),
   S("reopen-conversation-page", "Reopen conversation page", browserContextControl),
+  S("export-conversation-markdown", "Export conversation as Markdown", browserContextControl),
+  S("continue-conversation-in-rail", "Continue conversation in side panel", browserContextControl),
+  S("toggle-conversation-browser-preview", "Toggle conversation browser preview", browserContextControl),
+  S("jump-conversation-to-latest", "Jump to latest conversation message", browserContextControl),
   ...G(pageRecoveryControl, "-page-recovery", [
     ["retry", "", "Retry this page"],
     ["edit", "-address", "Edit failing page address"],

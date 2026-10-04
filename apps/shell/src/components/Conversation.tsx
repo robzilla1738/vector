@@ -1,3 +1,4 @@
+import { ConversationViewAction } from "./ConversationViewControls";
 import { ConversationRecoveryAction } from "./ConversationRecoveryControls";
 import { ConversationQueuedControls } from "./ConversationQueuedControls";
 import { ConversationLiveAction, useConversationLiveOwner } from "./ConversationLiveControls";
@@ -178,7 +179,8 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   }, [id, connected, conversationCurrent]);
   const [sending, setSending] = useState(false);
   const sendPending = useRef(false);
-  const [exporting, setExporting] = useState(false);
+  const exportPending = useRef<{ owner: typeof conversationCurrent } | null>(null);
+  const [exporting, setExporting] = useState<{ owner: typeof conversationCurrent } | null>(null);
   const [images, setImages] = useState<ConversationImage[]>([]);
   const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
   const [generated, setGenerated] = useState<ConversationArtifact[]>([]);
@@ -551,30 +553,44 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     } catch (error) { errToast(error); }
     finally { documentBusy.current = false; setAttachmentSaving(false); }
   };
-  const exportConversation = async () => {
-    if (!id || !turns.length || exporting) return;
-    setExporting(true);
-    try {
-      const all: Run[] = [];
-      let before: ReturnType<typeof cursor> | undefined;
-      for (;;) {
-        const page = await call("runs.list", { chatId: id, limit: 500, ...(before ? { before } : {}) });
-        all.push(...page);
-        if (page.length < 500) break;
-        before = cursor(page[page.length - 1]!);
+  const exportConversation = () => {
+    if (!id || !turns.length || !conversationCurrent() || exportPending.current?.owner === conversationCurrent) return;
+    const original = { owner: conversationCurrent }, chatId = id;
+    const current = () => original.owner() && exportPending.current === original;
+    exportPending.current = original; setExporting(original);
+    const completion = (async () => {
+      try {
+        const all: Run[] = [];
+        let before: ReturnType<typeof cursor> | undefined;
+        for (;;) {
+          if (!current()) return;
+          const page = await call("runs.list", { chatId, limit: 500, ...(before ? { before } : {}) });
+          all.push(...page);
+          if (page.length < 500) break;
+          before = cursor(page[page.length - 1]!);
+        }
+        const [documents, generated, workspace, sourceList] = await Promise.all([
+          current() ? call("conversations.attachments.get", { chatId }) : null,
+          current() ? call("conversations.artifacts.get", { chatId }) : null,
+          current() ? call("conversations.workspace.get", { chatId }) : null,
+          current() ? call("conversations.sources.get", { chatId }) : null,
+        ]);
+        if (!current() || !documents || !generated || !workspace || !sourceList) return;
+        const title = all.at(-1)?.goal || turns[0]!.goal;
+        const name = `aux-conversation-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || chatId.slice(0, 12)}.md`;
+        const markdown = conversationMarkdown({ chatId, title, runs: all, attachments: documents.attachments, artifacts: generated.artifacts, sources: sourceList.sources, workspace: workspace.workspace, memory: workspace.memory });
+        if (!current()) return;
+        const destination = await bridge.saveFile(name, markdown);
+        if (destination && current()) useStore.getState().toast("Conversation exported");
+        return destination;
+      } finally {
+        if (exportPending.current === original) {
+          exportPending.current = null;
+          if (original.owner()) setExporting(value => value === original ? null : value);
+        }
       }
-      const [documents, generated, workspace, sourceList] = await Promise.all([
-        call("conversations.attachments.get", { chatId: id }),
-        call("conversations.artifacts.get", { chatId: id }),
-        call("conversations.workspace.get", { chatId: id }),
-        call("conversations.sources.get", { chatId: id }),
-      ]);
-      const title = all.at(-1)?.goal || turns[0]!.goal;
-      const name = `aux-conversation-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || id.slice(0, 12)}.md`;
-      const destination = await bridge.saveFile(name, conversationMarkdown({ chatId: id, title, runs: all, attachments: documents.attachments, artifacts: generated.artifacts, sources: sourceList.sources, workspace: workspace.workspace, memory: workspace.memory }));
-      if (destination) useStore.getState().toast("Conversation exported");
-    } catch (error) { errToast(error); }
-    finally { setExporting(false); }
+    })();
+    return guardCommandCompletion(completion, original.owner);
   };
   const send = async () => {
     const text = readText();
@@ -818,7 +834,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   const supportingKey = resultPreview || imagePreview || documentPreview || sourceDetail?.sourceId || "browser";
   const closeSupporting = () => { useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(null); setSourceDetail(null); setPreviewOpen(false); };
   return <section ref={conversationRoot} className={`conversation${embedded ? " conversation-embedded" : ""}${home ? " conversation-home" : ""}${newChat ? " conversation-new" : ""}`} aria-label={embedded ? "Conversation" : undefined} aria-labelledby={embedded ? undefined : "conversation-title"}>
-    {!embedded && <header className="conversation-head">{newChat && <span className="new-chat-brand"><AuxMark />Aux<span aria-hidden="true">/</span></span>}<h1 id="conversation-title">{taskTitle || savedTitle || turns[0]?.goal || "New chat"}</h1><div className="sp"/>{last && <NightRunOverflow runId={last.runId}/>} {selectedContext && selectedContext.url !== "about:blank" && <button className="icon-btn" aria-label={previewOpen ? "Hide browser preview" : "Show browser preview"} title="Browser preview" aria-pressed={previewOpen} onClick={() => setPreviewOpen(value => !value)}>{shellIconGlobe}</button>}{turns.length > 0 && <Tooltip content="Export conversation as Markdown">{descriptionId => <button className="icon-btn" disabled={exporting} aria-describedby={descriptionId} aria-label="Export conversation as Markdown" onClick={() => void exportConversation()}>{shellIconDownloadSm}</button>}</Tooltip>}<button className="icon-btn" title="Continue in side panel" aria-label="Continue in side panel" onClick={() => useStore.getState().showConversationInRail(id)}>{shellIconRail}</button></header>}
+    {!embedded && <header className="conversation-head">{newChat && <span className="new-chat-brand"><AuxMark />Aux<span aria-hidden="true">/</span></span>}<h1 id="conversation-title">{taskTitle || savedTitle || turns[0]?.goal || "New chat"}</h1><div className="sp"/>{last && <NightRunOverflow runId={last.runId}/>} {selectedContext && selectedContext.url !== "about:blank" && <ConversationViewAction command="toggle-conversation-browser-preview" current={conversationCurrent} className="icon-btn" aria-label={previewOpen ? "Hide browser preview" : "Show browser preview"} title="Browser preview" aria-pressed={previewOpen} invoke={() => setPreviewOpen(value => !value)}>{shellIconGlobe}</ConversationViewAction>}{turns.length > 0 && <Tooltip content="Export conversation as Markdown">{descriptionId => <ConversationViewAction command="export-conversation-markdown" current={conversationCurrent} className="icon-btn" disabled={exporting?.owner === conversationCurrent} aria-describedby={descriptionId} aria-label="Export conversation as Markdown" invoke={exportConversation}>{shellIconDownloadSm}</ConversationViewAction>}</Tooltip>}<ConversationViewAction command="continue-conversation-in-rail" current={conversationCurrent} className="icon-btn" title="Continue in side panel" aria-label="Continue in side panel" invoke={() => useStore.getState().showConversationInRail(id)}>{shellIconRail}</ConversationViewAction></header>}
     <div className="conversation-body"><div className="conversation-main">
     <div className="conversation-scroll" tabIndex={-1} ref={node => { scrolling.scrollRef.current = node; if (findReturnRef) findReturnRef.current = node; }}><div className="conversation-thread" data-find-surface="conversation" ref={scrolling.threadRef}>
       {historyLoading && <output data-block className="hint">Loading conversation…</output>}
@@ -829,7 +845,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><output className="hint">Starting…</output></article>)}
 
     </div></div>
-    {scrolling.awayFromLatest && <div className="conversation-jump"><button className="icon-btn" aria-label="Jump to latest" title="Jump to latest" onClick={scrolling.jumpToLatest}>{shellIconArrowDown}</button></div>}
+    {scrolling.awayFromLatest && <div className="conversation-jump"><ConversationViewAction command="jump-conversation-to-latest" current={conversationCurrent} className="icon-btn" aria-label="Jump to latest" title="Jump to latest" invoke={scrolling.jumpToLatest}>{shellIconArrowDown}</ConversationViewAction></div>}
     <div className="conversation-compose"><div className="conversation-compose-content">
       {closedPage ? <div className="conversation-context-note"><span>{selectedContext ? selectedContext.title || selectedContext.url : "This chat’s page is closed."}</span>{recoverUrl && <ConversationRecoveryAction command="reopen-conversation-page" current={conversationCurrent} invoke={reopen} disabled={reopening?.owner === conversationCurrent || live || taskBound} title={recoverUrl}>{reopening?.owner === conversationCurrent ? "Opening…" : "Reopen"}</ConversationRecoveryAction>}</div> : null}
       {archived && <output className="conversation-archive-notice" data-block><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <ConversationRecoveryAction command="restore-archived-conversation" current={conversationCurrent} invoke={restoreConversation} disabled={restoring?.owner === conversationCurrent}>{restoring?.owner === conversationCurrent ? "Restoring…" : "Restore to reply"}</ConversationRecoveryAction>}</output>}
