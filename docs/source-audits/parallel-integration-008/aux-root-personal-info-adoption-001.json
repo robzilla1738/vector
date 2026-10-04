@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "actualReplay": "5leaf F/R/F",
+  "files": [
+    {
+      "path": "apps/shell/src/settings/sections/PasswordsAutofill.tsx",
+      "beforeSha256": "4947814a6ac4c9de1b09c443d794592225e28a03951c44bf44bd4e5c4340488b",
+      "afterSha256": "69af71c232286cacf20bc099955a74780bc8b84710e2ccfd4aa496901d49073a"
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.tsx",
+      "beforeSha256": "ca1d64e52ca28869442c9cf3117b9bdbf4fc7e4e492139fdb1aed17628b5d477",
+      "afterSha256": "79a90d027a861d714fa6a75083305574d6ffc4adc283d9753a89c640d90c94bf"
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.controls.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "5f054602544f95d3d319fd7bdade7ac4365ffbe5c3748c8a31232d6d61f37277"
+    },
+    {
+      "path": "tests/tools/personal-info-command-registration.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "5ec2ab89217b43291ae72549bdac78218b5ac8b6d1ccdefe7ee29b4e59b05c0d"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "d9d30468dfc7e774184550bb5ac4739b6e1cadda0d84189d315d98dfd21e94d7",
+      "afterSha256": "86c6081bb447242ef760003c1efd81866b6250b39ee51b1d0f2a4983d6c31c63"
+    }
+  ],
+  "patchSha256": "86ec79753717b3bf18e616dd18fc2e20af1945af59e27573a6a4f758396e12cd",
+  "classification": "source-only"
+}

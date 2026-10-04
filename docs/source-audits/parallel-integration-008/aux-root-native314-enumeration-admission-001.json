@@ -1,0 +1,11 @@
+{
+  "pass": true,
+  "scope": "source closure and original binary listing launcher only; no assertion or journey qualification",
+  "closureSha256": "c05e7b6a35fd05e34d9f2fa6c1277a1eb0d521e0ac383a7f954092a600ba921b",
+  "launcherSha256": "220aa68f9377e1070a0a8efc5cfea89d755c8cb56a73dd9c51c30e869960aefd",
+  "requiredCases": 449,
+  "stockOnlyCasesRemainRequired": 11,
+  "original342Retained": true,
+  "actualCompileLinkOperandsVerified": true,
+  "nativeExecuted": false
+}
