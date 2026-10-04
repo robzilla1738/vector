@@ -1,0 +1,12 @@
+{
+  "receiptSha256": "81a6ba7f1ecff0b2f9f8b5a2ce8fd025583f37b5462ed4bde3657b62b9c19a76",
+  "actualCompiledRehashCount": 8802,
+  "compiledBytes": 3310736173,
+  "actualExplicitAbsentViews": true,
+  "actualNativeHashes": 733,
+  "actualOldRuntimeHashes": 92,
+  "actualHelperHash": true,
+  "generatedAndMetadataPins": true,
+  "originalFull18Failed": true,
+  "noAppOrQualification": true
+}

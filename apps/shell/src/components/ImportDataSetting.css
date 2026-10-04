@@ -5,6 +5,11 @@
     padding: 0;
     border: 0;
   }
+  .import-setting :is(legend, .hint, .import-report li) {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
   .import-setting legend {
     padding: 0;
   }

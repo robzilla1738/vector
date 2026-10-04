@@ -1,0 +1,62 @@
+{
+  "base": "5f9b13f225ab60670041bd39adc90f04e3a478c7",
+  "patchSHA256": "253b5b61c636095824643353b709f74eae5ad2438972b76b93e935778415e3ec",
+  "leaves": [
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.css",
+      "before": "007731713ed296f6c72cf401692789fca5e172ebbe8c530451f164a0cfce631b",
+      "after": "1c6737eac12a7ff80a2f26df422ab14fee421b058e3ec5c5a632562a2c76fcc3"
+    },
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.long-label.test.tsx",
+      "before": null,
+      "after": "c0ce642fd8a48b36b9fb9a48cc2a962b88ae472a0f32164624cc3fe430baeaa0"
+    }
+  ],
+  "references": [
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/extension/assets_globals-D6PBr-GP.css",
+      "sha256": "2c2b198d715f3894d41c96b88ef9a32a4f61404891baf954d7e4e5a33d976e79"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/importer-webui.css",
+      "sha256": "6bc7c039ed9bb9cf2498748e57175cfd4059a2ec1e92a8e512beb903f8b81496"
+    }
+  ],
+  "producers": [
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.tsx",
+      "sha256": "6d828b4abb3f3e02d554eff0c2a326046e2c4c163dfacdbb1cd322334ec65911",
+      "status": "read-only excluded prerequisite"
+    },
+    {
+      "path": "apps/shell/src/styles/overlays.css",
+      "sha256": "28b0a9c639a813c6fac38801be9aa6e6061fecf0711e322511257ba8523f4b68",
+      "status": "read-only excluded prerequisite"
+    },
+    {
+      "path": "packages/contracts/src/import.ts",
+      "sha256": "f91eac64fd4c93496a78a40f2e038a30541b1a56e5ca155b678f5bd704707ed3",
+      "status": "read-only excluded prerequisite"
+    },
+    {
+      "path": "apps/runtime/src/services/import-sources.ts",
+      "sha256": "fa0b35fb7612b422addec17c9e566b528c3ca4a8a740a83e74d960c3714b42f6",
+      "status": "read-only excluded prerequisite"
+    },
+    {
+      "path": "apps/runtime/src/services/browser-import.ts",
+      "sha256": "93d1b95c471b3d0d79b26c452896986120d8a2a0c1241fa14c9d6bf488769854",
+      "status": "read-only excluded prerequisite"
+    }
+  ],
+  "proof": "2leaf F/R/F PASS; removing sole new CSS rule reproduces complete original stylesheet",
+  "checks": {
+    "controls": "11 PASS/2 files; all9 original +2 new /tmp/aux-import-wrap-controls-003.log",
+    "types": "PASS /tmp/aux-import-wrap-types-002.log",
+    "lint": "PASS0 /tmp/aux-import-wrap-lint-002.log",
+    "originalCSS": "2 RED missing containment rule /tmp/aux-import-wrap-original-css.log",
+    "fixtureCorrections": "initial non-file URL failure001 and mismatched Firefox expectation002 retained; final fixture uses actual permitted Firefox discovery label/profile shape"
+  },
+  "nativePixels": "pending; no Vite/native/browser operations"
+}

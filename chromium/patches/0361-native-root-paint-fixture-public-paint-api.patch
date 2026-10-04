@@ -1,0 +1,34 @@
+--- a/ui/views/widget/root_view_unittest.cc
++++ b/ui/views/widget/root_view_unittest.cc
+@@ -22,6 +22,7 @@
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/mojom/dialog_button.mojom.h"
+ #include "ui/base/mojom/menu_source_type.mojom.h"
++#include "ui/compositor/layer.h"
+ #include "ui/compositor/paint_context.h"
+ #include "ui/events/event_utils.h"
+ #include "ui/events/keycodes/dom/dom_code.h"
+@@ -29,6 +30,7 @@
+ #include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/context_menu_controller.h"
+ #include "ui/views/focus/focus_manager.h"
++#include "ui/views/paint_info.h"
+ #include "ui/views/test/ax_event_counter.h"
+ #include "ui/views/test/test_views.h"
+ #include "ui/views/test/views_test_base.h"
+@@ -136,9 +138,12 @@
+   EXPECT_FALSE(actual);
+   // An arbitrary root-view paint is not the actual native Widget entrypoint.
+   auto direct_items = base::MakeRefCounted<cc::DisplayItemList>();
+-  state.widget()->GetRootView()->PaintFromPaintRoot(ui::PaintContext(
+-      direct_items.get(), 1.f, state.widget()->GetRootView()->GetLocalBounds(),
+-      false));
++  state.widget()->GetRootView()->Paint(PaintInfo::CreateRootPaintInfo(
++      ui::PaintContext(direct_items.get(), 1.f,
++                       state.widget()->GetRootView()->GetLocalBounds(), false),
++      state.widget()->GetRootView()->layer()
++          ? state.widget()->GetRootView()->layer()->size()
++          : state.widget()->GetRootView()->size()));
+   EXPECT_FALSE(actual);
+   const auto before = base::TimeTicks::Now();
+   auto items = base::MakeRefCounted<cc::DisplayItemList>();

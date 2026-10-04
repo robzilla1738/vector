@@ -1,0 +1,24 @@
+{
+  "sourceOnly": true,
+  "executionAdmission": false,
+  "exportSha256": "e752d5eb573bb0f1d4490c66a92ad93602d9f4ab222ea849c0034f2e950ff53d",
+  "candidate": {
+    "commit": "ed2c6387f2e0d1acccf4d91443b3af8e2bc05288",
+    "tree": "9c11b44f7dabfddc5feb2234c07d665e0064a3cc",
+    "dirty": false,
+    "label": "ed2c6387f2e0d1acccf4d91443b3af8e2bc05288"
+  },
+  "actual733NativeHashes": true,
+  "actual331OrderedPackets": true,
+  "exact330Prefix": true,
+  "oneLeaf0361Delta": [
+    "ui/views/widget/root_view_unittest.cc"
+  ],
+  "actual174PassingAssets": true,
+  "actual1843OwnDistByteModePins": true,
+  "actual286DependencyRows": 286,
+  "actual75WorkspaceJoins": 75,
+  "actualRawChildrenRetired": true,
+  "actualThreeTemplateDerivations": true,
+  "retained524Cases": true
+}
