@@ -1,0 +1,25 @@
+diff --git a/chrome/browser/ui/aux/native_creator_close_receipt_unittest.cc b/chrome/browser/ui/aux/native_creator_close_receipt_unittest.cc
+index 36ee5a0..bd85d99 100644
+--- a/chrome/browser/ui/aux/native_creator_close_receipt_unittest.cc
++++ b/chrome/browser/ui/aux/native_creator_close_receipt_unittest.cc
+@@ -6,6 +6,7 @@
+ #include <memory>
+ #include <optional>
+ #include "base/functional/bind.h"
++#include "base/debug/stack_trace.h"
+ #include "base/run_loop.h"
+ #include "base/test/task_environment.h"
+ #include "chrome/browser/ui/aux/egress_controller.h"
+@@ -41,6 +42,12 @@ class CreatorNavigationFinishObserver final : public content::WebContentsObserve
+     diagnostic_->Set("hasCommitted", navigation->HasCommitted());
+     diagnostic_->Set("isErrorPage", navigation->IsErrorPage());
+     diagnostic_->Set("netErrorCode", navigation->GetNetErrorCode());
++    const auto discard_reason = navigation->GetNavigationDiscardReason();
++    diagnostic_->Set("discardReasonObserved", discard_reason.has_value());
++    if (discard_reason)
++      diagnostic_->Set("discardReason", static_cast<int>(*discard_reason));
++    if (!navigation->HasCommitted() && navigation->GetNetErrorCode() != 0)
++      diagnostic_->Set("originalFinishStack", base::debug::StackTrace(32).ToString());
+   }
+  private:
+   raw_ptr<base::DictValue> diagnostic_;

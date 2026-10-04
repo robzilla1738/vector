@@ -9,7 +9,8 @@
     "types": "natural PASS",
     "lint": "natural PASS unchanged390 ceiling",
     "format": "natural PASS",
-    "wholeUnit": "natural PASS641files4062tests"
+    "wholeUnit": "natural PASS641files4062tests",
+    "bindingsBridgeInventoryJourneyRegistry": "natural PASS original gates; manifest coverage does not prove execution"
   },
   "exactBundle": {
     "startupJS": 501965,
@@ -37,5 +38,10 @@
     "Strict startup and totalJS budgets",
     "All required native safety and qualification/performance/design gates"
   ],
-  "promoted": false
+  "promoted": false,
+  "nextSourceBatch": {
+    "tasksLibraryFocus": "root exact3leaf forward/reverse/forward/apply PASS; mounted28actual controls/3discovered suites PASS",
+    "paletteLibraryNewChat": "designer narrowed actual browser route; matching mounted baseline PASS, no speculative producer fix",
+    "native0364": "source-only original discard reason/bounded synchronous DidFinish stacks prepared on2fixture leaves; compile/cause pending"
+  }
 }

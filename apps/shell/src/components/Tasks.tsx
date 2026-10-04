@@ -2,6 +2,7 @@ import { staticIconButtonProps, staticFieldProps } from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
+import { availableForFocus, ownsFocus } from "../ui/focus";
 import "./Tasks.css";
 import { Tabs, WorkRow } from "../ui";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -150,9 +151,10 @@ export function Tasks() {
   }
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
+    const shell = dialogRef.current;
     closeButton.current?.focus();
     return () => {
-      previous?.focus();
+      if (ownsFocus(shell) && previous && availableForFocus(previous)) previous.focus();
     };
   }, []);
 

@@ -1,0 +1,6 @@
+{
+  "result": "EXACT3LEAF_FORWARD_REVERSE_FORWARD_ROOT_APPLY_PASS",
+  "patchSha256": "473e13c21d065d31a1e7ac4b886bbafe11d0bb2e894497d23f88a13824c842ca",
+  "prerequisitePinsExact": true,
+  "sourceOnly": true
+}

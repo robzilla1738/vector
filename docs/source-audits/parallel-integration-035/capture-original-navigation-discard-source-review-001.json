@@ -1,0 +1,7 @@
+{
+  "result": "ACTUAL_FROZEN_CAPTURE_COMPONENT_PINS_AND_PUBLIC_APIS_PASS",
+  "fixtureSourceOnly": true,
+  "originalObserverPredicateAnd5FactsUnchanged": true,
+  "originalAssertionsAndDeadlinesUnchanged": true,
+  "nativeResult": "PENDING"
+}

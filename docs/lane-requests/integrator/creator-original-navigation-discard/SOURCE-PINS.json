@@ -1,0 +1,19 @@
+{
+  "scope": "Fixture-only original DidFinishNavigation reason and32-frame synchronous stack; no runtime authority/assertions/actions/deadlines changed",
+  "reservedAggregate": "0364-native-original-navigation-discard-diagnostics.patch",
+  "componentSha256": "1d79bb423f7056136b27984febe132ed21bd06abe6e953ae82857518fdf29eb7",
+  "leaf": {
+    "path": "chrome/browser/ui/aux/native_creator_close_receipt_unittest.cc",
+    "beforeSha256": "f21db9577024261f2bab195fff8f594449deace39ccba2bd2830da6c3a81b126",
+    "afterSha256": "084fdcf8400e1dda789354e170c5e11507a593645eb7c5ef21da5bcffa2654c1"
+  },
+  "installedPublicAPIs": {
+    "content/public/browser/navigation_handle.h": "c708f46d896af459d1299f1bdd55c100571b3a3823f8c4f1c7ff7f6415beb7c1",
+    "content/public/browser/navigation_discard_reason.h": "ff8d219e8ab3341ad7698adf5adcceec9de7ed064aa8ae61869bc5a562d5eff5",
+    "base/debug/stack_trace.h": "ea6578f820b49eb05a32db35894d106f86a20aa22591321f74209b063507c383"
+  },
+  "orderedTestDeclarationsExact": true,
+  "forwardReverseForward": "PASS",
+  "nativeCompilation": "PENDING",
+  "actualCause": "UNPROVEN"
+}

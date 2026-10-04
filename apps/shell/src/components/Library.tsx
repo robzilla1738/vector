@@ -2,6 +2,7 @@ import { staticSmallIconButtonProps, staticFieldInputProps, staticIconButtonProp
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
+import { availableForFocus, ownsFocus } from "../ui/focus";
 import { ArchivedTabs } from "./ArchivedTabs";
 import "./Library.css";
 import { backgroundLink } from "../browser-links";
@@ -180,8 +181,11 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
+    const shell = dialog.current;
     search.current?.focus();
-    return () => previous?.focus();
+    return () => {
+      if (ownsFocus(shell) && previous && availableForFocus(previous)) previous.focus();
+    };
   }, []);
 
   useEffect(() => {

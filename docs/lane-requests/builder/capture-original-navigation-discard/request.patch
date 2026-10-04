@@ -1,0 +1,24 @@
+--- a/chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc
++++ b/chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc
+@@ -2,6 +2,8 @@
+ #include "chrome/browser/ui/aux/native_person_capture_controller.h"
+ #include "base/base64.h"
+ #include "base/logging.h"
++#include "base/debug/stack_trace.h"
++#include "net/base/net_errors.h"
+ #include <memory>
+ #include <optional>
+ #include "base/strings/string_number_conversions.h"
+@@ -58,6 +60,12 @@
+     facts_->Set("originalHasCommitted", navigation->HasCommitted());
+     facts_->Set("originalIsErrorPage", navigation->IsErrorPage());
+     facts_->Set("originalNetErrorCode", navigation->GetNetErrorCode());
++    const auto discard_reason = navigation->GetNavigationDiscardReason();
++    facts_->Set("originalDiscardReasonPresent", discard_reason.has_value());
++    if (discard_reason)
++      facts_->Set("originalDiscardReason", static_cast<int>(*discard_reason));
++    if (navigation->GetNetErrorCode() == net::ERR_ABORTED)
++      facts_->Set("originalDidFinishAbortStack", base::debug::StackTrace(16).ToString());
+   }
+  private:
+   const GURL expected_;

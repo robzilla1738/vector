@@ -1,0 +1,39 @@
+{
+  "scope": "Source-only fixture diagnostic; no build, no Stable edit, no policy/action/assertion/deadline change",
+  "canonicalReservation": "0364 pending coherent two-leaf parent composition after actual333 terminal",
+  "source": "chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc",
+  "candidateRoot": "/private/tmp/aux-browser-runtime-builder-native333-source-001",
+  "beforeSha256": "814838f595f2fe94383a87c2860da537f39adff8243273ed4df0200069121f3a",
+  "resultSha256": "9627978ac649f4aa0012afbc9ddcd9eb4373e24ed1d8fa48e152f962c11552cd",
+  "patchSha256": "0bf3fe19497fc5d7d485dad9e800de0aaba2b6706001d64757efab896973efc0",
+  "installedApiPins": [
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/content/public/browser/navigation_handle.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-discard-diagnostic-001/installed-api/content/public/browser/navigation_handle.h",
+      "sha256": "c708f46d896af459d1299f1bdd55c100571b3a3823f8c4f1c7ff7f6415beb7c1"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/content/public/browser/navigation_discard_reason.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-discard-diagnostic-001/installed-api/content/public/browser/navigation_discard_reason.h",
+      "sha256": "ff8d219e8ab3341ad7698adf5adcceec9de7ed064aa8ae61869bc5a562d5eff5"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/base/debug/stack_trace.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-discard-diagnostic-001/installed-api/base/debug/stack_trace.h",
+      "sha256": "ea6578f820b49eb05a32db35894d106f86a20aa22591321f74209b063507c383"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/net/base/net_errors.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-discard-diagnostic-001/installed-api/net/base/net_errors.h",
+      "sha256": "465ecd6f6e672ea5a35538029afb0aa10aee93d16407c3dbc2490dbcbec21e4b"
+    }
+  ],
+  "exactWholeFileInverse": true,
+  "forwardReverseForwardExact": true,
+  "originalNavigationIdPredicateUnchanged": true,
+  "originalNavigationFiveFactsUnchanged": true,
+  "boundedStackFrameCount": 16,
+  "stackMeaning": "Synchronous actual original-handle DidFinish ERR_ABORTED observer stack; no claim that it is the earlier producer cancellation stack",
+  "optionalReason": "Presence boolean and actual enum numeric value only if present; no guessed fallback",
+  "executionAuthorized": false
+}
