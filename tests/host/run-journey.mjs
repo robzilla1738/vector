@@ -4,6 +4,7 @@ import { MEMORY_APPEARANCE_ID, requireMemoryAppearance } from './lib/memory-appe
 import { MENTIONS_APPEARANCE_ID, requireMentionsAppearance } from './lib/mentions-appearance.mjs';
 import { retainPackagedRuntimePair } from './lib/packaged-runtime-pair-artifact.mjs';
 import { preflightAppearancePair } from './lib/appearance-pair-preflight.mjs';
+import { PAGE_RECOVERY_APPEARANCE_ID, requirePageRecoveryAppearance } from './lib/page-recovery-appearance.mjs';
 import { createLaunchServicesAppearanceProvenance } from './lib/appearance-provenance.mjs';
 import { createOwnedNarrowGenerations } from './lib/distinct-narrow-window.mjs';
 import { collectNativeKeyEffects } from './lib/native-key-performance.mjs';
@@ -53,7 +54,12 @@ const slot = await acquireNativeSlot();
 process.env.AUX_NATIVE_SLOT_TOKEN = slot.token;
 try {
 let entry;
-if (values.journey === MODEL_DISCOVERY_APPEARANCE_ID) {
+if (values.journey === PAGE_RECOVERY_APPEARANCE_ID) {
+  requirePageRecoveryAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/page-recovery-appearance.mjs');
+  const module = await import('./appearance-journeys/page-recovery-appearance.mjs');
+  entry = { ...module, path };
+} else if (values.journey === MODEL_DISCOVERY_APPEARANCE_ID) {
   requireModelDiscoveryAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
   const path = join(root, 'tests/host/appearance-journeys/model-discovery-appearance.mjs');
   const module = await import('./appearance-journeys/model-discovery-appearance.mjs');

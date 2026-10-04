@@ -37,7 +37,7 @@ html, body, .app, .app.native-host, .app-body { background: transparent; }
 .conversation-turn > time { display: none; }
 .conversation-turn.pending .user-message { opacity: .72; }
 .answer-stream { white-space: pre-wrap; }
-.user-message { margin: 0 0 18px auto; max-width: min(78%, 420px); width: fit-content; border-radius: 18px; background: color-mix(in srgb, var(--ink-0) 7%, transparent); padding: var(--space-2-5) var(--space-3-5); white-space: pre-wrap; font-size: var(--fs-lg); line-height: 1.5; }
+.user-message { margin: 0 0 18px auto; max-width: min(78%, 420px); width: fit-content; border-radius: 18px; background: color-mix(in srgb, var(--ink-0) 7%, transparent); padding: var(--space-2-5) var(--space-3-5); white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--fs-lg); line-height: 1.5; }
 .conversation .run-goal { display: none; }
 .conversation .run-panel { padding: 0; gap: 0; }
 .conversation .run-msg { display: none; }
@@ -89,7 +89,7 @@ html, body, .app, .app.native-host, .app-body { background: transparent; }
 .conversation-document:hover { background: var(--bg-hover); }
 .conversation-document label { display: flex; align-items: flex-start; flex: 1; min-width: 0; gap: var(--space-2); }
 .conversation-document label > span { display: flex; flex-direction: column; min-width: 0; gap: var(--space-0); }
-.conversation-document b { font-size: var(--fs-xs); font-weight: var(--fw-medium); }
+.conversation-document b { font-size: var(--fs-xs); font-weight: var(--fw-medium); overflow-wrap: anywhere; }
 .conversation-document small { color: var(--ink-2); font-size: var(--fs-2xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conversation-empty h1 { font-size: var(--fs-2xl); font-weight: var(--fw-medium); }
 .conversation-empty p { color: var(--ink-2); }

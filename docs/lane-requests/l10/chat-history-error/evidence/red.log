@@ -1,0 +1,35 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-l10-chat-history-error
+
+(node:10721) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |unit| apps/shell/src/components/Conversation.history-error.test.tsx (3 tests | 1 failed) 50ms
+   × keeps raw restored-history diagnostics in one closed Details panel, then retries without a tab or new run 32ms
+     → expected 'Error: not_found: pageUUID 9a813723-3…' to be 'Conversation history couldn’t be load…' // Object.is equality
+   ✓ does not deliver an old history rejection into a different restored chat 10ms
+   ✓ a fresh no-tab chat does not request history or present a transport error 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| apps/shell/src/components/Conversation.history-error.test.tsx > keeps raw restored-history diagnostics in one closed Details panel, then retries without a tab or new run
+AssertionError: expected 'Error: not_found: pageUUID 9a813723-3…' to be 'Conversation history couldn’t be load…' // Object.is equality
+
+Expected: "Conversation history couldn’t be loaded. Your draft is kept."
+Received: "Error: not_found: pageUUID 9a813723-3967-4a04-89e4-fda886915433 Try again"
+
+ ❯ apps/shell/src/components/Conversation.history-error.test.tsx:45:34
+     43|   const alerts = host.querySelectorAll('[role="alert"]');
+     44|   expect(alerts).toHaveLength(1);
+     45|   expect(alerts[0]?.textContent).toBe('Conversation history couldn’t b…
+       |                                  ^
+     46|   const details = alerts[0]?.parentElement?.querySelector('details');
+     47|   expect(details?.textContent).toBe(`Details${String(failure)}`);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  23:26:57
+   Duration  3.31s (transform 1.35s, setup 0ms, collect 2.83s, tests 50ms, environment 267ms, prepare 39ms)
+

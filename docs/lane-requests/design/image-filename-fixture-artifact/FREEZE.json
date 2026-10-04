@@ -1,0 +1,13 @@
+{
+  "originalPacketCommit": "083a4847",
+  "patchSha256": "004f476138fc2f2fac22c3f8c0f6cc751e2f6c04bd374ae4a4efca961179edac",
+  "files": [
+    {
+      "path": "apps/shell/src/components/ConversationImages.filename-wrap.test.tsx",
+      "beforeSha256": "b0e191a5948003de7f9ba1385d552bce1098b155324a09ee54655c3110cebdac",
+      "afterSha256": "3fe10fd4bec4b9126fa084b480681864077def4213a329e6d3fa15b5280eac68"
+    }
+  ],
+  "assertionsUnchanged": true,
+  "productChanged": false
+}

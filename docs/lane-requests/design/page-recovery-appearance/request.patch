@@ -1,0 +1,246 @@
+diff --git a/tests/host/appearance-journeys/page-recovery-appearance.mjs b/tests/host/appearance-journeys/page-recovery-appearance.mjs
+new file mode 100644
+index 000000000..5984dd791
+--- /dev/null
++++ b/tests/host/appearance-journeys/page-recovery-appearance.mjs
+@@ -0,0 +1,10 @@
++import { capturePageRecoveryAppearance } from '../lib/page-recovery-appearance.mjs';
++// Outside the functional registry; exact paired admission is a separate runner request.
++export const journey = {
++  id: 'page-recovery-appearance', title: 'Original owned loopback certificate error and recovery disclosure',
++  features: ['electronMigration'], needs: ['accessibility', 'screen-recording'], model: 'none',
++  fixture: { tls: true }, launch: {}, timeoutMs: 120000, owner: 'Design reviewer recovery appearance preparation',
++};
++export async function run(t) {
++  await t.step('Observe the original native certificate error without granting an exception', { kind: 'ui', features: ['electronMigration'] }, () => capturePageRecoveryAppearance(t));
++}
+diff --git a/tests/host/lib/page-recovery-appearance.mjs b/tests/host/lib/page-recovery-appearance.mjs
+new file mode 100644
+index 000000000..ffe6f4422
+--- /dev/null
++++ b/tests/host/lib/page-recovery-appearance.mjs
+@@ -0,0 +1,117 @@
++import assert from 'node:assert/strict';
++import { captureHomeState } from './home-capture.mjs';
++
++export const PAGE_RECOVERY_APPEARANCE_ID = 'page-recovery-appearance';
++const shell = (name, role) => ({ name, ...(role ? { role } : {}), match: 'exact', scope: 'shell', index: 0 });
++const details = shell('Connection details');
++const composer = shell('Reply to conversation', 'AXTextArea');
++export function requirePageRecoveryAppearance({ journeyId, appearance, pair }) {
++  assert.equal(journeyId, PAGE_RECOVERY_APPEARANCE_ID);
++  assert.equal(appearance, true); assert.ok(pair, 'Original externally admitted pair required');
++}
++
++/** Original native navigation error, never a supplied PageTarget or unsafe exception. */
++export async function capturePageRecoveryAppearance(t) {
++  assert.equal(t.appearanceEnabled, true);
++  const app = t.app, ax = t.ax, pid = app.pid;
++  const stable = () => assert.ok(t.app === app && t.ax === ax && Number.isInteger(pid) && pid > 0 && app.pid === pid && ax.pid === pid && !t.signal?.aborted, 'Original recovery capture owner retired');
++  const owned = async action => { stable(); const value = await action(); stable(); return value; };
++  const base = new URL(t.fixture.tlsUrl);
++  assert.equal(base.protocol, 'https:'); assert.equal(base.hostname, '127.0.0.1'); assert.ok(base.port); assert.equal(base.pathname, '/');
++  assert.ok(t.fixture.certificate && t.fixture.certificateSpki, 'Original owned self-signed TLS fixture is required');
++  const url = new URL('/appearance-page-recovery', base).href;
++  const remove = t.fixture.route('/appearance-page-recovery', '<!doctype html><title>Owned recovery TLS fixture</title>Certificate trust must remain ungranted.');
++  let opened, primary, finalError;
++  const debts = [], observations = [];
++  try {
++    const settings = await owned(() => t.rpc('settings.get'));
++    const pages = await owned(() => t.rpc('pages.list')); assert.deepEqual(pages, [], 'Recovery preparation requires original fresh page-free Home');
++    const runs = await owned(() => t.rpc('runs.list')); assert.deepEqual(runs, []);
++    const workspace = await owned(() => t.rpc('workspace.get')); assert.equal(workspace.activePageId, null);
++    const draft = await owned(() => ax.query(composer)); assert.equal(draft.length, 1);
++    const inventory = async () => {
++      const windows = (await owned(() => ax.windows())).filter(window => window.layer === 0 && window.width > 0 && window.height > 0);
++      assert.equal(windows.length, 1); assert.ok(Number.isInteger(windows[0].id) && windows[0].id > 0);
++      if (t.narrowEnabled) assert.ok(Number.isFinite(windows[0].width) && windows[0].width >= 720 && windows[0].width <= 900);
++      return windows[0];
++    };
++    const originalWindow = await inventory();
++    const originalRecords = async () => {
++      assert.deepEqual(await owned(() => t.rpc('settings.get')), settings);
++      assert.deepEqual(await owned(() => t.rpc('runs.list')), runs);
++      const state = await owned(() => t.rpc('workspace.get'));
++      for (const key of ['sets', 'members', 'sessions', 'streamId']) assert.deepEqual(state[key], workspace[key]);
++      assert.ok(Number.isSafeInteger(state.lastSeq) && state.lastSeq >= workspace.lastSeq);
++      assert.deepEqual(await inventory(), originalWindow);
++      return state;
++    };
++    let error;
++    try {
++      opened = await owned(() => t.rpc('pages.open', { url, activate: true }));
++      assert.ok(opened?.pageId && opened.windowId && opened.targetId);
++      assert.equal(opened.backend, 'aux'); assert.equal(opened.ownedByRuntime, false);
++      // Ordinary native person tabs intentionally omit a CDP session. Preserve the original value/absence.
++      const readOriginal = async () => {
++        const current = await owned(() => t.rpc('pages.list'));
++        assert.equal(current.length, 1); const page = current[0];
++        for (const key of ['pageId', 'windowId', 'targetId', 'sessionId']) assert.equal(page[key], opened[key]);
++        assert.ok(Number.isSafeInteger(page.documentEpoch) && page.documentEpoch >= opened.documentEpoch);
++        assert.equal((await originalRecords()).activePageId, opened.pageId);
++        return page;
++      };
++      error = await owned(() => t.until('original native certificate error', async () => {
++        const page = await readOriginal();
++        if (page.loading || !page.navigationError) return false;
++        assert.equal(page.url, url); assert.equal(page.navigationError.url, url);
++        assert.match(page.navigationError.message, /^net::ERR_CERT_/);
++        assert.ok(page.navigationError.code <= -200 && page.navigationError.code >= -299);
++        assert.equal(page.navigationError.upgradedFrom, undefined); assert.notEqual(page.viewStatus, 'crashed');
++        return page;
++      }));
++      finalError = structuredClone(error);
++      const identity = page => Object.fromEntries(['pageId', 'windowId', 'targetId', 'sessionId', 'documentEpoch', 'url', 'navigationError', 'viewStatus', 'loading'].map(key => [key, page[key]]));
++      const one = async selector => { const rows = await owned(() => ax.query(selector)); assert.equal(rows.length, 1); return rows[0]; };
++      const raw = shell(`${error.navigationError.message} (${error.navigationError.code})`, 'AXStaticText');
++      const ready = async (expanded, focused = false) => {
++        assert.deepEqual(identity(await readOriginal()), identity(error), 'Original native error document retired');
++        await owned(() => ax.waitFor(shell('This connection isn’t secure')));
++        await owned(() => ax.waitFor(shell('Proceed anyway (unsafe)', 'AXButton'), 'enabled'));
++        await owned(() => ax.waitFor(raw, expanded ? 'visible' : 'absent'));
++        const summary = await one(details); if (focused) assert.equal(summary.focused, true);
++      };
++      const capture = async (name, state, expanded, focused) => {
++        await ready(expanded, focused);
++        const before = await owned(() => ax.dump({ scope: 'shell' })); await ready(expanded, focused);
++        await owned(() => captureHomeState(t, name, state)); await ready(expanded, focused);
++        const after = await owned(() => ax.dump({ scope: 'shell' })); await ready(expanded, focused);
++        observations.push({ name, state, before, after, originalErrorIdentity: identity(error) });
++      };
++      await capture('page-certificate-error-details-collapsed', 'page-native-certificate-error-details-collapsed', false, false);
++      await owned(() => ax.focus(details)); await owned(() => ax.key('space', 'hid'));
++      await capture('page-certificate-error-details-expanded-focused', 'page-native-certificate-error-details-expanded-focused', true, true);
++      await owned(() => ax.key('space', 'hid'));
++      await capture('page-certificate-error-details-recollapsed-focused', 'page-native-certificate-error-details-recollapsed-focused', false, true);
++    } catch (cause) { primary = cause; }
++    finally {
++      if (opened) try {
++        const current = await owned(() => t.rpc('pages.list'));
++        assert.equal(current.length, 1);
++        for (const key of ['pageId', 'windowId', 'targetId', 'sessionId']) assert.equal(current[0][key], opened[key]);
++        assert.deepEqual(await inventory(), originalWindow);
++        const closed = await owned(() => t.rpc('pages.close', { pageId: opened.pageId }));
++        assert.equal(closed.ok, true, 'Original native page close was not acknowledged');
++      } catch (cause) { debts.push(cause); }
++      try {
++        assert.deepEqual(await owned(() => t.rpc('pages.list')), pages);
++        const restored = await originalRecords(); assert.equal(restored.activePageId, workspace.activePageId);
++        assert.deepEqual(restored.tabPlacements, workspace.tabPlacements);
++        const currentDraft = await owned(() => ax.query(composer)); assert.equal(currentDraft.length, 1); assert.equal(currentDraft[0].value, draft[0].value);
++        await owned(() => ax.focus(composer)); assert.equal((await owned(() => ax.query(composer)))[0]?.focused, true);
++      } catch (cause) { debts.push(cause); }
++    }
++  } catch (cause) { primary ??= cause; }
++  finally { try { remove(); } catch (cause) { debts.push(cause); } }
++  if (debts.length) throw new AggregateError([primary, ...debts].filter(Boolean), 'Original recovery capture or minted-page cleanup unresolved');
++  if (primary) throw primary;
++  return { ax: await owned(() => ax.dump({ scope: 'shell' })), rpc: { originalError: finalError, observations, originalClosedPageId: opened.pageId, certificateExceptionRequested: false } };
++}
+diff --git a/tests/host/page-recovery-appearance.test.mjs b/tests/host/page-recovery-appearance.test.mjs
+new file mode 100644
+index 000000000..4b60675d6
+--- /dev/null
++++ b/tests/host/page-recovery-appearance.test.mjs
+@@ -0,0 +1,101 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { PageTargetSchema } from '@aux/contracts';
++import { capturePageRecoveryAppearance, requirePageRecoveryAppearance } from './lib/page-recovery-appearance.mjs';
++
++function fixture() {
++  const page = { pageId: 'original-page', windowId: 'runtime-original', targetId: 'native:original-page', documentEpoch: 2, backend: 'aux', title: 'Owned TLS recovery', lastRevision: 0, controller: 'human', controllerEpoch: 0, createdAt: 1, lastActiveAt: 1, ownedByRuntime: false, url: 'https://127.0.0.1:9143/appearance-page-recovery', viewStatus: 'visible', loading: false, navigationError: { url: 'https://127.0.0.1:9143/appearance-page-recovery', message: 'net::ERR_CERT_AUTHORITY_INVALID', code: -202 } };
++  let open = false, expanded = false, focused = false, seq = 1;
++  const captures = [], calls = [], effects = [];
++  const workspace = () => ({ activePageId: open ? page.pageId : null, sets: [], members: [], sessions: [], lastSeq: seq, streamId: 'original-stream', tabPlacements: {} });
++  const t = { appearanceEnabled: true, narrowEnabled: true, signal: new AbortController().signal, app: { pid: 913 }, fixture: { tlsUrl: 'https://127.0.0.1:9143', certificate: 'owned-original', certificateSpki: 'owned-original-spki', route: () => () => { effects.push('remove-route'); } }, until: async (_label, read) => { const result = await read(); assert.ok(result); return result; }, rpc: async (method, args) => {
++    calls.push({ method, args });
++    if (method === 'settings.get') return { original: true };
++    if (method === 'runs.list') return [];
++    if (method === 'workspace.get') return workspace();
++    if (method === 'pages.list') return open ? [structuredClone(page)] : [];
++    if (method === 'pages.open') { open = true; seq++;  return { ...structuredClone(page), documentEpoch: 1 }; }
++    if (method === 'pages.close') { assert.equal(args.pageId, page.pageId); open = false; seq++; return { ok: true }; }
++    throw new Error(method);
++  }, capture: async (name, options) => { captures.push({ name, options }); } };
++  t.ax = { pid: 913, windows: async () => [{ id: 27, layer: 0, width: 800, height: 720 }], query: async selector => selector.name === 'Reply to conversation' ? [{ value: 'Original retained draft', focused }] : [{ focused }], waitFor: async (selector, state) => {
++    if (selector.name.includes('net::ERR_CERT')) assert.equal(expanded, state === 'visible');
++  }, focus: async selector => { effects.push(selector.name); focused = true; }, key: async (chord, via) => { assert.equal(chord, 'space'); assert.equal(via, 'hid'); expanded = !expanded; }, dump: async () => ({ retained: true }) };
++  return { t, page, captures, calls, effects };
++}
++test('closed paired route refuses foreign ID, ordinary mode or missing original pair', () => {
++  for (const change of [{ journeyId: 'https-first' }, { appearance: false }, { pair: undefined }]) assert.throws(() => requirePageRecoveryAppearance({ journeyId: 'page-recovery-appearance', appearance: true, pair: 'original', ...change }));
++});
++test('native-person certificate receipt requires no CDP session and three bracketed real UI states', async () => {
++  const { t, captures, calls, effects } = fixture();
++  const report = await capturePageRecoveryAppearance(t);
++  assert.equal(report.rpc.originalError.navigationError.message, 'net::ERR_CERT_AUTHORITY_INVALID');
++  assert.equal(report.rpc.certificateExceptionRequested, false);
++  assert.deepEqual(captures.map(row => row.options.windowId), [27, 27, 27]);
++  assert.deepEqual(captures.map(row => row.options.state), ['page-native-certificate-error-details-collapsed', 'page-native-certificate-error-details-expanded-focused', 'page-native-certificate-error-details-recollapsed-focused']);
++  assert.equal(calls.filter(row => row.method === 'pages.close').length, 1);
++  assert.equal(calls.find(row => row.method === 'pages.open').args.url, 'https://127.0.0.1:9143/appearance-page-recovery');
++  assert.ok(!calls.some(row => /proceed|http|grant|permission/.test(row.method)));
++  assert.equal(effects.at(-1), 'remove-route');
++});
++test('non-original error/URL/session/window/doc replacement cannot borrow a certificate capture', async () => {
++  for (const kind of ['code', 'message', 'url', 'session', 'window', 'document']) {
++    const { t, page, captures } = fixture(); const originalRpc = t.rpc;
++    t.rpc = async (method, args) => {
++      const value = await originalRpc(method, args);
++      if (method === 'pages.list' && value.length) {
++        if (kind === 'code') value[0].navigationError.code = -102;
++        if (kind === 'message') value[0].navigationError.message = 'net::ERR_CONNECTION_REFUSED';
++        if (kind === 'url') value[0].navigationError.url += '/foreign';
++        if (kind === 'session') value[0].sessionId = 'foreign-agent-session';
++        if (kind === 'window') value[0].windowId = 'foreign';
++        if (kind === 'document') value[0].documentEpoch = 0;
++      }
++      return value;
++    };
++    await assert.rejects(capturePageRecoveryAppearance(t)); assert.equal(captures.length, 0);
++    assert.equal(page.pageId, 'original-page');
++  }
++});
++test('postcapture focus/document/owner loss refuses while preserving original cleanup or debt', async () => {
++  for (const kind of ['focus', 'document', 'owner', 'close']) {
++    const { t, page, calls } = fixture(); const originalRpc = t.rpc;
++    t.capture = async name => {
++      if (!name.endsWith('expanded-focused')) return;
++      if (kind === 'focus') { const query = t.ax.query; t.ax.query = async selector => selector.name === 'Connection details' ? [{ focused: false }] : query(selector); }
++      if (kind === 'document') page.documentEpoch++;
++      if (kind === 'owner') t.app = { pid: 913 };
++      if (kind === 'close') t.rpc = async (method, args) => { if (method === 'pages.close') throw new Error('original close failed'); return originalRpc(method, args); };
++    };
++    await assert.rejects(capturePageRecoveryAppearance(t));
++    if (kind === 'focus' || kind === 'document') assert.equal(calls.filter(row => row.method === 'pages.close').length, 1);
++    if (kind === 'owner') assert.equal(calls.filter(row => row.method === 'pages.close').length, 0);
++  }
++});
++test('observed narrow geometry and original fresh Home are admission requirements', async () => {
++  for (const kind of ['geometry', 'pages', 'draft']) {
++    const { t, captures, calls } = fixture(); const originalRpc = t.rpc;
++    if (kind === 'geometry') t.ax.windows = async () => [{ id: 27, layer: 0, width: 901, height: 720 }];
++    if (kind === 'pages') t.rpc = async (method, args) => method === 'pages.list' ? [{ pageId: 'existing-person-page' }] : originalRpc(method, args);
++    if (kind === 'draft') t.ax.query = async () => [];
++    await assert.rejects(capturePageRecoveryAppearance(t)); assert.equal(captures.length, 0); assert.ok(!calls.some(row => row.method === 'pages.open'));
++  }
++});
++test('fixed caller enables original owned TLS without trust bypass or developer feature flags', () => {
++  const source = readFileSync(new URL('./appearance-journeys/page-recovery-appearance.mjs', import.meta.url), 'utf8');
++  assert.match(source, /fixture: \{ tls: true \}, launch: \{\}/);
++  assert.doesNotMatch(source, /ignore-certificate|disable-features|devAcceptance|proceedInsecure/);
++});
++
++test('installed PageTarget schema accepts original native-person receipt with absent CDP session', () => {
++  const { page } = fixture();
++  assert.deepEqual(PageTargetSchema.parse(page), page);
++  assert.equal(page.sessionId, undefined);
++});
++
++test('false original close ACK remains cleanup debt even if the page is already absent', async () => {
++  const { t } = fixture(); const original = t.rpc;
++  t.rpc = async (method, args) => { const result = await original(method, args); return method === 'pages.close' ? { ok: false } : result; };
++  await assert.rejects(capturePageRecoveryAppearance(t), error => error instanceof AggregateError && error.errors.some(reason => /not acknowledged/.test(reason.message)));
++});

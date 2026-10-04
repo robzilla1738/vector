@@ -1,0 +1,170 @@
+diff --git a/tests/host/lib/page-recovery-appearance.mjs b/tests/host/lib/page-recovery-appearance.mjs
+index ffe6f4422..8f419105e 100644
+--- a/tests/host/lib/page-recovery-appearance.mjs
++++ b/tests/host/lib/page-recovery-appearance.mjs
+@@ -5,6 +5,7 @@ export const PAGE_RECOVERY_APPEARANCE_ID = 'page-recovery-appearance';
+ const shell = (name, role) => ({ name, ...(role ? { role } : {}), match: 'exact', scope: 'shell', index: 0 });
+ const details = shell('Connection details');
+ const composer = shell('Reply to conversation', 'AXTextArea');
++const address = shell('Address, search, and agent prompt', 'AXComboBox');
+ export function requirePageRecoveryAppearance({ journeyId, appearance, pair }) {
+   assert.equal(journeyId, PAGE_RECOVERY_APPEARANCE_ID);
+   assert.equal(appearance, true); assert.ok(pair, 'Original externally admitted pair required');
+@@ -47,7 +48,7 @@ export async function capturePageRecoveryAppearance(t) {
+     };
+     let error;
+     try {
+-      opened = await owned(() => t.rpc('pages.open', { url, activate: true }));
++      opened = await owned(() => t.rpc('pages.open', { url: 'about:blank', activate: true }));
+       assert.ok(opened?.pageId && opened.windowId && opened.targetId);
+       assert.equal(opened.backend, 'aux'); assert.equal(opened.ownedByRuntime, false);
+       // Ordinary native person tabs intentionally omit a CDP session. Preserve the original value/absence.
+@@ -59,6 +60,14 @@ export async function capturePageRecoveryAppearance(t) {
+         assert.equal((await originalRecords()).activePageId, opened.pageId);
+         return page;
+       };
++      const blank = await readOriginal(); assert.equal(blank.url, 'about:blank'); assert.ok(!blank.navigationError);
++      await owned(() => ax.key('command+l', 'hid'));
++      const field = await owned(() => ax.query(address)); assert.equal(field.length, 1); assert.equal(field[0].focused, true);
++      await owned(() => ax.key('command+a', 'hid')); await owned(() => ax.type(url, address));
++      const typed = await owned(() => ax.query(address)); assert.equal(typed.length, 1); assert.equal(typed[0].value, url);
++      const beforeCommit = await readOriginal(); assert.equal(beforeCommit.url, 'about:blank');
++      assert.equal(beforeCommit.documentEpoch, blank.documentEpoch); assert.ok(!beforeCommit.navigationError);
++      await owned(() => ax.key('return', 'hid'));
+       error = await owned(() => t.until('original native certificate error', async () => {
+         const page = await readOriginal();
+         if (page.loading || !page.navigationError) return false;
+diff --git a/tests/host/page-recovery-appearance.test.mjs b/tests/host/page-recovery-appearance.test.mjs
+index 4b60675d6..972844e9b 100644
+--- a/tests/host/page-recovery-appearance.test.mjs
++++ b/tests/host/page-recovery-appearance.test.mjs
+@@ -6,7 +6,7 @@ import { capturePageRecoveryAppearance, requirePageRecoveryAppearance } from './
+ 
+ function fixture() {
+   const page = { pageId: 'original-page', windowId: 'runtime-original', targetId: 'native:original-page', documentEpoch: 2, backend: 'aux', title: 'Owned TLS recovery', lastRevision: 0, controller: 'human', controllerEpoch: 0, createdAt: 1, lastActiveAt: 1, ownedByRuntime: false, url: 'https://127.0.0.1:9143/appearance-page-recovery', viewStatus: 'visible', loading: false, navigationError: { url: 'https://127.0.0.1:9143/appearance-page-recovery', message: 'net::ERR_CERT_AUTHORITY_INVALID', code: -202 } };
+-  let open = false, expanded = false, focused = false, seq = 1;
++  let open = false, expanded = false, focused = false, seq = 1, navigated = false, addressValue = 'about:blank';
+   const captures = [], calls = [], effects = [];
+   const workspace = () => ({ activePageId: open ? page.pageId : null, sets: [], members: [], sessions: [], lastSeq: seq, streamId: 'original-stream', tabPlacements: {} });
+   const t = { appearanceEnabled: true, narrowEnabled: true, signal: new AbortController().signal, app: { pid: 913 }, fixture: { tlsUrl: 'https://127.0.0.1:9143', certificate: 'owned-original', certificateSpki: 'owned-original-spki', route: () => () => { effects.push('remove-route'); } }, until: async (_label, read) => { const result = await read(); assert.ok(result); return result; }, rpc: async (method, args) => {
+@@ -14,14 +14,14 @@ function fixture() {
+     if (method === 'settings.get') return { original: true };
+     if (method === 'runs.list') return [];
+     if (method === 'workspace.get') return workspace();
+-    if (method === 'pages.list') return open ? [structuredClone(page)] : [];
+-    if (method === 'pages.open') { open = true; seq++;  return { ...structuredClone(page), documentEpoch: 1 }; }
++    if (method === 'pages.list') return open ? [navigated ? structuredClone(page) : { ...structuredClone(page), url: 'about:blank', documentEpoch: 1, navigationError: null }] : [];
++    if (method === 'pages.open') { assert.equal(args.url, 'about:blank', 'Actual ordinary opener refuses and closes a failed certificate navigation'); open = true; seq++; return { ...structuredClone(page), url: 'about:blank', navigationError: null, documentEpoch: 1 }; }
+     if (method === 'pages.close') { assert.equal(args.pageId, page.pageId); open = false; seq++; return { ok: true }; }
+     throw new Error(method);
+   }, capture: async (name, options) => { captures.push({ name, options }); } };
+-  t.ax = { pid: 913, windows: async () => [{ id: 27, layer: 0, width: 800, height: 720 }], query: async selector => selector.name === 'Reply to conversation' ? [{ value: 'Original retained draft', focused }] : [{ focused }], waitFor: async (selector, state) => {
++  t.ax = { pid: 913, windows: async () => [{ id: 27, layer: 0, width: 800, height: 720 }], query: async selector => selector.name === 'Reply to conversation' ? [{ value: 'Original retained draft', focused }] : selector.name === 'Address, search, and agent prompt' ? [{ value: addressValue, focused }] : [{ focused }], waitFor: async (selector, state) => {
+     if (selector.name.includes('net::ERR_CERT')) assert.equal(expanded, state === 'visible');
+-  }, focus: async selector => { effects.push(selector.name); focused = true; }, key: async (chord, via) => { assert.equal(chord, 'space'); assert.equal(via, 'hid'); expanded = !expanded; }, dump: async () => ({ retained: true }) };
++  }, focus: async selector => { effects.push(selector.name); focused = true; }, type: async (value, selector) => { assert.equal(selector.name, 'Address, search, and agent prompt'); addressValue = value; effects.push('type-owned-url'); }, key: async (chord, via) => { assert.equal(via, 'hid'); effects.push(chord); if (chord === 'command+l') focused = true; else if (chord === 'command+a') addressValue = ''; else if (chord === 'return') { assert.equal(addressValue, page.url); assert.equal(open, true); navigated = true; seq++; } else { assert.equal(chord, 'space'); expanded = !expanded; } }, dump: async () => ({ retained: true }) };
+   return { t, page, captures, calls, effects };
+ }
+ test('closed paired route refuses foreign ID, ordinary mode or missing original pair', () => {
+@@ -35,7 +35,8 @@ test('native-person certificate receipt requires no CDP session and three bracke
+   assert.deepEqual(captures.map(row => row.options.windowId), [27, 27, 27]);
+   assert.deepEqual(captures.map(row => row.options.state), ['page-native-certificate-error-details-collapsed', 'page-native-certificate-error-details-expanded-focused', 'page-native-certificate-error-details-recollapsed-focused']);
+   assert.equal(calls.filter(row => row.method === 'pages.close').length, 1);
+-  assert.equal(calls.find(row => row.method === 'pages.open').args.url, 'https://127.0.0.1:9143/appearance-page-recovery');
++  assert.equal(calls.find(row => row.method === 'pages.open').args.url, 'about:blank');
++  assert.deepEqual(effects.slice(0, 4), ['command+l', 'command+a', 'type-owned-url', 'return']);
+   assert.ok(!calls.some(row => /proceed|http|grant|permission/.test(row.method)));
+   assert.equal(effects.at(-1), 'remove-route');
+ });
+diff --git a/tests/unit/page-recovery-native-opening.test.ts b/tests/unit/page-recovery-native-opening.test.ts
+new file mode 100644
+index 000000000..6982df5ac
+--- /dev/null
++++ b/tests/unit/page-recovery-native-opening.test.ts
+@@ -0,0 +1,86 @@
++import { afterEach, expect, it, vi } from "vitest";
++import { EventBus, NullNativeBridge, openDb, Repo } from "@aux/runtime";
++import type { TabCommandEnvelope } from "@aux/contracts";
++import { PageRegistry } from "../../apps/runtime/dist/services/pages/registry.js";
++import { PageOpener } from "../../apps/runtime/dist/services/pages/opener.js";
++import { navigateNativePage } from "../../apps/runtime/dist/services/pages/navigation.js";
++import { NativeViewSync } from "../../apps/runtime/dist/services/pages/native-sync.js";
++import { ActivationPolicy } from "../../apps/runtime/dist/services/pages/activation.js";
++import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
++const repos: Repo[] = [];
++afterEach(() => {
++  for (const repo of repos.splice(0)) repo.close();
++});
++function fixture() {
++  const repo = new Repo(openDb(":memory:"));
++  repos.push(repo);
++  const tabCommand = vi.fn(async (input: TabCommandEnvelope) => ({
++    commandId: input.commandId,
++    status: "applied" as const,
++    catalogVersion: 1,
++    windowId: "main",
++  }));
++  const native = Object.assign(new NullNativeBridge(), {
++    available: () => true,
++    tabCommand,
++    personReadContext: vi.fn(async () => {
++      throw new Error("Blank and failed certificate documents cannot invent a person-read success");
++    }),
++    focusPage: vi.fn(async () => {}),
++  });
++  const pages = new PageRegistry({
++    repo,
++    events: new EventBus(repo),
++    native,
++    turnMentions: fixtureTurnMentions((id) => repo.getPage(id)),
++    drivers: () => ({ aux: null, chrome: null }),
++  });
++  const activation = new ActivationPolicy(pages),
++    opener = new PageOpener(pages, activation),
++    sync = new NativeViewSync(pages, opener, activation);
++  tabCommand.mockImplementation(async (input) => {
++    if (input.command.kind === "navigate") {
++      sync.onNativeNavigated(input.command.pageId, input.command.url);
++      sync.onNativeNavigationError(input.command.pageId, {
++        url: input.command.url,
++        code: -202,
++        message: "net::ERR_CERT_AUTHORITY_INVALID",
++      });
++    }
++    return { commandId: input.commandId, status: "applied", catalogVersion: 1, windowId: "main" };
++  });
++  return { pages, opener, tabCommand };
++}
++it("actual original opener rejects certificate failure and closes the initial failed page", async () => {
++  const f = fixture();
++  await expect(
++    f.opener.open({
++      url: "https://127.0.0.1:9143/appearance-page-recovery",
++      background: false,
++      ownedByRuntime: false,
++    }),
++  ).rejects.toMatchObject({ code: "target_detached" });
++  const commands = f.tabCommand.mock.calls.map(([input]) => input.command);
++  expect(commands.map((command) => command.kind)).toEqual(["open", "navigate", "close"]);
++  expect(f.pages.live.size).toBe(0);
++});
++it("actual blank opener succeeds; subsequent failed native navigation retains that original page", async () => {
++  const f = fixture();
++  const blank = await f.opener.open({ url: "about:blank", background: false, ownedByRuntime: false });
++  expect(blank.url).toBe("about:blank");
++  expect(blank.sessionId).toBeUndefined();
++  expect(f.tabCommand.mock.calls.map(([input]) => input.command.kind)).toEqual(["open"]);
++  await expect(
++    navigateNativePage(f.pages, blank.pageId, "https://127.0.0.1:9143/appearance-page-recovery"),
++  ).rejects.toMatchObject({ code: "target_detached" });
++  const live = f.pages.live.get(blank.pageId)!;
++  expect(live.target.pageId).toBe(blank.pageId);
++  expect(live.target.windowId).toBe(blank.windowId);
++  expect(live.target.targetId).toBe(blank.targetId);
++  expect(live.target.navigationError).toEqual({
++    url: "https://127.0.0.1:9143/appearance-page-recovery",
++    code: -202,
++    message: "net::ERR_CERT_AUTHORITY_INVALID",
++  });
++  expect(f.tabCommand.mock.calls.filter(([input]) => input.command.kind === "close")).toHaveLength(0);
++});

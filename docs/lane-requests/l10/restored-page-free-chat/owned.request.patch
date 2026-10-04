@@ -1,0 +1,173 @@
+--- /dev/null
++++ b/tests/host/lib/restored-page-free-chat.mjs
+@@ -0,0 +1,87 @@
++import assert from 'node:assert/strict';
++import { requireClosedContextRecoveredRun } from './closed-context-recovery-proof.mjs';
++import { finished } from './l10-trust-fixtures.mjs';
++
++export const RESTORED_CHAT_TITLE = 'Removed context recovery cerulean-619';
++export const RESTORED_CHAT_GOAL = 'Continue this same restored conversation without reopening or attaching any browser tab.';
++export const RESTORED_CHAT_ANSWER = 'Restored page-free continuation cerulean-619.';
++const phase = 'restored-page-free';
++const shell = (name, role) => ({ name, ...(role ? { role } : {}), match: 'exact', scope: 'shell', index: 0 });
++
++export function retainRestoredPageFreeProof(closed, recovered, pages, runs, calls, conversation) {
++  requireClosedContextRecoveredRun(closed, recovered, recovered.goal);
++  assert.equal(recovered.status, 'completed');
++  assert.ok(typeof recovered.config?.chatId === 'string' && recovered.config.chatId);
++  assert.equal(conversation.chatId, recovered.config.chatId);
++  assert.equal(conversation.title, RESTORED_CHAT_TITLE);
++  assert.ok(!pages.some(page => page.pageId === closed.source.pageId));
++  const matches = runs.filter(run => run.runId === recovered.runId);
++  assert.equal(matches.length, 1);
++  assert.deepEqual(matches[0], recovered);
++  return structuredClone({ closed, recovered, runs, calls, conversation });
++}
++export function requireRestoredPageFreeBeforeSend(proof, pages, runs, calls, recovered) {
++  assert.ok(!pages.some(page => page.pageId === proof.closed.source.pageId), 'Removed original context must remain closed after restart');
++  assert.deepEqual(runs, proof.runs, 'Restoring/reading the existing conversation cannot create or alter a run');
++  assert.deepEqual(calls, proof.calls, 'Restoring the existing conversation cannot dispatch a model request');
++  assert.deepEqual(recovered, proof.recovered, 'The original completed turn must remain the same retained conversation');
++}
++export function requireRestoredPageFreeFollowup(proof, run, decisions) {
++  assert.ok(typeof run.runId === 'string' && run.runId);
++  assert.ok(!proof.runs.some(previous => previous.runId === run.runId));
++  assert.equal(run.goal, RESTORED_CHAT_GOAL);
++  assert.equal(run.config?.chatId, proof.conversation.chatId, 'A fresh unrelated chat cannot stand in for the restored conversation');
++  for (const values of [run.pageIds, run.config?.mentions ?? [], run.config?.contextPageRefs ?? [], run.config?.isolatedPageSources ?? []])
++    assert.deepEqual(values, [], 'Removed browser context cannot return as pages, mentions, document refs or protected-copy scope');
++  const actual = decisions.filter(decision => decision.phase === phase);
++  assert.ok(actual.length > 0, 'The explicit next Send must reach the actual fixture model request');
++  for (const decision of actual) assert.deepEqual(decision.observations, [], 'Restored page-free continuation cannot observe an old or unrelated page');
++}
++
++/** Caller proof only: actual owned App restart, original native UI, runtime records and fixture requests. */
++export async function restoredPageFreeChat(t, closed, recovered, decisions, selectPhase) {
++  assert.ok(typeof recovered.config?.chatId === "string" && recovered.config.chatId);
++  const conversation = await t.until('the original recovered conversation title is durably available', async () => {
++    const actual = await t.rpc('conversations.get', { chatId: recovered.config?.chatId });
++    return actual?.title === RESTORED_CHAT_TITLE && actual;
++  }, 30000);
++  const proof = retainRestoredPageFreeProof(closed, recovered, await t.rpc('pages.list'), await t.rpc('runs.list'), t.model.calls, conversation);
++  await t.restart();
++  const restored = (await t.rpc('runs.get', { runId: recovered.runId })).run;
++  requireRestoredPageFreeBeforeSend(proof, await t.rpc('pages.list'), await t.rpc('runs.list'), t.model.calls, restored);
++  const caption = { name: RESTORED_CHAT_TITLE, role: "AXButton", match: "exact", scope: "shell" };
++  if (!(await t.ax.query(shell('New chat', 'AXButton'))).length) {
++    const sidebar = shell('Show sidebar', 'AXButton');
++    if ((await t.ax.query(sidebar)).length) await t.ax.press(sidebar);
++    if (!(await t.ax.query(shell('New chat', 'AXButton'))).length) {
++      const chats = shell('Chats', 'AXButton');
++      await t.ax.waitFor(chats); await t.ax.press(chats);
++    }
++  }
++  await t.ax.waitFor(caption);
++  assert.equal((await t.ax.query(caption)).length, 1, 'Only the exact original visible conversation may be reopened');
++  const summaries = await t.rpc('conversations.list', { limit: 100 });
++  const matches = summaries.filter(item => item.title === RESTORED_CHAT_TITLE);
++  assert.equal(matches.length, 1); assert.equal(matches[0].chatId, proof.conversation.chatId);
++  await t.ax.press(caption);
++  await t.ax.waitFor(shell('Reply to conversation'), 'enabled');
++  await t.ax.waitFor(shell('Keep this reply when the explicitly selected browser tab closes.'));
++  await t.ax.waitFor(shell('The selected tab is unavailable. Choose another browser context before sending.'), 'absent');
++  requireRestoredPageFreeBeforeSend(proof, await t.rpc('pages.list'), await t.rpc('runs.list'), t.model.calls,
++    (await t.rpc('runs.get', { runId: recovered.runId })).run);
++  selectPhase(phase);
++  await t.ax.type(RESTORED_CHAT_GOAL, shell('Reply to conversation'));
++  await t.ax.waitFor(shell('Send message', 'AXButton'), 'enabled');
++  requireRestoredPageFreeBeforeSend(proof, await t.rpc('pages.list'), await t.rpc('runs.list'), t.model.calls,
++    (await t.rpc('runs.get', { runId: recovered.runId })).run);
++  await t.ax.press(shell('Send message', 'AXButton'));
++  const requested = await t.until('the explicit next turn belongs to the restored original conversation', async () =>
++    (await t.rpc('runs.list')).find(run => !proof.runs.some(previous => previous.runId === run.runId) && run.goal === RESTORED_CHAT_GOAL), 30000);
++  const details = await finished(t, requested.runId);
++  requireRestoredPageFreeFollowup(proof, requested, decisions);
++  requireRestoredPageFreeFollowup(proof, details.run, decisions);
++  await t.ax.waitFor(shell(RESTORED_CHAT_ANSWER));
++  assert.ok(!(await t.rpc('pages.list')).some(page => page.pageId === proof.closed.source.pageId));
++  assert.equal(t.model.errors.length, 0);
++  return { ax: await t.ax.dump(), rpc: { proof, details, decisions, pages: await t.rpc('pages.list') } };
++}
+--- /dev/null
++++ b/tests/host/lib/restored-page-free-chat.test.mjs
+@@ -0,0 +1,80 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import { retainRestoredPageFreeProof, requireRestoredPageFreeBeforeSend, requireRestoredPageFreeFollowup, RESTORED_CHAT_TITLE, RESTORED_CHAT_GOAL } from './restored-page-free-chat.mjs';
++const closed = { source: { pageId: 'original-reader-page', sessionId: 'original-reader-session', documentEpoch: 8, ownedByRuntime: false }, runs: [{ runId: 'earlier-explicit-turn' }], modelCalls: [] };
++const recovered = { runId: 'original-recovered-turn', status: 'completed', goal: 'Kept original draft', pageIds: [], config: { chatId: 'original-chat', mentions: [], contextPageRefs: [], isolatedPageSources: [] } };
++const foreign = { pageId: 'unrelated-runtime-tab', ownedByRuntime: true };
++const calls = [{ requestId: 'original-fixture-request', messages: [{ content: 'Kept original draft' }] }];
++const conversation = { chatId: 'original-chat', title: RESTORED_CHAT_TITLE };
++const proof = () => retainRestoredPageFreeProof(closed, recovered, [foreign], [recovered], calls, conversation);
++const followup = () => ({ runId: 'explicit-next-send', goal: RESTORED_CHAT_GOAL, pageIds: [], config: { chatId: 'original-chat', mentions: [], contextPageRefs: [], isolatedPageSources: [] } });
++const decisions = [{ phase: 'restored-page-free', observations: [] }];
++test('retains the actual original completed conversation and removed source independently', () => {
++ const turn=structuredClone(recovered), inventory=[turn], requests=structuredClone(calls), metadata=structuredClone(conversation);
++ const retained=retainRestoredPageFreeProof(closed,turn,[foreign],inventory,requests,metadata);
++ turn.config.chatId='foreign-chat';requests.push({requestId:'later'});metadata.title='changed';
++ assert.equal(retained.recovered.config.chatId,'original-chat');assert.equal(retained.calls.length,1);assert.equal(retained.conversation.title,RESTORED_CHAT_TITLE);
++});
++test('restoring an existing page-free conversation makes no run or model request and keeps source removed', () => {
++ requireRestoredPageFreeBeforeSend(proof(),[foreign],structuredClone([recovered]),structuredClone(calls),structuredClone(recovered));
++ requireRestoredPageFreeFollowup(proof(),followup(),decisions);
++});
++test('old source resurrection, hidden new work and changed original turn falsify restoration', () => {
++ for(const [pages,runs,requests,turn] of [
++  [[foreign,closed.source],[recovered],calls,recovered],
++  [[foreign],[recovered,{...followup(),status:'running'}],calls,recovered],
++  [[foreign],[recovered],[...calls,{requestId:'early-dispatch'}],recovered],
++  [[foreign],[{...recovered,status:'running'}],calls,recovered],
++  [[foreign],[recovered],calls,{...recovered,config:{...recovered.config,chatId:'replacement'}}],
++ ]) assert.throws(()=>requireRestoredPageFreeBeforeSend(proof(),pages,runs,requests,turn));
++});
++test('a fresh unrelated chat cannot stand in for the restored original conversation', () => {
++ assert.throws(()=>requireRestoredPageFreeFollowup(proof(),{...followup(),config:{...followup().config,chatId:'new-unrelated-chat'}},decisions));
++ assert.throws(()=>retainRestoredPageFreeProof(closed,recovered,[foreign],[recovered],calls,{...conversation,chatId:'foreign-chat'}));
++});
++test('empty pageIds alone cannot hide reintroduced closed browser authority', () => {
++ for(const key of ['mentions','contextPageRefs','isolatedPageSources']) {
++  const value=followup();value.config[key]=[{...closed.source,access:'act'}];
++  assert.deepEqual(value.pageIds,[]);assert.throws(()=>requireRestoredPageFreeFollowup(proof(),value,decisions));
++ }
++ for(const pageId of [closed.source.pageId,foreign.pageId]) assert.throws(()=>requireRestoredPageFreeFollowup(proof(),{...followup(),pageIds:[pageId]},decisions));
++});
++test('missing actual next request or any old/foreign page observation refuses the proof', () => {
++ for(const rows of [[],[{phase:'different-request',observations:[]}],[{phase:'restored-page-free',observations:[{pageId:closed.source.pageId}]}],[{phase:'restored-page-free',observations:[{pageId:foreign.pageId}]}],[{phase:'restored-page-free'}]]) assert.throws(()=>requireRestoredPageFreeFollowup(proof(),followup(),rows));
++});
++test('old turn or rewritten draft is not the explicit next Send', () => {
++ for(const update of [{runId:recovered.runId},{goal:'rewritten goal'}]) assert.throws(()=>requireRestoredPageFreeFollowup(proof(),{...followup(),...update},decisions));
++});
++function caller(earlyDispatch = false) {
++ const inventory=structuredClone([recovered]), requests=structuredClone(calls), actions=[], seen=[];
++ let activeChat=null, selectedPhase;
++ const t={ model:{calls:requests,errors:[]},
++  restart:async()=>{actions.push('restart');if(earlyDispatch)requests.push({requestId:'hidden-restart-model-call'});},
++  until:async(_name,read)=>{const value=await read();assert.ok(value,'source control must expose original producer result');return value;},
++  rpc:async(name,args)=>{
++   if(name==='conversations.get')return structuredClone(conversation);
++   if(name==='conversations.list')return [structuredClone(conversation)];
++   if(name==='pages.list')return [foreign];
++   if(name==='runs.list')return structuredClone(inventory);
++   if(name==='runs.get')return {run:structuredClone(inventory.find(run=>run.runId===args.runId))};
++   assert.fail(`Unexpected operation ${name}`);
++  },
++  ax:{query:async()=>[{}],waitFor:async()=>{},type:async(text)=>{assert.equal(text,RESTORED_CHAT_GOAL);actions.push('type');},dump:async()=>[],
++   press:async selector=>{
++    if(selector.name===RESTORED_CHAT_TITLE){activeChat=conversation.chatId;actions.push('open-original');return;}
++    assert.equal(selector.name,'Send message');assert.equal(activeChat,conversation.chatId);assert.equal(selectedPhase,'restored-page-free');
++    actions.push('send');inventory.push({...followup(),status:"completed"});requests.push({requestId:'explicit-send'});seen.push(...structuredClone(decisions));
++   }},
++ };
++ return {t,actions,seen,selectPhase:value=>{selectedPhase=value;}};
++}
++test('actual caller seam restarts, opens original native caption, then explicitly sends in the same chat',async()=>{
++ const {restoredPageFreeChat}=await import('./restored-page-free-chat.mjs');
++ const f=caller();const receipt=await restoredPageFreeChat(f.t,closed,recovered,f.seen,f.selectPhase);
++ assert.deepEqual(f.actions,['restart','open-original','type','send']);assert.equal(receipt.rpc.details.run.config.chatId,'original-chat');
++});
++test('a hidden model request during restart rejects before any original conversation or Send action',async()=>{
++ const {restoredPageFreeChat}=await import('./restored-page-free-chat.mjs');
++ const f=caller(true);await assert.rejects(()=>restoredPageFreeChat(f.t,closed,recovered,f.seen,f.selectPhase),/cannot dispatch a model request/);
++ assert.deepEqual(f.actions,['restart']);
++});

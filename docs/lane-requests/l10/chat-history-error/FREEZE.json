@@ -1,0 +1,25 @@
+{
+  "schema": "l10-chat-history-error-request/v1",
+  "baselineCommit": "7060ab113b03aedd30d1fff9266b306c45d0a9e1",
+  "rows": [
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "beforeSha256": "735e1d9800dc5065efd0423b03adaa557ae4e6f03482471c9dc9ddf2b717a3bc",
+      "afterSha256": "ff3dad385359cdbc8e04b8daf9cb7d402bae335272511d4f55077f6b65e1bd4d",
+      "beforeBytes": 63450,
+      "afterBytes": 63598,
+      "scope": "request-only"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.history-error.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "a46518dcc084987c9fab597752a951e1f3f74912dfb629395852961ee047fc3d",
+      "scope": "new-owned"
+    }
+  ],
+  "sharedPatchSha256": "ad53e00a240cdb92a87be25b2e662e86e57084e2b92beaed1998b3ebe1e1f5dd",
+  "ownedPatchSha256": "9986ed55b6cbf0b0aa21aeef3a39e3729ca123f447aecbabd4fa52afeea7db2f",
+  "replay": "independent git-root forward/reverse/forward byte-exact",
+  "controls": "7 mounted-component cases PASS; initial original-source primary-copy control RED",
+  "nativeExecuted": false
+}
