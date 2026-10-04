@@ -1,0 +1,16 @@
+{
+  "sourceOnly": true,
+  "freezeSha256": "49f6d82887c49fba02326547743e9a96d4f07397cfd88c178233730722cf148b",
+  "checkedPins": [
+    "before",
+    "result",
+    "patch",
+    "actualStableSource",
+    "rawFailure",
+    "rawPrefix"
+  ],
+  "installedApis": 3,
+  "exactReplay": true,
+  "decision": "Reserve canonical0357; no current native mutation or execution admission",
+  "semanticReview": "Repeating BindState retains params.Clone; const reference permits repeated readonly identity checks with unchanged authority/weak/generation/page/document/session/url and deadline predicates."
+}
