@@ -9,6 +9,7 @@ OPERATIONS = {
     "commandPresentationSnapshot",
     "prepareCdpStopMeasurement", "prepareCdpTakeoverMeasurement", "completeCdpRetirementMeasurement",
     "sampleShellMemory", "sampleProcessMemory", "sampleStockProcessMemory", "prepareStockWarmWindow", "completeStockWarmWindow", "prepareAuxWarmWindow", "completeAuxWarmWindow", "prepareSubagentMemoryWorkload",
+    "preparePipWindowPresentation", "completePipWindowPresentation", "retirePipWindowPresentation",
     "prepareLittleWindowPresentation", "completeLittleWindowPresentation",
     "prepareOrganizationAutoArchiveWork", "prepareOrganizationLiveFolderWork", "completeOrganizationWork",
     "prepareGuestSplitDropPresentation", "prepareGuestDividerFramePresentation",

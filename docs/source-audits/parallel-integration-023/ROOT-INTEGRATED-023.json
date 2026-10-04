@@ -1,0 +1,73 @@
+{
+  "producer": "root-parallel-integration-023",
+  "native321Product": "55de268d3af439535a98f7e113b00cbbabf29e1d",
+  "actualFull17NativeBuild": "PASS with original graph/cache/watch, actual original17 outputs independently hashed",
+  "actualCompiledClosure": "PASS original577component libraries/8207pak files/generated/source gates independently hashed",
+  "actualMatchingRuntimeHelper": "PASS actual92 runtime identity+newexplicitSDK27helper/compilerretainedbytes and original10rawchildren; corrected pair829 preserves original8bb",
+  "required453Enumeration": "admitted; actual binary list outcomes pending",
+  "nativeAssertionsAppVisualQualification": "pending",
+  "pip0354": "reviewed combined21native request only; original runtime deadlines/hardware fences retained; caller source integrated and focused controls/lint pass; no nativecompile/hardware qualification",
+  "credential0353": "backend and lifetime successors independently source-reviewed; real authenticatedgrant/externalledger/helperjoins in implementation, no nativecompile or Keychain execution",
+  "capture0352": "real driverless native Capture path being implemented in independent lane; nativeallframe masking/paint/WeakDocument producer pending",
+  "artifacts": [
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-native321-natural-terminal-review-001.json",
+      "sha256": "5e4e4b3a16ec303c3009c2458b6ba5ae791aa27ffd04b53d1ff65a42d263b80c"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-native321-downstream-template-source-review-001.json",
+      "sha256": "a3ff927c6d851c0dc39cf036a4602f3b00c61ffd256b5367dc4d2cf89640e628"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-native321-compiled-capture-admission-001.json",
+      "sha256": "bacd55cfe63a3c00b0c9feb485fd3730671a6f4d22bdf03db66c7664beea154b"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-native321-compiled-closure-review-001.json",
+      "sha256": "82309199575901de6e6cee4395c2d242e7878ad970dd7b52db805ddc86e9ebae"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-native321-runtime-helper-admission-001.json",
+      "sha256": "ece2d11ab05bec91438a1da1b3cfd475145d4c2db4bff89212ec98b551de8f6b"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-native321-helper-independent-audit-001.json",
+      "sha256": "c193e6fd4065c00dc57385287ea88b6b96347c986ee266b6796e636bda390938"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-native321-helper-admission-001.json",
+      "sha256": "ae56bf1f863ce6897c15b7c06768583271ca52f246f2530046573a9d5665f4a3"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-native321-helper-retained-byte-review-001.json",
+      "sha256": "adde514fc08accb0191cd4010cb63c8e0488219e37fdbfc845e5d3f92efd56ee"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-native321-actual-pair-review-001.json",
+      "sha256": "036fcb0bf3f8265ab4c6816469e3a1f2120cc0d1bcffae945c45c65871c49df0"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-native321-enumeration-source-review-001.json",
+      "sha256": "676dfbfa242fdf7ae7f7b02cb12a327e70c164cad1dcdeca27ac00aac6c22857"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-native321-enumeration-admission-001.json",
+      "sha256": "39778edfe0eb5c0cf251357d70e78a837b39ab453f2ddf9c5f63f5e400982c87"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-fixed-credential-backend-source-review-001.json",
+      "sha256": "048292042a3dafa57dd1e5f12cc2cddfe29ef64795be9feefd6b992cbce904a6"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-pip-caller-integrated-controls-002.log",
+      "sha256": "6879ccc1a6d519b0d226dfe512d89a4006c15ccd0731186fc8a87415b3f29e3e"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-023/aux-root-pip-owned-integrated-controls-002.log",
+      "sha256": "150decfa07bd618a7ab775cfec7cff6cc78d9ac3873f5e8e27b979e5f00c5fd8"
+    }
+  ],
+  "nativeOperationConcurrentOwners": 1,
+  "allRoadmapGatesPreserved": true,
+  "qualification": false
+}

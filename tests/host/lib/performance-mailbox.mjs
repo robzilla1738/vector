@@ -7,8 +7,8 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname } from 'node:path';
-const guestOperations = new Set(['prepareLittleWindowPresentation', 'completeLittleWindowPresentation', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation']);
-const operations = new Set(['commandPresentationSnapshot', 'prepareCdpStopMeasurement', 'prepareCdpTakeoverMeasurement', 'completeCdpRetirementMeasurement', 'prepareLittleWindowPresentation', 'completeLittleWindowPresentation', 'prepareOrganizationAutoArchiveWork', 'prepareOrganizationLiveFolderWork', 'completeOrganizationWork', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation', 'sampleShellMemory', 'sampleProcessMemory', 'sampleStockProcessMemory', 'prepareStockWarmWindow', 'completeStockWarmWindow', 'prepareAuxWarmWindow', 'completeAuxWarmWindow', 'prepareSubagentMemoryWorkload']);
+const guestOperations = new Set(['preparePipWindowPresentation', 'completePipWindowPresentation', 'retirePipWindowPresentation', 'prepareLittleWindowPresentation', 'completeLittleWindowPresentation', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation']);
+const operations = new Set(['preparePipWindowPresentation', 'completePipWindowPresentation', 'retirePipWindowPresentation', 'commandPresentationSnapshot', 'prepareCdpStopMeasurement', 'prepareCdpTakeoverMeasurement', 'completeCdpRetirementMeasurement', 'prepareLittleWindowPresentation', 'completeLittleWindowPresentation', 'prepareOrganizationAutoArchiveWork', 'prepareOrganizationLiveFolderWork', 'completeOrganizationWork', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation', 'sampleShellMemory', 'sampleProcessMemory', 'sampleStockProcessMemory', 'prepareStockWarmWindow', 'completeStockWarmWindow', 'prepareAuxWarmWindow', 'completeAuxWarmWindow', 'prepareSubagentMemoryWorkload']);
 const prefix = 'AUX_NATIVE_FIXTURE_REPLY_V1 ';
 const refusalPrefix = 'AUX_NATIVE_FIXTURE_REFUSAL_V1 ';
 function ownedFixture(userDataDir) {
@@ -138,4 +138,10 @@ export function createPerformanceMailbox({ userDataDir, pid, generation }) {
     },
     dispose(reason = new Error('Private fixture exited')) { if (disposed) return; disposed = true; fail(reason); partial = ''; closeSync(rootFd); },
   };
+}
+
+// Read-only identity from the original fixed writer producer; no path arguments.
+export function readNativePerformanceMailboxWriterIdentity() {
+  if (arguments.length) throw new Error('Writer identity accepts no selectors');
+  return structuredClone(writerMetadata());
 }
