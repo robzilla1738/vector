@@ -13,8 +13,13 @@ export function useConversationOwner(chatId: string | null | undefined, connecte
     owner.current = original;
     return () => { original.active = false; };
   }, [identity]);
-  return useCallback(() => !!owner.current?.active && owner.current.identity === identity && bridge.windowId === windowId && bridge.privateMode === privateMode &&
-    bridge.windowKind === windowKind && useStore.getState().connected === connected, [identity, windowId, privateMode, windowKind, connected]);
+  return useCallback(() => {
+    const original = owner.current;
+    if (!!original?.active && original.identity === identity && bridge.windowId === windowId && bridge.privateMode === privateMode &&
+        bridge.windowKind === windowKind && useStore.getState().connected === connected) return true;
+    if (original?.identity === identity) original.active = false;
+    return false;
+  }, [identity, windowId, privateMode, windowKind, connected]);
 }
 export function ConversationAction({ command, current, invoke, disabled, children }: {
   command: "load-conversation-history" | "reload-conversation-context";

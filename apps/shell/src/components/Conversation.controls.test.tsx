@@ -41,8 +41,9 @@ afterEach(async () => {
   else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
 
-function Details({ id, text = "Original diagnostic" }: { id: string; text?: string }) {
+function Details({ id, text = "Original diagnostic", capture }: { id: string; text?: string; capture?(current: () => boolean): void }) {
   const current = useConversationOwner(id, true);
+  capture?.(current);
   return <ConversationDetails current={current} text={text} />;
 }
 it("dispatches the original native disclosure once and supports its focused remapped action", async () => {
@@ -157,4 +158,58 @@ it("registers only the closed original normal-window scoped command policies", (
     const command = COMMANDS.find(command => command.id === id)!;
     expect(command).toMatchObject({ handler: "shell", dispatch: "scoped", windows: ["normal"], palette: false, intercept: true, bindings: [] });
   }
+});
+
+it("permanently retires the original focused disclosure after an observed window mismatch without a render", async () => {
+  await act(async () => root.render(<Details id="a" />));
+  const summary = host.querySelector("summary")!; summary.focus();
+  const original = bridge.windowId;
+  try {
+    bridge.windowId = "foreign";
+    await expect(executeCommand("toggle-conversation-error-details")).rejects.toThrow("current conversation");
+    bridge.windowId = original;
+    await expect(executeCommand("toggle-conversation-error-details")).rejects.toThrow("current conversation");
+    expect(host.querySelector("details")!.open).toBe(false);
+    expect(host.querySelector("p")?.textContent).toBe("Original diagnostic");
+  } finally { bridge.windowId = original; }
+});
+
+for (const heldMethod of ["runs.list", "conversations.images.get"] as const) {
+  it(`does not deliver a held ${heldMethod} failure after the original owner observed a foreign window`, async () => {
+    let reject!: (reason: Error) => void;
+    const fallback = vi.mocked(bridge.invoke).getMockImplementation()!;
+    vi.mocked(bridge.invoke).mockImplementation((method, params) => {
+      if (method === heldMethod) return new Promise((_done, fail) => { reject = fail; });
+      if (method === (heldMethod === "runs.list" ? "conversations.images.get" : "runs.list"))
+        return Promise.reject(new Error("Other original diagnostic"));
+      return fallback(method, params);
+    });
+    useStore.setState({ conversationDrafts: { "chat:a": "Original retained question" } });
+    await act(async () => root.render(<Conversation chatId="a" />));
+    const summary = host.querySelector("summary")!; expect(summary).toBeTruthy(); summary.focus();
+    const original = bridge.windowId;
+    try {
+      bridge.windowId = "foreign";
+      await expect(executeCommand("toggle-conversation-error-details")).rejects.toThrow("current conversation");
+      bridge.windowId = original;
+      await act(async () => reject(new Error("Retired original async diagnostic")));
+      expect(host.textContent).not.toContain("Retired original async diagnostic");
+      expect(host.textContent).toContain("Other original diagnostic");
+      expect(host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("Original retained question");
+      expect(useStore.getState().pages).toEqual([]);
+      expect(useStore.getState().toasts).toEqual([]);
+    } finally { bridge.windowId = original; }
+  });
+}
+
+it("a stale captured callback refuses without retiring the newer committed conversation owner", async () => {
+  let captured!: () => boolean;
+  await act(async () => root.render(<Details id="a" capture={current => { captured = current; }} />));
+  const original = captured;
+  await act(async () => root.render(<Details id="b" capture={current => { captured = current; }} />));
+  expect(original()).toBe(false);
+  expect(captured()).toBe(true);
+  const summary = host.querySelector("summary")!; summary.focus();
+  await act(async () => { await executeCommand("toggle-conversation-error-details"); });
+  expect(host.querySelector("details")!.open).toBe(true);
 });

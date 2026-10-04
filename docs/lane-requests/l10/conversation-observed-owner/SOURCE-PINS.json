@@ -1,0 +1,61 @@
+{
+  "base": "e5ae136524ce3844f4eae22d279729d03252154f",
+  "sourceOnly": true,
+  "owned": [
+    {
+      "path": "apps/shell/src/components/ConversationControls.tsx",
+      "beforeSha256": "95b78d31960f6eff38b823c6b5a24f244bb3d38d2ac4470d1438323be5547466",
+      "afterSha256": "35e869edc9f225e0dc5c3b8ee8c256b7d9b82b0b731b3fc290022dcd45ce7ebc"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.controls.test.tsx",
+      "beforeSha256": "93f5fd931b12d4481e3db63e1c30df204cbf462a78389b42ffb6effbaed472e2",
+      "afterSha256": "45017be93820d69acde39dd9cb628d946780fb29426807e7c57ca70b578f0f87"
+    }
+  ],
+  "patchSha256": "8c0c28409abdc67fdb01c876ad7f49f1b13cbcaa5ce12b5fc9b7ea00ede44129",
+  "replay": "exact forward/reverse/forward PASS",
+  "controls": {
+    "original": "8 PASS/3 new FAIL against original source",
+    "result": "12 command controls +3 unchanged history controls PASS",
+    "additionalPositive": "Stale captured A callback refuses without retiring committed B; actual registered B Details remains usable."
+  },
+  "types": "shell tsc --noEmit PASS on final source",
+  "lint": "0 warnings/errors PASS",
+  "logs": [
+    {
+      "path": "docs/lane-requests/l10/conversation-observed-owner/logs/aux-l10-conversation-owner-red-001.log",
+      "sha256": "5038b58722645fe315a824f5229091ddf6e80234e637169c3d1f54b5ec6d6b0e"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-observed-owner/logs/aux-l10-conversation-owner-red-002.log",
+      "sha256": "19962c1cdce6c7545b0db6e1f3b13bceb558f0c9d20073fccf38074b33accdba"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-observed-owner/logs/aux-l10-conversation-owner-controls-001.log",
+      "sha256": "5e4349961594a72c29ed1e1ddb9345a0b730e67f3cf050e0773934edcd21547d"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-observed-owner/logs/aux-l10-conversation-owner-controls-002.log",
+      "sha256": "118bd9607c634d9f958edbbd17a59be3ce63a3a83830775bdab823614df41248"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-observed-owner/logs/aux-l10-conversation-owner-types-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-observed-owner/logs/aux-l10-conversation-owner-types-002.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-observed-owner/logs/aux-l10-conversation-owner-lint-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-observed-owner/logs/aux-l10-conversation-owner-lint-002.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "dependencies": "Only isolated checkout symlinks to existing root node_modules read-only; no install or nested joins mutated. First missing contracts zod view failure retained; owned contracts/node_modules symlink supplied.",
+  "nativeExecuted": false
+}

@@ -1,0 +1,7 @@
+# Permanent observed conversation owner retirement
+
+The original useConversationOwner predicate now permanently retires its matching incarnation after an observed bridge-window, Private, kind or connected mismatch. The original predicate order remains intact. A stale callback whose captured identity differs from owner.current refuses without retiring the newer committed owner. This does not detect or claim unobserved ABA, add page epochs, change ACKs, consent, native authority or command metadata.
+
+Three meaningful mounted controls are RED against original source with all original eight controls passing: focused real Details dispatch revives after observed foreign-window refusal and return; held real runs.list /conversations.images.get errors then publish into the revived owner. Result twelve command cases plus three existing history/error controls pass. The fourth added positive retains an old callback across committed A→B and proves its refusal does not retire B's actual registered disclosure. Original assertion bodies remain unchanged; test Details fixture only exposes its actual captured callback optionally for the positive.
+
+Shell types and scoped lint pass. Exact two-leaf forward/reverse/forward replay and source pins retained. Pure mocked transport/mounted source controls only; no native/App/Stable effects or acceptance. Website-only conversation-page filtering already rejects chrome://newtab and remains unchanged. Other direct Conversation actions are separate pending remappability scope.
