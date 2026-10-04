@@ -1,0 +1,43 @@
+{
+  "sourceOnly": true,
+  "reviewPacketSha256": "e3a5dc6c6655ef3f485e1c721cfc8292219b8aa358f9273ce9b515be62151442",
+  "literalOriginalGNFull17DeltaVerified": true,
+  "controllers": [
+    {
+      "kind": "gn",
+      "controller": {
+        "path": "/private/tmp/aux-builder-native321-preparation-001/gn-native321-55de268d-REQUEST-ONLY-001.py",
+        "sha256": "ebdf1e985018ddb35c5b93590092235896f223e65f625aa60e931f34918840e0"
+      },
+      "base": {
+        "path": "/private/tmp/aux-builder-native316-runtime-teardown-source-001/native319-preparation-001/gn-native320-9c8b162c-REQUEST-ONLY-002.py",
+        "sha256": "f9fd591c975799b38b5bbcc58b2ed6387a1dd379ed55c6be575e278f73de49ae"
+      },
+      "delta": {
+        "path": "/private/tmp/aux-builder-native321-preparation-001/gn-native321-55de268d-REQUEST-ONLY-001.py.diff",
+        "sha256": "1cdacb21781f4f312ad29fef21ea8c0ab3db772da30cfd2169ac32e4307a0a70"
+      }
+    },
+    {
+      "kind": "build",
+      "controller": {
+        "path": "/private/tmp/aux-builder-native321-preparation-001/build-native321-55de268d-REQUEST-ONLY-001.py",
+        "sha256": "0f6d1bc7e1aa03d7355868f01d6d7e87280b187980dc7d5d5d2066efaf59faff"
+      },
+      "base": {
+        "path": "/private/tmp/aux-builder-native316-runtime-teardown-source-001/native319-preparation-001/build-native320-9c8b162c-REQUEST-ONLY-002.py",
+        "sha256": "42d4da17fb15ab36ced3ad8d2ffd1ff7b2df35ff2026eb7e44e70f5e3e27b110"
+      },
+      "delta": {
+        "path": "/private/tmp/aux-builder-native321-preparation-001/build-native321-55de268d-REQUEST-ONLY-001.py.diff",
+        "sha256": "8ec51d3b6d80cc75beafbb73574007c087c9a227aa6e26d1549b985e0da1057d"
+      }
+    }
+  ],
+  "GNInputSha256": "49dbe9d30cb106277e6ca0e6f061fac564bbedea2dbd76b808f0b5a7df44f7a7",
+  "actualInheritedInputDerivedRuntimeHelperPinsVerified": true,
+  "originalAuthenticVersionActionAndEightFlagsPreserved": true,
+  "full17Nice10J8K0WatcherAndCleanupPreserved": true,
+  "GNBuildExecutionAdmitted": false,
+  "requiresActualStageAndGNClosure": true
+}

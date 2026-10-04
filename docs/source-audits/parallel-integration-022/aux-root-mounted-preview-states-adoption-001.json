@@ -1,0 +1,69 @@
+{
+  "sourceOnly": true,
+  "patchSha256": "563145feb6f75b37cf3b68a09be1c58b49911fb3ab2a89d7691602c2d34c1d4b",
+  "leaves": [
+    {
+      "path": "tests/host/lib/mounted-image-appearance.mjs",
+      "beforeSha256": "7dcfc38468bc8155633b60b44f5548c71820ec6c8555c839fdf0a8f4b785c88d",
+      "afterSha256": "ebd84e2b357ccad14fcce49074709c4ba8a37133ba255a584a9265708af5d366"
+    },
+    {
+      "path": "tests/host/mounted-image-appearance.test.mjs",
+      "beforeSha256": "0f940157978ba805148c651be161272974a3273335e74f516cee7e9e650567a3",
+      "afterSha256": "5e4a5e8df6b52f5e201201b48c4addbb0ada303a7015d115829a8609c12469d6"
+    }
+  ],
+  "actualSourceReferences": [
+    {
+      "path": "/tmp/aux-browser-runtime-following-batch/apps/shell/src/components/ImageViewer.tsx",
+      "sha256": "c4216b8aa4b244dcf759356582b2319c8473670e346a7f845f26191a939e7b38"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-following-batch/apps/shell/src/components/ImageSnapshot.tsx",
+      "sha256": "69cf22a887de0409441acf989ae995cb150d980aab33bb92093ec067bb42dc3c"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-following-batch/apps/shell/src/components/ConversationImageControl.tsx",
+      "sha256": "63b6677ecad798b39306c4a1f5e1254d1f324a8c5679164229594a3190850789"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-following-batch/apps/shell/src/components/ImageViewer.css",
+      "sha256": "ceb0ef0a2297f26b6c59e786c042068e81c8e0eb03c8ac58ecba4e668bf595f8"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-following-batch/apps/shell/src/components/ViewerFrame.tsx",
+      "sha256": "3d85bd6d7ff9844a297707bf03e2350d60c527105d2e430bbdedc7aec036212e"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-following-batch/tests/host/native-window.swift",
+      "sha256": "73338487fccbc093dd44b002e7981406e86d11960393eb509a90a6e322a04da9"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/blink/renderer/modules/accessibility/ax_object.cc",
+      "sha256": "8edf91070fa5cfa056496e30ad7b5e0a6b3091395a284607fbf5ad8976aff188"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/ui/accessibility/platform/ax_platform_node_cocoa.mm",
+      "sha256": "e70c52999ebbbfb6eb8150c52ae2d9741841b34a202fb86eb882cd9d3c507ce1"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/ui/accessibility/accessibility_features.cc",
+      "sha256": "69f5e1c27265349928abd21a097fb1d7b22c44bab8b4cd57ec4c451f041e6a9e"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/layout_constants.cc",
+      "sha256": "354a0a83efda3d2782c00285b900940ddc0e185393efd90807e8a0d2b2f1b6f8"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/liquid-glass.css",
+      "sha256": "cfcc8d11ae8550fb1e85e25ddc7a088fc5b2f9518f0ef4740e878c79ca7d72b7"
+    },
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/06-chrome-tokens.css",
+      "sha256": "63f1e5ab377f6ea234144f8234e65eda5114055f225e4cab9cea49b03d4c36bf"
+    }
+  ],
+  "exactForwardReverseForward": true,
+  "nativeExecuted": false,
+  "privateImageIdentity": "unobserved"
+}

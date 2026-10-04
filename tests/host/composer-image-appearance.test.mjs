@@ -1,7 +1,8 @@
+import { basename, dirname, join } from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, lstat } from 'node:fs/promises';
-import { captureComposerImageRejection, createInvalidImageFixture } from './lib/composer-image-appearance.mjs';
+import { readFile, writeFile, lstat, unlink } from 'node:fs/promises';
+import { captureComposerImageRejection, createInvalidImageFixture, createValidImageFixture, createLongNamedValidImageFixture, longImageFilename } from './lib/composer-image-appearance.mjs';
 
 function context() {
   const calls = [], paths = [], captures = [];
@@ -82,3 +83,5 @@ test('same-PID replacement native window and changed state refuse before appeara
     await assert.rejects(readFile(paths[0]), { code: 'ENOENT' });
   }
 });
+
+test('closed long filename retains original valid PNG bytes and exact inode cleanup after unknown entry refusal',async()=>{const original=await createValidImageFixture(),long=await createLongNamedValidImageFixture();let foreign;try{assert.equal(basename(long.path),longImageFilename);assert.ok(longImageFilename.length>100&&longImageFilename.length<255);assert.equal(longImageFilename.includes('/'),false);const before=await lstat(long.path);assert.equal(before.mode&0o777,0o600);assert.equal(before.nlink,1);assert.ok((await readFile(long.path)).equals(await readFile(original.path)));await long.validate();foreign=join(dirname(long.path),'unknown-owned-test-entry');await writeFile(foreign,'original source control',{flag:'wx',mode:0o600});await assert.rejects(long.dispose(),error=>error.ownedImageFixture===long);assert.equal((await lstat(long.path)).ino,before.ino);assert.equal((await lstat(long.path)).dev,before.dev);assert.equal(await readFile(foreign,'utf8'),'original source control');await unlink(foreign);foreign=undefined;await long.validate();await long.dispose();await long.dispose();await assert.rejects(readFile(long.path),{code:'ENOENT'})}finally{if(foreign)await unlink(foreign);await original.dispose();await long.dispose()}});

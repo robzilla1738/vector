@@ -1,0 +1,183 @@
+{
+  "sourceOnly": true,
+  "actualProducerPinsVerified": [
+    {
+      "path": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/tests/host/lib/app.mjs",
+      "realpath": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/tests/host/lib/app.mjs",
+      "sha256": "49242d520f76ac1ab80c352f69bfa577ccb51567894ef56fba0ec0f82aa90aaf"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/tests/host/lib/fixture.mjs",
+      "realpath": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/tests/host/lib/fixture.mjs",
+      "sha256": "58346db6a2bc984c2a30ae4630d68f0763acc54c7182bf3aff669e77ac6999b0"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/tests/host/lib/home-capture.mjs",
+      "realpath": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/tests/host/lib/home-capture.mjs",
+      "sha256": "6fd157b411ea8c9ae5a974f07fe1be93b8d6caea0c90289267422a7a584a6a51"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/tests/host/lib/evidence.mjs",
+      "realpath": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/tests/host/lib/evidence.mjs",
+      "sha256": "8193ba7db5aaf613d063dc03c541cada756779011749f7e830510e43bddd47c1"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/tests/host/lib/utility-appearance-owner.mjs",
+      "realpath": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/tests/host/lib/utility-appearance-owner.mjs",
+      "sha256": "94193983b5c64eb5790b4033e05b4e631350e9d96d98b7fe16a380b07839a229"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/apps/runtime/src/services/settings.ts",
+      "realpath": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/apps/runtime/src/services/settings.ts",
+      "sha256": "929d7771958ac98126dd52d320db60cd7cae20cd6ba32211d35a03ee0d8e02b6"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/apps/runtime/src/agent/direct-providers.ts",
+      "realpath": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/apps/runtime/src/agent/direct-providers.ts",
+      "sha256": "1d7eb938ceb16f6fb822bae894bc742fa8aa2c9f31f8cc812a632011a33f8085"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/apps/runtime/src/agent/gateway-client.ts",
+      "realpath": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/apps/runtime/src/agent/gateway-client.ts",
+      "sha256": "1bc468086a551b46c0aad43cb61ee1e9ce49882083efc7e972dd87c95c4fcf26"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/apps/runtime/dist/agent/direct-providers.js",
+      "realpath": "/private/tmp/aux-browser-runtime-following-batch/apps/runtime/dist/agent/direct-providers.js",
+      "sha256": "0a20dab4fe9dca848d143d8cf889609426bb57a9496073608caa7d26d4532883"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/apps/runtime/dist/agent/gateway-client.js",
+      "realpath": "/private/tmp/aux-browser-runtime-following-batch/apps/runtime/dist/agent/gateway-client.js",
+      "sha256": "aae20e31fb8496847502b0db047f413ce39bb64a88d8c592541db986d00bb2fe"
+    }
+  ],
+  "packets": [
+    {
+      "packet": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/docs/lane-requests/l10/model-probe-appearance",
+      "patchSha256": "9544f9aa76405aae7e7103277e7931ee18851437f645879d27ef7a9663e6db64",
+      "leaves": [
+        {
+          "path": "tests/host/lib/model-probe-fixture.mjs",
+          "beforeSha256": null,
+          "afterSha256": "9b3b0fd6b24402d0aa5bda70efdb4e25cb6a4d60eebbd684f53ba9b20438f58f",
+          "bytes": 3538
+        },
+        {
+          "path": "tests/host/lib/model-probe-fixture.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "6f036c4928cd19d03048b10e6fa8576276ecb33499025356787c392db5cbe83c",
+          "bytes": 3972
+        },
+        {
+          "path": "tests/host/lib/model-probe-appearance.mjs",
+          "beforeSha256": null,
+          "afterSha256": "03b1f9568a70289adef9313cedc53b3d558f50394ab642950d14daab898f5a78",
+          "bytes": 8320
+        },
+        {
+          "path": "tests/host/lib/model-probe-appearance.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "5e42f95243a103910a7277b42258214750f961c2b2a252d6c7f68c03529f36b9",
+          "bytes": 6024
+        }
+      ],
+      "exactForwardReverseForward": true
+    },
+    {
+      "packet": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/docs/lane-requests/l10/model-appearance-wrappers",
+      "patchSha256": "5d40cc6987ffb153b37ff16e1918ebcd6b0dbc159fb050f370b1e5b9185cb428",
+      "leaves": [
+        {
+          "path": "tests/host/appearance-journeys/model-settings-appearance.mjs",
+          "beforeSha256": null,
+          "afterSha256": "0cff497a9deb3e6683085b4d3fdf25be2dde86fbce562a2486e1db7730f19b73",
+          "bytes": 859
+        },
+        {
+          "path": "tests/host/appearance-journeys/model-probe-success-appearance.mjs",
+          "beforeSha256": null,
+          "afterSha256": "ba1c57adb0a71234b44676be1111ba2860ae57cd7a7313b6f8d2ff480dfc09ae",
+          "bytes": 672
+        },
+        {
+          "path": "tests/host/appearance-journeys/model-probe-failure-appearance.mjs",
+          "beforeSha256": null,
+          "afterSha256": "cec852f22299fe26e7a64a1595a2e0d9fa9209f29e1bf9eeaf7a91308cac4b6e",
+          "bytes": 669
+        },
+        {
+          "path": "tests/host/appearance-journeys/model-appearance-wrappers.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "c11aef5f73f38359f05f61699cfab034d1050603c4b9b6087f889189d8d25c76",
+          "bytes": 2427
+        }
+      ],
+      "exactForwardReverseForward": true
+    },
+    {
+      "packet": "/private/tmp/aux-browser-runtime-l10-model-appearance-evidence/docs/lane-requests/l10/fixture-owned-route",
+      "patchSha256": "9258a9261ac261d6332897acaab4821e52e0042bfdcf702e1966214a84cebb61",
+      "leaves": [
+        {
+          "path": "tests/host/lib/fixture.mjs",
+          "beforeSha256": "58346db6a2bc984c2a30ae4630d68f0763acc54c7182bf3aff669e77ac6999b0",
+          "afterSha256": "c2d0fe358dab22e95b2fc06e5ec05afc8dcc67837c112d4fa17c39720b693b48",
+          "bytes": 9169
+        },
+        {
+          "path": "tests/host/lib/fixture-owned-route.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "4a08f98679772a6104be7f79bbd815c0a234c424f79f688eaa11303e1e89a700",
+          "bytes": 1463
+        }
+      ],
+      "exactForwardReverseForward": true
+    },
+    {
+      "packet": "/private/tmp/aux-browser-runtime-l10-model-appearance-evidence/docs/lane-requests/l10/model-appearance-evidence-successor",
+      "patchSha256": "2d0c34a5a62b11f2c599a371878c5780912c06c2c72a2a4d3b06b402b09c7ae9",
+      "leaves": [
+        {
+          "path": "tests/host/lib/model-settings-appearance.mjs",
+          "beforeSha256": "51567ef6bd3bca662e4a8bc8e28c09d2198f228c3d12d4a0d2b12f14409ff878",
+          "afterSha256": "a94733488a8957ea7e8abfc16680fbdbac6ceff4ea49c1f5685976f0f80fd19d",
+          "bytes": 6732
+        },
+        {
+          "path": "tests/host/lib/model-settings-appearance.test.mjs",
+          "beforeSha256": "60b4d404767d495c34525b7fa0f30e9f13592aa1d03cc2842966cdb9daacc5f5",
+          "afterSha256": "372ce27da9437fe12345332d17312d509bbf549dfd230863c92a6a016c3604cf",
+          "bytes": 7938
+        },
+        {
+          "path": "tests/host/lib/model-probe-appearance.mjs",
+          "beforeSha256": "03b1f9568a70289adef9313cedc53b3d558f50394ab642950d14daab898f5a78",
+          "afterSha256": "6e7a0c10667f8f457ea36856a3755929b159ba7f2653ac38e1b74c7935af7a06",
+          "bytes": 8427
+        },
+        {
+          "path": "tests/host/lib/model-probe-appearance.test.mjs",
+          "beforeSha256": "5e42f95243a103910a7277b42258214750f961c2b2a252d6c7f68c03529f36b9",
+          "afterSha256": "565e64202d4f7d5b96d3f854df0824a220bce146b9e312fc84e98a2385453b8a",
+          "bytes": 6916
+        },
+        {
+          "path": "tests/host/lib/model-probe-fixture.mjs",
+          "beforeSha256": "9b3b0fd6b24402d0aa5bda70efdb4e25cb6a4d60eebbd684f53ba9b20438f58f",
+          "afterSha256": "ddc18b7b8326c155d81be98fb26e5bd2f6ed7ad522be52d4ad57e6ed42e89dca",
+          "bytes": 5214
+        },
+        {
+          "path": "tests/host/lib/model-probe-fixture.test.mjs",
+          "beforeSha256": "6f036c4928cd19d03048b10e6fa8576276ecb33499025356787c392db5cbe83c",
+          "afterSha256": "32b0ac97053332cf8f08193bac7ea9ea14d3318882108e43e7f3508a57810f96",
+          "bytes": 6397
+        }
+      ],
+      "exactForwardReverseForward": true
+    }
+  ],
+  "nativeExecuted": false,
+  "qualification": false
+}

@@ -1,0 +1,44 @@
+{
+  "producer": "root-long-image-wrapper-adoption",
+  "freeze": {
+    "leaves": [
+      {
+        "path": "tests/host/run-journey.mjs",
+        "beforeSha256": "fcceaa80fbc144db32ca9d8f1ffc98c274b90ce501b6aed543e5a9606907e576",
+        "afterSha256": "d3f4f6904e3c31f1143d8517c4c635f77abb250a467493761bca88bb843a6fb8"
+      },
+      {
+        "path": "tests/host/appearance-journeys/mounted-long-image-appearance.mjs",
+        "beforeSha256": null,
+        "afterSha256": "e18a11f10b01739060db7a374ddc5825785f50ee2c5e08fd233c08aa68b8589c"
+      },
+      {
+        "path": "tests/host/mounted-long-image-wrapper.test.mjs",
+        "beforeSha256": null,
+        "afterSha256": "d473292c36711c9c5187c26ebe106448c9e25c098c9ad7e3ea80ab1e596fd4dc"
+      }
+    ],
+    "patchSha256": "6519efa1b9d8d1d73fc2b6571916df8c9592e9dc156bfe782b1943c93a85ef94",
+    "excludedPrerequisites": [
+      {
+        "path": "/tmp/aux-browser-runtime-design-mounted-long-image/tests/host/lib/mounted-image-appearance.mjs",
+        "sha256": "500e00ca2723ad1772e8794e030c81dbb9832514267bfcd6b85d0460164df6e6"
+      },
+      {
+        "path": "/tmp/aux-browser-runtime-design-long-image-fixture/tests/host/lib/composer-image-appearance.mjs",
+        "sha256": "fdabc52fe69929cf0206db10b103025d8618f2859f0f6371aa679d7510185331"
+      }
+    ],
+    "sourceControls": 3,
+    "syntaxPass": true,
+    "scopedLintWarnings": 0,
+    "exactForwardReverseForward": true,
+    "nativeExecuted": false,
+    "functionalRegistryChanged": false,
+    "qualification": "none"
+  },
+  "actualExcludedPrerequisitesVerified": true,
+  "exactForwardReverseForward": true,
+  "nativeExecuted": false,
+  "qualification": "none"
+}

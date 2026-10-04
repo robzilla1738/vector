@@ -1,20 +1,22 @@
 import assert from 'node:assert/strict';
 import {captureHomeState} from './home-capture.mjs';
-import {createValidImageFixture} from './composer-image-appearance.mjs';
+import {createValidImageFixture,createLongNamedValidImageFixture,longImageFilename} from './composer-image-appearance.mjs';
 import {readUtilityAppearanceJson} from './utility-appearance-owner.mjs';
 const shell=(name,role)=>({name,...(role?{role}:{}),match:'exact',scope:'shell'});
 const composer=shell('Reply to conversation');
-const filename='valid-image.png';
-const remove=shell(`Remove ${filename}`,'AXButton');
-const include=shell(`Use ${filename} in next reply`,'AXCheckBox');
-const preview={...shell('^valid-image\\.png\\s*(?:·\\s*)?16\\s*×\\s*16$','AXButton'),match:'regex'};
 const close=shell('Close image preview','AXButton');
 const fit=shell('Fit','AXCheckBox'),actualSize=shell('100%','AXCheckBox');
 const details=shell('Image details','AXButton');
 const saved={...shell('^Saved\\s+.+$','AXStaticText'),match:'regex'};
 
 /** UI-only preparation: no private chat/image ID is inferred from AX or pixels. */
-export async function captureMountedImageAppearance(t){
+export async function captureMountedImageAppearance(t){return captureOwnedMountedImage(t,'valid-image.png',createValidImageFixture,'home-mounted-image')}
+export async function captureLongNamedMountedImageAppearance(t){return captureOwnedMountedImage(t,longImageFilename,createLongNamedValidImageFixture,'home-mounted-long-image')}
+async function captureOwnedMountedImage(t,filename,createFixture,capturePrefix){
+ const remove=shell(`Remove ${filename}`,'AXButton');
+ const include=shell(`Use ${filename} in next reply`,'AXCheckBox');
+ const escaped=filename.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+ const preview={...shell(`^${escaped}\\s*(?:·\\s*)?16\\s*×\\s*16$`,'AXButton'),match:'regex'};
  if(!t.appearanceEnabled)return {status:'not-requested'};
  const app=t.app,ax=t.ax,model=t.model,calls=model?.calls,pid=app.pid;
  assert.ok(Number.isInteger(pid)&&pid>0&&ax.pid===pid);
@@ -33,10 +35,10 @@ export async function captureMountedImageAppearance(t){
  const unchanged=async()=>{live();await normal();assert.equal(await windows(),windowId);assert.equal((await unique(composer)).value,draft);assert.deepEqual(calls,[]);for(const method of Object.keys(before)){const now=await t.rpc(method);live();assert.deepEqual(now,before[method],`Image UI changed ${method}`)}await normal()};
  const click=async selector=>{await unchanged();const node=await unique(selector);assert.equal(node.enabled,true);await ax.click(selector);live()};
  let fixture,attached=false,previewOpen=false,primary,result;const cleanup=[];
- const capture=async(name,state)=>{await unchanged();await fixture?.validate();await captureHomeState(t,name,state);await unchanged();await fixture?.validate()};
+ const capture=async(name,state)=>{name=name.replace('home-mounted-image',capturePrefix);state=state.replace('home-mounted-image',capturePrefix);await unchanged();await fixture?.validate();await captureHomeState(t,name,state);await unchanged();await fixture?.validate()};
  try{
   await capture('home-mounted-image-before','home-mounted-image-before-visual-only');
-  fixture=await createValidImageFixture();await fixture.validate();live();
+  fixture=await createFixture();await fixture.validate();live();
   await click(shell('Add context','AXButton'));await ax.waitFor(shell('Image','AXButton'),'enabled');await click(shell('Image','AXButton'));
   await fixture.validate();await ax.openPanel(fixture.path);live();await fixture.validate();
   await ax.waitFor({role:'AXSheet',scope:'window'},'absent');await ax.waitFor(shell('Attach image','AXButton'),'enabled');

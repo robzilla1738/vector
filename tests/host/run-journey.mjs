@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { MOUNTED_LONG_IMAGE_APPEARANCE_ID, requireMountedLongImageAppearance } from './appearance-journeys/mounted-long-image-appearance.mjs';
 import { MOUNTED_IMAGE_APPEARANCE_ID, requireMountedImageAppearance } from './appearance-journeys/mounted-image-appearance.mjs';
 import { requireModelSettingsAppearance } from './lib/model-settings-appearance.mjs';
 import { requireModelProbeAppearance } from './lib/model-probe-appearance.mjs';
@@ -62,6 +63,11 @@ if (values.journey === MOUNTED_IMAGE_APPEARANCE_ID) {
   requireMountedImageAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
   const path = join(root, 'tests/host/appearance-journeys/mounted-image-appearance.mjs');
   const module = await import('./appearance-journeys/mounted-image-appearance.mjs');
+  entry = { ...module, path };
+} else if (values.journey === MOUNTED_LONG_IMAGE_APPEARANCE_ID) {
+  requireMountedLongImageAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/mounted-long-image-appearance.mjs');
+  const module = await import('./appearance-journeys/mounted-long-image-appearance.mjs');
   entry = { ...module, path };
 } else if (values.journey === 'model-settings-appearance') {
   requireModelSettingsAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });

@@ -14,6 +14,8 @@ const composer = shell('Reply to conversation');
 /** Fixed fixture only. No arbitrary source path or actual user image is accepted. */
 export function createInvalidImageFixture() { return createOwnedImageFixture('invalid-image.png', invalidBytes); }
 export function createValidImageFixture() { return createOwnedImageFixture('valid-image.png', validBytes); }
+export const longImageFilename = 'aux-owned-long-image-' + 'filename-segment-'.repeat(7) + 'final.png';
+export function createLongNamedValidImageFixture() { return createOwnedImageFixture(longImageFilename, validBytes); }
 async function createOwnedImageFixture(filename, bytes) {
   const directory = await mkdtemp(join(tmpdir(), 'aux-image-appearance-'));
   const path = join(directory, filename);

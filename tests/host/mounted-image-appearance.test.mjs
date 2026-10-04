@@ -2,22 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,writeFile,lstat} from 'node:fs/promises';
 import {inflateSync} from 'node:zlib';
-import {createValidImageFixture} from './lib/composer-image-appearance.mjs';
-import {captureMountedImageAppearance} from './lib/mounted-image-appearance.mjs';
-function context(){
+import {createValidImageFixture,longImageFilename} from './lib/composer-image-appearance.mjs';
+import {captureMountedImageAppearance,captureLongNamedMountedImageAppearance} from './lib/mounted-image-appearance.mjs';
+function context(filename='valid-image.png'){
  const records=[],captures=[],paths=[];const snapshots={'pages.list':[],'runs.list':[],'workspace.get':{id:'original'},'settings.get':{modelConfigured:false}};
  const state={attached:false,preview:false,included:true,review:false,focused:true,zoom:null,details:false};
  const t={appearanceEnabled:true,signal:new AbortController().signal,app:{pid:881,observeAppearance:async()=>JSON.stringify({producer:'aux-native-appearance-snapshot',version:1,pid:881,windowId:17,windowKind:'normal',observedAtUnixMs:Date.now()})},model:{calls:[]},rpc:async method=>structuredClone(snapshots[method]),until:async(_name,condition)=>assert.equal(await condition(),true),capture:async(name,options)=>captures.push([name,options]),ax:{pid:881,
   windows:async()=>[{id:17,layer:0,width:800,height:700}],dump:async()=>({sourceFixtureOnly:true}),focus:async()=>{state.focused=true},
   query:async selector=>{
    const n=selector.name;if(n==='Reply to conversation')return [{value:'Original unsent draft',focused:state.focused,enabled:true}];
-   if(n==='Remove valid-image.png'||n==='Use valid-image.png in next reply')return state.attached?[{enabled:true,checked:state.included}]:[];
+   if(n===`Remove ${filename}`||n===`Use ${filename} in next reply`)return state.attached?[{enabled:true,checked:state.included}]:[];
    if(selector.match==='regex'&&selector.role==='AXStaticText')return state.preview&&state.details?[{name:'Saved original timestamp',enabled:true}]:[];
-   if(selector.match==='regex')return state.attached?[{name:'valid-image.png16 × 16',enabled:true}]:[];
+   if(selector.match==='regex')return state.attached?[{name:`${filename}16 × 16`,enabled:true}]:[];
    if(n==='Fit'||n==='100%'){assert.equal(selector.role,'AXCheckBox');return state.preview?[{enabled:true,checked:n==='Fit'?state.zoom===null:state.zoom===1}]:[]}
    if(n==='Image details')assert.equal(selector.role,'AXButton');
    if(n==='125%'&&selector.role==='AXStaticText')return state.preview&&state.zoom===1.25?[{name:'125%',enabled:true}]:[];
-   if(n==='Close image preview'||(n==='valid-image.png'&&selector.role==='AXImage'))return state.preview?[{enabled:true}]:[];
+   if(n==='Close image preview'||(n===filename&&selector.role==='AXImage'))return state.preview?[{enabled:true}]:[];
    return [{enabled:true}];
   },click:async selector=>{records.push(selector);const n=selector.name;
    if(n==='Attach image'){assert.equal(state.review,true);state.attached=true;state.review=false}
@@ -28,8 +28,8 @@ function context(){
    else if(n==='Zoom image out')state.zoom=Math.max(0.25,(state.zoom??1)-0.25);
    else if(n==='Image details')state.details=!state.details;
    else if(n==='Close image preview')state.preview=false;
-   else if(n==='Use valid-image.png in next reply')state.included=false;
-   else if(n==='Remove valid-image.png')state.attached=false;
+   else if(n===`Use ${filename} in next reply`)state.included=false;
+   else if(n===`Remove ${filename}`)state.attached=false;
   },waitFor:async(selector,mode)=>{if(selector.name&&!['Preparing image…','Loading image…'].includes(selector.name)){const n=await t.ax.query(selector);assert.equal(n.length,mode==='absent'?0:1)}},
   openPanel:async path=>{paths.push(path);assert.equal((await readFile(path)).subarray(0,8).toString('hex'),'89504e470d0a1a0a');state.review=true}
  }};
@@ -78,3 +78,5 @@ test('replacement call ledger cannot conceal original requests after chooser or 
 
 test('unobserved zoom and details transitions cannot be labeled as captured success',async()=>{for(const target of ['100%','Zoom image in','Zoom image out','Fit','Image details']){const{t,state,captures,paths}=context();const click=t.ax.click;t.ax.click=async selector=>{if(selector.name!==target)await click(selector)};await assert.rejects(captureMountedImageAppearance(t));assert.equal(state.attached,false);assert.equal(state.preview,false);const refused={'100%':'home-mounted-image-preview-actual-size','Zoom image in':'home-mounted-image-preview-zoom-in','Zoom image out':'home-mounted-image-preview-zoom-restored','Fit':'home-mounted-image-preview-fit-restored','Image details':'home-mounted-image-preview-details-expanded'};assert.ok(!captures.some(([name])=>name===refused[target]));await assert.rejects(readFile(paths[0]),{code:'ENOENT'})}});
 test('Preview action retirement preserves original UI debt and never acts through replacement',async()=>{const{t,records,paths}=context();const click=t.ax.click;t.ax.click=async selector=>{await click(selector);if(selector.name==='Zoom image in')t.app={pid:881}};await assert.rejects(captureMountedImageAppearance(t),error=>error instanceof AggregateError&&error.errors.length===2);assert.ok(!records.some(row=>row.name==='Close image preview'||row.name==='Remove valid-image.png'));await assert.rejects(readFile(paths[0]),{code:'ENOENT'})});
+
+test('fixed long filename chooser tray Preview tools and removal preserve full original name and visual limits',async()=>{const{t,state,records,captures,paths}=context(longImageFilename);const result=await captureLongNamedMountedImageAppearance(t);assert.equal(result.qualification,'none');assert.equal(result.privateImageIdentity,'unobserved');assert.equal(captures.length,13);assert.ok(captures.every(([name,options])=>name.startsWith('home-mounted-long-image-')&&options.state.startsWith('home-mounted-long-image-')&&options.windowId===17));assert.ok(paths[0].endsWith('/'+longImageFilename));assert.ok(records.some(row=>row.name===`Use ${longImageFilename} in next reply`));assert.ok(records.some(row=>row.name===`Remove ${longImageFilename}`));const preview=records.find(row=>row.match==='regex');assert.ok(new RegExp(preview.name).test(longImageFilename+'16 × 16'));assert.equal(new RegExp(preview.name).test('valid-image.png16 × 16'),false);assert.equal(state.attached,false);assert.equal(state.preview,false);assert.equal(state.zoom,null);assert.equal(state.details,false);assert.deepEqual(t.model.calls,[]);await assert.rejects(readFile(paths[0]),{code:'ENOENT'})});
