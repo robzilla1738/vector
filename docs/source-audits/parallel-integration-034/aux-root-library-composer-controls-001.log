@@ -1,0 +1,48 @@
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:40763) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40761) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40760) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40762) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40759) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Extensions.permissions-target.test.tsx (1 test) 56ms
+ ✓ |unit| apps/shell/src/components/Extensions.commands.test.tsx (10 tests) 103ms
+ ❯ |unit| apps/shell/src/components/Library.diagnostic-wrap.test.tsx (1 test | 1 failed) 77ms
+   × preserves complete failed history diagnostics, focused Retry and original successful recovery 76ms
+     → expected 1 to be 2 // Object.is equality
+ ✓ |unit| apps/shell/src/components/Library.commands.test.tsx (12 tests) 596ms
+ ✓ |unit| apps/shell/src/components/Composer.context-target.test.tsx (2 tests) 83ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| apps/shell/src/components/Library.diagnostic-wrap.test.tsx > preserves complete failed history diagnostics, focused Retry and original successful recovery
+AssertionError: expected 1 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ apps/shell/src/components/Library.diagnostic-wrap.test.tsx:57:22
+     55|       await Promise.resolve();
+     56|     });
+     57|     expect(attempts).toBe(2);
+       |                      ^
+     58|     expect(host.querySelector('[role="alert"].library-message')).toBeN…
+     59|     expect(host.textContent).toContain("Pages you visit will appear he…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 25 passed (26)
+   Start at  15:45:55
+   Duration  5.01s (transform 1.58s, setup 0ms, collect 15.54s, tests 915ms, environment 2.27s, prepare 362ms)
+

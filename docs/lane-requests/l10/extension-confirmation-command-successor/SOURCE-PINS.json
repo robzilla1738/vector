@@ -1,0 +1,40 @@
+{
+  "files": [
+    {
+      "path": "apps/shell/src/components/Extensions.tsx",
+      "beforeSha256": "09ef6398e43f764253a833f7b38a6124b434a6d1e18af7433bc58544ec389eae",
+      "afterSha256": "a5785f9cdab012f6b32dd7481f2e890f05fd80b2293b67559d5cf487058f26fb"
+    },
+    {
+      "path": "apps/shell/src/components/ExtensionsControls.tsx",
+      "beforeSha256": "2bdef376867fa9b4a534147f8686c0fd34388e2b5c50f18b2239bfc383ed59b2",
+      "afterSha256": "34af6b6e7d096fffb9fea0ffb373007f6488ea35f04d8c0b5f0f270d1ce4da20"
+    },
+    {
+      "path": "apps/shell/src/components/Extensions.commands.test.tsx",
+      "beforeSha256": "6fa1d7aeaf69b21aa9e37e341f23b4dbb70648b2e7aa1e8fdffbe42af79de08f",
+      "afterSha256": "54152f051a508f194425aeff03f036ce3ee9ba402a744f297ecbcd758d5686bb"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "b17f2ef8b8e1f1d2b4f96b753e2bcf30a8e05e4e27128795639a50538690d769",
+      "afterSha256": "dcd7789ede2ecdc4c8d08a2696f28fb5290ad8063b2ced38a66f59ddc7d0e9dd"
+    }
+  ],
+  "patchSha256": "d188b1988a042a4978738df693f8f024d1b618e4e13dfc003e937e8675c2a3e5",
+  "forwardReverseForward": true,
+  "exactResultBytes": true,
+  "readonlyPrerequisites": {
+    "apps/shell/src/error-message.ts": "7ee2b978c3b95a0d051475f0a071af80485c51a3786918c9cac4900b1c38899e",
+    "apps/shell/src/ui/button-props.ts": "23a580bbc95060ab70d78845b52f3b41fcc701205f058620d9ea56aac209398e",
+    "apps/shell/src/ui/class-props.ts": "b5c0ae32e8d9d191a30c555d88a1639c2d389a9dbd3fdad2016d0c2e2be46be9"
+  },
+  "checks": {
+    "cohort": 27,
+    "types": true,
+    "lint": true,
+    "falsifier": "Actual remapped current native failure produces duplicate global toast without original inline-handled completion predicate RED"
+  },
+  "nativeExecuted": false,
+  "budgetAccepted": false
+}

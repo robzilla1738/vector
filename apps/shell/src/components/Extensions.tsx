@@ -1,7 +1,7 @@
 import { staticHintProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useStore as useBoundStore } from "zustand";
 import { bridge, inNativeHost, type BrowserExtension } from "../bridge";
 import { executeCommand, runCommand } from "../commands";
@@ -9,12 +9,41 @@ import { storeExtensionId } from "../store-extension-id";
 import { useFeature } from "../use-feature";
 import { extensionInventory, refreshExtensions } from "../features/extensions/extension-inventory";
 
+import { guardCommandCompletion } from "../command-completion";
+import { ExtensionLocalButton, ExtensionPermissions, useExtensionsOwner } from "./ExtensionsControls";
+
 export function Extensions() {
   const available = useFeature("extensions");
   const enabled = inNativeHost && !bridge.privateMode && bridge.windowKind === "normal" && available;
   const { items, busy, loading, error, message } = useBoundStore(extensionInventory);
   const [storeInput, setStoreInput] = useState("");
-  const [removeTarget, setRemoveTarget] = useState<BrowserExtension | null>(null);
+  const current = useExtensionsOwner(available);
+  type Removal = { record: BrowserExtension; owner: () => boolean; item: () => boolean };
+  const [removeTarget, setRemoveTarget] = useState<Removal | null>(null);
+  const target = useRef<Removal | null>(null);
+  const chooseTarget = (value: Removal | null) => {
+    target.current = value;
+    setRemoveTarget(value);
+  };
+  const inventoryOwner = useMemo(() => ({ active: true, items }), [items]);
+  useLayoutEffect(
+    () => () => {
+      inventoryOwner.active = false;
+    },
+    [inventoryOwner],
+  );
+  const itemCurrent = (extension: BrowserExtension) => () => {
+    if (!inventoryOwner.active || !current()) return false;
+    if (
+      extensionInventory.getState().items !== inventoryOwner.items ||
+      !inventoryOwner.items.includes(extension)
+    ) {
+      inventoryOwner.active = false;
+      return false;
+    }
+    return true;
+  };
+  const targetCurrent = () => !!removeTarget && target.current === removeTarget && removeTarget.owner();
   useEffect(() => {
     if (!enabled) return;
     void refreshExtensions();
@@ -95,7 +124,7 @@ export function Extensions() {
               </p>
               {extension.error && <p className="hint err">{extension.error}</p>}
               <details className="extension-details">
-                <summary>Permissions</summary>
+                <ExtensionPermissions current={itemCurrent(extension)}>Permissions</ExtensionPermissions>
                 <p className="hint extension-permissions">
                   {extension.permissions.length
                     ? extension.permissions.join(", ")
@@ -140,48 +169,88 @@ export function Extensions() {
                 >
                   {extension.source === "store" ? "Check for update" : "Update from folder…"}
                 </button>
-                <button
+                <ExtensionLocalButton
                   type="button"
                   {...smallGhostButtonProps}
                   disabled={busy}
-                  onClick={() => setRemoveTarget(extension)}
+                  command="review-extension-removal"
+                  current={itemCurrent(extension)}
+                  invoke={() => {
+                    if (!extensionInventory.getState().busy)
+                      chooseTarget({ record: extension, owner: current, item: itemCurrent(extension) });
+                  }}
                 >
                   Remove…
-                </button>
+                </ExtensionLocalButton>
               </div>
             )}
           </article>
         ))}
       </section>
       {removeTarget && (
-        <div className="extension-confirm" role="alertdialog" aria-label={`Remove ${removeTarget.name}`}>
-          <strong>Remove {removeTarget.name}?</strong>
+        <div
+          className="extension-confirm"
+          role="alertdialog"
+          aria-label={`Remove ${removeTarget.record.name}`}
+        >
+          <strong>Remove {removeTarget.record.name}?</strong>
           <p>
             The extension will stop running in this Profile. Chromium will remove its installed files and site
             data.
           </p>
           <div className="extension-confirm-actions">
-            <button
+            <ExtensionLocalButton
               type="button"
               className="btn"
               disabled={busy}
-              data-command-id="remove-extension"
-              onClick={async () => {
-                try {
-                  await executeCommand("remove-extension", { payload: { extensionId: removeTarget.key } });
-                  setRemoveTarget(null);
-                } catch (reason) {
-                  extensionInventory.setState({
-                    error: errorMessage(reason),
-                  });
-                }
+              command="confirm-extension-removal"
+              current={targetCurrent}
+              invoke={() => {
+                if (
+                  !removeTarget ||
+                  !targetCurrent() ||
+                  extensionInventory.getState().busy ||
+                  !removeTarget.item()
+                )
+                  return guardCommandCompletion(
+                    Promise.reject(new Error("Choose the original extension removal review.")),
+                    () => false,
+                  );
+                const original = removeTarget;
+                const delivering = () => target.current === original && original.owner();
+                let errorHandled = false;
+                const completion = (async () => {
+                  try {
+                    const result = await executeCommand("remove-extension", {
+                      payload: { extensionId: original.record.key },
+                    });
+                    if (delivering()) chooseTarget(null);
+                    return result;
+                  } catch (reason) {
+                    if (delivering()) {
+                      extensionInventory.setState({ error: errorMessage(reason) });
+                      errorHandled = true;
+                    }
+                    throw reason;
+                  }
+                })();
+                return guardCommandCompletion(completion, () => delivering() && !errorHandled);
               }}
             >
               Remove extension
-            </button>
-            <button type="button" className="btn ghost" disabled={busy} onClick={() => setRemoveTarget(null)}>
+            </ExtensionLocalButton>
+            <ExtensionLocalButton
+              type="button"
+              className="btn ghost"
+              disabled={busy}
+              command="cancel-extension-removal"
+              current={targetCurrent}
+              invoke={() => {
+                if (!extensionInventory.getState().busy) chooseTarget(null);
+              }}
+            >
               Cancel
-            </button>
+            </ExtensionLocalButton>
           </div>
         </div>
       )}

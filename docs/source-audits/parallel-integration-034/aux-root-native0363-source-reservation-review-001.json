@@ -1,0 +1,11 @@
+{
+  "status": "SOURCE_ONLY_RESERVATION_REVIEW_PASS",
+  "freezeSHA256": "d48c31a5d1abe546f98b08f441a01fcb661e0bb82dc24509b908c8a12dfc611f",
+  "originalPrefix": 332,
+  "threeSourceResultsAndOriginalComponentsVerified": true,
+  "exactForwardReverseForward": true,
+  "seriesAppendOnly": true,
+  "required524Unchanged": true,
+  "StableWritten": false,
+  "executionAdmission": false
+}

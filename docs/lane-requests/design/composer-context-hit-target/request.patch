@@ -1,0 +1,181 @@
+diff --git a/apps/shell/src/components/Conversation.css b/apps/shell/src/components/Conversation.css
+--- a/apps/shell/src/components/Conversation.css
++++ b/apps/shell/src/components/Conversation.css
+@@ -47,7 +47,7 @@
+   .composer-footer .new-chat-attach { min-width:28px; min-height:28px; justify-content:center; }
+   .composer-footer .conversation-browser-context-controls { justify-content:flex-start; }
+   .composer-footer .browser-context-trigger { max-width:100%; }
+-  .composer-send-actions .dictation-trigger { width:28px; height:28px; min-width:28px; padding:0; justify-content:center; font-size:0; gap:0; }
++  .composer-send-actions .dictation-trigger { width:var(--hit); height:var(--hit); min-width:var(--hit); padding:0; justify-content:center; font-size:0; gap:0; }
+ }
+ 
+ }
+@@ -107,7 +107,7 @@
+ .new-chat-options { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-1-5) var(--space-2) 0; min-height: 34px; color: var(--ink-2); font-size: var(--fs-xs); }
+ .new-chat-attach { display: inline-flex; align-items: center; gap: var(--space-1-5); padding: var(--space-1) var(--space-1-5); min-height:32px; border-radius: var(--r-md); white-space: nowrap; }
+ .new-chat-options select { min-width: 0; max-width: min(260px, 60%); border: 0; border-radius: var(--r-md); padding: var(--space-1) var(--space-1-5); background: transparent; color: inherit; text-overflow: ellipsis; }
+-.new-chat-options :is(button, select):hover { background: var(--bg-hover); color: var(--ink-0); }
++.new-chat-options :is(button, select):not(:disabled):hover { background: var(--bg-hover); color: var(--ink-0); }
+ .conversation-browser-context { display: grid; justify-items: end; gap: var(--space-1-5); min-width: 0; max-width: 100%; margin-left: auto; }
+ .conversation-browser-context-controls { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); min-width: 0; max-width: 100%; }
+ .conversation-browser-sources { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-1); max-width: 100%; }
+diff --git a/apps/shell/src/components/ConversationContextMenu.css b/apps/shell/src/components/ConversationContextMenu.css
+--- a/apps/shell/src/components/ConversationContextMenu.css
++++ b/apps/shell/src/components/ConversationContextMenu.css
+@@ -1,6 +1,6 @@
+ @layer components {
+ .home-tools-trigger { margin-left:auto; }
+-.home-tools-trigger > button { width:28px; height:28px; padding:0; justify-content:center; }
++.home-tools-trigger > button { width:var(--hit); height:var(--hit); padding:0; justify-content:center; }
+ .home-tools-menu .capture-triggers { display:grid; gap:var(--space-1); }
+ .home-tools-menu .capture-triggers > button { justify-content:flex-start; width:100%; min-height:36px; padding:var(--space-2); text-align:left; background:transparent; box-shadow:none; border:0; }
+ .home-tools-menu .capture-triggers > button:hover { background:var(--bg-hover); }
+@@ -12,5 +12,5 @@
+ .home-context-summary > span:not(.ci) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ /* The same explicit context choices remain available in narrow menus. */
+ .home-tools-menu .conversation-browser-context-controls > :not(.browser-context-trigger) { display:flex; }
+-.conversation:not(.conversation-home) .home-tools-trigger > button { width:auto; min-width:28px; padding:var(--space-1) var(--space-2); gap:var(--space-1); }
++.conversation:not(.conversation-home) .home-tools-trigger > button { width:auto; min-width:var(--hit); padding:var(--space-1) var(--space-2); gap:var(--space-1); }
+ }
+diff --git a/apps/shell/src/components/Composer.context-target.test.tsx b/apps/shell/src/components/Composer.context-target.test.tsx
+new file mode 100644
+--- /dev/null
++++ b/apps/shell/src/components/Composer.context-target.test.tsx
+@@ -0,0 +1,137 @@
++// @vitest-environment jsdom
++import { readFileSync } from "node:fs";
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import HomeAsk from "./HomeAsk";
++import { Conversation } from "./Conversation";
++import { bridge } from "../bridge";
++import { useStore } from "../store";
++const initial = useStore.getState();
++const modal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal"),
++  close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close"),
++  scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>, style: HTMLStyleElement;
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
++    { width: 100 },
++  ] as unknown as DOMRectList);
++  vi.stubGlobal(
++    "ResizeObserver",
++    class {
++      observe() {}
++      disconnect() {}
++    },
++  );
++  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
++    callback(0);
++    return 1;
++  });
++  vi.stubGlobal("cancelAnimationFrame", () => {});
++  Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
++    configurable: true,
++    value: function (this: HTMLDialogElement) {
++      this.open = true;
++      this.querySelector<HTMLElement>("button,input")?.focus();
++    },
++  });
++  Object.defineProperty(HTMLDialogElement.prototype, "close", {
++    configurable: true,
++    value: function (this: HTMLDialogElement) {
++      this.open = false;
++    },
++  });
++  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
++  useStore.setState({
++    agentDraft: "Original page-free question",
++    railOpen: false,
++    runs: [],
++    pendingTurns: [],
++    pages: [],
++    connected: true,
++    conversationId: null,
++  });
++  vi.spyOn(bridge, "focusShell").mockResolvedValue(null);
++  vi.spyOn(bridge, "dictationStatus").mockResolvedValue({ available: true });
++  vi.spyOn(bridge, "startDictation");
++  vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
++    if (method === "runs.list" || method === "conversations.list" || method === "runs.messages.list")
++      return [] as never;
++    if (method === "conversations.get") return { title: "Archived original", archived: true } as never;
++    if (method === "conversations.artifacts.get") return { artifacts: [] } as never;
++    if (method === "conversations.images.get") return { images: [] } as never;
++    if (method === "conversations.attachments.get") return { attachments: [] } as never;
++    if (method === "conversations.sources.get") return { sources: [] } as never;
++    if (method === "runs.context.get") return { entries: [], historyEnabled: true } as never;
++    return { workspace: null, memory: null } as never;
++  });
++  host = document.createElement("div");
++  document.body.append(host);
++  root = createRoot(host);
++  style = document.createElement("style");
++  document.head.append(style);
++  const menu = readFileSync("apps/shell/src/components/ConversationContextMenu.css", "utf8"),
++    conversation = readFileSync("apps/shell/src/components/Conversation.css", "utf8");
++  const hit = readFileSync("apps/shell/src/tokens.css", "utf8").match(/--hit:\s*(\d+px)/)![1]!;
++  const opener = menu.match(/\.home-tools-trigger > button\s*\{[^}]+\}/)![0];
++  const narrow = conversation.match(/\.composer-send-actions \.dictation-trigger\s*\{[^}]+\}/)![0];
++  // Source-selected narrow rule activation; jsdom does not implement physical container queries.
++  style.textContent = [opener, narrow].join("\n").replaceAll("var(--hit)", hit);
++});
++afterEach(async () => {
++  await act(async () => root.unmount());
++  host.remove();
++  style.remove();
++  useStore.setState(initial, true);
++  vi.restoreAllMocks();
++  vi.unstubAllGlobals();
++  for (const [prototype, key, descriptor] of [
++    [HTMLDialogElement.prototype, "showModal", modal],
++    [HTMLDialogElement.prototype, "close", close],
++    [HTMLElement.prototype, "scrollIntoView", scroll],
++  ] as const) {
++    if (descriptor) Object.defineProperty(prototype, key, descriptor);
++    else Reflect.deleteProperty(prototype, key);
++  }
++});
++it("keeps the page-free Add context opener's label, draft and modal focus at the established target", async () => {
++  await act(async () => root.render(<HomeAsk onSearch={vi.fn()} />));
++  const input = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="Reply to conversation"]')!,
++    opener = host.querySelector<HTMLButtonElement>('.home-tools-trigger > button[aria-label="Add context"]')!;
++  expect(input.value).toBe("Original page-free question");
++  expect(useStore.getState().pages).toEqual([]);
++  expect(getComputedStyle(opener).width).toBe("32px");
++  expect(getComputedStyle(opener).height).toBe("32px");
++  opener.focus();
++  expect(document.activeElement).toBe(opener);
++  await act(async () => opener.click());
++  const dialog = document.querySelector<HTMLDialogElement>('dialog[aria-label="Add context"]')!;
++  expect(dialog.open).toBe(true);
++  expect(dialog.contains(document.activeElement)).toBe(true);
++  await act(async () => dialog.dispatchEvent(new Event("cancel", { bubbles: false, cancelable: true })));
++  expect(document.activeElement).toBe(opener);
++  expect(input.value).toBe("Original page-free question");
++  expect(useStore.getState().pages).toEqual([]);
++  expect(bridge.startDictation).not.toHaveBeenCalled();
++  const selector = readFileSync("apps/shell/src/components/Conversation.css", "utf8").match(
++    /(\.new-chat-options [^{]+):hover \{/,
++  )![1]!;
++  expect(opener.matches(selector)).toBe(true);
++  opener.disabled = true;
++  expect(opener.matches(selector)).toBe(false);
++  opener.disabled = false;
++});
++it("retains original disabled Dictate and glyph while the actual narrow footer target remains32", async () => {
++  await act(async () => root.render(<Conversation chatId="archived-fixture" embedded />));
++  const dictation = host.querySelector<HTMLButtonElement>(".composer-send-actions .dictation-trigger")!;
++  expect(dictation.textContent).toContain("Dictate");
++  expect(dictation.disabled).toBe(true);
++  expect(getComputedStyle(dictation).width).toBe("32px");
++  expect(getComputedStyle(dictation).height).toBe("32px");
++  expect(getComputedStyle(dictation).minWidth).toBe("32px");
++  expect(dictation.querySelector("svg")!.getAttribute("width")).toBe("15");
++  expect(dictation.querySelector("svg")!.getAttribute("height")).toBe("15");
++  await act(async () => dictation.click());
++  expect(bridge.startDictation).not.toHaveBeenCalled();
++});

@@ -1,0 +1,23 @@
+{
+  "requestOnly": true,
+  "testOnly": true,
+  "leaves": 1,
+  "controlsCases": 1,
+  "shellTypesPass": true,
+  "lintPass": true,
+  "forwardReverseForward": true,
+  "nativeExecuted": false,
+  "files": {
+    "SOURCE-PINS.json": "a9c4911c642371be2ae0e12f4d704112c5d0de95a08ff3147ca39bbee721d85a",
+    "REPLAY.json": "c629447809342c3f2567f712170dfda7b31651679ae33b6e3ceefb5a95e4a4e1",
+    "PREREQUISITES.json": "55fe28b4d9bec1f26b81e3a254613c38d8f083adbab63d92255d809554e3d1c7",
+    "README.md": "5cc45cec0392acdfaaf7b87d650c779e9b875492827c2d3e27e4238ac59cbcc3",
+    "request.patch": "def9ca990fbb67a70d6b0cd7d4349a53d722c100821ed6753dfe8d0f060fd0b4",
+    "logs/aux-extensions-target-dispatcher-types-001.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/root-predecessor-failure-001.log": "2dffffcfdbc273121ab19a032d585dec197f09d137142cd412bba8c10d62374b",
+    "logs/aux-extensions-target-dispatcher-lint-001.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/aux-extensions-target-dispatcher-controls-001.log": "a4087b283171e80af9d17b1651e6875d34995591abd3cd2c3dd4330dfa1fc355",
+    "after/apps/shell/src/components/Extensions.permissions-target.test.tsx": "34b45705cbade44568ab802bab92752c1788e4918db276b40be1cb2b7f35e45e",
+    "before/apps/shell/src/components/Extensions.permissions-target.test.tsx": "a466ee6a363b81c0c23d4f0ae1ab8bee0a9f8a4991b89e38114dc2caac751b63"
+  }
+}

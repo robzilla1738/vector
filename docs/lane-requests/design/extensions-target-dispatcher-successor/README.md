@@ -1,0 +1,7 @@
+# Ordered Extensions geometry fixture dispatcher successor
+
+One test-only patch after the original permissions-target polish. Original test fixtures mocked executeCommand to return undefined and omitted featureStage, which became invalid once actual Permissions uses the registered summary. Root combined predecessor log retained: ten local command controls pass, outdated geometry control fails with undefined completion observation. No product fix or native default-toggle bypass is introduced.
+
+The fixture preserves original bridge source members, pins a normal nonprivate original window, publishes featureStage:on, and exposes actual visible control rects. It imports the actual executeCommand dispatcher and invokes the original mounted Permissions click owner; focused toggle-extension-permissions closes the same details. Original complete long text,32px target, padding, focus, keyboard nonprevented/default-limitation, initial/collapsed state, bridge read count and unrelated-summary assertions remain. There is no mock void completion, handwritten details toggle or synthetic native authority. The exact root registered component/helper/catalog bytes are excluded prerequisites in PREREQUISITES.json; apply request.patch only, not the excluded prerequisite commit.
+
+Meaningful changed geometry control passes; full shell typecheck/scoped lint and one-leaf forward/reverse/forward receipt retained on final freeze. CSS/Extensions.tsx/commands remain untouched by this successor. Native keyboard/pixels and F21 remain pending; no Vite/native/App call ran.

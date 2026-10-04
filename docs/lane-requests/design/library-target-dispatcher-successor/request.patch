@@ -1,0 +1,46 @@
+diff --git a/apps/shell/src/components/Library.diagnostic-wrap.test.tsx b/apps/shell/src/components/Library.diagnostic-wrap.test.tsx
+index fa5e9ad8d..80e2dc800 100644
+--- a/apps/shell/src/components/Library.diagnostic-wrap.test.tsx
++++ b/apps/shell/src/components/Library.diagnostic-wrap.test.tsx
+@@ -9,12 +9,22 @@ import { useStore } from "../store";
+ vi.mock("../use-feature", async (original) => ({
+   ...(await original<typeof import("../use-feature")>()),
+   useFeature: () => true,
++  featureStage: () => "on",
+ }));
+ it("preserves complete failed history diagnostics, focused Retry and original successful recovery", async () => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+   vi.useFakeTimers();
+   const initial = useStore.getState(),
+     reason = new Error("https://library.fixture.invalid/" + "diagnostic".repeat(90));
++  const originalWindow = bridge.windowId,
++    originalPrivate = bridge.privateMode,
++    originalKind = bridge.windowKind;
++  bridge.windowId = "library-diagnostic-original";
++  bridge.privateMode = false;
++  bridge.windowKind = "normal";
++  const visible = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
++    { width: 100 },
++  ] as unknown as DOMRectList);
+   let attempts = 0;
+   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
+     if (method === "history.list") {
+@@ -47,6 +57,7 @@ it("preserves complete failed history diagnostics, focused Retry and original su
+     expect(getComputedStyle(alert).minWidth).toBe("0");
+     expect(alert.querySelector("script")).toBeNull();
+     expect(retry.disabled).toBe(false);
++    expect(retry.dataset.commandId).toBe("retry-library-load");
+     retry.focus();
+     expect(document.activeElement).toBe(retry);
+     await act(async () => retry.click());
+@@ -65,6 +76,10 @@ it("preserves complete failed history diagnostics, focused Retry and original su
+     host.remove();
+     style.remove();
+     invoke.mockRestore();
++    visible.mockRestore();
++    bridge.windowId = originalWindow;
++    bridge.privateMode = originalPrivate;
++    bridge.windowKind = originalKind;
+     useStore.setState(initial, true);
+     vi.useRealTimers();
+     vi.unstubAllGlobals();

@@ -1,0 +1,9 @@
+{
+  "fixtureOnly": true,
+  "patch": "aef7bee99a184b89e4bfd3f891a5d313ebac5ce98bcfddea7de153c53a959e76",
+  "apiPinsVerified": 6,
+  "exactForwardReverseForward": true,
+  "originalActionsAssertionsDeadlinesPreserved": true,
+  "sourceOnly": true,
+  "causeUnproved": true
+}

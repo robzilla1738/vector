@@ -24,6 +24,8 @@ import { SkeletonRows } from "./Skeleton";
 import { openPeekLink } from "../peek-link";
 import { useFeature } from "../use-feature";
 
+import { LibraryButton, useLibraryReadOwner, useLibraryCurrent, useLibraryControl } from "./LibraryControls";
+
 type SavedPage = { nodeId?: string; url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean };
 const bookmarkKey = (item: SavedPage) => item.nodeId ?? item.url;
 type View = "archived" | "bookmarks" | "reading" | "history" | "closed";
@@ -147,6 +149,12 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
   const [moreHistory, setMoreHistory] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const readQuery = view === "history" ? query : "";
+  const readOwner = useLibraryReadOwner(JSON.stringify([view,readQuery,historyRange,refresh]));
+  const readCurrent = useLibraryCurrent(readOwner);
+  const controlOwner = useLibraryReadOwner(JSON.stringify([view,query,historyRange,refresh]));
+  const current = useCallback(() => readCurrent() && controlOwner.current(), [readCurrent,controlOwner]);
+  const [closeRef,runClose] = useLibraryControl<HTMLDivElement>("close-library", current, () => close(null));
   const historyRequest = useRef(0);
   const loadedFilter = useRef("");
   const actionPending = useRef(false);
@@ -179,40 +187,41 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
   useEffect(() => {
     let live = true;
     const version = ++historyRequest.current;
-    const filter = JSON.stringify([view, query.trim(), historyRange]);
+    const filter = JSON.stringify([view, readQuery.trim(), historyRange, readOwner.windowId, readOwner.privateMode, readOwner.kind]);
     if (loadedFilter.current !== filter) { setHistory([]); setMoreHistory(false); }
     loadedFilter.current = filter;
     setLoading(true); setError(""); setFailedLoad(null); setLoadingMore(false); morePending.current=false;
     if (view === "closed" || view === "archived") { setLoading(false); return; }
     const timer = window.setTimeout(() => {
+      if (!live || !readCurrent() || version !== historyRequest.current) return;
       const request = view === "history"
-        ? call("history.list", { query: query.trim() || undefined, limit: HISTORY_PAGE_SIZE, since: historySince(historyRange) }).then(items => { if (live && version === historyRequest.current) { setHistory(items); setMoreHistory(items.length === HISTORY_PAGE_SIZE); } })
+        ? call("history.list", { query: readQuery.trim() || undefined, limit: HISTORY_PAGE_SIZE, since: historySince(historyRange) }).then(items => { if (live && readCurrent() && version === historyRequest.current) { setHistory(items); setMoreHistory(items.length === HISTORY_PAGE_SIZE); } })
         : Promise.all([call("bookmarks.list", {}), call("bookmarks.folders.list", {})]).then(([items, paths]) => {
-          if (live) { useStore.setState({ bookmarks: items }); setFolders(paths); }
+          if (live && readCurrent() && version === historyRequest.current) { useStore.setState({ bookmarks: items }); setFolders(paths); }
         });
-      void request.catch(reason => { if (live) { setError(String(reason)); setFailedLoad("initial"); } }).finally(() => { if (live) setLoading(false); });
-    }, view === "history" && query ? 120 : 0);
+      void request.catch(reason => { if (live && readCurrent() && version === historyRequest.current) { setError(String(reason)); setFailedLoad("initial"); } }).finally(() => { if (live && readCurrent() && version === historyRequest.current) setLoading(false); });
+    }, view === "history" && readQuery ? 120 : 0);
     return () => { live = false; ++historyRequest.current; window.clearTimeout(timer); };
-  }, [view, view === "history" ? query : "", historyRange, refresh]);
+  }, [view, readQuery, historyRange, refresh, readCurrent, readOwner]);
 
   useEffect(() => bridge.onEvent(event => {
-    if (event.type === "history.changed" && view === "history") setRefresh(value => value + 1);
-  }), [view]);
+    if (readCurrent() && event.type === "history.changed" && view === "history") setRefresh(value => value + 1);
+  }), [view, readCurrent]);
 
   async function loadMoreHistory() {
     const last = history.at(-1);
-    if (!last || morePending.current || loading) return;
+    if (!readCurrent() || !last || morePending.current || loading) return;
     morePending.current=true;
     const version = historyRequest.current;
     setLoadingMore(true); setError(""); setFailedLoad(null);
     try {
       const found = await call("history.list", { query: query.trim() || undefined, limit: HISTORY_PAGE_SIZE,
         since: historySince(historyRange), before: { visitedAt: last.visitedAt, url: last.url } });
-      if (version !== historyRequest.current) return;
+      if (!readCurrent() || version !== historyRequest.current) return;
       setHistory(current => [...current, ...found]);
       setMoreHistory(found.length === HISTORY_PAGE_SIZE);
-    } catch (reason) { if (version === historyRequest.current) { setError(String(reason)); setFailedLoad("more"); } }
-    finally { if (version === historyRequest.current) { setLoadingMore(false); morePending.current=false; } }
+    } catch (reason) { if (readCurrent() && version === historyRequest.current) { setError(String(reason)); setFailedLoad("more"); } }
+    finally { if (readCurrent() && version === historyRequest.current) { setLoadingMore(false); morePending.current=false; } }
   }
 
   useEffect(() => {
@@ -220,16 +229,16 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
     let live = true;
     let revision = 0;
     const unsubscribe = bridge.onEvent(event => {
-      if (event.type !== "bookmarks.changed") return;
+      if (!readCurrent() || event.type !== "bookmarks.changed") return;
       const current = ++revision;
       void call("bookmarks.folders.list").then(paths => {
-        if (!live || current !== revision) return;
+        if (!live || !readCurrent() || current !== revision) return;
         setFolders(paths);
         setFolder(previous => paths.some(path => JSON.stringify(path) === JSON.stringify(previous)) ? previous : []);
-      }).catch(reason => { if (live && current === revision) setError(String(reason)); });
+      }).catch(reason => { if (live && readCurrent() && current === revision) setError(String(reason)); });
     });
     return () => { live = false; unsubscribe(); };
-  }, [view]);
+  }, [view, readCurrent]);
 
   const q = query.trim().toLocaleLowerCase();
   const folderKey = JSON.stringify(folder);
@@ -317,10 +326,10 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
   const archive = useFeature("archive");
   const views = VIEWS.filter(tab => (tab !== "archived" || (archive && !bridge.privateMode)) && (tab !== "reading" || !bridge.privateMode));
 
-  return <div className="overlay-scrim fade-in" onMouseDown={() => close(null)}>
+  return <div ref={closeRef} className="overlay-scrim fade-in" onMouseDown={runClose}>
     <div ref={dialog} className="library pop-in" role="dialog" aria-modal="true" aria-label="Library" onMouseDown={event => event.stopPropagation()} onKeyDown={event => {
       if (event.nativeEvent.isComposing) return;
-      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); if (editing || folderEditor) cancelEditor(); else if (importPreview) cancelImport(); else if (selecting) cancelSelection(); else close(null); }
+      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); if (editing || folderEditor) cancelEditor(); else if (importPreview) cancelImport(); else if (selecting) cancelSelection(); else runClose(event); }
       if (event.key !== "Tab") return;
       const controls = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled):not([tabindex='-1']),input:not(:disabled):not([type='file']),select:not(:disabled)")];
       const visible = controls.filter(control => control.getClientRects().length > 0);
@@ -328,9 +337,9 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }}>
-      <div className="library-head"><h3>Library</h3><span className="sp" /><button {...staticIconButtonProps} aria-label="Close library" onClick={() => close(null)}>{shellIconClose}</button></div>
-      <div className="library-tabs seg" role="tablist" aria-label="Library views">{views.map(tab => <button key={tab} ref={node => { if (node) viewButtons.current.set(tab, node); else viewButtons.current.delete(tab); }} id={`library-${tab}`} role="tab" aria-selected={view === tab} aria-controls="library-results" tabIndex={view === tab ? 0 : -1} className={view === tab ? "on" : ""}
-        onClick={() => choose(tab)} onKeyDown={event => { if (["ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); const next = views[(views.indexOf(tab) + (event.key === "ArrowRight" ? 1 : views.length - 1)) % views.length]!; choose(next); viewButtons.current.get(next)?.focus(); } }}>{VIEW_NAMES[tab]}</button>)}</div>
+      <div className="library-head"><h3>Library</h3><span className="sp" /><button {...staticIconButtonProps} aria-label="Close library" data-command-id="close-library" onClick={runClose}>{shellIconClose}</button></div>
+      <div className="library-tabs seg" role="tablist" aria-label="Library views">{views.map(tab => <LibraryButton command="select-library-view" current={current} key={tab} originalRef={node => { if (node) viewButtons.current.set(tab, node); else viewButtons.current.delete(tab); }} id={`library-${tab}`} role="tab" aria-selected={view === tab} aria-controls="library-results" tabIndex={view === tab ? 0 : -1} className={view === tab ? "on" : ""}
+        keyboard invoke={event => { if(event instanceof KeyboardEvent && ["ArrowLeft","ArrowRight"].includes(event.key)){const next = views[(views.indexOf(tab) + (event.key === "ArrowRight" ? 1 : views.length - 1)) % views.length]!; choose(next); viewButtons.current.get(next)?.focus();} else choose(tab); }}>{VIEW_NAMES[tab]}</LibraryButton>)}</div>
       <div className="library-field"><span className="library-icon">{shellIconSearch}</span><input ref={search} value={query} aria-label={`Search ${VIEW_NAMES[view].toLowerCase()}`} placeholder={`Search ${VIEW_NAMES[view].toLowerCase()} by title or address…`} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
         if (event.nativeEvent.isComposing) return;
         if (event.key === "Enter" && !selecting && !loading) {
@@ -357,7 +366,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
             setImportPreview(await parseBookmarkFile(await file.text()));
           });
         }}/></>}
-        {view === "history" && <><div className="library-ranges" role="group" aria-label="History date range">{[["all","All time"],["today","Today"],["week","7 days"],["month","30 days"]].map(([value,label]) => <button key={value} {...smallGhostButtonProps} aria-pressed={historyRange === value} onClick={() => setHistoryRange(value!)}>{label}</button>)}</div><ClearHistory initiallyOpen={confirmClear} /></>}
+        {view === "history" && <><div className="library-ranges" role="group" aria-label="History date range">{[["all","All time"],["today","Today"],["week","7 days"],["month","30 days"]].map(([value,label]) => <LibraryButton key={value} command="select-library-history-range" current={current} {...smallGhostButtonProps} aria-pressed={historyRange === value} invoke={() => setHistoryRange(value!)}>{label}</LibraryButton>)}</div><ClearHistory initiallyOpen={confirmClear} /></>}
       </div>
       {view === "bookmarks" && selecting && <section className="library-selection" aria-label="Move selected bookmarks">
         <div {...staticRowProps}><strong>{selection.length} selected</strong><span className="sp" />
@@ -418,7 +427,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
         <button {...smallButtonProps} disabled={busy || !folderEditor.name.trim()}>{folderEditor.mode === "create" ? "Create folder" : "Rename"}</button>
         <button {...smallButtonProps} type="button" onClick={cancelEditor}>Cancel</button>
       </form>}
-      {error && <p className="library-message" role="alert">{error} {failedLoad && <button {...smallButtonProps} disabled={loading || loadingMore} onClick={() => failedLoad === "more" ? void loadMoreHistory() : setRefresh(value => value + 1)}>Retry</button>}</p>}
+      {error && <p className="library-message" role="alert">{error} {failedLoad && <LibraryButton command="retry-library-load" current={current} {...smallButtonProps} disabled={loading || loadingMore} invoke={() => failedLoad === "more" ? loadMoreHistory() : setRefresh(value => value + 1)}>Retry</LibraryButton>}</p>}
       {notice && <output className="library-message" data-block>{notice}</output>}
       {removed && <div className="library-tools"><span {...staticHintProps}>Removed {removed.title || hostOf(removed.url)}</span><button {...smallButtonProps} disabled={busy} onClick={() => void action(async () => { await save(removed, true); setRemoved(null); setNotice("Bookmark restored."); })}>Undo remove</button></div>}
       <div ref={results} className="library-list" id="library-results" role="tabpanel" aria-labelledby={`library-${view}`} aria-busy={loading} onKeyDown={event => moveListFocus(event, ".library-folder, .library-open")}>
@@ -455,7 +464,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
               })}>{shellIconTrash}</button>}
           </div>
         </div></Fragment>)}
-        {view === "history" && moreHistory && !loading && <div className="library-more"><button {...smallButtonProps} disabled={loadingMore || busy} onClick={() => void loadMoreHistory()}>{loadingMore ? "Loading older visits…" : "Load older visits"}</button><span {...staticHintProps}>{history.length} visits shown</span></div>}
+        {view === "history" && moreHistory && !loading && <div className="library-more"><LibraryButton command="load-more-library-history" current={current} {...smallButtonProps} disabled={loadingMore || busy} invoke={loadMoreHistory}>{loadingMore ? "Loading older visits…" : "Load older visits"}</LibraryButton><span {...staticHintProps}>{history.length} visits shown</span></div>}
       </div>
       </>}
     </div>

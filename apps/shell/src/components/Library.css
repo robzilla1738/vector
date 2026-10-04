@@ -20,7 +20,7 @@
 .library-head h3 { font-size: var(--fs-lg); font-weight: var(--fw-medium); }
 .library-tabs { margin: 0 var(--space-4) var(--space-2); }
 .library-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); }
-.library-message { padding: var(--space-2) var(--space-4); font-size: var(--fs-sm); }
+.library-message { min-width: 0; overflow-wrap: anywhere; padding: var(--space-2) var(--space-4); font-size: var(--fs-sm); }
 .library-folder-open { display: grid; gap: var(--space-2); min-width: 0; width: 100%; padding: var(--space-3); border: var(--hairline) solid var(--line); border-radius: var(--r-md); background: var(--bg-1); }
 .library-folder-open strong { font-size: var(--fs-sm); overflow-wrap: anywhere; }
 .library-folder-open p { margin: var(--space-1) 0 0; overflow-wrap: anywhere; }

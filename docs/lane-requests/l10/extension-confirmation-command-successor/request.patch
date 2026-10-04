@@ -1,0 +1,211 @@
+diff --git a/apps/shell/src/components/Extensions.commands.test.tsx b/apps/shell/src/components/Extensions.commands.test.tsx
+index af2d9f0..fc4ccf8 100644
+--- a/apps/shell/src/components/Extensions.commands.test.tsx
++++ b/apps/shell/src/components/Extensions.commands.test.tsx
+@@ -83,7 +83,7 @@ async function action(id: string) {
+   return { completion };
+ }
+ function confirm() {
+-  return host.querySelector<HTMLButtonElement>('[data-command-id="remove-extension"]')!;
++  return host.querySelector<HTMLButtonElement>('[data-command-id="confirm-extension-removal"]')!;
+ }
+ it("three original local actions use actual normal scoped IDs with offline availability", async () => {
+   await render();
+@@ -245,3 +245,94 @@ it("actual same-tick native removal remains serial before disabled render", asyn
+   await act(async () => resolve(true));
+   expect(host.querySelector('[role="alertdialog"]')).toBeNull();
+ });
++
++it("actual remapped confirmation delivers exact reviewed target through existing native command", async () => {
++  await render();
++  vi.spyOn(bridge, "removeExtension").mockResolvedValue(true);
++  await action(ids.review);
++  await act(async () =>
++    useStore.setState({
++      settings: {
++        shortcutOverrides: { "confirm-extension-removal": [{ key: "x", command: true, alt: true }] },
++      },
++    }),
++  );
++  await act(async () => {
++    confirm().focus();
++    expect(dispatchShortcut({ key: "x", meta: true, alt: true, shift: false })).toBe(true);
++  });
++  expect(bridge.removeExtension).toHaveBeenCalledExactlyOnceWith("original");
++  expect(host.querySelector('[role="alertdialog"]')).toBeNull();
++});
++it("actual scoped confirmation preserves original rejected object and suppresses duplicate global remap error", async () => {
++  await render();
++  const reason = new Error("Original confirmation rejection");
++  vi.spyOn(bridge, "removeExtension").mockRejectedValue(reason);
++  await action(ids.review);
++  const completion = (await action("confirm-extension-removal")).completion;
++  await expect(completion).rejects.toBe(reason);
++  expect(extensionInventory.getState().error).toBe(reason.message);
++  expect(host.querySelector('[role="alertdialog"]')).not.toBeNull();
++  await act(async () =>
++    useStore.setState({
++      settings: {
++        shortcutOverrides: { "confirm-extension-removal": [{ key: "x", command: true, alt: true }] },
++      },
++    }),
++  );
++  await act(async () => {
++    confirm().focus();
++    expect(dispatchShortcut({ key: "x", meta: true, alt: true, shift: false })).toBe(true);
++  });
++  expect(extensionInventory.getState().error).toBe(reason.message);
++  expect(useStore.getState().toasts).toEqual([]);
++});
++it("stale inventory confirmation refuses before native removal, unknown target remains reviewed", async () => {
++  await render();
++  const native = vi.spyOn(bridge, "removeExtension").mockResolvedValue(true);
++  await action(ids.review);
++  let completion!: Promise<unknown>;
++  await act(async () => {
++    confirm().focus();
++    extensionInventory.setState({ items: [{ ...item }] });
++    completion = executeCommand("confirm-extension-removal");
++    void completion.catch(() => {});
++  });
++  await expect(completion).rejects.toThrow("original extension removal review");
++  expect(native).not.toHaveBeenCalled();
++  expect(host.querySelector('[role="alertdialog"]')).not.toBeNull();
++});
++it("held admitted confirmation after foreign observation retains rejection without new-context error", async () => {
++  await render();
++  let reject!: (reason: unknown) => void;
++  vi.spyOn(bridge, "removeExtension").mockImplementation(
++    () =>
++      new Promise((_, fail) => {
++        reject = fail;
++      }),
++  );
++  await action(ids.review);
++  const completion = (await action("confirm-extension-removal")).completion;
++  bridge.windowId = "foreign";
++  await act(async () => button(ids.permissions).click());
++  bridge.windowId = "window-original";
++  const reason = new Error("Retained original reason");
++  await act(async () => reject(reason));
++  await expect(completion).rejects.toBe(reason);
++  expect(extensionInventory.getState().error).toBe("");
++  expect(useStore.getState().toasts).toEqual([]);
++});
++
++it("scoped confirmation retains actual native ACK and rejects unknown false ACK", async () => {
++  await render();
++  vi.spyOn(bridge, "removeExtension").mockResolvedValueOnce(true).mockResolvedValueOnce(false);
++  await action(ids.review);
++  await expect((await action("confirm-extension-removal")).completion).resolves.toBe(true);
++  await action(ids.review);
++  await expect((await action("confirm-extension-removal")).completion).rejects.toThrow(
++    "Chromium could not complete this extension operation.",
++  );
++  expect(host.querySelector('[role="alertdialog"]')).not.toBeNull();
++  expect(extensionInventory.getState().error).toBe("Chromium could not complete this extension operation.");
++  expect(useStore.getState().toasts).toEqual([]);
++});
+diff --git a/apps/shell/src/components/Extensions.tsx b/apps/shell/src/components/Extensions.tsx
+index 03d9226..2d55f72 100644
+--- a/apps/shell/src/components/Extensions.tsx
++++ b/apps/shell/src/components/Extensions.tsx
+@@ -9,6 +9,7 @@ import { storeExtensionId } from "../store-extension-id";
+ import { useFeature } from "../use-feature";
+ import { extensionInventory, refreshExtensions } from "../features/extensions/extension-inventory";
+ 
++import { guardCommandCompletion } from "../command-completion";
+ import { ExtensionLocalButton, ExtensionPermissions, useExtensionsOwner } from "./ExtensionsControls";
+ 
+ export function Extensions() {
+@@ -198,29 +199,46 @@ export function Extensions() {
+             data.
+           </p>
+           <div className="extension-confirm-actions">
+-            <button
++            <ExtensionLocalButton
+               type="button"
+               className="btn"
+               disabled={busy}
+-              data-command-id="remove-extension"
+-              onClick={async () => {
+-                if (!targetCurrent() || extensionInventory.getState().busy || !removeTarget.item()) return;
++              command="confirm-extension-removal"
++              current={targetCurrent}
++              invoke={() => {
++                if (
++                  !removeTarget ||
++                  !targetCurrent() ||
++                  extensionInventory.getState().busy ||
++                  !removeTarget.item()
++                )
++                  return guardCommandCompletion(
++                    Promise.reject(new Error("Choose the original extension removal review.")),
++                    () => false,
++                  );
+                 const original = removeTarget;
+-                try {
+-                  await executeCommand("remove-extension", {
+-                    payload: { extensionId: removeTarget.record.key },
+-                  });
+-                  if (target.current === original && original.owner()) chooseTarget(null);
+-                } catch (reason) {
+-                  if (target.current !== original || !original.owner()) return;
+-                  extensionInventory.setState({
+-                    error: errorMessage(reason),
+-                  });
+-                }
++                const delivering = () => target.current === original && original.owner();
++                let errorHandled = false;
++                const completion = (async () => {
++                  try {
++                    const result = await executeCommand("remove-extension", {
++                      payload: { extensionId: original.record.key },
++                    });
++                    if (delivering()) chooseTarget(null);
++                    return result;
++                  } catch (reason) {
++                    if (delivering()) {
++                      extensionInventory.setState({ error: errorMessage(reason) });
++                      errorHandled = true;
++                    }
++                    throw reason;
++                  }
++                })();
++                return guardCommandCompletion(completion, () => delivering() && !errorHandled);
+               }}
+             >
+               Remove extension
+-            </button>
++            </ExtensionLocalButton>
+             <ExtensionLocalButton
+               type="button"
+               className="btn ghost"
+diff --git a/apps/shell/src/components/ExtensionsControls.tsx b/apps/shell/src/components/ExtensionsControls.tsx
+index 45dbd33..cfad088 100644
+--- a/apps/shell/src/components/ExtensionsControls.tsx
++++ b/apps/shell/src/components/ExtensionsControls.tsx
+@@ -11,7 +11,10 @@ import { featureStage } from "../use-feature";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+ import { guardCommandCompletion } from "../command-completion";
+ type ExtensionLocalCommand =
+-  "toggle-extension-permissions" | "review-extension-removal" | "cancel-extension-removal";
++  | "toggle-extension-permissions"
++  | "review-extension-removal"
++  | "cancel-extension-removal"
++  | "confirm-extension-removal";
+ class ExtensionOwner {
+   active = true;
+   constructor(
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index 3688bd6..d0a957d 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -178,6 +178,7 @@ export const COMMANDS = [
+   S("toggle-extension-permissions", "Toggle extension permissions", browserContextControl),
+   S("review-extension-removal", "Review extension removal", browserContextControl),
+   S("cancel-extension-removal", "Cancel extension removal", browserContextControl),
++  S("confirm-extension-removal", "Confirm extension removal", browserContextControl),
+   S("select-library-view", "Select Library view", diagnosticsControl),
+   S("select-library-history-range", "Select Library history range", diagnosticsControl),
+   S("retry-library-load", "Retry Library load", diagnosticsControl),

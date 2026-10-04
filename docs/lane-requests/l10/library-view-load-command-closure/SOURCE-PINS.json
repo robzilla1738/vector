@@ -1,0 +1,40 @@
+{
+  "files": [
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "beforeSha256": "0d5e5653211985db02f1123b4f6a0d038ecde4eacdb792140fb686a9b504c64e",
+      "afterSha256": "4643e46e373bde1e55c818be061709113675e59986a17c229ef8fbb7d1f2f00b"
+    },
+    {
+      "path": "apps/shell/src/components/LibraryControls.tsx",
+      "beforeSha256": null,
+      "afterSha256": "3ae442d72735fe2f1fb8c9e5af2f2806d63374734c6ad5870d3710d2ca6f8310"
+    },
+    {
+      "path": "apps/shell/src/components/Library.commands.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "578b63c574349c784c58e204f05e0592f77d41e2d8af5b3ce2ad49c1e81d2356"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "0dacd30c2a29aa0a75d701adf711b6830abae2e386b8d0c55379efdeddd4ac17",
+      "afterSha256": "b17f2ef8b8e1f1d2b4f96b753e2bcf30a8e05e4e27128795639a50538690d769"
+    }
+  ],
+  "patchSha256": "04f085fbbb0724578398c1f4f02130bf9928e8badcffeec74c7068d29544f36f",
+  "forwardReverseForward": true,
+  "exactResultBytes": true,
+  "readonlyPrerequisites": {
+    "apps/shell/src/error-message.ts": "7ee2b978c3b95a0d051475f0a071af80485c51a3786918c9cac4900b1c38899e",
+    "apps/shell/src/ui/button-props.ts": "23a580bbc95060ab70d78845b52f3b41fcc701205f058620d9ea56aac209398e",
+    "apps/shell/src/ui/class-props.ts": "b5c0ae32e8d9d191a30c555d88a1639c2d389a9dbd3fdad2016d0c2e2be46be9"
+  },
+  "checks": {
+    "cohort": 16,
+    "types": true,
+    "lint": true,
+    "falsifier": "Original live-only pending history read error publication after observed foreign owner RED"
+  },
+  "nativeExecuted": false,
+  "budgetAccepted": false
+}

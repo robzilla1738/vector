@@ -1,0 +1,59 @@
+diff --git a/apps/shell/src/components/Extensions.permissions-target.test.tsx b/apps/shell/src/components/Extensions.permissions-target.test.tsx
+--- a/apps/shell/src/components/Extensions.permissions-target.test.tsx
++++ b/apps/shell/src/components/Extensions.permissions-target.test.tsx
+@@ -5,20 +5,29 @@
+ import { expect, it, vi } from "vitest";
+ import { Extensions } from "./Extensions";
+ import { bridge } from "../bridge";
++import { executeCommand } from "../commands";
+ import { extensionInventory } from "../features/extensions/extension-inventory";
+-vi.mock("../bridge", () => ({
+-  bridge: {
+-    windowKind: "normal",
+-    privateMode: false,
+-    extensions: vi.fn(),
+-    onExtensionActionsChanged: vi.fn(() => () => {}),
+-  },
+-  inNativeHost: true,
+-}));
+-vi.mock("../use-feature", () => ({ useFeature: () => true }));
+-vi.mock("../commands", () => ({ executeCommand: vi.fn(), runCommand: vi.fn() }));
++vi.mock("../bridge", async (importOriginal) => {
++  const original = await importOriginal<typeof import("../bridge")>();
++  return {
++    ...original,
++    bridge: {
++      ...original.bridge,
++      windowId: "extensions-target-original",
++      windowKind: "normal",
++      privateMode: false,
++      extensions: vi.fn(),
++      onExtensionActionsChanged: vi.fn(() => () => {}),
++    },
++    inNativeHost: true,
++  };
++});
++vi.mock("../use-feature", () => ({ useFeature: () => true, featureStage: () => "on" }));
+ it("retains the focused native permission disclosure and complete text inside the established hit target", async () => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
++    { width: 100 },
++  ] as unknown as DOMRectList);
+   const original = extensionInventory.getState();
+   const permission = "https://permission.fixture.invalid/" + "account".repeat(90);
+   vi.mocked(bridge.extensions).mockResolvedValue([
+@@ -60,12 +69,12 @@
+     const key = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+     summary.dispatchEvent(key);
+     expect(key.defaultPrevented).toBe(false);
+-    // jsdom cannot execute the browser's keyboard activation default. Its real summary click default remains usable.
++    // jsdom cannot execute native Enter activation. The real click dispatches the registered original summary owner.
+     await act(async () => summary.click());
+     expect(details.open).toBe(true);
+     expect(details.querySelector("p")!.textContent).toBe("storage, " + permission);
+     expect(document.activeElement).toBe(summary);
+-    await act(async () => summary.click());
++    await act(async () => executeCommand("toggle-extension-permissions"));
+     expect(details.open).toBe(false);
+     expect(details.querySelector("p")!.textContent).toBe("storage, " + permission);
+     expect(bridge.extensions).toHaveBeenCalledTimes(1);

@@ -47,7 +47,7 @@
   .composer-footer .new-chat-attach { min-width:28px; min-height:28px; justify-content:center; }
   .composer-footer .conversation-browser-context-controls { justify-content:flex-start; }
   .composer-footer .browser-context-trigger { max-width:100%; }
-  .composer-send-actions .dictation-trigger { width:28px; height:28px; min-width:28px; padding:0; justify-content:center; font-size:0; gap:0; }
+  .composer-send-actions .dictation-trigger { width:var(--hit); height:var(--hit); min-width:var(--hit); padding:0; justify-content:center; font-size:0; gap:0; }
 }
 
 }
@@ -107,7 +107,7 @@
 .new-chat-options { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-1-5) var(--space-2) 0; min-height: 34px; color: var(--ink-2); font-size: var(--fs-xs); }
 .new-chat-attach { display: inline-flex; align-items: center; gap: var(--space-1-5); padding: var(--space-1) var(--space-1-5); min-height:32px; border-radius: var(--r-md); white-space: nowrap; }
 .new-chat-options select { min-width: 0; max-width: min(260px, 60%); border: 0; border-radius: var(--r-md); padding: var(--space-1) var(--space-1-5); background: transparent; color: inherit; text-overflow: ellipsis; }
-.new-chat-options :is(button, select):hover { background: var(--bg-hover); color: var(--ink-0); }
+.new-chat-options :is(button, select):not(:disabled):hover { background: var(--bg-hover); color: var(--ink-0); }
 .conversation-browser-context { display: grid; justify-items: end; gap: var(--space-1-5); min-width: 0; max-width: 100%; margin-left: auto; }
 .conversation-browser-context-controls { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); min-width: 0; max-width: 100%; }
 .conversation-browser-sources { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-1); max-width: 100%; }

@@ -1,0 +1,13 @@
+{
+  "startupJS": 503007,
+  "startupCSS": 179481,
+  "totalJS": 1850835,
+  "limits": {
+    "startupJS": 501760,
+    "startupCSS": 184320,
+    "totalJS": 1843200
+  },
+  "manifestSha256": "74cb82785c43d01eb8d1075a1d9dbe8a89b2135bcd16cd2abcd6b6003f579aa3",
+  "passed": false,
+  "sourceStage": "Library4 Composer3 Extensions4 BEFORE confirmation4"
+}

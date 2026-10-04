@@ -1,0 +1,31 @@
+{
+  "requestOnly": true,
+  "productionCssLeaves": 2,
+  "newTests": 1,
+  "controlsCases": 12,
+  "controlsFiles": 2,
+  "shellTypesPass": true,
+  "lintPass": true,
+  "forwardReverseForward": true,
+  "nativeExecuted": false,
+  "bundleMeasured": false,
+  "files": {
+    "SOURCE-PINS.json": "ee2cd4abb3663aa78505d473f2f09d27d80d4167f2e20dea5bc9ae0a0d64ae23",
+    "REPLAY.json": "535b2c0963114f0a202e9e5a9214a9ed370d4a0c5172d253abcca07cd971ad2a",
+    "README.md": "921d9bcf61f3e5d78a395274998e35cd3401d87b3934fbc206dea81b673fe877",
+    "request.patch": "c4113aab65ccfce6cd4cfae18cbf80199b09c34789eaf7307643e7d0d84a885c",
+    "logs/aux-composer-context-controls-004.log": "b8617ce66629c0424dbadaad470cd28ee088496d28d0584ffe154f6a1e20af2a",
+    "logs/aux-composer-context-controls-005.log": "9b80200e358f559e3627277f01fc5366cd68f8cbf8e869b8558042ea2521b046",
+    "logs/aux-composer-context-types-004.log": "8c2cccbfb8dc36905511e19a765a7d4839a71bc54ce41f3534bf058537b08dff",
+    "logs/aux-composer-context-controls-003.log": "a0d9494cdf10bf0a2d00d7e24642982aa6b7212eb73d23d932b2aa7c1627e468",
+    "logs/aux-composer-context-types-005.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/aux-composer-context-lint-005.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/aux-composer-context-original-001.log": "ae68da7ff21c22d90d8f8cf200d247c7ceab3482c714d021898809782ffa67af",
+    "logs/aux-composer-context-original-002.log": "1ffe3d99bd9e49a979e30fe935af03d1f18c9a4455961e45c965d72a44dec6ce",
+    "after/apps/shell/src/components/Composer.context-target.test.tsx": "3fda142d462e2436e01681b67bfd05de506fa329c2a3ee1b50148320ac3120ce",
+    "after/apps/shell/src/components/ConversationContextMenu.css": "8eab22832f7d4a183044cdbae0287c5a6273da63f77a0b5751e15a6df38079b9",
+    "after/apps/shell/src/components/Conversation.css": "3ce49b99dcbdf248d11a1d712c7af00535eaa0dfed6e8c830ea1912ba9b42b1d",
+    "before/apps/shell/src/components/ConversationContextMenu.css": "c20e7feba73f3e19e712d40dc8cd543a9e45a9bb451034afa050c6c7f89a626b",
+    "before/apps/shell/src/components/Conversation.css": "c9992e5c91d04f2419a5d882543e1a18097bb90e37c6a1756caa79e2f893e72b"
+  }
+}
