@@ -1,0 +1,293 @@
+--- a/chrome/browser/ui/aux/permission_broker_unittest.cc
++++ b/chrome/browser/ui/aux/permission_broker_unittest.cc
+@@ -303,7 +303,12 @@
+         browser()->tab_strip_model()->GetIndexOfWebContents(page_));
+     page_ = nullptr; manager_ = nullptr; contents.reset();
+   }
+-  void RevokeLease() { controller_->Revoke(base::DictValue().Set("leaseId", "lease")); }
++  void RevokeLease() {
++    auto reply = controller_->Revoke(base::DictValue().Set("lease", lease_.Clone()));
++    const auto* result = reply.FindDict("result");
++    ASSERT_TRUE(result);
++    ASSERT_EQ(result->FindBool("accepted"), true);
++  }
+   bool RevokeAndCheckAuthority() {
+     RevokeLease();
+     return !controller_->PermissionAuthority(page_->GetPrimaryMainFrame()).empty();
+@@ -419,7 +424,7 @@
+ }
+ TEST_F(PermissionBrokerTest, MatchingRevocationDropsQueuedAllow) {
+   Prompt(); Mutate("safety.grants.revoke"); Allow(); EXPECT_FALSE(state_.granted);
+-  controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
++  RevokeLease();
+   Reply("safety.grants.revoke", true, base::DictValue());
+   EXPECT_FALSE(state_.granted); EXPECT_NE(Find("permission.invalidate"), nullptr);
+ }
+@@ -506,12 +511,12 @@
+ }
+ TEST_F(PermissionBrokerTest, BackgroundMatchingRevocationStillPreventsEffects) {
+   AddFixtureTab(GURL("https://other.test/")); page_->WasHidden();
+-  Prompt(); Mutate(); Allow(); controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
++  Prompt(); Mutate(); Allow(); RevokeLease();
+   Reply("safety.originPolicies.set", true, base::DictValue()); EXPECT_FALSE(state_.granted);
+   EXPECT_NE(Find("permission.invalidate"), nullptr);
+ }
+ TEST_F(PermissionBrokerTest, HiddenPersonRequestWaitsForAttendedNativePrompt) {
+-  controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
++  RevokeLease();
+   AddFixtureTab(GURL("https://other.test/")); page_->WasHidden();
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr()));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+@@ -553,7 +558,7 @@
+   manager_->Dismiss(std::monostate());
+ }
+ TEST_F(PermissionBrokerTest, PersonPageWithoutRealLeaseStaysAttended) {
+-  controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
++  RevokeLease();
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr()));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+   ASSERT_TRUE(manager_->IsRequestInProgress());
+--- a/chrome/browser/ui/aux/native_creator_close_receipt_unittest.cc
++++ b/chrome/browser/ui/aux/native_creator_close_receipt_unittest.cc
+@@ -46,7 +46,7 @@
+     TabCatalog::GetForProfile(profile())->MarkRuntimeOwned(page_id_);
+     ASSERT_EQ(TabCatalog::GetForProfile(profile())->FindPage(page_id_), page_.get());
+     navigation_ = content::NavigationSimulator::CreateBrowserInitiated(GURL("about:blank"), page_.get());
+-    navigation_->Start();
++    navigation_->ReadyToCommit();
+     auto created = controller_->RegisterCreatorPage(page_.get(),
+         navigation_->GetNavigationHandle()->GetNavigationId(), kGeneration, nullptr);
+     const auto* result = created.FindDict("result");
+@@ -118,7 +118,7 @@
+   EXPECT_EQ(ready_replies_, 0);
+   early_navigation_ = content::NavigationSimulator::CreateBrowserInitiated(
+       GURL("about:blank"), original_page.get());
+-  early_navigation_->Start();
++  early_navigation_->ReadyToCommit();
+   const auto navigation_id = early_navigation_->GetNavigationHandle()->GetNavigationId();
+   early_navigation_->Commit();
+   early_navigation_.reset();
+--- a/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
++++ b/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
+@@ -6,6 +6,10 @@
+ #include <memory>
+ #include <optional>
+ #include "base/functional/bind.h"
++#include "base/scoped_observation.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/profile_manager_observer.h"
+ #include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
+ #include "base/run_loop.h"
+@@ -149,16 +153,30 @@
+         }, receipt->GetWeakPtr(), std::move(original), std::move(effect));
+   }
+ };
+-class NativeCreatorCloseReceiptBrowserTest : public InProcessBrowserTest {
++class NativeCreatorCloseReceiptBrowserTest : public InProcessBrowserTest,
++                                          public ProfileManagerObserver {
+  protected:
+   void SetUpInProcessBrowserTestFixture() override {
+     InProcessBrowserTest::SetUpInProcessBrowserTestFixture();
+     profile_creation_ = BrowserContextDependencyManager::GetInstance()
+         ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+-            [](content::BrowserContext* context) {
+-              auto* profile = Profile::FromBrowserContext(context);
+-              if (!profile->IsOffTheRecord()) AuxCreatorCloseBrowserTestPeer::Install(profile);
+-            }));
++            [](NativeCreatorCloseReceiptBrowserTest* fixture, content::BrowserContext*) {
++              if (!fixture->profile_manager_observation_.IsObserving()) {
++                fixture->profile_manager_observation_.Observe(
++                    g_browser_process->profile_manager());
++              }
++            }, base::Unretained(this)));
++  }
++  void OnProfileAdded(Profile* profile) override {
++    if (!profile->IsOffTheRecord()) AuxCreatorCloseBrowserTestPeer::Install(profile);
++  }
++  void OnProfileManagerDestroying() override {
++    profile_manager_observation_.Reset();
++  }
++  void TearDownInProcessBrowserTestFixture() override {
++    profile_creation_ = {};
++    profile_manager_observation_.Reset();
++    InProcessBrowserTest::TearDownInProcessBrowserTestFixture();
+   }
+   void SetUpOnMainThread() override {
+     TabCatalog::EnsureFactoryBuilt();
+@@ -313,6 +331,8 @@
+     ASSERT_TRUE(content::ExecJs(page_.get(), "window.onbeforeunload = null;"));
+   }
+   base::CallbackListSubscription profile_creation_;
++  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
++      profile_manager_observation_{this};
+   raw_ptr<Profile> profile_ = nullptr;
+   raw_ptr<AuxRuntimeHost> host_ = nullptr;
+   raw_ptr<EgressController> controller_ = nullptr;
+--- a/chrome/browser/ui/aux/native_input_ack_browsertest.mm
++++ b/chrome/browser/ui/aux/native_input_ack_browsertest.mm
+@@ -2,6 +2,10 @@
+ #include <memory>
+ 
+ #include "base/functional/bind.h"
++#include "base/scoped_observation.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/profile_manager_observer.h"
+ #include "base/json/json_reader.h"
+ #include "components/keyed_service/content/browser_context_dependency_manager.h"
+ #include "chrome/browser/ui/aux/runtime_host.h"
+@@ -60,16 +64,30 @@
+ 
+ namespace aux {
+ class NativeInputAcknowledgementBrowserTest : public InProcessBrowserTest,
+-                                             public content::WebContentsObserver {
++                                             public content::WebContentsObserver,
++                                             public ProfileManagerObserver {
+  protected:
+   void SetUpInProcessBrowserTestFixture() override {
+     InProcessBrowserTest::SetUpInProcessBrowserTestFixture();
+     profile_creation_ = BrowserContextDependencyManager::GetInstance()
+         ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+-            [](content::BrowserContext* context) {
+-              auto* profile = Profile::FromBrowserContext(context);
+-              if (!profile->IsOffTheRecord()) AuxNativeInputAckBrowserTestPeer::Install(profile);
+-            }));
++            [](NativeInputAcknowledgementBrowserTest* fixture, content::BrowserContext*) {
++              if (!fixture->profile_manager_observation_.IsObserving()) {
++                fixture->profile_manager_observation_.Observe(
++                    g_browser_process->profile_manager());
++              }
++            }, base::Unretained(this)));
++  }
++  void OnProfileAdded(Profile* profile) override {
++    if (!profile->IsOffTheRecord()) AuxNativeInputAckBrowserTestPeer::Install(profile);
++  }
++  void OnProfileManagerDestroying() override {
++    profile_manager_observation_.Reset();
++  }
++  void TearDownInProcessBrowserTestFixture() override {
++    profile_creation_ = {};
++    profile_manager_observation_.Reset();
++    InProcessBrowserTest::TearDownInProcessBrowserTestFixture();
+   }
+   void SetUpOnMainThread() override {
+     embedded_test_server()->ServeFilesFromSourceDirectory("content/test/data");
+@@ -103,6 +121,8 @@
+     return page_->GetPrimaryMainFrame()->GetRenderWidgetHost()->GetView();
+   }
+   base::CallbackListSubscription profile_creation_;
++  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
++      profile_manager_observation_{this};
+   raw_ptr<content::WebContents> page_ = nullptr;
+   bool hold_next_ = false;
+   base::test::TestFuture<base::OnceClosure> held_ack_;
+--- a/components/viz/service/display_embedder/skia_output_surface_impl_unittest.cc
++++ b/components/viz/service/display_embedder/skia_output_surface_impl_unittest.cc
+@@ -21,6 +21,9 @@
+ #include "components/viz/service/display/native_stock_raster_draw.h"
+ #include "components/viz/service/display_embedder/skia_output_surface_dependency_impl.h"
+ #include "components/viz/service/display_embedder/image_context_impl.h"
++#include "gpu/command_buffer/client/client_shared_image.h"
++#include "gpu/command_buffer/common/shared_image_info.h"
++#include "components/viz/common/resources/transferable_resource.h"
+ #include "gpu/config/gpu_preferences.h"
+ #include "third_party/skia/include/core/SkSamplingOptions.h"
+ #include "components/viz/service/gl/gpu_service_impl.h"
+@@ -30,6 +33,7 @@
+ #include "testing/gtest/include/gtest/gtest.h"
+ #include "ui/gfx/geometry/skia_conversions.h"
+ #include "ui/gfx/gpu_fence_handle.h"
++#include "ui/gl/gl_bindings.h"
+ #include "ui/gl/gl_implementation.h"
+ 
+ namespace viz {
+@@ -480,8 +484,22 @@
+     // is not a synthetic opacity callback or an imported metadata assertion.
+     const auto mailbox = output_->CreateSolidColorSharedImage(
+         SkColor4f{1.f, 0.f, 0.f, alpha}, space);
+-    auto image = std::make_unique<ImageContextImpl>(mailbox, gfx::Size(1, 1),
+-        SinglePlaneFormat::kRGBA_8888, space);
++    // Describe the SAME actually created backing as a transferable resource.
++    // The mailbox constructor is render-pass-only and correctly refuses this
++    // root source image before stored-alpha readback.
++    const gpu::SharedImageMetadata metadata{
++        SinglePlaneFormat::kRGBA_8888, gfx::Size(1, 1), space,
++        kTopLeft_GrSurfaceOrigin, kPremul_SkAlphaType,
++        gpu::SHARED_IMAGE_USAGE_SCANOUT | gpu::SHARED_IMAGE_USAGE_DISPLAY_READ};
++    auto shared_image = gpu::ClientSharedImage::CreateForTesting(
++        mailbox, metadata, gpu::SyncToken(), GL_TEXTURE_2D);
++    const auto resource = TransferableResource::Make(
++        shared_image, TransferableResource::ResourceSource::kTest,
++        gpu::SyncToken());
++    ASSERT_EQ(resource.mailbox(), mailbox);
++    auto image = std::make_unique<ImageContextImpl>(
++        resource, /*maybe_concurrent_reads=*/false,
++        /*raw_draw_if_possible=*/false, /*client_id=*/0);
+     if (advertised_opaque) image->set_alpha_type(kOpaque_SkAlphaType);
+     auto pack = std::make_unique<NativeStockRasterDraw>(kSurfaceRect,
+         base::BindOnce([](std::shared_ptr<Result> retained, bool full, bool readback) {
+--- a/third_party/blink/renderer/core/frame/native_startup_interactive_witness.cc
++++ b/third_party/blink/renderer/core/frame/native_startup_interactive_witness.cc
+@@ -13,6 +13,11 @@
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/frame/local_frame_view.h"
+ #include "third_party/blink/renderer/core/html/forms/html_text_area_element.h"
++#include "third_party/blink/renderer/core/layout/hit_test_location.h"
++#include "third_party/blink/renderer/core/layout/hit_test_result.h"
++#include "third_party/blink/renderer/core/layout/layout_view.h"
++#include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
++#include "ui/gfx/geometry/point_conversions.h"
+ #include "third_party/blink/renderer/core/style/computed_style.h"
+ #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
+ #include "third_party/blink/renderer/core/timing/performance_entry.h"
+@@ -89,7 +94,24 @@
+   const double top = std::max(0.0, static_cast<double>(rect.y()));
+   const double right = std::min(static_cast<double>(viewport.width()), static_cast<double>(rect.right()));
+   const double bottom = std::min(static_cast<double>(viewport.height()), static_cast<double>(rect.bottom()));
+-  if (right <= left || bottom <= top || document.ElementFromPoint((left + right) / 2, (top + bottom) / 2) != input ||
++  if (right <= left || bottom <= top || !document.GetLayoutView()) return std::nullopt;
++  // ElementFromPoint updates to pre-paint and invalidates the paint-clean
++  // witness itself. Hit-test the already painted original document instead,
++  // retaining TreeScope's viewport/zoom and web-exposed retarget semantics.
++  gfx::PointF point((left + right) / 2, (top + bottom) / 2);
++  const float zoom = document.GetFrame()->LayoutZoomFactor();
++  if (!std::isfinite(zoom) || zoom <= 0) return std::nullopt;
++  auto* scrollable_area = document.View()->LayoutViewport();
++  if (!scrollable_area) return std::nullopt;
++  const auto visible = gfx::ScaleToRoundedRect(
++      gfx::Rect(scrollable_area->VisibleContentRect(kExcludeScrollbars).size()),
++      1 / zoom);
++  if (!visible.Contains(gfx::ToRoundedPoint(point))) return std::nullopt;
++  point.Scale(zoom);
++  const HitTestLocation location(point);
++  HitTestResult hit(HitTestRequest::kReadOnly | HitTestRequest::kActive, location);
++  if (!document.GetLayoutView()->HitTestNoLifecycleUpdate(location, hit) ||
++      document.ElementForHitTest(hit.InnerNode(), TreeScope::kWebExposed) != input ||
+       document.Lifecycle().GetState() != DocumentLifecycle::kPaintClean || !MatchesActualMark(document, instance))
+     return std::nullopt;
+   return NativeStartupInteractiveWitness{document.Token(), instance.Utf8(), base::TimeTicks::Now()};
+--- a/third_party/blink/renderer/core/frame/native_startup_interactive_witness_test.cc
++++ b/third_party/blink/renderer/core/frame/native_startup_interactive_witness_test.cc
+@@ -4,6 +4,7 @@
+ #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
+ #include "third_party/blink/renderer/bindings/core/v8/v8_performance_mark_options.h"
+ #include "third_party/blink/renderer/core/dom/document.h"
++#include "third_party/blink/renderer/core/dom/document_lifecycle.h"
+ #include "third_party/blink/renderer/core/testing/page_test_base.h"
+ #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
+ #include "third_party/blink/renderer/core/timing/window_performance.h"
+@@ -41,9 +42,12 @@
+ };
+ TEST_F(NativeStartupInteractiveWitnessTest, GenuineCurrentMarkAndEnabledInputMatch) {
+   Fixture("<textarea data-aux-interactive-instance=composer-1></textarea><button disabled>Send</button>");
++  ASSERT_EQ(GetDocument().Lifecycle().GetState(), DocumentLifecycle::kPaintClean);
+   EXPECT_FALSE(ReadNativeStartupInteractiveWitness(GetDocument()));
++  EXPECT_EQ(GetDocument().Lifecycle().GetState(), DocumentLifecycle::kPaintClean);
+   Mark("composer-1");
+   const auto sample = ReadNativeStartupInteractiveWitness(GetDocument());
++  EXPECT_EQ(GetDocument().Lifecycle().GetState(), DocumentLifecycle::kPaintClean);
+   ASSERT_TRUE(sample);
+   EXPECT_EQ(sample->document, GetDocument().Token());
+   EXPECT_EQ(sample->composer_instance, "composer-1");

@@ -1,0 +1,6 @@
+ok   renderer startup JS                490 KB  (budget 490 KB)
+ok   renderer startup CSS               175 KB  (budget 180 KB)
+ok   renderer total JS                 1797 KB  (budget 1800 KB)
+       249 KB  assets/App-KNO9fUL6.js
+       203 KB  assets/index-rTll7Qwl.js
+        38 KB  assets/feature-stage-reconciliation-BCBg8Gtl.js
