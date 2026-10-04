@@ -1,0 +1,40 @@
+{
+  "receiptSha256": "b98bc971fd303547b2248dbd4506a40b5f5e21e93c4aefd613715ed4c99ee2a2",
+  "actualOriginalPids": [
+    70347,
+    70349,
+    70372,
+    70373,
+    70375,
+    70379,
+    70381,
+    70397,
+    70411,
+    70412
+  ],
+  "actualOriginalGroups": [
+    70347,
+    70373
+  ],
+  "actualOwnersAbsent": true,
+  "rawArtifactPinsVerified": {
+    "/private/tmp/aux-browser-runtime-builder-native319-source-001/release/test-artifacts/builder-native320-9c8b162c-native-build/state.json": "87deba26294ed03e12e3281e84df0460ea81d2a1af238d9aef9450a143cf4710",
+    "/private/tmp/aux-browser-runtime-builder-native319-source-001/release/test-artifacts/builder-native320-9c8b162c-native-build/watch.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native319-source-001/release/test-artifacts/builder-native320-9c8b162c-native-build/watch-arm": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native319-source-001/release/test-artifacts/builder-native320-9c8b162c-native-build/watch-config.json": "323035124f6615b559153d2535d3be759d2fe55f0d3a9d870c6275bce1415262",
+    "/private/tmp/aux-browser-runtime-builder-native319-source-001/release/test-artifacts/builder-native320-9c8b162c-native-build/actual-version-header.h": "8a1b98b8559fcd97efe9f89754ba77c90b9eb3fedd80611b7db532fd7db838ed",
+    "/private/tmp/aux-browser-runtime-builder-native319-source-001/release/test-artifacts/builder-native320-9c8b162c-native-build/watch-done": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native319-source-001/release/test-artifacts/builder-native320-9c8b162c-native-build/watch.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-native319-source-001/release/test-artifacts/builder-native320-9c8b162c-native-build/watch-ready": "e910de8b2d0f6759f3968c040b232240c09cc3b2d3f77d5817010220a2361d68",
+    "/private/tmp/aux-browser-runtime-builder-native319-source-001/release/test-artifacts/builder-native320-9c8b162c-native-build/terminal-proof.json": "f01ddcc38e0074e912f61ed6aa583dcf98fab8ffd60a52b2f0c4a85385e44190",
+    "/private/tmp/aux-browser-runtime-builder-native319-source-001/release/test-artifacts/builder-native320-9c8b162c-native-build/watch/events.jsonl": "12e85de3509f01da638d6cb66bccd63197ef213d79e53a6f9241f6afa9378024",
+    "/private/tmp/aux-builder-native316-runtime-teardown-source-001/native319-preparation-001/native320-build-original-launch-001/stderr.log": "2a0103697abb47757dd85ef55f3cf2cb9fa7c2e1f99df6321a07c184b2015a4b",
+    "/private/tmp/aux-builder-native316-runtime-teardown-source-001/native319-preparation-001/native320-build-original-launch-001/stdout.log": "28f0a3772c91c75fd7b42bab008023a1cc3d8a98416b2ee9cd57d1e0a03ca553",
+    "/private/tmp/aux-builder-native316-runtime-teardown-source-001/native319-preparation-001/native320-build-original-launch-001/original-terminal.json": "25712ae83637c6b698d00012449c6b67e6cbac1397efb77e35744994129414da",
+    "/private/tmp/aux-builder-native316-runtime-teardown-source-001/native319-preparation-001/native320-build-original-launch-001/original-launch.json": "b2622750230fe545c429f3b7090a3a4dec0987a2123fed8e65c7ea25d2f98a7e"
+  },
+  "nativeGate": "FAILED_RETAINED",
+  "AppLaunchable": false,
+  "qualification": false,
+  "fullOutputRehashClaim": "builder receipt retained; root independently rehashed17 terminal outputs"
+}

@@ -1,0 +1,46 @@
+{
+  "sourceOnly": true,
+  "patchSha256": "af5626fd80cc3ddf85a2020d4b0186aad1f7b1eea398bb4f153558a5c4938980",
+  "leaves": [
+    {
+      "path": "tests/host/run-journey.mjs",
+      "beforeSha256": "0c67a3d4745f415294f82d1da60e4c0823c891b15d7045d2d6b9eebe32d1b570",
+      "afterSha256": "07b8ddc65c286abd58678a5e410805237cc1b027fd94b4fb35ab23ffa790e837"
+    },
+    {
+      "path": "tests/host/appearance-journeys/mounted-image-appearance.mjs",
+      "beforeSha256": null,
+      "afterSha256": "39e6eab37b97a48778d3f879ca5d69b149253c2a059eeb4295556bb8b459bf04"
+    },
+    {
+      "path": "tests/host/mounted-image-wrapper.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "01f5b4aebe9acdb6bf288628abc93248079776e9c2cc3208e4d697e947af5502"
+    }
+  ],
+  "forwardReverseForward": true,
+  "actualOriginalPrerequisites": [
+    {
+      "path": "tests/host/lib/mounted-image-appearance.mjs",
+      "sha256": "7dcfc38468bc8155633b60b44f5548c71820ec6c8555c839fdf0a8f4b785c88d",
+      "resolvedReadOnlyPath": "/private/tmp/aux-browser-runtime-design-mounted-image-ledger/tests/host/lib/mounted-image-appearance.mjs"
+    },
+    {
+      "path": "tests/host/lib/home-capture.mjs",
+      "sha256": "6fd157b411ea8c9ae5a974f07fe1be93b8d6caea0c90289267422a7a584a6a51",
+      "resolvedReadOnlyPath": "/private/tmp/aux-browser-runtime-following-batch/tests/host/lib/home-capture.mjs"
+    },
+    {
+      "path": "tests/host/lib/composer-image-appearance.mjs",
+      "sha256": "7501e197879031c327fc7e3c6e4b97c99c35fc02d555f4e3bee50dfbb9ec1026",
+      "resolvedReadOnlyPath": "/private/tmp/aux-browser-runtime-following-batch/tests/host/lib/composer-image-appearance.mjs"
+    },
+    {
+      "path": "tests/host/lib/utility-appearance-owner.mjs",
+      "sha256": "94193983b5c64eb5790b4033e05b4e631350e9d96d98b7fe16a380b07839a229",
+      "resolvedReadOnlyPath": "/private/tmp/aux-browser-runtime-following-batch/tests/host/lib/utility-appearance-owner.mjs"
+    }
+  ],
+  "nativeCaptured": false,
+  "qualification": "none"
+}
