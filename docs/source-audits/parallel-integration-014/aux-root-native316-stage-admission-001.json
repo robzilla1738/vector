@@ -1,0 +1,16 @@
+{
+  "stageApproved": true,
+  "launchPath": "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/stage-native316-2a014c6e-launch-001.json",
+  "launchSha256": "dcd20c226afef4e4a366b3a31dabf1a347fcfa0cf0070a9d5ff17af2cb8572e0",
+  "controllerSha256": "b1b9df3a720923251f696dc0ba09a0d96f03cd6d1fb6aa5d48723a53d6aaa756",
+  "candidate": "2a014c6ee2f9ef2295a6591f10c2d57d1a45bb18",
+  "sourceExportSha256": "c3c0215d97d3cff74222ea721fbe00c5b48a089352264467072db142abc8c784",
+  "actualSevenLeafReplay": "exact forward/reverse/forward",
+  "retained314PrefixAndHistoricalAbsences": true,
+  "actualCurrentPair8801AndRuntime92Joins": true,
+  "originalFailedAssertionAndCanaryClosuresRetained": true,
+  "scope": "seven reviewed native source leaves + exact174 shell assets + generated3 only",
+  "gnBuildRuntimeHelperOrAppApproved": false,
+  "afterStageMixedPairNotLaunchable": true,
+  "qualification": false
+}

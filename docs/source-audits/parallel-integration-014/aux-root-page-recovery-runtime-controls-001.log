@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+ ✓ |unit| tests/unit/page-recovery-native-opening.test.ts (2 tests) 13ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:39:09
+   Duration  8.72s (transform 4.73s, setup 0ms, collect 8.52s, tests 13ms, environment 0ms, prepare 50ms)
+

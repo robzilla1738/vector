@@ -1,0 +1,56 @@
+{
+  "records": [
+    {
+      "packet": "/tmp/aux-browser-runtime-design-page-recovery-appearance/docs/lane-requests/design/page-recovery-appearance",
+      "freezeSha256": "f3ae579368173815adb960ebdc49fc85c759bf2cb35915d12c54ddaddd8a8f98",
+      "rows": [
+        {
+          "path": "tests/host/appearance-journeys/page-recovery-appearance.mjs",
+          "beforeSha256": null,
+          "afterSha256": "a9592189c40d60f108144251d18177df0fe6018647a93a5c9ff81bbbd94e7112"
+        },
+        {
+          "path": "tests/host/lib/page-recovery-appearance.mjs",
+          "beforeSha256": null,
+          "afterSha256": "df64744d45a2d9a855019ba9826bfce7e586bc8ceb61196a1d758b5a4d39a59a"
+        },
+        {
+          "path": "tests/host/page-recovery-appearance.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "1043ec484c5c0b4311113870c0122440b451522e444ce46640c957afef5d5dd3"
+        },
+        {
+          "path": "tests/host/run-journey.mjs",
+          "beforeSha256": "8d6aeb032f5d73524c4aaea5759f136e343615b0918e5b1b186ebffe260bf807",
+          "afterSha256": "0c67a3d4745f415294f82d1da60e4c0823c891b15d7045d2d6b9eebe32d1b570",
+          "patchSha256": "ece149ad790fa931de1008b7d2c986a8930dfae2ffb4c2b531bfbd5eee5a93e6"
+        }
+      ],
+      "exactForwardReverseForward": true
+    },
+    {
+      "packet": "/tmp/aux-browser-runtime-design-page-recovery-appearance/docs/lane-requests/design/page-recovery-native-ui-navigation",
+      "freezeSha256": "2d07425c247d1a585035baec5be1060021158c1859c86e23d9fca9741ee28dd1",
+      "rows": [
+        {
+          "path": "tests/host/lib/page-recovery-appearance.mjs",
+          "beforeSha256": "df64744d45a2d9a855019ba9826bfce7e586bc8ceb61196a1d758b5a4d39a59a",
+          "afterSha256": "09c1e07b8f20f14338f2a9f3e62e9382ade24b8de751095719a890dc30ff9fc5"
+        },
+        {
+          "path": "tests/host/page-recovery-appearance.test.mjs",
+          "beforeSha256": "1043ec484c5c0b4311113870c0122440b451522e444ce46640c957afef5d5dd3",
+          "afterSha256": "91500b4e642171d1cf828c79964f2a556463de3c77d2f387b4e6d3d65cb418a9"
+        },
+        {
+          "path": "tests/unit/page-recovery-native-opening.test.ts",
+          "beforeSha256": null,
+          "afterSha256": "791ba43e296dc43604e0641145048258c32866b3f6e7ff3dcb09cb3fc35fadad"
+        }
+      ],
+      "exactForwardReverseForward": true
+    }
+  ],
+  "nativeQualification": false,
+  "functionalRegistryUnchanged": true
+}

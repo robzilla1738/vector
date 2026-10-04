@@ -1,0 +1,11 @@
+{
+  "candidateCommit": "1098e0cdf23d6ef5507dfc0b889bcf5324bfa093",
+  "followingFreeze": "7060ab113b03aedd30d1fff9266b306c45d0a9e1",
+  "actualCommittedRows": 173,
+  "completePhysicalNative690Unchanged": true,
+  "exactNonnativeGitBlobModeAndBytes": true,
+  "originalRawPinsRetained": true,
+  "initialGitNativeComparisonRefusedIgnoredMirror": true,
+  "shellCaptureSeparatePending": true,
+  "qualification": false
+}

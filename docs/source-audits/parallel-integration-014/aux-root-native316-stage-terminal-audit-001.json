@@ -1,0 +1,13 @@
+{
+  "stageProofSha256": "645526239efe7e6d09b82729b364eccfb1f83dd6c35618b50ee5220350edb580",
+  "outerTerminalSha256": "b0b77ea8c0e9c42f2d5ba59451f36bcb662c64c5d766bb1e83ef881e2bac748a",
+  "closureSha256": "31a89891144264bb1affadab337c0b1b6ed912328b04b8bb0c70c250ec2e9342",
+  "actualNative690Generated3Assets174Exact": true,
+  "originalNaturalExitAndActualGlobalSlotAbsent": true,
+  "allThreeChildrenNaturalExitAndRawHashesExact": true,
+  "mixedPairNotLaunchable": true,
+  "qualification": false,
+  "actualClosureArtifacts": 26,
+  "originalPidsAndGroupsIndependentlyAbsent": true,
+  "actualWatchDoneNoStop": true
+}

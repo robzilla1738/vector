@@ -1,0 +1,24 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+(node:16917) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16918) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16920) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16919) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16916) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/ConversationImages.filename-wrap.test.tsx (1 test) 50ms
+ ✓ |unit| apps/shell/src/components/Conversation.history-error.test.tsx (3 tests) 56ms
+ ✓ |unit| apps/shell/src/components/Composer.start-error.test.tsx (4 tests) 83ms
+ ✓ |unit| apps/shell/src/components/Composer.integration.test.tsx (10 tests) 179ms
+ ✓ |unit| apps/shell/src/components/Composer.context-lifecycle.test.tsx (13 tests) 259ms
+
+ Test Files  5 passed (5)
+      Tests  31 passed (31)
+   Start at  23:42:43
+   Duration  4.50s (transform 867ms, setup 0ms, collect 16.15s, tests 627ms, environment 1.70s, prepare 255ms)
+
