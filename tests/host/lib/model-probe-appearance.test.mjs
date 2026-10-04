@@ -6,7 +6,7 @@ import {mkdtempSync,mkdirSync,rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {setTimeout as wait} from 'node:timers/promises';
 import {createFixture} from './fixture.mjs';
-import {captureSuccessfulModelProbeAppearance,captureRejectedModelProbeAppearance,requireModelProbeAppearance} from './model-probe-appearance.mjs';
+import {captureSuccessfulModelProbeAppearance,requireModelProbeAppearance} from './model-probe-appearance.mjs';
 async function context(){
  const server=await createFixture(),controller=new AbortController(),root=mkdtempSync('/tmp/aux-native-journey-'),data=join(root,'profile');mkdirSync(data,{mode:0o700});
  const state={settings:{modelConfigured:false},opened:false,testing:false,details:false,focus:false,actions:[],captures:[],work:undefined,probeError:''};
