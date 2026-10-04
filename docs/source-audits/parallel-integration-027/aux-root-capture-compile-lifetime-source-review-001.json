@@ -1,0 +1,15 @@
+{
+  "sourceOnly": true,
+  "nativeExecution": false,
+  "actualFiveBeforeResultAndApiPins": true,
+  "rootFrf": true,
+  "reviewed": "Same ordered identity values via valid lvalue Set statements; original weak pointers invalidated before destructor reply; real direct-removal reentry definition; out-of-line trace/delegate returns.",
+  "manifestSha256": "d6c2e9cb2c31862565d533ab3ec8a6d99c8755781de8e38f56a51fdd8e027c0b",
+  "patchSha256": "8a3e91e69db7765cc6e33b6026fb50820f1a7bff458381ea8b5508500327657f",
+  "remaining": [
+    "Public view fallback out-of-line implementation",
+    "retained browser fixture callback lifetime",
+    "Viz authentic child-frame closure",
+    "native compile and genuine controls"
+  ]
+}

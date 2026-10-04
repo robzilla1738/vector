@@ -1,0 +1,14 @@
+{
+  "sourceOnly": true,
+  "executionAdmission": false,
+  "templatePinsMatch": true,
+  "originalBodyInverseByteExact": true,
+  "actualAstPreOperationRaise": true,
+  "unique18TargetOutputMapping": true,
+  "originalNative321SourceAndReceiptsHistoricalOnly": true,
+  "finalHelperGuardianSourceAndActualCompilerRepinRequired": true,
+  "original453CasesAndFinalAddedCasesRequired": true,
+  "request001Sha256": "afad4c2e2085643c56f83916230b9068dcd3bb606fe9b0c7098967fc40a621b3",
+  "request002Sha256": "3bed1abe00680f278134f9b22ecf4d0611d7f6d85e61e2f5966992a4e98516e4",
+  "templateSha256": "a64e45469f63d6c3a2a1225af08aac8d39c72546d79f4f8ae0a2167056a83b26"
+}
