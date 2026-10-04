@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-design-native-person-capture
+
+ ✓ |unit| tests/unit/native-person-capture-mask-restoration.test.ts (11 tests) 78ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  05:19:11
+   Duration  428ms (transform 15ms, setup 0ms, collect 194ms, tests 78ms, environment 0ms, prepare 43ms)
+
