@@ -1,0 +1,16 @@
+{
+  "producer": "root-native325-actual-gn-full18-admission",
+  "actualGnProofSha256": "d16619721b5f9978d06afac33f6bef805e11178f59aee585f9b472b9b7881c5e",
+  "closureSha256": "365a0947dc0ae8cb3d2437f07e50b359095eefc47a2a30ab037da8bf553cd382",
+  "launcherSha256": "73ea81d88b0ac83f3dfe3d73f9bd0e6fe02f6aae9e2dd2781da44df319ca4dae",
+  "actualRawHashesPassed": true,
+  "originalVersionActionExact": true,
+  "eightFlagsExact": true,
+  "originalOwnersGone": true,
+  "slotAbsent": true,
+  "full18BuildAdmitted": true,
+  "nativeCompiled": false,
+  "nativeSafetyQualified": false,
+  "appAdmitted": false,
+  "rootReviewMappingCorrection": "Original VersionAction receipt is keyed by exact GN target; comparison uses that original value."
+}
