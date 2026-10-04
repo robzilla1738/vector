@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { create } from "zustand";
 import { type MethodResult, type NightShiftItem } from "@aux/contracts";
 import { call } from "../../store";
@@ -8,7 +9,7 @@ export function bootNightReview() {
   const generation = ++life;
   const refresh = async () => {
     try { const [items, summary] = await Promise.all([call("nightShift.list", {}), call("nightShift.summary", {})]); if (generation === life) useNightReview.setState({ items, summary, error: "" }); }
-    catch (error) { if (generation === life) useNightReview.setState({ error: error instanceof Error ? error.message : String(error) }); }
+    catch (error) { if (generation === life) useNightReview.setState({ error: errorMessage(error) }); }
   };
   void refresh(); const timer = window.setInterval(() => void refresh(), 30_000);
   return () => { ++life; window.clearInterval(timer); useNightReview.setState({ items: [], summary: null, inboxOpen: false, queueOpen: false, queueVisited: false, busy: false, error: "" }); };
@@ -20,7 +21,7 @@ export async function reviewNightItem(id: string, decision: "approve" | "discard
     const item = await call("nightShift.review", { id, decision });
     if (generation === life) useNightReview.setState(state => ({ items: state.items.map(prior => prior.id === id ? item : prior) }));
     return item;
-  } catch (error) { if (generation === life) useNightReview.setState({ error: error instanceof Error ? error.message : String(error) }); throw error; }
+  } catch (error) { if (generation === life) useNightReview.setState({ error: errorMessage(error) }); throw error; }
   finally { if (generation === life) useNightReview.setState({ busy: false }); }
 }
 export async function queueTonight(input: Parameters<typeof call<"nightShift.queue">>[1]) {

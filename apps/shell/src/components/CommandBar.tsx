@@ -1,3 +1,5 @@
+import { HomeEntryAction, runHomeEntry, useHomeEntryInput, useHomeEntryOwner } from "./HomeEntryControls";
+import { guardCommandCompletion } from "../command-completion";
 import { PreferenceAction } from "../settings/sections/preference-command";
 import { SearchResultRow } from "./SearchResultRow";
 import {
@@ -204,6 +206,7 @@ export function CommandBar({
     items: AutocompleteMatch[];
     error: string | null;
   }>({ query: "", generation: 0, items: [], error: null });
+  const homeCurrent = useHomeEntryOwner(hero);
   const entryModeRequest = useRef(0);
   const [entryMode, setEntryModeState] = useState<"search" | "ask">(() => {
     if (!hero || bridge.privateMode) return "search";
@@ -242,19 +245,17 @@ export function CommandBar({
     const previous = entryMode;
     const request = ++entryModeRequest.current;
     setEntryModeState(next);
-    if (!bridge.privateMode)
-      void call("settings.set", { homeEntryMode: next })
-        .then(() => {
-          try {
-            localStorage.removeItem("aux.home.entry-mode.v1");
-          } catch {
-            /* Optional legacy storage. */
-          }
-        })
-        .catch((error) => {
-          if (entryModeRequest.current === request) setEntryModeState(previous);
-          errToast(error);
-        });
+    return guardCommandCompletion(call("settings.set", { homeEntryMode: next })
+      .then(value => {
+        if (homeCurrent()) {
+          try { localStorage.removeItem("aux.home.entry-mode.v1"); } catch { /* Optional legacy storage. */ }
+        }
+        return value;
+      })
+      .catch(error => {
+        if (homeCurrent() && entryModeRequest.current === request) setEntryModeState(previous);
+        throw error;
+      }), homeCurrent);
   };
   const [scopeFlip, setScopeFlip] = useState(false);
   const [historyResult, setHistoryResult] = useState<{ query: string; items: HistoryEntry[] }>({
@@ -1016,9 +1017,12 @@ export function CommandBar({
       setVal("");
       setEditing(false);
     }
-    setEntryMode(next);
-    requestAnimationFrame(() => inputRef.current?.focus());
+    const completion = setEntryMode(next);
+    requestAnimationFrame(() => { if (homeCurrent()) inputRef.current?.focus(); });
+    return completion;
   };
+
+  const homeInputScope = useHomeEntryInput(inputRef, hero && entryMode === "search" && !bridge.privateMode, homeCurrent, () => switchEntryMode("ask"));
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
@@ -1032,7 +1036,7 @@ export function CommandBar({
     }
     if (hero && !bridge.privateMode && e.key === "Tab" && !e.shiftKey) {
       e.preventDefault();
-      switchEntryMode(entryMode === "search" ? "ask" : "search");
+      runHomeEntry("select-home-ask", homeInputScope, e.nativeEvent);
       return;
     }
     if (e.key === "Backspace" && !val && scopePrefix) {
@@ -1140,7 +1144,7 @@ export function CommandBar({
           </output>
         }
       >
-        <HomeAsk onSearch={() => switchEntryMode("search")} />
+        <HomeAsk onSearch={() => switchEntryMode("search")} current={homeCurrent} />
       </Suspense>
     );
 
@@ -1275,14 +1279,16 @@ export function CommandBar({
           </span>
           <div role="group" aria-label="Search or Ask">
             {(["search", "ask"] as const).map((m) => (
-              <button
+              <HomeEntryAction
                 key={m}
+                command={m === "search" ? "select-home-search" : "select-home-ask"}
+                current={homeCurrent}
+                invoke={() => switchEntryMode(m)}
                 aria-pressed={entryMode === m}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => switchEntryMode(m)}
               >
                 {m === "search" ? "Search" : "Ask"}
-              </button>
+              </HomeEntryAction>
             ))}
           </div>
         </div>

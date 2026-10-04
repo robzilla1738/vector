@@ -1,10 +1,11 @@
+import { errorMessage } from "../error-message";
 import "./PluginsPanel.css";
 import { useEffect, useState } from "react";
 import type { MethodResult, Plugin, PluginAsset, PluginSkillGrant, Workspace } from "@aux/contracts";
 import { bridge } from "../bridge";
 
 type Inspection = MethodResult<"plugins.inspect"> & { path: string };
-const messageOf = (reason: unknown) => (reason instanceof Error ? reason.message : String(reason));
+const messageOf = (reason: unknown) => (errorMessage(reason));
 
 /** Imported plugin declarations are inventory only; they have no execution authority. */
 export function PluginsPanel() {

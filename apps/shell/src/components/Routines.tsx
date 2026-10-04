@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { WorkRow } from "../ui";
 import { useEffect, useState } from "react";
 import type {
@@ -71,7 +72,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       call("routines.inbox", { workspaceId, limit: 30 }),
       target?.workspaceId === workspaceId
         ? call("routines.get", { routineId: target.routineId }).catch((reason) => {
-            if (active) setError(reason instanceof Error ? reason.message : String(reason));
+            if (active) setError(errorMessage(reason));
             return null;
           })
         : Promise.resolve(null),
@@ -90,7 +91,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         }
       })
       .catch((reason) => {
-        if (active) setError(reason instanceof Error ? reason.message : String(reason));
+        if (active) setError(errorMessage(reason));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -125,7 +126,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         if (active) setActivationSource({ routineId: routine.routineId, task });
       })
       .catch((reason) => {
-        if (active) setActivationSourceError(reason instanceof Error ? reason.message : String(reason));
+        if (active) setActivationSourceError(errorMessage(reason));
       });
     return () => { active = false; };
   }, [selected?.routine.routineId, selected?.routine.revision, selected?.routine.sourceTaskId,
@@ -181,7 +182,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             status: "error",
             choices: [],
             scopeKey,
-            message: `Calendar accounts could not be loaded. ${reason instanceof Error ? reason.message : String(reason)}`,
+            message: `Calendar accounts could not be loaded. ${errorMessage(reason)}`,
           });
       });
     return () => {
@@ -221,7 +222,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     try {
       await work();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
       requestAnimationFrame(() => {
@@ -847,7 +848,7 @@ function RoutineOutcome({ run }: { run: RoutineRun }) {
     try {
       setOutcome(await call("routines.outcome", { routineRunId: run.routineRunId }));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setLoading(false);
     }
@@ -995,7 +996,7 @@ function RoutineDefinitionEditor({
         if (live) setSource(result.task);
       })
       .catch((reason) => {
-        if (live) setLoadError(reason instanceof Error ? reason.message : String(reason));
+        if (live) setLoadError(errorMessage(reason));
       });
     return () => {
       live = false;
@@ -1200,7 +1201,7 @@ function RoutineSourceTask({
         if (live) setTasks(items);
       })
       .catch((reason) => {
-        if (live) setLoadError(reason instanceof Error ? reason.message : String(reason));
+        if (live) setLoadError(errorMessage(reason));
       });
     return () => {
       live = false;
@@ -1291,7 +1292,7 @@ function RoutineAccounts({
         if (live) setItems(list);
       })
       .catch((reason) => {
-        if (live) setLoadError(reason instanceof Error ? reason.message : String(reason));
+        if (live) setLoadError(errorMessage(reason));
       });
     return () => {
       live = false;
@@ -1368,7 +1369,7 @@ function RoutineCalendarGrants({
         if (live) setGrants(items.filter((item) => item.taskRevision === routine.sourceTaskRevision));
       })
       .catch((reason) => {
-        if (live) setError(reason instanceof Error ? reason.message : String(reason));
+        if (live) setError(errorMessage(reason));
       });
     return () => {
       live = false;

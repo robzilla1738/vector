@@ -213,3 +213,18 @@ it("a stale captured callback refuses without retiring the newer committed conve
   await act(async () => { await executeCommand("toggle-conversation-error-details"); });
   expect(host.querySelector("details")!.open).toBe(true);
 });
+
+it("opens the original Home conversation through the scoped action while closing its context menu and retaining its draft", async () => {
+  useStore.setState({ conversationDrafts: { "chat:a": "Original Home reply" }, conversationId: null });
+  await act(async () => root.render(<Conversation chatId="a" home embedded />));
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Add context"]')!.click());
+  const control = document.querySelector<HTMLButtonElement>('[data-command-id="open-home-conversation"]')!;
+  expect(control.textContent).toContain("Open full conversation"); control.focus();
+  await act(async () => { await executeCommand("open-home-conversation"); });
+  expect(document.querySelector('dialog[aria-label="Add context"]')).toBeNull();
+  expect(useStore.getState().conversationId).toBe("a");
+  expect(useStore.getState().mode).toBe("conversation");
+  expect(useStore.getState().conversationDrafts["chat:a"]).toBe("Original Home reply");
+  expect(useStore.getState().pages).toEqual([]);
+  expect(vi.mocked(bridge.invoke).mock.calls.filter(([method]) => method === "runs.start")).toEqual([]);
+});

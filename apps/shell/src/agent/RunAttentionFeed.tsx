@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Run, Suspension } from "@aux/contracts";
 import { call } from "../store";
@@ -60,7 +61,7 @@ export function RunAttentionFeed({ runs, onOpenRun, limit = 8 }: {
         throw new Error("This request changed. Review the latest task state.");
       onOpenRun(item.run.runId);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
       setRevision((value) => value + 1);
     }
   }

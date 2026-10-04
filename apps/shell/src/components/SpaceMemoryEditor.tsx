@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
 import { BrowsingMemory } from "./BrowsingMemory";
 import { ContentMemory } from "./ContentMemory";
@@ -55,7 +56,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
     || (memory.items ?? []).some(old => !(saved.items ?? []).some(item => item.itemId === old.itemId
       && item.content === old.content && item.sourceUrl === old.sourceUrl))
     || (saved.excludedOrigins ?? []).some(origin => !(memory.excludedOrigins ?? []).includes(origin));
-  const controlError = (reason: unknown) => { if (!mounted.current || !scope.active) return; setErrorSnapshot(snapshot); setError(reason instanceof Error ? reason.message : String(reason)); };
+  const controlError = (reason: unknown) => { if (!mounted.current || !scope.active) return; setErrorSnapshot(snapshot); setError(errorMessage(reason)); };
   const content = draft?.content ?? memory.content;
   const changed = content !== memory.content;
   const edit = (content: string) => useMemoryDrafts.getState().write(memory.workspaceId,
@@ -75,7 +76,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
       setConflict(null); onSaved(saved); return saved;
     } catch (reason) {
       if (!scopeCurrent()) throw reason;
-      setErrorSnapshot(snapshot); setError(reason instanceof Error ? reason.message : String(reason));
+      setErrorSnapshot(snapshot); setError(errorMessage(reason));
       try {
         const latest = await call("workspaces.memory.get", { workspaceId: memory.workspaceId });
         if (scopeCurrent() && latest.revision !== revision) { setConflictSnapshot(snapshot); setConflict(latest); }
@@ -93,7 +94,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
       const current=useMemoryDrafts.getState().drafts[memory.workspaceId];
       if(current?.revision===memory.revision)useMemoryDrafts.getState().write(memory.workspaceId,{...current,revision:saved.revision});
       onSaved(saved); return saved;
-    } catch(reason){if (!scopeCurrent()) throw reason; setErrorSnapshot(snapshot);setError(reason instanceof Error?reason.message:String(reason));}
+    } catch(reason){if (!scopeCurrent()) throw reason; setErrorSnapshot(snapshot);setError(errorMessage(reason));}
     finally{pending.current=false;if (mounted.current) setBusy(false);}
   }
 

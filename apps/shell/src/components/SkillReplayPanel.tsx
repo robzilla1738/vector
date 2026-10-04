@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { SkillRepairProposalSchema, type Routine, type Run } from "@aux/contracts";
 import { executeCommand } from "../commands";
@@ -39,7 +40,7 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
     const current = () => generation === life.current;
     setBusy(true); setError("");
     try { await work(current); if (current()) await onChanged(); }
-    catch (reason) { if (current()) setError(reason instanceof Error ? reason.message : String(reason)); }
+    catch (reason) { if (current()) setError(errorMessage(reason)); }
     finally { if (current()) setBusy(false); }
   }
   return <section className="field" aria-label="Skill replay" aria-busy={busy}>

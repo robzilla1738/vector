@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { VaultAccessRecord, VaultGrant, VaultItem, VaultStatus } from "@aux/contracts";
 import { call } from "../store";
@@ -26,11 +27,11 @@ export function VaultSettings() {
     ]);
     setStatus(nextStatus); setItems(nextItems); setGrants(nextGrants); setExpired(nextExpired); setHistory(nextHistory);
   }
-  useEffect(() => { void refresh().catch(reason => setError(reason instanceof Error ? reason.message : String(reason))); }, []);
+  useEffect(() => { void refresh().catch(reason => setError(errorMessage(reason))); }, []);
   async function action(work: () => Promise<void>) {
     setBusy(true); setError("");
     try { await work(); await refresh(); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    catch (reason) { setError(errorMessage(reason)); }
     finally { setBusy(false); }
   }
   return <section className="field" aria-label="Agent vault">

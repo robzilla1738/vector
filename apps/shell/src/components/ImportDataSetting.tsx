@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ImportJobStatusSchema,
@@ -151,7 +152,7 @@ export function ImportDataSetting() {
       setSelection(next);
       if (result.recentJobs?.[0]) apply(result.recentJobs[0]);
     } catch (reason) {
-      if (alive.current) setError(reason instanceof Error ? reason.message : String(reason));
+      if (alive.current) setError(errorMessage(reason));
     } finally {
       busy.current = false;
       if (alive.current) setLoading(false);
@@ -189,7 +190,7 @@ export function ImportDataSetting() {
         });
       await syncProgress(jobId);
     } catch (reason) {
-      if (alive.current) setError(reason instanceof Error ? reason.message : String(reason));
+      if (alive.current) setError(errorMessage(reason));
       // Another window may have started the Profile's single active import.
       void call("import.status", {})
         .then(apply)
@@ -211,7 +212,7 @@ export function ImportDataSetting() {
     } catch (reason) {
       if (alive.current && jobRef.current?.jobId === current.jobId && !jobRef.current.done) {
         setStopping(false);
-        setError(reason instanceof Error ? reason.message : String(reason));
+        setError(errorMessage(reason));
       }
     } finally {
       pendingCancels.current.delete(current.jobId);

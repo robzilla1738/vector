@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { PageTarget, Run, Task, VaultItem } from "@aux/contracts";
 import { originOfAddress } from "@aux/contracts/vault";
@@ -95,7 +96,7 @@ function TaskSiteGrant({ taskId, workspaceId, page }: { taskId: string; workspac
         setBusy(true); setError("");
         void call("vault.grant", { itemId: item.itemId, origin, taskId, workspaceId, ttlMs: 30 * 60_000 })
           .then(() => useStore.getState().toast(`Granted ${item.label} for ${origin}.`))
-          .catch(reason => setError(reason instanceof Error ? reason.message : String(reason)))
+          .catch(reason => setError(errorMessage(reason)))
           .finally(() => setBusy(false));
       }}>Grant {item.label} for this task</button>)}
       <button className="btn sm ghost" onClick={openVault}>{matches.length ? "Manage vault" : "Open vault"}</button>

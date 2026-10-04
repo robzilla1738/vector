@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import "./PageZoom.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { bridge } from "../bridge";
@@ -18,7 +19,7 @@ export function PageZoom({ pageId, documentEpoch }: { pageId: string; documentEp
     const version=++request.current;
     setError("");
     try{await useStore.getState().zoomPage(pageId);}
-    catch(reason){if(version===request.current)setError(reason instanceof Error?reason.message:String(reason));}
+    catch(reason){if(version===request.current)setError(errorMessage(reason));}
   },[pageId,documentEpoch]);
   useEffect(()=>{
     currentKey.current=key;
@@ -32,7 +33,7 @@ export function PageZoom({ pageId, documentEpoch }: { pageId: string; documentEp
     const origin=key;
     setBusy(true);setError("");
     try{await useStore.getState().zoomPage(pageId,direction==="reset"?{reset:true}:{direction});}
-    catch(reason){if(currentKey.current===origin)setError(reason instanceof Error?reason.message:String(reason));}
+    catch(reason){if(currentKey.current===origin)setError(errorMessage(reason));}
     finally{pending.current=false;setBusy(false);if(currentKey.current&&currentKey.current!==origin)void read();}
   }
   return <section className="site-controls-group" aria-label="Page zoom">

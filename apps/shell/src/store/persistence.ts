@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { bridge } from "../bridge";
 import type { ClosedTab } from "../closed-tabs";
 import { createEntryWriter } from "../conversation-drafts";
@@ -37,7 +38,7 @@ const warnLayoutStorage = (error: unknown) => {
   if (layoutStorageWarned) return;
   layoutStorageWarned = true;
   toast(
-    `Profile organization could not be saved: ${error instanceof Error ? error.message : String(error)}`,
+    `Profile organization could not be saved: ${errorMessage(error)}`,
     "error",
   );
 };

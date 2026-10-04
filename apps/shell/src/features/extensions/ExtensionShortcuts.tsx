@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HostMethodResult } from "@aux/contracts";
 import { bridge, inNativeHost } from "../../bridge";
@@ -26,7 +27,7 @@ function CommandShortcut({ command, refresh }: { command: ExtensionCommand; refr
           });
           await refresh();
         } catch (reason) {
-          setError(reason instanceof Error ? reason.message : String(reason));
+          setError(errorMessage(reason));
         } finally {
           setBusy(false);
         }

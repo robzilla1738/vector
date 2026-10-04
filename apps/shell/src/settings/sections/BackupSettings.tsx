@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
 import {
   useCallback,
@@ -143,12 +144,12 @@ export function BackupSettings({
             if (current())
               setMessage({
                 owner,
-                text: `The operation completed, but the backup list could not be refreshed: ${reason instanceof Error ? reason.message : String(reason)}`,
+                text: `The operation completed, but the backup list could not be refreshed: ${errorMessage(reason)}`,
               });
           }
         return value;
       }, (reason) => {
-        if (current()) setMessage({ owner, text: reason instanceof Error ? reason.message : String(reason) });
+        if (current()) setMessage({ owner, text: errorMessage(reason) });
         throw reason;
       }, () => {
         owner.finish();

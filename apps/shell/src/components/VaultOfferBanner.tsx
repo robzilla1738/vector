@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useState } from "react";
 import { bridge } from "../bridge";
 import { call, toast, useStore } from "../store";
@@ -32,7 +33,7 @@ export function VaultOfferBanner() {
       setOffer(null);
       setPassphrase("");
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : String(reason);
+      const message = errorMessage(reason);
       if (offer.locked && /passphrase/i.test(message)) { setError("That passphrase did not match."); setBusy(false); return; }
       toast(message, "error");
       setOffer(null);

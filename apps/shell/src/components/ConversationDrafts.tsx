@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PreparedConversation } from "@aux/contracts";
@@ -47,7 +48,7 @@ export function ConversationDrafts({ query = "", limit, compact = false, exclude
       useStore.getState().setConversationContext(chatId, "");
       setPrepared(items => items.filter(item => item.chatId !== chatId));
       setDeleting(null);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    } catch (reason) { setError(errorMessage(reason)); }
     finally { setBusy(false); }
   };
   if (!shown.length && !discarded && !error) return null;

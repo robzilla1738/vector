@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { bridge } from "../bridge";
 
@@ -18,7 +19,7 @@ export function WebsiteSizes() {
     const current = ++version.current;
     setLoading(true); setError("");
     try { const result = await bridge.siteZoom(); if (version.current === current) setSites(result); }
-    catch (error) { if (version.current === current) setError(error instanceof Error ? error.message : String(error)); }
+    catch (error) { if (version.current === current) setError(errorMessage(error)); }
     finally { if (version.current === current) setLoading(false); }
   }
   useEffect(() => { void load(); const off = bridge.onSiteZoomChanged(() => void load()); return () => { version.current++; off(); }; }, []);
@@ -31,7 +32,7 @@ export function WebsiteSizes() {
     try{
       const result=await bridge.siteZoom(origin);
       if(version.current===current){setSites(result);setNotice(`${origin} restored to 100%.`);}
-    }catch(error){if(version.current===current)setError(error instanceof Error?error.message:String(error));}
+    }catch(error){if(version.current===current)setError(errorMessage(error));}
     finally{
       pending.current=false;
       if(version.current===current){

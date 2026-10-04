@@ -1,9 +1,10 @@
+import { errorMessage } from "../error-message";
 import "./FilterListManager.css";
 import { useEffect, useState } from "react";
 import { filterSourceUrl } from "@aux/contracts";
 import { bridge, type FilterListStatus } from "../bridge";
 
-const messageOf = (reason: unknown) => (reason instanceof Error ? reason.message : String(reason));
+const messageOf = (reason: unknown) => (errorMessage(reason));
 
 /** User-selected hosts lists. Mock preview never claims to block network requests. */
 export function FilterListManager() {

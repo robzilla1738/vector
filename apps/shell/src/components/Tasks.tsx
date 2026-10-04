@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import "./Tasks.css";
 import { Tabs, WorkRow } from "../ui";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -135,7 +136,7 @@ export function Tasks() {
       }
       return true;
     } catch (reason) {
-      if (owner.current()) setError(reason instanceof Error ? reason.message : String(reason));
+      if (owner.current()) setError(errorMessage(reason));
       throw reason;
     } finally {
       if (receiptPending.current === slot) {
@@ -261,7 +262,7 @@ export function Tasks() {
       await work();
       return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
       return false;
     } finally {
       setBusy(false);

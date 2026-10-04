@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import "./ReviewedConnectors.css";
 import { useEffect, useState } from "react";
 import type { ConnectorCatalog, ConnectorEntry, Task, Workspace } from "@aux/contracts";
@@ -14,7 +15,7 @@ type Review = {
 };
 
 function errorText(reason: unknown) {
-  return reason instanceof Error ? reason.message : String(reason);
+  return errorMessage(reason);
 }
 
 function stateLabel(entry: ConnectorEntry) {

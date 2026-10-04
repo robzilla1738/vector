@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { LiveFolderItem } from "@aux/contracts";
 import { call } from "../store";
@@ -28,7 +29,7 @@ function Rows({ folderId }: { folderId: string }) {
         }
         setItems(value.items); setError(value.error ?? "");
       }
-    } catch (error) { if (scope.live && request === scope.request) setError(error instanceof Error ? error.message : String(error)); }
+    } catch (error) { if (scope.live && request === scope.request) setError(errorMessage(error)); }
   }, [folderId]);
   useEffect(() => {
     const scope = lifetime.current;
@@ -53,7 +54,7 @@ function Rows({ folderId }: { folderId: string }) {
     try { await executeCommand("refresh-live-folder", { payload: { folderId } }); if (scope.live) await load(); }
     catch (error) {
       measurement.current?.work.cancel(); measurement.current = null;
-      if (scope.live) setError(error instanceof Error ? error.message : String(error));
+      if (scope.live) setError(errorMessage(error));
     }
     finally { refreshInFlight.current = false; if (scope.live) setBusy(false); }
   };
@@ -63,7 +64,7 @@ function Rows({ folderId }: { folderId: string }) {
     {!error && !items.length && <p className="hint live-folder-empty">No items yet. Refresh this folder to check its source.</p>}
     {items.map(item => <button key={item.id} className="tab-row live-folder-item" data-command-id="open-live-folder-item" aria-label={`${item.title}${item.unread ? ", unread" : ""}`} onClick={() => {
       const scope = lifetime.current;
-      void executeCommand("open-live-folder-item", { payload: { folderId, itemId: item.id } }).then(() => { if (scope.live) { ++scope.request; setItems(rows => rows.map(row => row.id === item.id ? { ...row, unread: false } : row)); } }).catch((error: unknown) => { if (scope.live) setError(error instanceof Error ? error.message : String(error)); });
+      void executeCommand("open-live-folder-item", { payload: { folderId, itemId: item.id } }).then(() => { if (scope.live) { ++scope.request; setItems(rows => rows.map(row => row.id === item.id ? { ...row, unread: false } : row)); } }).catch((error: unknown) => { if (scope.live) setError(errorMessage(error)); });
     }}><span className="tab-favicon"><FavIcon url={item.url} size="sm" /></span><span className="live-folder-copy"><span>{item.title}</span>{item.subtitle && <span className="hint">{item.subtitle}</span>}</span>{item.unread && <span className="live-folder-dot" aria-hidden />}</button>)}
   </div>;
 }

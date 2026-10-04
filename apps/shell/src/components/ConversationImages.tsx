@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { hostOf } from "../workspace";
 import { ConversationImageAction, ConversationImageChoice } from "./ConversationImageControl";
 import { ImagePreview } from "./ImageSnapshot";
@@ -119,7 +120,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     setBusy(true); onBusy(true); setError("");
     const version = ++request.current;
     try { await action(version, owner); }
-    catch (reason) { if (operationCurrent(owner) && request.current === version) setError(reason instanceof Error ? reason.message : String(reason)); }
+    catch (reason) { if (operationCurrent(owner) && request.current === version) setError(errorMessage(reason)); }
     finally {
       owner.locked = false; const release = owner.release; owner.release = null; release?.();
       if (operationCurrent(owner)) setBusy(false);

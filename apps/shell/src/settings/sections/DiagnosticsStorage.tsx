@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
 import {
   useCallback,
@@ -151,7 +152,7 @@ export function DiagnosticsStorage({
         return value;
       }, (reason) => {
         if (current())
-          setMessage({ owner, action, text: reason instanceof Error ? reason.message : String(reason) });
+          setMessage({ owner, action, text: errorMessage(reason) });
         throw reason;
       }, () => {
         owner.finish(action);

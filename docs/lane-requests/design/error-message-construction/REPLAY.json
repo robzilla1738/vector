@@ -1,0 +1,10 @@
+{
+  "patchSha256": "ff87190e8b3dfc9a7ce5afc4b53c7934ccb3daed5027b65e575a41717867b930",
+  "sequence": [
+    "forward",
+    "reverse",
+    "forward"
+  ],
+  "all100LeavesExact": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-error-message-replay-ekjd1o2s"
+}

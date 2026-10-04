@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { ObservationSchema, type Run, type RunTranscriptItem, type RunTranscriptProjection, type Suspension } from "@aux/contracts";
 import { bridge } from "../bridge";
@@ -128,7 +129,7 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
         throw new Error("A safe inline preview is unavailable for this file type or size.");
       }
     } catch (reason) {
-      if (current() && request === previewRequest.current) setError(reason instanceof Error ? reason.message : String(reason));
+      if (current() && request === previewRequest.current) setError(errorMessage(reason));
     } finally {
       if (current() && request === previewRequest.current) setLoading(false);
     }
@@ -150,7 +151,7 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
         throw new Error("The cited page changed or is unavailable. The saved snapshot is still available above.");
       await useStore.getState().activate(source.pageId);
     } catch (reason) {
-      if (current() && request === previewRequest.current) setError(reason instanceof Error ? reason.message : String(reason));
+      if (current() && request === previewRequest.current) setError(errorMessage(reason));
     } finally { if (current() && request === previewRequest.current) setOpeningSource(false); }
   }
 

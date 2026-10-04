@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { bridge } from "../../bridge";
 import { guardCommandCompletion } from "../../command-completion";
@@ -58,7 +59,7 @@ export function useSettingsStatusOwner<T>(
           }
         } catch (reason) {
           if (current(original) && sequence === original.sequence)
-            fail(original, reason instanceof Error ? reason.message : String(reason));
+            fail(original, errorMessage(reason));
         }
       })();
     },
@@ -76,7 +77,7 @@ export function useSettingsStatusOwner<T>(
           if (current(original)) accept(original, receive(result, original));
           return result;
         } catch (reason) {
-          if (current(original)) fail(original, reason instanceof Error ? reason.message : String(reason));
+          if (current(original)) fail(original, errorMessage(reason));
           throw reason;
         } finally {
           original.pending = false;

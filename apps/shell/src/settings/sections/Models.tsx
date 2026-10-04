@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
 import { MODEL_PROVIDER_NAMES, type ModelConnectionStatus, type ModelProvider } from "@aux/contracts";
 import { ModelConnections } from "./ModelConnections";
@@ -426,7 +427,7 @@ export function ModelsSettings({
           return result;
         } catch (e) {
           if (probeOwner.current() && sequence === probeSequence.current)
-            setProbe({ ok: false, modelId: "", error: e instanceof Error ? e.message : String(e) });
+            setProbe({ ok: false, modelId: "", error: errorMessage(e) });
           throw e;
         } finally {
           probeOwner.finish("probe");
@@ -472,7 +473,7 @@ export function ModelsSettings({
         return result;
       } catch (error) {
         if (owner.current() && sequence === modelsSequence.current)
-          setConnectionError(error instanceof Error ? error.message : String(error));
+          setConnectionError(errorMessage(error));
         throw error;
       } finally {
         owner.finish("discovery");

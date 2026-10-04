@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { SiteCss, ZapPickResult, ZapRule } from "@aux/contracts";
 import { bridge } from "../bridge";
@@ -97,7 +98,7 @@ export function SiteCustomization() {
         setSelector(result.candidates[0]!.selector);
       } else if (result.reason) setNotice(result.reason);
     } catch (reason) {
-      if (isCurrent()) setError(reason instanceof Error ? reason.message : String(reason));
+      if (isCurrent()) setError(errorMessage(reason));
     } finally {
       if (isCurrent()) {
         try {
@@ -125,7 +126,7 @@ export function SiteCustomization() {
       setPick(null);
       setNotice("Hidden on this site. The rule is saved to this Profile.");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }
@@ -141,7 +142,7 @@ export function SiteCustomization() {
       await refresh();
       setNotice("Hidden element rule removed.");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }
@@ -157,7 +158,7 @@ export function SiteCustomization() {
       setSavedCss(saved.css);
       setNotice(saved.css ? "Site CSS saved to this Profile." : "Site CSS removed.");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

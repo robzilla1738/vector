@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { isScrimOverlay } from "../chrome";
 import { executeCommand } from "../commands";
@@ -49,7 +50,7 @@ function Confirm({ confirmation }: { confirmation: TrustConfirmation }) {
       }
     } catch (reason) {
       deciding.current = false;
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
       setBusy(false);
     }
   }

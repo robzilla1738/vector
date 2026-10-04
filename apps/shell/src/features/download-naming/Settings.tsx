@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useState } from "react";
 import { DEFAULT_DOWNLOAD_NAMING, DownloadNamingSettingsSchema, type DownloadNamingSettings } from "@aux/contracts";
 import { useStore } from "../../store";
@@ -23,7 +24,7 @@ export function DownloadNamingSettings() {
       setDraft(null);
       setTextDraft({});
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

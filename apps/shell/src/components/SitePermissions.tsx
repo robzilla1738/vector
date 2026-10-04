@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
@@ -77,7 +78,7 @@ export function SitePermissions({ query = "" }: { query?: string }) {
     const key = siteDataKey;
     void bridge.siteDataCount(chosenPage.pageId)
       .then(result => { if (current) setSiteDataCount({ key, ...result }); })
-      .catch(reason => { if (current) setSiteDataError({ key, message: reason instanceof Error ? reason.message : String(reason) }); });
+      .catch(reason => { if (current) setSiteDataError({ key, message: errorMessage(reason) }); });
     return () => { current = false; };
   }, [siteDataKey, siteDataRetry]);
   async function action(id:string,work:()=>Promise<void>){
@@ -86,7 +87,7 @@ export function SitePermissions({ query = "" }: { query?: string }) {
     setBusy(id);setError("");setNotice("");
     const trigger=document.activeElement instanceof HTMLElement?document.activeElement:null;
     try{await work();}
-    catch(error){setError(error instanceof Error?error.message:String(error));}
+    catch(error){setError(errorMessage(error));}
     finally{
       pending.current=false;setBusy("");
       requestAnimationFrame(()=>{

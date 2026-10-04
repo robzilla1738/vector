@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WorkspaceMemory } from "@aux/contracts";
 import { memoryOrigin } from "@aux/contracts/memory-context";
@@ -32,7 +33,7 @@ export function MemoryExclusions({ memory, disabled, onSaved }: { memory: Worksp
       if(!delivering(owner))return saved;
       if(next)setAddress(value=>value===originalAddress?"":value);
       onSaved(saved);return saved;
-    }catch(reason){if(delivering(owner))setFailure({identity,message:reason instanceof Error?reason.message:String(reason),stale:true});throw reason;}
+    }catch(reason){if(delivering(owner))setFailure({identity,message:errorMessage(reason),stale:true});throw reason;}
     finally{owner.pending=false;setBusyOwner(value=>value===owner?null:value);}})();
     return guardCommandCompletion(completion,()=>delivering(owner));
   }

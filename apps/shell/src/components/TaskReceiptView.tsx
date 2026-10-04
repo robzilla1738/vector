@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes } from "react";
 import { PreferenceAction, usePreferenceCommand } from "../settings/sections/preference-command";
@@ -44,7 +45,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
       const picked=await bridge.pickEvidenceDocument();
       if(current()&&picked)setDocument({...picked,criterionId,owner:readOwner});
       return picked;
-    } catch(reason) {if(current())setImportError((reason instanceof Error?reason.message:String(reason)).replace(/^Error invoking remote method [^:]+: Error: /,""));throw reason;}
+    } catch(reason) {if(current())setImportError((errorMessage(reason)).replace(/^Error invoking remote method [^:]+: Error: /,""));throw reason;}
     finally {finishImport(slot);}
   }
   async function saveDocument(current:()=>boolean) {
@@ -54,7 +55,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
     try {
       const result=await producer("tasks.importDocumentEvidence",{taskId:receipt.taskId,expectedRevision:receipt.taskRevision,criterionId:original.criterionId,filename:original.filename,content:original.content});
       if(current()&&result)setDocument(null);return result;
-    } catch(reason) {if(current())setImportError(reason instanceof Error?reason.message:String(reason));throw reason;}
+    } catch(reason) {if(current())setImportError(errorMessage(reason));throw reason;}
     finally {finishImport(slot);}
   }
   const [undoSlot,setUndoSlot] = useState<{owner:ReceiptReadOwner}|null>(null);
@@ -87,7 +88,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
       setUndoDraft({ owner:readOwner, runId, token: review.token, expectedStepIds: review.eligibleStepIds,
         selectedStepIds: [], items: review.eligibleStepIds.map(stepId => ({ stepId, label: labels.get(stepId) ?? `Browser change ${stepId}` })) });
       return fresh;
-    } catch (error) { if(current())setUndoMessage(error instanceof Error ? error.message : String(error)); throw error; }
+    } catch (error) { if(current())setUndoMessage(errorMessage(error)); throw error; }
     finally { finishUndo(slot); }
   }
   async function undoRun(current:()=>boolean) {
@@ -105,7 +106,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
         (result.skipped.length ? `; ${result.skipped.length} skipped: ${result.skipped.map(item =>
           `${item.stepId}: ${item.reason}`).join("; ")}` : "."));
       return result;
-    } catch (error) { if(current()){setUndoDraft(null);setUndoMessage(error instanceof Error ? error.message : String(error));}throw error; }
+    } catch (error) { if(current()){setUndoDraft(null);setUndoMessage(errorMessage(error));}throw error; }
     finally { finishUndo(slot); }
   }
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -433,7 +434,7 @@ function ReceiptExportControls({ owner }: { owner: ReceiptReadOwner }) {
               owner,
               busy: false,
               message: "",
-              error: (reason instanceof Error ? reason.message : String(reason)).replace(
+              error: (errorMessage(reason)).replace(
                 /^Error invoking remote method [^:]+: Error: /,
                 "",
               ),
@@ -554,7 +555,7 @@ function ReceiptArtifactSave({
     const completion = guardCommandCompletion(
       (async () => bridge.saveStoredArtifact(item.artifactId, item.label))()
         .catch((reason) => {
-          if (current()) onError(reason instanceof Error ? reason.message : String(reason));
+          if (current()) onError(errorMessage(reason));
           throw reason;
         })
         .finally(() => {

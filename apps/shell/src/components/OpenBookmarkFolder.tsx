@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
@@ -35,7 +36,7 @@ export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[
       if (stopped.current) { failed.push(...queue.slice(index)); break; }
       setMessage(`Opening ${index + 1} of ${queue.length}…`);
       try { await useStore.getState().openBackgroundTab(queue[index]!.url, spaceId); completed++; }
-      catch (reason) { failed.push(queue[index]!); failure = reason instanceof Error ? reason.message : String(reason); }
+      catch (reason) { failed.push(queue[index]!); failure = errorMessage(reason); }
     }
     active.current = false;
     if (!mounted.current) return;

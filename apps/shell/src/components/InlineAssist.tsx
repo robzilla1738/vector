@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { InlineAssistTextSchema, readSelectionCaptureSettings, type InlineAssistCapture } from "@aux/contracts";
 import { call, toast, useStore } from "../store";
@@ -37,7 +38,7 @@ export function InlineAssist() {
       captureId.current = result.captureId;
       setCapture(result);
     }).catch(reason => {
-      if (live) setError(reason instanceof Error ? reason.message : String(reason));
+      if (live) setError(errorMessage(reason));
     }).finally(() => { if (live) setLoading(false); });
     return () => {
       live = false; generation.current++;
@@ -54,7 +55,7 @@ export function InlineAssist() {
     try {
       const result = await call("agent.inlineAssist.draft", { captureId: capture.captureId, instruction });
       if (generation.current === attempt) { setReplacement(result.replacement); setDrafted(true); }
-    } catch (reason) { if (generation.current === attempt) setError(reason instanceof Error ? reason.message : String(reason)); }
+    } catch (reason) { if (generation.current === attempt) setError(errorMessage(reason)); }
     finally { if (generation.current === attempt) setBusy(null); }
   }
   async function apply() {
@@ -64,7 +65,7 @@ export function InlineAssist() {
       await call("agent.inlineAssist.apply", { captureId: capture.captureId, replacement });
       toast("Text applied. Use Undo in the page to revert it.");
       close();
-    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    } catch (reason) { setError(errorMessage(reason)); }
     finally { setBusy(null); }
   }
 

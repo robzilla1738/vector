@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Routine, RoutineInboxItem, RoutineRunOutcome, RoutineTrigger, Task, Workspace } from "@aux/contracts";
@@ -36,7 +37,7 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
       setTasks(open);
       setTaskId(open[0]?.taskId ?? "");
     }).catch((reason) => {
-      if (live) setError(reason instanceof Error ? reason.message : String(reason));
+      if (live) setError(errorMessage(reason));
     });
     return () => { live = false; };
   }, [workspaceId]);
@@ -105,7 +106,7 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
       });
       onCreated(routine);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }
@@ -169,7 +170,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
         setError("");
       })
       .catch((reason) => {
-        if (live) setError(reason instanceof Error ? reason.message : String(reason));
+        if (live) setError(errorMessage(reason));
       });
     return () => { live = false; };
   }, [active, preferredWorkspaceId]);
@@ -189,7 +190,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
         setError("");
       })
       .catch((reason) => {
-        if (live) setError(reason instanceof Error ? reason.message : String(reason));
+        if (live) setError(errorMessage(reason));
       })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
@@ -207,7 +208,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
           : [routine, ...items]);
       void call("routines.inbox", { workspaceId, limit: 30 })
         .then((items) => { if (live) setInbox(items); })
-        .catch((reason) => { if (live) setError(reason instanceof Error ? reason.message : String(reason)); });
+        .catch((reason) => { if (live) setError(errorMessage(reason)); });
     });
     return () => { live = false; off(); };
   }, [active, workspaceId]);
@@ -223,7 +224,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
       });
       setRoutines((items) => items.map((item) => item.routineId === updated.routineId ? updated : item));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
       // A revision conflict should show the latest state before another edit.
       try {
         const items = await call("routines.list", { workspaceId, includeArchived: true, limit: 200 });
@@ -246,7 +247,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
             setScanBusy(true);
             setError("");
             void call("settings.set", { routineSuggestionScan: event.target.value as typeof scanMode })
-              .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))
+              .catch((reason) => setError(errorMessage(reason)))
               .finally(() => setScanBusy(false));
           }}>
           <option value="off">Off</option>
@@ -393,7 +394,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                 setError("");
                 void call("routines.outcome", { routineRunId: item.run.routineRunId })
                   .then(setOutcome)
-                  .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))
+                  .catch((reason) => setError(errorMessage(reason)))
                   .finally(() => setOutcomeBusy(""));
               }}>View result</button>}
             {outcome?.run.routineRunId === item.run.routineRunId && <div aria-live="polite" className="hint">

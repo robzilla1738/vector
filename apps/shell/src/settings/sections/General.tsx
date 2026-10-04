@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useEffect, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { SettingsRow as Field, SettingsGroup, Switch } from "../../ui";
@@ -267,7 +268,7 @@ export function GeneralSettings({
                       ),
                     )
                     .catch((error) =>
-                      setBackupMessage(error instanceof Error ? error.message : String(error)),
+                      setBackupMessage(errorMessage(error)),
                     )
                     .finally(() => setBackupBusy(false));
                 }}

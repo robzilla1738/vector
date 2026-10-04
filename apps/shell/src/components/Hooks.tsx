@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Hook, HookInvocation, OutboundMcpGrant, OutboundMcpServer, WorkspaceFolder } from "@aux/contracts";
 import { call } from "../store";
@@ -76,7 +77,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
       await work();
       await refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

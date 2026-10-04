@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import "./ReaderView.css";
 import { backgroundLink, openBrowserLink } from "../browser-links";
 import { moveListFocus } from "../keyboard-list";
@@ -68,13 +69,13 @@ export function ReaderView() {
     void readReaderArticle(pageId).then(article => {if(current){setLoaded({key,article});markRead(page?.url);}}).catch(async error => {
       // Reading-list offline copies are the fallback when live extraction fails.
       const url = page?.url;
-      if (!current || !url || bridge.privateMode) { if (current) setError(error instanceof Error ? error.message : String(error)); return; }
+      if (!current || !url || bridge.privateMode) { if (current) setError(errorMessage(error)); return; }
       try {
         const saved = await call("bookmarks.offline.get", {url});
         if (!current) return;
         if (saved.article) { setLoaded({key, article: JSON.parse(saved.article) as ReaderArticle, offlineSavedAt: saved.savedAt ?? undefined}); markRead(url); return; }
       } catch { /* fall through to the live error */ }
-      if (current) setError(error instanceof Error ? error.message : String(error));
+      if (current) setError(errorMessage(error));
     });
     return () => {current=false;};
   }, [pageId, key, page?.loading, page?.url, refresh]);

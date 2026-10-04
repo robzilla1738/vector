@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { ActionMenu, Badge, ListRow } from "../ui";
 import { BrowserHostMethods as HostMethods } from "@aux/contracts/browser-host-methods";
@@ -38,7 +39,7 @@ export function BrowserProfiles() {
   async function action(work:(valid:()=>boolean)=>Promise<void>){
     if(pending.current)return;pending.current=true;++listRequest.current.value;setBusy(true);setError("");setMessage("");
     const request=++mutation.current.value;const valid=()=>alive.current&&request===mutation.current.value;
-    try{await work(valid);}catch(reason){if(valid())setError(reason instanceof Error?reason.message:String(reason));}
+    try{await work(valid);}catch(reason){if(valid())setError(errorMessage(reason));}
     finally{if(valid()){pending.current=false;setBusy(false);}}
   }
   const openProfile=(profile:BrowserProfile)=>void action(async(valid)=>{
@@ -83,7 +84,7 @@ export function BrowserProfiles() {
         try{
           if(!await commandResult("open-browser-profile",HostMethods.openBrowserProfile.result,{profileId:profile.id}))throw new Error("The window did not open.");
         }catch(reason){
-          throw new Error(`“${profile.name}” was created. Use Open to try launching it again. ${reason instanceof Error?reason.message:String(reason)}`);
+          throw new Error(`“${profile.name}” was created. Use Open to try launching it again. ${errorMessage(reason)}`);
         }
         if(!valid())return;setMessage(`Opening ${profile.name}. Sign in to websites and set up connections in its own window.`);
       }else{const items=await commandResult("rename-browser-profile",HostMethods.renameBrowserProfile.result,{profileId:editing,name});if(!valid())return;setProfiles(items);setEditing(null);setName("");}

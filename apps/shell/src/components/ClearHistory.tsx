@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { call, toast } from "../store";
 
@@ -22,7 +23,7 @@ export function ClearHistory({ initiallyOpen = false }: { initiallyOpen?: boolea
     const duration = ranges.find(item => item.value === range)!.duration;
     void call("history.count", { before: cutoff, ...(duration === undefined ? {} : { since: Math.max(0, cutoff - duration) }) })
       .then(result => { if (current) setCount(result.count); })
-      .catch(reason => { if (current) setError(reason instanceof Error ? reason.message : String(reason)); });
+      .catch(reason => { if (current) setError(errorMessage(reason)); });
     return () => { current = false; };
   }, [cutoff, range]);
   if (cutoff === null) return <button className="btn sm ghost" onClick={() => { setCount(null); setCutoff(Date.now()); setError(""); }}>Clear history…</button>;
@@ -47,7 +48,7 @@ export function ClearHistory({ initiallyOpen = false }: { initiallyOpen?: boolea
             return call("history.clear", rangeParams!);
           })
           .then(result => { if (result) { setCutoff(null); toast(result.removed ? `${result.removed} ${result.removed === 1 ? "visit" : "visits"} removed` : "No visits in this period"); } })
-          .catch(reason => { setCount(null); setError(reason instanceof Error ? reason.message : String(reason)); }).finally(() => setBusy(false));
+          .catch(reason => { setCount(null); setError(errorMessage(reason)); }).finally(() => setBusy(false));
       }}>{busy ? "Clearing…" : range === "all" ? "Clear all history" : `Clear ${selected.label.toLowerCase()}`}</button></div>
   </div>;
 }

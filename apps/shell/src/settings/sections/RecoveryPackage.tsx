@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { bridge, inNativeHost } from "../../bridge";
@@ -106,7 +107,7 @@ export function RecoveryPackage({
         if (current()) publish(result);
         return result;
       }, (reason) => {
-        if (current()) setNotice({ owner, text: reason instanceof Error ? reason.message : String(reason) });
+        if (current()) setNotice({ owner, text: errorMessage(reason) });
         throw reason;
       }, () => {
         owner.finish();

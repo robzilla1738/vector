@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { Effect, MethodResult, StandingGrant } from "@aux/contracts";
 import { executeCommand } from "../../commands";
@@ -57,7 +58,7 @@ export function SiteAgentAccess({
         setFailure(null);
       })().catch((reason) => {
         if (live && serial.current === request)
-          setFailure({ origin, message: reason instanceof Error ? reason.message : String(reason) });
+          setFailure({ origin, message: errorMessage(reason) });
       });
     return () => {
       live = false;
@@ -73,7 +74,7 @@ export function SiteAgentAccess({
       await work();
     } catch (reason) {
       if (serial.current === request)
-        setFailure({ origin, message: reason instanceof Error ? reason.message : String(reason) });
+        setFailure({ origin, message: errorMessage(reason) });
     } finally {
       pending.current = false;
       setBusy(false);

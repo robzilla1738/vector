@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { DEFAULT_NIGHT_SHIFT } from "@aux/contracts";
 import { useEffect, useState } from "react";
 import type { Goal, Routine, Workspace } from "@aux/contracts";
@@ -37,7 +38,7 @@ export default function QueueTonight({ active = true }: { active?: boolean }) {
       const skill = skills.find(skill => skill.routineId === id);
       const payload = kind === "goal" ? { kind, goalId: id } : kind === "routine" ? { kind, routineId: id, revision: skill!.revision, parameters } : { kind, workspaceId };
       try { await executeCommand("queue-for-tonight", { payload: { queue: { payload, budgetUsd } } }); }
-      catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+      catch (reason) { setError(errorMessage(reason)); }
       finally { setPending(false); }
     }}>Queue for tonight</button>{error && <p role="alert">{error}</p>}
   </Dialog>;

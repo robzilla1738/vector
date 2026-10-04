@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import "./ChatSessions.css";
 import { ActionMenu } from "../ui";
 import { STATUS_LABEL } from "../run-status";
@@ -72,7 +73,7 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
           before = { updatedAt: last.updatedAt, chatId: last.chatId };
         }
         setRows(found); setError("");
-      } catch (reason) { if (live) setError(reason instanceof Error ? reason.message : String(reason)); }
+      } catch (reason) { if (live) setError(errorMessage(reason)); }
       finally { if (live) setLoading(false); }
     })(), 100);
     return () => { live = false; clearTimeout(timer); };

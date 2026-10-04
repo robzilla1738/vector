@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useState } from "react";
 import { bridge, type MigrationProgress, type MigrationReview } from "../bridge";
 import { applyReviewedMigration } from "../migration-import";
@@ -20,7 +21,7 @@ export function MigrationImport() {
     try {
       setReview(await bridge.migrationReview());
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }
@@ -37,7 +38,7 @@ export function MigrationImport() {
         "Chromium tabs, Spaces, and bookmarks were imported. The encrypted vault package still needs its separate OS-backed import.",
       );
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(errorMessage(cause));
       try {
         setReview(await bridge.migrationReview());
       } catch {
@@ -57,7 +58,7 @@ export function MigrationImport() {
       setProgress(null);
       setMessage("The interrupted native import was rolled back.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }

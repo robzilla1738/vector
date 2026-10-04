@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useRef, useState } from "react";
 import type { Run, Suspension } from "@aux/contracts";
 import { call, useStore } from "../store";
@@ -44,7 +45,7 @@ export function SuspensionPanel({ run, suspension, hydrated, question, readOnly 
       if (state.runAnswerDrafts[run.runId]?.question === instruction && state.runAnswerDrafts[run.runId]?.text === value)
         state.setRunAnswerDraft(run.runId, instruction, "");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally { sending.current = false; setBusy(false); }
   }
 

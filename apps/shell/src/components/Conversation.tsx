@@ -1,3 +1,4 @@
+import { HomeEntryAction } from "./HomeEntryControls";
 import { useInteractiveComposer } from "../use-interactive-composer";
 import { NightRunOverflow } from "../features/morning-review/NightRunOverflow";
 import { runCommand } from "../commands";
@@ -709,7 +710,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   const composerModes = live && <div className="conversation-live-actions" role="group" aria-label="Send while Aux is working">{(answering ? ["answer", "steer", "queue"] as const : ["steer", "queue"] as const).map(mode => <button key={mode} type="button" className={effectiveLiveMode === mode ? "selected" : ""} aria-pressed={effectiveLiveMode === mode} onClick={() => setLiveSendMode(mode)}>{mode === "answer" ? "Answer question" : mode === "steer" ? "Steer now" : "Queue next"}</button>)}</div>;
   const browserContextControls = <BrowserContextTray key={id ?? "new"} primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/>;
   const composerFooter = !taskBound && !answering && <div className="new-chat-options">{entryControls}<span className="home-tools-trigger"><Popover label="Add context" trigger={<>{shellIconPlusSm}{!home && <span>Add context</span>}</>}>
-    {close => <div className="home-tools-menu"><header>Add to your question</header><div ref={setContextTools} onClick={event => { if ((event.target as HTMLElement).closest('button')) close(); }}/><div className="home-tools-context">{browserContextControls}</div>{home && dictation}{home && <button className="context-choice" onClick={() => { close(); useStore.getState().openConversationDraft(id ?? null); }}>{shellIconOpen}<span>Open full conversation</span></button>}</div>}
+    {close => <div className="home-tools-menu"><header>Add to your question</header><div ref={setContextTools} onClick={event => { if ((event.target as HTMLElement).closest('button')) close(); }}/><div className="home-tools-context">{browserContextControls}</div>{home && dictation}{home && <HomeEntryAction className="context-choice" command="open-home-conversation" current={conversationCurrent} invoke={() => { close(); useStore.getState().openConversationDraft(id ?? null); }}>{shellIconOpen}<span>Open full conversation</span></HomeEntryAction>}</div>}
   </Popover></span></div>;
 
   const attachmentItems: AttachmentItem[] = [

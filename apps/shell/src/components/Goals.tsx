@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Goal } from "@aux/contracts";
 import { call } from "../store";
@@ -62,7 +63,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
       await work();
       await refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

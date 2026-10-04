@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { bridge, type BrowserSiteInfo } from "../bridge";
 import { useStore } from "../store";
@@ -75,7 +76,7 @@ export function SiteControls() {
       if (version === request.current && currentKey.current === key) setLoaded({ key, info: value });
     } catch (reason) {
       if (version === request.current && currentKey.current === key)
-        setError(reason instanceof Error ? reason.message : String(reason));
+        setError(errorMessage(reason));
     } finally {
       if (version === request.current && currentKey.current === key) setLoading(false);
     }
@@ -120,7 +121,7 @@ export function SiteControls() {
       if (currentKey.current === originKey) setNotice(message);
     } catch (reason) {
       if (currentKey.current === originKey)
-        setActionError(reason instanceof Error ? reason.message : String(reason));
+        setActionError(errorMessage(reason));
     } finally {
       actionPending.current = false;
       setBusy("");

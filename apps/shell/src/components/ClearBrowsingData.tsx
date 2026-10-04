@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { bridge } from "../bridge";
 import { call, toast } from "../store";
@@ -40,7 +41,7 @@ export function ClearBrowsingData({ active }: { active: boolean }) {
       .then(([visits, browser]) => {
         if (live) setPreview({ visits: visits.count, ...browser });
       })
-      .catch(reason => { if (live) setError(reason instanceof Error ? reason.message : String(reason)); });
+      .catch(reason => { if (live) setError(errorMessage(reason)); });
     return () => { live = false; };
   }, [active, cutoff, since]);
 
@@ -72,7 +73,7 @@ export function ClearBrowsingData({ active }: { active: boolean }) {
       setPreview(null);
       toast("Selected browsing data cleared");
     } catch (reason) {
-      const detail = reason instanceof Error ? reason.message : String(reason);
+      const detail = errorMessage(reason);
       setError(browserCleared ? `Cookies or cached files were cleared, but history may remain. ${detail}` : detail);
       setPreview(null);
     } finally {

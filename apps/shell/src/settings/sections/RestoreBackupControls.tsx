@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import type { MethodResult } from "@aux/contracts";
@@ -98,7 +99,7 @@ export function RestoreBackupControls({
       return result;
     } catch (reason) {
       if (owner.request(sequence))
-        setMessage({ owner, text: reason instanceof Error ? reason.message : String(reason) });
+        setMessage({ owner, text: errorMessage(reason) });
       throw reason;
     }
   }, [owner, current]);
@@ -123,7 +124,7 @@ export function RestoreBackupControls({
         return result;
       }, (reason) => {
         if (deliveryCurrent())
-          setMessage({ owner, text: reason instanceof Error ? reason.message : String(reason) });
+          setMessage({ owner, text: errorMessage(reason) });
         throw reason;
       }, () => {
         owner.finish();

@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { bridge, inNativeHost } from "../bridge";
 import { isolatedHtmlDocument } from "../isolated-html";
@@ -17,7 +18,7 @@ export function IsolatedArtifactHtml({ html }: { html: string }) {
       registered = value;
       if (live) setUrl(value);
       else void bridge.releaseResultPreview(value);
-    }).catch((reason) => { if (live) setError(reason instanceof Error ? reason.message : String(reason)); });
+    }).catch((reason) => { if (live) setError(errorMessage(reason)); });
     return () => { live = false; if (registered) void bridge.releaseResultPreview(registered); };
   }, [html]);
   if (error) return <p role="alert">{error}</p>;

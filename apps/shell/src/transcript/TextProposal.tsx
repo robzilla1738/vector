@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { InlineAssistCapture, Run, RunTranscriptItem } from "@aux/contracts";
 import { call, useStore } from "../store";
@@ -41,7 +42,7 @@ export function TextProposal({ run, proposal, readOnly = false }: { run: Run; pr
         throw new Error("The selected page changed. Review the field again.");
       }
       setCapture(captured);
-    } catch (reason) { if (version === request.current) setError(reason instanceof Error ? reason.message : String(reason)); }
+    } catch (reason) { if (version === request.current) setError(errorMessage(reason)); }
     finally { if (version === request.current) { pending.current = false; setBusy(false); } }
   }
 
@@ -54,7 +55,7 @@ export function TextProposal({ run, proposal, readOnly = false }: { run: Run; pr
       const result = await call("agent.inlineAssist.apply", { captureId: capture.captureId,
         replacement: proposal.text, proposalRunId: run.runId });
       if (version === request.current && result.applied) { setInserted(true); setCapture(null); }
-    } catch (reason) { if (version === request.current) setError(reason instanceof Error ? reason.message : String(reason)); }
+    } catch (reason) { if (version === request.current) setError(errorMessage(reason)); }
     finally { if (version === request.current) { pending.current = false; setBusy(false); } }
   }
 

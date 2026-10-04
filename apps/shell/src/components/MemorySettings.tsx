@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { WorkspaceMemory } from "@aux/contracts";
 import { bridge } from "../bridge";
@@ -44,7 +45,7 @@ export function MemorySettings() {
     setMemory(current => current?.workspaceId === space.workspaceId ? current : null); setError(""); setLoading(true);
     void call("workspaces.memory.get", { workspaceId: space.workspaceId })
       .then(value => { if (live) setMemory(value); })
-      .catch(reason => { if (live) setError(reason instanceof Error ? reason.message : String(reason)); })
+      .catch(reason => { if (live) setError(errorMessage(reason)); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [space?.workspaceId, refresh]);

@@ -1,3 +1,4 @@
+import { errorMessage } from "./error-message";
 import { create } from "zustand";
 import type { Download, PageTarget, SavedProgram, TabCommand } from "@aux/contracts";
 import { bridge } from "./bridge";
@@ -124,7 +125,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
         console.error("Aux shortcut registration failed:", error);
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       if (message !== lastRefreshError) {
         console.error("Aux workspace refresh failed:", error);
         get().toast(`Couldn’t reconnect to the Aux runtime: ${message}`, "error");

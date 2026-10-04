@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { memoryControlElement, useMemoryElementControl } from "../../components/memory-control-construction";
 import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useId, type ReactNode } from "react";
 import type { MemoryClaim, MemoryPipelineOverview, ShellCommandId } from "@aux/contracts";
@@ -90,7 +91,7 @@ function SpaceMemoryContent({ workspaceId, includePasteImport }: { workspaceId: 
   const busy = pending?.scope === scope;
   const current = () => !!workspaceId && ownsWorkspace() && scope.current(snapshot);
   const assertCurrent = () => { if (!current()) throw new Error("This Space’s memory controls changed. Refresh before trying again."); };
-  function report(reason: unknown) { if (current()) setError(reason instanceof Error ? reason.message : String(reason)); }
+  function report(reason: unknown) { if (current()) setError(errorMessage(reason)); }
   const sourcesWithNotes = [...new Set([...inbox.map(note => note.sourceRunId), ...claims.map(note => note.sourceRunId), ...history.flatMap(revision => revision.sourceRunIds)])];
   const refresh = useCallback(async () => {
     if (!scope.active || !workspaceId || bridge.privateMode || !ownsWorkspace()) return;

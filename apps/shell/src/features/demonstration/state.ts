@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { create } from "zustand";
 import { type Demonstration, type Routine } from "@aux/contracts";
 import { bridge } from "../../bridge";
@@ -41,7 +42,7 @@ export async function recorderAction(action: "start" | "pause" | "resume" | "sto
         if (life === generation) useRecording.setState({ demonstration: result, review: action === "stop" });
       }
     }
-  } catch (error) { if (life === generation) useRecording.setState({ error: error instanceof Error ? error.message : String(error) }); throw error; }
+  } catch (error) { if (life === generation) useRecording.setState({ error: errorMessage(error) }); throw error; }
   finally { if (life === generation) useRecording.setState({ busy: false }); }
 }
 
@@ -58,7 +59,7 @@ export async function exportDemonstration() {
     return await bridge.saveFile("aux-demonstration.json", JSON.stringify(current, null, 2));
   } catch (error) {
     if (generation === life && useRecording.getState().demonstration?.id === demo.id)
-      useRecording.setState({ error: error instanceof Error ? error.message : String(error) });
+      useRecording.setState({ error: errorMessage(error) });
     throw error;
   } finally {
     if (generation === life && useRecording.getState().demonstration?.id === demo.id)

@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useState } from "react";
 import { bridge, inNativeHost } from "../bridge";
 import { toast, useStore } from "../store";
@@ -19,7 +20,7 @@ export function PasswordTransferSetting() {
         if (result) toast(`${result.added} password${result.added === 1 ? "" : "s"} imported${result.skipped ? `; ${result.skipped} skipped` : ""}.`);
       }
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setPassphrase("");
       setBusy(false);

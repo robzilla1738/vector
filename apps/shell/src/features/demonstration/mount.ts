@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { createElement, lazy, Suspense } from "react";
 import { call, useStore } from "../../store";
 import { useRecording } from "./state";
@@ -50,7 +51,7 @@ export const mount: FeatureMount = {
         const exported = await call("routines.exportSkill", { routineId: routine.routineId });
         current(); useRecording.setState({ exported: exported.content });
         useStore.setState({ skillSelection: { routineId: routine.routineId, workspaceId: routine.workspaceId } });
-      } catch (error) { if (recordingGeneration() === life) useRecording.setState({ error: error instanceof Error ? error.message : String(error) }); throw error; }
+      } catch (error) { if (recordingGeneration() === life) useRecording.setState({ error: errorMessage(error) }); throw error; }
       finally { if (recordingGeneration() === life) useRecording.setState({ busy: false }); }
     },
     "stop-demonstration": () => recorderAction("stop"), "discard-demonstration": () => recorderAction("discard"),

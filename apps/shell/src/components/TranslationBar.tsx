@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useState } from "react";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
@@ -22,7 +23,7 @@ export function TranslationBar({ pageId }: { pageId: string }) {
   const restore = async () => {
     setBusy(true); setError("");
     try { await bridge.showOriginal(pageId); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    catch (reason) { setError(errorMessage(reason)); }
     finally { setBusy(false); }
   };
   return (

@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
@@ -48,7 +49,7 @@ export function SessionRecovery({compact=false}:{compact?:boolean}) {
         if(mounted.current)setTabs(items=>items.filter(item=>item.pageId!==tab.pageId));
       }catch(reason){
         failed++;
-        if(mounted.current)setRowErrors(errors=>({...errors,[tab.pageId]:reason instanceof Error?reason.message:String(reason)}));
+        if(mounted.current)setRowErrors(errors=>({...errors,[tab.pageId]:errorMessage(reason)}));
       }
     }
     pending.current=false;

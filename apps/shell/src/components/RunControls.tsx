@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { call, isLive, useStore } from "../store";
@@ -37,7 +38,7 @@ export function RunControls({ runId, compact = false }: { runId: string; compact
     pending.current = { kind, token }; setBusy(kind); setError("");
     const current = () => pending.current?.token === token;
     try { await work(current); }
-    catch (reason) { if (current()) setError(`${{pause:"Pause",resume:"Resume",take:"Take control",return:"Return control",stop:"Stop",open:"Open temporary tab"}[kind]} wasn’t confirmed. ${reason instanceof Error ? reason.message : String(reason)}`); }
+    catch (reason) { if (current()) setError(`${{pause:"Pause",resume:"Resume",take:"Take control",return:"Return control",stop:"Stop",open:"Open temporary tab"}[kind]} wasn’t confirmed. ${errorMessage(reason)}`); }
     finally { if (current()) { pending.current = null; setBusy(null); } }
   };
   const take = () => primary && control("take", async current => {
@@ -48,7 +49,7 @@ export function RunControls({ runId, compact = false }: { runId: string; compact
   });
   const dispatch = (command: RunControlCommand, event: React.MouseEvent<HTMLButtonElement>) => {
     void executeCommand(command, { payload: { runId }, nativeInputEvent: event.nativeEvent })
-      .catch(reason => setError(reason instanceof Error ? reason.message : String(reason)));
+      .catch(reason => setError(errorMessage(reason)));
   };
   const registerControls = (element: HTMLElement | null) => {
     commandRegistration.current?.();

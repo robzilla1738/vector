@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { ArchivedTabs } from "./ArchivedTabs";
 import "./Library.css";
 import { backgroundLink } from "../browser-links";
@@ -68,7 +69,7 @@ const SavedPageRow = memo(function SavedPageRow({ view, itemKey, position, selec
     <div className="library-actions" hidden={view === "bookmarks" && selecting}>
       {canPeek && <button className="icon-btn sm" title="Preview link" disabled={busy} aria-label={`Preview ${title}`} onClick={() => {
         useStore.getState().setOverlay(null);
-        void openPeekLink(item.url).catch(error => useStore.getState().toast(error instanceof Error ? error.message : String(error)));
+        void openPeekLink(item.url).catch(error => useStore.getState().toast(errorMessage(error)));
       }}>{shellIconSearch}</button>}
       {view === "bookmarks" ? <>
       <button className="icon-btn sm" title="Edit bookmark" disabled={busy} aria-label={`Edit ${title}`} onClick={() => setEditing({ ...item, original: item })}>{shellIconPencil}</button>
@@ -253,7 +254,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
     actionPending.current=true; setBusy(true); setError(""); setFailedLoad(null);
     const focused=document.activeElement instanceof HTMLElement?document.activeElement:null;
     const restore=!!focused&&!!dialog.current?.contains(focused);
-    try { await work(); } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    try { await work(); } catch (reason) { setError(errorMessage(reason)); }
     finally {
       actionPending.current=false; setBusy(false);
       if(restore)requestAnimationFrame(()=>{

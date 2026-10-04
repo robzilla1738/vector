@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Artifact } from "@aux/contracts";
 import { call, useStore } from "../store";
@@ -12,7 +13,7 @@ function RunImage({artifact}:{artifact:Artifact}) {
     let live=true;setUrl("");setError("");
     void call("artifacts.read",{artifactId:artifact.artifactId})
       .then(data=>{if(live)setUrl(`data:${artifact.mediaType};base64,${data.dataBase64}`);})
-      .catch(reason=>{if(live)setError(reason instanceof Error ? reason.message : String(reason));});
+      .catch(reason=>{if(live)setError(errorMessage(reason));});
     return()=>{live=false;};
   },[artifact.artifactId,artifact.mediaType,retry]);
   return <figure className="conversation-image">
@@ -36,7 +37,7 @@ export function RunImages({runId}:{runId:string}) {
     void call("artifacts.list",{runId}).then(items=>{
       if(!live)return;
       setArtifacts(items.filter(item=>item.status==="complete" && /^image\/(png|jpeg|webp)$/.test(item.mediaType)).sort((a,b)=>b.createdAt-a.createdAt));setError("");
-    }).catch(reason=>{if(live)setError(reason instanceof Error ? reason.message : String(reason));});
+    }).catch(reason=>{if(live)setError(errorMessage(reason));});
     return()=>{live=false;};
   },[runId,status,retry]);
   if(!artifacts.length && !error)return null;

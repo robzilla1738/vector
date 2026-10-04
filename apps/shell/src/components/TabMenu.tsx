@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { executeCommand } from "../commands";
 import { runCommand } from "../commands";
 import { useEffect, useRef, useState } from "react";
@@ -157,7 +158,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
       setSuggestion(result);
       setNameDraft(result.name);
     } catch (error) {
-      if (request === nameRequest.current) setNameError(error instanceof Error ? error.message : String(error));
+      if (request === nameRequest.current) setNameError(errorMessage(error));
     } finally {
       if (request === nameRequest.current) setNameBusy(false);
     }

@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { createStore } from "zustand/vanilla";
 import { bridge, type BrowserExtension } from "../../bridge";
 
@@ -18,7 +19,7 @@ export async function refreshExtensions() {
     if (request === generation)
       extensionInventory.setState({
         loading: false,
-        error: reason instanceof Error ? reason.message : String(reason),
+        error: errorMessage(reason),
       });
   }
 }

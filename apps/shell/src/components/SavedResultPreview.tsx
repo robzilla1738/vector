@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { readResultDraft, revokeResultDrafts, writeResultDraft } from "../result-drafts";
 import { StructuredResult } from "./StructuredResult";
 import { useEffect, useRef, useState } from "react";
@@ -19,7 +20,7 @@ function IsolatedHtmlResult({html}:{html:string}) {
       registered=value;
       if(live)setUrl(value);
       else void bridge.releaseResultPreview(value);
-    }).catch(reason=>{if(live)setError(reason instanceof Error?reason.message:String(reason));});
+    }).catch(reason=>{if(live)setError(errorMessage(reason));});
     return()=>{live=false;if(registered)void bridge.releaseResultPreview(registered);};
   },[html]);
   if(error)return <p role="alert" className="field-error">{error}</p>;
@@ -50,7 +51,7 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
     try {
       await call("conversations.attachments.add",{chatId,filename:editedName.slice(0,255),content,sourceArtifactId:artifactId});
       setAttached(content);toast("Edited copy attached to this conversation");
-    } catch(reason){setDraftError(reason instanceof Error?reason.message:String(reason));}
+    } catch(reason){setDraftError(errorMessage(reason));}
     finally{pending.current=false;setAttaching(false);}
   }
   async function saveVersion(){
@@ -62,7 +63,7 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
       setDraft(null);setAttached(null);
       onVersionSaved?.(saved.artifactId);
       toast(`Saved ${saved.filename} · v${saved.revision}`);
-    }catch(reason){setDraftError(reason instanceof Error?reason.message:String(reason));}
+    }catch(reason){setDraftError(errorMessage(reason));}
     finally{pending.current=false;setAttaching(false);}
   }
   useEffect(()=>{

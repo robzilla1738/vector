@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useEffect, useState } from "react";
 import type { CommandEscalationRequest, Workspace, WorkspaceFolder, WorkspaceFolderAccess, WorkspaceFolderReview } from "@aux/contracts";
 import { call } from "../../store";
@@ -51,7 +52,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
   async function act(work: () => Promise<void>) {
     setBusy(true);
     setError("");
-    try { await work(); } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    try { await work(); } catch (reason) { setError(errorMessage(reason)); }
     finally { setBusy(false); }
   }
 

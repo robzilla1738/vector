@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { AutofillProfile } from "@aux/contracts";
 import { bridge } from "../bridge";
@@ -16,7 +17,7 @@ const FIELDS: { key: keyof AutofillProfile; label: string; auto?: string }[] = [
 ];
 const SAVE_POLICY = {
   accepted: (ack: unknown) => ack !== false,
-  rejected: (reason: unknown) => reason instanceof Error ? reason.message : String(reason),
+  rejected: (reason: unknown) => errorMessage(reason),
 };
 /** Contact/address data only; original explicit form filling excludes credentials/payment. */
 export function AutofillSetting({

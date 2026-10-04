@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { ConversationImage } from "@aux/contracts";
 import { call, useStore } from "../store";
@@ -39,7 +40,7 @@ export function ImageSnapshot({chatId,imageId,onClose,closeControl,current}:{cha
     if(!readCurrent())return;
     void call("conversations.images.read",{chatId,imageId})
       .then(value=>{if(live && readCurrent())setSnapshot(value);})
-      .catch(reason=>{if(live && readCurrent())setError(reason instanceof Error?reason.message:String(reason));})
+      .catch(reason=>{if(live && readCurrent())setError(errorMessage(reason));})
       .finally(()=>{if(live && readCurrent())pending.current=false;});
     return()=>{live=false;};
   },[chatId,imageId,retry,readCurrent]);

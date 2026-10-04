@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { isLocal } from "../tab-window-transfer";
 import { useEffect, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
@@ -34,7 +35,7 @@ export function PageSurface({ page }: { page: PageTarget }) {
             pageId: page.pageId,
             documentEpoch: page.documentEpoch,
             contentId: null,
-            error: reason instanceof Error ? reason.message : String(reason),
+            error: errorMessage(reason),
           });
       });
     return () => {

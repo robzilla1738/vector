@@ -1,0 +1,505 @@
+{
+  "base": "3274bcc241974eb3235b92677a59921beaa47814",
+  "leaves": [
+    {
+      "path": "apps/shell/src/store/persistence.ts",
+      "before": "21485c5caf2c338f64e6ab13db05cdacf1b53a0e02ffbdf75835147f35f78c28",
+      "after": "838228278d614e5867958086817f55993b782e5666a9bb209a355b3b7bb9d877"
+    },
+    {
+      "path": "apps/shell/src/store/tabs-slice.ts",
+      "before": "d7c4ab98919d00a652fc2785939b99d620261a41ee070973bfdb9c6739c0b53a",
+      "after": "9d57cdd596c876d620c2d1adaf9533fa6fcf06a304175db97c04b25df32c7de3"
+    },
+    {
+      "path": "apps/shell/src/store.ts",
+      "before": "5f16b497543ed431f0853746bf5b6ed8289372be1f968583769c125438a6b5f0",
+      "after": "b35ed0f5ba557f71223abeef0c390ba2ec5e285304633d7997256c9e09dba90a"
+    },
+    {
+      "path": "apps/shell/src/page-export.ts",
+      "before": "3c9c348695c5413ab2764a397174880b333b6afaecd73329e7c114b498052721",
+      "after": "ad8da0a36cecc75a6c9f98edb726392c46741b63646dfbce0048b43c372bf265"
+    },
+    {
+      "path": "apps/shell/src/components/RunControls.tsx",
+      "before": "c174325f36f4f54ff0f9407626c42e89ca1daad63ee006ad9ca54c9a42bcafa9",
+      "after": "13a39753e8bde833af52448d929fada1531cccff358574ae90cb080df248740b"
+    },
+    {
+      "path": "apps/shell/src/components/RunImages.tsx",
+      "before": "5699471f2ab041b07adb16299622d05c7998cf6e19c70691ba41926354576645",
+      "after": "03853f847eafd8a0c12d0a10dfd4c648230ebdd9c9c290784089f8e61aca00d2"
+    },
+    {
+      "path": "apps/shell/src/components/Dictation.tsx",
+      "before": "11b84f43625788e06c9e754e1149f685233605eb75e363c9179dfd5386fbf24c",
+      "after": "26c91de4ca190c6564cc9c90ddf74caf901ba10206cea98c56692870a1e1fa24"
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.tsx",
+      "before": "69cf22a887de0409441acf989ae995cb150d980aab33bb92093ec067bb42dc3c",
+      "after": "e244eb21ef7eb7b7daf41a6bf1a1a1c6a8a2fb3b9458f0f8b4ff139f520509a5"
+    },
+    {
+      "path": "apps/shell/src/components/SavedResultPreview.tsx",
+      "before": "85b32db7ce1f1df72c30fce0ff98f07803385368e8891f1b24d63b7a16510166",
+      "after": "b5662fcbce0674a6a02bbdb3ce46002cc9e09c11e7f2ea46ae5b745275d5e797"
+    },
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.tsx",
+      "before": "f587372c5534bfcc0433abba39186e9383043e0e6ed3133912d5303d2e83913f",
+      "after": "2d48d78b75955309345c6d1d2e6f3fdb6937a86a79ecf75d0baaa3540ae173ab"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImages.tsx",
+      "before": "d3b66a0a934e6d24fd24eea873b41ace70141c00ac69dbf516d2470e76a2fe21",
+      "after": "40848501448b4b5baa0f7e59a5517ba7d132302466c36cf7fa683ce6a88b97b8"
+    },
+    {
+      "path": "apps/shell/src/components/WorkbookPreview.tsx",
+      "before": "27a7405d05fe93111d78eeaee59e271a5505906769eb6f67cea80e6f8a23cfef",
+      "after": "a7e967085da33ea8c579ef6528783faa61198767e5b68e4946d8099d88ae2d81"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationTask.tsx",
+      "before": "bbb104ece94f351bac6eb87036b23e64482f975fb6a0aa1fa63f7f2926d0bf5a",
+      "after": "509160feb374d4c4a33171cd329a79411f2f324690f7e83f1907fd0b6a732fd3"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationDrafts.tsx",
+      "before": "00d0cc51b3c59ff4c20c0c0b87b5bdfd6a01342741dd3fca15029049e1a240bb",
+      "after": "185d01997aa5665a6ceeec6536273ec80f3b48fea0e9f4d34cccaec8acc6dba1"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationHistory.tsx",
+      "before": "b85c2b943fafc46c00341ec9113a11280f6201e1957af997ab512dc8f24e0955",
+      "after": "de33af61c70fcb605034a45cf8ea093c12767a5ee11903ebe9e5c35e0e4102a1"
+    },
+    {
+      "path": "apps/shell/src/composer/SuspensionPanel.tsx",
+      "before": "d2d693f8f42a9896795a2202c8e7ed130a56dfc13d8e86e70fea5977e84f15fc",
+      "after": "14527794f12ac62beddbd23c3f6d94c0f824ba3d54ad2d2df58100b4730dd59d"
+    },
+    {
+      "path": "apps/shell/src/transcript/TextProposal.tsx",
+      "before": "4a19bc93db0462ce4f67abb9d8a0ec3df06b8aefae7c7ac50f08e785285fa789",
+      "after": "52f6c6170cecc4f6204a8056051faea0429b6d5dd4331f2954a2350e4545693d"
+    },
+    {
+      "path": "apps/shell/src/transcript/IsolatedArtifactHtml.tsx",
+      "before": "1578b71a21bf4541c846e879a8e8d3f584e5b445d531cf98da64a013e26bcd69",
+      "after": "7aec8f957ce421ea509d8fbc6e7afd8be7d10e3f20b6db371b014c99e2f756a4"
+    },
+    {
+      "path": "apps/shell/src/transcript/RunTranscriptDetails.tsx",
+      "before": "f78548c8ba6c4c7ea60d6a3418121c53d4071217cdc6663a16df854c2bb51a6f",
+      "after": "8cb57ba70212fa4c4149d48dfc7b2ff087d48b6844d74907b874a0a0a728cee8"
+    },
+    {
+      "path": "apps/shell/src/components/RunPanel.tsx",
+      "before": "566979fe7e3772811ba284a0776cab2bd01ed9ebee85bb23256b06fa32fdc435",
+      "after": "93b06e2094d1aae95f7053a1ac4805c1dd037c12ee3aac4f3266a78f69c0decb"
+    },
+    {
+      "path": "apps/shell/src/components/PageRecovery.tsx",
+      "before": "19067e524e9d3fbe4ba05141e6817d53bdb37f54aa2f61ccfbea3d11994f6057",
+      "after": "83acfd00fb3ada19b7496efa9b95ae561d2af0959ca3c3cc1f0db402c3e682c4"
+    },
+    {
+      "path": "apps/shell/src/components/SessionRecovery.tsx",
+      "before": "2de75c32032590219fffa89f61171cf9ae6a98dfd4d30cbb81307a61e7044745",
+      "after": "3134f031bccad17aefccc0e4761f5be7a57e19fb74cd7e3a27ed7450d8345fbf"
+    },
+    {
+      "path": "apps/shell/src/agent/RunAttentionFeed.tsx",
+      "before": "f22cb23950a8e2a6b9ea01e133509097434e71517a415a36a716de97d268bffd",
+      "after": "85c8095f5a443f38442b516f5bef115f512f5d930f604f009f27e203aeabf914"
+    },
+    {
+      "path": "apps/shell/src/components/TranslationBar.tsx",
+      "before": "352dc215408355d473d316d3934d2a91a4858f3b27462cea362d59a16081fb3a",
+      "after": "e0e62cfad4ad3c0911b65eccc9f93b0d9c2dd2238d842862111b7218324488e2"
+    },
+    {
+      "path": "apps/shell/src/components/PageSurface.tsx",
+      "before": "a74a803dcd05b47c4a95387a1029f7a9acda05936f75de672d1c00bbe2ac4c64",
+      "after": "711c17a28e94f26b502b9bdcd01481b82a301b5b09a045fc32c428955ad00e64"
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "before": "7d6070fa2aa43140002a991bf22674c19aa53fbb22faed5911eacea179c63694",
+      "after": "39135d8be739f2a0a7e5f9811b89a5a541ce25175f89cd1ac6047f0779617c96"
+    },
+    {
+      "path": "apps/shell/src/components/FindBar.tsx",
+      "before": "de52f00a240195204ef01909180f8ed59f22d5e4115eb7c1316e29981ee0727a",
+      "after": "7662fd498fecedce43b27cbb7477eec561069e34f8cb0e9063ac27e9e1c4267c"
+    },
+    {
+      "path": "apps/shell/src/components/ReaderView.tsx",
+      "before": "abf8fbb44bd4295435e9f15eb647ee25004f65fc5e99a78f7393327d079fd076",
+      "after": "20f9de3aa5ac9561a906154f0522594eb33b9ed8a544bd9e72ad98c3dbb6abe0"
+    },
+    {
+      "path": "apps/shell/src/components/MemoryRecoveryNotice.tsx",
+      "before": "a88750bc2e6d984f1fad51317c8ece24bc24f4efdca970e11e15e5b55456e611",
+      "after": "90c36fbced334ddf9f0c73bf302d049a7f5e1c9f63cec242edf5a6d9acfcd486"
+    },
+    {
+      "path": "apps/shell/src/components/BrowsingMemory.tsx",
+      "before": "c0a66786863b84516fe48e54b2b53d668d933ca1c8984905a38f5e18853fa8ce",
+      "after": "6d0e73b987bda0adbfb2f88b7c4cfd7269463daa7a4bb4ce9c4506f40a039daa"
+    },
+    {
+      "path": "apps/shell/src/components/MemoryExclusions.tsx",
+      "before": "574e62cd6ca4fdae35159b82cd80b1c04388cf18640f075e2b1ed73b74dd5e6e",
+      "after": "6aa479c97c13286427b684e566a0ac0da430d6c99b8165914b8996c6f3ff7c08"
+    },
+    {
+      "path": "apps/shell/src/components/MemoryItems.tsx",
+      "before": "4758ad5d306d64b9e466d5d8e2ec182aec50cc73267a4821a12dadf01d68f483",
+      "after": "485283f6b1f71593ae460a03d169aae807e8b1d45b44fdc0e849a1e3930e5276"
+    },
+    {
+      "path": "apps/shell/src/components/SpaceMemoryEditor.tsx",
+      "before": "060c5979cc91c332d052d3d5d05419252882e0624c45f6a717788b96b2f1597d",
+      "after": "22fc68e2719c6dfa233981658ea9c21139226c8bf38dbcea9b67bd5ddaa4ddce"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SpaceMemory.tsx",
+      "before": "7325898628c33ac34a26fcf673271fa9bee7a182548816b042dc8b8a735bf81c",
+      "after": "8a4f9431a9255bec648a53048ee640f9ef7f6f9a5f5494a56982f2dfae5f0549"
+    },
+    {
+      "path": "apps/shell/src/components/MemorySettings.tsx",
+      "before": "b6d42806e1c8554fa26a2c6d8e16c81d2ebda18bec61e0ed42c2bc425e5c193a",
+      "after": "4d1262bba469a7598b3fad11b3dccba1cafc496a033b666e25fcd061689cb516"
+    },
+    {
+      "path": "apps/shell/src/components/PluginsPanel.tsx",
+      "before": "99cae6a570b7515a8c916b32d4ff67334c095721404d1b80850538d3be6244d6",
+      "after": "570c222f3206c8994a39bd52467717650daf334a89a3d1a7b2cbcf1984b5b0c3"
+    },
+    {
+      "path": "apps/shell/src/features/extensions/extension-inventory.ts",
+      "before": "517665d59e5e193c7cd213087a0d77dd01e9574f4d23d0be78418ffbdd8b788b",
+      "after": "7e5d088d9f692812e9144977162da0033d7b8bd59548ac3e19489f96929bddcb"
+    },
+    {
+      "path": "apps/shell/src/components/Extensions.tsx",
+      "before": "523d32698d9650056ba585ee4c2daf2bd53279e99289746ef3592f54076fdded",
+      "after": "addb2c54064540009f10585d89908ee3ebcf09ecb6292348398007a69329545e"
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "before": "bfc659421098b6da62aaa91b1f2131e70598b9948727cddd05f325e6ae5e91a8",
+      "after": "0b247ed437757b275bad9356c2f44bf21bf2643d2cf1d5d6bc698e7c6a32e334"
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "before": "0abc66496130a36c3d9c2d6eaf86d4fe22b03729a8b342e56043f354b12f88cf",
+      "after": "1ed1b074ca83cbbbbfdf4f350f202d74d8346d5171732ca86c62745ad361e223"
+    },
+    {
+      "path": "apps/shell/src/components/ReviewedConnectors.tsx",
+      "before": "a8d66ae8e586cadffdc30b575d0eb363c8ae73a23ad9e6e878aff8ace9340693",
+      "after": "4860b6a184c1a5dd511300457f8d5b6c77adbd27a44e84bd30a7b8b206bfd552"
+    },
+    {
+      "path": "apps/shell/src/features/extensions/ExtensionShortcuts.tsx",
+      "before": "563e2b04aba5defcc5886cc97ca6816bcf5acc944eb956d060f0cbdb75f66220",
+      "after": "dcaa7c6350dc82cdb4280aa099b373f76c6f4f5f39c6cac739a9cc061275d8bf"
+    },
+    {
+      "path": "apps/shell/src/components/WebsiteSizes.tsx",
+      "before": "bcc60c6738f1a57a1ffa1ffe1af05a25196060ce5492e2014ce8b8654c731915",
+      "after": "e6e5b5b111b2c1a4b2052474e03f21fcdc103e6e8e927a50c1e6df7b6287e503"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/use-native-preference.tsx",
+      "before": "a0ece91f8378193677d738e0edaf7e934cf0ecf6ed9a2faa3ed8022c4a4ed4f2",
+      "after": "c537e33d47888b6a3e957454590ff792798b147ac6c37dcc92fab2996582e9ec"
+    },
+    {
+      "path": "apps/shell/src/features/trust/SiteAgentAccess.tsx",
+      "before": "e7e0e1f329bef296f49a1b5f6add0495d4489f40ba9825a54933aeb7053771e8",
+      "after": "884c9d27c4f6a221718c954d9f375f2dce30e1e1d0f8147066f4310e7027ff14"
+    },
+    {
+      "path": "apps/shell/src/features/trust/SiteRulesTable.tsx",
+      "before": "e98ff413212e49426a51655dda954de19fbaa2f1403edc9f24d4d2bc915774ac",
+      "after": "2b1401860f796359ef224a863bac4fdad02f0890e2e55f36720ee7b89d367cdc"
+    },
+    {
+      "path": "apps/shell/src/components/ClearBrowsingData.tsx",
+      "before": "b36f1b4af1bca287c7dd53217614bcb19d770835843f495ad5a90f5b0419d74b",
+      "after": "96f3bde789e7064706d3c6c813db73262290f410ea368971097bee9bcda2f528"
+    },
+    {
+      "path": "apps/shell/src/components/FilterListManager.tsx",
+      "before": "81d0584936d0eec115cf7c461a5c4e044040a4e273e4551898679f09e884e6b1",
+      "after": "eba1fcadd50616bbadc97a12ab208fa1e6a76758ae91eeb947995f7e6defe7b9"
+    },
+    {
+      "path": "apps/shell/src/components/SitePermissions.tsx",
+      "before": "c1584182a6381c3dad3dc8292d2e4e511bcaae0433d5f0bcf3c26689f30f27ee",
+      "after": "74a2f0a945ce7d5e04b9ace9f8c40a1f5291a356f88e7c9266099bb18f2a97ba"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CookieControls.tsx",
+      "before": "913b6ee8095a73ab6d9f36a947cf86877a21fc926041753297c4476f502da095",
+      "after": "c3033303159cc1af16dcdfdcf30750e9d67b44848887fad82081fd50bc710740"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CrashReporting.tsx",
+      "before": "abe133f7f20c6fa74407c9fd0d10bb17e35fa70f81532b5eba1cfce09bf73cc0",
+      "after": "ad2d825814608931450a66a2cc68b104f330474b5383406bce4a659513a47042"
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.tsx",
+      "before": "9ec5c5f23ddc46bb1f8f1ff680fe01f779e7effd0f2c87e6388adaad86f364f6",
+      "after": "47f07fdef3e5057cc432cdac5399861c1d4e9ee758435d716758d52e5d525964"
+    },
+    {
+      "path": "apps/shell/src/components/PasswordTransferSetting.tsx",
+      "before": "eeea6a7a64c420e7e82a4bcdd61e6b7c7a793b6c6444bcadd60ca63b4742feb2",
+      "after": "467887a160843d6b224d269f725e584d5325ddf0685d3023b96d2107536928e4"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Models.tsx",
+      "before": "f7f419cec1501e9ecb48cebda8d2fc6dc30687d7dc310016e7e30c06c0a2e528",
+      "after": "ad5c14f22c4ba30e51383382d4aa68fc687812a7ce498e53f361aa98c344988f"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/UsageBudgets.tsx",
+      "before": "bc63d84d87a5d9e2e3280c70ef082b3b1df7daf9b852531b466ea019b8dbcdee",
+      "after": "747da843e158d3b84ac5353b7e3bb798eaf30159eb3c2b4310ce4d781f07ead9"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "before": "881dc46ad494bfb4838662b3f74de4edfa9d9b0267fbb94faee5ff3a40b1d188",
+      "after": "f86050bca5af76a6f327667b5841ad1ed523a8af6f93e670b3454d9218321bcc"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "before": "a4a275ad9a386bed40c591fb8b5f9d677c274e060f5b1faeed0517186d80d3e0",
+      "after": "2fbc7715802248dd57b4d11775857847d61c1f10fa7ebfe607dbf4e5465ed2c2"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/use-settings-status-owner.ts",
+      "before": "9ebca7e5faf9175d9e2927d7b020a992ff97c75479fc0743a0cfbdc0c03bf063",
+      "after": "4d1d5bc5bba9613458596e680f680cd52a581f57f108725a7c9b9629ef905c8e"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/ArchivedChats.tsx",
+      "before": "6b950b63d2cd6b408a93996d0f570ed2135c2e0cee0b22ede1dfe887300d5574",
+      "after": "4cfd5433f09a40cef67d4f9bc7fba6e6d2f4441eb711b3c95d9edceaf204aa4b"
+    },
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.tsx",
+      "before": "6c3d781ff5f6519b18d5eb8fefc98b5a1870d2b385d0466682247d069cda9276",
+      "after": "3fbbe164d66a151da6f1e84683c3f83e8a1bf9af39dd9c3ab279fb63cd7edfbf"
+    },
+    {
+      "path": "apps/shell/src/components/MigrationImport.tsx",
+      "before": "95d7e477a779bad9a6ac73670f8ee42cbe72d4033e4cf9116bd17bc68092c0e3",
+      "after": "f726ba5fc196b5c64df2fc0d69bc7815446d462a22ec5c256c214b315a11eef9"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RecoveryPackage.tsx",
+      "before": "13affb7788f52afaa09ea17e90b4da388ea3fce8a9357d76cd42c4d13ec704a3",
+      "after": "9e2cf0b4500e9514ac694b13f00c00c71179e617096cd72c80a3c004a8167631"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackupSettings.tsx",
+      "before": "093d1f72160284785373a4a45bb892f442de5a66f9aebd6bf0ae09961d5dab01",
+      "after": "75737ca931c4328e70e42d2745653319d1edac938bb6ab0afea12a1db4179deb"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RestoreBackupControls.tsx",
+      "before": "77ad587ab39ce3c8837921db1982f463377681196238b30ff1cf8d38b9303eae",
+      "after": "b10c13bbf680afe2471da049017ac0f9a428a418db165632551ff5469dbf5551"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DiagnosticsStorage.tsx",
+      "before": "c30370a9c41f1888789a6b97d059253e8baec710a9a3386c008201c1d291b1b5",
+      "after": "296486d32f6f5a2904b9ad5dd3f3bbf0979f3f7acf781eb7e48d644ff5eeba87"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/General.tsx",
+      "before": "a4d42e0f79366e0eae695c46ba7bff348983d627b965eb94a2122420d5ddfcf3",
+      "after": "6ef6285809db48a14e3c3bba94c5593473a973aed9e6cdfc5172884f5663aabb"
+    },
+    {
+      "path": "apps/shell/src/components/BrowserProfiles.tsx",
+      "before": "c403fcaaad3f335d1f2a7e3442a83b69403149b895ac413fa67509a1027fa354",
+      "after": "500282bdaaefb686831cfdc335ff1d48d73b60b7ba4bc3acdf00e6ddb838355b"
+    },
+    {
+      "path": "apps/shell/src/components/ClearHistory.tsx",
+      "before": "eaaab3762d7a689f52da6395709988bd5ccf66e548abbb1b42d8598960b0d672",
+      "after": "ffa1387281d9cb83e6cd6b9249da8b58fec889da46ad86668e7ba46bcbfdedf9"
+    },
+    {
+      "path": "apps/shell/src/components/OpenBookmarkFolder.tsx",
+      "before": "7782eb53603a8268c14ab6ecb9689a985c7fa5460862801f82168ed376d438a6",
+      "after": "1bd51413b839b479f3f652d27306833459affcf4289020673077e1759746e1a4"
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "before": "4975855420940f82832f02dc94c2f5a1ddae9604a2c7c35f60c581e8ae75674b",
+      "after": "3769b9b0cf573595265e17b394b5267a143bf5ff6bacdcb878507fe07a9e97b4"
+    },
+    {
+      "path": "apps/shell/src/components/Inspector.tsx",
+      "before": "2a2d55bf7be08511439fc0cce20c2f3aa7a303085b03075f02a7dc5590603420",
+      "after": "63691e9b64606eeaa659530d3e9fe5392217174cfd926ecb44284a814d48e2a5"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "before": "1d1f65e8cea53b2374ed7cc029a4fbe0a3422055eee7902603c6c26568708b19",
+      "after": "660c6d1ec32ddcf76c006342b0f7b089601b35d45de2de82cc8df156ebba2af2"
+    },
+    {
+      "path": "apps/shell/src/components/SkillReplayPanel.tsx",
+      "before": "614f7d29dea76826113010d8e7f1388cedc99a3641eb9a03932b3dfd5507f96b",
+      "after": "1513da6a2ee37b2ab2132498122e4a6d00544dfc17fec561ea66ffce230f9559"
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "before": "592ba04b3adc0aaa14293ac5f1ba0eb4161da7d87a525bc4da67328410bfc4f0",
+      "after": "77b955aa22d5e010395d7d80a5b13eaa33ba40bb304fd56f7d036f5eaf32c653"
+    },
+    {
+      "path": "apps/shell/src/components/Goals.tsx",
+      "before": "09680037dea40f1abb94cf43f59e47c0a466d6b66ae62427b9bc0a46a0167cb5",
+      "after": "e95acc7fe3b587c8d1abce0f02559b043e51c75dd0de8110c01abea08e19f8bc"
+    },
+    {
+      "path": "apps/shell/src/components/Hooks.tsx",
+      "before": "b70fed63e6d23699ae8e941edc90597a70e09c77ae97aa1c173973a71dcc4e02",
+      "after": "cb432da5100c615d707d3ecb12379147901c66686b2a4466667f8685901d8f62"
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "before": "559d8607933fb2ccfc2b818bc2e9eae5965840439b63d20a86ecd92a17c9ede5",
+      "after": "049f4eb9693323bd75db30c372c23d65f22534c758e3889737371ed12002bea9"
+    },
+    {
+      "path": "apps/shell/src/components/Downloads.tsx",
+      "before": "76b47ba71a2e3e6763f066475bcbafb85db79297af9e21f15408fbd923455a80",
+      "after": "9dcdadfdcef182b5feb030c457b1bdf3d45c0e7d4d4dc5c0e0cc7346f5b8585e"
+    },
+    {
+      "path": "apps/shell/src/components/InlineAssist.tsx",
+      "before": "5d8089aadd42d3ec20b505a777b595a02275ad5c447e7985606abae9ca5f7b25",
+      "after": "8417a21ae8261a9edb1b8afd560cee4675395284505017b70d536145565fa171"
+    },
+    {
+      "path": "apps/shell/src/components/PageZoom.tsx",
+      "before": "4e8840acf4cc2131d8c6a9a5d5caa80ebfa128355453046f590b19ce72ece379",
+      "after": "cc02f01dbc60b18d877e80dbd1c99ed1d03ce70e59d067f63ff4af3c995d9f6e"
+    },
+    {
+      "path": "apps/shell/src/components/SiteControls.tsx",
+      "before": "6f8ce91e44358bed4104efe01da1bab562fca57ae0ccf114c6bd64f7d0294966",
+      "after": "f35455f2019c95d9592df6bcab9744c170e7ab5db7eccad52d669ffa2804d75a"
+    },
+    {
+      "path": "apps/shell/src/components/SiteCustomization.tsx",
+      "before": "2bd62fb0d80b3ec46c17ec367467e4069eb0b0afe72dc315e9a3e4082cba7885",
+      "after": "0b64095f6bb2140650cc2f20dfb742a02ddf796a11c3e8dbbcb9bd098a473b35"
+    },
+    {
+      "path": "apps/shell/src/components/ChatSessions.tsx",
+      "before": "4ee2431b5f6b8655426eefd61d820485b4c9400cd0cd8ae6408cf496532d3a33",
+      "after": "cade5ca9a84ba89ab6cfb27e4c1b1d9144d013d15f3827b80edc725dcd3ca7df"
+    },
+    {
+      "path": "apps/shell/src/components/LiveFolderRows.tsx",
+      "before": "f4414e7fd004347bef5ec89bbee9a8d061d317e465746ae75473ff863e7c2af0",
+      "after": "9e6f6e1dc7015964576673a12eee7e85d9e6e87e2ddcca3ca7d0f18e335a5549"
+    },
+    {
+      "path": "apps/shell/src/components/TabMenu.tsx",
+      "before": "cab0d73da4cfd7e9e79872a6bf84a0759e20ff4bcfe575d14d23486befbbeadf",
+      "after": "971637bf6bf7b88642e41a004f469eb699637ff8c8324f9aceb487c943e61e99"
+    },
+    {
+      "path": "apps/shell/src/components/SpaceEditor.tsx",
+      "before": "b16380d4213006955eb82554e057495b7a9e0f552bb255570662cc5ecd6ec1bd",
+      "after": "16185da828eb92204e3fb9bd606f78b587f42775ba164e7270e36e6da9f76b43"
+    },
+    {
+      "path": "apps/shell/src/components/ActionConfirmation.tsx",
+      "before": "24e1f5cb80bea11d51c2066c0d989179b10c862f4e041b21c1cc4d212436d0a1",
+      "after": "b4718c406b74f7a7f6150b6bd0c629ac512e47b55e1cb0c07787a5af5122342c"
+    },
+    {
+      "path": "apps/shell/src/components/VaultOfferBanner.tsx",
+      "before": "8c323738061eaba42ad0b2df4427da2098f3c635499073bbc4d424c7496f7637",
+      "after": "42dc7d471e373b05b1e6b4dfcfd74385d87fc637eb0caecb3663a0bc9a88357a"
+    },
+    {
+      "path": "apps/shell/src/main.tsx",
+      "before": "ac8ebe8377d709843d8efe3ee5ed3c68d649991948eccda9bff42305ea790a91",
+      "after": "610adbe5207d1eb889bba23ae71aa1581134d876e57c0130606e7ed8362da399"
+    },
+    {
+      "path": "apps/shell/src/features/extensions/use-extension-actions.ts",
+      "before": "891e19eabc1b09c7b4aa891e4dd926e4bd352026305a65a4fc15222e029eb84a",
+      "after": "81d39a08e05c9ada785eb2fafabe4e04723aa7da1898a7124bd8ad5507738c92"
+    },
+    {
+      "path": "apps/shell/src/components/GithubConnections.tsx",
+      "before": "7cd6f72ba7f3c484095115a8705588eb259f41898d5c1b059851d7d19b3223f3",
+      "after": "1d58d7c15ecd746537cc7da2ca283bd8b09016d59e4e2b1c4a607d409bc32d18"
+    },
+    {
+      "path": "apps/shell/src/components/LiveFolderEditor.tsx",
+      "before": "f87d4b16bc6abb7b2030b88ec89b922b2afabe1157101fde4ad7462e72293f44",
+      "after": "0735e0106b49b35056bcdfac1baff36cebb15652ed61e929b758992e0efa4565"
+    },
+    {
+      "path": "apps/shell/src/components/SaveConversationTask.tsx",
+      "before": "a80f4da10559bdeb58cb0d7d3c64cb614a0cf533796599d3eb057ea891117324",
+      "after": "b1eddc4b5c3f0b13798e6cfb4b1cb2f4cbf5a86724864f81f6e4a7f2c7becf2a"
+    },
+    {
+      "path": "apps/shell/src/features/demonstration/state.ts",
+      "before": "efe96a3d670850d358c9611ff1e5d48fcafa56f74d807796bcc9d8334b82385c",
+      "after": "bc33e92a98c163a090542cc886eb22d96fc0460dd2eee815d8b390cdbe7dbfd5"
+    },
+    {
+      "path": "apps/shell/src/features/demonstration/mount.ts",
+      "before": "3cf13419528927958111ce1c1417793d756e686324316a396d2900925110590c",
+      "after": "997097aa3c1527cec982054422a5ce6fda8427bc56469527fb323d8c0e1d8474"
+    },
+    {
+      "path": "apps/shell/src/features/download-naming/Settings.tsx",
+      "before": "9c14e983b54d06cb478e605933bab69519876ffde24a052c5e57e5d1544aec7c",
+      "after": "1519a8f2fcb6a535298eddeaa63a9498bdd1e445987ed2c7f69b9a8d40b23b70"
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/state.ts",
+      "before": "15fe4cf705ec430f9e32c9e46c86bf0222b58b05cd4d3416a19b03318c3e6e4e",
+      "after": "fab4d52c172d8b64ee0cbd6a1dca53943edf8bfa7ebff8c00cf0130645869eaf"
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/QueueTonight.tsx",
+      "before": "b1992acceed64c0875047769aadae92309e1ad10e97ea11b18494264bec91003",
+      "after": "a437767062dac54df697675832fb64257d501339b4f08c939879fda09d747d72"
+    },
+    {
+      "path": "apps/shell/src/error-message.ts",
+      "before": null,
+      "after": "7ee2b978c3b95a0d051475f0a071af80485c51a3786918c9cac4900b1c38899e"
+    },
+    {
+      "path": "apps/shell/src/error-message.test.ts",
+      "before": null,
+      "after": "b9009ca975c47ca4a988f06e16a103b32bc8751f5ebd98b56fc63eba132aabd2"
+    }
+  ]
+}

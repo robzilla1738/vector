@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { runCommand } from "../commands";
 import "./Overview.css";
 import { TabCardCaption } from "./TabCardCaption";
@@ -77,7 +78,7 @@ export function Overview() {
     if (!canMoveWindow || !hasSelection) return;
     let live = true;
     void bridge.windows().then(value => { if(live)setWindows(value); }).catch(reason => {
-      if(live)setError(`Couldn’t list windows. ${reason instanceof Error ? reason.message : String(reason)}`);
+      if(live)setError(`Couldn’t list windows. ${errorMessage(reason)}`);
     });
     return () => { live = false; };
   }, [canMoveWindow,hasSelection]);
@@ -162,7 +163,7 @@ export function Overview() {
     if (pending.current) return;
     pending.current=true; setBusy(true); setError(""); setProgress("");
     try { await work(); }
-    catch (error) { setError(error instanceof Error ? error.message : String(error)); }
+    catch (error) { setError(errorMessage(error)); }
     finally {
       pending.current=false; setBusy(false);
       requestAnimationFrame(() => { if (document.activeElement === document.body) searchInput.current?.focus(); });
@@ -300,7 +301,7 @@ export function Overview() {
           if(!current || current.controller === "agent" || current.controller === "external")throw new Error(`Audio changed for ${changed} tabs. A remaining tab closed or changed control.`);
           if(state.tabAudio[page.pageId]?.muted === muteSelection)continue;
           try { await tabCommand({ kind: "setMuted", pageId: page.pageId, muted: muteSelection }); changed++; }
-          catch(reason) { throw new Error(`Audio changed for ${changed} tabs. ${reason instanceof Error ? reason.message : String(reason)}`); }
+          catch(reason) { throw new Error(`Audio changed for ${changed} tabs. ${errorMessage(reason)}`); }
         }
         // Tab commands acknowledge before the audio event reaches this window.
         // Refresh once for the selection so the next action reflects native state.

@@ -1,0 +1,17 @@
+[
+  {
+    "path": "apps/shell/src/components/CommandBar.home-entry.test.tsx",
+    "originalBodiesUnchanged": 7,
+    "added": 6
+  },
+  {
+    "path": "apps/shell/src/components/HomeAsk.test.tsx",
+    "originalBodiesUnchanged": 7,
+    "added": 0
+  },
+  {
+    "path": "apps/shell/src/components/Conversation.controls.test.tsx",
+    "originalBodiesUnchanged": 10,
+    "added": 1
+  }
+]

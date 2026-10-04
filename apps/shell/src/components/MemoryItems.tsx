@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import "./MemoryItems.css";
 import { ActionMenu, Checkbox, DetailPane, ListRow, Select, TextField } from "../ui";
 import { shellIconFolder } from "./icons";
@@ -89,7 +90,7 @@ export function MemoryItems({ memory, disabled, onSaved }: { memory: WorkspaceMe
       setLatest(null); onSaved(saved);return saved;
     } catch (reason) {
       if(!delivering())throw reason;current();
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
       try { const latestValue = await call("workspaces.memory.get", { workspaceId: memory.workspaceId }); if(owner.active&&owner===lifetime.current&&!bridge.privateMode&&useMemoryDrafts.getState().drafts[key]===savedDraft&&latestValue.workspaceId===memory.workspaceId&&latestValue.revision>base.revision){current();setLatest(latestValue);} } catch { /* Keep the draft during disconnection. */ }
       throw reason;
     } finally { owner.pending=false;setBusyOwner(value=>value===owner?null:value); }

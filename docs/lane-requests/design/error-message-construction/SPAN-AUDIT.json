@@ -1,0 +1,1624 @@
+{
+  "expressionCount": 170,
+  "affectedProductionFiles": 98,
+  "allPlainIdentifiers": true,
+  "globalConstructorSymbols": "TypeScript checker declarations exclusively typescript/lib/lib.*.d.ts",
+  "exactForwardInverseAllFiles": true,
+  "excluded": [
+    "CommandBar.tsx",
+    "HomeAsk.tsx",
+    "Conversation.tsx",
+    "HomeEntryControls.tsx",
+    "all tests/declarations"
+  ],
+  "files": [
+    {
+      "path": "apps/shell/src/store/persistence.ts",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1644,
+          "end": 1698,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/store/tabs-slice.ts",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 31608,
+          "end": 31662,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/store.ts",
+      "prefix": "import { errorMessage } from \"./error-message\";\n",
+      "spans": [
+        {
+          "start": 7724,
+          "end": 7778,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/page-export.ts",
+      "prefix": "import { errorMessage } from \"./error-message\";\n",
+      "spans": [
+        {
+          "start": 995,
+          "end": 1049,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunControls.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2871,
+          "end": 2928,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 3743,
+          "end": 3800,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunImages.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 647,
+          "end": 704,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 2065,
+          "end": 2122,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Dictation.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 4862,
+          "end": 4919,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 9426,
+          "end": 9483,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 3355,
+          "end": 3408,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SavedResultPreview.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1115,
+          "end": 1168,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 3472,
+          "end": 3525,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 4178,
+          "end": 4231,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2178,
+          "end": 2231,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImages.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 7151,
+          "end": 7208,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/WorkbookPreview.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1731,
+          "end": 1784,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ConversationTask.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 6922,
+          "end": 6979,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ConversationDrafts.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2908,
+          "end": 2965,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ConversationHistory.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 7668,
+          "end": 7722,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/composer/SuspensionPanel.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2725,
+          "end": 2782,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/transcript/TextProposal.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2552,
+          "end": 2609,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 3279,
+          "end": 3336,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/transcript/IsolatedArtifactHtml.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 909,
+          "end": 966,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/transcript/RunTranscriptDetails.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 8704,
+          "end": 8761,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 9879,
+          "end": 9936,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunPanel.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 14138,
+          "end": 14180,
+          "old": "e instanceof Error ? e.message : String(e)",
+          "replacement": "errorMessage(e)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PageRecovery.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 4575,
+          "end": 4632,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SessionRecovery.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2525,
+          "end": 2578,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/agent/RunAttentionFeed.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 3171,
+          "end": 3228,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TranslationBar.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1061,
+          "end": 1118,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PageSurface.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1253,
+          "end": 1310,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 5119,
+          "end": 5176,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 9280,
+          "end": 9334,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 20903,
+          "end": 20960,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/FindBar.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1937,
+          "end": 1994,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 3805,
+          "end": 3859,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ReaderView.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 4091,
+          "end": 4145,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 4518,
+          "end": 4572,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryRecoveryNotice.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2952,
+          "end": 3002,
+          "old": "error instanceof Error?error.message:String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowsingMemory.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 7361,
+          "end": 7418,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryExclusions.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 3263,
+          "end": 3316,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryItems.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 9065,
+          "end": 9122,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SpaceMemoryEditor.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 3827,
+          "end": 3884,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 5127,
+          "end": 5184,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 6273,
+          "end": 6326,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SpaceMemory.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 7400,
+          "end": 7457,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemorySettings.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2909,
+          "end": 2966,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PluginsPanel.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 323,
+          "end": 380,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/extensions/extension-inventory.ts",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 715,
+          "end": 772,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Extensions.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 7127,
+          "end": 7184,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1376,
+          "end": 1433,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 1604,
+          "end": 1661,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 699,
+          "end": 756,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ReviewedConnectors.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 439,
+          "end": 496,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/extensions/ExtensionShortcuts.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 1089,
+          "end": 1146,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/WebsiteSizes.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 943,
+          "end": 997,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 1721,
+          "end": 1771,
+          "old": "error instanceof Error?error.message:String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/use-native-preference.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 1747,
+          "end": 1804,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/trust/SiteAgentAccess.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 2298,
+          "end": 2355,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 2771,
+          "end": 2828,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/trust/SiteRulesTable.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 970,
+          "end": 1027,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearBrowsingData.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2088,
+          "end": 2145,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 3516,
+          "end": 3573,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/FilterListManager.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 229,
+          "end": 286,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SitePermissions.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 4392,
+          "end": 4449,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 4871,
+          "end": 4921,
+          "old": "error instanceof Error?error.message:String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CookieControls.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 804,
+          "end": 861,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 1413,
+          "end": 1470,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CrashReporting.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 871,
+          "end": 928,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 1509,
+          "end": 1566,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1095,
+          "end": 1152,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PasswordTransferSetting.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1043,
+          "end": 1100,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Models.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 15257,
+          "end": 15299,
+          "old": "e instanceof Error ? e.message : String(e)",
+          "replacement": "errorMessage(e)"
+        },
+        {
+          "start": 16838,
+          "end": 16892,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/UsageBudgets.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 2548,
+          "end": 2605,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 2882,
+          "end": 2939,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 1616,
+          "end": 1673,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 4921,
+          "end": 4978,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 8207,
+          "end": 8264,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 8877,
+          "end": 8934,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 9777,
+          "end": 9834,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 10471,
+          "end": 10528,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 11555,
+          "end": 11612,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 19623,
+          "end": 19680,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 2344,
+          "end": 2401,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/use-settings-status-owner.ts",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 2710,
+          "end": 2767,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 3358,
+          "end": 3415,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/ArchivedChats.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 2158,
+          "end": 2215,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 3450,
+          "end": 3507,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 5594,
+          "end": 5651,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 6925,
+          "end": 6982,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 7744,
+          "end": 7801,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MigrationImport.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 992,
+          "end": 1046,
+          "old": "cause instanceof Error ? cause.message : String(cause)",
+          "replacement": "errorMessage(cause)"
+        },
+        {
+          "start": 1571,
+          "end": 1625,
+          "old": "cause instanceof Error ? cause.message : String(cause)",
+          "replacement": "errorMessage(cause)"
+        },
+        {
+          "start": 2191,
+          "end": 2245,
+          "old": "cause instanceof Error ? cause.message : String(cause)",
+          "replacement": "errorMessage(cause)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RecoveryPackage.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 3540,
+          "end": 3597,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackupSettings.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 4469,
+          "end": 4526,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 4654,
+          "end": 4711,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RestoreBackupControls.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 3237,
+          "end": 3294,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 4041,
+          "end": 4098,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DiagnosticsStorage.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 5004,
+          "end": 5061,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/General.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 14896,
+          "end": 14950,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowserProfiles.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2363,
+          "end": 2416,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 7865,
+          "end": 7918,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearHistory.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1394,
+          "end": 1451,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 3401,
+          "end": 3458,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/OpenBookmarkFolder.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2075,
+          "end": 2132,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 5208,
+          "end": 5262,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 17941,
+          "end": 17998,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Inspector.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1556,
+          "end": 1598,
+          "old": "e instanceof Error ? e.message : String(e)",
+          "replacement": "errorMessage(e)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 3276,
+          "end": 3329,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 4021,
+          "end": 4074,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 7069,
+          "end": 7123,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 8368,
+          "end": 8422,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 38790,
+          "end": 38847,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 42854,
+          "end": 42911,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SkillReplayPanel.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2383,
+          "end": 2440,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 3261,
+          "end": 3318,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 3942,
+          "end": 3999,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 5355,
+          "end": 5412,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 7756,
+          "end": 7813,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 9321,
+          "end": 9378,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 35793,
+          "end": 35850,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 40566,
+          "end": 40623,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 47733,
+          "end": 47790,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 50399,
+          "end": 50456,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 53105,
+          "end": 53162,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Goals.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2033,
+          "end": 2090,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Hooks.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2926,
+          "end": 2983,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 5299,
+          "end": 5356,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 9681,
+          "end": 9723,
+          "old": "e instanceof Error ? e.message : String(e)",
+          "replacement": "errorMessage(e)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Downloads.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 8890,
+          "end": 8943,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 9473,
+          "end": 9526,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 10496,
+          "end": 10549,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 11196,
+          "end": 11249,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/InlineAssist.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2740,
+          "end": 2797,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 3597,
+          "end": 3654,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 4075,
+          "end": 4132,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PageZoom.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 899,
+          "end": 952,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 1532,
+          "end": 1585,
+          "old": "reason instanceof Error?reason.message:String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SiteControls.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2714,
+          "end": 2771,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 4116,
+          "end": 4173,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SiteCustomization.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 3669,
+          "end": 3726,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 4406,
+          "end": 4463,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 4841,
+          "end": 4898,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        },
+        {
+          "start": 5339,
+          "end": 5396,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ChatSessions.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 4294,
+          "end": 4351,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/LiveFolderRows.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1551,
+          "end": 1605,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 2798,
+          "end": 2852,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 4002,
+          "end": 4056,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TabMenu.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 8535,
+          "end": 8589,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SpaceEditor.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1706,
+          "end": 1760,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ActionConfirmation.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2404,
+          "end": 2461,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/VaultOfferBanner.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1520,
+          "end": 1577,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/main.tsx",
+      "prefix": "import { errorMessage } from \"./error-message\";\n",
+      "spans": [
+        {
+          "start": 677,
+          "end": 731,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/extensions/use-extension-actions.ts",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 760,
+          "end": 817,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/GithubConnections.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 714,
+          "end": 768,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 1174,
+          "end": 1228,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 2078,
+          "end": 2132,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/LiveFolderEditor.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 2461,
+          "end": 2515,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 3111,
+          "end": 3165,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SaveConversationTask.tsx",
+      "prefix": "import { errorMessage } from \"../error-message\";\n",
+      "spans": [
+        {
+          "start": 1915,
+          "end": 1972,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/demonstration/state.ts",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 2787,
+          "end": 2841,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 3898,
+          "end": 3952,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/demonstration/mount.ts",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 4269,
+          "end": 4323,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/download-naming/Settings.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 1160,
+          "end": 1217,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/state.ts",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 912,
+          "end": 966,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        },
+        {
+          "start": 1780,
+          "end": 1834,
+          "old": "error instanceof Error ? error.message : String(error)",
+          "replacement": "errorMessage(error)"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/QueueTonight.tsx",
+      "prefix": "import { errorMessage } from \"../../error-message\";\n",
+      "spans": [
+        {
+          "start": 4741,
+          "end": 4798,
+          "old": "reason instanceof Error ? reason.message : String(reason)",
+          "replacement": "errorMessage(reason)"
+        }
+      ]
+    }
+  ]
+}

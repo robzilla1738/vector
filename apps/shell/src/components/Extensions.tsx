@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { useStore as useBoundStore } from "zustand";
 import { bridge, inNativeHost, type BrowserExtension } from "../bridge";
@@ -169,7 +170,7 @@ export function Extensions() {
                   setRemoveTarget(null);
                 } catch (reason) {
                   extensionInventory.setState({
-                    error: reason instanceof Error ? reason.message : String(reason),
+                    error: errorMessage(reason),
                   });
                 }
               }}

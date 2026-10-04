@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useEffect, useState } from "react";
 import type { HostMethodResult } from "@aux/contracts";
 import { bridge } from "../../bridge";
@@ -20,7 +21,7 @@ export function useExtensionActions(enabled: boolean) {
         },
         (reason) => {
           if (current && request === generation)
-            setError(reason instanceof Error ? reason.message : String(reason));
+            setError(errorMessage(reason));
         },
       );
     };

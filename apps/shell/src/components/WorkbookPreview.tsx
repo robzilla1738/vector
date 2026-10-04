@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useMemo, useRef, useState } from "react";
 import { WorkbookSnapshotSchema } from "@aux/contracts/workbook-snapshot";
 
@@ -26,7 +27,7 @@ export function WorkbookPreview({ content }: { content: string }) {
       if(kind==="xlsx"){if(await bridge.saveWorkbook(content))toast("Workbook values exported");}
       else if(kind==="copy"){await navigator.clipboard.writeText(workbookSheetCsv(sheet));toast("Sheet copied as CSV");}
       else if(await bridge.saveFile(kind==="snapshot"?"workbook-snapshot.json":`${name}.csv`,kind==="snapshot"?content:workbookSheetCsv(sheet)))toast(kind==="snapshot"?"Workbook snapshot saved":"Sheet exported");
-    } catch(reason){setError(reason instanceof Error?reason.message:String(reason));}
+    } catch(reason){setError(errorMessage(reason));}
     finally{pending.current=false;setBusy(false);}
   };
   return <div className="workbook-preview">

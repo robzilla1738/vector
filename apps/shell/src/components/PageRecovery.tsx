@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { bridge } from "../bridge";
@@ -100,7 +101,7 @@ export function PageRecovery({ page }: { page: PageTarget }) {
         if (current(original))
           setFailure({
             owner: original,
-            message: `${action === "reload" ? "Couldn’t reload this tab" : action === "back" ? "Couldn’t go back" : "Couldn’t proceed"}. ${reason instanceof Error ? reason.message : String(reason)}`,
+            message: `${action === "reload" ? "Couldn’t reload this tab" : action === "back" ? "Couldn’t go back" : "Couldn’t proceed"}. ${errorMessage(reason)}`,
           });
         throw reason;
       } finally {

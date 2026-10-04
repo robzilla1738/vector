@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import { bridge, inNativeHost } from "../../bridge";
 import { Switch } from "../../ui";
@@ -16,7 +17,7 @@ export function CookieControlsSetting({ active }: { active: boolean }) {
     const token = ++request.current;
     void bridge.cookieControls()
       .then(result => { if (token === request.current) setValue(result); })
-      .catch(reason => { if (token === request.current) setError(reason instanceof Error ? reason.message : String(reason)); });
+      .catch(reason => { if (token === request.current) setError(errorMessage(reason)); });
     return () => { ++request.current; };
   }, [active, retry]);
 
@@ -31,7 +32,7 @@ export function CookieControlsSetting({ active }: { active: boolean }) {
       const result = await bridge.cookieControls();
       if (token === request.current) setValue(result);
     } catch (reason) {
-      if (token === request.current) setError(reason instanceof Error ? reason.message : String(reason));
+      if (token === request.current) setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

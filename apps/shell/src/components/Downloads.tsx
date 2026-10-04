@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import "./Downloads.css";
 import { useDownloadRenames } from "../features/download-naming/state";
 import { executeCommand } from "../commands";
@@ -112,7 +113,7 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
     void bridge.downloadFolder().then(value=>{
       if(version===folderRequest.current)setFolder(value);
     }).catch(reason=>{
-      if(version===folderRequest.current)setFolderError(reason instanceof Error?reason.message:String(reason));
+      if(version===folderRequest.current)setFolderError(errorMessage(reason));
     }).finally(()=>{if(version===folderRequest.current)setFolderLoading(false);});
     return()=>{++folderRequest.current;};
   },[showFolder,folderRefresh,refresh]);
@@ -121,7 +122,7 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
     ++folderRequest.current;setFolderLoading(false);setFolderError("");
     await action("folder",async()=>{
       try{const selected=await bridge.chooseDownloadFolder(reset);++folderRequest.current;setFolderLoading(false);setFolder(selected);}
-      catch(reason){setFolderError(reason instanceof Error?reason.message:String(reason));}
+      catch(reason){setFolderError(errorMessage(reason));}
     });
   }
 
@@ -140,7 +141,7 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
     void bridge.downloadsSnapshot().then(downloads => {
       if (!live) return;
       useStore.setState(state => ({ downloads: mergeDownloadSnapshot(state.downloads, downloads.filter(item=>!removed.has(item.id)), updated) }));
-    }).catch(reason => { if (live) setLoadError(reason instanceof Error?reason.message:String(reason)); }).finally(()=>{if(live)setLoading(false);});
+    }).catch(reason => { if (live) setLoadError(errorMessage(reason)); }).finally(()=>{if(live)setLoading(false);});
     return () => { live = false; unsubscribe();offEvents(); };
   }, [refresh]);
   async function action(id: string, work: () => Promise<unknown>, fileAction = false) {
@@ -151,7 +152,7 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
     const focused=document.activeElement instanceof HTMLElement?document.activeElement:null;
     const restoreFocus=!!focused&&!!shelfRef.current?.contains(focused);
     try { await work(); } catch (reason) {
-      const message=reason instanceof Error?reason.message:String(reason);
+      const message=errorMessage(reason);
       if(fileAction)setRowErrors(current=>({...current,[id]:message}));
       else setError(message);
     } finally {

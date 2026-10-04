@@ -9,17 +9,17 @@ const fixture = vi.hoisted(() => ({
   listeners: new Set<(event: {type:string; payload:{chatId:string}})=>void>(),
 }));
 vi.mock("../store",()=>({errToast:vi.fn(),useStore:Object.assign(
-  (select:(state:unknown)=>unknown)=>select({railOpen:fixture.railOpen,focusRequest:fixture.focusRequest}),
-  {getState:()=>({agentDraft:fixture.draft})}
+  (select:(state:unknown)=>unknown)=>select({railOpen:fixture.railOpen,focusRequest:fixture.focusRequest,connected:false}),
+  {getState:()=>({agentDraft:fixture.draft,connected:false})}
 )}));
-vi.mock("../commands",()=>({runCommand:fixture.runCommand}));
-vi.mock("../bridge",()=>({bridge:{focusShell:fixture.focusShell,onEvent:(fn: typeof fixture.listeners extends Set<infer T> ? T : never)=>{fixture.listeners.add(fn);return ()=>fixture.listeners.delete(fn);}}}));
+vi.mock("../commands",async()=>{const {invokeScopedControl}=await import("../scoped-control-commands");return {runCommand:fixture.runCommand,executeCommand:(id:string,context:Parameters<typeof invokeScopedControl>[1])=>{try{return Promise.resolve(invokeScopedControl(id,context));}catch(error){return Promise.reject(error);}}};});
+vi.mock("../bridge",()=>({bridge:{windowId:"main",windowKind:"normal",privateMode:false,focusShell:fixture.focusShell,onEvent:(fn: typeof fixture.listeners extends Set<infer T> ? T : never)=>{fixture.listeners.add(fn);return ()=>fixture.listeners.delete(fn);}}}));
 vi.mock("./Conversation",()=>({Conversation:({chatId,onChatCreated,entryControls,composerRef}:{chatId:string|null;onChatCreated:(id:string)=>void;entryControls?:ReactNode;composerRef:RefObject<HTMLTextAreaElement|null>})=><section data-chat-id={chatId??"new"}><textarea ref={composerRef}/>{entryControls}<button onClick={()=>onChatCreated("durable-chat")}>Create chat</button></section>}));
 import HomeAsk from "./HomeAsk";
 let container:HTMLDivElement;
 let root:Root;
-beforeEach(()=>{vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);const storage=new Map<string,string>();vi.stubGlobal("localStorage",{getItem:(key:string)=>storage.get(key)??null,setItem:(key:string,value:string)=>storage.set(key,value),removeItem:(key:string)=>storage.delete(key)});fixture.draft="";fixture.railOpen=false;fixture.focusRequest=0;fixture.listeners.clear();fixture.focusShell.mockReset().mockResolvedValue(undefined);fixture.runCommand.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
-afterEach(()=>{act(()=>root.unmount());container.remove();vi.unstubAllGlobals();});
+beforeEach(()=>{vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);const storage=new Map<string,string>();vi.stubGlobal("localStorage",{getItem:(key:string)=>storage.get(key)??null,setItem:(key:string,value:string)=>storage.set(key,value),removeItem:(key:string)=>storage.delete(key)});fixture.draft="";fixture.railOpen=false;fixture.focusRequest=0;fixture.listeners.clear();fixture.focusShell.mockReset().mockResolvedValue(undefined);fixture.runCommand.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
+afterEach(()=>{act(()=>root.unmount());container.remove();vi.restoreAllMocks();vi.unstubAllGlobals();});
 async function render(onSearch?:()=>void){await act(async()=>root.render(<HomeAsk onSearch={onSearch}/>));}
 function currentChat(){return container.querySelector("section")?.getAttribute("data-chat-id");}
 

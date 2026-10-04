@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import "./OutboundMcpSettings.css";
 import { useEffect, useState } from "react";
 import type { OutboundMcpGrant, OutboundMcpServer, OutboundMcpTool, Task, Workspace } from "@aux/contracts";
@@ -21,7 +22,7 @@ type GrantReview = {
 };
 
 function errorText(reason: unknown) {
-  return reason instanceof Error ? reason.message : String(reason);
+  return errorMessage(reason);
 }
 
 function grantScopeLabel(scope: OutboundMcpGrant["scope"], tasks: Task[], workspaces: Workspace[]) {

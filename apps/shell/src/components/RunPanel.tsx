@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { RunPanelAction, RunPanelDisclosure } from "./RunPanelAction";
 import { bridge } from "../bridge";
 import { RunControls } from "./RunControls";
@@ -228,7 +229,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
       setShowObs(true);
       return res;
     } catch (e) {
-      if(version===observationRequest.current && current())setObsError(e instanceof Error ? e.message : String(e));
+      if(version===observationRequest.current && current())setObsError(errorMessage(e));
       throw e;
     } finally { if(version===observationRequest.current && current())setObsLoading(false); }
   };

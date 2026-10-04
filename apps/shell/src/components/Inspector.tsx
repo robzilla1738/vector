@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { CompactObservation } from "@aux/contracts";
 import { useStore, call } from "../store";
@@ -28,7 +29,7 @@ export function Inspector() {
     let current = true;
     call("pages.observe", { pageId: activePageId, format: "compact" })
       .then((r) => { if (current) setLiveObs("observation" in r ? r.observation : (r as unknown as CompactObservation)); })
-      .catch((e) => { if (current) setErr(e instanceof Error ? e.message : String(e)); });
+      .catch((e) => { if (current) setErr(errorMessage(e)); });
     return () => { current = false; };
   }, [activePageId, inspectorObs, retry]);
 

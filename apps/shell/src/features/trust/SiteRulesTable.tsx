@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useEffect, useState } from "react";
 import { bridge } from "../../bridge";
 import { call } from "../../store";
@@ -22,7 +23,7 @@ export function SiteRulesTable() {
         setError("");
       }
     })().catch((reason) => {
-      if (live) setError(reason instanceof Error ? reason.message : String(reason));
+      if (live) setError(errorMessage(reason));
     });
     const focus = () => refresh((value) => value + 1);
     window.addEventListener("focus", focus);

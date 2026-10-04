@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { ConversationSummary } from "@aux/contracts";
 import { bridge } from "../../bridge";
@@ -47,7 +48,7 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
       setRows(current => append ? [...current, ...page.filter(item => !current.some(row => row.chatId === item.chatId))] : page);
       setMore(found.length > target);
     } catch (reason) {
-      if (request === version.current) setError(reason instanceof Error ? reason.message : String(reason));
+      if (request === version.current) setError(errorMessage(reason));
     } finally {
       if (request === version.current) setLoading(false);
     }
@@ -79,7 +80,7 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
       mergeHistory([restored.latestRun]);
       setRows(current => current.filter(row => row.chatId !== item.chatId));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusyId(null);
     }

@@ -1,3 +1,4 @@
+import { errorMessage } from "./error-message";
 import { bridge } from "./bridge";
 import { toast, useStore } from "./store";
 
@@ -17,7 +18,7 @@ export async function savePagePdf(pageId: string | null) {
     const path = await bridge.savePagePdf(page.pageId);
     toast(path ? "Page saved as PDF" : "PDF export canceled");
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
     throw new Error(message.replace(/^Error invoking remote method [^:]+: Error: /, ""));
   }
 }

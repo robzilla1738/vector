@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { Task, PageTarget } from "@aux/contracts";
@@ -22,7 +23,7 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
     void call("tasks.promote", { chatId, expectedRunId: runId, workspaceId: space, title, objective,
       criteria: [{ criterionId: "outcome", description: success, verification: "manual" }],
       resources: page && /^https?:/.test(page.url) && page.url.length <= 4000 ? [{ resourceId: "source-page", kind: "url", locator: page.url, label: (page.title || page.url).slice(0,200) }] : [],
-    }).then(onSaved).catch(reason => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => { pending.current = false; setBusy(false); });
+    }).then(onSaved).catch(reason => setError(errorMessage(reason))).finally(() => { pending.current = false; setBusy(false); });
   }}>
     <strong>Save as task</strong><p className="hint">Keeps this conversation and its context together. Nothing runs until you start it.</p>
     <label>What should Aux accomplish?<textarea value={objective} maxLength={10000} required disabled={busy} onChange={event => setObjective(event.target.value)} /></label>

@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { bridge } from "../bridge";
 import { moveListFocus } from "../keyboard-list";
 import { useEffect, useRef, useState } from "react";
@@ -126,7 +127,7 @@ export function ConversationHistory() {
         setDeleting(null);
       }
       setMenu(null);
-    } catch (error) { if (view.current === origin) setActionError(error instanceof Error ? error.message : String(error)); }
+    } catch (error) { if (view.current === origin) setActionError(errorMessage(error)); }
     finally { pending.current = false; setSaving(false); }
   };
   return <section className="conversation conversation-history" aria-label="Conversation history">

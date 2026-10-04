@@ -1,0 +1,364 @@
+diff --git a/apps/shell/src/components/CommandBar.home-entry.test.tsx b/apps/shell/src/components/CommandBar.home-entry.test.tsx
+index 3c9e07006..ba3d413f0 100644
+--- a/apps/shell/src/components/CommandBar.home-entry.test.tsx
++++ b/apps/shell/src/components/CommandBar.home-entry.test.tsx
+@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
+ import { bridge } from "../bridge";
+ import { useStore } from "../store";
+ import { CommandBar } from "./CommandBar";
++import { dispatchShortcut, executeCommand } from "../commands";
+ 
+ // Keep actual CommandBar and HomeAsk mode/state wiring; omit unrelated chat RPCs.
+ vi.mock("./Conversation", () => ({ Conversation: ({ entryControls, composerRef }: { entryControls?: ReactNode; composerRef: RefObject<HTMLTextAreaElement | null> }) => <section><textarea aria-label="Home conversation draft" ref={composerRef} />{entryControls}</section> }));
+@@ -14,12 +15,13 @@ let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
+ let values: Map<string, string>;
+ beforeEach(() => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
+   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+   values = new Map();
+   vi.stubGlobal("localStorage", { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) });
+   Element.prototype.scrollIntoView ??= () => {};
+   bridge.privateMode = false;
+-  useStore.setState({ ...initial, settings: {}, railOpen: false, agentDraft: "", conversationId: null, toasts: [] }, true);
++  useStore.setState({ ...initial, settings: {}, connected: true, railOpen: false, agentDraft: "", conversationId: null, toasts: [] }, true);
+   vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
+   vi.spyOn(bridge, "invoke").mockResolvedValue({} as never);
+   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+@@ -103,3 +105,77 @@ it("keeps a newer acknowledged preference when an older mode save rejects", asyn
+   await act(async () => reject(new Error("Old save failed")));
+   expect(host.querySelector(".home-ask textarea")).not.toBeNull();
+ });
++
++it("moves original search text into the retained draft through the registered Tab input action", async () => {
++  useStore.setState({ settings: { homeEntryMode: "search" } }); await render();
++  const input = host.querySelector<HTMLInputElement>(".cmdbar input")!;
++  await act(async () => {
++    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "Original page-free question");
++    input.dispatchEvent(new Event("input", { bubbles: true }));
++  });
++  const event = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
++  await act(async () => input.dispatchEvent(event));
++  expect(event.defaultPrevented).toBe(true);
++  expect(useStore.getState().agentDraft).toBe("Original page-free question");
++  expect(host.querySelector(".home-ask textarea")).not.toBeNull();
++  expect(bridge.invoke).toHaveBeenCalledWith("settings.set", { homeEntryMode: "ask" });
++  await act(async () => modeButton("Search").click());
++  expect(host.querySelector<HTMLInputElement>(".cmdbar input")!.value).toBe("");
++  expect(useStore.getState().agentDraft).toBe("Original page-free question");
++});
++it("routes a focused remapped Home Ask command through its actual original action", async () => {
++  useStore.setState({ settings: { homeEntryMode: "search", shortcutOverrides: { "select-home-ask": [{ key: "j", command: true, alt: true }] } } });
++  await render(); modeButton("Ask").focus();
++  await act(async () => { expect(dispatchShortcut({ key: "j", meta: true, alt: true, shift: false })).toBe(true); });
++  expect(host.querySelector(".home-ask textarea")).not.toBeNull();
++  expect(vi.mocked(bridge.invoke).mock.calls.filter(([method]) => method === "settings.set")).toHaveLength(1);
++});
++it("preserves original pending preference failure without rollback or toast after observed window retirement", async () => {
++  useStore.setState({ settings: { homeEntryMode: "search" } }); await render();
++  let reject!: (reason: Error) => void;
++  const fallback = vi.mocked(bridge.invoke).getMockImplementation()!;
++  vi.mocked(bridge.invoke).mockImplementation((method, params) => method === "settings.set" ? new Promise((_done, fail) => { reject = fail; }) : fallback(method, params));
++  let completion!: Promise<unknown>;
++  await act(async () => { modeButton("Ask").focus(); completion = executeCommand("select-home-ask"); void completion.catch(() => {}); });
++  modeButton("Search").focus();
++  const original = bridge.windowId;
++  try {
++    bridge.windowId = "foreign";
++    await expect(executeCommand("select-home-search")).rejects.toThrow("current Home");
++    bridge.windowId = original;
++    await expect(executeCommand("select-home-search")).rejects.toThrow("current Home");
++    const reason = new Error("Retired original mode rejection");
++    await act(async () => { reject(reason); await expect(completion).rejects.toBe(reason); });
++    expect(host.querySelector(".home-ask textarea")).not.toBeNull();
++    expect(useStore.getState().toasts).toEqual([]);
++  } finally { bridge.windowId = original; }
++});
++it("keeps newer storage when an original mode ACK arrives after unmount", async () => {
++  useStore.setState({ settings: { homeEntryMode: "search" } }); await render();
++  let complete!: (value: unknown) => void;
++  vi.mocked(bridge.invoke).mockImplementation(method => method === "settings.set" ? new Promise(done => { complete = done; }) as never : Promise.resolve({}) as never);
++  await act(async () => modeButton("Ask").click());
++  await act(async () => root.unmount()); root = createRoot(host);
++  values.set(legacyKey, "search"); await act(async () => complete({ homeEntryMode: "ask" }));
++  expect(values.get(legacyKey)).toBe("search"); expect(useStore.getState().toasts).toEqual([]);
++});
++it("refuses hidden or unrelated focused Home commands and retains Private search-only presentation", async () => {
++  useStore.setState({ settings: { homeEntryMode: "search" } }); await render();
++  const ask = modeButton("Ask"); ask.focus(); ask.hidden = true;
++  await expect(executeCommand("select-home-ask")).rejects.toThrow("original focused"); ask.hidden = false;
++  const foreign = document.createElement("button"); document.body.append(foreign); foreign.focus();
++  await expect(executeCommand("select-home-ask")).rejects.toThrow("original focused"); foreign.remove();
++  bridge.privateMode = true; await render();
++  expect(host.querySelector('[aria-label="Search or Ask"]')).toBeNull();
++  expect(host.querySelector(".private-search-label")?.textContent).toBe("Private");
++  await expect(executeCommand("select-home-ask")).rejects.toThrow();
++  expect(vi.mocked(bridge.invoke).mock.calls.filter(([method]) => method === "settings.set")).toEqual([]);
++});
++
++it("returns the original preference ACK through the mounted scoped command", async () => {
++  await render(); modeButton("Search").focus();
++  const ack = { homeEntryMode: "search" };
++  vi.mocked(bridge.invoke).mockResolvedValueOnce(ack as never);
++  await act(async () => { await expect(executeCommand("select-home-search")).resolves.toBe(ack); });
++  expect(host.querySelector(".cmdbar input")).not.toBeNull();
++});
+diff --git a/apps/shell/src/components/CommandBar.tsx b/apps/shell/src/components/CommandBar.tsx
+index 484fda277..e75d07054 100644
+--- a/apps/shell/src/components/CommandBar.tsx
++++ b/apps/shell/src/components/CommandBar.tsx
+@@ -1,3 +1,5 @@
++import { HomeEntryAction, runHomeEntry, useHomeEntryInput, useHomeEntryOwner } from "./HomeEntryControls";
++import { guardCommandCompletion } from "../command-completion";
+ import { PreferenceAction } from "../settings/sections/preference-command";
+ import { SearchResultRow } from "./SearchResultRow";
+ import {
+@@ -204,6 +206,7 @@ export function CommandBar({
+     items: AutocompleteMatch[];
+     error: string | null;
+   }>({ query: "", generation: 0, items: [], error: null });
++  const homeCurrent = useHomeEntryOwner(hero);
+   const entryModeRequest = useRef(0);
+   const [entryMode, setEntryModeState] = useState<"search" | "ask">(() => {
+     if (!hero || bridge.privateMode) return "search";
+@@ -242,19 +245,17 @@ export function CommandBar({
+     const previous = entryMode;
+     const request = ++entryModeRequest.current;
+     setEntryModeState(next);
+-    if (!bridge.privateMode)
+-      void call("settings.set", { homeEntryMode: next })
+-        .then(() => {
+-          try {
+-            localStorage.removeItem("aux.home.entry-mode.v1");
+-          } catch {
+-            /* Optional legacy storage. */
+-          }
+-        })
+-        .catch((error) => {
+-          if (entryModeRequest.current === request) setEntryModeState(previous);
+-          errToast(error);
+-        });
++    return guardCommandCompletion(call("settings.set", { homeEntryMode: next })
++      .then(value => {
++        if (homeCurrent()) {
++          try { localStorage.removeItem("aux.home.entry-mode.v1"); } catch { /* Optional legacy storage. */ }
++        }
++        return value;
++      })
++      .catch(error => {
++        if (homeCurrent() && entryModeRequest.current === request) setEntryModeState(previous);
++        throw error;
++      }), homeCurrent);
+   };
+   const [scopeFlip, setScopeFlip] = useState(false);
+   const [historyResult, setHistoryResult] = useState<{ query: string; items: HistoryEntry[] }>({
+@@ -1016,10 +1017,13 @@ export function CommandBar({
+       setVal("");
+       setEditing(false);
+     }
+-    setEntryMode(next);
+-    requestAnimationFrame(() => inputRef.current?.focus());
++    const completion = setEntryMode(next);
++    requestAnimationFrame(() => { if (homeCurrent()) inputRef.current?.focus(); });
++    return completion;
+   };
+ 
++  const homeInputScope = useHomeEntryInput(inputRef, hero && entryMode === "search" && !bridge.privateMode, homeCurrent, () => switchEntryMode("ask"));
++
+   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+     if (e.altKey && /^[1-8]$/.test(e.key)) {
+@@ -1032,7 +1036,7 @@ export function CommandBar({
+     }
+     if (hero && !bridge.privateMode && e.key === "Tab" && !e.shiftKey) {
+       e.preventDefault();
+-      switchEntryMode(entryMode === "search" ? "ask" : "search");
++      runHomeEntry("select-home-ask", homeInputScope, e.nativeEvent);
+       return;
+     }
+     if (e.key === "Backspace" && !val && scopePrefix) {
+@@ -1140,7 +1144,7 @@ export function CommandBar({
+           </output>
+         }
+       >
+-        <HomeAsk onSearch={() => switchEntryMode("search")} />
++        <HomeAsk onSearch={() => switchEntryMode("search")} current={homeCurrent} />
+       </Suspense>
+     );
+ 
+@@ -1275,14 +1279,16 @@ export function CommandBar({
+           </span>
+           <div role="group" aria-label="Search or Ask">
+             {(["search", "ask"] as const).map((m) => (
+-              <button
++              <HomeEntryAction
+                 key={m}
++                command={m === "search" ? "select-home-search" : "select-home-ask"}
++                current={homeCurrent}
++                invoke={() => switchEntryMode(m)}
+                 aria-pressed={entryMode === m}
+                 onMouseDown={(e) => e.preventDefault()}
+-                onClick={() => switchEntryMode(m)}
+               >
+                 {m === "search" ? "Search" : "Ask"}
+-              </button>
++              </HomeEntryAction>
+             ))}
+           </div>
+         </div>
+diff --git a/apps/shell/src/components/Conversation.controls.test.tsx b/apps/shell/src/components/Conversation.controls.test.tsx
+index 177225cc2..d89595867 100644
+--- a/apps/shell/src/components/Conversation.controls.test.tsx
++++ b/apps/shell/src/components/Conversation.controls.test.tsx
+@@ -213,3 +213,18 @@ it("a stale captured callback refuses without retiring the newer committed conve
+   await act(async () => { await executeCommand("toggle-conversation-error-details"); });
+   expect(host.querySelector("details")!.open).toBe(true);
+ });
++
++it("opens the original Home conversation through the scoped action while closing its context menu and retaining its draft", async () => {
++  useStore.setState({ conversationDrafts: { "chat:a": "Original Home reply" }, conversationId: null });
++  await act(async () => root.render(<Conversation chatId="a" home embedded />));
++  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Add context"]')!.click());
++  const control = document.querySelector<HTMLButtonElement>('[data-command-id="open-home-conversation"]')!;
++  expect(control.textContent).toContain("Open full conversation"); control.focus();
++  await act(async () => { await executeCommand("open-home-conversation"); });
++  expect(document.querySelector('dialog[aria-label="Add context"]')).toBeNull();
++  expect(useStore.getState().conversationId).toBe("a");
++  expect(useStore.getState().mode).toBe("conversation");
++  expect(useStore.getState().conversationDrafts["chat:a"]).toBe("Original Home reply");
++  expect(useStore.getState().pages).toEqual([]);
++  expect(vi.mocked(bridge.invoke).mock.calls.filter(([method]) => method === "runs.start")).toEqual([]);
++});
+diff --git a/apps/shell/src/components/Conversation.tsx b/apps/shell/src/components/Conversation.tsx
+index e1cf81e1e..421c72201 100644
+--- a/apps/shell/src/components/Conversation.tsx
++++ b/apps/shell/src/components/Conversation.tsx
+@@ -1,3 +1,4 @@
++import { HomeEntryAction } from "./HomeEntryControls";
+ import { useInteractiveComposer } from "../use-interactive-composer";
+ import { NightRunOverflow } from "../features/morning-review/NightRunOverflow";
+ import { runCommand } from "../commands";
+@@ -709,7 +710,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+   const composerModes = live && <div className="conversation-live-actions" role="group" aria-label="Send while Aux is working">{(answering ? ["answer", "steer", "queue"] as const : ["steer", "queue"] as const).map(mode => <button key={mode} type="button" className={effectiveLiveMode === mode ? "selected" : ""} aria-pressed={effectiveLiveMode === mode} onClick={() => setLiveSendMode(mode)}>{mode === "answer" ? "Answer question" : mode === "steer" ? "Steer now" : "Queue next"}</button>)}</div>;
+   const browserContextControls = <BrowserContextTray key={id ?? "new"} primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/>;
+   const composerFooter = !taskBound && !answering && <div className="new-chat-options">{entryControls}<span className="home-tools-trigger"><Popover label="Add context" trigger={<>{shellIconPlusSm}{!home && <span>Add context</span>}</>}>
+-    {close => <div className="home-tools-menu"><header>Add to your question</header><div ref={setContextTools} onClick={event => { if ((event.target as HTMLElement).closest('button')) close(); }}/><div className="home-tools-context">{browserContextControls}</div>{home && dictation}{home && <button className="context-choice" onClick={() => { close(); useStore.getState().openConversationDraft(id ?? null); }}>{shellIconOpen}<span>Open full conversation</span></button>}</div>}
++    {close => <div className="home-tools-menu"><header>Add to your question</header><div ref={setContextTools} onClick={event => { if ((event.target as HTMLElement).closest('button')) close(); }}/><div className="home-tools-context">{browserContextControls}</div>{home && dictation}{home && <HomeEntryAction className="context-choice" command="open-home-conversation" current={conversationCurrent} invoke={() => { close(); useStore.getState().openConversationDraft(id ?? null); }}>{shellIconOpen}<span>Open full conversation</span></HomeEntryAction>}</div>}
+   </Popover></span></div>;
+ 
+   const attachmentItems: AttachmentItem[] = [
+diff --git a/apps/shell/src/components/HomeAsk.test.tsx b/apps/shell/src/components/HomeAsk.test.tsx
+index d76a364dd..2f0961419 100644
+--- a/apps/shell/src/components/HomeAsk.test.tsx
++++ b/apps/shell/src/components/HomeAsk.test.tsx
+@@ -9,17 +9,17 @@ const fixture = vi.hoisted(() => ({
+   listeners: new Set<(event: {type:string; payload:{chatId:string}})=>void>(),
+ }));
+ vi.mock("../store",()=>({errToast:vi.fn(),useStore:Object.assign(
+-  (select:(state:unknown)=>unknown)=>select({railOpen:fixture.railOpen,focusRequest:fixture.focusRequest}),
+-  {getState:()=>({agentDraft:fixture.draft})}
++  (select:(state:unknown)=>unknown)=>select({railOpen:fixture.railOpen,focusRequest:fixture.focusRequest,connected:true}),
++  {getState:()=>({agentDraft:fixture.draft,connected:true})}
+ )}));
+-vi.mock("../commands",()=>({runCommand:fixture.runCommand}));
+-vi.mock("../bridge",()=>({bridge:{focusShell:fixture.focusShell,onEvent:(fn: typeof fixture.listeners extends Set<infer T> ? T : never)=>{fixture.listeners.add(fn);return ()=>fixture.listeners.delete(fn);}}}));
++vi.mock("../commands",async()=>{const {invokeScopedControl}=await import("../scoped-control-commands");return {runCommand:fixture.runCommand,executeCommand:(id:string,context:Parameters<typeof invokeScopedControl>[1])=>{try{return Promise.resolve(invokeScopedControl(id,context));}catch(error){return Promise.reject(error);}}};});
++vi.mock("../bridge",()=>({bridge:{windowId:"main",windowKind:"normal",privateMode:false,focusShell:fixture.focusShell,onEvent:(fn: typeof fixture.listeners extends Set<infer T> ? T : never)=>{fixture.listeners.add(fn);return ()=>fixture.listeners.delete(fn);}}}));
+ vi.mock("./Conversation",()=>({Conversation:({chatId,onChatCreated,entryControls,composerRef}:{chatId:string|null;onChatCreated:(id:string)=>void;entryControls?:ReactNode;composerRef:RefObject<HTMLTextAreaElement|null>})=><section data-chat-id={chatId??"new"}><textarea ref={composerRef}/>{entryControls}<button onClick={()=>onChatCreated("durable-chat")}>Create chat</button></section>}));
+ import HomeAsk from "./HomeAsk";
+ let container:HTMLDivElement;
+ let root:Root;
+-beforeEach(()=>{vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);const storage=new Map<string,string>();vi.stubGlobal("localStorage",{getItem:(key:string)=>storage.get(key)??null,setItem:(key:string,value:string)=>storage.set(key,value),removeItem:(key:string)=>storage.delete(key)});fixture.draft="";fixture.railOpen=false;fixture.focusRequest=0;fixture.listeners.clear();fixture.focusShell.mockReset().mockResolvedValue(undefined);fixture.runCommand.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
+-afterEach(()=>{act(()=>root.unmount());container.remove();vi.unstubAllGlobals();});
++beforeEach(()=>{vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);const storage=new Map<string,string>();vi.stubGlobal("localStorage",{getItem:(key:string)=>storage.get(key)??null,setItem:(key:string,value:string)=>storage.set(key,value),removeItem:(key:string)=>storage.delete(key)});fixture.draft="";fixture.railOpen=false;fixture.focusRequest=0;fixture.listeners.clear();fixture.focusShell.mockReset().mockResolvedValue(undefined);fixture.runCommand.mockReset();container=document.createElement("div");document.body.append(container);root=createRoot(container);});
++afterEach(()=>{act(()=>root.unmount());container.remove();vi.restoreAllMocks();vi.unstubAllGlobals();});
+ async function render(onSearch?:()=>void){await act(async()=>root.render(<HomeAsk onSearch={onSearch}/>));}
+ function currentChat(){return container.querySelector("section")?.getAttribute("data-chat-id");}
+ 
+diff --git a/apps/shell/src/components/HomeAsk.tsx b/apps/shell/src/components/HomeAsk.tsx
+index 73260d2f1..9d97fbcf4 100644
+--- a/apps/shell/src/components/HomeAsk.tsx
++++ b/apps/shell/src/components/HomeAsk.tsx
+@@ -1,3 +1,4 @@
++import { HomeEntryAction, useHomeEntryOwner } from "./HomeEntryControls";
+ import { useEffect, useRef, useState } from "react";
+ import { Conversation } from "./Conversation";
+ import { HOME_DRAFT_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
+@@ -7,7 +8,9 @@ import { errToast, useStore } from "../store";
+ import "./HomeAsk.css";
+ 
+ /** Home uses the real composer and durable draft/context services. Loaded only when the home composer is needed. */
+-export default function HomeAsk({ onSearch }: { onSearch?(): void }) {
++export default function HomeAsk({ onSearch, current }: { onSearch?(): unknown; current?(): boolean }) {
++  const ownCurrent = useHomeEntryOwner(!!onSearch);
++  const searchCurrent = current ?? ownCurrent;
+   const [chatId, setChatId] = useState(() => useStore.getState().agentDraft.trim() ? null : readPendingConversation(typeof localStorage === "undefined" ? null : localStorage, HOME_DRAFT_CHAT_KEY));
+   const composer = useRef<HTMLTextAreaElement>(null);
+   const focusRequest = useStore(state => state.focusRequest);
+@@ -19,6 +22,6 @@ export default function HomeAsk({ onSearch }: { onSearch?(): void }) {
+     return () => { active = false; };
+   }, [focusRequest, railOpen]);
+   useEffect(()=>bridge.onEvent(event=>{if(event.type==="conversation.deleted" && event.payload.chatId===chatId){setChatId(null);try{if(localStorage.getItem(HOME_DRAFT_CHAT_KEY)===chatId)localStorage.removeItem(HOME_DRAFT_CHAT_KEY);}catch{/* The mounted composer still forgets the deleted chat. */}}}),[chatId]);
+-  const controls = onSearch ? <div className="home-composer-mode" role="group" aria-label="Search or Ask"><button type="button" aria-pressed={false} onClick={onSearch}>Search</button><button type="button" aria-pressed={true}>Ask</button></div> : undefined;
+-  return <div className="home-ask">{railOpen ? <div className="home-ask-handoff"><span>Your assistant is open in the side panel.</span><button className="btn sm" data-command-id="agent-rail" onClick={() => runCommand("agent-rail")}>Compose here</button>{onSearch && <button className="btn sm ghost" onClick={onSearch}>Search instead</button>}</div> : <Conversation embedded home composerRef={composer} chatId={chatId} onChatCreated={id=>{setChatId(id);try{localStorage.setItem(HOME_DRAFT_CHAT_KEY,id);}catch{/* The mounted composer still owns this draft. */}}} entryControls={controls}/>}</div>;
++  const controls = onSearch ? <div className="home-composer-mode" role="group" aria-label="Search or Ask"><HomeEntryAction type="button" aria-pressed={false} command="select-home-search" current={searchCurrent} invoke={onSearch}>Search</HomeEntryAction><button type="button" aria-pressed={true}>Ask</button></div> : undefined;
++  return <div className="home-ask">{railOpen ? <div className="home-ask-handoff"><span>Your assistant is open in the side panel.</span><button className="btn sm" data-command-id="agent-rail" onClick={() => runCommand("agent-rail")}>Compose here</button>{onSearch && <HomeEntryAction className="btn sm ghost" command="select-home-search" current={searchCurrent} invoke={onSearch}>Search instead</HomeEntryAction>}</div> : <Conversation embedded home composerRef={composer} chatId={chatId} onChatCreated={id=>{setChatId(id);try{localStorage.setItem(HOME_DRAFT_CHAT_KEY,id);}catch{/* The mounted composer still owns this draft. */}}} entryControls={controls}/>}</div>;
+ }
+diff --git a/apps/shell/src/components/HomeEntryControls.tsx b/apps/shell/src/components/HomeEntryControls.tsx
+new file mode 100644
+index 000000000..cf03277ba
+--- /dev/null
++++ b/apps/shell/src/components/HomeEntryControls.tsx
+@@ -0,0 +1,52 @@
++import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type RefObject } from "react";
++import { bridge } from "../bridge";
++import { useStore, errToast } from "../store";
++import { executeCommand } from "../commands";
++import { reportCommandCompletionFailure } from "../command-completion";
++import { registerScopedControl } from "../scoped-control-commands";
++import { usePreferenceCommand } from "../settings/sections/preference-command";
++
++type HomeCommand = "select-home-search" | "select-home-ask" | "open-home-conversation";
++export function useHomeEntryOwner(active: boolean) {
++  const connected = useStore(state => state.connected);
++  const windowId = bridge.windowId, privateMode = bridge.privateMode, windowKind = bridge.windowKind;
++  const identity = useMemo(() => ({ active, connected, windowId, privateMode, windowKind }), [active, connected, windowId, privateMode, windowKind]);
++  const committed = useRef<{ active: boolean; identity: typeof identity } | null>(null);
++  useLayoutEffect(() => {
++    const original = { active: true, identity }; committed.current = original;
++    return () => { original.active = false; };
++  }, [identity]);
++  return useCallback(() => {
++    const original = committed.current;
++    if (original?.active && original.identity === identity && active && connected && !privateMode && windowKind === "normal" &&
++        bridge.windowId === windowId && bridge.privateMode === privateMode && bridge.windowKind === windowKind && useStore.getState().connected === connected) return true;
++    if (original?.identity === identity) original.active = false;
++    return false;
++  }, [identity, active, connected, windowId, privateMode, windowKind]);
++}
++export function runHomeEntry(command: HomeCommand, scopeId: string, event: Event) {
++  const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event });
++  void completion.catch(reason => reportCommandCompletionFailure(completion, reason, errToast));
++}
++export function HomeEntryAction({ command, current, invoke, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
++  command: HomeCommand; current(): boolean; invoke(): unknown;
++}) {
++  const scopeId = useId();
++  const [ref] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
++    if (!current()) throw new Error("Choose the current Home control.");
++    return invoke();
++  });
++  return <button {...props} ref={ref} data-command-id={command} onClick={event => runHomeEntry(command, scopeId, event.nativeEvent)} />;
++}
++export function useHomeEntryInput(input: RefObject<HTMLInputElement | null>, enabled: boolean, current: () => boolean, invoke: () => unknown) {
++  const scopeId = useId();
++  useLayoutEffect(() => {
++    const original = input.current;
++    if (!enabled || !original) return;
++    return registerScopedControl(original, "select-home-ask", scopeId, () => {
++      if (input.current !== original || !current()) throw new Error("Choose the current Home control.");
++      return invoke();
++    });
++  });
++  return scopeId;
++}

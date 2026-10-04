@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
 import { bridge } from "../../bridge";
 import { guardCommandCompletion, reportCommandCompletionFailure } from "../../command-completion";
@@ -59,7 +60,7 @@ function invokeNative<T>(producer: () => Promise<T>): Promise<T> {
     return Promise.reject(reason);
   }
 }
-const describeError = (reason: unknown) => (reason instanceof Error ? reason.message : String(reason));
+const describeError = (reason: unknown) => (errorMessage(reason));
 /** UI delivery lifetime only; each caller keeps its fixed native producer and policy. */
 export function useNativePreference<T extends Preference, Input>({
   active,

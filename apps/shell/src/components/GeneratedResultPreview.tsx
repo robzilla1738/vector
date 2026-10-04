@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { GenerateResultParamsSchema, type GeneratedResult, type GeneratedResultSummary } from "@aux/contracts";
 import { bridge } from "../bridge";
@@ -33,7 +34,7 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
       const next=await call("results.generate",parsed);
       toast(`${next.filename} · v${next.revision} saved`);
       onVersionSaved?.(next.artifactId);
-    }catch(reason){setError(reason instanceof Error?reason.message:String(reason));}
+    }catch(reason){setError(errorMessage(reason));}
     finally{setBusy(false);}
   }
   async function exportFile(){

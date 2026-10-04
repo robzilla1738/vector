@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { LiveFolder } from "@aux/contracts";
 import { LiveFolderSchema } from "@aux/contracts";
@@ -27,7 +28,7 @@ export function LiveFolderEditor({ folderId, onClose }: { folderId: string; onCl
         if (kind === "github") { const value = await call("github.connections.list"); if (live) setAccounts(value.filter(account => account.connected).map(account => ({ id: account.id, name: account.name }))); }
         if (kind === "calendar") { const value = await call("calendar.connections.list"); if (live) setAccounts(value.connections.filter(account => account.state === "active").map(account => ({ id: account.connectionId, name: account.label }))); }
         if (kind === "routine") { const value = await call("routines.list", {}); if (live) setRoutines(value.map(routine => ({ id: routine.routineId, name: routine.title }))); }
-      } catch (error) { if (live) setError(error instanceof Error ? error.message : String(error)); }
+      } catch (error) { if (live) setError(errorMessage(error)); }
     };
     void load(); return () => { live = false; };
   }, [kind]);
@@ -37,7 +38,7 @@ export function LiveFolderEditor({ folderId, onClose }: { folderId: string; onCl
     try {
       const live = LiveFolderSchema.parse({ kind, refreshMinutes: 15, config: kind === "rss" ? { url } : kind === "routine" ? { routineId } : kind === "calendar" ? { connectionId } : { connectionId, source, ...(source === "query" ? { query } : {}) } });
       await executeCommand("save-live-folder", { payload: { folderId, live } }); if (alive.current.value) onClose();
-    } catch (error) { if (alive.current.value) setError(error instanceof Error ? error.message : String(error)); }
+    } catch (error) { if (alive.current.value) setError(errorMessage(error)); }
     finally { if (alive.current.value) setBusy(false); }
   };
   return <Dialog label="Live folder source" onClose={onClose} returnFocus={trigger} className="aux-dialog-surface organization-editor">

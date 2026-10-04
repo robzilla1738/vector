@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { constructAwaitedOperation } from "./owned-operation-construction";
 import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
 import { shellIconGlobe } from "./icons";
@@ -91,7 +92,7 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
       if(!owner.active || owner!==lifetime.current || owner.workspaceId!==memory.workspaceId || owner.revision!==memory.revision || bridge.privateMode || sequence.current!==version || !workspaceCurrent())return value;
       if (prior?.pages.length && value.pages.length < prior.pages.length) setNeedsFreshBackup(true);
       setLoaded({owner,value}); setClearSnapshot(null);return value;
-    }, reason => { if(owner.active && !bridge.privateMode && workspaceCurrent() && sequence.current===version)setError(reason instanceof Error ? reason.message : String(reason)); throw reason; }, () => { if(pending.current===owner){pending.current=null;setBusyOwner(current=>current===owner?null:current);} },()=>owner.active && owner===lifetime.current && !bridge.privateMode && workspaceCurrent());
+    }, reason => { if(owner.active && !bridge.privateMode && workspaceCurrent() && sequence.current===version)setError(errorMessage(reason)); throw reason; }, () => { if(pending.current===owner){pending.current=null;setBusyOwner(current=>current===owner?null:current);} },()=>owner.active && owner===lifetime.current && !bridge.privateMode && workspaceCurrent());
   }
   const selected = saved?.pages.find(page => page.memoryId === selectedId);
   const openSource = (url: string) => { try { const parsed = new URL(url); if (["http:", "https:"].includes(parsed.protocol)) void useStore.getState().newTab(parsed.href).catch(errToast); } catch { /* Invalid stored addresses cannot navigate. */ } };

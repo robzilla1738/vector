@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import "./FindBar.css";
 import { conversationFinder, readerFinder } from "../text-surface-find";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
@@ -32,7 +33,7 @@ export function FindBar({ scope, inputRef, returnFocusRef }: {scope?: "reader"; 
     const version = ++request.current;
     setError("");
     try { await find(query, next, forward); }
-    catch (reason) { if (version === request.current) setError(reason instanceof Error ? reason.message : String(reason)); }
+    catch (reason) { if (version === request.current) setError(errorMessage(reason)); }
   }, [find]);
 
   useEffect(() => {
@@ -71,7 +72,7 @@ export function FindBar({ scope, inputRef, returnFocusRef }: {scope?: "reader"; 
         const state = useStore.getState();
         if (!state.findText || (inReader ? state.overlay !== "reader" || !state.readerFindOpen : state.mode !== "conversation" || state.overlay !== "find")) return;
         try { useStore.setState({findMatches:finder.find(state.findText,false,true,false)}); }
-        catch (error) { setError(error instanceof Error ? error.message : String(error)); }
+        catch (error) { setError(errorMessage(error)); }
       }, 100);
     });
     observer.observe(root,{subtree:true,childList:true,characterData:true});

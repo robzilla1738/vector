@@ -1,0 +1,64 @@
+diff --git a/apps/shell/src/components/CommandBar.home-entry.test.tsx b/apps/shell/src/components/CommandBar.home-entry.test.tsx
+index ba3d413f0..3ecd50b60 100644
+--- a/apps/shell/src/components/CommandBar.home-entry.test.tsx
++++ b/apps/shell/src/components/CommandBar.home-entry.test.tsx
+@@ -21,7 +21,7 @@ beforeEach(() => {
+   vi.stubGlobal("localStorage", { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) });
+   Element.prototype.scrollIntoView ??= () => {};
+   bridge.privateMode = false;
+-  useStore.setState({ ...initial, settings: {}, connected: true, railOpen: false, agentDraft: "", conversationId: null, toasts: [] }, true);
++  useStore.setState({ ...initial, settings: {}, railOpen: false, agentDraft: "", conversationId: null, toasts: [] }, true);
+   vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
+   vi.spyOn(bridge, "invoke").mockResolvedValue({} as never);
+   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+@@ -179,3 +179,22 @@ it("returns the original preference ACK through the mounted scoped command", asy
+   await act(async () => { await expect(executeCommand("select-home-search")).resolves.toBe(ack); });
+   expect(host.querySelector(".cmdbar input")).not.toBeNull();
+ });
++
++it("keeps disconnected Home switches usable with original held preference acknowledgments", async () => {
++  useStore.setState({ connected: false, settings: { homeEntryMode: "search" } }); await render();
++  const acknowledgments: ((value: unknown) => void)[] = [];
++  const fallback = vi.mocked(bridge.invoke).getMockImplementation()!;
++  vi.mocked(bridge.invoke).mockImplementation((method, params) => method === "settings.set" ? new Promise(resolve => acknowledgments.push(resolve)) : fallback(method, params));
++  let ask!: Promise<unknown>;
++  await act(async () => { modeButton("Ask").focus(); ask = executeCommand("select-home-ask"); });
++  expect(host.querySelector(".home-ask textarea")).not.toBeNull();
++  const askAck = { homeEntryMode: "ask" };
++  await act(async () => { acknowledgments[0]!(askAck); await expect(ask).resolves.toBe(askAck); });
++  let search!: Promise<unknown>;
++  await act(async () => { modeButton("Search").focus(); search = executeCommand("select-home-search"); });
++  expect(host.querySelector(".cmdbar input")).not.toBeNull();
++  const searchAck = { homeEntryMode: "search" };
++  await act(async () => { acknowledgments[1]!(searchAck); await expect(search).resolves.toBe(searchAck); });
++  expect(useStore.getState().connected).toBe(false);
++  expect(vi.mocked(bridge.invoke).mock.calls.filter(([method]) => method === "settings.set").map(([, args]) => args)).toEqual([{ homeEntryMode: "ask" }, { homeEntryMode: "search" }]);
++});
+diff --git a/apps/shell/src/components/HomeAsk.test.tsx b/apps/shell/src/components/HomeAsk.test.tsx
+index 2f0961419..04989ccbc 100644
+--- a/apps/shell/src/components/HomeAsk.test.tsx
++++ b/apps/shell/src/components/HomeAsk.test.tsx
+@@ -9,8 +9,8 @@ const fixture = vi.hoisted(() => ({
+   listeners: new Set<(event: {type:string; payload:{chatId:string}})=>void>(),
+ }));
+ vi.mock("../store",()=>({errToast:vi.fn(),useStore:Object.assign(
+-  (select:(state:unknown)=>unknown)=>select({railOpen:fixture.railOpen,focusRequest:fixture.focusRequest,connected:true}),
+-  {getState:()=>({agentDraft:fixture.draft,connected:true})}
++  (select:(state:unknown)=>unknown)=>select({railOpen:fixture.railOpen,focusRequest:fixture.focusRequest,connected:false}),
++  {getState:()=>({agentDraft:fixture.draft,connected:false})}
+ )}));
+ vi.mock("../commands",async()=>{const {invokeScopedControl}=await import("../scoped-control-commands");return {runCommand:fixture.runCommand,executeCommand:(id:string,context:Parameters<typeof invokeScopedControl>[1])=>{try{return Promise.resolve(invokeScopedControl(id,context));}catch(error){return Promise.reject(error);}}};});
+ vi.mock("../bridge",()=>({bridge:{windowId:"main",windowKind:"normal",privateMode:false,focusShell:fixture.focusShell,onEvent:(fn: typeof fixture.listeners extends Set<infer T> ? T : never)=>{fixture.listeners.add(fn);return ()=>fixture.listeners.delete(fn);}}}));
+diff --git a/apps/shell/src/components/HomeEntryControls.tsx b/apps/shell/src/components/HomeEntryControls.tsx
+index cf03277ba..94e8f60f5 100644
+--- a/apps/shell/src/components/HomeEntryControls.tsx
++++ b/apps/shell/src/components/HomeEntryControls.tsx
+@@ -18,7 +18,7 @@ export function useHomeEntryOwner(active: boolean) {
+   }, [identity]);
+   return useCallback(() => {
+     const original = committed.current;
+-    if (original?.active && original.identity === identity && active && connected && !privateMode && windowKind === "normal" &&
++    if (original?.active && original.identity === identity && active && !privateMode && windowKind === "normal" &&
+         bridge.windowId === windowId && bridge.privateMode === privateMode && bridge.windowKind === windowKind && useStore.getState().connected === connected) return true;
+     if (original?.identity === identity) original.active = false;
+     return false;

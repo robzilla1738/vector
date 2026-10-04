@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import type { PageTarget, TabPlacement } from "@aux/contracts";
 import { newPageId } from "@aux/contracts/ids";
 import { bridge } from "../bridge";
@@ -525,7 +526,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         destination = ack.windowId;
         moved++;
       } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
+        const reason = errorMessage(error);
         throw new Error(`Window transfer stopped after confirming ${moved} of ${placements.length} tabs. Check both windows before trying again. ${reason}`);
       }
     }

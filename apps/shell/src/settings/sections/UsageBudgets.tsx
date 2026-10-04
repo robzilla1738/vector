@@ -1,3 +1,4 @@
+import { errorMessage } from "../../error-message";
 import { useEffect, useState } from "react";
 import type { UsageReportResult } from "@aux/contracts";
 import { bridge } from "../../bridge";
@@ -84,7 +85,7 @@ export function UsageBudgetsSettings({
         }
       })
       .catch((reason) => {
-        if (live) setError(reason instanceof Error ? reason.message : String(reason));
+        if (live) setError(errorMessage(reason));
       });
     return () => {
       live = false;
@@ -98,7 +99,7 @@ export function UsageBudgetsSettings({
       setReport(await call("usage.report", { limit: 50 }));
       setError("");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

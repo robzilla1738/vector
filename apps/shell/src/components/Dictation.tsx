@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { Mic } from "./central-icons";
 import { setDictationDraft, useDictationDrafts } from "../dictation-drafts";
@@ -129,7 +130,7 @@ export function Dictation({
         recording.current = false;
         holding.current = false;
         setPhase("review");
-        setError(reason instanceof Error ? reason.message : String(reason));
+        setError(errorMessage(reason));
       }
     }
   }
@@ -268,7 +269,7 @@ export function Dictation({
                 onClick={() => {
                   void runVoiceCommand(voiceCommand, bridge)
                     .then(() => discard())
-                    .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
+                    .catch((reason) => setError(errorMessage(reason)));
                 }}
               >
                 {voiceCommandLabels[voiceCommand]}

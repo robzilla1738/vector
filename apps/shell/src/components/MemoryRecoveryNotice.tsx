@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
 import { useEffect, useLayoutEffect, useMemo, useState, useId, type ReactNode } from "react";
 import type { ShellCommandId } from "@aux/contracts";
@@ -48,7 +49,7 @@ export function MemoryRecoveryNotice({ possible = false }: { possible?: boolean 
     };
     refresh();const timer=window.setInterval(refresh,5000);return()=>window.clearInterval(timer);
   },[owner]);
-  function report(error:unknown){if(owner.current())setNotice({owner,message:error instanceof Error?error.message:String(error)});}
+  function report(error:unknown){if(owner.current())setNotice({owner,message:errorMessage(error)});}
   function backup(){
     if(!owner.current())throw new Error("Choose the original recovery notice outside Private browsing.");
     const operation=owner.begin();if(!operation)return;

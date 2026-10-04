@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { ArchivePolicy } from "./ArchivePolicy";
 import { useFeature } from "../use-feature";
 import { useEffect, useRef, useState, type RefObject, type PointerEvent } from "react";
@@ -48,7 +49,7 @@ export default function SpaceEditor({
       await onSave(name.trim(), color, grain, custom ? theme : null);
       onClose();
     } catch (error) {
-      setError(error instanceof Error ? error.message : String(error));
+      setError(errorMessage(error));
     } finally {
       setSaving(false);
     }
