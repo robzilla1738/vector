@@ -78,7 +78,7 @@
 .settings-search-box input { min-width: 0; height: 36px; padding: 0; margin: 0; background: none; box-shadow: none; }
 .settings-search-box:focus-within { outline: 2px solid var(--focus-line); outline-offset: 2px; }
 .settings-search-box input:focus-visible { box-shadow: none; }
-.settings-search-box .icon-btn { width: 24px; min-width: 24px; height: 24px; min-height: 24px; padding: var(--space-1); }
+.settings-search-box .icon-btn { width: var(--hit); min-width: var(--hit); height: var(--hit); min-height: var(--hit); padding: var(--space-1); }
 .settings-heading { min-width: 0; }
 .settings-heading p { margin: var(--space-2) 0 0; color: var(--ink-2); font-size: var(--fs-sm); line-height: 1.5; }
 .settings-content .drawer-head { align-items: flex-start; gap: var(--space-3); padding-bottom: var(--space-5); }

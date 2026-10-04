@@ -41,3 +41,7 @@ For every F1–F21 surface: record source file/symbol or decoded component, adop
 ### Adopted vertical-row correction
 
 `chrome/browser/ui/layout_constants.cc` (`TAB_HEIGHT`, `TAB_STRIP_PADDING`, vertical-tab corner constants) and F2 supply 30 px ordinary rows, 8 px corners and 12 px horizontal inset. `apps/shell/src/components/Sidebar.css` now uses the existing `--sidebar-row-h`, `--sidebar-row-radius` and spacing tokens instead of overriding them with 34 px/11.2 px. Folder indentation retains its more specific rules. The isolated renderer preview at localhost:5238, Appearance → Vertical, reports all seven actual tab rows at 30 px height, 8 px radius and 12 px left/right padding. This is renderer geometry evidence only; native light/dark/transparency, focus/hit-target and contact-sheet acceptance remain open.
+
+### Settings search clear target
+
+The actual06 layout constants distinguish toolbar hit dimensions from glyph dimensions. Aux adapts that separation with its existing32px `--hit` token for Settings search clear, preserving the original14px `.ci` glyph and36px search field. `Settings.css` no longer shrinks the target to24px. Root mounted source geometry confirms the32px target and actual full-query clear/input-focus behavior; token substitution covers jsdom’s CSS-variable limitation. These checks do not qualify native pixels or replace the F21 state/contact-sheet gate. Exact two-leaf packet: `docs/lane-requests/design/settings-search-clear-target/`; evidence: `docs/source-audits/parallel-integration-034/`.

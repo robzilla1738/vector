@@ -1,0 +1,10 @@
+{
+  "GNOnlyAdmission": true,
+  "launcherSha256": "19796596f89ff3d0efe2e3a7a977c3e16e260da81d75a4a6b87cbb2e95582a78",
+  "outerSha256": "f2ec4aa252a948a3e8e8a96d1cf380c96647b6ab16ca33cd0f0b79c62603e729",
+  "actualStageProof": "939c54afad56420f011bbc80ea45b6709ae39970617655cebfa1243707365773",
+  "actual11Pins": true,
+  "exactOriginalOwnerTransport": true,
+  "scopeOnlySuccessor": true,
+  "buildAppNotAdmitted": true
+}
