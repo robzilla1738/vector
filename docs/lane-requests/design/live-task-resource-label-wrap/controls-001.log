@@ -1,0 +1,15 @@
+
+ RUN  v3.2.4 /private/tmp/aux-design-live-resource-wrap
+
+(node:79239) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:79238) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/TaskResources.test.tsx (1 test) 19ms
+ ✓ |unit| apps/shell/src/components/TaskResources.label-wrap.test.tsx (1 test) 43ms
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  17:13:01
+   Duration  1.29s (transform 325ms, setup 0ms, collect 1.71s, tests 62ms, environment 428ms, prepare 71ms)
+

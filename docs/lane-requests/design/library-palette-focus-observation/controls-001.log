@@ -1,0 +1,15 @@
+
+ RUN  v3.2.4 /private/tmp/aux-design-task-library-focus
+
+(node:76491) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:76492) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Conversation.palette-focus.test.tsx (1 test) 73ms
+ ✓ |unit| apps/shell/src/components/TasksLibrary.new-chat-focus.test.tsx (8 tests) 158ms
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  17:02:32
+   Duration  3.19s (transform 879ms, setup 0ms, collect 5.05s, tests 231ms, environment 625ms, prepare 95ms)
+
