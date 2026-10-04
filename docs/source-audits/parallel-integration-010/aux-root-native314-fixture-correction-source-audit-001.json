@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "sourceOnly": true,
+  "requestSha256": "b484b189387451db7b6b19c06d08330f791bfd72ba31c2cffa8e47344cf0bc26",
+  "actual2StableBeforePins": true,
+  "actual4NativeApiPins": true,
+  "exactForwardReverseForward": true,
+  "allOriginalTestsAndAssertionsRetained": true,
+  "creatorOriginalFileInverseExact": true,
+  "nativeExecuted": false
+}
