@@ -1,0 +1,51 @@
+{
+  "status": "SOURCE INTEGRATED; RENDERER SIZE GATE FAILED; NOT NATIVE QUALIFIED",
+  "sourceFiles": {
+    "apps/shell/src/agent/RunNoticeControls.tsx": "4909b43357be11c0bd3bf7453a7a9a5e388624f4922c6e119f98d88009555364",
+    "apps/shell/src/agent/TaskAttentionSettings.tsx": "f9315f61ab338c950976bf0ea1ba96349c2cb0fbf281d15ab39c0a857dbbcf59",
+    "apps/shell/src/agent/run-attention-wiring.test.tsx": "c8d0b4c4e1ecd146d1d1fcb98d158e05c9ed7d61a3d79bdce49eda57bb1290ad",
+    "apps/shell/src/settings/sections/DownloadFolder.tsx": "4a3dd91c2c57c7687fac980f104b017228164cdfc77279b2658755913c919bc0",
+    "apps/shell/src/settings/sections/DefaultPageZoom.tsx": "4c8ec7629fc890443c5128f81c1105b5db6e6c5170548bfe311cb559a785b3b2",
+    "apps/shell/src/settings/sections/use-native-preference.tsx": "a0ece91f8378193677d738e0edaf7e934cf0ecf6ed9a2faa3ed8022c4a4ed4f2",
+    "apps/shell/src/settings/sections/preference-command.tsx": "43f25ba6a945cce570e24a0b5f0777a3780ee748c623373689302c606aeefaf3",
+    "apps/shell/src/settings/sections/Startup.tsx": "d9ab363f470101d11d65b486a50dcd021c5d93e7e1ca33dadff6431b6e033dd6",
+    "apps/shell/src/settings/sections/Languages.tsx": "1000a0a641a6882fdcc258fe878006ce6873d5e9e4ab01da0c69faf179796d82",
+    "packages/contracts/src/commands.ts": "4e9517324794e746c5919fd19d08f469723647aa48fc677ae774bef9f4857725",
+    "apps/shell/src/commands.ts": "5d1bfea062905b1f375d8f179077c73c265f6fb0dd32dc24d33eda3ba3309fcc"
+  },
+  "logs": {
+    "/tmp/aux-root-settings-own-build-005.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/aux-root-settings-shell-types-005.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/aux-root-settings-renderer-002.log": "e42226a98c12d2aa733cb467816800510c030fb54dee2a00602eef284a48dacb",
+    "/tmp/aux-root-settings-budget-002.log": "58e299803efc97fdf079091986a30e662159354dd5d000d6c8c6d6bd81bd66c7",
+    "/tmp/aux-root-settings-full-unit-001.log": "fc49a22631e1279792eda705e2af79445e7c8da081ec8f78c38cacc3c35e8d10",
+    "/tmp/aux-root-shared-preference-attention-controls-001.log": "56a3c4671f32dba31c2fafdfef7a046e47204e03933da064a9a0f31bfb45a66c",
+    "/tmp/aux-root-attention-owned-lint-003.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/aux-root-settings-format-002.log": "90f03bbd69b53a9f2b2207c26df5d08780f684f34bb66cfe1b44679db0d36909"
+  },
+  "sourceGates": {
+    "wholeUnit001": "PASS before latest shared registration reuse; subsequent changed 9-file controls PASS",
+    "workspaceBuild005": "PASS",
+    "shellTypes005": "PASS",
+    "format002": "PASS before latest registration reuse",
+    "lint002": "FAIL unused test import and missing ref dependency; fixed; owned attention lint003 PASS; final whole lint pending"
+  },
+  "renderer002": {
+    "startupJsKb": 491,
+    "cssKb": 175,
+    "totalJsKb": 1814,
+    "limitsKb": {
+      "startupJs": 490,
+      "css": 180,
+      "totalJs": 1800
+    },
+    "pass": false,
+    "cohort": "307 commands before latest shared registration reuse"
+  },
+  "diagnostics": "NOT ADOPTED: root review found rendered Settings search/index fields disappear in inactive/searching/subview states; successor requested with actual index regression and live capability checks. Backup lane continues.",
+  "native": "Original native311 full17 graph remains running, with two genuine input-ACK/creator-close fixture compiler failures. Root independently accepted assertion-preserving source correction and successor mapping only; no transition or App execution approved.",
+  "nativeSourceReview": "/tmp/aux-root-native311-fixture-source-review-002.json",
+  "nativeSuccessorMap": "/private/tmp/aux-builder-native311-fixture-compiler-correction-002/SUCCESSOR-MAPPING-AND-TEST-CLOSURE-001.json",
+  "qualification": false,
+  "mainUnchanged": true
+}
