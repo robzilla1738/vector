@@ -1,0 +1,8 @@
+{
+  "sourceOnly": true,
+  "actualBeforeAndResultSnapshots": true,
+  "actualReferenceCssSha": "2c2b198d715f3894d41c96b88ef9a32a4f61404891baf954d7e4e5a33d976e79",
+  "forwardReverseForward": true,
+  "metadataNarrowInverseExact": true,
+  "nativeVisualAcceptance": false
+}

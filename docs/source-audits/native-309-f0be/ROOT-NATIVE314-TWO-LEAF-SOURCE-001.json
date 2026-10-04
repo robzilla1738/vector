@@ -1,0 +1,12 @@
+{
+  "sourceOnly": true,
+  "currentNative313BeforeExact": true,
+  "exactApiPins": 6,
+  "actualCurrentReferrerNamespace": "content::Referrer",
+  "standardComponentExport": "VIZ_SERVICE_EXPORT default visibility on actual Mac COMPONENT_BUILD",
+  "sourceBodiesAndAssertionsUnchanged": true,
+  "forwardReverseForward": true,
+  "patchSha256": "68bd0456efc5f7910eef99a8cec793c7d4819500c05567c27f91b07d1d184b10",
+  "naturalTerminalRootAudit": "/tmp/aux-root-native313-natural-terminal-audit-001.json",
+  "stableMutationOrBuild": false
+}

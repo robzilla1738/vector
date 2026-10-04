@@ -1,0 +1,9 @@
+{
+  "sourceOnly": true,
+  "restoreRecoveryPublicationExactReplay": true,
+  "ownedLeavesAdopted": 13,
+  "sharedMetadataNarrowInverseExact": true,
+  "publicationGapClosedBeforeAdoption": true,
+  "rootRuntimeRebuildRequired": true,
+  "actualNativeAuthRestore": false
+}
