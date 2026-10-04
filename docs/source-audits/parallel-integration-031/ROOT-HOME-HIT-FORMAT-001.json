@@ -1,0 +1,23 @@
+{
+  "exactTwoLeafReplay": true,
+  "actualHomeCorrectedDisconnectedControls": "PASS",
+  "types": "PASS",
+  "sourceGeometryOnly": true,
+  "nativeVisualQualified": false,
+  "formatCorrection": "Only four changed ratchet files formatted; redundant parentheses and whitespace only. Original failing format check retained, corrected check PASS.",
+  "exactNative154Bytes": {
+    "nativeTarget": "chrome154",
+    "bytes": {
+      "startupJs": 500197,
+      "startupCss": 179427,
+      "totalJs": 1842476
+    },
+    "limits": {
+      "startupJs": 501760,
+      "startupCss": 184320,
+      "totalJs": 1843200
+    },
+    "pass": true,
+    "manifestSha256": "11b3d37239d25115cccb701d5e7efde8df215436a2f61a36cf68c96dc7819a3d"
+  }
+}

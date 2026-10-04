@@ -37,10 +37,7 @@ let layoutStorageWarned = false;
 const warnLayoutStorage = (error: unknown) => {
   if (layoutStorageWarned) return;
   layoutStorageWarned = true;
-  toast(
-    `Profile organization could not be saved: ${errorMessage(error)}`,
-    "error",
-  );
+  toast(`Profile organization could not be saved: ${errorMessage(error)}`, "error");
 };
 /** The native host owns Profile organization; auxiliary windows remain ephemeral. */
 export const loadOrganizationLayout = async () => {

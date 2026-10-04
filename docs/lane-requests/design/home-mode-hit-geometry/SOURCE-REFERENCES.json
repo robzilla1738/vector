@@ -1,0 +1,32 @@
+[
+  {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/layout_constants.cc",
+    "sha256": "354a0a83efda3d2782c00285b900940ddc0e185393efd90807e8a0d2b2f1b6f8",
+    "role": "S06.layout desktop toolbar34/contextual compactcontrolgeometry; Aux32 retained"
+  },
+  {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/06-chrome-tokens.css",
+    "sha256": "63f1e5ab377f6ea234144f8234e65eda5114055f225e4cab9cea49b03d4c36bf",
+    "role": "S06.color roles unchanged"
+  },
+  {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/top-chrome/toolbar_bundle_0x512e.txt",
+    "sha256": "4d596da4ef502f48be6f4d84cb41f27f5b9869cfb38de94d7a9902cb3aa4dd36",
+    "role": "S06.webui control anatomy contextual"
+  },
+  {
+    "path": "/private/tmp/aux-design-home-mode-hit/apps/shell/src/tokens.css",
+    "sha256": "c0036220218afbe4bd7ff1fe395cf842504b849e6df2e7dd668c5a056a251c1f",
+    "role": "Aux compact--hit32, fs-xs bodyminus2, lh1.5, padding4"
+  },
+  {
+    "path": "/private/tmp/aux-design-home-mode-hit/apps/shell/src/ui-font-size.ts",
+    "sha256": "cc4f477fdc716ed720b8e55030fac21941bd388cc08f72c6919256b1e8083deb",
+    "role": "actual12/13/14textscale"
+  },
+  {
+    "path": "/private/tmp/aux-design-home-mode-hit/apps/shell/src/styles/reset.css",
+    "sha256": "2c867b5accbf06c9c122b1e852fc6499f17a7a4ec8b94bc603465d72955c90e3",
+    "role": "actual inherited buttonfont/lineheight"
+  }
+]

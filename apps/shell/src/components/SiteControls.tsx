@@ -75,8 +75,7 @@ export function SiteControls() {
       const value = await bridge.siteInfo(pageId);
       if (version === request.current && currentKey.current === key) setLoaded({ key, info: value });
     } catch (reason) {
-      if (version === request.current && currentKey.current === key)
-        setError(errorMessage(reason));
+      if (version === request.current && currentKey.current === key) setError(errorMessage(reason));
     } finally {
       if (version === request.current && currentKey.current === key) setLoading(false);
     }
@@ -120,8 +119,7 @@ export function SiteControls() {
       await load();
       if (currentKey.current === originKey) setNotice(message);
     } catch (reason) {
-      if (currentKey.current === originKey)
-        setActionError(errorMessage(reason));
+      if (currentKey.current === originKey) setActionError(errorMessage(reason));
     } finally {
       actionPending.current = false;
       setBusy("");
