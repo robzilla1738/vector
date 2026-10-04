@@ -607,6 +607,22 @@ const RESULTS: Record<string, unknown> = {
   "native.powerActivity": {
     "active": false
   },
+  "native.personCapture": {
+    "pageId": "00000000-0000-4000-8000-000000000000",
+    "documentId": "00000000-0000-4000-8000-000000000000",
+    "sessionId": "00000000-0000-4000-8000-000000000000",
+    "windowId": "a",
+    "targetId": "a",
+    "url": "https://example.com/",
+    "captureId": "00000000-0000-4000-8000-000000000000",
+    "masking": "editable-all-frames",
+    "pngBase64": "a",
+    "width": 16384,
+    "height": 16384,
+    "pixelWidth": 16384,
+    "pixelHeight": 16384,
+    "scale": 8
+  },
   "native.historyClear": {
     "removed": 0
   },

@@ -1,6 +1,7 @@
 import { NativeCdpCatalogSchema, NativeCdpAttachSchema, NativeCdpAttachedSchema, NativeCdpDispatchSchema, NativeCdpStartNavigationSchema, NativeCdpNavigationStartedSchema, NativeCdpNavigationRequestSchema, NativeCdpNavigationReceiptSchema } from "./native-cdp.js";
 import { NativeRecorderStartSchema, NativeRecorderReceiptSchema, NativeRecorderStartedSchema, NativeRecorderDrainSchema, NativeRecorderStoppedSchema } from "./native-recorder.js";
 import { z } from "zod";
+import { NativePersonCaptureParamsSchema, NativePersonCaptureReceiptSchema } from "./native-person-capture.js";
 import { NativePersonReadParamsSchema, NativePersonReadReceiptSchema, NativePersonReadContextParamsSchema, NativePersonReadContextSchema } from "./native-person-read.js";
 import { LiveFolderSchema } from "./live-folders.js";
 import { NativeMethods } from "./bridge.js";
@@ -73,6 +74,7 @@ export const RuntimeHostMethods = {
   "native.egressInstall": runtime("core", EgressInstallSchema, accepted),
   "native.permissionRetire": runtime("core", z.object({ tabId: z.string().min(1).max(160), batchId: z.string().min(1).max(160), reservationId: z.string().uuid() }).strict(), accepted),
   "native.egressRevoke": runtime("core", EgressRevokeSchema, accepted),
+  "native.personCapture": runtime("core", NativePersonCaptureParamsSchema, NativePersonCaptureReceiptSchema),
   "native.personReadContext": runtime("core", NativePersonReadContextParamsSchema, NativePersonReadContextSchema),
   "native.personRead": runtime("core", NativePersonReadParamsSchema, NativePersonReadReceiptSchema),
   "native.historyClear": runtime("core", z.object({ since: number.optional(), before: number.optional() }).strict(), z.object({ removed: number }).strict()),

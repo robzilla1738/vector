@@ -3,7 +3,8 @@ import {
   NativeCreatorClosedSchema, NativeCreatorCleanupProofSchema, NativeCreatorCleanupParamsSchema, NativeCreatorCloseParamsSchema, type NativeCreatorCleanupProof,
   ProfileOrganizationSnapshotSchema,
   NativeRecorderStartedSchema, NativeRecorderDrainSchema, NativeRecorderStoppedSchema,
-  HostMethods,
+  HostMethods, NativePersonCaptureParamsSchema, NativePersonCaptureReceiptSchema,
+  type NativePersonCaptureParams, type NativePersonCaptureReceipt,
   type HostMethodResult,
   type ProfileOrganizationSnapshot,
   AuxError,
@@ -93,6 +94,7 @@ import {
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge extends Partial<DownloadNamingNative> {
+  personCapture?(input: NativePersonCaptureParams): Promise<NativePersonCaptureReceipt>;
   personReadContext?(pageId: string): Promise<NativePersonReadContext>;
   personRead?(input: { pageId: string; request: PersonReadRequest }): Promise<NativePersonReadReceipt>;
   powerRelease?(): Promise<HostMethodResult<"native.powerRelease">>;
@@ -246,6 +248,9 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   egressRevoke(input: { lease: EgressLease }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressRevoke", input);
+  }
+  async personCapture(input: NativePersonCaptureParams): Promise<NativePersonCaptureReceipt> {
+    return NativePersonCaptureReceiptSchema.parse(await this.channel.call("native.personCapture", NativePersonCaptureParamsSchema.parse(input)));
   }
   async personReadContext(pageId: string): Promise<NativePersonReadContext> {
     return NativePersonReadContextSchema.parse(await this.channel.call(

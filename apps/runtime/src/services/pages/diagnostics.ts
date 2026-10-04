@@ -1,4 +1,4 @@
-import { AuxError, SiteOriginSchema, ZapPickResultSchema, ZapSelectorSchema, newStepId, type ZapPickResult } from "@aux/contracts";
+import { NativePersonCaptureReceiptSchema, AuxError, SiteOriginSchema, ZapPickResultSchema, ZapSelectorSchema, newStepId, type ZapPickResult } from "@aux/contracts";
 import { limitCapturePng } from "../capture-size.js";
 import { ELEMENT_PICK_TIMEOUT_MS, type PickedElement, pickElementInPage } from "../../execution/element-picker.js";
 import { pickZapInPage } from "../../execution/zap-picker.js";
@@ -168,6 +168,8 @@ export class PageDiagnostics {
     return { ...value, documentEpoch: epoch };
   }
   async capture(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact"; expectedDocumentEpoch?: number }) {
+    const live = this.pages.live.get(pageId);
+    if (live && !live.driver) return this.capturePerson(pageId, opts);
     const dp = this.pages.driverPageLenient(pageId);
     const before = this.pages.get(pageId);
     const epoch = before.documentEpoch;
@@ -200,6 +202,55 @@ export class PageDiagnostics {
       ...provenance,
     };
   }
+
+  private async capturePerson(pageId: string, opts?: { fullPage?: boolean; format?: "dataUrl" | "artifact"; expectedDocumentEpoch?: number }) {
+    const live = this.pages.live.get(pageId);
+    if (!live || live.driver || live.target.backend !== "aux" || live.target.ownedByRuntime || live.target.agentIsolation)
+      throw new AuxError("permission_denied", "This tab is unavailable for person capture.");
+    if (opts?.fullPage) throw new AuxError("capability_unsupported", "Native page capture supports the visible viewport only.");
+    const capture = this.pages.deps.native.personCapture;
+    if (!this.pages.deps.native.available() || !capture)
+      throw new AuxError("backend_unavailable", "Native page capture is unavailable.");
+    const original = { documentEpoch: live.target.documentEpoch, controllerEpoch: live.target.controllerEpoch,
+      url: live.target.url, windowId: live.target.windowId, targetId: live.target.targetId };
+    const current = () => {
+      const target = live.target;
+      if (this.pages.live.get(pageId) !== live || this.pages.closing || live.driver || target.ownedByRuntime || target.agentIsolation ||
+          !["human", "none"].includes(target.controller) || ["detached", "crashed"].includes(target.viewStatus) ||
+          !this.pages.deps.native.available() || target.backend !== "aux" ||
+          Object.entries(original).some(([key, value]) => target[key as keyof typeof target] !== value))
+        throw new AuxError("target_detached", "The original page changed during capture.");
+    };
+    current();
+    if (opts?.expectedDocumentEpoch !== undefined && opts.expectedDocumentEpoch !== original.documentEpoch)
+      throw new AuxError("conflict", "The page changed before capture. Capture it again.");
+    await this.pages.prepareReadPage(pageId); current();
+    const documentId = live.personReadDocumentId, sessionId = live.target.sessionId;
+    if (!documentId || !sessionId || !original.windowId || !original.targetId)
+      throw new AuxError("target_detached", "The native page capture identity is unavailable.");
+    const input = { pageId, documentId, sessionId, windowId: original.windowId, targetId: original.targetId, url: original.url };
+    const raw = await capture.call(this.pages.deps.native, input); current();
+    if (live.personReadDocumentId !== documentId || live.target.sessionId !== sessionId)
+      throw new AuxError("target_detached", "The native page capture document retired.");
+    const shot = NativePersonCaptureReceiptSchema.parse(raw);
+    if (Object.entries(input).some(([key, value]) => shot[key as keyof typeof shot] !== value))
+      throw new AuxError("ref_stale", "The native page capture belongs to another document.");
+    const buffer = Buffer.from(shot.pngBase64, "base64");
+    if (buffer.toString("base64") !== shot.pngBase64)
+      throw new AuxError("backend_unavailable", "The native page capture has invalid image bytes.");
+    const limited = limitCapturePng(buffer);
+    if (buffer.readUInt32BE(16) !== shot.pixelWidth || buffer.readUInt32BE(20) !== shot.pixelHeight)
+      throw new AuxError("backend_unavailable", "The native page capture dimensions disagree.");
+    const provenance = { documentEpoch: original.documentEpoch, url: original.url, capturedAt: Date.now(),
+      viewport: { width: shot.width, height: shot.height, scale: shot.scale }, imageWidth: limited.width, imageHeight: limited.height };
+    if (opts?.format === "artifact") {
+      const artifact = this.pages.deps.artifacts?.save({ pageId, label: "capture", buffer: limited.buffer, mediaType: "image/png" });
+      return { artifactId: artifact?.artifactId, dataUrl: undefined, width: shot.width, height: shot.height, scale: shot.scale * limited.ratio, ...provenance };
+    }
+    return { dataUrl: `data:image/png;base64,${limited.buffer.toString("base64")}`, artifactId: undefined,
+      width: shot.width, height: shot.height, scale: shot.scale * limited.ratio, ...provenance };
+  }
+
 }
 
 function mergeConsoleLines(
