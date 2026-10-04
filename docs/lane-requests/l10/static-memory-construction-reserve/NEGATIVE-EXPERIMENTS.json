@@ -1,0 +1,76 @@
+{
+  "expandedRecords": {
+    "sites": 312,
+    "files": 111,
+    "startup": 502525,
+    "total": 1846544,
+    "startupGrowth": 560,
+    "rejected": true
+  },
+  "directFrozenRecords": {
+    "startup": 503055,
+    "total": 1847074,
+    "rejected": true
+  },
+  "singleRecordTrials": [
+    {
+      "className": "btn",
+      "startup": 501973,
+      "css": 179481,
+      "total": 1848897
+    },
+    {
+      "className": "t",
+      "startup": 501991,
+      "css": 179481,
+      "total": 1848849
+    },
+    {
+      "className": "sp",
+      "startup": 501992,
+      "css": 179481,
+      "total": 1849006
+    },
+    {
+      "className": "grow",
+      "startup": 501994,
+      "css": 179481,
+      "total": 1848914
+    },
+    {
+      "className": "btn ghost",
+      "startup": 501967,
+      "css": 179481,
+      "total": 1848853
+    },
+    {
+      "className": "hint err",
+      "startup": 501998,
+      "css": 179481,
+      "total": 1848899
+    },
+    {
+      "className": "icon-btn xs",
+      "startup": 501983,
+      "css": 179481,
+      "total": 1848892
+    }
+  ],
+  "final": {
+    "before": {
+      "startup": 501965,
+      "css": 179481,
+      "total": 1849558
+    },
+    "after": {
+      "startup": 501918,
+      "css": 179481,
+      "total": 1849030
+    },
+    "savings": {
+      "startup": 47,
+      "total": 528
+    }
+  },
+  "nativeOrRootAcceptance": false
+}

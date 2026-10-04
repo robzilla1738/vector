@@ -1,3 +1,7 @@
+import {
+  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
+  staticHintProps as auxReserveStaticHintProps,
+} from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { bridge } from "../bridge";
@@ -148,7 +152,7 @@ export function ConversationHistory() {
       </div>
       {(archived || workspaceId) && <p className="hint history-scope-note">{archived ? "Archived chats stay available until you delete them." : "Searching this Space. Unsent drafts are available in All Spaces."}</p>}
       {!archived && !workspaceId && <ConversationDrafts query={query} exclude={rows.map(row => row.chatId)} />}
-      {actionError && <p className="field-error" role="alert">{actionError} <button {...smallGhostButtonProps} onClick={() => setActionError("")}>Dismiss</button></p>}
+      {actionError && <p {...auxReserveStaticFieldErrorProps} role="alert">{actionError} <button {...smallGhostButtonProps} onClick={() => setActionError("")}>Dismiss</button></p>}
       <div id="conversation-layout-panel" role="tabpanel" aria-labelledby={`conversation-layout-panel-${viewMode}`} className={`history-items ${viewMode}`}>
       {rows.map((item, index) => <div className="history-conversation-wrap" data-chat-id={item.chatId} key={item.chatId}>
         {renaming === item.chatId ? <form className="history-rename" onSubmit={event => { event.preventDefault(); if (title.trim()) void mutate("rename", item); }}><input autoFocus aria-label="Conversation title" maxLength={160} value={title} onChange={event => setTitle(event.target.value)}/><button {...smallButtonProps} disabled={saving || !title.trim()}>Save</button><button type="button" {...smallGhostButtonProps} onClick={() => setRenaming(null)}>Cancel</button></form> : <>
@@ -165,8 +169,8 @@ export function ConversationHistory() {
         </Menu>}
       </div>)}
       </div>
-      {loading && (rows.length ? <output data-block className="hint">Loading conversations…</output> : <SkeletonRows label="Loading conversations…" rows={5} tall />)}
-      {!loading && !error && !rows.length && <p className="hint">{query.trim() ? "No conversations match your search." : archived ? "No archived conversations." : workspaceId ? "No saved conversations in this Space yet." : "Your conversations will appear here."}</p>}
+      {loading && (rows.length ? <output data-block {...auxReserveStaticHintProps}>Loading conversations…</output> : <SkeletonRows label="Loading conversations…" rows={5} tall />)}
+      {!loading && !error && !rows.length && <p {...auxReserveStaticHintProps}>{query.trim() ? "No conversations match your search." : archived ? "No archived conversations." : workspaceId ? "No saved conversations in this Space yet." : "Your conversations will appear here."}</p>}
       {error && <p role="alert">{error} <button {...smallButtonProps} onClick={() => void load(retryAppend.current,retryRefresh.current)}>Try again</button></p>}
       {more && !error && <button className="btn" disabled={loading} onClick={() => void load(true)}>Load more conversations</button>}
     </div>

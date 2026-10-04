@@ -1,0 +1,83 @@
+{
+  "esbuildVersion": "0.28.2",
+  "checks": [
+    {
+      "path": "apps/shell/src/components/CalendarSourceChoiceDialog.tsx",
+      "sites": 1,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/CommandBar.tsx",
+      "sites": 2,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationControls.tsx",
+      "sites": 1,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationDrafts.tsx",
+      "sites": 5,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationHistory.tsx",
+      "sites": 3,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImages.tsx",
+      "sites": 5,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationRecoveryControls.tsx",
+      "sites": 1,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationTask.tsx",
+      "sites": 9,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.tsx",
+      "sites": 2,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/HomeAsk.tsx",
+      "sites": 2,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.tsx",
+      "sites": 1,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SavedResultPreview.tsx",
+      "sites": 4,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "sites": 1,
+      "exactSourceInverse": true,
+      "native154WholeFileLoweringInverse": true
+    }
+  ]
+}

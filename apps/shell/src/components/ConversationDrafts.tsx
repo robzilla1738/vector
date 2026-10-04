@@ -1,3 +1,8 @@
+import {
+  staticHintProps as auxReserveStaticHintProps,
+  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
+  staticSmallIconButtonProps as auxReserveStaticSmallIconButtonProps,
+} from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
@@ -55,12 +60,12 @@ export function ConversationDrafts({ query = "", limit, compact = false, exclude
   if (!shown.length && !discarded && !error) return null;
   const setDraft = (id: string | null, text: string) => id ? useStore.getState().setConversationDraft(id, text) : useStore.getState().setAgentDraft(text);
   return <section className={`conversation-drafts${compact ? " compact-drafts" : ""}`} aria-label="Unsent drafts">
-    <div className="drafts-heading"><h2>Unsent drafts <span className="hint">{entries.length}</span></h2><span className="hint">Saved on this Mac</span></div>
-    {error && <p className="field-error" role="alert">{error} <button {...smallGhostButtonProps} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
+    <div className="drafts-heading"><h2>Unsent drafts <span {...auxReserveStaticHintProps}>{entries.length}</span></h2><span {...auxReserveStaticHintProps}>Saved on this Mac</span></div>
+    {error && <p {...auxReserveStaticFieldErrorProps} role="alert">{error} <button {...smallGhostButtonProps} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
     {shown.map(item => <div className="draft-row" key={item.key}>
       <button className="draft-open" onClick={() => useStore.getState().openConversationDraft(item.id)}><strong>{item.title}</strong><span>{compact && item.text.trimStart().startsWith(item.title) ? item.text.trimStart().slice(item.title.length).trim() || "Continue editing" : item.text || `${item.count} saved ${item.count === 1 ? "attachment" : "attachments"} · Add a message to continue`}</span>{!compact && <small>Continue editing {shellIconRight}</small>}</button>
-      {!!item.text.trim() && <button className="icon-btn sm" aria-label={`Discard draft text: ${item.title}`} title="Discard draft text" onClick={() => { setDraft(item.id, ""); setDiscarded({ id: item.id, text: item.text }); }}>{shellIconClose}</button>}
-      {item.id && item.count > 0 && <button className="icon-btn sm" disabled={busy} aria-label={`Delete saved draft and attachments: ${item.title}`} title="Delete saved draft and attachments" onClick={() => setDeleting(deleting === item.id ? null : item.id)}>{shellIconTrash}</button>}
+      {!!item.text.trim() && <button {...auxReserveStaticSmallIconButtonProps} aria-label={`Discard draft text: ${item.title}`} title="Discard draft text" onClick={() => { setDraft(item.id, ""); setDiscarded({ id: item.id, text: item.text }); }}>{shellIconClose}</button>}
+      {item.id && item.count > 0 && <button {...auxReserveStaticSmallIconButtonProps} disabled={busy} aria-label={`Delete saved draft and attachments: ${item.title}`} title="Delete saved draft and attachments" onClick={() => setDeleting(deleting === item.id ? null : item.id)}>{shellIconTrash}</button>}
       {item.id && deleting === item.id && <div className="draft-undo" role="group" aria-label={`Delete saved draft and attachments: ${item.title}?`}><span>Delete this unsent draft and its saved attachments?</span><button className="btn sm danger" disabled={busy} onClick={() => void deletePrepared(item.id!)}>Delete permanently</button><button {...smallGhostButtonProps} disabled={busy} onClick={() => setDeleting(null)}>Cancel</button></div>}
     </div>)}
     {limit && entries.length > limit && <button {...smallGhostButtonProps} onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>View all {entries.length} drafts</button>}

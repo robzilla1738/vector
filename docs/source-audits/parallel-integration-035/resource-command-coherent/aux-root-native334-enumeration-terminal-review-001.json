@@ -1,0 +1,9 @@
+{
+  "result": "PASS",
+  "enumerationSha256": "6c592cabe0beea4ecb1648f0a5952818acf26a2bd67a5072e93bb547c9f4af66",
+  "closureSha256": "7d397bbb4e949be6d79cc6bd7d322ebae68e8d67cc6b7bdbd6b355115f72f277",
+  "actual17OriginalBinariesAndRequired524EachOnce": true,
+  "actual39RawPinsAndOriginalPidGroupAbsence": true,
+  "originalRequiredCaseSetsAndOrderPreserved": true,
+  "assertionsAndAppNotExecuted": true
+}

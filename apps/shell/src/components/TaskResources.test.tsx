@@ -2,6 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+vi.mock("../use-feature", () => ({useFeature:()=>true,featureStage:()=>"on"}));
 import type { Task } from "@aux/contracts";
 import { makePage } from "../mock/fixtures";
 import { useStore } from "../store";
@@ -13,6 +14,7 @@ let root: ReturnType<typeof createRoot>;
 
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -22,6 +24,7 @@ afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   useStore.setState(initial, true);
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 

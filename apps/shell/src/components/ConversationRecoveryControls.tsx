@@ -1,3 +1,6 @@
+import {
+  smallButtonProps as auxReserveSmallButtonProps,
+} from "../ui/button-props";
 import { useId, type ButtonHTMLAttributes } from "react";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
 import { errToast } from "../store";
@@ -11,5 +14,5 @@ export function ConversationRecoveryAction({ command, current, invoke, ...props 
     if (!current()) throw new Error("Choose the current conversation recovery control.");
     return invoke();
   }, errToast);
-  return <button {...props} type="button" className="btn sm" ref={controlRef} data-command-id={command} onClick={run}/>;
+  return <button {...props} type="button" {...auxReserveSmallButtonProps} ref={controlRef} data-command-id={command} onClick={run}/>;
 }

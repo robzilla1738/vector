@@ -1,0 +1,23 @@
+
+ RUN  v3.2.4 /private/tmp/aux-design-task-resource-commands
+
+ ✓ |unit| apps/shell/src/command-completion.test.ts (4 tests) 2ms
+ ✓ |unit| apps/shell/src/command-execution.test.ts (4 tests) 3ms
+(node:89557) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:89554) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:89555) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:89556) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/TaskResources.test.tsx (1 test) 26ms
+ ✓ |unit| apps/shell/src/components/TaskResources.label-wrap.test.tsx (1 test) 52ms
+ ✓ |unit| apps/shell/src/components/TaskResources.focus.test.tsx (5 tests) 75ms
+ ✓ |unit| apps/shell/src/components/TaskResources.commands.test.tsx (28 tests) 136ms
+
+ Test Files  6 passed (6)
+      Tests  43 passed (43)
+   Start at  17:45:10
+   Duration  1.86s (transform 589ms, setup 0ms, collect 5.02s, tests 294ms, environment 1.10s, prepare 306ms)
+

@@ -1,3 +1,6 @@
+import {
+  smallGhostButtonProps as auxReserveSmallGhostButtonProps,
+} from "../ui/button-props";
 import { HomeEntryAction, runHomeEntry, useHomeEntryInput, useHomeEntryOwner } from "./HomeEntryControls";
 import { guardCommandCompletion } from "../command-completion";
 import { PreferenceAction } from "../settings/sections/preference-command";
@@ -1388,7 +1391,7 @@ export function CommandBar({
               {preferSearchOffer && (
                 <button
                   type="button"
-                  className="btn sm ghost"
+                  {...auxReserveSmallGhostButtonProps}
                   onClick={() => {
                     void call("settings.set", { commandRouting: "prefer-search" })
                       .then(() => setPreferSearchOffer(false))
@@ -1399,7 +1402,7 @@ export function CommandBar({
                 </button>
               )}
               {workStatus.query === raw && workStatus.pending > 0 && <output className="cb-suggestion-privacy">Searching saved work…</output>}
-              {workStatus.query === raw && workStatus.failed && <output className="cb-suggestion-privacy">Some saved work couldn’t be searched. <button className="btn sm ghost" onClick={() => setWorkRetry(value => value + 1)}>Retry</button></output>}
+              {workStatus.query === raw && workStatus.failed && <output className="cb-suggestion-privacy">Some saved work couldn’t be searched. <button {...auxReserveSmallGhostButtonProps} onClick={() => setWorkRetry(value => value + 1)}>Retry</button></output>}
             </div>
           )}
           <div className="cb-provider-scopes" role="group" aria-label="Search providers">

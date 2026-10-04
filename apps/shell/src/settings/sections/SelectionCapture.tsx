@@ -1,3 +1,6 @@
+import {
+  staticFieldProps as auxReserveStaticFieldProps,
+} from "../../ui/class-props";
 import { staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -53,7 +56,7 @@ function ActionRow({action,index,count,disabled,scopeId,publish,run,toggle,chang
   toggle(id:string):void; change(id:string,patch:Partial<Preferences["actions"][number]>):void;
   move(id:string,delta:number):void; preview(id:string):void; remove(id:string):void;
 }) {
-  return <li className="field">
+  return <li {...auxReserveStaticFieldProps}>
           <div className="row wrap">
             <label><input type="checkbox" checked={action.enabled} disabled={disabled} ref={element => publish(`enabled:${action.id}`, "toggle-selection-action", element, () => toggle(action.id))} onChange={event => run("toggle-selection-action", event)}/> Enabled</label>
             <input aria-label={`Action ${index + 1} name`} maxLength={60} value={action.name} disabled={disabled} onChange={event => change(action.id, { name: event.target.value })}/>

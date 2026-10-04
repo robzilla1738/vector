@@ -3,12 +3,14 @@ import { readFileSync } from "node:fs";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
+vi.mock("../use-feature", () => ({useFeature:()=>true,featureStage:()=>"on"}));
 import { TaskSchema } from "@aux/contracts";
 import { TaskResources } from "./TaskResources";
 import { useStore } from "../store";
 
 it("keeps complete resource label, reference policy and rename cancellation while wrapping", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);
   const initial = useStore.getState();
   useStore.setState({ pages: [] });
   const task = TaskSchema.parse({
@@ -82,6 +84,7 @@ it("keeps complete resource label, reference policy and rename cancellation whil
     host.remove();
     style.remove();
     useStore.setState(initial, true);
-    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   }
 });

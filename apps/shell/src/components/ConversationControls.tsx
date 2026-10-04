@@ -1,3 +1,6 @@
+import {
+  smallButtonProps as auxReserveSmallButtonProps,
+} from "../ui/button-props";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef } from "react";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
@@ -26,7 +29,7 @@ export function ConversationAction({ command, current, invoke, disabled, childre
   current(): boolean; invoke(): unknown; disabled?: boolean; children: string;
 }) {
   const scopeId = useId();
-  return <PreferenceAction type="button" className="btn sm" command={command} scopeId={scopeId} disabled={disabled}
+  return <PreferenceAction type="button" {...auxReserveSmallButtonProps} command={command} scopeId={scopeId} disabled={disabled}
     invoke={() => { if (!current()) throw new Error("Choose the current conversation control."); return invoke(); }}>{children}</PreferenceAction>;
 }
 export function ConversationDetails({ current, text }: { current(): boolean; text: string }) {

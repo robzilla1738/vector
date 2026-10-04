@@ -1,3 +1,8 @@
+import {
+  staticHintProps as auxReserveStaticHintProps,
+  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
+  staticRowProps as auxReserveStaticRowProps,
+} from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -62,16 +67,16 @@ export function ConversationTask({ taskId, live, disabled, page, context, linked
   };
   return <section className="conversation-task-card" aria-label="Saved task">
     <div className="conversation-task-heading"><strong>{task?.title ?? "Saved task"}</strong><button {...smallButtonProps} onClick={details}>Details</button></div>
-    {task ? task.objective !== task.title && <p className="conversation-task-objective">{task.objective}</p> : !error && <output className="hint" data-block>Loading task…</output>}
-    {error && <p className="field-error" role="alert">{error} <button {...smallButtonProps} disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh task</button></p>}
-    {live ? <p className="hint">Working in this conversation. Browser context stays fixed until this run stops.</p> : task?.state === "archived" ? <p className="hint">Restore this task in Details before running it.</p> : <>
-      {unsaved && <p className="hint">You have unsaved task edits. Open Details to save or discard them before running.</p>}
+    {task ? task.objective !== task.title && <p className="conversation-task-objective">{task.objective}</p> : !error && <output {...auxReserveStaticHintProps} data-block>Loading task…</output>}
+    {error && <p {...auxReserveStaticFieldErrorProps} role="alert">{error} <button {...smallButtonProps} disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh task</button></p>}
+    {live ? <p {...auxReserveStaticHintProps}>Working in this conversation. Browser context stays fixed until this run stops.</p> : task?.state === "archived" ? <p {...auxReserveStaticHintProps}>Restore this task in Details before running it.</p> : <>
+      {unsaved && <p {...auxReserveStaticHintProps}>You have unsaved task edits. Open Details to save or discard them before running.</p>}
       <div className="conversation-task-actions">
         <BrowserContextPicker value={context} linkedPageId={linkedPageId} onChange={onContext} disabled={busy || disabled} />
         <button className="btn" disabled={busy || disabled || !task || unsaved || missingContext} onClick={() => void start()}>{busy ? "Starting…" : needsSetup ? "Set up model" : "Run task"}</button>
         {task && <button {...smallGhostButtonProps} disabled={busy || disabled} onClick={() => { useStore.getState().setOverlay("tasks"); }}>Make a routine</button>}
       </div>
-      {missingContext && <p className="hint">Choose an available tab or New browser tab to continue.</p>}
+      {missingContext && <p {...auxReserveStaticHintProps}>Choose an available tab or New browser tab to continue.</p>}
       {task && <TaskSiteGrant taskId={taskId} workspaceId={task.workspaceId} page={page} />}
     </>}
   </section>;
@@ -90,9 +95,9 @@ function TaskSiteGrant({ taskId, workspaceId, page }: { taskId: string; workspac
   const matches = items.filter(item => item.origin === origin && !item.revokedAt);
   const openVault = () => { useStore.setState({ settingsCategory: "Vault" }); useStore.getState().setOverlay("settings"); };
   return <div className="conversation-task-grant">
-    <p className="hint">Trusted fill uses the agent vault. Models receive an opaque reference, not the secret. Grant this origin for this task after unlocking the vault.</p>
-    {error && <p className="field-error" role="alert">{error}</p>}
-    <div className="row">
+    <p {...auxReserveStaticHintProps}>Trusted fill uses the agent vault. Models receive an opaque reference, not the secret. Grant this origin for this task after unlocking the vault.</p>
+    {error && <p {...auxReserveStaticFieldErrorProps} role="alert">{error}</p>}
+    <div {...auxReserveStaticRowProps}>
       {matches.map(item => <button key={item.itemId} {...smallButtonProps} disabled={busy} onClick={() => {
         setBusy(true); setError("");
         void call("vault.grant", { itemId: item.itemId, origin, taskId, workspaceId, ttlMs: 30 * 60_000 })

@@ -1,0 +1,10 @@
+{
+  "status": "NATIVE334_ORIGINAL_SERIAL524_SAFETY_ADMISSION_PASS",
+  "actualLauncherPins": 14,
+  "launcher": "2d695e7ae3a1118728a8ed4bcee1ffd72a674c998dcb73a9ca9a84e09c95386b",
+  "outer": "b7b0e41d992c81c620887c2d527b68e040c77a417518726a14163e9d33eb8c12",
+  "originalControllerExceptReviewedSuccessorLiterals": true,
+  "originalLinkedBatchesByteValuesExact": true,
+  "physicalJourneys": [],
+  "scope": "original17 serial524 safety only; no App or qualification"
+}

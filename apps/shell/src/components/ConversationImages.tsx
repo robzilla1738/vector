@@ -1,3 +1,7 @@
+import {
+  staticHintProps as auxReserveStaticHintProps,
+  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
+} from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { hostOf } from "../workspace";
@@ -252,13 +256,13 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
   return <><section className="conversation-captures" aria-label="Image references">
     {detachedTools ? toolsTarget && createPortal(triggers, toolsTarget) : triggers}
     {showRest && <div className="conversation-capture-rest">
-    {images.length >= 4 && <p className="hint">Four images attached. Remove one to add another.</p>}
-    {error && <p className="field-error" role="alert">{error}</p>}
-    {busy && <output className="hint" data-block>Preparing image…</output>}
+    {images.length >= 4 && <p {...auxReserveStaticHintProps}>Four images attached. Remove one to add another.</p>}
+    {error && <p {...auxReserveStaticFieldErrorProps} role="alert">{error}</p>}
+    {busy && <output {...auxReserveStaticHintProps} data-block>Preparing image…</output>}
     {showAttachedImages && images.map(item => <div className="conversation-document" key={item.imageId}><label htmlFor={`${imageScope}-${item.imageId}`}><ConversationImageChoice id={`${imageScope}-${item.imageId}`} checked={item.included} disabled={disabled || busy} current={() => imageCurrent(item)} invoke={included => change(item.imageId, included)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><ConversationImageAction command="preview-conversation-image" {...smallGhostButtonProps} disabled={busy} current={() => imageCurrent(item)} invoke={() => inspect(item.imageId)}>Preview</ConversationImageAction><ConversationImageAction command="remove-conversation-image" className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} current={() => imageCurrent(item)} invoke={() => change(item.imageId)}>{shellIconClose}</ConversationImageAction></div>)}
     {capture && !lasso && <div className="capture-editor" ref={review}>
-      <p className="hint">{capture.title} · {capture.sourceUrl ? hostOf(capture.sourceUrl) : "Local image"}</p>
-      <p className="hint">Drag to select a region. Editable fields are hidden in page captures. Keyboard: arrows move it; Shift + arrows resize it. Escape clears the selection.</p>
+      <p {...auxReserveStaticHintProps}>{capture.title} · {capture.sourceUrl ? hostOf(capture.sourceUrl) : "Local image"}</p>
+      <p {...auxReserveStaticHintProps}>Drag to select a region. Editable fields are hidden in page captures. Keyboard: arrows move it; Shift + arrows resize it. Escape clears the selection.</p>
       {selection}
       {captureActions}
     </div>}

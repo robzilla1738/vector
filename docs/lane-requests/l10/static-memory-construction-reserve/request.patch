@@ -1,0 +1,451 @@
+diff --git a/apps/shell/src/components/CalendarSourceChoiceDialog.tsx b/apps/shell/src/components/CalendarSourceChoiceDialog.tsx
+index 82eb58e44..a0f92dd83 100644
+--- a/apps/shell/src/components/CalendarSourceChoiceDialog.tsx
++++ b/apps/shell/src/components/CalendarSourceChoiceDialog.tsx
+@@ -1,3 +1,4 @@
++import { staticIconButtonProps as auxReserveStaticIconButtonProps } from "../ui/class-props";
+ import { smallButtonProps } from "../ui/button-props";
+ import type { ConversationSource } from "@aux/contracts";
+ import type { ReactNode, RefObject } from "react";
+@@ -38,7 +39,12 @@ export function CalendarSourceChoiceDialog({
+       <header>
+         <h3>Open Calendar source</h3>
+         {cancelControl ?? (
+-          <button ref={initialFocus} className="icon-btn" aria-label="Cancel" onClick={onClose}>
++          <button
++            ref={initialFocus}
++            {...auxReserveStaticIconButtonProps}
++            aria-label="Cancel"
++            onClick={onClose}
++          >
+             {shellIconClose}
+           </button>
+         )}
+diff --git a/apps/shell/src/components/CommandBar.tsx b/apps/shell/src/components/CommandBar.tsx
+index e75d07054..4f6707e3d 100644
+--- a/apps/shell/src/components/CommandBar.tsx
++++ b/apps/shell/src/components/CommandBar.tsx
+@@ -1,3 +1,6 @@
++import {
++  smallGhostButtonProps as auxReserveSmallGhostButtonProps,
++} from "../ui/button-props";
+ import { HomeEntryAction, runHomeEntry, useHomeEntryInput, useHomeEntryOwner } from "./HomeEntryControls";
+ import { guardCommandCompletion } from "../command-completion";
+ import { PreferenceAction } from "../settings/sections/preference-command";
+@@ -1388,7 +1391,7 @@ export function CommandBar({
+               {preferSearchOffer && (
+                 <button
+                   type="button"
+-                  className="btn sm ghost"
++                  {...auxReserveSmallGhostButtonProps}
+                   onClick={() => {
+                     void call("settings.set", { commandRouting: "prefer-search" })
+                       .then(() => setPreferSearchOffer(false))
+@@ -1399,7 +1402,7 @@ export function CommandBar({
+                 </button>
+               )}
+               {workStatus.query === raw && workStatus.pending > 0 && <output className="cb-suggestion-privacy">Searching saved work…</output>}
+-              {workStatus.query === raw && workStatus.failed && <output className="cb-suggestion-privacy">Some saved work couldn’t be searched. <button className="btn sm ghost" onClick={() => setWorkRetry(value => value + 1)}>Retry</button></output>}
++              {workStatus.query === raw && workStatus.failed && <output className="cb-suggestion-privacy">Some saved work couldn’t be searched. <button {...auxReserveSmallGhostButtonProps} onClick={() => setWorkRetry(value => value + 1)}>Retry</button></output>}
+             </div>
+           )}
+           <div className="cb-provider-scopes" role="group" aria-label="Search providers">
+diff --git a/apps/shell/src/components/ConversationControls.tsx b/apps/shell/src/components/ConversationControls.tsx
+index c28b00daf..f18f8b06c 100644
+--- a/apps/shell/src/components/ConversationControls.tsx
++++ b/apps/shell/src/components/ConversationControls.tsx
+@@ -1,3 +1,6 @@
++import {
++  smallButtonProps as auxReserveSmallButtonProps,
++} from "../ui/button-props";
+ import { useCallback, useId, useLayoutEffect, useMemo, useRef } from "react";
+ import { bridge } from "../bridge";
+ import { useStore } from "../store";
+@@ -26,7 +29,7 @@ export function ConversationAction({ command, current, invoke, disabled, childre
+   current(): boolean; invoke(): unknown; disabled?: boolean; children: string;
+ }) {
+   const scopeId = useId();
+-  return <PreferenceAction type="button" className="btn sm" command={command} scopeId={scopeId} disabled={disabled}
++  return <PreferenceAction type="button" {...auxReserveSmallButtonProps} command={command} scopeId={scopeId} disabled={disabled}
+     invoke={() => { if (!current()) throw new Error("Choose the current conversation control."); return invoke(); }}>{children}</PreferenceAction>;
+ }
+ export function ConversationDetails({ current, text }: { current(): boolean; text: string }) {
+diff --git a/apps/shell/src/components/ConversationDrafts.tsx b/apps/shell/src/components/ConversationDrafts.tsx
+index 8cf94a1bc..52278cd5b 100644
+--- a/apps/shell/src/components/ConversationDrafts.tsx
++++ b/apps/shell/src/components/ConversationDrafts.tsx
+@@ -1,3 +1,8 @@
++import {
++  staticHintProps as auxReserveStaticHintProps,
++  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
++  staticSmallIconButtonProps as auxReserveStaticSmallIconButtonProps,
++} from "../ui/class-props";
+ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+ import { errorMessage } from "../error-message";
+ import { useEffect, useState } from "react";
+@@ -55,12 +60,12 @@ export function ConversationDrafts({ query = "", limit, compact = false, exclude
+   if (!shown.length && !discarded && !error) return null;
+   const setDraft = (id: string | null, text: string) => id ? useStore.getState().setConversationDraft(id, text) : useStore.getState().setAgentDraft(text);
+   return <section className={`conversation-drafts${compact ? " compact-drafts" : ""}`} aria-label="Unsent drafts">
+-    <div className="drafts-heading"><h2>Unsent drafts <span className="hint">{entries.length}</span></h2><span className="hint">Saved on this Mac</span></div>
+-    {error && <p className="field-error" role="alert">{error} <button {...smallGhostButtonProps} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
++    <div className="drafts-heading"><h2>Unsent drafts <span {...auxReserveStaticHintProps}>{entries.length}</span></h2><span {...auxReserveStaticHintProps}>Saved on this Mac</span></div>
++    {error && <p {...auxReserveStaticFieldErrorProps} role="alert">{error} <button {...smallGhostButtonProps} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
+     {shown.map(item => <div className="draft-row" key={item.key}>
+       <button className="draft-open" onClick={() => useStore.getState().openConversationDraft(item.id)}><strong>{item.title}</strong><span>{compact && item.text.trimStart().startsWith(item.title) ? item.text.trimStart().slice(item.title.length).trim() || "Continue editing" : item.text || `${item.count} saved ${item.count === 1 ? "attachment" : "attachments"} · Add a message to continue`}</span>{!compact && <small>Continue editing {shellIconRight}</small>}</button>
+-      {!!item.text.trim() && <button className="icon-btn sm" aria-label={`Discard draft text: ${item.title}`} title="Discard draft text" onClick={() => { setDraft(item.id, ""); setDiscarded({ id: item.id, text: item.text }); }}>{shellIconClose}</button>}
+-      {item.id && item.count > 0 && <button className="icon-btn sm" disabled={busy} aria-label={`Delete saved draft and attachments: ${item.title}`} title="Delete saved draft and attachments" onClick={() => setDeleting(deleting === item.id ? null : item.id)}>{shellIconTrash}</button>}
++      {!!item.text.trim() && <button {...auxReserveStaticSmallIconButtonProps} aria-label={`Discard draft text: ${item.title}`} title="Discard draft text" onClick={() => { setDraft(item.id, ""); setDiscarded({ id: item.id, text: item.text }); }}>{shellIconClose}</button>}
++      {item.id && item.count > 0 && <button {...auxReserveStaticSmallIconButtonProps} disabled={busy} aria-label={`Delete saved draft and attachments: ${item.title}`} title="Delete saved draft and attachments" onClick={() => setDeleting(deleting === item.id ? null : item.id)}>{shellIconTrash}</button>}
+       {item.id && deleting === item.id && <div className="draft-undo" role="group" aria-label={`Delete saved draft and attachments: ${item.title}?`}><span>Delete this unsent draft and its saved attachments?</span><button className="btn sm danger" disabled={busy} onClick={() => void deletePrepared(item.id!)}>Delete permanently</button><button {...smallGhostButtonProps} disabled={busy} onClick={() => setDeleting(null)}>Cancel</button></div>}
+     </div>)}
+     {limit && entries.length > limit && <button {...smallGhostButtonProps} onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>View all {entries.length} drafts</button>}
+diff --git a/apps/shell/src/components/ConversationHistory.tsx b/apps/shell/src/components/ConversationHistory.tsx
+index 5c76a53e1..9f6cbd65d 100644
+--- a/apps/shell/src/components/ConversationHistory.tsx
++++ b/apps/shell/src/components/ConversationHistory.tsx
+@@ -1,3 +1,7 @@
++import {
++  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
++  staticHintProps as auxReserveStaticHintProps,
++} from "../ui/class-props";
+ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+ import { errorMessage } from "../error-message";
+ import { bridge } from "../bridge";
+@@ -148,7 +152,7 @@ export function ConversationHistory() {
+       </div>
+       {(archived || workspaceId) && <p className="hint history-scope-note">{archived ? "Archived chats stay available until you delete them." : "Searching this Space. Unsent drafts are available in All Spaces."}</p>}
+       {!archived && !workspaceId && <ConversationDrafts query={query} exclude={rows.map(row => row.chatId)} />}
+-      {actionError && <p className="field-error" role="alert">{actionError} <button {...smallGhostButtonProps} onClick={() => setActionError("")}>Dismiss</button></p>}
++      {actionError && <p {...auxReserveStaticFieldErrorProps} role="alert">{actionError} <button {...smallGhostButtonProps} onClick={() => setActionError("")}>Dismiss</button></p>}
+       <div id="conversation-layout-panel" role="tabpanel" aria-labelledby={`conversation-layout-panel-${viewMode}`} className={`history-items ${viewMode}`}>
+       {rows.map((item, index) => <div className="history-conversation-wrap" data-chat-id={item.chatId} key={item.chatId}>
+         {renaming === item.chatId ? <form className="history-rename" onSubmit={event => { event.preventDefault(); if (title.trim()) void mutate("rename", item); }}><input autoFocus aria-label="Conversation title" maxLength={160} value={title} onChange={event => setTitle(event.target.value)}/><button {...smallButtonProps} disabled={saving || !title.trim()}>Save</button><button type="button" {...smallGhostButtonProps} onClick={() => setRenaming(null)}>Cancel</button></form> : <>
+@@ -165,8 +169,8 @@ export function ConversationHistory() {
+         </Menu>}
+       </div>)}
+       </div>
+-      {loading && (rows.length ? <output data-block className="hint">Loading conversations…</output> : <SkeletonRows label="Loading conversations…" rows={5} tall />)}
+-      {!loading && !error && !rows.length && <p className="hint">{query.trim() ? "No conversations match your search." : archived ? "No archived conversations." : workspaceId ? "No saved conversations in this Space yet." : "Your conversations will appear here."}</p>}
++      {loading && (rows.length ? <output data-block {...auxReserveStaticHintProps}>Loading conversations…</output> : <SkeletonRows label="Loading conversations…" rows={5} tall />)}
++      {!loading && !error && !rows.length && <p {...auxReserveStaticHintProps}>{query.trim() ? "No conversations match your search." : archived ? "No archived conversations." : workspaceId ? "No saved conversations in this Space yet." : "Your conversations will appear here."}</p>}
+       {error && <p role="alert">{error} <button {...smallButtonProps} onClick={() => void load(retryAppend.current,retryRefresh.current)}>Try again</button></p>}
+       {more && !error && <button className="btn" disabled={loading} onClick={() => void load(true)}>Load more conversations</button>}
+     </div>
+diff --git a/apps/shell/src/components/ConversationImages.tsx b/apps/shell/src/components/ConversationImages.tsx
+index b7f9ad979..b16d92c49 100644
+--- a/apps/shell/src/components/ConversationImages.tsx
++++ b/apps/shell/src/components/ConversationImages.tsx
+@@ -1,3 +1,7 @@
++import {
++  staticHintProps as auxReserveStaticHintProps,
++  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
++} from "../ui/class-props";
+ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+ import { errorMessage } from "../error-message";
+ import { hostOf } from "../workspace";
+@@ -252,13 +256,13 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
+   return <><section className="conversation-captures" aria-label="Image references">
+     {detachedTools ? toolsTarget && createPortal(triggers, toolsTarget) : triggers}
+     {showRest && <div className="conversation-capture-rest">
+-    {images.length >= 4 && <p className="hint">Four images attached. Remove one to add another.</p>}
+-    {error && <p className="field-error" role="alert">{error}</p>}
+-    {busy && <output className="hint" data-block>Preparing image…</output>}
++    {images.length >= 4 && <p {...auxReserveStaticHintProps}>Four images attached. Remove one to add another.</p>}
++    {error && <p {...auxReserveStaticFieldErrorProps} role="alert">{error}</p>}
++    {busy && <output {...auxReserveStaticHintProps} data-block>Preparing image…</output>}
+     {showAttachedImages && images.map(item => <div className="conversation-document" key={item.imageId}><label htmlFor={`${imageScope}-${item.imageId}`}><ConversationImageChoice id={`${imageScope}-${item.imageId}`} checked={item.included} disabled={disabled || busy} current={() => imageCurrent(item)} invoke={included => change(item.imageId, included)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><ConversationImageAction command="preview-conversation-image" {...smallGhostButtonProps} disabled={busy} current={() => imageCurrent(item)} invoke={() => inspect(item.imageId)}>Preview</ConversationImageAction><ConversationImageAction command="remove-conversation-image" className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} current={() => imageCurrent(item)} invoke={() => change(item.imageId)}>{shellIconClose}</ConversationImageAction></div>)}
+     {capture && !lasso && <div className="capture-editor" ref={review}>
+-      <p className="hint">{capture.title} · {capture.sourceUrl ? hostOf(capture.sourceUrl) : "Local image"}</p>
+-      <p className="hint">Drag to select a region. Editable fields are hidden in page captures. Keyboard: arrows move it; Shift + arrows resize it. Escape clears the selection.</p>
++      <p {...auxReserveStaticHintProps}>{capture.title} · {capture.sourceUrl ? hostOf(capture.sourceUrl) : "Local image"}</p>
++      <p {...auxReserveStaticHintProps}>Drag to select a region. Editable fields are hidden in page captures. Keyboard: arrows move it; Shift + arrows resize it. Escape clears the selection.</p>
+       {selection}
+       {captureActions}
+     </div>}
+diff --git a/apps/shell/src/components/ConversationRecoveryControls.tsx b/apps/shell/src/components/ConversationRecoveryControls.tsx
+index 0db8879f4..c0cab4396 100644
+--- a/apps/shell/src/components/ConversationRecoveryControls.tsx
++++ b/apps/shell/src/components/ConversationRecoveryControls.tsx
+@@ -1,3 +1,6 @@
++import {
++  smallButtonProps as auxReserveSmallButtonProps,
++} from "../ui/button-props";
+ import { useId, type ButtonHTMLAttributes } from "react";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+ import { errToast } from "../store";
+@@ -11,5 +14,5 @@ export function ConversationRecoveryAction({ command, current, invoke, ...props
+     if (!current()) throw new Error("Choose the current conversation recovery control.");
+     return invoke();
+   }, errToast);
+-  return <button {...props} type="button" className="btn sm" ref={controlRef} data-command-id={command} onClick={run}/>;
++  return <button {...props} type="button" {...auxReserveSmallButtonProps} ref={controlRef} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/ConversationTask.tsx b/apps/shell/src/components/ConversationTask.tsx
+index acc6e7929..58ab607e2 100644
+--- a/apps/shell/src/components/ConversationTask.tsx
++++ b/apps/shell/src/components/ConversationTask.tsx
+@@ -1,3 +1,8 @@
++import {
++  staticHintProps as auxReserveStaticHintProps,
++  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
++  staticRowProps as auxReserveStaticRowProps,
++} from "../ui/class-props";
+ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+ import { errorMessage } from "../error-message";
+ import { useEffect, useRef, useState } from "react";
+@@ -62,16 +67,16 @@ export function ConversationTask({ taskId, live, disabled, page, context, linked
+   };
+   return <section className="conversation-task-card" aria-label="Saved task">
+     <div className="conversation-task-heading"><strong>{task?.title ?? "Saved task"}</strong><button {...smallButtonProps} onClick={details}>Details</button></div>
+-    {task ? task.objective !== task.title && <p className="conversation-task-objective">{task.objective}</p> : !error && <output className="hint" data-block>Loading task…</output>}
+-    {error && <p className="field-error" role="alert">{error} <button {...smallButtonProps} disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh task</button></p>}
+-    {live ? <p className="hint">Working in this conversation. Browser context stays fixed until this run stops.</p> : task?.state === "archived" ? <p className="hint">Restore this task in Details before running it.</p> : <>
+-      {unsaved && <p className="hint">You have unsaved task edits. Open Details to save or discard them before running.</p>}
++    {task ? task.objective !== task.title && <p className="conversation-task-objective">{task.objective}</p> : !error && <output {...auxReserveStaticHintProps} data-block>Loading task…</output>}
++    {error && <p {...auxReserveStaticFieldErrorProps} role="alert">{error} <button {...smallButtonProps} disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh task</button></p>}
++    {live ? <p {...auxReserveStaticHintProps}>Working in this conversation. Browser context stays fixed until this run stops.</p> : task?.state === "archived" ? <p {...auxReserveStaticHintProps}>Restore this task in Details before running it.</p> : <>
++      {unsaved && <p {...auxReserveStaticHintProps}>You have unsaved task edits. Open Details to save or discard them before running.</p>}
+       <div className="conversation-task-actions">
+         <BrowserContextPicker value={context} linkedPageId={linkedPageId} onChange={onContext} disabled={busy || disabled} />
+         <button className="btn" disabled={busy || disabled || !task || unsaved || missingContext} onClick={() => void start()}>{busy ? "Starting…" : needsSetup ? "Set up model" : "Run task"}</button>
+         {task && <button {...smallGhostButtonProps} disabled={busy || disabled} onClick={() => { useStore.getState().setOverlay("tasks"); }}>Make a routine</button>}
+       </div>
+-      {missingContext && <p className="hint">Choose an available tab or New browser tab to continue.</p>}
++      {missingContext && <p {...auxReserveStaticHintProps}>Choose an available tab or New browser tab to continue.</p>}
+       {task && <TaskSiteGrant taskId={taskId} workspaceId={task.workspaceId} page={page} />}
+     </>}
+   </section>;
+@@ -90,9 +95,9 @@ function TaskSiteGrant({ taskId, workspaceId, page }: { taskId: string; workspac
+   const matches = items.filter(item => item.origin === origin && !item.revokedAt);
+   const openVault = () => { useStore.setState({ settingsCategory: "Vault" }); useStore.getState().setOverlay("settings"); };
+   return <div className="conversation-task-grant">
+-    <p className="hint">Trusted fill uses the agent vault. Models receive an opaque reference, not the secret. Grant this origin for this task after unlocking the vault.</p>
+-    {error && <p className="field-error" role="alert">{error}</p>}
+-    <div className="row">
++    <p {...auxReserveStaticHintProps}>Trusted fill uses the agent vault. Models receive an opaque reference, not the secret. Grant this origin for this task after unlocking the vault.</p>
++    {error && <p {...auxReserveStaticFieldErrorProps} role="alert">{error}</p>}
++    <div {...auxReserveStaticRowProps}>
+       {matches.map(item => <button key={item.itemId} {...smallButtonProps} disabled={busy} onClick={() => {
+         setBusy(true); setError("");
+         void call("vault.grant", { itemId: item.itemId, origin, taskId, workspaceId, ttlMs: 30 * 60_000 })
+diff --git a/apps/shell/src/components/GeneratedResultPreview.tsx b/apps/shell/src/components/GeneratedResultPreview.tsx
+index a7f39cf9e..88a38b7da 100644
+--- a/apps/shell/src/components/GeneratedResultPreview.tsx
++++ b/apps/shell/src/components/GeneratedResultPreview.tsx
+@@ -1,3 +1,7 @@
++import {
++  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
++  staticFieldProps as auxReserveStaticFieldProps,
++} from "../ui/class-props";
+ import { staticHintProps, staticRowProps } from "../ui/class-props";
+ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+ import { errorMessage } from "../error-message";
+@@ -73,11 +77,11 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
+   return <ViewerFrame label="Generated result preview" title={result?.filename??"Generated result"} onClose={onClose} closeLabel="Close result preview" closeControl={<ResultPreviewControl command="close-generated-result-preview" current={current} invoke={onClose} className="icon-btn xs" aria-label="Close result preview">{shellIconClose}</ResultPreviewControl>}
+     metadata={result&&<>v{result.revision} · {result.kind.toUpperCase()} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB · {new Date(result.createdAt).toLocaleString()}</>}
+     toolbar={result&&<><ResultPreviewControl command="toggle-generated-result-source" current={()=>loadedCurrent(result)} invoke={()=>setEditing(value=>!value)} {...smallGhostButtonProps} disabled={busy||contextDisabled||result.revision>=20} aria-pressed={editing}>{editing?"Preview":"Revise"}</ResultPreviewControl><ResultPreviewControl command="export-generated-result" current={()=>loadedCurrent(result)} invoke={()=>operation(false)} {...smallGhostButtonProps} disabled={busy}>Export file…</ResultPreviewControl></>}>
+-    {error&&<p role="alert" className="field-error">{error}</p>}
++    {error&&<p role="alert" {...auxReserveStaticFieldErrorProps}>{error}</p>}
+     {!result?<output data-block {...staticHintProps}>Loading generated result…</output>:<>
+       <p {...staticHintProps}>Generated from conversation turn {result.sourceRunId}. SHA-256 {result.sha256.slice(0,16)}…</p>
+       {versions.length>1&&<nav {...staticRowProps} aria-label="Result versions">{versions.map(version=><ResultPreviewControl command="select-generated-result-version" current={()=>loadedCurrent(result)&&loadedCurrent(version)&&version.chatId===chatId&&version.rootArtifactId===result.rootArtifactId} invoke={()=>onVersionSaved?.(version.artifactId)} className="btn sm ghost" key={version.artifactId} disabled={version.artifactId===artifactId}>v{version.revision}</ResultPreviewControl>)}</nav>}
+-      {editing?<><label className="field">Revise structured source<textarea aria-label="Structured result source" className="result-source-editor" value={draft} maxLength={500_000} disabled={busy} onChange={event=>{if(loadedCurrent(result)&&!pending.current)setDraft(event.target.value);}}/></label><ResultPreviewControl command="save-generated-result-version" report={false} current={()=>loadedCurrent(result)} invoke={()=>operation(true)} {...smallButtonProps} disabled={busy||contextDisabled}>{busy?"Saving…":"Save new version"}</ResultPreviewControl></>:<div className="saved-result-content">
++      {editing?<><label {...auxReserveStaticFieldProps}>Revise structured source<textarea aria-label="Structured result source" className="result-source-editor" value={draft} maxLength={500_000} disabled={busy} onChange={event=>{if(loadedCurrent(result)&&!pending.current)setDraft(event.target.value);}}/></label><ResultPreviewControl command="save-generated-result-version" report={false} current={()=>loadedCurrent(result)} invoke={()=>operation(true)} {...smallButtonProps} disabled={busy||contextDisabled}>{busy?"Saving…":"Save new version"}</ResultPreviewControl></>:<div className="saved-result-content">
+         <h3>{result.preview.title}</h3>
+         {image?<img src={image} alt={result.preview.title} style={{maxWidth:"100%",height:"auto"}}/>:result.kind==="chart"?<output {...staticHintProps}>Loading chart image…</output>:null}
+         <ul>{result.preview.lines.map((line,index)=><li key={index}>{line}</li>)}</ul>
+diff --git a/apps/shell/src/components/HomeAsk.tsx b/apps/shell/src/components/HomeAsk.tsx
+index 9d97fbcf4..d526fad66 100644
+--- a/apps/shell/src/components/HomeAsk.tsx
++++ b/apps/shell/src/components/HomeAsk.tsx
+@@ -1,3 +1,7 @@
++import {
++  smallButtonProps as auxReserveSmallButtonProps,
++  smallGhostButtonProps as auxReserveSmallGhostButtonProps,
++} from "../ui/button-props";
+ import { HomeEntryAction, useHomeEntryOwner } from "./HomeEntryControls";
+ import { useEffect, useRef, useState } from "react";
+ import { Conversation } from "./Conversation";
+@@ -23,5 +27,5 @@ export default function HomeAsk({ onSearch, current }: { onSearch?(): unknown; c
+   }, [focusRequest, railOpen]);
+   useEffect(()=>bridge.onEvent(event=>{if(event.type==="conversation.deleted" && event.payload.chatId===chatId){setChatId(null);try{if(localStorage.getItem(HOME_DRAFT_CHAT_KEY)===chatId)localStorage.removeItem(HOME_DRAFT_CHAT_KEY);}catch{/* The mounted composer still forgets the deleted chat. */}}}),[chatId]);
+   const controls = onSearch ? <div className="home-composer-mode" role="group" aria-label="Search or Ask"><HomeEntryAction type="button" aria-pressed={false} command="select-home-search" current={searchCurrent} invoke={onSearch}>Search</HomeEntryAction><button type="button" aria-pressed={true}>Ask</button></div> : undefined;
+-  return <div className="home-ask">{railOpen ? <div className="home-ask-handoff"><span>Your assistant is open in the side panel.</span><button className="btn sm" data-command-id="agent-rail" onClick={() => runCommand("agent-rail")}>Compose here</button>{onSearch && <HomeEntryAction className="btn sm ghost" command="select-home-search" current={searchCurrent} invoke={onSearch}>Search instead</HomeEntryAction>}</div> : <Conversation embedded home composerRef={composer} chatId={chatId} onChatCreated={id=>{setChatId(id);try{localStorage.setItem(HOME_DRAFT_CHAT_KEY,id);}catch{/* The mounted composer still owns this draft. */}}} entryControls={controls}/>}</div>;
++  return <div className="home-ask">{railOpen ? <div className="home-ask-handoff"><span>Your assistant is open in the side panel.</span><button {...auxReserveSmallButtonProps} data-command-id="agent-rail" onClick={() => runCommand("agent-rail")}>Compose here</button>{onSearch && <HomeEntryAction {...auxReserveSmallGhostButtonProps} command="select-home-search" current={searchCurrent} invoke={onSearch}>Search instead</HomeEntryAction>}</div> : <Conversation embedded home composerRef={composer} chatId={chatId} onChatCreated={id=>{setChatId(id);try{localStorage.setItem(HOME_DRAFT_CHAT_KEY,id);}catch{/* The mounted composer still owns this draft. */}}} entryControls={controls}/>}</div>;
+ }
+diff --git a/apps/shell/src/components/ImageSnapshot.tsx b/apps/shell/src/components/ImageSnapshot.tsx
+index 112c92797..6861bc2e1 100644
+--- a/apps/shell/src/components/ImageSnapshot.tsx
++++ b/apps/shell/src/components/ImageSnapshot.tsx
+@@ -1,3 +1,6 @@
++import {
++  staticHintProps as auxReserveStaticHintProps,
++} from "../ui/class-props";
+ import { smallButtonProps } from "../ui/button-props";
+ import { errorMessage } from "../error-message";
+ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+@@ -47,6 +50,6 @@ export function ImageSnapshot({chatId,imageId,onClose,closeControl,current}:{cha
+   },[chatId,imageId,retry,readCurrent]);
+   if(snapshot)return <ImagePreview snapshot={snapshot} onClose={onClose} closeControl={closeControl} current={readCurrent}/>;
+   return <ViewerFrame label="Image snapshot" title="Image reference" onClose={onClose} closeControl={closeControl} closeLabel="Close image preview">
+-    {error?<p role="alert">{error} <ConversationImageAction command="retry-conversation-image-preview" current={()=>readCurrent() && !!error && !pending.current} {...smallButtonProps} invoke={()=>{pending.current=true;setRetry(value=>value+1);}}>Retry</ConversationImageAction></p>:<output className="hint" data-block>Loading image…</output>}
++    {error?<p role="alert">{error} <ConversationImageAction command="retry-conversation-image-preview" current={()=>readCurrent() && !!error && !pending.current} {...smallButtonProps} invoke={()=>{pending.current=true;setRetry(value=>value+1);}}>Retry</ConversationImageAction></p>:<output {...auxReserveStaticHintProps} data-block>Loading image…</output>}
+   </ViewerFrame>;
+ }
+diff --git a/apps/shell/src/components/SavedResultPreview.tsx b/apps/shell/src/components/SavedResultPreview.tsx
+index 55a836e20..d5b477abb 100644
+--- a/apps/shell/src/components/SavedResultPreview.tsx
++++ b/apps/shell/src/components/SavedResultPreview.tsx
+@@ -1,3 +1,6 @@
++import {
++  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
++} from "../ui/class-props";
+ import { staticHintProps } from "../ui/class-props";
+ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+ import { errorMessage } from "../error-message";
+@@ -30,7 +33,7 @@ function IsolatedHtmlResult({html,current}:{html:string;current():boolean}) {
+     }).catch(reason=>{if(live&&current())setError(errorMessage(reason));});
+     return()=>{live=false;if(registered)void bridge.releaseResultPreview(registered);};
+   },[html,current]);
+-  if(error)return <p role="alert" className="field-error">{error}</p>;
++  if(error)return <p role="alert" {...auxReserveStaticFieldErrorProps}>{error}</p>;
+   if(!inNativeHost)return <iframe title="Inert HTML result" sandbox="" referrerPolicy="no-referrer" srcDoc={isolatedHtmlDocument(html)}/>;
+   return url?<iframe title="Isolated HTML result" sandbox="allow-scripts" referrerPolicy="no-referrer" src={url}/>:<output data-block {...staticHintProps}>Preparing isolated preview…</output>;
+ }
+@@ -135,9 +138,9 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
+       {result.mediaType==="text/csv"&&<p {...staticHintProps}>Excel export writes cell values. Safe http(s) source URLs become hyperlinks. Formatting, formulas and images are not created.</p>}
+       {result.mediaType==="text/html"&&<p {...staticHintProps}>Interactive preview runs in an isolated origin. Network, files, forms, and Aux access are blocked; generated content may contain unverified text.</p>}
+       {draft && <div className="result-edit-status"><span {...staticHintProps}>Edited copy · original preserved</span><ResultPreviewControl command="discard-saved-result-edits" current={loadedCurrent} invoke={discard} {...smallGhostButtonProps} disabled={saving||attaching}>Discard edits</ResultPreviewControl><ResultPreviewControl command="save-saved-result-version" report={false} current={loadedCurrent} invoke={()=>mutate(true)} {...smallButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged}>{attaching?"Saving…":"Save version"}</ResultPreviewControl><ResultPreviewControl command="attach-saved-result-copy" report={false} current={loadedCurrent} invoke={()=>mutate(false)} {...smallGhostButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content}>{attached===content?"Copy attached":"Attach as document"}</ResultPreviewControl></div>}
+-      {sourceChanged&&<p className="field-error" role="alert">The saved source changed since this draft began. Export your edits or discard them to work from the current source.</p>}
+-      {draftError&&<p className="field-error" role="alert">{draftError}</p>}
+-      {!valid&&<p className="field-error" role="alert">Use text without null characters, up to 256 KB.</p>}
++      {sourceChanged&&<p {...auxReserveStaticFieldErrorProps} role="alert">The saved source changed since this draft began. Export your edits or discard them to work from the current source.</p>}
++      {draftError&&<p {...auxReserveStaticFieldErrorProps} role="alert">{draftError}</p>}
++      {!valid&&<p {...auxReserveStaticFieldErrorProps} role="alert">Use text without null characters, up to 256 KB.</p>}
+       {editing ? <textarea className="result-source-editor" aria-label="Edit result copy" spellCheck={result.mediaType==="text/markdown"||result.mediaType==="text/plain"} maxLength={262144} value={content} disabled={attaching||saving} onChange={event=>edit(event.target.value)}/> : <div className={`saved-result-content ${result.mediaType==="text/html"?"html-result":""}`} tabIndex={0}>{result.mediaType==="text/html"?<IsolatedHtmlResult html={content} current={loadedCurrent}/>:result.mediaType==="text/markdown"?<AnswerMarkdown text={content} onOpenLink={(url,background)=>loadedCurrent()?(onCitationOpen?.(url,background)??false):true}/>:<StructuredResult key={result.artifactId} content={content} mediaType={result.mediaType} current={loadedCurrent}/>}</div>}
+     </>}
+   </ViewerFrame>;
+diff --git a/apps/shell/src/settings/sections/SelectionCapture.tsx b/apps/shell/src/settings/sections/SelectionCapture.tsx
+index 19c76c8bb..f4f02f3ec 100644
+--- a/apps/shell/src/settings/sections/SelectionCapture.tsx
++++ b/apps/shell/src/settings/sections/SelectionCapture.tsx
+@@ -1,3 +1,6 @@
++import {
++  staticFieldProps as auxReserveStaticFieldProps,
++} from "../../ui/class-props";
+ import { staticHintProps } from "../../ui/class-props";
+ import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
+ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+@@ -53,7 +56,7 @@ function ActionRow({action,index,count,disabled,scopeId,publish,run,toggle,chang
+   toggle(id:string):void; change(id:string,patch:Partial<Preferences["actions"][number]>):void;
+   move(id:string,delta:number):void; preview(id:string):void; remove(id:string):void;
+ }) {
+-  return <li className="field">
++  return <li {...auxReserveStaticFieldProps}>
+           <div className="row wrap">
+             <label><input type="checkbox" checked={action.enabled} disabled={disabled} ref={element => publish(`enabled:${action.id}`, "toggle-selection-action", element, () => toggle(action.id))} onChange={event => run("toggle-selection-action", event)}/> Enabled</label>
+             <input aria-label={`Action ${index + 1} name`} maxLength={60} value={action.name} disabled={disabled} onChange={event => change(action.id, { name: event.target.value })}/>
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index aab433c28..f225ae628 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -325,8 +325,10 @@ export const COMMANDS = [
+     ["retry", "-page-observation", "Retry this turn’s page snapshot"],
+   ]),
+   S("toggle-setup-permission-details", "Toggle setup permission details", memoryControl),
+-  S("create-local-runtime-backup", "Create local Task data backup", memoryControl),
+-  S("set-runtime-backup-retention", "Set Task data backup retention", memoryControl),
++  ...singleScopedRows(memoryControl, "-runtime-backup", "Task data backup", [
++    ["create-local", "", "Create local ", ""],
++    ["set", "-retention", "Set ", " retention"],
++  ]),
+   ...GL(memoryControl, "-local-backup", " local Task data backup", [
+     ["toggle", "s", "Toggle", "s"],
+     ["refresh", "s", "Refresh", "s"],
+@@ -354,21 +356,31 @@ export const COMMANDS = [
+   ]),
+   S("toggle-system-task-notices", "Toggle system task notifications", searchEngineControl),
+   S("toggle-task-focus-mode", "Toggle task Focus Mode", searchEngineControl),
+-  S("toggle-background-runtime", "Toggle background runtime", memoryControl),
+-  S("retry-background-runtime", "Retry background runtime", memoryControl),
+-  S("set-auto-picture-in-picture", "Set automatic picture in picture", memoryControl),
+-  S("retry-auto-picture-in-picture", "Retry automatic picture in picture", memoryControl),
++  ...singleScopedRows(memoryControl, "-background-runtime", " background runtime", [
++    ["toggle", "", "Toggle", ""],
++    ["retry", "", "Retry", ""],
++  ]),
++  ...singleScopedRows(memoryControl, "-auto-picture-in-picture", " automatic picture in picture", [
++    ["set", "", "Set", ""],
++    ["retry", "", "Retry", ""],
++  ]),
+   ...GL(searchEngineControl, "-task-notice", " task notice", [
+     ["toggle", "s", "Toggle", "s"],
+     ["review", "", "Review current", ""],
+     ["dismiss", "", "Dismiss current", ""],
+   ]),
+-  S("toggle-spell-check", "Toggle spell check", memoryControl),
+-  S("retry-spell-check", "Retry spell check", memoryControl),
+-  S("toggle-https-first", "Toggle HTTPS-first", memoryControl),
+-  S("retry-https-first", "Retry HTTPS-first", memoryControl),
+-  S("set-default-page-zoom", "Set default page zoom", memoryControl),
+-  S("retry-default-page-zoom", "Retry default page zoom", memoryControl),
++  ...singleScopedRows(memoryControl, "-spell-check", " spell check", [
++    ["toggle", "", "Toggle", ""],
++    ["retry", "", "Retry", ""],
++  ]),
++  ...singleScopedRows(memoryControl, "-https-first", " HTTPS-first", [
++    ["toggle", "", "Toggle", ""],
++    ["retry", "", "Retry", ""],
++  ]),
++  ...singleScopedRows(memoryControl, "-default-page-zoom", " default page zoom", [
++    ["set", "", "Set", ""],
++    ["retry", "", "Retry", ""],
++  ]),
+   ...GL(memoryControl, "-download-folder", " download folder", [
+     ["choose", "", "Choose", ""],
+     ["reset", "", "Use default", ""],
+@@ -416,22 +428,30 @@ export const COMMANDS = [
+     ["save", "note-against-latest", "Save memory note against latest"],
+     ["toggle-browsing", "actions", "Show or hide remembered page actions"],
+   ]),
+-  ...G(memoryControl, "-browsing-memory", [
+-    ["toggle", "", "Change browsing memory recording"],
+-    ["set", "-retention", "Apply browsing memory retention"],
+-    ["toggle", "-pages", "Show or hide remembered pages"],
+-    ["select", "-page", "Select remembered page"],
+-    ["open", "-page", "Open remembered page"],
+-    ["forget", "-page", "Forget remembered page"],
+-    ["close", "-detail", "Close remembered page details"],
+-    ["prepare-forget", "", "Review forgetting remembered pages"],
+-    ["confirm-forget", "", "Confirm forgetting remembered pages"],
+-    ["cancel-forget", "", "Cancel forgetting remembered pages"],
+-    ["retry", "-load", "Retry browsing memory load"],
++  ...GL(memoryControl, "-browsing-memory", "browsing memory ", [
++    ["toggle", "", "Change ", "recording"],
++    ["set", "-retention", "Apply ", "retention"],
++  ]),
++  ...GL(memoryControl, "-browsing-memory", "remembered page", [
++    ["toggle", "-pages", "Show or hide ", "s"],
++    ["select", "-page", "Select ", ""],
++    ["open", "-page", "Open ", ""],
++    ["forget", "-page", "Forget ", ""],
++    ["close", "-detail", "Close ", " details"],
++    ["prepare-forget", "", "Review forgetting ", "s"],
++    ["confirm-forget", "", "Confirm forgetting ", "s"],
++    ["cancel-forget", "", "Cancel forgetting ", "s"],
++  ]),
++  ...GL(memoryControl, "-browsing-memory", "browsing memory ", [
++    ["retry", "-load", "Retry ", "load"],
+   ]),
+   ...G(memoryControl, "-memory-", [
+     ["select", "space", "Select Space memory"],
+-    ["retry", "search", "Retry memory search"],
++  ]),
++  ...GL(memoryControl, "-memory-", "memory ", [
++    ["retry", "search", "Retry ", "search"],
++  ]),
++  ...G(memoryControl, "-memory-", [
+     ["retry", "load", "Retry saved notes load"],
+   ]),
+   C("set-site-agent-access", "Change site agent access", sitePermissionControl),

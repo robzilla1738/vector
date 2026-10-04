@@ -1,3 +1,6 @@
+import {
+  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
+} from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
@@ -30,7 +33,7 @@ function IsolatedHtmlResult({html,current}:{html:string;current():boolean}) {
     }).catch(reason=>{if(live&&current())setError(errorMessage(reason));});
     return()=>{live=false;if(registered)void bridge.releaseResultPreview(registered);};
   },[html,current]);
-  if(error)return <p role="alert" className="field-error">{error}</p>;
+  if(error)return <p role="alert" {...auxReserveStaticFieldErrorProps}>{error}</p>;
   if(!inNativeHost)return <iframe title="Inert HTML result" sandbox="" referrerPolicy="no-referrer" srcDoc={isolatedHtmlDocument(html)}/>;
   return url?<iframe title="Isolated HTML result" sandbox="allow-scripts" referrerPolicy="no-referrer" src={url}/>:<output data-block {...staticHintProps}>Preparing isolated preview…</output>;
 }
@@ -135,9 +138,9 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
       {result.mediaType==="text/csv"&&<p {...staticHintProps}>Excel export writes cell values. Safe http(s) source URLs become hyperlinks. Formatting, formulas and images are not created.</p>}
       {result.mediaType==="text/html"&&<p {...staticHintProps}>Interactive preview runs in an isolated origin. Network, files, forms, and Aux access are blocked; generated content may contain unverified text.</p>}
       {draft && <div className="result-edit-status"><span {...staticHintProps}>Edited copy · original preserved</span><ResultPreviewControl command="discard-saved-result-edits" current={loadedCurrent} invoke={discard} {...smallGhostButtonProps} disabled={saving||attaching}>Discard edits</ResultPreviewControl><ResultPreviewControl command="save-saved-result-version" report={false} current={loadedCurrent} invoke={()=>mutate(true)} {...smallButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged}>{attaching?"Saving…":"Save version"}</ResultPreviewControl><ResultPreviewControl command="attach-saved-result-copy" report={false} current={loadedCurrent} invoke={()=>mutate(false)} {...smallGhostButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content}>{attached===content?"Copy attached":"Attach as document"}</ResultPreviewControl></div>}
-      {sourceChanged&&<p className="field-error" role="alert">The saved source changed since this draft began. Export your edits or discard them to work from the current source.</p>}
-      {draftError&&<p className="field-error" role="alert">{draftError}</p>}
-      {!valid&&<p className="field-error" role="alert">Use text without null characters, up to 256 KB.</p>}
+      {sourceChanged&&<p {...auxReserveStaticFieldErrorProps} role="alert">The saved source changed since this draft began. Export your edits or discard them to work from the current source.</p>}
+      {draftError&&<p {...auxReserveStaticFieldErrorProps} role="alert">{draftError}</p>}
+      {!valid&&<p {...auxReserveStaticFieldErrorProps} role="alert">Use text without null characters, up to 256 KB.</p>}
       {editing ? <textarea className="result-source-editor" aria-label="Edit result copy" spellCheck={result.mediaType==="text/markdown"||result.mediaType==="text/plain"} maxLength={262144} value={content} disabled={attaching||saving} onChange={event=>edit(event.target.value)}/> : <div className={`saved-result-content ${result.mediaType==="text/html"?"html-result":""}`} tabIndex={0}>{result.mediaType==="text/html"?<IsolatedHtmlResult html={content} current={loadedCurrent}/>:result.mediaType==="text/markdown"?<AnswerMarkdown text={content} onOpenLink={(url,background)=>loadedCurrent()?(onCitationOpen?.(url,background)??false):true}/>:<StructuredResult key={result.artifactId} content={content} mediaType={result.mediaType} current={loadedCurrent}/>}</div>}
     </>}
   </ViewerFrame>;

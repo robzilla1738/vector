@@ -1,0 +1,149 @@
+
+ RUN  v3.2.4 /private/tmp/aux-design-task-resource-commands
+
+(node:85413) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:85411) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:85412) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/TaskResources.test.tsx (1 test) 26ms
+ ❯ |unit| apps/shell/src/components/TaskResources.label-wrap.test.tsx (1 test | 1 failed) 53ms
+   × keeps complete resource label, reference policy and rename cancellation while wrapping 53ms
+     → Cannot read properties of null (reading 'focus')
+ ❯ |unit| apps/shell/src/components/TaskResources.commands.test.tsx (12 tests | 5 failed) 74ms
+   ✓ eight additive normal scoped controls retain original reference labels and registry routes 18ms
+   × actual remapped Rename and Cancel preserve full label and original Rename focus 10ms
+     → Cannot read properties of null (reading 'value')
+   ✓ focused URL resource returns original new-tab ACK and existing tab chooses original activation 8ms
+   ✓ access selection and remove use original complete task resource snapshot 3ms
+   × registered Attach captures latest actual page and URL form preserves normalized producer 4ms
+     → Choose the original focused control.
+   × Save exposes original false ACK and leaves original label editor mounted 5ms
+     → Choose the original focused control.
+   ✓ same-tick mutation reservation refuses duplicate until original ACK 5ms
+   × held A save preserves success identity without clearing fresh B editor 5ms
+     → Choose the original focused control.
+   × held A save preserves failure identity without clearing fresh B editor 7ms
+     → expected Error: Choose the original focused contro… to be Error: original protected failure // Object.is equality
+   ✓ observed window ABA permanently refuses original callbacks while fresh task owner works 3ms
+   ✓ archived and hidden controls refuse real dispatch without updates 3ms
+   ✓ original detached/duplicate page cannot dispatch attachment 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| apps/shell/src/components/TaskResources.commands.test.tsx > actual remapped Rename and Cancel preserve full label and original Rename focus
+TypeError: Cannot read properties of null (reading 'value')
+ ❯ apps/shell/src/components/TaskResources.commands.test.tsx:42:98
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  |unit| apps/shell/src/components/TaskResources.commands.test.tsx > registered Attach captures latest actual page and URL form preserves normalized producer
+Error: Choose the original focused control.
+ ❯ invokeScopedControl apps/shell/src/scoped-control-commands.ts:18:35
+     16|   const matches = nativeInputEvent ? (target instanceof Node ? visible…
+     17|     : visible.filter(owner => owner.element.contains(document.activeEl…
+     18|   if (matches.length !== 1) throw new Error(nativeInputEvent ? "The or…
+       |                                   ^
+     19|   return matches[0]!.invoke(nativeInputEvent);
+     20| }
+ ❯ Object.add-task-resource-url apps/shell/src/commands.ts:97:111
+ ❯ apps/shell/src/commands.ts:361:73
+ ❯ Object.execute apps/shell/src/command-execution.ts:8:30
+ ❯ Module.executeCommand apps/shell/src/commands.ts:371:19
+ ❯ apps/shell/src/components/TaskResources.commands.test.tsx:31:118
+ ❯ Proxy.process.env.NODE_ENV.exports.act ../../../Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/react@19.2.1/node_modules/react/cjs/react.development.js:814:22
+ ❯ invoke apps/shell/src/components/TaskResources.commands.test.tsx:31:73
+ ❯ apps/shell/src/components/TaskResources.commands.test.tsx:60:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  |unit| apps/shell/src/components/TaskResources.commands.test.tsx > Save exposes original false ACK and leaves original label editor mounted
+Error: Choose the original focused control.
+ ❯ invokeScopedControl apps/shell/src/scoped-control-commands.ts:18:35
+     16|   const matches = nativeInputEvent ? (target instanceof Node ? visible…
+     17|     : visible.filter(owner => owner.element.contains(document.activeEl…
+     18|   if (matches.length !== 1) throw new Error(nativeInputEvent ? "The or…
+       |                                   ^
+     19|   return matches[0]!.invoke(nativeInputEvent);
+     20| }
+ ❯ Object.save-task-resource-label apps/shell/src/commands.ts:97:111
+ ❯ apps/shell/src/commands.ts:361:73
+ ❯ Object.execute apps/shell/src/command-execution.ts:8:30
+ ❯ Module.executeCommand apps/shell/src/commands.ts:371:19
+ ❯ apps/shell/src/components/TaskResources.commands.test.tsx:31:118
+ ❯ Proxy.process.env.NODE_ENV.exports.act ../../../Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/react@19.2.1/node_modules/react/cjs/react.development.js:814:22
+ ❯ invoke apps/shell/src/components/TaskResources.commands.test.tsx:31:73
+ ❯ apps/shell/src/components/TaskResources.commands.test.tsx:64:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  |unit| apps/shell/src/components/TaskResources.commands.test.tsx > held A save preserves success identity without clearing fresh B editor
+Error: Choose the original focused control.
+ ❯ invokeScopedControl apps/shell/src/scoped-control-commands.ts:18:35
+     16|   const matches = nativeInputEvent ? (target instanceof Node ? visible…
+     17|     : visible.filter(owner => owner.element.contains(document.activeEl…
+     18|   if (matches.length !== 1) throw new Error(nativeInputEvent ? "The or…
+       |                                   ^
+     19|   return matches[0]!.invoke(nativeInputEvent);
+     20| }
+ ❯ Object.save-task-resource-label apps/shell/src/commands.ts:97:111
+ ❯ apps/shell/src/commands.ts:361:73
+ ❯ Object.execute apps/shell/src/command-execution.ts:8:30
+ ❯ Module.executeCommand apps/shell/src/commands.ts:371:19
+ ❯ apps/shell/src/components/TaskResources.commands.test.tsx:31:118
+ ❯ Proxy.process.env.NODE_ENV.exports.act ../../../Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/react@19.2.1/node_modules/react/cjs/react.development.js:814:22
+ ❯ invoke apps/shell/src/components/TaskResources.commands.test.tsx:31:73
+ ❯ apps/shell/src/components/TaskResources.commands.test.tsx:72:201
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  |unit| apps/shell/src/components/TaskResources.commands.test.tsx > held A save preserves failure identity without clearing fresh B editor
+AssertionError: expected Error: Choose the original focused contro… to be Error: original protected failure // Object.is equality
+
+- Expected
++ Received
+
+  Error {
+-   "message": "original protected failure",
++   "message": "Choose the original focused control.",
+  }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  |unit| apps/shell/src/components/TaskResources.label-wrap.test.tsx > keeps complete resource label, reference policy and rename cancellation while wrapping
+TypeError: Cannot read properties of null (reading 'focus')
+ ❯ apps/shell/src/components/TaskResources.label-wrap.test.tsx:60:11
+     58|     await act(async () => rename.click());
+     59|     const input = article.querySelector<HTMLInputElement>('[aria-label…
+     60|     input.focus();
+       |           ^
+     61|     input.setSelectionRange(170, 180);
+     62|     expect(input.value).toBe(task.resources[0]!.label);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: original protected failure
+ ❯ apps/shell/src/components/TaskResources.commands.test.tsx:72:106
+ ❯ ../../../Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+
+This error originated in "apps/shell/src/components/TaskResources.commands.test.tsx" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "held A save preserves failure identity without clearing fresh B editor". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  2 failed | 1 passed (3)
+      Tests  6 failed | 8 passed (14)
+     Errors  1 error
+   Start at  17:32:13
+   Duration  2.92s (transform 1.22s, setup 0ms, collect 6.75s, tests 154ms, environment 1.08s, prepare 173ms)
+

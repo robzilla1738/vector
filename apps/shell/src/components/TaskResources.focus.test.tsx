@@ -2,6 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+vi.mock("../use-feature", () => ({useFeature:()=>true,featureStage:()=>"on"}));
 import { TaskSchema } from "@aux/contracts";
 import { TaskResources } from "./TaskResources";
 import { useStore } from "../store";
@@ -30,6 +31,7 @@ let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
 const update = vi.fn(async () => true);
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);
   useStore.setState({ pages: [] });
   host = document.createElement("div");
   document.body.append(host);
@@ -40,6 +42,7 @@ afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   useStore.setState(initial, true);
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 const button = (text: string) =>
@@ -91,8 +94,8 @@ it("Cancel does not focus an inert original Rename", async () => {
   const input = await open(),
     cancel = button("Cancel");
   input.focus();
-  host.inert = true;
-  host.setAttribute("inert", "");
+  button("Rename").inert = true;
+  button("Rename").setAttribute("inert", "");
   await act(async () => cancel.click());
   expect(document.activeElement).not.toBe(button("Rename"));
   expect(input.isConnected).toBe(false);

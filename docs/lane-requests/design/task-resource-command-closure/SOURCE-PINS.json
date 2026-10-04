@@ -1,0 +1,78 @@
+{
+  "baseCommit": "52f0f8f056c93e10711c51a19109bb3cb5091649",
+  "contextualBefore": "root actual Cancel-focus result f490; original assertions preserved via three dispatcher fixture successors",
+  "owned": [
+    {
+      "path": "apps/shell/src/components/TaskResources.tsx",
+      "before": "f4905fc8356a909c265013433f8f10b636ae154cc16fca598e45047459710b69",
+      "after": "566672426279a276fdcf2598d6dcd029a53246cff51c9ca707791912e16b5128"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "before": "22c3338331fc29989f9b52ad3c35de1108509b2a31065a85121828e7fef9f63a",
+      "after": "bf1809164ae3b37acd0d61a748d47703df27a407af67d333fefc61006a27e6a0"
+    },
+    {
+      "path": "apps/shell/src/components/TaskResources.test.tsx",
+      "before": "12d1c080a7fe582eac75559b95346b2476764a168db2350a2f2b9f8e24102e28",
+      "after": "b81aca46a268fa6bdc4c901cc9797c51d4812e6b730249f36a8487b5aee10759"
+    },
+    {
+      "path": "apps/shell/src/components/TaskResources.focus.test.tsx",
+      "before": "e6976def2666c25cc71d18618d3633063a32e277e1e933845ca600797384f47b",
+      "after": "744f83fae2a429296a7ec16c038f178a4d86d4013952bc87cb9176959ea59659"
+    },
+    {
+      "path": "apps/shell/src/components/TaskResources.label-wrap.test.tsx",
+      "before": "91eb440a298f90aeaa90dfcad840feae52cb086dd3b81f5e2e5d8b920a011880",
+      "after": "51cafec6fc5b2323d9664144a93b971611bdc002167786970cc8aaab1a8cdf47"
+    },
+    {
+      "path": "apps/shell/src/components/TaskResources.commands.test.tsx",
+      "before": null,
+      "after": "5ad54c5295776bf17cfbcbfcddbd9f5faf9379183c2274e08446a6e322f559b3"
+    }
+  ],
+  "api": [
+    {
+      "path": "apps/shell/src/scoped-control-commands.ts",
+      "sha256": "1d734e4ca4b41ccc3e80fc502254e7bd7c559602e0b18c3c85e26c8d55ff6f66"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/preference-command.tsx",
+      "sha256": "1b3d965b91f6b4892b8f954bae4a56fd4888e4546be6e29f6d9c19e22a65bc87"
+    },
+    {
+      "path": "apps/shell/src/command-completion.ts",
+      "sha256": "01527b9f86c227ab5f7e6cd2721ccb5f4d5a6fbc34aaba358e73c9ba07ba8e9d"
+    },
+    {
+      "path": "apps/shell/src/command-execution.ts",
+      "sha256": "fae711b8890fbdb58afbb26400e446fc21180548ab1b313f343f658a72f0d1af"
+    },
+    {
+      "path": "apps/shell/src/commands.ts",
+      "sha256": "c98147a93d485663b2694607a09b030d88441bc032bdf5878e12917e6b59d3fd"
+    },
+    {
+      "path": "packages/contracts/src/entities.ts",
+      "sha256": "79f7522886bfee86b4ac91aed459d0d46c5bfabe1530cd043976d1c14a3da524"
+    },
+    {
+      "path": "packages/contracts/src/tasks.ts",
+      "sha256": "892396fa7f014acb19a6d92fb47fb3310197bb789ef6d5ffa0848a60d2cc3861"
+    }
+  ],
+  "patchSha256": "56004591163ce2b407022a36fc823d1844aa20f4ff15e4643a04b9952c104490",
+  "forwardReverseForward": "PASS",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-task-resource-final-replay-mhl04251",
+  "native": "not executed; pending",
+  "renderer": "not built; byte impact pending coherent root measurement",
+  "controls": {
+    "final": "45 PASS / 6 files, controls009",
+    "contracts": "owned contracts compilation PASS",
+    "shellTypes": "types010 PASS (owned contracts joins)",
+    "scopedLint": "lint009 PASS",
+    "metadata": "524 originals +8; ordered keys/values/reference alias ledger/source inverse PASS"
+  }
+}

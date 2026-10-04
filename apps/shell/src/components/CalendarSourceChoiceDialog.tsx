@@ -1,3 +1,4 @@
+import { staticIconButtonProps as auxReserveStaticIconButtonProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import type { ConversationSource } from "@aux/contracts";
 import type { ReactNode, RefObject } from "react";
@@ -38,7 +39,12 @@ export function CalendarSourceChoiceDialog({
       <header>
         <h3>Open Calendar source</h3>
         {cancelControl ?? (
-          <button ref={initialFocus} className="icon-btn" aria-label="Cancel" onClick={onClose}>
+          <button
+            ref={initialFocus}
+            {...auxReserveStaticIconButtonProps}
+            aria-label="Cancel"
+            onClick={onClose}
+          >
             {shellIconClose}
           </button>
         )}

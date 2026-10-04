@@ -1,0 +1,344 @@
+{
+  "sourceCommit": "e05801b7f",
+  "files": [
+    {
+      "path": "NEGATIVE-EXPERIMENTS.json",
+      "sha256": "17045040b0db339423543c87c92bcf59374d3363adcdf67360df4b1fcc10b695"
+    },
+    {
+      "path": "REPLAY.json",
+      "sha256": "d5d67dfe3b38283b652515fdb0a0c114ef34872654e64393032c650a698eac3d"
+    },
+    {
+      "path": "REQUEST.md",
+      "sha256": "efdd049dc739b90eb3f1492a9dcca1a6e271b6507761844593c1d6c6c13df825"
+    },
+    {
+      "path": "SOURCE-PINS.json",
+      "sha256": "7d8655cfc740aadb58b42fcf24640a90e9c02b3b791dbe52a2a329d3af87a9b5"
+    },
+    {
+      "path": "after/apps/shell/src/components/CalendarSourceChoiceDialog.tsx",
+      "sha256": "8800c3ea564dec2099354d3d22916cb7838d68942f27cc88b81b9210f9101e41"
+    },
+    {
+      "path": "after/apps/shell/src/components/CommandBar.tsx",
+      "sha256": "890ba43435f31f3701fe0c8cdcf98d964df1a69188c68068cdc51acfa5cf5940"
+    },
+    {
+      "path": "after/apps/shell/src/components/ConversationControls.tsx",
+      "sha256": "27f1f8651d2f1614fd15ad730592a8cdef8c80b72e1fa6033199bcf1b90ef26e"
+    },
+    {
+      "path": "after/apps/shell/src/components/ConversationDrafts.tsx",
+      "sha256": "b3d7ecf25d89d366558aa4c4c943307a14354c2cc9834b3f5fb15fce549f6bca"
+    },
+    {
+      "path": "after/apps/shell/src/components/ConversationHistory.tsx",
+      "sha256": "771e7a4c271aa3d072bf7ef3c7472f9a3626e01cfe4e27c98fbde0f2ec54c150"
+    },
+    {
+      "path": "after/apps/shell/src/components/ConversationImages.tsx",
+      "sha256": "7b229f00f7f794ae841a4efdda864588b310834eb8dc0ff8b3f6bfe5e54f8403"
+    },
+    {
+      "path": "after/apps/shell/src/components/ConversationRecoveryControls.tsx",
+      "sha256": "58eb77a40168c03b2d1eee5ed505bf3a35152201c9b4530ac695e7086bf7def1"
+    },
+    {
+      "path": "after/apps/shell/src/components/ConversationTask.tsx",
+      "sha256": "c75c54a0ad7d86f2a98a5ade464ada9da76a2b1d117b2e8482937d9f04238df3"
+    },
+    {
+      "path": "after/apps/shell/src/components/GeneratedResultPreview.tsx",
+      "sha256": "9b25ff457177bb809ab53b1ce0a522ecdcedef9b2d0411f09289eb3ba61e5d26"
+    },
+    {
+      "path": "after/apps/shell/src/components/HomeAsk.tsx",
+      "sha256": "8ae2fdd0da718facd1e6ade17166cf7c52db6b45a7af2fe896de0ec87c8271a7"
+    },
+    {
+      "path": "after/apps/shell/src/components/ImageSnapshot.tsx",
+      "sha256": "3df591e7abd95114ca3e92de67ca075ce490ef4e44d6caaef930d58a81d1ad6f"
+    },
+    {
+      "path": "after/apps/shell/src/components/SavedResultPreview.tsx",
+      "sha256": "6083dfcac3893cffcff9830fde5c3c38a6597cac48625f86bfcb04c7bf1a03af"
+    },
+    {
+      "path": "after/apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "sha256": "b45a0ba90cbbe9f986d06671908241be813bf1ac82256eeba356c09fbbce22d8"
+    },
+    {
+      "path": "after/packages/contracts/src/commands.ts",
+      "sha256": "768a1b98d166a6e51e41958ed77d5b97e81ade149955ec670bf113456b6baf39"
+    },
+    {
+      "path": "before/apps/shell/src/components/CalendarSourceChoiceDialog.tsx",
+      "sha256": "cc897fbdb410004e288b735f2605d4ea6e5ca195f4b2df8b65697051f072edfb"
+    },
+    {
+      "path": "before/apps/shell/src/components/CommandBar.tsx",
+      "sha256": "eed7cadf75f7caa9d406a1b23006f7dbbc89582740eec03a85de7c0b5bda2fc3"
+    },
+    {
+      "path": "before/apps/shell/src/components/ConversationControls.tsx",
+      "sha256": "de6003d2ff75680d46eae542184a2b9070a953a7804262bf57453245c88c9abf"
+    },
+    {
+      "path": "before/apps/shell/src/components/ConversationDrafts.tsx",
+      "sha256": "a08a01a3599390b71f19184df07537101ba347053b4730aa5eb3ebf3e80d2bc7"
+    },
+    {
+      "path": "before/apps/shell/src/components/ConversationHistory.tsx",
+      "sha256": "2b98fe4b13fd7d27e4bd169024cb27a576ae4a7432eb6c3a4746967b424638e0"
+    },
+    {
+      "path": "before/apps/shell/src/components/ConversationImages.tsx",
+      "sha256": "9b85eb0934a405a80f6fe1db7fc655bfdb6b5bbb945a352bcc1c4d57b87abef1"
+    },
+    {
+      "path": "before/apps/shell/src/components/ConversationRecoveryControls.tsx",
+      "sha256": "4c2ac03be3cb3de32550164a82d8ce1545608e27e45c318ecc90bf915c4b69da"
+    },
+    {
+      "path": "before/apps/shell/src/components/ConversationTask.tsx",
+      "sha256": "38fcb27054f0224dc119122f131ae3c7da850c81d4a4b6587797c9dfc64c8d60"
+    },
+    {
+      "path": "before/apps/shell/src/components/GeneratedResultPreview.tsx",
+      "sha256": "e96544ae0095c9267fb22d37998b40b4b0ed537a236f1333696e91fa8d63039b"
+    },
+    {
+      "path": "before/apps/shell/src/components/HomeAsk.tsx",
+      "sha256": "9296f769f06483e8d674f3e3ee02abc1adb5e28231b891ee9f966ceac649227c"
+    },
+    {
+      "path": "before/apps/shell/src/components/ImageSnapshot.tsx",
+      "sha256": "f89225156909aaff70e5d8ecc1d48de62ad1a707a48738e6daad8928f05d3075"
+    },
+    {
+      "path": "before/apps/shell/src/components/SavedResultPreview.tsx",
+      "sha256": "fe7f9ff2bc61b449e8df85ed2bd983f34eb18bc3a000e5028a0248db23e818d9"
+    },
+    {
+      "path": "before/apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "sha256": "9efdf053b69a3a104ff744b80657e3d4e70a9860095a418f313f5289f8a3ce54"
+    },
+    {
+      "path": "before/packages/contracts/src/commands.ts",
+      "sha256": "22c3338331fc29989f9b52ad3c35de1108509b2a31065a85121828e7fef9f63a"
+    },
+    {
+      "path": "logs/memory-after-types-002.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/memory-before-types-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/memory-equivalence.json",
+      "sha256": "55926c55744827df91ec703a689adb30174a802b1bb903bcd2d2c5fa9786218a"
+    },
+    {
+      "path": "logs/static-class-after-meter.json",
+      "sha256": "801fd57490ed200d4ba59357dd9b8ae273455de50b741f7c5890d04ed2977b5e"
+    },
+    {
+      "path": "logs/static-class-after-vite-001.log",
+      "sha256": "920e640198dba619aa782335e2064c9efdcd511d9468eac1b0229cad915fa722"
+    },
+    {
+      "path": "logs/static-class-before-contracts-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/static-class-before-meter.json",
+      "sha256": "c729402b58b613bab03c4e52d3d8669ed389753f3e36d8c1c0f7d5dd5624d1b9"
+    },
+    {
+      "path": "logs/static-class-before-vite-001.log",
+      "sha256": "aeccd9b6c5f9388bf3a8ca5877b4e9ed9ec2091c10641ee174030ae9bd803cfb"
+    },
+    {
+      "path": "logs/static-class-direct-vite-001.log",
+      "sha256": "c703bd6eee977043838f6a38ed758a7fa43af67b587bfddb36d9972bca320d11"
+    },
+    {
+      "path": "logs/static-class-trials.json",
+      "sha256": "6d8171d6fbdeaf501989cf5679a85a8d6691480464bcc5db48a866a436dc6d00"
+    },
+    {
+      "path": "logs/static-final-controls-001.log",
+      "sha256": "825b271b7c03913dfea40f6db7c2fc90dbba230cb668bfed2ad54b84a537aa1a"
+    },
+    {
+      "path": "logs/static-final-format-001.log",
+      "sha256": "e2216f299d38f543235b4b00864a68dc126bf58b9d864004b17a444a249d3004"
+    },
+    {
+      "path": "logs/static-final-format-002.log",
+      "sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+    },
+    {
+      "path": "logs/static-final-inverse-002.json",
+      "sha256": "e999d5a1949e8afbf89e5ffe1bcd28437cef2e38daafc2059d2bec3c6f3a096c"
+    },
+    {
+      "path": "logs/static-final-lint-001.log",
+      "sha256": "15010644466872d49cdcfeaf35c572e23eeffd93af5337ba722ba0e65606c461"
+    },
+    {
+      "path": "logs/static-final-types-002.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "logs/static-metadata-final-meter.json",
+      "sha256": "d66dac3e4d1f30cbd16264aa2a77262ea890d31e4d3f07f0fd1c306525d8e0b5"
+    },
+    {
+      "path": "logs/static-metadata-final-vite-001.log",
+      "sha256": "8dc17fefead8fd5c38fb98408c2f39c5bd22efe8ef4077d3f3343069152ca11b"
+    },
+    {
+      "path": "metadata-proof/after/packages/contracts/src/commands.ts",
+      "sha256": "768a1b98d166a6e51e41958ed77d5b97e81ade149955ec670bf113456b6baf39"
+    },
+    {
+      "path": "metadata-proof/before/packages/contracts/src/commands.ts",
+      "sha256": "22c3338331fc29989f9b52ad3c35de1108509b2a31065a85121828e7fef9f63a"
+    },
+    {
+      "path": "metadata-proof/commands.after.d.ts",
+      "sha256": "9c084cb95acb05913ffce17a2e2068e3f38c6cca630575cd314ad7462f3baf09"
+    },
+    {
+      "path": "metadata-proof/commands.before.d.ts",
+      "sha256": "3ae809dc69c9a9bc9c3a72c9084dd65a6c4b088fccad15b126ad5518841ff070"
+    },
+    {
+      "path": "metadata-proof/verify-equivalence.cjs",
+      "sha256": "6986397bf6b5487b378352b6ce842fe4211bff8fcc67a311e4c58667565ac4c1"
+    },
+    {
+      "path": "request.patch",
+      "sha256": "8c8deff92ffdb4d58b9159b05f5df49bb3606587481a0b21248bd3156bb5a2c6"
+    },
+    {
+      "path": "static-proof/SPAN-LEDGER.json",
+      "sha256": "461711536712ff5b09484fe350c4b4aa97697cd5421a7517030c805e4ba9808b"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/CalendarSourceChoiceDialog.tsx",
+      "sha256": "26e92ae456f27cc491c1830f9ae9c5fbc014b05b961661713df02c2970e2d7fc"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/CommandBar.tsx",
+      "sha256": "890ba43435f31f3701fe0c8cdcf98d964df1a69188c68068cdc51acfa5cf5940"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/ConversationControls.tsx",
+      "sha256": "27f1f8651d2f1614fd15ad730592a8cdef8c80b72e1fa6033199bcf1b90ef26e"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/ConversationDrafts.tsx",
+      "sha256": "b3d7ecf25d89d366558aa4c4c943307a14354c2cc9834b3f5fb15fce549f6bca"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/ConversationHistory.tsx",
+      "sha256": "771e7a4c271aa3d072bf7ef3c7472f9a3626e01cfe4e27c98fbde0f2ec54c150"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/ConversationImages.tsx",
+      "sha256": "7b229f00f7f794ae841a4efdda864588b310834eb8dc0ff8b3f6bfe5e54f8403"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/ConversationRecoveryControls.tsx",
+      "sha256": "58eb77a40168c03b2d1eee5ed505bf3a35152201c9b4530ac695e7086bf7def1"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/ConversationTask.tsx",
+      "sha256": "c75c54a0ad7d86f2a98a5ade464ada9da76a2b1d117b2e8482937d9f04238df3"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/GeneratedResultPreview.tsx",
+      "sha256": "9b25ff457177bb809ab53b1ce0a522ecdcedef9b2d0411f09289eb3ba61e5d26"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/HomeAsk.tsx",
+      "sha256": "8ae2fdd0da718facd1e6ade17166cf7c52db6b45a7af2fe896de0ec87c8271a7"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/ImageSnapshot.tsx",
+      "sha256": "3df591e7abd95114ca3e92de67ca075ce490ef4e44d6caaef930d58a81d1ad6f"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/components/SavedResultPreview.tsx",
+      "sha256": "6083dfcac3893cffcff9830fde5c3c38a6597cac48625f86bfcb04c7bf1a03af"
+    },
+    {
+      "path": "static-proof/after/apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "sha256": "b45a0ba90cbbe9f986d06671908241be813bf1ac82256eeba356c09fbbce22d8"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/CalendarSourceChoiceDialog.tsx",
+      "sha256": "cc897fbdb410004e288b735f2605d4ea6e5ca195f4b2df8b65697051f072edfb"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/CommandBar.tsx",
+      "sha256": "eed7cadf75f7caa9d406a1b23006f7dbbc89582740eec03a85de7c0b5bda2fc3"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/ConversationControls.tsx",
+      "sha256": "de6003d2ff75680d46eae542184a2b9070a953a7804262bf57453245c88c9abf"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/ConversationDrafts.tsx",
+      "sha256": "a08a01a3599390b71f19184df07537101ba347053b4730aa5eb3ebf3e80d2bc7"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/ConversationHistory.tsx",
+      "sha256": "2b98fe4b13fd7d27e4bd169024cb27a576ae4a7432eb6c3a4746967b424638e0"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/ConversationImages.tsx",
+      "sha256": "9b85eb0934a405a80f6fe1db7fc655bfdb6b5bbb945a352bcc1c4d57b87abef1"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/ConversationRecoveryControls.tsx",
+      "sha256": "4c2ac03be3cb3de32550164a82d8ce1545608e27e45c318ecc90bf915c4b69da"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/ConversationTask.tsx",
+      "sha256": "38fcb27054f0224dc119122f131ae3c7da850c81d4a4b6587797c9dfc64c8d60"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/GeneratedResultPreview.tsx",
+      "sha256": "e96544ae0095c9267fb22d37998b40b4b0ed537a236f1333696e91fa8d63039b"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/HomeAsk.tsx",
+      "sha256": "9296f769f06483e8d674f3e3ee02abc1adb5e28231b891ee9f966ceac649227c"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/ImageSnapshot.tsx",
+      "sha256": "f89225156909aaff70e5d8ecc1d48de62ad1a707a48738e6daad8928f05d3075"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/components/SavedResultPreview.tsx",
+      "sha256": "fe7f9ff2bc61b449e8df85ed2bd983f34eb18bc3a000e5028a0248db23e818d9"
+    },
+    {
+      "path": "static-proof/before/apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "sha256": "9efdf053b69a3a104ff744b80657e3d4e70a9860095a418f313f5289f8a3ce54"
+    },
+    {
+      "path": "verify-lowering.cjs",
+      "sha256": "09596ecbb607849d87c87a5e150dd9ce18df71048c173af24db63858076e3f99"
+    }
+  ],
+  "productionQuiescent": true,
+  "nativeExecution": false,
+  "budgetAcceptance": false
+}

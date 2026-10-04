@@ -1,3 +1,7 @@
+import {
+  staticFieldErrorProps as auxReserveStaticFieldErrorProps,
+  staticFieldProps as auxReserveStaticFieldProps,
+} from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
@@ -73,11 +77,11 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
   return <ViewerFrame label="Generated result preview" title={result?.filename??"Generated result"} onClose={onClose} closeLabel="Close result preview" closeControl={<ResultPreviewControl command="close-generated-result-preview" current={current} invoke={onClose} className="icon-btn xs" aria-label="Close result preview">{shellIconClose}</ResultPreviewControl>}
     metadata={result&&<>v{result.revision} · {result.kind.toUpperCase()} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB · {new Date(result.createdAt).toLocaleString()}</>}
     toolbar={result&&<><ResultPreviewControl command="toggle-generated-result-source" current={()=>loadedCurrent(result)} invoke={()=>setEditing(value=>!value)} {...smallGhostButtonProps} disabled={busy||contextDisabled||result.revision>=20} aria-pressed={editing}>{editing?"Preview":"Revise"}</ResultPreviewControl><ResultPreviewControl command="export-generated-result" current={()=>loadedCurrent(result)} invoke={()=>operation(false)} {...smallGhostButtonProps} disabled={busy}>Export file…</ResultPreviewControl></>}>
-    {error&&<p role="alert" className="field-error">{error}</p>}
+    {error&&<p role="alert" {...auxReserveStaticFieldErrorProps}>{error}</p>}
     {!result?<output data-block {...staticHintProps}>Loading generated result…</output>:<>
       <p {...staticHintProps}>Generated from conversation turn {result.sourceRunId}. SHA-256 {result.sha256.slice(0,16)}…</p>
       {versions.length>1&&<nav {...staticRowProps} aria-label="Result versions">{versions.map(version=><ResultPreviewControl command="select-generated-result-version" current={()=>loadedCurrent(result)&&loadedCurrent(version)&&version.chatId===chatId&&version.rootArtifactId===result.rootArtifactId} invoke={()=>onVersionSaved?.(version.artifactId)} className="btn sm ghost" key={version.artifactId} disabled={version.artifactId===artifactId}>v{version.revision}</ResultPreviewControl>)}</nav>}
-      {editing?<><label className="field">Revise structured source<textarea aria-label="Structured result source" className="result-source-editor" value={draft} maxLength={500_000} disabled={busy} onChange={event=>{if(loadedCurrent(result)&&!pending.current)setDraft(event.target.value);}}/></label><ResultPreviewControl command="save-generated-result-version" report={false} current={()=>loadedCurrent(result)} invoke={()=>operation(true)} {...smallButtonProps} disabled={busy||contextDisabled}>{busy?"Saving…":"Save new version"}</ResultPreviewControl></>:<div className="saved-result-content">
+      {editing?<><label {...auxReserveStaticFieldProps}>Revise structured source<textarea aria-label="Structured result source" className="result-source-editor" value={draft} maxLength={500_000} disabled={busy} onChange={event=>{if(loadedCurrent(result)&&!pending.current)setDraft(event.target.value);}}/></label><ResultPreviewControl command="save-generated-result-version" report={false} current={()=>loadedCurrent(result)} invoke={()=>operation(true)} {...smallButtonProps} disabled={busy||contextDisabled}>{busy?"Saving…":"Save new version"}</ResultPreviewControl></>:<div className="saved-result-content">
         <h3>{result.preview.title}</h3>
         {image?<img src={image} alt={result.preview.title} style={{maxWidth:"100%",height:"auto"}}/>:result.kind==="chart"?<output {...staticHintProps}>Loading chart image…</output>:null}
         <ul>{result.preview.lines.map((line,index)=><li key={index}>{line}</li>)}</ul>
