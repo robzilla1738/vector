@@ -1,0 +1,33 @@
+{
+  "forwardReverseForward": [
+    true,
+    true,
+    true
+  ],
+  "rows": [
+    {
+      "path": "apps/shell/src/components/use-sidebar-control.ts",
+      "before": null,
+      "after": "2460e18b24bb4d0ba989f016fded322b77557089f37905857bf7d1bcd9b7534d",
+      "sharedRequestOnly": false
+    },
+    {
+      "path": "apps/shell/src/components/SidebarSection.tsx",
+      "before": "bfe909dad49d7c876ffc39cebfc93af0fd1b54d69794df7fbc39e8d3e8a862db",
+      "after": "e330f4cf6c4a03a6156139e6a6d2b56a05a4cfb56ecb1bb26b954345deb61493",
+      "sharedRequestOnly": false
+    },
+    {
+      "path": "apps/shell/src/sidebar-owner-core.test.tsx",
+      "before": null,
+      "after": "3e4667921b935ab9d39cdd24cb9f8eb14ed29c9d20bcd326956b82365fc72fa9",
+      "sharedRequestOnly": false
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "before": "625c69fc1438f4ec43ab4ec50b7ec8f1a24acb50a0331a56b3e2133cc81e9732",
+      "after": "4f6514a3d1bf7c327a5b3cd5413051799ec3df3eb611ee3800971d39d92909f8",
+      "sharedRequestOnly": true
+    }
+  ]
+}

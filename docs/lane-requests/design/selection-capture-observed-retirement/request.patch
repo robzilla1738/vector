@@ -1,0 +1,40 @@
+diff --git a/apps/shell/src/settings/sections/SelectionCapture.commands.test.tsx b/apps/shell/src/settings/sections/SelectionCapture.commands.test.tsx
+index 2826ad69a..fb077a333 100644
+--- a/apps/shell/src/settings/sections/SelectionCapture.commands.test.tsx
++++ b/apps/shell/src/settings/sections/SelectionCapture.commands.test.tsx
+@@ -154,3 +154,18 @@ it("validates and saves the exact latest same-tick original draft",async()=>{
+   });
+   expect(save.mock.calls[0]![0].selectionCapture.actions[0].template).toBe("Latest original draft {text}");
+ });
++
++it("permanently retires an observed uncommitted window mismatch rather than reviving A",async()=>{
++  await render(); await write("Original before mismatch {text}"); button("Save Selection & Capture").focus();
++  bridge.windowId="replacement"; expect(()=>invokeScopedControl("save-selection-capture-settings")).toThrow("current");
++  bridge.windowId="original"; expect(()=>invokeScopedControl("save-selection-capture-settings")).toThrow("current");
++  expect(save).not.toHaveBeenCalled();
++});
++it("does not revive held original ACK delivery after an observed no-render window ABA",async()=>{
++  await render(); await invoke("preview-selection-action",button("Preview Explain")); await write("Original held draft {text}");
++  const old=held<boolean>(); save.mockReturnValueOnce(old.promise); let completion!:Promise<unknown>;
++  await act(async()=>{button("Save Selection & Capture").focus();completion=invokeScopedControl("save-selection-capture-settings") as Promise<unknown>;});
++  button("Close preview").focus(); bridge.windowId="replacement"; expect(()=>invokeScopedControl("close-selection-action-preview")).toThrow("current");
++  bridge.windowId="original"; await act(async()=>old.resolve(true)); expect(await completion).toBe(true);
++  expect(template().value).toBe("Original held draft {text}"); expect(host.textContent).not.toContain("Saved for this Profile");
++});
+diff --git a/apps/shell/src/settings/sections/SelectionCapture.tsx b/apps/shell/src/settings/sections/SelectionCapture.tsx
+index c36ee5790..9d0db8cc8 100644
+--- a/apps/shell/src/settings/sections/SelectionCapture.tsx
++++ b/apps/shell/src/settings/sections/SelectionCapture.tsx
+@@ -61,7 +61,11 @@ export function SelectionCaptureSettings({ active, settings, onSave, nativeStatu
+     owner.current = original;
+     return () => { original.active = false; };
+   }, [identity]);
+-  const current = useCallback((original = owner.current) => original.active && original === owner.current && original.identity === identity && active && !privateMode && kind === "normal" && bridge.windowId === windowId && bridge.windowKind === kind && !bridge.privateMode && useStore.getState().connected === connected, [identity, active, privateMode, kind, windowId, connected]);
++  const current = useCallback((original = owner.current) => {
++    if (!original.active || original !== owner.current || original.identity !== identity) return false;
++    if (!active || privateMode || kind !== "normal" || bridge.windowId !== windowId || bridge.windowKind !== kind || bridge.privateMode || useStore.getState().connected !== connected) { owner.current.active = false; return false; }
++    return true;
++  }, [identity, active, privateMode, kind, windowId, connected]);
+   const requireCurrent = () => { const original = owner.current; if (!current(original) || original.pending) throw new Error("Choose the current Selection & Capture control."); return original; };
+   const scopeId = useId();
+   const [publish, run] = useScopedCommandControls(scopeId, () => {

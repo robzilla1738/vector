@@ -1,0 +1,55 @@
+{
+  "basis": "successor after immutable5leaf section/Space request; original24 remains prerequisite",
+  "rows": [
+    {
+      "path": "apps/shell/src/components/use-sidebar-control.ts",
+      "before": null,
+      "after": "2460e18b24bb4d0ba989f016fded322b77557089f37905857bf7d1bcd9b7534d",
+      "sharedRequestOnly": false
+    },
+    {
+      "path": "apps/shell/src/components/SidebarSection.tsx",
+      "before": "bfe909dad49d7c876ffc39cebfc93af0fd1b54d69794df7fbc39e8d3e8a862db",
+      "after": "e330f4cf6c4a03a6156139e6a6d2b56a05a4cfb56ecb1bb26b954345deb61493",
+      "sharedRequestOnly": false
+    },
+    {
+      "path": "apps/shell/src/sidebar-owner-core.test.tsx",
+      "before": null,
+      "after": "3e4667921b935ab9d39cdd24cb9f8eb14ed29c9d20bcd326956b82365fc72fa9",
+      "sharedRequestOnly": false
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "before": "625c69fc1438f4ec43ab4ec50b7ec8f1a24acb50a0331a56b3e2133cc81e9732",
+      "after": "4f6514a3d1bf7c327a5b3cd5413051799ec3df3eb611ee3800971d39d92909f8",
+      "sharedRequestOnly": true
+    }
+  ],
+  "prerequisites": [
+    {
+      "path": "apps/shell/src/scoped-control-commands.ts",
+      "sha256": "1d734e4ca4b41ccc3e80fc502254e7bd7c559602e0b18c3c85e26c8d55ff6f66"
+    },
+    {
+      "path": "apps/shell/src/commands.ts",
+      "sha256": "14909d2804944009ad36ecb1730bec592f3f6b6f2dad6227bdcd34775ef8bef7"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "sha256": "33401f6e700018245505fa96b1e20ae3910c2ae34270edc2f74d9cc57a108696"
+    },
+    {
+      "path": "apps/shell/src/library-command-mounted.test.tsx",
+      "sha256": "688646aebbedead00aff94fb49770ef0bd8a3011969526b19f3e387ecef964d0"
+    },
+    {
+      "path": "apps/shell/src/sidebar-section-commands.test.tsx",
+      "sha256": "f92be3894255509b84e2e4020d1f1834be7668104c519a2e96c9f73c3442cda6"
+    },
+    {
+      "path": "apps/shell/src/components/SidebarSection.test.tsx",
+      "sha256": "4f496e795c1d6dd85a26f32914282c80b562e19f5f37f3b55a08fca33d9510d2"
+    }
+  ]
+}

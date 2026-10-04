@@ -1,0 +1,81 @@
+{
+  "kind": "source-only-5-leaf-request",
+  "rows": [
+    {
+      "path": "apps/shell/src/components/SidebarSection.tsx",
+      "before": "ead98cf5c05a65d3860d0cbceed36d4ff6e0577b9c622b49c8c8e73fa5873de3",
+      "after": "bfe909dad49d7c876ffc39cebfc93af0fd1b54d69794df7fbc39e8d3e8a862db",
+      "sharedRequestOnly": false
+    },
+    {
+      "path": "apps/shell/src/components/SidebarSection.test.tsx",
+      "before": "6000dafe7904cf5fd5a06090570dd13058c0ddad6a6400a918dfed2b2d638da7",
+      "after": "4f496e795c1d6dd85a26f32914282c80b562e19f5f37f3b55a08fca33d9510d2",
+      "sharedRequestOnly": false
+    },
+    {
+      "path": "apps/shell/src/sidebar-section-commands.test.tsx",
+      "before": null,
+      "after": "f92be3894255509b84e2e4020d1f1834be7668104c519a2e96c9f73c3442cda6",
+      "sharedRequestOnly": false
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "before": "90091c912eaa1f3daf1531544966048c242f706da259ca490b2855812b858b13",
+      "after": "625c69fc1438f4ec43ab4ec50b7ec8f1a24acb50a0331a56b3e2133cc81e9732",
+      "sharedRequestOnly": true
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "before": "9cb55cfec9aeda5958d530b3fcfba6a3f7c03eb3b8f938b67307bd1292f98352",
+      "after": "33401f6e700018245505fa96b1e20ae3910c2ae34270edc2f74d9cc57a108696",
+      "sharedRequestOnly": true
+    }
+  ],
+  "files": [
+    {
+      "path": "request.patch",
+      "sha256": "fac0cead06d2c59b89ec6b682060b02d4231fc667d8dc7ead9b4bc0714030700"
+    },
+    {
+      "path": "owned.request.patch",
+      "sha256": "99c97742b93bf6a4a14632660a9b9ee2c5235c8e3e8f22fcd087886b4d1c343a"
+    },
+    {
+      "path": "shared.request.patch",
+      "sha256": "ecc798c424c1e7d15fbb37ebd3abdd72baa8e3f0a0cba34892fdef5035b13238"
+    },
+    {
+      "path": "SOURCE-PINS.json",
+      "sha256": "df445c9e75904bd51ce3ad372530ee072e1173b33d1667626cec9fd85d41b6cd"
+    },
+    {
+      "path": "REPLAY.json",
+      "sha256": "7c2230c5ec09ca223217333d55fe1d620f3b8c98d367f724fde063998f01ac3f"
+    },
+    {
+      "path": "README.md",
+      "sha256": "767941c49ecd799a5b0c73ff05887ee17be08bb0c9a2f7ab4f8d65d98388681e"
+    }
+  ],
+  "controls": {
+    "mounted": 14,
+    "typecheck": "PASS",
+    "scopedLint": "PASS zero warnings"
+  },
+  "logs": [
+    {
+      "path": "/private/tmp/aux-l10-sidebar-section-controls-002.log",
+      "sha256": "955703ac8abab4e3e1a678b7fdef126a219dd66ad7a58f3b3f0ca1568179c9ac"
+    },
+    {
+      "path": "/private/tmp/aux-l10-sidebar-section-types-002.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-l10-sidebar-section-lint-002.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "nativeExecution": false
+}

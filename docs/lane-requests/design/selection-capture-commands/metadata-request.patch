@@ -1,0 +1,24 @@
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index 057234a6c..d2526cc3c 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -58,6 +58,19 @@ const diagnosticsControl = { ...memoryControl, windows: ["normal", "private"] }
+ const runPanelControl = { ...runControl, palette: false } as const;
+ const modelControl = { ...memoryControl, windows: ["normal", "private"] } as const;
+ export const COMMANDS = [
++  S("save-selection-capture-settings", "Save Selection & Capture", memoryControl),
++  S("reload-selection-capture-settings", "Reload saved Selection & Capture", memoryControl),
++  S("toggle-selection-action", "Toggle selection action", memoryControl),
++  S("move-selection-action-up", "Move selection action up", memoryControl),
++  S("move-selection-action-down", "Move selection action down", memoryControl),
++  S("preview-selection-action", "Preview selection action", memoryControl),
++  S("remove-selection-action", "Remove selection action", memoryControl),
++  S("add-selection-action", "Add selection action", memoryControl),
++  S("close-selection-action-preview", "Close selection action preview", memoryControl),
++  S("record-selection-capture-shortcut", "Record Selection & Capture shortcut", memoryControl),
++  S("disable-selection-capture-shortcut", "Disable Selection & Capture shortcut", memoryControl),
++  S("toggle-inline-assist", "Toggle inline assist", memoryControl),
++
+   S("select-model-provider", "Select model provider", modelControl),
+   S("save-model-endpoint", "Save model endpoint", modelControl),
+   S("discover-provider-models", "Discover provider models", modelControl),

@@ -1,0 +1,113 @@
+--- /dev/null
++++ b/apps/shell/src/components/use-sidebar-control.ts
+@@ -0,0 +1,31 @@
++import { useLayoutEffect, useRef, type RefObject, type SyntheticEvent } from "react";
++import { bridge } from "../bridge";
++import { runCommand } from "../commands";
++import { registerScopedControl } from "../scoped-control-commands";
++type SidebarControl = "toggle-sidebar-more" | "toggle-sidebar-spaces" | "toggle-sidebar-section";
++/** Mounted Sidebar ownership only; each caller retains its original local admission. */
++export function useSidebarControl(
++  element: RefObject<HTMLButtonElement | null>, command: SidebarControl, scopeId: string,
++  allowed: boolean, scopeKey: string, current: () => boolean, invoke: () => unknown, message: string,
++) {
++  const windowId = bridge.windowId, privateMode = bridge.privateMode, kind = bridge.windowKind;
++  const actions = useRef({ current, invoke });
++  useLayoutEffect(() => { actions.current = { current, invoke }; }, [current, invoke]);
++  useLayoutEffect(() => {
++    const original = element.current;
++    if (!original || !allowed) return;
++    let active = true;
++    const live = () => active && element.current === original && bridge.windowId === windowId &&
++      bridge.privateMode === privateMode && bridge.windowKind === kind;
++    const retire = registerScopedControl(original, command, scopeId, () => {
++      const callbacks = actions.current;
++      if (!live() || !callbacks.current() || !live()) {
++        active = false;
++        throw new Error(message);
++      }
++      return callbacks.invoke();
++    });
++    return () => { active = false; retire(); };
++  }, [element, command, scopeId, allowed, scopeKey, windowId, privateMode, kind, message]);
++  return (event: SyntheticEvent<HTMLButtonElement>) => runCommand(command, { nativeInputEvent: event.nativeEvent });
++}
+--- a/apps/shell/src/components/SidebarSection.tsx
++++ b/apps/shell/src/components/SidebarSection.tsx
+@@ -1,33 +1,18 @@
+-import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
++import { useId, useRef, type ReactNode } from "react";
+ import { bridge } from "../bridge";
+-import { runCommand } from "../commands";
+-import { registerScopedControl } from "../scoped-control-commands";
++import { useSidebarControl } from "./use-sidebar-control";
+ import { shellIconDown } from "./icons";
+ 
+ export function SidebarSection({ title, open, onToggle, fill = false, children }: {
+   title: string; open: boolean; onToggle(): void; fill?: boolean; children: ReactNode;
+ }) {
+-  const id = useId(), heading = useRef<HTMLButtonElement>(null), action = useRef(onToggle);
+-  const windowId = bridge.windowId, privateMode = bridge.privateMode, kind = bridge.windowKind;
+-  useLayoutEffect(() => { action.current = onToggle; }, [onToggle]);
+-  useLayoutEffect(() => {
+-    const original = heading.current;
+-    if (!original || !["Bookmarks", "Chats", "Tabs"].includes(title) ||
+-      !["normal", "private"].includes(kind) || (privateMode && title !== "Tabs")) return;
+-    let active = true;
+-    const retire = registerScopedControl(original, "toggle-sidebar-section", id, () => {
+-      if (!active || heading.current !== original || bridge.windowId !== windowId ||
+-        bridge.privateMode !== privateMode || bridge.windowKind !== kind) {
+-        active = false;
+-        throw new Error("The original sidebar section changed.");
+-      }
+-      return action.current();
+-    });
+-    return () => { active = false; retire(); };
+-  }, [id, title, windowId, privateMode, kind]);
++  const id = useId(), heading = useRef<HTMLButtonElement>(null);
++  const toggle = useSidebarControl(heading, "toggle-sidebar-section", id,
++    ["Bookmarks", "Chats", "Tabs"].includes(title) && ["normal", "private"].includes(bridge.windowKind) && (!bridge.privateMode || title === "Tabs"),
++    title, () => true, onToggle, "The original sidebar section changed.");
+   return <section className={`sidebar-section ${fill ? "fill" : ""}`} aria-label={title}>
+     <button ref={heading} className="sidebar-section-heading" aria-expanded={open} aria-controls={id}
+-      data-command-id="toggle-sidebar-section" onClick={event => runCommand("toggle-sidebar-section", { nativeInputEvent: event.nativeEvent })}>
++      data-command-id="toggle-sidebar-section" onClick={toggle}>
+       <span>{title}</span><span className="sidebar-section-chevron" aria-hidden="true">{shellIconDown}</span>
+     </button>
+     <div id={id} className={`sidebar-section-body ${open ? "open" : ""}`} inert={!open} aria-hidden={!open}>
+--- /dev/null
++++ b/apps/shell/src/sidebar-owner-core.test.tsx
+@@ -0,0 +1,33 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { expect, it, vi } from "vitest";
++import { bridge } from "./bridge";
++import { executeCommand } from "./commands";
++import { SidebarSection } from "./components/SidebarSection";
++import * as scoped from "./scoped-control-commands";
++it("committed callback replacement stays live across incidental render while original cleanup retires the captured owner", async () => {
++  const original = { window: bridge.windowId, kind: bridge.windowKind, private: bridge.privateMode };
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  bridge.privateMode = false; bridge.windowKind = "normal";
++  const geometry = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 30 }] as unknown as DOMRectList);
++  const registrations = vi.spyOn(scoped, "registerScopedControl");
++  const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
++  const first = vi.fn(), second = vi.fn();
++  try {
++    await act(async () => root.render(<SidebarSection title="Tabs" open onToggle={first}>Content</SidebarSection>));
++    const heading = host.querySelector<HTMLButtonElement>("button")!;
++    const old = registrations.mock.calls.find(([, id]) => id === "toggle-sidebar-section")![3];
++    await act(async () => root.render(<SidebarSection title="Tabs" open={false} onToggle={second}>Updated content</SidebarSection>));
++    expect(host.querySelector("button")).toBe(heading);
++    expect(registrations.mock.calls.filter(([, id]) => id === "toggle-sidebar-section")).toHaveLength(1);
++    await act(async () => heading.click()); expect(first).not.toHaveBeenCalled(); expect(second).toHaveBeenCalledOnce();
++    heading.focus(); await act(async () => { await executeCommand("toggle-sidebar-section"); }); expect(second).toHaveBeenCalledTimes(2);
++    await act(async () => root.unmount()); expect(() => old()).toThrow("original sidebar section");
++    await expect(executeCommand("toggle-sidebar-section")).rejects.toThrow(); expect(second).toHaveBeenCalledTimes(2);
++  } finally {
++    if (host.hasChildNodes()) await act(async () => root.unmount()); host.remove();
++    bridge.windowId = original.window; bridge.windowKind = original.kind; bridge.privateMode = original.private;
++    geometry.mockRestore(); registrations.mockRestore(); vi.unstubAllGlobals();
++  }
++});

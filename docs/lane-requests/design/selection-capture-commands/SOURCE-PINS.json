@@ -1,0 +1,89 @@
+{
+  "base": "2287359a47ae9e2bc48b177eebd892bc17046757",
+  "status": "source-only NEXT request; no native/build/F21 admission",
+  "owned": [
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "beforeSha256": "06233562f6fd3fce83ebf10fc59fb9da3b3372fc49906c5a49a925cb7955a724",
+      "afterSha256": "7dcc63fe68755b6dc21513aa0b36c5aa173ed53fef98cc717242cbaad6b60794"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.test.tsx",
+      "beforeSha256": "122ce24ae4261cef1206ebd445f70295686ba79ab5c432f39e05058d2cf4ad05",
+      "afterSha256": "fdef0786e81ea5c1eafb424ce2b82ba0e38001b5ea2062d585f606aaaaf3a73f"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.commands.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "7f1161f5c97e9bd36951f25c4d165904623bce70501adbfb54573bd37e3cbdcb"
+    }
+  ],
+  "sharedRequestOnly": [
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "eadfa3803d29fcfdd9e2072f1d2560de164b739aa333c0840961f173e140b39b",
+      "afterSha256": "a32dbe05d6c1032cd451457787dc87312c6d90d7785aed817f6600e672ab1fee"
+    }
+  ],
+  "request.patch": {
+    "sha256": "92ae75b859ad8566c36592ba3456e3e61dd7fa4ba05c2794c661d15ea21c9b81"
+  },
+  "metadata-request.patch": {
+    "sha256": "5624e699a64085e6955b094f151961bdcd1f677162419c939dcaa52dd3d86479"
+  },
+  "replay": {
+    "forwardReverseForward": "PASS",
+    "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-selection-exact-replay-final-mv9gn8uq",
+    "originalSixTestBodiesAndAssertionsByteExactExceptVisibleRectFixture": true,
+    "originalRegistryByteExactAfterRemovingOnlyTwelveAdditiveRows": true
+  },
+  "references": [
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/layout_constants.cc",
+      "sha256": "354a0a83efda3d2782c00285b900940ddc0e185393efd90807e8a0d2b2f1b6f8",
+      "use": "inherited Settings geometry; no CSS/typography/material changes"
+    }
+  ],
+  "logs": [
+    {
+      "path": "docs/lane-requests/design/selection-capture-commands/logs/aux-selection-original-busy-failure.log",
+      "sha256": "445606dea91c2814635a45968c72e0a04e98e440fd63bb21765cddf3b1a7b1fc"
+    },
+    {
+      "path": "docs/lane-requests/design/selection-capture-commands/logs/aux-design-selection-controls-final-005.log",
+      "sha256": "22f8e1386b359113abbd9973741b43806cff01904baff81b030055904dfa8359"
+    },
+    {
+      "path": "docs/lane-requests/design/selection-capture-commands/logs/aux-design-selection-final-types-003.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/lane-requests/design/selection-capture-commands/logs/aux-design-selection-final-lint-004.log",
+      "sha256": "1f6bb20d2fceb40d11847727fb3b238e5e2982dc0816e1c8cf91f8d8d2aa9274"
+    },
+    {
+      "path": "docs/lane-requests/design/selection-capture-commands/logs/aux-design-selection-command-original-controls.log",
+      "sha256": "7c3ba31559bf320b37e0d0f738fb0cdb99df695d2a89a74165e288cb07559997"
+    },
+    {
+      "path": "docs/lane-requests/design/selection-capture-commands/logs/aux-design-selection-final-lint.log",
+      "sha256": "1f6bb20d2fceb40d11847727fb3b238e5e2982dc0816e1c8cf91f8d8d2aa9274"
+    },
+    {
+      "path": "docs/lane-requests/design/selection-capture-commands/logs/aux-design-selection-controls-final-003.log",
+      "sha256": "174bf453a0adc0e47969ce3ea741811aded4b7b6bde0cdb50920b4058aa5244c"
+    }
+  ],
+  "checks": {
+    "componentControls": {
+      "original": 6,
+      "new": 12,
+      "passed": 18
+    },
+    "shellTypes": "PASS",
+    "scopedLint": "PASS; same two pre-existing set-state-in-effect warnings; no gate raised",
+    "baselineHeldSaveWindowReplacement": "FAIL reproduced original busy leak",
+    "nativeExecution": "none",
+    "rendererBytes": "unmeasured NEXT batch, original strict budget remains mandatory"
+  }
+}

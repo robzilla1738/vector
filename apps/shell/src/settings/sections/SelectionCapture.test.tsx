@@ -21,6 +21,7 @@ function Fixture() {
 }
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 160, height: 36 }] as unknown as DOMRectList);
   save.mockReset().mockResolvedValue(true);
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
 });

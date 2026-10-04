@@ -1,0 +1,127 @@
+// @vitest-environment jsdom
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { Sidebar } from "./components/Sidebar";
+import { bridge } from "./bridge";
+import { useStore } from "./store";
+import * as commands from "./commands";
+import { registerScopedControl } from "./scoped-control-commands";
+const persisted = vi.hoisted(() => {
+  const values = new Map<string, string>();
+  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) };
+  return { values, storage };
+});
+vi.mock("./store/persistence", async importOriginal => ({ ...await importOriginal<object>(), storage: persisted.storage }));
+let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
+let originalScroll: PropertyDescriptor | undefined;
+let original: ReturnType<typeof useStore.getState>, originalPrivate: boolean, originalKind: typeof bridge.windowKind, originalWindowId: string;
+const overrides = { "toggle-sidebar-section": [{ key: "j", command: true, alt: true }], "toggle-sidebar-spaces": [{ key: "k", command: true, alt: true }] };
+beforeEach(() => {
+  persisted.values.clear(); original = useStore.getState(); originalPrivate = bridge.privateMode; originalKind = bridge.windowKind; originalWindowId = bridge.windowId;
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const data = new Map<string, string>();
+  const storage: Storage = { get length() { return data.size; }, key: index => [...data.keys()][index] ?? null,
+    getItem: key => data.get(key) ?? null, setItem: (key, value) => { data.set(key, value); }, removeItem: key => { data.delete(key); }, clear: () => data.clear() };
+  vi.stubGlobal("localStorage", storage);
+  vi.spyOn(window, "localStorage", "get").mockReturnValue(storage);
+  originalScroll = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
+  Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, writable: true, value: vi.fn() });
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 200, height: 30 }] as unknown as DOMRectList);
+  vi.spyOn(bridge, "overlay").mockResolvedValue(true);
+  bridge.privateMode = false; bridge.windowKind = "normal";
+  useStore.setState({ pages: [], activePageId: null, overlay: null, sidebar: "expanded", sidebarPeek: false,
+    sidebarSections: { bookmarks: true, chats: false, tabs: true }, bookmarks: [], runs: [], programs: [], sets: [],
+    settings: { ...original.settings, tabLayout: "vertical", shortcutOverrides: overrides } });
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+});
+afterEach(async () => { await act(async () => root.unmount()); host.remove(); useStore.setState(original, true);
+  bridge.privateMode = originalPrivate; bridge.windowKind = originalKind; bridge.windowId = originalWindowId;
+  if (originalScroll) Object.defineProperty(Element.prototype, "scrollIntoView", originalScroll);
+  else Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+  vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+async function mount() { await act(async () => root.render(<Sidebar />)); }
+function heading(title: string) {
+  const node = host.querySelector<HTMLButtonElement>(`section[aria-label="${title}"] > button`);
+  expect(node).not.toBeNull(); return node!;
+}
+function chooser() {
+  const node = host.querySelector<HTMLButtonElement>('[data-command-id="toggle-sidebar-spaces"]'); expect(node).not.toBeNull(); return node!;
+}
+function originalEvent(target: HTMLElement) { const event = new MouseEvent("click", { bubbles: true }); Object.defineProperty(event, "target", { value: target }); return event; }
+it.each(["Bookmarks", "Chats", "Tabs"])("mounted %s heading click and remap preserve exact original storage key and disclosure", async title => {
+  await mount(); const control = heading(title), key = title.toLowerCase() as "bookmarks" | "chats" | "tabs";
+  const before = useStore.getState().sidebarSections[key]; expect(control.dataset.commandId).toBe("toggle-sidebar-section");
+  const body = document.getElementById(control.getAttribute("aria-controls")!)!;
+  await act(async () => control.click()); expect(useStore.getState().sidebarSections[key]).toBe(!before);
+  expect(persisted.values.get(`aux.sidebar.${key}`)).toBe(before ? "closed" : "open");
+  expect(body.getAttribute("aria-hidden")).toBe(String(before));
+  control.focus(); await act(async () => { expect(commands.dispatchShortcut({ key: "j", meta: true, alt: true, shift: false })).toBe(true); });
+  expect(useStore.getState().sidebarSections[key]).toBe(before);
+  expect(persisted.values.get(`aux.sidebar.${key}`)).toBe(before ? "open" : "closed");
+});
+it("section shortcuts refuse foreign focus, ambiguous original owners and hidden headings", async () => {
+  await mount(); const control = heading("Tabs"), snapshot = useStore.getState().sidebarSections;
+  const foreign = document.createElement("button"); host.append(foreign); foreign.focus();
+  await expect(commands.executeCommand("toggle-sidebar-section")).rejects.toThrow("focused control"); foreign.remove();
+  control.focus(); const other = vi.fn(), retire = registerScopedControl(control, "toggle-sidebar-section", "foreign", other);
+  try { await expect(commands.executeCommand("toggle-sidebar-section")).rejects.toThrow(); expect(other).not.toHaveBeenCalled(); } finally { retire(); }
+  control.hidden = true; await expect(commands.executeCommand("toggle-sidebar-section", { nativeInputEvent: originalEvent(control) })).rejects.toThrow();
+  expect(useStore.getState().sidebarSections).toBe(snapshot); control.hidden = false;
+});
+it("Private supports actual Tabs disclosure and Space chooser without mounting Bookmarks or Chats", async () => {
+  bridge.privateMode = true; bridge.windowKind = "private"; await mount();
+  expect(host.querySelector('section[aria-label="Bookmarks"]')).toBeNull(); expect(host.querySelector('section[aria-label="Chats"]')).toBeNull();
+  const tabs = heading("Tabs"), before = useStore.getState().sidebarSections.tabs;
+  await act(async () => tabs.click()); expect(useStore.getState().sidebarSections.tabs).toBe(!before);
+  const trigger = chooser(); await act(async () => trigger.click()); expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  expect(document.querySelector('[role="menu"][aria-label="Spaces and browser controls"]')).not.toBeNull();
+});
+it("original Space chooser click and focused remap retain menu and current layout identity", async () => {
+  await mount(); const trigger = chooser(), layout = useStore.getState().layout;
+  await act(async () => trigger.click()); expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  expect(document.querySelector('[role="menu"][aria-label="Spaces and browser controls"]')).not.toBeNull();
+  trigger.focus(); await act(async () => { expect(commands.dispatchShortcut({ key: "k", meta: true, alt: true, shift: false })).toBe(true); });
+  expect(trigger.getAttribute("aria-expanded")).toBe("false"); expect(useStore.getState().layout).toBe(layout);
+  expect(document.querySelector('[role="menu"][aria-label="Spaces and browser controls"]')).toBeNull();
+});
+it.each(["toggle-sidebar-section", "toggle-sidebar-spaces"])("%s refuses observed foreign window permanently and detached old event after ABA", async id => {
+  await mount(); const control = id === "toggle-sidebar-section" ? heading("Tabs") : chooser(), event = originalEvent(control);
+  bridge.windowId = "foreign-window"; await expect(commands.executeCommand(id, { nativeInputEvent: event })).rejects.toThrow("original");
+  bridge.windowId = originalWindowId; await expect(commands.executeCommand(id, { nativeInputEvent: event })).rejects.toThrow("original");
+  await act(async () => root.render(<Sidebar key="fresh-window" />));
+  await expect(commands.executeCommand(id, { nativeInputEvent: event })).rejects.toThrow();
+  const fresh = id === "toggle-sidebar-section" ? heading("Tabs") : chooser();
+  await act(async () => { await commands.executeCommand(id, { nativeInputEvent: originalEvent(fresh) }); });
+});
+it("Space chooser refuses original active Space transfer and ambiguous or hidden trigger", async () => {
+  await mount(); const trigger = chooser(), event = originalEvent(trigger);
+  const foreign = document.createElement("button"); host.append(foreign); foreign.focus();
+  await expect(commands.executeCommand("toggle-sidebar-spaces")).rejects.toThrow("focused control"); foreign.remove();
+  const retire = registerScopedControl(trigger, "toggle-sidebar-spaces", "foreign", vi.fn()); trigger.focus();
+  try { await expect(commands.executeCommand("toggle-sidebar-spaces")).rejects.toThrow(); } finally { retire(); }
+  trigger.hidden = true; await expect(commands.executeCommand("toggle-sidebar-spaces", { nativeInputEvent: event })).rejects.toThrow(); trigger.hidden = false;
+  const layout = useStore.getState().layout;
+  await act(async () => useStore.setState({ layout: { ...layout, activeSpaceId: "foreign-space" } }));
+  await expect(commands.executeCommand("toggle-sidebar-spaces", { nativeInputEvent: event })).rejects.toThrow();
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+});
+
+it.each(["toggle-sidebar-section", "toggle-sidebar-spaces"])("%s permanently retires observed Private transition without permitting normal return revival", async id => {
+  await mount(); const control = id === "toggle-sidebar-section" ? heading("Tabs") : chooser(), event = originalEvent(control);
+  bridge.privateMode = true; bridge.windowKind = "private";
+  await expect(commands.executeCommand(id, { nativeInputEvent: event })).rejects.toThrow("original");
+  bridge.privateMode = false; bridge.windowKind = "normal";
+  await expect(commands.executeCommand(id, { nativeInputEvent: event })).rejects.toThrow("original");
+});
+it.each(["toggle-sidebar-section", "toggle-sidebar-spaces"])("%s refuses actual hidden sidebar without removing or dispatching original mounted control", async id => {
+  await mount(); const control = id === "toggle-sidebar-section" ? heading("Tabs") : chooser(), event = originalEvent(control);
+  const sections = useStore.getState().sidebarSections;
+  await act(async () => useStore.getState().setSidebar("hidden"));
+  expect(control.isConnected).toBe(true);
+  await expect(commands.executeCommand(id, { nativeInputEvent: event })).rejects.toThrow();
+  expect(useStore.getState().sidebarSections).toBe(sections); expect(chooser().getAttribute("aria-expanded")).toBe("false");
+});
