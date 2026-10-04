@@ -1,0 +1,243 @@
+{
+  "producer": "root-native0352-complete-source-request",
+  "sourceOnly": true,
+  "canonicalAdopted": false,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "rows": [
+    {
+      "path": "chrome/browser/ui/aux/BUILD.gn",
+      "beforeSha256": "c34884f604d58bac7301b47cc9c1f1721713efb887ef30f87b2228ec3332d4ac",
+      "resultSha256": "8b8e1e212f42fbe3b1fc1652d325cccef2dba3e84121b093a95f833852587f3f"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_person_capture_controller.cc",
+      "beforeSha256": null,
+      "resultSha256": "db9ab77141c1e3e1cd5b962593e0c90d3a259dd9e06194aa7f759494c8d65216"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_person_capture_controller.h",
+      "beforeSha256": null,
+      "resultSha256": "f4f98cf6d3b25b60aacb16fb097c99ccb8b71b39a79ab1a3a36e115081190996"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc",
+      "beforeSha256": null,
+      "resultSha256": "294ac23e1d9293d6998e720e1e4058f9e087980347fcd0507d0285c82d85d6da"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_person_capture_controller_unittest.cc",
+      "beforeSha256": null,
+      "resultSha256": "cff565a47818043a7590b7db64032ec6e132eaecd35b99e141d874c20af18b4b"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.cc",
+      "beforeSha256": "51c0c8d9fa7185d17dfbe9e41c279b09c353d14e0cbad4927c3564414ccf21b8",
+      "resultSha256": "4dc816c7510bbbe12467975c967f183cd7bd33bb0c1a251c1e011cd39ee8ef85"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.h",
+      "beforeSha256": "05001a5f1bcab8080008d462c606245b834e25eb7bd3589db92c7945a2efa8fa",
+      "resultSha256": "c82e04d6e0122691422554849d50b0551fdc85c87f48d8bf9e3dcfb0008bf5d6"
+    },
+    {
+      "path": "chrome/common/aux_person_capture_mask.h",
+      "beforeSha256": null,
+      "resultSha256": "9f8519f42a317e69da695f0956c0ff601c772c3771c53cc3d6766ea49295844a"
+    },
+    {
+      "path": "chrome/common/aux_person_capture_mask.js",
+      "beforeSha256": null,
+      "resultSha256": "644ba621a292564d7a75fee68e4d426d1e5cfb3c3d28f60d9c8ad2a411fa1934"
+    },
+    {
+      "path": "chrome/test/BUILD.gn",
+      "beforeSha256": "59a2f79487727a30fd276f5bd49423d5d2497e7474d82d13449a597975394b11",
+      "resultSha256": "618041a56b7bf6756e1fdbbc39b13ea446081138fb5f23b214bdc27496698c22"
+    },
+    {
+      "path": "components/viz/common/BUILD.gn",
+      "beforeSha256": "34a6ba4907e275688424f356e62474077534e42ed0e0da08443010d09bb393d3",
+      "resultSha256": "ff1b7889144092ae9608aecf9d8a17a9897639b5cb29d1b0097d2dd4b56206a2"
+    },
+    {
+      "path": "components/viz/common/frame_sinks/aux_person_capture_copy_request_unittest.cc",
+      "beforeSha256": null,
+      "resultSha256": "d4d95532efa5cc1fb0f0bf24ab378ca7bd070e1a173c257dd90e06e98273dc22"
+    },
+    {
+      "path": "components/viz/common/frame_sinks/copy_output_request.cc",
+      "beforeSha256": "be675c4c1ed666e3df52ac5ba92eb391386c7f3cf8c9a542c243999ecce4f7c7",
+      "resultSha256": "1daa8b38a506a9af4a774cfa85175b4d45e616b5567d156e6a075b9d67de5f5a"
+    },
+    {
+      "path": "components/viz/common/frame_sinks/copy_output_request.h",
+      "beforeSha256": "bedce308395ca5281b682b386d0ad5a525ca7a2dd7f3a2808e8bebbf345d2a1c",
+      "resultSha256": "d53f92730769892743dbff63171f31f25b86c15b431e6c6e0c2046f8866774c8"
+    },
+    {
+      "path": "components/viz/service/display/surface_aggregator.cc",
+      "beforeSha256": "6752f11d9b76a2df55080a94e6c9ba6c9c0211e4904157795534968c3f35c57c",
+      "resultSha256": "1305cebc5b389003401401e8407ecedda4544c293bd72260306a8414e274563d"
+    },
+    {
+      "path": "components/viz/service/display/surface_aggregator.h",
+      "beforeSha256": "d51d91b4deb99847b16d2dd53063469bc4de3e26e8d95f0d07042af67c081ff9",
+      "resultSha256": "07514ee9fba31193e1e4858bddd34fb8c1443829b8262884da23952554ca2e28"
+    },
+    {
+      "path": "components/viz/service/display/surface_aggregator_unittest.cc",
+      "beforeSha256": "97e97ae27aae1d3dcfe51e1b5d2baedb04692bb74af640258ed9d603851719f8",
+      "resultSha256": "7b49fe9f281659be4397f481bd4fa4ee693ab6c33578f3fce18380b2e8f498cb"
+    },
+    {
+      "path": "content/browser/renderer_host/aux_person_capture_activation_unittest.cc",
+      "beforeSha256": null,
+      "resultSha256": "a7a00ff7b014b759380d327efe6a6365bc2caf27b3dc41d6846fa2e76a60706a"
+    },
+    {
+      "path": "content/browser/renderer_host/delegated_frame_host.cc",
+      "beforeSha256": "ae1b3cee5fdf469be885587fdbe0a8988121b526634e0523471b2be308ac9622",
+      "resultSha256": "66c224213363c26ff511004c4451e989e6bc43797d90c095504080e2b94595e7"
+    },
+    {
+      "path": "content/browser/renderer_host/delegated_frame_host.h",
+      "beforeSha256": "f1fd6b869042d7d99ca1192438281cb64614eb8438a5493c7a741bbe00d4c147",
+      "resultSha256": "96c92237965b4c65fc63f6d5b53d8293aa6da4de37e37222889761eac0d52a1d"
+    },
+    {
+      "path": "content/browser/renderer_host/render_frame_metadata_provider_impl.h",
+      "beforeSha256": "18bb2282917ba3605c0792db5f9ab94546ecb60160536ea58700525adef1e456",
+      "resultSha256": "e60c46d78abc37d989c411c3c13922faab9b97f884027914b4630be37db2937a"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_impl.cc",
+      "beforeSha256": "94a406028d958882cef207047b6262b45041f380775fe3217d63700121367ed5",
+      "resultSha256": "e2699bbc76f53debc21c64fea7fedc24b35fd9dc207c5ddf73711ceab06d4b70"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_impl.h",
+      "beforeSha256": "0c128318e4719aee8be3750b7928f3ec90ed19e408d45af0a6198b8a182c27cd",
+      "resultSha256": "02dbb7e1aa73f299a05d3c5ca3bf4788f5d834347021e50849e5329206eb8ce2"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_view_base.cc",
+      "beforeSha256": "8cd21bf27ba5eb2bd5e2eecfe35b2854b0d3bf8a455e5e3cbb497bc06a1027e7",
+      "resultSha256": "15d28b1d604731a947fb2b2bfa56cde556a727317e2770431351a5fb51c8027b"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_view_base.h",
+      "beforeSha256": "77983cd69ffdbcd3433ede9c12181e845a681b6bcd368773b049a35d5ed8de61",
+      "resultSha256": "0708b5695762e1577307b87d4a6a0cf7a9b81ac4f2fec2cecf897e711e6b9de3"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_view_mac.h",
+      "beforeSha256": "ebebf6e5ddfebd606f13ab8ec1bd3384ef5dd6dc92e4614e642fec0180f93afb",
+      "resultSha256": "760408737ce802a059bdeae5fcaf035fb6e4ba5540f903d5b61442353257dcec"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_view_mac.mm",
+      "beforeSha256": "0d1215af84c2867dbae2d98917a9ea712a67b89c661d652c2144425d4fd42d94",
+      "resultSha256": "5d20e83aa852843bf233847bbbb66b94753598ae984fa4c25f989839b0f8e4b2"
+    },
+    {
+      "path": "content/public/browser/render_widget_host_view.h",
+      "beforeSha256": "dfd7d28f88bb6ec10df222b17f05cba340cfcf415caed443c27c8d83b48a8609",
+      "resultSha256": "89b48b1072e39856c78c744fc9158ce950d4cd66476c5f4a70c842dd65bd42a3"
+    },
+    {
+      "path": "content/test/BUILD.gn",
+      "beforeSha256": "58b605841fd67fa33b750493b11b891b89b686233c6d3ba2a63565cb4afc5ee2",
+      "resultSha256": "4dc75adf228b921e3416b08c4e0610df14dfb3348fe3541cb6ab2e8cf69eef60"
+    },
+    {
+      "path": "services/viz/public/cpp/compositing/copy_output_request_mojom_traits.cc",
+      "beforeSha256": "830386875430d444ec2ba60520341620461668eca54c908db7c4c6a4cb8c563e",
+      "resultSha256": "917e6f2c00ad530d14cb97d2fb4713ec76934a329e3a43a19471a49c58ca8bcf"
+    },
+    {
+      "path": "services/viz/public/cpp/compositing/copy_output_request_mojom_traits.h",
+      "beforeSha256": "06ef029edc1e72a81b451e13786f99aa52f00eec103f6b5d543572012198f650",
+      "resultSha256": "a7ed226fe64e1018e93c693366da77c09e2086260c840bc5d4552d2d0044a4c0"
+    },
+    {
+      "path": "services/viz/public/mojom/compositing/copy_output_request.mojom",
+      "beforeSha256": "1d377a249f4cf9e49507172ccd0026ea5df1d319bed9e7c0215cb738f63a17f8",
+      "resultSha256": "ec2cef4f476307a974b11ad619817cf6bc3d95a818c30db43e7b1f6823faadb7"
+    },
+    {
+      "path": "third_party/blink/public/mojom/widget/platform_widget.mojom",
+      "beforeSha256": "b4cc76bca5f829be1f9219de4a4e046c06f981390e70a583a75c42290c2690c0",
+      "resultSha256": "308d05b694528c437ede799b7c5562a960f615342707863dd0e3c02eb68bc9b1"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/BUILD.gn",
+      "beforeSha256": "f4e9435df4c9dbdc9b3e66c5b09c27c856d213a36d51afff05ab97493b91ded2",
+      "resultSha256": "c5afddb1e5d22f71b9153bab0f263053d956e2f5061c16206ad011e13a28f5d0"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.cc",
+      "beforeSha256": null,
+      "resultSha256": "31235bad378b50d8cf6800eaf33c3fda6c88a0b4396eb786de41e1cb18d158ef"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.h",
+      "beforeSha256": null,
+      "resultSha256": "6f6c57ff77e439855a54f57faac891c15702830fc3979453de58bc0907e5d800"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise_test.cc",
+      "beforeSha256": null,
+      "resultSha256": "a4e76eb1854054e2d6cebb4e7f4761e8cad91a2c4762fb98418cb1b6ea3a98ee"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc",
+      "beforeSha256": "87adcb0e41f3c812fb6a557a13963313d73fc885a2583a211ce1618bf94e6249",
+      "resultSha256": "87463d241d9c372885584934083b719a72ffcdfa6e674ce2d16d55a7e93ddd56"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/widget_compositor.h",
+      "beforeSha256": "d1c368f83cd55f67928909e259820ef7e0502a42ee915b5e0acc91bc9e3ca1f9",
+      "resultSha256": "0e3b4025c2969b3a3ecc5bb0b15f8478eafef9c32eb86a24c761c436dbf2df75"
+    }
+  ],
+  "patchSha256": "3533012540d49da68f2be3a6e4f1a93b18f05d15ab234e107912142a5222b4bf",
+  "frozenSequence": [
+    {
+      "path": "/private/tmp/aux-browser-runtime-design-native-person-capture/docs/lane-requests/design/0352-person-capture/native-review/SOURCE-PINS.json",
+      "sha256": "8e74df0a65f9a5bf9680cc6af388d751370d6b2c7a82bb0b55ec72a83f472cb3",
+      "patchSha256": "8858ca98b867a910114c0db518780c86602c4cbff8e004e0ff4a7e9d10d895b4"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design-native-person-capture/docs/lane-requests/design/0352-person-capture/native-reservation-successor/SOURCE-PINS.json",
+      "sha256": "bf5450e1af4318f24bf53f30d15105ec80a97aadd51f68401b3d6d28b84cd92b",
+      "patchSha256": "fc481286a268c06e71dcf0081c225b9315b98cc55c14d0a03bb5f26198b84f77"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design-native-person-capture/docs/lane-requests/design/0352-person-capture/browser-successor/SOURCE-PINS.json",
+      "sha256": "897d77d4a73cd93802e0cf9b62f1b26d4431c4281be11893e8ed71d4be1801e4",
+      "patchSha256": "57637b8072bdd86dfcc8407818e718fd904c9997faaa167b3d38009f0bc4695a"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design-native-person-capture/docs/lane-requests/design/0352-person-capture/mask-restoration-successor/SOURCE-PINS.json",
+      "sha256": "45d8212113ed987c0c6fdb2b41eca5e1bdcadb30645d7205e5b216147210e74d",
+      "patchSha256": "39a8025e027203e518294ca6352873203669931d66ee995dbdbf67202e3138e2"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design-native-person-capture/docs/lane-requests/design/0352-person-capture/compile-lifetime-successor/SOURCE-PINS.json",
+      "sha256": "d6c2e9cb2c31862565d533ab3ec8a6d99c8755781de8e38f56a51fdd8e027c0b",
+      "patchSha256": "8a3e91e69db7765cc6e33b6026fb50820f1a7bff458381ea8b5508500327657f"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design-native-person-capture/docs/lane-requests/design/0352-person-capture/viz-selected-frame-freeze/SOURCE-PINS.json",
+      "sha256": "1c57c8be74b41d1ca84e2244bf2b435bfe2c436d6db78ec5ca49ec4fc890ee4d",
+      "patchSha256": "704cf018c64c23fc75079eb6327be68c858427cb846301cd1d921c877ec1e6e3"
+    }
+  ],
+  "rootActualFrf": true,
+  "rootFinalSourceReview": {
+    "path": "/tmp/aux-root-capture-viz-selected-source-review-001.json",
+    "sha256": "ca51afcfe8443d2b1c1a14759ee9b6b36064633b2b5b0e7dec824d96c0acd576"
+  },
+  "nativeEgressPrivacyPixelF21GatesRemainRequired": true
+}

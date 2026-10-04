@@ -319,3 +319,4 @@ aux/runtime/0337-original-appearance-channel-retirement.patch
 0349-native-creator-original-fault-diagnostic.patch
 0350-native-original-fault-diagnostics.patch
 0351-pip-isolation-diagnostic-browser-interface.patch
+0352-native-person-capture-masked-viz-copy.patch
