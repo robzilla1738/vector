@@ -2,6 +2,9 @@
   .task-content {
     container: task-content / inline-size;
   }
+  .task-history-definition :is(h3, strong) {
+    overflow-wrap: anywhere;
+  }
   .task-history [role="alert"] > p {
     overflow-wrap: anywhere;
   }

@@ -352,7 +352,7 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .receipt-export input[type="checkbox"] { width: 16px; height: 16px; flex: none; }
 .receipt-export > .hint, .receipt-export > p { flex-basis: 100%; }
 .task-resource { display: flex; flex-direction: column; gap: var(--space-2-5); padding: var(--space-3-5) var(--space-4); border: var(--hairline) solid var(--line); border-radius: var(--r-lg); background: var(--bg-1); }
-.task-resource > strong { font-weight: var(--fw-medium); }
+.task-resource > strong { font-weight: var(--fw-medium); overflow-wrap: anywhere; }
 .task-resource > .hint { overflow-wrap: anywhere; user-select: text; }
 .task-resources .row { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
 .task-resources .row > input { flex: 1; min-width: 160px; }

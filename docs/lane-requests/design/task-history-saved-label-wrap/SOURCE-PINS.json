@@ -1,0 +1,34 @@
+{
+  "base": "eba6ddde1bbfb6c352e553c6250a44c0dbebd7f9",
+  "owned": [
+    {
+      "path": "apps/shell/src/components/Tasks.css",
+      "before": "b1542691fd99f3617b3b6edb4e0d1773861bfe3446dfffe86a7b16d3773bf811",
+      "after": "8c5f8afd48a0e2ab77c0d7fdca2f61ca7e9d45cda69886b1c84a9158d8d7511d"
+    },
+    {
+      "path": "apps/shell/src/components/TaskHistory.saved-label-wrap.test.tsx",
+      "before": null,
+      "after": "5f1a5fc37f0b70bf57a17067631f13e70b2ae1fd1dfd7894d811f263806ca473"
+    }
+  ],
+  "reference": {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/extension/assets_globals-D6PBr-GP.css",
+    "sha256": "2c2b198d715f3894d41c96b88ef9a32a4f61404891baf954d7e4e5a33d976e79",
+    "recipe": ".wrap-anywhere{overflow-wrap:anywhere}"
+  },
+  "unchangedProducers": [
+    {
+      "path": "apps/shell/src/components/TaskHistory.tsx",
+      "sha256": "e52cbd18e21f61fa63b6cba69b19d576197682a0d493c99f3fb54de67f611553"
+    },
+    {
+      "path": "apps/shell/src/styles/workspace.css",
+      "sha256": "882e7e2c7b77c238ac3045817d0e0cf230ac9d2b3347440b33aea3e1dd2e32ad"
+    },
+    {
+      "path": "packages/contracts/src/tasks.ts",
+      "sha256": "892396fa7f014acb19a6d92fb47fb3310197bb789ef6d5ffa0848a60d2cc3861"
+    }
+  ]
+}

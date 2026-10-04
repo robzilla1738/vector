@@ -1,0 +1,12 @@
+{
+  "status": "BOUNDED_GN_FULL18_SOURCE_REVIEW_PASS",
+  "requestSha256": "fa19ed2b8649a6c25d5c43a800e5c748178db7c0985c470501964381e6098bdd",
+  "actualInputPins": 25,
+  "actualRuntimeHelperPins": 98,
+  "originalControllerASTOutsideLiteralValuesEqual": true,
+  "fullInspectedDiffs": true,
+  "originalFlagsVersionActionAndFull18Unchanged": true,
+  "executionAdmission": false,
+  "stage001RefusalRetained": true,
+  "stageRetryPathRequiresNewPins": true
+}

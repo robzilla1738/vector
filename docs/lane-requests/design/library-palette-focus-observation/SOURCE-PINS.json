@@ -1,0 +1,35 @@
+{
+  "owned": [
+    {
+      "path": "apps/shell/src/components/Conversation.palette-focus.test.tsx",
+      "before": null,
+      "after": "7956e706ca81efaa9266f71c030a15136797ab087357a1ae39c026335f846326"
+    }
+  ],
+  "unchangedPrerequisites": [
+    {
+      "path": "apps/shell/src/commands.ts",
+      "sha256": "c98147a93d485663b2694607a09b030d88441bc032bdf5878e12917e6b59d3fd"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "sha256": "31bdc0134d97cbb8e09e5140d6c3e1d9a2aa00fae1fbf9973495af7ea49ee85c"
+    },
+    {
+      "path": "apps/shell/src/components/DeferredSurface.tsx",
+      "sha256": "18cc85ad7a0914b180dc685a9684f728085974d3f338b6843e5357324a8e36c7"
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "sha256": "bf20402b7446ee51e21d5fee17a56ebf8bd1938a6408ee52e7ae34ec09492a3e"
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "sha256": "ae58bc21f918a45e2c43e76c5dafe79f66a0f009b42ed61535847c4356bf9196"
+    },
+    {
+      "path": "apps/shell/src/components/CommandSurface.tsx",
+      "sha256": "6c690e0989b8e39ee16b6f584e7b618fe56a47318df6f8e18782c6136e898d3a"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:78627) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:78628) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:78629) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:78630) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/TaskHistory.saved-label-wrap.test.tsx (1 test) 58ms
+ ✓ |unit| apps/shell/src/components/Conversation.palette-focus.test.tsx (2 tests) 104ms
+ ✓ |unit| apps/shell/src/components/Settings.new-chat-focus.test.tsx (8 tests) 120ms
+ ✓ |unit| apps/shell/src/components/TasksLibrary.new-chat-focus.test.tsx (8 tests) 158ms
+
+ Test Files  4 passed (4)
+      Tests  19 passed (19)
+   Start at  17:11:10
+   Duration  3.05s (transform 1.08s, setup 0ms, collect 9.03s, tests 439ms, environment 1.01s, prepare 168ms)
+

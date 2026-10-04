@@ -1,0 +1,25 @@
+
+> aux-browser@0.1.0 test
+> vitest run --project unit --run apps/shell/src/components/TaskResources.label-wrap.test.tsx apps/shell/src/components/TaskResources.test.tsx apps/shell/src/components/TaskHistory.saved-label-wrap.test.tsx apps/shell/src/components/Conversation.palette-focus.test.tsx
+
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:80690) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:80687) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:80688) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:80689) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/TaskResources.test.tsx (1 test) 27ms
+ ✓ |unit| apps/shell/src/components/TaskResources.label-wrap.test.tsx (1 test) 56ms
+ ✓ |unit| apps/shell/src/components/TaskHistory.saved-label-wrap.test.tsx (1 test) 60ms
+ ✓ |unit| apps/shell/src/components/Conversation.palette-focus.test.tsx (2 tests) 114ms
+
+ Test Files  4 passed (4)
+      Tests  5 passed (5)
+   Start at  17:19:08
+   Duration  4.65s (transform 1.24s, setup 0ms, collect 9.58s, tests 257ms, environment 1.98s, prepare 250ms)
+

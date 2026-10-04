@@ -1,0 +1,12 @@
+{
+  "status": "STAGE_ONLY_ADMISSION_PASS",
+  "launcherSHA256": "4455a9148471c0aebb4984c63e9e48e8c700a96432e4ac1ccf43506301a21c3d",
+  "controllerSHA256": "d6dad41cb5153bf26cf8e6cff51f9e3b1888e16d9b9de52b1cf4c83a1e48d122",
+  "actual14Pins": 14,
+  "exactInspectedOriginalControllerDiff": true,
+  "currentNative733Generated3Runtime92HelperVerified": true,
+  "original524FailureRetained": true,
+  "actualOriginalRows": [],
+  "scope": "stage only; no GN/build/App",
+  "fresh334AuditNoCorrection": true
+}
