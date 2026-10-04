@@ -1,3 +1,9 @@
+## Current isolated source milestone 8a600eb28
+
+Result controls now remain bound to their original loaded content across chat/result transitions; revision failures stay inline, and document disclosure refusal blocks the browser default. Settings clear and extension disclosure targets use the captured layout scale while retaining Aux branding. Combined runtime rebuild, whole behavioral suite, shell types, lint, format and renderer build passed in the isolated root. Exact bundle still exceeds startup/total limits, so product adoption remains pending.
+
+Native332 full18 compilation, compiled identity and matching runtime/helper independent audit passed. Original compiled safety-case enumeration is running; safety assertions, app journeys, performance and visual qualification remain pending. Structured-result controls, supplied-source design polish and bundle reserve proceed in parallel. Source milestone: /private/tmp/aux-root-sidebar-selection-next, commit 8a600eb28a0638f389c92fb3332a973f3eb77f87; evidence docs/source-audits/parallel-integration-034. No qualification or promotion claim.
+
 ## Current continuation — 2026-10-04, Document controls and native332 staging
 
 Document preview close, read retry, original full-text inclusion and details now use remappable scoped commands. Attachment and supporting-content controls remain integrated. Root rebuilt workspace before mounted tests; assembled controls, types, full lint and ratchet formatting pass on the Document/modifier/eight-class source snapshot. The supplied06 source design map and Aux branding requirements remain mandatory.
