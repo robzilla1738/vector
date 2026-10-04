@@ -1,3 +1,4 @@
+import { constructOperationChain } from "../../components/owned-operation-construction";
 import {
   useCallback,
   useEffect,
@@ -11,7 +12,6 @@ import {
 import type { MethodResult } from "@aux/contracts";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { call } from "../../store";
-import { guardCommandCompletion } from "../../command-completion";
 import { PreferenceAction, usePreferenceCommand } from "./preference-command";
 export type LocalBackup = MethodResult<"installation.listBackups">[number];
 class BackupOwner {
@@ -134,14 +134,7 @@ export function BackupSettings({
     onOperation(token, true);
     setPending(owner);
     setMessage(null);
-    let native: Promise<T>;
-    try {
-      native = producer();
-    } catch (reason) {
-      native = Promise.reject(reason);
-    }
-    const completion = native
-      .then(async (value) => {
+    return constructOperationChain(producer, async (value) => {
         if (current()) publish(value);
         if (refresh && current())
           try {
@@ -154,17 +147,14 @@ export function BackupSettings({
               });
           }
         return value;
-      })
-      .catch((reason) => {
+      }, (reason) => {
         if (current()) setMessage({ owner, text: reason instanceof Error ? reason.message : String(reason) });
         throw reason;
-      })
-      .finally(() => {
+      }, () => {
         owner.finish();
         onOperation(token, false);
         if (current()) setPending(null);
-      });
-    return guardCommandCompletion(completion, current);
+      }, current);
   }
   const [retentionRef, retentionChange] = usePreferenceCommand<HTMLSelectElement>(
     "set-runtime-backup-retention",

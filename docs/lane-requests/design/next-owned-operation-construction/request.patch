@@ -1,0 +1,559 @@
+diff --git a/apps/shell/src/components/BrowsingMemory.tsx b/apps/shell/src/components/BrowsingMemory.tsx
+index 0d273e567..d32f46cfe 100644
+--- a/apps/shell/src/components/BrowsingMemory.tsx
++++ b/apps/shell/src/components/BrowsingMemory.tsx
+@@ -1,10 +1,10 @@
++import { constructAwaitedOperation } from "./owned-operation-construction";
+ import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
+ import { shellIconGlobe } from "./icons";
+ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+ import type { BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory } from "@aux/contracts";
+ import { memorySourceExcluded } from "@aux/contracts/memory-context";
+ import { bridge } from "../bridge";
+-import { guardCommandCompletion } from "../command-completion";
+ import { call, errToast, useStore } from "../store";
+ import { useBrowsingMemoryControl } from "./BrowsingMemoryControls";
+ import { MemoryRecoveryNotice } from "./MemoryRecoveryNotice";
+@@ -85,19 +85,13 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
+     if (pending.current===owner) throw new Error("Browsing memory is still updating.");
+     pending.current = owner; setBusyOwner(owner); setError("");
+     const version=++sequence.current;
+-    const completion=(async()=>{
+-    try {
+-      const prior = saved;
+-      const value = await call(method, { workspaceId: memory.workspaceId, ...params });
++    const prior = saved;
++    return constructAwaitedOperation(() => call(method, { workspaceId: memory.workspaceId, ...params }), value => {
+       if(value.workspaceId!==owner.workspaceId)throw new Error("The browsing memory update belongs to a different Space.");
+       if(!owner.active || owner!==lifetime.current || owner.workspaceId!==memory.workspaceId || owner.revision!==memory.revision || bridge.privateMode || sequence.current!==version || !workspaceCurrent())return value;
+       if (prior?.pages.length && value.pages.length < prior.pages.length) setNeedsFreshBackup(true);
+       setLoaded({owner,value}); setClearSnapshot(null);return value;
+-    }
+-    catch (reason) { if(owner.active && !bridge.privateMode && workspaceCurrent() && sequence.current===version)setError(reason instanceof Error ? reason.message : String(reason)); throw reason; }
+-    finally { if(pending.current===owner){pending.current=null;setBusyOwner(current=>current===owner?null:current);} }
+-    })();
+-    return guardCommandCompletion(completion,()=>owner.active && owner===lifetime.current && !bridge.privateMode && workspaceCurrent());
++    }, reason => { if(owner.active && !bridge.privateMode && workspaceCurrent() && sequence.current===version)setError(reason instanceof Error ? reason.message : String(reason)); throw reason; }, () => { if(pending.current===owner){pending.current=null;setBusyOwner(current=>current===owner?null:current);} },()=>owner.active && owner===lifetime.current && !bridge.privateMode && workspaceCurrent());
+   }
+   const selected = saved?.pages.find(page => page.memoryId === selectedId);
+   const openSource = (url: string) => { try { const parsed = new URL(url); if (["http:", "https:"].includes(parsed.protocol)) void useStore.getState().newTab(parsed.href).catch(errToast); } catch { /* Invalid stored addresses cannot navigate. */ } };
+diff --git a/apps/shell/src/components/ContentMemory.tsx b/apps/shell/src/components/ContentMemory.tsx
+index 01b041985..703c2353a 100644
+--- a/apps/shell/src/components/ContentMemory.tsx
++++ b/apps/shell/src/components/ContentMemory.tsx
+@@ -1,3 +1,4 @@
++import { constructAwaitedOperation } from "./owned-operation-construction";
+ import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
+ import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
+ import { shellIconGlobe } from "./icons";
+@@ -5,7 +6,7 @@ import { useEffect, useLayoutEffect, useMemo, useId, useRef, useState, useCallba
+ import type { ContentMemoryDocument, ContentMemoryMatch, ContentMemoryPolicy, WorkspaceMemory, ShellCommandId } from "@aux/contracts";
+ import { bridge } from "../bridge";
+ import { call, useStore } from "../store";
+-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
++import { reportCommandCompletionFailure } from "../command-completion";
+ import { executeCommand } from "../commands";
+ import { registerScopedControl } from "../scoped-control-commands";
+ import { MemoryRecoveryNotice } from "./MemoryRecoveryNotice";
+@@ -179,56 +180,40 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
+     const request = ++readSequence.current;
+     detailOpener.current = window.document.activeElement as HTMLElement;
+     setDocument(null);
+-    return guardCommandCompletion((async () => {
+-    try {
+-      const saved = await call("workspaces.contentMemory.get", { workspaceId: memory.workspaceId, memoryId: item.memoryId });
++    return constructAwaitedOperation(() => call("workspaces.contentMemory.get", { workspaceId: memory.workspaceId, memoryId: item.memoryId }), saved => {
+       if (!current() || !queryScope.active || request !== readSequence.current) return saved;
+       if (!saved || !sameRecord(item, saved)) throw new Error("This saved article is no longer available in its original version.");
+       setDocument(saved); return saved;
+-    } catch (reason) { if (current() && queryScope.active && request === readSequence.current) setDocument(null); throw reason; }
+-    finally { finish(operation); }
+-    })(), () => current() && queryScope.active && request === readSequence.current);
++    }, reason => { if (current() && queryScope.active && request === readSequence.current) setDocument(null); throw reason; }, () => { finish(operation); }, () => current() && queryScope.active && request === readSequence.current);
+   }
+   function ask() {
+     assertCurrent();
+     if (!document || document.workspaceId !== memory.workspaceId || !questionScope.active || !question.trim() || !policy?.enabled || memory.enabled === false) throw new Error("Choose the current saved article and question.");
+     const operation = begin("ask"); if (!operation) return;
+-    return guardCommandCompletion((async () => {
+-    try {
+-      const run = await useStore.getState().startRun(question, { ownsDraft: true, reveal: false, scope: "new", chatId: crypto.randomUUID(), presentation: "conversation",
+-        memorySource: { workspaceId: memory.workspaceId, memoryId: document.memoryId } });
++    return constructAwaitedOperation(() => useStore.getState().startRun(question, { ownsDraft: true, reveal: false, scope: "new", chatId: crypto.randomUUID(), presentation: "conversation",
++        memorySource: { workspaceId: memory.workspaceId, memoryId: document.memoryId } }), run => {
+       if (run && current() && questionScope.active) { setQuestion(""); useStore.getState().openConversation(run.runId); }
+       return run;
+-    }
+-    finally { finish(operation); }
+-    })(), () => current() && questionScope.active);
++    }, undefined, () => { finish(operation); }, () => current() && questionScope.active);
+   }
+   function change(next: ContentMemoryPolicy) {
+     const operation = begin("policy"); if (!operation) return;
+     loadScope.retire();
+-    return guardCommandCompletion((async () => {
+-    try {
+-      const saved = await call("workspaces.contentMemory.setPolicy", { workspaceId: memory.workspaceId, policy: next });
++    return constructAwaitedOperation(() => call("workspaces.contentMemory.setPolicy", { workspaceId: memory.workspaceId, policy: next }), saved => {
+       if (!current()) return saved;
+       if (policy && (next.retentionDays < policy.retentionDays
+         || policy.allowedOrigins.some(origin => !next.allowedOrigins.includes(origin)))) { setNeedsFreshBackup(true); setPossiblyRemoved(true); }
+       setPolicy(saved); setSearchState(null); return saved;
+-    }
+-    finally { finish(operation); }
+-    })(), current);
++    }, undefined, () => { finish(operation); }, current);
+   }
+   function forget(item?: ContentMemoryMatch) {
+     if (item) checkItem(item); else { assertCurrent(); if (!confirmClear) throw new Error("Review forgetting the saved articles first."); }
+     const operation = begin("forget"); if (!operation) return;
+-    return guardCommandCompletion((async () => {
+-    try {
+-      const result = await call("workspaces.contentMemory.forget", { workspaceId: memory.workspaceId, memoryId: item?.memoryId });
++    return constructAwaitedOperation(() => call("workspaces.contentMemory.forget", { workspaceId: memory.workspaceId, memoryId: item?.memoryId }), result => {
+       if (!current()) return result;
+       if (result.forgotten) { setNeedsFreshBackup(true); setPossiblyRemoved(false); }
+       setSearchState({ scope: queryScope, items: visibleMatches.filter(row => !!item && row.memoryId !== item.memoryId), complete: true }); setDocument(null); setConfirmClear(false); return result;
+-    }
+-    finally { finish(operation); }
+-    })(), current);
++    }, undefined, () => { finish(operation); }, current);
+   }
+   const [sitesOpen, setSitesOpen] = useState(false);
+   return <section className="browsing-memory" aria-label="Page-content recall">
+diff --git a/apps/shell/src/components/MemoryPasteImport.tsx b/apps/shell/src/components/MemoryPasteImport.tsx
+index f73cca748..41cb0d311 100644
+--- a/apps/shell/src/components/MemoryPasteImport.tsx
++++ b/apps/shell/src/components/MemoryPasteImport.tsx
+@@ -1,3 +1,4 @@
++import { constructAwaitedOperation } from "./owned-operation-construction";
+ import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
+ import { useEffect, useLayoutEffect, useMemo, useCallback, useState, type ReactNode } from "react";
+ import { MEMORY_PASTE_MAX_BYTES, type MemoryPastePreview, type MemoryPasteStatus, type ShellCommandId,  } from "@aux/contracts";
+@@ -5,7 +6,6 @@ import { bridge } from "../bridge";
+ import { call, useStore } from "../store";
+ 
+ 
+-import { guardCommandCompletion } from "../command-completion";
+ 
+ class PasteOwner {
+   readonly workspaceId: string | null;
+@@ -200,19 +200,12 @@ export function MemoryPasteImport({
+     setPendingState({ owner, operation: original });
+     setError("");
+     const valid = () => current() && draft.active;
+-    return guardCommandCompletion(
+-      (async () => {
+-        try {
+-          return await action(destinationId, valid);
+-        } finally {
++    return constructAwaitedOperation(() => action(destinationId, valid), value => value, undefined, () => {
+           if (owner.finish(original) && current())
+             setPendingState((currentPending) =>
+               currentPending?.operation === original ? null : currentPending,
+             );
+-        }
+-      })(),
+-      valid,
+-    );
++        }, valid);
+   }
+   const props = {
+     scopeId: destinationId || "destination",
+diff --git a/apps/shell/src/components/owned-operation-construction.test.ts b/apps/shell/src/components/owned-operation-construction.test.ts
+new file mode 100644
+index 000000000..859fc49e1
+--- /dev/null
++++ b/apps/shell/src/components/owned-operation-construction.test.ts
+@@ -0,0 +1,157 @@
++import { describe, expect, it } from "vitest";
++import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
++import { constructAwaitedOperation, constructOperationChain } from "./owned-operation-construction";
++
++type Handlers = {
++  producer(): Promise<object>;
++  completed(value: object): object;
++  rejected(reason: unknown): never;
++  finished(): void;
++  current(): boolean;
++};
++function originalAwaited(h: Handlers) {
++  return guardCommandCompletion(
++    (async () => {
++      try {
++        const value = await h.producer();
++        return h.completed(value);
++      } catch (reason) {
++        h.rejected(reason);
++        throw reason;
++      } finally {
++        h.finished();
++      }
++    })(),
++    h.current,
++  );
++}
++function originalChain(h: Handlers) {
++  let native: Promise<object>;
++  try {
++    native = h.producer();
++  } catch (reason) {
++    native = Promise.reject(reason);
++  }
++  return guardCommandCompletion(native.then(h.completed).catch(h.rejected).finally(h.finished), h.current);
++}
++async function observe(run: (handlers: Handlers) => Promise<object>, outcome: string) {
++  const result = {},
++    reason = new Error("original transport"),
++    ledger: string[] = [];
++  let current = true;
++  const handlers: Handlers = {
++    producer() {
++      ledger.push("producer");
++      if (outcome === "synchronous") throw reason;
++      return outcome === "rejected" || outcome === "retired-rejected"
++        ? Promise.reject(reason)
++        : Promise.resolve(result);
++    },
++    completed(value) {
++      ledger.push("completed");
++      if (outcome === "publication") throw reason;
++      return value;
++    },
++    rejected(error) {
++      ledger.push("rejected");
++      expect(error).toBe(reason);
++      throw error;
++    },
++    finished() {
++      ledger.push("finished");
++      if (outcome === "cleanup") throw reason;
++    },
++    current: () => current,
++  };
++  const completion = run(handlers);
++  ledger.push("returned");
++  let observed: unknown;
++  void completion.then(
++    (value) => {
++      observed = value;
++      ledger.push("fulfilled");
++    },
++    (error) => {
++      observed = error;
++      ledger.push("failed");
++      reportCommandCompletionFailure(completion, error, () => ledger.push("reported"));
++    },
++  );
++  if (outcome === "retired" || outcome === "retired-rejected") current = false;
++  for (let tick = 0; tick < 12; tick++) {
++    await Promise.resolve();
++    ledger.push(`tick${tick}`);
++  }
++  return {
++    ledger,
++    correctIdentity: observed === (outcome === "success" || outcome === "retired" ? result : reason),
++  };
++}
++
++describe("original operation construction", () => {
++  it("retains immediate await publication/cleanup/microtask and original ACK/rejection identity", async () => {
++    for (const outcome of [
++      "success",
++      "rejected",
++      "synchronous",
++      "publication",
++      "cleanup",
++      "retired",
++      "retired-rejected",
++    ]) {
++      const original = await observe(originalAwaited, outcome);
++      const actual = await observe(
++        (h) => constructAwaitedOperation(h.producer, h.completed, h.rejected, h.finished, h.current),
++        outcome,
++      );
++      expect(actual).toEqual(original);
++      expect(actual.correctIdentity).toBe(true);
++    }
++  });
++  it("retains chained callbacks, cleanup and guarded notification timing", async () => {
++    for (const outcome of [
++      "success",
++      "rejected",
++      "synchronous",
++      "publication",
++      "cleanup",
++      "retired",
++      "retired-rejected",
++    ]) {
++      const original = await observe(originalChain, outcome);
++      const actual = await observe(
++        (h) => constructOperationChain(h.producer, h.completed, h.rejected, h.finished, h.current),
++        outcome,
++      );
++      expect(actual).toEqual(original);
++      expect(actual.correctIdentity).toBe(true);
++    }
++  });
++  it("keeps the original asynchronous chain continuation before catch/finally", async () => {
++    const ledger: string[] = [];
++    let release!: () => void;
++    const held = new Promise<void>((resolve) => {
++      release = resolve;
++    });
++    const ack = {};
++    const completion = constructOperationChain(
++      () => Promise.resolve(ack),
++      async (value) => {
++        ledger.push("refresh");
++        await held;
++        ledger.push("refreshed");
++        return value;
++      },
++      (reason) => {
++        throw reason;
++      },
++      () => ledger.push("finished"),
++      () => true,
++    );
++    await Promise.resolve();
++    expect(ledger).toEqual(["refresh"]);
++    release();
++    await expect(completion).resolves.toBe(ack);
++    expect(ledger).toEqual(["refresh", "refreshed", "finished"]);
++  });
++});
+diff --git a/apps/shell/src/components/owned-operation-construction.ts b/apps/shell/src/components/owned-operation-construction.ts
+new file mode 100644
+index 000000000..921610b01
+--- /dev/null
++++ b/apps/shell/src/components/owned-operation-construction.ts
+@@ -0,0 +1,39 @@
++import { guardCommandCompletion } from "../command-completion";
++
++/** Preserve the existing then/catch/finally chain, including synchronous producer refusal. */
++export function constructOperationChain<T>(
++  producer: () => Promise<T>,
++  completed: (value: T) => T | Promise<T>,
++  rejected: (reason: unknown) => never,
++  finished: () => void,
++  current: () => boolean,
++): Promise<T> {
++  let native: Promise<T>;
++  try {
++    native = producer();
++  } catch (reason) {
++    native = Promise.reject(reason);
++  }
++  return guardCommandCompletion(native.then(completed).catch(rejected).finally(finished), current);
++}
++
++/** Preserve an immediate async operation's sole await and cleanup before its completion. */
++export function constructAwaitedOperation<T, R>(
++  producer: () => Promise<T>,
++  completed: (value: T) => R,
++  rejected: ((reason: unknown) => never) | undefined,
++  finished: () => void,
++  current: () => boolean,
++): Promise<R> {
++  const completion = (async () => {
++    try {
++      return completed(await producer());
++    } catch (reason) {
++      if (rejected) rejected(reason);
++      throw reason;
++    } finally {
++      finished();
++    }
++  })();
++  return guardCommandCompletion(completion, current);
++}
+diff --git a/apps/shell/src/settings/sections/BackupSettings.tsx b/apps/shell/src/settings/sections/BackupSettings.tsx
+index d8191181a..155310669 100644
+--- a/apps/shell/src/settings/sections/BackupSettings.tsx
++++ b/apps/shell/src/settings/sections/BackupSettings.tsx
+@@ -1,3 +1,4 @@
++import { constructOperationChain } from "../../components/owned-operation-construction";
+ import {
+   useCallback,
+   useEffect,
+@@ -11,7 +12,6 @@ import {
+ import type { MethodResult } from "@aux/contracts";
+ import { bridge, inMock, inNativeHost } from "../../bridge";
+ import { call } from "../../store";
+-import { guardCommandCompletion } from "../../command-completion";
+ import { PreferenceAction, usePreferenceCommand } from "./preference-command";
+ export type LocalBackup = MethodResult<"installation.listBackups">[number];
+ class BackupOwner {
+@@ -134,14 +134,7 @@ export function BackupSettings({
+     onOperation(token, true);
+     setPending(owner);
+     setMessage(null);
+-    let native: Promise<T>;
+-    try {
+-      native = producer();
+-    } catch (reason) {
+-      native = Promise.reject(reason);
+-    }
+-    const completion = native
+-      .then(async (value) => {
++    return constructOperationChain(producer, async (value) => {
+         if (current()) publish(value);
+         if (refresh && current())
+           try {
+@@ -154,17 +147,14 @@ export function BackupSettings({
+               });
+           }
+         return value;
+-      })
+-      .catch((reason) => {
++      }, (reason) => {
+         if (current()) setMessage({ owner, text: reason instanceof Error ? reason.message : String(reason) });
+         throw reason;
+-      })
+-      .finally(() => {
++      }, () => {
+         owner.finish();
+         onOperation(token, false);
+         if (current()) setPending(null);
+-      });
+-    return guardCommandCompletion(completion, current);
++      }, current);
+   }
+   const [retentionRef, retentionChange] = usePreferenceCommand<HTMLSelectElement>(
+     "set-runtime-backup-retention",
+diff --git a/apps/shell/src/settings/sections/DiagnosticsStorage.tsx b/apps/shell/src/settings/sections/DiagnosticsStorage.tsx
+index 43c371aec..602f36656 100644
+--- a/apps/shell/src/settings/sections/DiagnosticsStorage.tsx
++++ b/apps/shell/src/settings/sections/DiagnosticsStorage.tsx
+@@ -1,3 +1,4 @@
++import { constructOperationChain } from "../../components/owned-operation-construction";
+ import {
+   useCallback,
+   useEffect,
+@@ -17,7 +18,6 @@ import {
+   type BrowserHealthSummary,
+ } from "../../bridge";
+ import { errToast } from "../../store";
+-import { guardCommandCompletion } from "../../command-completion";
+ import { SettingsField as IndexedField } from "../primitives";
+ import { PreferenceAction, usePreferenceCommand } from "./preference-command";
+ type Action = "reveal" | "clear" | "report";
+@@ -146,27 +146,17 @@ export function DiagnosticsStorage({
+     if (!owner.begin(action)) return Promise.reject(new Error("Choose the current diagnostics control."));
+     setPending({ owner, actions: owner.actions() });
+     setMessage(null);
+-    let native: Promise<T>;
+-    try {
+-      native = producer();
+-    } catch (reason) {
+-      native = Promise.reject(reason);
+-    }
+-    const completion = native
+-      .then((value) => {
++    return constructOperationChain(producer, (value) => {
+         if (current()) publish(value);
+         return value;
+-      })
+-      .catch((reason) => {
++      }, (reason) => {
+         if (current())
+           setMessage({ owner, action, text: reason instanceof Error ? reason.message : String(reason) });
+         throw reason;
+-      })
+-      .finally(() => {
++      }, () => {
+         owner.finish(action);
+         if (current()) setPending({ owner, actions: owner.actions() });
+-      });
+-    return guardCommandCompletion(completion, current);
++      }, current);
+   }
+   const [summaryRef, toggle] = usePreferenceCommand<HTMLElement>(
+     "toggle-diagnostics-storage",
+diff --git a/apps/shell/src/settings/sections/RecoveryPackage.tsx b/apps/shell/src/settings/sections/RecoveryPackage.tsx
+index f85ee0a6e..e94729a53 100644
+--- a/apps/shell/src/settings/sections/RecoveryPackage.tsx
++++ b/apps/shell/src/settings/sections/RecoveryPackage.tsx
+@@ -1,7 +1,7 @@
++import { constructOperationChain } from "../../components/owned-operation-construction";
+ import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+ import { bridge, inNativeHost } from "../../bridge";
+ import { call } from "../../store";
+-import { guardCommandCompletion } from "../../command-completion";
+ import { PreferenceAction } from "./preference-command";
+ 
+ type Review = Awaited<ReturnType<typeof call<"installation.inspectRecovery">>>;
+@@ -102,26 +102,16 @@ export function RecoveryPackage({
+       return Promise.reject(new Error("Choose the current protected recovery control."));
+     setOperation(owner);
+     setNotice(null);
+-    let work: Promise<T>;
+-    try {
+-      work = producer();
+-    } catch (reason) {
+-      work = Promise.reject(reason);
+-    }
+-    const completion = work
+-      .then((result) => {
++    return constructOperationChain(producer, (result) => {
+         if (current()) publish(result);
+         return result;
+-      })
+-      .catch((reason) => {
++      }, (reason) => {
+         if (current()) setNotice({ owner, text: reason instanceof Error ? reason.message : String(reason) });
+         throw reason;
+-      })
+-      .finally(() => {
++      }, () => {
+         owner.finish();
+         setOperation((value) => (value === owner ? null : value));
+-      });
+-    return guardCommandCompletion(completion, current);
++      }, current);
+   }
+   function create() {
+     return perform(
+diff --git a/apps/shell/src/settings/sections/RestoreBackupControls.tsx b/apps/shell/src/settings/sections/RestoreBackupControls.tsx
+index b9b1b22a9..39fc7bed0 100644
+--- a/apps/shell/src/settings/sections/RestoreBackupControls.tsx
++++ b/apps/shell/src/settings/sections/RestoreBackupControls.tsx
+@@ -1,3 +1,4 @@
++import { constructOperationChain } from "../../components/owned-operation-construction";
+ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
+ import type { MethodResult } from "@aux/contracts";
+ import { bridge, inMock, inNativeHost } from "../../bridge";
+@@ -117,28 +118,18 @@ export function RestoreBackupControls({
+     onOperation(token, true);
+     setPending(owner);
+     setMessage(null);
+-    let native: Promise<T>;
+-    try {
+-      native = producer();
+-    } catch (reason) {
+-      native = Promise.reject(reason);
+-    }
+-    const completion = native
+-      .then((result) => {
++    return constructOperationChain(producer, (result) => {
+         if (deliveryCurrent()) publish(result);
+         return result;
+-      })
+-      .catch((reason) => {
++      }, (reason) => {
+         if (deliveryCurrent())
+           setMessage({ owner, text: reason instanceof Error ? reason.message : String(reason) });
+         throw reason;
+-      })
+-      .finally(() => {
++      }, () => {
+         owner.finish();
+         onOperation(token, false);
+         if (current()) setPending(null);
+-      });
+-    return guardCommandCompletion(completion, deliveryCurrent);
++      }, deliveryCurrent);
+   }
+   const staged = () => {
+     if (current())

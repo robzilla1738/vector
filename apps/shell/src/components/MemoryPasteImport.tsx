@@ -1,3 +1,4 @@
+import { constructAwaitedOperation } from "./owned-operation-construction";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
 import { useEffect, useLayoutEffect, useMemo, useCallback, useState, type ReactNode } from "react";
 import { MEMORY_PASTE_MAX_BYTES, type MemoryPastePreview, type MemoryPasteStatus, type ShellCommandId,  } from "@aux/contracts";
@@ -5,7 +6,6 @@ import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 
 
-import { guardCommandCompletion } from "../command-completion";
 
 class PasteOwner {
   readonly workspaceId: string | null;
@@ -200,19 +200,12 @@ export function MemoryPasteImport({
     setPendingState({ owner, operation: original });
     setError("");
     const valid = () => current() && draft.active;
-    return guardCommandCompletion(
-      (async () => {
-        try {
-          return await action(destinationId, valid);
-        } finally {
+    return constructAwaitedOperation(() => action(destinationId, valid), value => value, undefined, () => {
           if (owner.finish(original) && current())
             setPendingState((currentPending) =>
               currentPending?.operation === original ? null : currentPending,
             );
-        }
-      })(),
-      valid,
-    );
+        }, valid);
   }
   const props = {
     scopeId: destinationId || "destination",

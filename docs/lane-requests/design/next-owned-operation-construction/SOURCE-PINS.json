@@ -1,0 +1,56 @@
+{
+  "baseSource": "b92253432d431009eac0fb1d3eceb67ae1122b5d",
+  "negativeDiagnostic": false,
+  "files": [
+    {
+      "path": "apps/shell/src/components/ContentMemory.tsx",
+      "before": "af485edbb29fa0d0e2891df20ec1cae529848726957c8d5ad64e396cf411b781",
+      "after": "12019086d5afd877e90f480cea27e379f2928c82417dd17fb6729f14140f5cf9"
+    },
+    {
+      "path": "apps/shell/src/components/BrowsingMemory.tsx",
+      "before": "d22cf11f8dd88ba232933adf77d54639d48e736ca55548611d8c149c8e555b06",
+      "after": "c0a66786863b84516fe48e54b2b53d668d933ca1c8984905a38f5e18853fa8ce"
+    },
+    {
+      "path": "apps/shell/src/components/MemoryPasteImport.tsx",
+      "before": "92f9b10c0e3a96ecfb28c87e316e03b7541f68fd9ab8cfe65073491ba34cfc48",
+      "after": "20fa7800c82b43978f0f54859b4c4d5a12640fafa3f21dc6b37d1a1e32dbd934"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackupSettings.tsx",
+      "before": "7307763d83863f9150d9e9936620498ef4f846343a545a4850090f98ad82326e",
+      "after": "093d1f72160284785373a4a45bb892f442de5a66f9aebd6bf0ae09961d5dab01"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DiagnosticsStorage.tsx",
+      "before": "61b07c5fefe2b49cfca51581cddddf95d318a4642bab77593a72e79a7a083625",
+      "after": "c30370a9c41f1888789a6b97d059253e8baec710a9a3386c008201c1d291b1b5"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RestoreBackupControls.tsx",
+      "before": "5470a0c4ee2c31860e115b3d3da6073a14c6354b979392c5e2dcd63007727b56",
+      "after": "77ad587ab39ce3c8837921db1982f463377681196238b30ff1cf8d38b9303eae"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RecoveryPackage.tsx",
+      "before": "8d9a7e156f4618c894e3914ce8faf7e3585ce527acbab666585a3adb9daeb78a",
+      "after": "13affb7788f52afaa09ea17e90b4da388ea3fce8a9357d76cd42c4d13ec704a3"
+    },
+    {
+      "path": "apps/shell/src/components/owned-operation-construction.ts",
+      "before": null,
+      "after": "1168380a63039281ee541d32278a121849837d79b4c68ade65f10906d2bd774b"
+    },
+    {
+      "path": "apps/shell/src/components/owned-operation-construction.test.ts",
+      "before": null,
+      "after": "170409cdd9e7bac1614c1bc065659543fcda56633b06c7811af69ff1bf304f18"
+    }
+  ],
+  "patchSha256": "ac393f00b969ca8fc053f8ddfb2cf1ec2fa9bf6c620cb8ccee00684672be70cd",
+  "replay": "forward/reverse/forward exact",
+  "excludedPagePrerequisite": "19067e524e9d3fbe4ba05141e6817d53bdb37f54aa2f61ccfbea3d11994f6057",
+  "rootContext": "Memory core d32a66278; root discarded registry grouping in aad8cd02d",
+  "rendererMeasurement": "not run; pending coherent complementary root group"
+}

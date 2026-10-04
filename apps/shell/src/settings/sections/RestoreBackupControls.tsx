@@ -1,3 +1,4 @@
+import { constructOperationChain } from "../../components/owned-operation-construction";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import type { MethodResult } from "@aux/contracts";
 import { bridge, inMock, inNativeHost } from "../../bridge";
@@ -117,28 +118,18 @@ export function RestoreBackupControls({
     onOperation(token, true);
     setPending(owner);
     setMessage(null);
-    let native: Promise<T>;
-    try {
-      native = producer();
-    } catch (reason) {
-      native = Promise.reject(reason);
-    }
-    const completion = native
-      .then((result) => {
+    return constructOperationChain(producer, (result) => {
         if (deliveryCurrent()) publish(result);
         return result;
-      })
-      .catch((reason) => {
+      }, (reason) => {
         if (deliveryCurrent())
           setMessage({ owner, text: reason instanceof Error ? reason.message : String(reason) });
         throw reason;
-      })
-      .finally(() => {
+      }, () => {
         owner.finish();
         onOperation(token, false);
         if (current()) setPending(null);
-      });
-    return guardCommandCompletion(completion, deliveryCurrent);
+      }, deliveryCurrent);
   }
   const staged = () => {
     if (current())

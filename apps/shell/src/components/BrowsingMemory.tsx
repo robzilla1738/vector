@@ -1,10 +1,10 @@
+import { constructAwaitedOperation } from "./owned-operation-construction";
 import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
 import { shellIconGlobe } from "./icons";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory } from "@aux/contracts";
 import { memorySourceExcluded } from "@aux/contracts/memory-context";
 import { bridge } from "../bridge";
-import { guardCommandCompletion } from "../command-completion";
 import { call, errToast, useStore } from "../store";
 import { useBrowsingMemoryControl } from "./BrowsingMemoryControls";
 import { MemoryRecoveryNotice } from "./MemoryRecoveryNotice";
@@ -85,19 +85,13 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
     if (pending.current===owner) throw new Error("Browsing memory is still updating.");
     pending.current = owner; setBusyOwner(owner); setError("");
     const version=++sequence.current;
-    const completion=(async()=>{
-    try {
-      const prior = saved;
-      const value = await call(method, { workspaceId: memory.workspaceId, ...params });
+    const prior = saved;
+    return constructAwaitedOperation(() => call(method, { workspaceId: memory.workspaceId, ...params }), value => {
       if(value.workspaceId!==owner.workspaceId)throw new Error("The browsing memory update belongs to a different Space.");
       if(!owner.active || owner!==lifetime.current || owner.workspaceId!==memory.workspaceId || owner.revision!==memory.revision || bridge.privateMode || sequence.current!==version || !workspaceCurrent())return value;
       if (prior?.pages.length && value.pages.length < prior.pages.length) setNeedsFreshBackup(true);
       setLoaded({owner,value}); setClearSnapshot(null);return value;
-    }
-    catch (reason) { if(owner.active && !bridge.privateMode && workspaceCurrent() && sequence.current===version)setError(reason instanceof Error ? reason.message : String(reason)); throw reason; }
-    finally { if(pending.current===owner){pending.current=null;setBusyOwner(current=>current===owner?null:current);} }
-    })();
-    return guardCommandCompletion(completion,()=>owner.active && owner===lifetime.current && !bridge.privateMode && workspaceCurrent());
+    }, reason => { if(owner.active && !bridge.privateMode && workspaceCurrent() && sequence.current===version)setError(reason instanceof Error ? reason.message : String(reason)); throw reason; }, () => { if(pending.current===owner){pending.current=null;setBusyOwner(current=>current===owner?null:current);} },()=>owner.active && owner===lifetime.current && !bridge.privateMode && workspaceCurrent());
   }
   const selected = saved?.pages.find(page => page.memoryId === selectedId);
   const openSource = (url: string) => { try { const parsed = new URL(url); if (["http:", "https:"].includes(parsed.protocol)) void useStore.getState().newTab(parsed.href).catch(errToast); } catch { /* Invalid stored addresses cannot navigate. */ } };

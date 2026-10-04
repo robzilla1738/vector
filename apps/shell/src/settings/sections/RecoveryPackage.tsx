@@ -1,7 +1,7 @@
+import { constructOperationChain } from "../../components/owned-operation-construction";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { bridge, inNativeHost } from "../../bridge";
 import { call } from "../../store";
-import { guardCommandCompletion } from "../../command-completion";
 import { PreferenceAction } from "./preference-command";
 
 type Review = Awaited<ReturnType<typeof call<"installation.inspectRecovery">>>;
@@ -102,26 +102,16 @@ export function RecoveryPackage({
       return Promise.reject(new Error("Choose the current protected recovery control."));
     setOperation(owner);
     setNotice(null);
-    let work: Promise<T>;
-    try {
-      work = producer();
-    } catch (reason) {
-      work = Promise.reject(reason);
-    }
-    const completion = work
-      .then((result) => {
+    return constructOperationChain(producer, (result) => {
         if (current()) publish(result);
         return result;
-      })
-      .catch((reason) => {
+      }, (reason) => {
         if (current()) setNotice({ owner, text: reason instanceof Error ? reason.message : String(reason) });
         throw reason;
-      })
-      .finally(() => {
+      }, () => {
         owner.finish();
         setOperation((value) => (value === owner ? null : value));
-      });
-    return guardCommandCompletion(completion, current);
+      }, current);
   }
   function create() {
     return perform(

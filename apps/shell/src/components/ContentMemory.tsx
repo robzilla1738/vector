@@ -1,3 +1,4 @@
+import { constructAwaitedOperation } from "./owned-operation-construction";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
 import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
 import { shellIconGlobe } from "./icons";
@@ -5,7 +6,7 @@ import { useEffect, useLayoutEffect, useMemo, useId, useRef, useState, useCallba
 import type { ContentMemoryDocument, ContentMemoryMatch, ContentMemoryPolicy, WorkspaceMemory, ShellCommandId } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
+import { reportCommandCompletionFailure } from "../command-completion";
 import { executeCommand } from "../commands";
 import { registerScopedControl } from "../scoped-control-commands";
 import { MemoryRecoveryNotice } from "./MemoryRecoveryNotice";
@@ -179,56 +180,40 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
     const request = ++readSequence.current;
     detailOpener.current = window.document.activeElement as HTMLElement;
     setDocument(null);
-    return guardCommandCompletion((async () => {
-    try {
-      const saved = await call("workspaces.contentMemory.get", { workspaceId: memory.workspaceId, memoryId: item.memoryId });
+    return constructAwaitedOperation(() => call("workspaces.contentMemory.get", { workspaceId: memory.workspaceId, memoryId: item.memoryId }), saved => {
       if (!current() || !queryScope.active || request !== readSequence.current) return saved;
       if (!saved || !sameRecord(item, saved)) throw new Error("This saved article is no longer available in its original version.");
       setDocument(saved); return saved;
-    } catch (reason) { if (current() && queryScope.active && request === readSequence.current) setDocument(null); throw reason; }
-    finally { finish(operation); }
-    })(), () => current() && queryScope.active && request === readSequence.current);
+    }, reason => { if (current() && queryScope.active && request === readSequence.current) setDocument(null); throw reason; }, () => { finish(operation); }, () => current() && queryScope.active && request === readSequence.current);
   }
   function ask() {
     assertCurrent();
     if (!document || document.workspaceId !== memory.workspaceId || !questionScope.active || !question.trim() || !policy?.enabled || memory.enabled === false) throw new Error("Choose the current saved article and question.");
     const operation = begin("ask"); if (!operation) return;
-    return guardCommandCompletion((async () => {
-    try {
-      const run = await useStore.getState().startRun(question, { ownsDraft: true, reveal: false, scope: "new", chatId: crypto.randomUUID(), presentation: "conversation",
-        memorySource: { workspaceId: memory.workspaceId, memoryId: document.memoryId } });
+    return constructAwaitedOperation(() => useStore.getState().startRun(question, { ownsDraft: true, reveal: false, scope: "new", chatId: crypto.randomUUID(), presentation: "conversation",
+        memorySource: { workspaceId: memory.workspaceId, memoryId: document.memoryId } }), run => {
       if (run && current() && questionScope.active) { setQuestion(""); useStore.getState().openConversation(run.runId); }
       return run;
-    }
-    finally { finish(operation); }
-    })(), () => current() && questionScope.active);
+    }, undefined, () => { finish(operation); }, () => current() && questionScope.active);
   }
   function change(next: ContentMemoryPolicy) {
     const operation = begin("policy"); if (!operation) return;
     loadScope.retire();
-    return guardCommandCompletion((async () => {
-    try {
-      const saved = await call("workspaces.contentMemory.setPolicy", { workspaceId: memory.workspaceId, policy: next });
+    return constructAwaitedOperation(() => call("workspaces.contentMemory.setPolicy", { workspaceId: memory.workspaceId, policy: next }), saved => {
       if (!current()) return saved;
       if (policy && (next.retentionDays < policy.retentionDays
         || policy.allowedOrigins.some(origin => !next.allowedOrigins.includes(origin)))) { setNeedsFreshBackup(true); setPossiblyRemoved(true); }
       setPolicy(saved); setSearchState(null); return saved;
-    }
-    finally { finish(operation); }
-    })(), current);
+    }, undefined, () => { finish(operation); }, current);
   }
   function forget(item?: ContentMemoryMatch) {
     if (item) checkItem(item); else { assertCurrent(); if (!confirmClear) throw new Error("Review forgetting the saved articles first."); }
     const operation = begin("forget"); if (!operation) return;
-    return guardCommandCompletion((async () => {
-    try {
-      const result = await call("workspaces.contentMemory.forget", { workspaceId: memory.workspaceId, memoryId: item?.memoryId });
+    return constructAwaitedOperation(() => call("workspaces.contentMemory.forget", { workspaceId: memory.workspaceId, memoryId: item?.memoryId }), result => {
       if (!current()) return result;
       if (result.forgotten) { setNeedsFreshBackup(true); setPossiblyRemoved(false); }
       setSearchState({ scope: queryScope, items: visibleMatches.filter(row => !!item && row.memoryId !== item.memoryId), complete: true }); setDocument(null); setConfirmClear(false); return result;
-    }
-    finally { finish(operation); }
-    })(), current);
+    }, undefined, () => { finish(operation); }, current);
   }
   const [sitesOpen, setSitesOpen] = useState(false);
   return <section className="browsing-memory" aria-label="Page-content recall">

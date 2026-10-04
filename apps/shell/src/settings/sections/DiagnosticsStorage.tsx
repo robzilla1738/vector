@@ -1,3 +1,4 @@
+import { constructOperationChain } from "../../components/owned-operation-construction";
 import {
   useCallback,
   useEffect,
@@ -17,7 +18,6 @@ import {
   type BrowserHealthSummary,
 } from "../../bridge";
 import { errToast } from "../../store";
-import { guardCommandCompletion } from "../../command-completion";
 import { SettingsField as IndexedField } from "../primitives";
 import { PreferenceAction, usePreferenceCommand } from "./preference-command";
 type Action = "reveal" | "clear" | "report";
@@ -146,27 +146,17 @@ export function DiagnosticsStorage({
     if (!owner.begin(action)) return Promise.reject(new Error("Choose the current diagnostics control."));
     setPending({ owner, actions: owner.actions() });
     setMessage(null);
-    let native: Promise<T>;
-    try {
-      native = producer();
-    } catch (reason) {
-      native = Promise.reject(reason);
-    }
-    const completion = native
-      .then((value) => {
+    return constructOperationChain(producer, (value) => {
         if (current()) publish(value);
         return value;
-      })
-      .catch((reason) => {
+      }, (reason) => {
         if (current())
           setMessage({ owner, action, text: reason instanceof Error ? reason.message : String(reason) });
         throw reason;
-      })
-      .finally(() => {
+      }, () => {
         owner.finish(action);
         if (current()) setPending({ owner, actions: owner.actions() });
-      });
-    return guardCommandCompletion(completion, current);
+      }, current);
   }
   const [summaryRef, toggle] = usePreferenceCommand<HTMLElement>(
     "toggle-diagnostics-storage",
