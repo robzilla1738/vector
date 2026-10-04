@@ -1,0 +1,16 @@
+{
+  "producer": "root-native321-actual-compiled-closure-review",
+  "utc": "2026-10-04T09:13:13.647561+00:00",
+  "guard": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-build/compiled-stage-guard.json",
+    "sha256": "8be67f2b5de22606ae0188de173c8bc02ab6c2f32b843f8cffd633dff9223168"
+  },
+  "actual17BinariesAlreadyVerified": true,
+  "actualComponentLibrariesVerified": 577,
+  "actualPaksVerified": 8207,
+  "actualGeneratedAndSourceGateFilesVerified": true,
+  "actualOriginalRuntime92AndHelperVerified": true,
+  "actualGNArgsVersionPlistVerified": true,
+  "runtimeHelperAppAuthorized": false,
+  "requiresConcreteLauncher": true
+}
