@@ -1,0 +1,46 @@
+{
+  "sourceAdoptionPassed": true,
+  "records": [
+    {
+      "name": "command-profile-original-close",
+      "patchSha256": "23f4164ccdfb354f05e0e435df6f0ac41e395428e15629610f4ee5c0916c118d",
+      "files": [
+        {
+          "path": "tests/host/lib/app.mjs",
+          "beforeSha256": "6def10075ab28e7d3592418325bb48c14461ed0357896929d2d7efe9b22fe0c7",
+          "afterSha256": "3836df4a695647f908d31bcbd61b690eb293ac9408dd9bd853975ec469efc69b"
+        },
+        {
+          "path": "tests/host/stopped-command-profile.test.mjs",
+          "beforeSha256": "2597917c76fa20fa33bdd32d54b2073c431f78316cff5c201a62e21f20c7f575",
+          "afterSha256": "14731029b4c7728a0b682bdd7f6fd05f9c9ec5709cdaf7d728de1bf1e7fbe420"
+        }
+      ],
+      "exactForwardReverseForwardPassed": true
+    },
+    {
+      "name": "native-command-collector",
+      "patchSha256": "32d82f975ec1b25abcf543ad1cbd062fc07eb6033393b5bfc7d9fb9f526965fe",
+      "files": [
+        {
+          "path": "tests/host/lib/native-command-collector.mjs",
+          "beforeSha256": null,
+          "afterSha256": "7f7bc439dd2a7e1859f0634b7ea95f81dc4425fec1d23abc2bc130ca1bd18837"
+        },
+        {
+          "path": "tests/host/lib/native-command-collector.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "a5e43f76f5e73486b30f1d5f34fcd58ac3cc9a96fdf39aec3dcbdfe7c0f66a4e"
+        }
+      ],
+      "exactForwardReverseForwardPassed": true
+    }
+  ],
+  "originalCloseWaitFirstQuitDeadline10000Ms": true,
+  "failedStartRetiresOriginalStoppedCapability": true,
+  "native0347ObservedModeRequiredBeforeExecution": true,
+  "actualNativeTrialsExecuted": false,
+  "rawOriginalReadyAndFinalBytesPreserved": true,
+  "actualPowerDefaultRequiredInNativeAdmission": true,
+  "qualification": false
+}
