@@ -1,0 +1,18 @@
+{
+  "sourceRequest": {
+    "path": "/private/tmp/aux-builder-native326-readonly-generated-seal-001/SOURCE-REQUEST.json",
+    "sha256": "a59db1128cd8831f4100017e90a530cf8a2a74a50df4513ff9e3f243f61b547c"
+  },
+  "sourceFiles": {
+    "/private/tmp/aux-builder-native326-readonly-generated-seal-001/generated-input-readonly-seal.py": "122c67c19abd1ba12cbbc2d40d59da000577100116bd69cd10915a49d4ed25cf",
+    "/private/tmp/aux-builder-native326-readonly-generated-seal-001/assert-original-native-owner.mjs": "ae885b97cceac32d32f05b16f5363956c51feeacdf75f405ec4d8141d72364ea",
+    "/private/tmp/aux-builder-native326-readonly-generated-seal-001/pure-controls.py": "6f1ba4312eca35cda23958eaea5e1ce01a5aaac207ed59308bc0df2e75155c17"
+  },
+  "independentPureControl": {
+    "path": "/tmp/aux-root-native326-readonly-seal-controls-001.log",
+    "sha256": "3e5917dfc1786bd7a112da89dae00c8042e7da2032f142c53166e98151766c7c",
+    "exitCode": 0
+  },
+  "review": "Root independently read complete helper, invoker and actual seven pure lifecycle controls. Original inherited slot validation wraps every mode mutation; exact3 O_NOFOLLOW held owned regular inode snapshots, partial restoration debt, handoff and readonly reattach, original FD-only mode restoration leave foreign names/content failures explicit. No actual Stable/slot writes.",
+  "admission": "SOURCE_HELPER_ONLY; concrete candidate, stage/build wrappers, cleanup fallback and actual guards/pins still required before execution."
+}
