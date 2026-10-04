@@ -1,0 +1,16 @@
+{
+  "sourceCommit": "ddb96269b9dd3acded796b09728a76df53f87566",
+  "actual": {
+    "startup": 498689,
+    "css": 179368,
+    "total": 1842805
+  },
+  "limits": {
+    "startup": 501760,
+    "css": 184320,
+    "total": 1843200
+  },
+  "strictPass": true,
+  "native154": true,
+  "sourceOnly": true
+}

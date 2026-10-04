@@ -1,0 +1,92 @@
+{
+  "packetCommit": "0fae962791ead1efdc3e9ef2020bfb88f173caa6",
+  "pins": {
+    "sourceOnly": true,
+    "qualification": "none",
+    "patchSha256": "4de1c1c263f035bc0013977e9a665a4dbd127bb5d44668c98329a014ee8bca91",
+    "leaves": [
+      {
+        "path": "tests/host/lib/composer-image-appearance.mjs",
+        "beforeSha256": "23efdafd544eb5741adc4281ef16943a4e42587a40a2161ba362ab356027afa1",
+        "afterSha256": "7501e197879031c327fc7e3c6e4b97c99c35fc02d555f4e3bee50dfbb9ec1026"
+      },
+      {
+        "path": "tests/host/composer-image-appearance.test.mjs",
+        "beforeSha256": "e065bd2495e69857a384f6bc95f7a099069bcc9f938a3f878347cefc3a2c1e82",
+        "afterSha256": "2d843e9649bce9f3fe7561698b89c7e0775fc175a64220f0e9729f1dac24258c"
+      },
+      {
+        "path": "tests/host/lib/mounted-image-appearance.mjs",
+        "beforeSha256": null,
+        "afterSha256": "46349f90339ee5e6f435f1b2e0656ab9acb478a30000d274c2086a3cbb3b7891"
+      },
+      {
+        "path": "tests/host/mounted-image-appearance.test.mjs",
+        "beforeSha256": null,
+        "afterSha256": "e0b262021b0348a8f57870a1cae7ecee8204b687586e87b302491eb304383194"
+      }
+    ],
+    "dependencies": [
+      {
+        "path": "tests/host/native-window.swift",
+        "sha256": "73338487fccbc093dd44b002e7981406e86d11960393eb509a90a6e322a04da9"
+      },
+      {
+        "path": "tests/host/lib/ax.mjs",
+        "sha256": "bba460aa823fd8d234f22ea0c8d7d47a2cd74a3f6e92dc5bf1940560330b30e5"
+      },
+      {
+        "path": "tests/host/lib/home-capture.mjs",
+        "sha256": "6fd157b411ea8c9ae5a974f07fe1be93b8d6caea0c90289267422a7a584a6a51"
+      },
+      {
+        "path": "tests/host/lib/appearance-stream.mjs",
+        "sha256": "a63e5aafd1cbc94fdb94f6e6176daaf9181190fe11deaa7176f123ab67d3e2c9"
+      },
+      {
+        "path": "tests/host/lib/utility-appearance-owner.mjs",
+        "sha256": "94193983b5c64eb5790b4033e05b4e631350e9d96d98b7fe16a380b07839a229"
+      },
+      {
+        "path": "tests/host/lib/app.mjs",
+        "sha256": "49242d520f76ac1ab80c352f69bfa577ccb51567894ef56fba0ec0f82aa90aaf"
+      },
+      {
+        "path": "tests/host/lib/model-fixture.mjs",
+        "sha256": "7ed02a96e6b63d38164a15c219008f06b08754c4e66ee4d0f79456ef38c78a3e"
+      },
+      {
+        "path": "apps/shell/src/components/AttachmentTray.tsx",
+        "sha256": "ede59b9e658341e3b940a4e0f2e71d483d5ca8dde868810ba65e1f0d2ec93a09"
+      },
+      {
+        "path": "apps/shell/src/components/ConversationImages.tsx",
+        "sha256": "d3b66a0a934e6d24fd24eea873b41ace70141c00ac69dbf516d2470e76a2fe21"
+      },
+      {
+        "path": "apps/shell/src/components/ImageSnapshot.tsx",
+        "sha256": "69cf22a887de0409441acf989ae995cb150d980aab33bb92093ec067bb42dc3c"
+      },
+      {
+        "path": "docs/design/upstream-source-map.md",
+        "sha256": "38a9a6ae4368fe37cd9e24bab862ac869cb272256677a1cf831b4df953fa9e40"
+      },
+      {
+        "path": "docs/lane-requests/root/mounted-image-capture-authority/SOURCE-AUTHORITY.json",
+        "originalReadRoot": "/tmp/aux-browser-runtime-following-batch",
+        "sha256": "d2264b739a6a74183ee5d6c5206b2649357e6e6a8ca7999110f661cd6bd5e0a4"
+      },
+      {
+        "path": "docs/lane-requests/design/mounted-image-success-recipe/README.md",
+        "originalReadRoot": "/tmp/aux-browser-runtime-following-batch",
+        "sha256": "7a16d6bf131c7d5ee34f64a1072c0900eb7a31768118a15679462f29bf9904b0"
+      }
+    ]
+  },
+  "forwardReverseForward": true,
+  "nativeExecuted": false,
+  "qualification": false,
+  "states": "seven visual-only mounted image states; no private image identity claim",
+  "fixture": "fixed genuine PNG shares original retained inode/FD lease; existing invalid bytes unchanged",
+  "testOnlyCleanup": "original exact known bytes restored on same inode, then original retained lease dispose retry"
+}

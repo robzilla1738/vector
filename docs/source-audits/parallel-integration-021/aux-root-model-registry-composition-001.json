@@ -1,0 +1,32 @@
+{
+  "beforeCommit": "28971f4be25cad421cf86f296f37c06e8d759124",
+  "beforeSha256": "cc60a1529584625c564ea338d7cfa293a55f9b2c27271827425dcb273dd569da",
+  "afterSha256": "067abb75235140f8509eec462d7a36ee83cca13c77483d15aecf63f92a787d82",
+  "retainedRows": 421,
+  "addedIds": [
+    "select-model-provider",
+    "save-model-endpoint",
+    "discover-provider-models",
+    "save-provider-model-key",
+    "save-planner-model",
+    "probe-model-connection",
+    "show-model-probe-details",
+    "save-vision-model",
+    "save-model-role",
+    "use-automatic-model-role",
+    "set-model-worker-limit",
+    "set-model-turn-limit",
+    "manage-model-provider",
+    "edit-provider-models",
+    "reauthenticate-model-provider",
+    "toggle-model-provider-connection",
+    "remove-saved-model-key",
+    "set-image-generation-model",
+    "confirm-model-key-removal",
+    "cancel-model-key-removal"
+  ],
+  "orderedValuesKeysAliasRelationsUnchanged": true,
+  "normalPrivateScopedOnly": true,
+  "sourceOnly": true,
+  "qualification": false
+}

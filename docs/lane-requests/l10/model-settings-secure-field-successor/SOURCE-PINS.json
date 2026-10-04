@@ -1,0 +1,24 @@
+{
+  "baselineFrozenCommit": "fe54330108801e8068a68d3b5da3fdb20620a24c",
+  "rows": [
+    {
+      "path": "tests/host/lib/model-settings-appearance.mjs",
+      "beforeSha256": "396b527ae17bcfe2ff307b17a89f004006c7cdbaf9f7a30fffb5b13889bd815e",
+      "afterSha256": "51567ef6bd3bca662e4a8bc8e28c09d2198f228c3d12d4a0d2b12f14409ff878"
+    },
+    {
+      "path": "tests/host/lib/model-settings-appearance.test.mjs",
+      "beforeSha256": "4b36bb5d1edf678c021fa03ab1a3afb221c159587270930cdcc29e7471f83139",
+      "afterSha256": "60b4d404767d495c34525b7fa0f30e9f13592aa1d03cc2842966cdb9daacc5f5"
+    }
+  ],
+  "patchSha256": "8de27cbb384fb89c28adf3a0a5503e359739ec6653f3014190c19323a3ca2e90",
+  "actualHelperSource": {
+    "path": "/private/tmp/aux-browser-runtime-l10-model-probe-appearance/tests/host/native-window.swift",
+    "sha256": "73338487fccbc093dd44b002e7981406e86d11960393eb509a90a6e322a04da9",
+    "lines": "907-920"
+  },
+  "exactForwardReverseForward": true,
+  "sourceCases": 10,
+  "nativeExecuted": false
+}

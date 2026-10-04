@@ -1,0 +1,17 @@
+{
+  "sourceOnly": true,
+  "requestedRootBaseline": "ddb96269b9dd3acded796b09728a76df53f87566",
+  "patchSha256": "0324cb8d8e95f641478301b33ee6d40229a5c07910966a269b1d8ff58cc8acd2",
+  "leaves": [
+    {
+      "path": "tests/host/lib/mounted-image-appearance.mjs",
+      "beforeSha256": "46349f90339ee5e6f435f1b2e0656ab9acb478a30000d274c2086a3cbb3b7891",
+      "afterSha256": "7dcfc38468bc8155633b60b44f5548c71820ec6c8555c839fdf0a8f4b785c88d"
+    },
+    {
+      "path": "tests/host/mounted-image-appearance.test.mjs",
+      "beforeSha256": "e0b262021b0348a8f57870a1cae7ecee8204b687586e87b302491eb304383194",
+      "afterSha256": "0f940157978ba805148c651be161272974a3273335e74f516cee7e9e650567a3"
+    }
+  ]
+}
