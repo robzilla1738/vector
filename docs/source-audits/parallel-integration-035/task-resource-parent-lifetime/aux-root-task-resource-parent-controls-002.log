@@ -1,0 +1,22 @@
+
+> aux-browser@0.1.0 test
+> vitest run --project unit --run apps/shell/src/components/Tasks.resource-lifetime.test.tsx apps/shell/src/components/Tasks.receipt-lifetime.test.tsx apps/shell/src/components/TaskResources.focus.test.tsx
+
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:87410) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/TaskResources.focus.test.tsx (5 tests) 65ms
+(node:87409) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:87408) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Tasks.receipt-lifetime.test.tsx (5 tests) 110ms
+ ✓ |unit| apps/shell/src/components/Tasks.resource-lifetime.test.tsx (6 tests) 109ms
+
+ Test Files  3 passed (3)
+      Tests  16 passed (16)
+   Start at  17:38:42
+   Duration  3.54s (transform 852ms, setup 0ms, collect 7.59s, tests 284ms, environment 940ms, prepare 171ms)
+

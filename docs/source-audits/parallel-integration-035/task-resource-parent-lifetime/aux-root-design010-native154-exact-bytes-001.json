@@ -1,0 +1,14 @@
+{
+  "startupJS": 501965,
+  "startupCSS": 179504,
+  "totalJS": 1849686,
+  "limits": {
+    "startupJS": 501760,
+    "startupCSS": 184320,
+    "totalJS": 1843200
+  },
+  "manifestSha256": "0f30de1c61bfe2811bb449a3c793b46802ec8f078328d6a0d0776bd955b91096",
+  "buildTarget": "chrome154 packaged",
+  "sourceStage": "fed10f321 coherent labels+Cancel focus",
+  "passed": false
+}

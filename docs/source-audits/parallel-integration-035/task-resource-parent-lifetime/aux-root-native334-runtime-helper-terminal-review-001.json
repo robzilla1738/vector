@@ -1,0 +1,16 @@
+{
+  "status": "NATIVE334_ACTUAL_PAIR_AND_COMPILER_PASS",
+  "closureSha256": "2faeadce412218ae3b536902bab5eb4c720a29ea0927fc3a49d93d162b3f1461",
+  "pairProofSha256": "a8d4b1054cbd5c8d3723333524716f218ccd006464b525c2d16674491ac749f7",
+  "helperCompilerManifestSha256": "33a905a40fa443b837bc7006f75e2f9178c7fcd28349061eb4e9f108bb893a91",
+  "actualRawArtifacts": 37,
+  "originalChildrenNaturalZero": 10,
+  "freshPidAbsence": 11,
+  "freshGroupAbsence": 11,
+  "runtimeFiles": 92,
+  "freshTarget27Helper": true,
+  "historicalHelperUnchanged": true,
+  "trustedOnly": true,
+  "AppAdmitted": false,
+  "safetyExecuted": false
+}

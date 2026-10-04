@@ -116,6 +116,58 @@ export function Tasks() {
       }
     };
   }, [receiptOwner]);
+  const resourceEditable = !!selected && selected.task.state !== "archived";
+  const resourceOwner = useMemo(() => {
+    let live = false;
+    return {
+      activate: () => { live = true; },
+      retire: () => { live = false; },
+      current: () => live && !!receiptTaskId && resourceEditable &&
+        bridge.windowId === windowId && bridge.privateMode === privateMode && bridge.windowKind === kind &&
+        useStore.getState().layout.activeSpaceId === layout.activeSpaceId &&
+        useStore.getState().layout.spaces.some(space => space.id === layout.activeSpaceId && space.workspaceId === workspaceId),
+    };
+  }, [receiptTaskId, receiptRevision, workspaceId, layout.activeSpaceId, windowId, privateMode, kind, resourceEditable]);
+  const resourcePending = useRef<{ owner: typeof resourceOwner; token: object } | null>(null);
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+  useLayoutEffect(() => {
+    resourceOwner.activate();
+    return () => {
+      resourceOwner.retire();
+      if (resourcePending.current?.owner === resourceOwner) {
+        resourcePending.current = null;
+        setBusy(false);
+      }
+    };
+  }, [resourceOwner]);
+  async function updateResources(resources: Task["resources"]) {
+    const owner = resourceOwner, original = selected?.task;
+    if (!original || !owner.current() || resourcePending.current || busyRef.current) return false;
+    const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const slot = { owner, token: {} };
+    resourcePending.current = slot;
+    setBusy(true);
+    setError("");
+    try {
+      await call("tasks.update", { taskId: original.taskId, expectedRevision: original.revision, resources });
+      if (owner.current()) await refresh(original.taskId, true, owner.current);
+      return true;
+    } catch (reason) {
+      if (owner.current()) setError(errorMessage(reason));
+      return false;
+    } finally {
+      if (resourcePending.current === slot) {
+        resourcePending.current = null;
+        if (owner.current()) {
+          setBusy(false);
+          requestAnimationFrame(() => {
+            if (owner.current() && document.activeElement === document.body && focused && availableForFocus(focused)) focused.focus();
+          });
+        }
+      }
+    }
+  }
   async function receiptSubmit<M extends import("@aux/contracts").MethodName>(
     method: M,
     ...params: import("@aux/contracts").RpcArgs<M>
@@ -843,16 +895,7 @@ export function Tasks() {
                       task={selected.task}
                       activePageId={activePageId}
                       attached={attached}
-                      update={(resources) =>
-                        action(async () => {
-                          await call("tasks.update", {
-                            taskId: selected.task.taskId,
-                            expectedRevision: selected.task.revision,
-                            resources,
-                          });
-                          await refresh(selected.task.taskId);
-                        })
-                      }
+                      update={updateResources}
                     />
                   )}
                   {!dirty && !conflict && (

@@ -1,0 +1,15 @@
+{
+  "beforeTasksSha256": "bf20402b7446ee51e21d5fee17a56ebf8bd1938a6408ee52e7ae34ec09492a3e",
+  "files": [
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "afterSha256": "27386568b0bd9e8668e60137671f3aeb9968141318bbc3390ae41ef275a60419"
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.resource-lifetime.test.tsx",
+      "afterSha256": "ca2f35c6d5f78188fb24b9aef7f9e4a064da6cf0c2c9942a7eb6514547a31c18"
+    }
+  ],
+  "originalControl": "5 original RED / 1 PASS; corrected final 16 combined PASS; types/lint/format natural0",
+  "productAdoption": "pending coherent resource command + reserve + broad final gates"
+}

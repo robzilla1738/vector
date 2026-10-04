@@ -1,0 +1,9 @@
+{
+  "status": "FULL18_334_NATURAL_TERMINAL_PASS",
+  "actualRaw": 15,
+  "actualOutputHashes": 18,
+  "freshAbsentPids": 10,
+  "freshAbsentGroups": 2,
+  "physical0644Restored": 3,
+  "AppAdmitted": false
+}
