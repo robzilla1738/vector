@@ -1,0 +1,577 @@
+--- /dev/null
++++ b/tests/host/lib/stock-graph-evidence.mjs
+@@ -0,0 +1,127 @@
++import assert from 'node:assert/strict';
++import { createHash } from 'node:crypto';
++
++const HASH = /^[a-f0-9]{64}$/;
++const targets = ['//chrome:chrome', '//chrome/test:unit_tests', '//chrome/test:browser_tests', '//content/test:content_unittests'];
++const dependencies = ['deps', 'public_deps', 'data_deps'];
++const inputs = ['sources', 'inputs', 'data', 'script', 'outputs'];
++export const stockLfsInventorySha256 = '50d9fbfbff0a832253aefbae477a31661119702dce7e9052a59f7ef90b263eee';
++const digest = raw => createHash('sha256').update(raw).digest('hex');
++function document(artifact, maximum = 64 * 1024 * 1024) {
++  assert.equal(typeof artifact?.raw, 'string');
++  assert.ok(Buffer.byteLength(artifact.raw) <= maximum);
++  assert.ok(HASH.test(artifact.sha256));
++  assert.equal(digest(artifact.raw), artifact.sha256, 'Original artifact bytes changed');
++  // Parse the original bytes with duplicate-key and nesting checks before JSON.parse.
++  const tokens = artifact.raw.match(/"(?:[^"\\]|\\.)*"|[{}\[\]:,]|true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/g) ?? [];
++  let position = 0;
++  function value(depth) {
++    assert.ok(depth <= 64, 'Evidence nesting exceeds bound');
++    const token = tokens[position++];
++    assert.ok(token !== undefined);
++    if (token === '{') {
++      const seen = new Set();
++      if (tokens[position] === '}') { position++; return; }
++      do {
++        const key = tokens[position++];
++        assert.ok(key?.startsWith('"'));
++        const decoded = JSON.parse(key);
++        assert.ok(!seen.has(decoded), 'Duplicate evidence key'); seen.add(decoded);
++        assert.equal(tokens[position++], ':'); value(depth + 1);
++        const delimiter = tokens[position++];
++        if (delimiter === '}') return;
++        assert.equal(delimiter, ',');
++      } while (true);
++    }
++    if (token === '[') {
++      if (tokens[position] === ']') { position++; return; }
++      do { value(depth + 1); const delimiter = tokens[position++]; if (delimiter === ']') return; assert.equal(delimiter, ','); } while (true);
++    }
++    assert.ok(!['}', ']', ':', ','].includes(token));
++  }
++  value(0); assert.equal(position, tokens.length);
++  return JSON.parse(artifact.raw);
++}
++function names(value) { assert.ok(Array.isArray(value)); assert.ok(value.every(item => typeof item === 'string')); return value; }
++function path(value) {
++  assert.equal(typeof value, 'string');
++  assert.ok(value.startsWith('//') && !value.includes('\\') && !value.split('/').includes('..'));
++  return value;
++}
++function missingPath(row) { return `//third_party/litert/src/${row.path}`; }
++
++/** Checks retained candidate evidence only. Expected artifact hashes must come
++ * from the independently audited original GN controller, never this verifier.
++ * Successful verification does not authorize compilation, launch or Stock11. */
++export function verifyStockGraphEvidence({ inventory, graph, commands, loader, expected }) {
++  assert.deepEqual(Object.keys(expected).sort(), ['commands', 'graph', 'inventory', 'loader'].sort());
++  for (const [key, artifact] of Object.entries({ inventory, graph, commands, loader })) {
++    assert.ok(HASH.test(expected[key])); assert.equal(artifact.sha256, expected[key], `Unadmitted ${key} artifact`);
++  }
++  assert.equal(expected.inventory, stockLfsInventorySha256);
++  const original = document(inventory), nodes = document(graph), actions = document(commands), dynamic = document(loader, 1024 * 1024);
++  assert.equal(original.repositoryCount, 136); assert.equal(original.lfsPointerCount, 23);
++  assert.equal(original.pointerOnlyCount, 23); assert.equal(original.missingLocalObjectCount, 23);
++  assert.equal(original.paths.length, 23);
++  const missing = new Set(original.paths.map(missingPath)); assert.equal(missing.size, 23);
++  for (const row of original.paths) {
++    assert.equal(row.originalCommit, 'f67457790c9c2ab67347d6fe53270e8d3df20868');
++    assert.equal(row.localObjectExists, false); assert.equal(row.originalWorkingFileIsPointer, true);
++    assert.ok(HASH.test(row.lfsObjectOid)); assert.ok(Number.isSafeInteger(row.lfsObjectSize) && row.lfsObjectSize > 0);
++  }
++  const reached = new Set(), selected = new Set();
++  function visit(label) {
++    if (reached.has(label)) return;
++    const node = nodes[label]; assert.ok(node && typeof node === 'object', `Missing transitive GN target ${label}`);
++    reached.add(label);
++    for (const key of inputs) {
++      for (const item of typeof node[key] === 'string' ? [node[key]] : names(node[key] ?? [])) selected.add(path(item));
++    }
++    for (const key of dependencies) for (const child of names(node[key] ?? [])) visit(child);
++  }
++  for (const target of targets) visit(target);
++  assert.deepEqual(names(actions.targetLabels).sort(), [...reached].sort(), 'Command inventory omits selected target');
++  assert.equal(actions.dynamicUndeclaredReads, false, 'Unresolved action/script reads');
++  assert.ok(Array.isArray(actions.rows));
++  const actionTargets = new Set();
++  for (const action of actions.rows) {
++    assert.ok(reached.has(action.target)); actionTargets.add(action.target);
++    assert.ok(HASH.test(action.commandSha256));
++    assert.equal(digest(JSON.stringify(names(action.argv))), action.commandSha256, 'Original command argv changed');
++    for (const item of names(action.inputs)) selected.add(path(item));
++    for (const item of names(action.runtimeLoads)) selected.add(path(item));
++  }
++  assert.deepEqual([...actionTargets].sort(), [...reached].sort(), 'Missing action closure row');
++  assert.equal(dynamic.producer, 'stock-original-litert-loader-closure/v1');
++  assert.equal(dynamic.unresolvedDynamicLoads, false, 'Unresolved LiteRT dlopen branch');
++  assert.equal(dynamic.effectiveUseLitertTflite, false, 'Default-only LiteRT exclusion is insufficient');
++  assert.ok(Array.isArray(dynamic.selectedTargets));
++  assert.deepEqual(dynamic.selectedTargets.map(row => row.target).sort(), [...reached].filter(label => label.startsWith('//third_party/litert')).sort());
++  for (const row of dynamic.selectedTargets) {
++    const originalCommands = actions.rows.filter(action => action.target === row.target);
++    assert.ok(Array.isArray(row.commands));
++    assert.deepEqual(row.commands.map(command => command.commandSha256).sort(), originalCommands.map(command => command.commandSha256).sort(), 'Loader proof omits original target command');
++    for (const witness of row.commands) {
++      const command = originalCommands.find(action => action.commandSha256 === witness.commandSha256);
++      assert.ok(command, 'Loader macros lack original command join');
++      assert.deepEqual(names(witness.defines).sort(), command.argv.filter(arg => arg.startsWith('-D')).map(arg => arg.slice(2)).sort(), 'Loader macros differ from original command');
++      assert.ok(HASH.test(witness.commandSha256));
++      assert.ok(witness.defines.includes('LITERT_DISABLE_METAL_SUPPORT') && witness.defines.includes('LITERT_STATIC'), 'Unclosed selected LiteRT loader macros');
++    }
++  }
++  // Both macOS original missing objects require an explicit exact source witness,
++  // even when no selected LiteRT target reaches them.
++  assert.ok(HASH.test(dynamic.sourceSha256));
++  assert.equal(dynamic.sourcePath, '//third_party/litert/src/litert/runtime/gpu_registry.cc');
++  const macos = [...missing].filter(item => item.includes('/macos_arm64/')).sort();
++  assert.deepEqual(names(dynamic.macosPaths).sort(), macos);
++  for (const item of names(dynamic.runtimeLoads)) selected.add(path(item));
++  assert.equal(dynamic.classifications.length, 23);
++  assert.deepEqual(dynamic.classifications.map(row => row.path).sort(), [...missing].sort());
++  for (const row of dynamic.classifications) {
++    assert.equal(row.classification, 'absent_from_selected_graph_and_source_load_closure');
++    assert.ok(!selected.has(row.path), `Missing object required by original graph/load closure: ${row.path}`);
++  }
++  return Object.freeze({ candidateEvidenceVerified: true, classifiedMissingObjects: 23, selectedTargetCount: reached.size,
++    compilationAdmitted: false, sdkCompileClosureProven: false, deployedLoadClosureProven: false, stock11Qualified: false });
++}
+--- /dev/null
++++ b/tests/host/lib/stock-graph-evidence.test.mjs
+@@ -0,0 +1,62 @@
++import assert from 'node:assert/strict';
++import { createHash } from 'node:crypto';
++import { readFileSync } from 'node:fs';
++import test from 'node:test';
++import { stockLfsInventorySha256, verifyStockGraphEvidence } from './stock-graph-evidence.mjs';
++const hash = raw => createHash('sha256').update(raw).digest('hex');
++const artifact = value => { const raw = JSON.stringify(value); return {raw, sha256:hash(raw)}; };
++const originalRaw = readFileSync(new URL('../../../docs/lane-requests/l10/stock-graph-evidence/original-local-lfs-inventory.json', import.meta.url), 'utf8');
++const original = JSON.parse(originalRaw);
++const labels = ['//chrome:chrome','//chrome/test:unit_tests','//chrome/test:browser_tests','//content/test:content_unittests'];
++function specimen() {
++  const nodes = Object.fromEntries(labels.map(label => [label, {deps:[], public_deps:[], data_deps:[], sources:[]} ]));
++  const missing = original.paths.map(row => `//third_party/litert/src/${row.path}`);
++  const loader = {producer:'stock-original-litert-loader-closure/v1', unresolvedDynamicLoads:false, effectiveUseLitertTflite:false,
++    selectedTargets:[], sourcePath:'//third_party/litert/src/litert/runtime/gpu_registry.cc', sourceSha256:'a'.repeat(64),
++    macosPaths:missing.filter(path => path.includes('/macos_arm64/')), runtimeLoads:[],
++    classifications:missing.map(path => ({path,classification:'absent_from_selected_graph_and_source_load_closure'}))};
++  return {inventory:{raw:originalRaw,sha256:hash(originalRaw)}, nodes, actions:{targetLabels:labels, dynamicUndeclaredReads:false,
++    rows:labels.map(target => ({target,inputs:[],runtimeLoads:[],argv:[],commandSha256:hash('[]')}))}, loader};
++}
++function evidence(state) {
++  const value = {inventory:state.inventory, graph:artifact(state.nodes), commands:artifact(state.actions), loader:artifact(state.loader)};
++  return {...value, expected:Object.fromEntries(Object.entries(value).map(([key,v]) => [key,v.sha256]))};
++}
++test('joins retained original23 inventory; mock graph success grants no compile/SDK/deployed/native acceptance', () => {
++  assert.equal(hash(originalRaw),stockLfsInventorySha256);
++  assert.deepEqual(verifyStockGraphEvidence(evidence(specimen())), {candidateEvidenceVerified:true,classifiedMissingObjects:23,
++    selectedTargetCount:4,compilationAdmitted:false,sdkCompileClosureProven:false,deployedLoadClosureProven:false,stock11Qualified:false});
++});
++test('refuses externally expected raw hash mismatch and duplicate original graph keys', () => {
++  const e=evidence(specimen());e.graph.raw+=' ';assert.throws(()=>verifyStockGraphEvidence(e),/bytes changed/);
++  const d=evidence(specimen());d.graph.raw=d.graph.raw.replace('"deps":[]','"deps":[],"deps":[]');d.graph.sha256=hash(d.graph.raw);d.expected.graph=d.graph.sha256;
++  assert.throws(()=>verifyStockGraphEvidence(d),/Duplicate/);
++});
++test('traverses public/data dependencies; missing transitive node and omitted action row refuse', () => {
++  const s=specimen();s.nodes[labels[0]].data_deps=['//data:resource'];assert.throws(()=>verifyStockGraphEvidence(evidence(s)),/Missing transitive/);
++  s.nodes['//data:resource']={public_deps:[],inputs:[]};assert.throws(()=>verifyStockGraphEvidence(evidence(s)),/omits selected target/);
++  s.actions.targetLabels=[...labels,'//data:resource'];assert.throws(()=>verifyStockGraphEvidence(evidence(s)),/Missing action closure/);
++});
++test('a required missing object in source/action/data/script/copy/runtime-load inputs cannot be excluded by label', () => {
++  for (const field of ['sources','inputs','data','script']) {
++    const s=specimen(); const missing=s.loader.macosPaths[0];s.nodes[labels[0]][field]=field==='script'?missing:[missing];
++    assert.throws(()=>verifyStockGraphEvidence(evidence(s)),/Missing object required/);
++  }
++  for (const field of ['inputs','runtimeLoads']) {const s=specimen();s.actions.rows[0][field]=[s.loader.macosPaths[1]];
++    assert.throws(()=>verifyStockGraphEvidence(evidence(s)),/Missing object required/);}
++});
++test('requires all23 classifications, both macOS loader witnesses and no unresolved dynamic read', () => {
++  for (const change of [s=>s.loader.classifications.pop(),s=>s.loader.macosPaths.pop(),s=>s.loader.unresolvedDynamicLoads=true,
++    s=>s.actions.dynamicUndeclaredReads=true,s=>delete s.loader.effectiveUseLitertTflite]) {
++    const s=specimen();change(s);assert.throws(()=>verifyStockGraphEvidence(evidence(s)));
++  }
++});
++test('selected LiteRT target macros must join exact original command and retain static/Metal-disabled branches', () => {
++  const s=specimen();const target='//third_party/litert:runtime';s.nodes[labels[0]].deps=[target];s.nodes[target]={};
++  s.actions.targetLabels=[...labels,target];const argv=['-DLITERT_STATIC','-DLITERT_DISABLE_METAL_SUPPORT']; const commandSha256=hash(JSON.stringify(argv));
++  s.actions.rows.push({target,inputs:[],runtimeLoads:[],argv,commandSha256});
++  s.loader.selectedTargets=[{target,commands:[{commandSha256,defines:['LITERT_STATIC','LITERT_DISABLE_METAL_SUPPORT']}]}];
++  assert.equal(verifyStockGraphEvidence(evidence(s)).selectedTargetCount,5);
++  s.loader.selectedTargets[0].commands[0].commandSha256='d'.repeat(64);assert.throws(()=>verifyStockGraphEvidence(evidence(s)),/original target command/);
++  s.loader.selectedTargets[0].commands[0].commandSha256=commandSha256;s.loader.selectedTargets[0].commands[0].defines.pop();assert.throws(()=>verifyStockGraphEvidence(evidence(s)),/macros/);
++});
+--- /dev/null
++++ b/docs/lane-requests/l10/stock-graph-evidence/original-local-lfs-inventory.json
+@@ -0,0 +1,379 @@
++{
++  "sourceOnly": true,
++  "networkOrCheckoutExecuted": false,
++  "originalProposalSha256": "b951cbe31f239095f775873a65ef54b861f180db50f8142cd3f890bc7a32baca",
++  "repositoryCount": 136,
++  "lfsPointerCount": 23,
++  "pointerOnlyCount": 23,
++  "missingLocalObjectCount": 23,
++  "paths": [
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/android_arm32/libLiteRt.so",
++      "pointerSha256": "b67804963edff0ea7f6d0e3e63431fff180e9633385368dfd0002549b529125f",
++      "lfsObjectOid": "5e8f2d49fce8865dfba6932520d2cdc0ec6e002adf5987cf65dfdd38e250de28",
++      "lfsObjectSize": 3526700,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "b67804963edff0ea7f6d0e3e63431fff180e9633385368dfd0002549b529125f",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/5e/8f/5e8f2d49fce8865dfba6932520d2cdc0ec6e002adf5987cf65dfdd38e250de28",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/android_arm32/libLiteRtClGlAccelerator.so",
++      "pointerSha256": "531fa8566ef98a6597a24956630ec0faaf953c51eba706a1cf6e135dd53888a9",
++      "lfsObjectOid": "0de266838f3c6ae8785481738873db40423b42e4bdd4c8ce5b7c9bfe7bb848fd",
++      "lfsObjectSize": 2235276,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "531fa8566ef98a6597a24956630ec0faaf953c51eba706a1cf6e135dd53888a9",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/0d/e2/0de266838f3c6ae8785481738873db40423b42e4bdd4c8ce5b7c9bfe7bb848fd",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/android_arm64/libLiteRt.so",
++      "pointerSha256": "7add6c56772a0b27ee7347c486fe9cf1eb5c087b03b57c5e73dcd6f420209b6e",
++      "lfsObjectOid": "b2913eb689e731aef26589601c0d18f01695c140329561d4785ba36cd07dda4a",
++      "lfsObjectSize": 5360968,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "7add6c56772a0b27ee7347c486fe9cf1eb5c087b03b57c5e73dcd6f420209b6e",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/b2/91/b2913eb689e731aef26589601c0d18f01695c140329561d4785ba36cd07dda4a",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/android_arm64/libLiteRtClGlAccelerator.so",
++      "pointerSha256": "9312b51df15b4b98fb875365373d081c2e2a2af21f90c5ff0c2e89d901e2cdc7",
++      "lfsObjectOid": "34cbd6fddf442539ce2833c934c43213a12fd25618635d2e8dced21840d2a3c4",
++      "lfsObjectSize": 3156728,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "9312b51df15b4b98fb875365373d081c2e2a2af21f90c5ff0c2e89d901e2cdc7",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/34/cb/34cbd6fddf442539ce2833c934c43213a12fd25618635d2e8dced21840d2a3c4",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/android_arm64/libLiteRtWebGpuAccelerator.so",
++      "pointerSha256": "f0191756422d31b28d4406b15435a6d94fb0a7cfc272219db52680be7b7df79e",
++      "lfsObjectOid": "be613f57096f2c89a40c0a99d26c15e3ece114fdb89b371350a6c85c7f09db1a",
++      "lfsObjectSize": 8285160,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "f0191756422d31b28d4406b15435a6d94fb0a7cfc272219db52680be7b7df79e",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/be/61/be613f57096f2c89a40c0a99d26c15e3ece114fdb89b371350a6c85c7f09db1a",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/android_x86_64/libLiteRt.so",
++      "pointerSha256": "584a827f1be30c1eef8968e9d7721c311fb1b6f9f69108229e145e5e57cf69e4",
++      "lfsObjectOid": "bd9ab78e8fa1c36991d7fb6fdd5261d2b99fe6d34205de66d20d25c7ab98434a",
++      "lfsObjectSize": 7507504,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "584a827f1be30c1eef8968e9d7721c311fb1b6f9f69108229e145e5e57cf69e4",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/bd/9a/bd9ab78e8fa1c36991d7fb6fdd5261d2b99fe6d34205de66d20d25c7ab98434a",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/android_x86_64/libLiteRtClGlAccelerator.so",
++      "pointerSha256": "c347bf3ba15d15c1cfc9bc2a0f9e72f9aab7057d686ea3c02a61e6a479da82ef",
++      "lfsObjectOid": "d66318c5d1a24728f68ae69970c9929c52e977b7c3739a88532c41c3593d3b3c",
++      "lfsObjectSize": 3795872,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "c347bf3ba15d15c1cfc9bc2a0f9e72f9aab7057d686ea3c02a61e6a479da82ef",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/d6/63/d66318c5d1a24728f68ae69970c9929c52e977b7c3739a88532c41c3593d3b3c",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/android_x86_64/libLiteRtWebGpuAccelerator.so",
++      "pointerSha256": "0281fcb7dec8bf88958ca628fe919341ee529d082a97b031d21040bcc1173512",
++      "lfsObjectOid": "304fc13aba9d781c9466ca8b831e6bc86211ce011df407fe5b4da40c311bcfa3",
++      "lfsObjectSize": 9481376,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "0281fcb7dec8bf88958ca628fe919341ee529d082a97b031d21040bcc1173512",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/30/4f/304fc13aba9d781c9466ca8b831e6bc86211ce011df407fe5b4da40c311bcfa3",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/ios_arm64/libLiteRt.dylib",
++      "pointerSha256": "938dcf8ee8a497bbb0efb28ee4795af6faa0c35b1602adddef949341e7b81df3",
++      "lfsObjectOid": "6d3ae5379b0d4ad37cf4417aba459cc43f7fa33b6e6d8b462de67f1005a17669",
++      "lfsObjectSize": 8068840,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "938dcf8ee8a497bbb0efb28ee4795af6faa0c35b1602adddef949341e7b81df3",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/6d/3a/6d3ae5379b0d4ad37cf4417aba459cc43f7fa33b6e6d8b462de67f1005a17669",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/ios_arm64/libLiteRtMetalAccelerator.dylib",
++      "pointerSha256": "412578c5f0c88f618ad628fddf5f27549da1efe807c1e680394d806dd3116183",
++      "lfsObjectOid": "bfa5bc525b93e0af98bbd8aacf16472d32a9a61fbf937a6192118a79a98bbdd9",
++      "lfsObjectSize": 7735800,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "412578c5f0c88f618ad628fddf5f27549da1efe807c1e680394d806dd3116183",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/bf/a5/bfa5bc525b93e0af98bbd8aacf16472d32a9a61fbf937a6192118a79a98bbdd9",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/ios_sim_arm64/libLiteRt.dylib",
++      "pointerSha256": "d24955f7afb829a91a9dc41bbbfb6f08edc389fe9a4547a2727b24dc00e6dba3",
++      "lfsObjectOid": "24575eb8f10419785fdb860e66446e31c55246e377e3a5381d077e6a3cee9e76",
++      "lfsObjectSize": 7799952,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "d24955f7afb829a91a9dc41bbbfb6f08edc389fe9a4547a2727b24dc00e6dba3",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/24/57/24575eb8f10419785fdb860e66446e31c55246e377e3a5381d077e6a3cee9e76",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/ios_sim_arm64/libLiteRtMetalAccelerator.dylib",
++      "pointerSha256": "5aff53af93a64aa0436b4f4ea7cd60d02b7aead68d8e3a06284336b53856f4f3",
++      "lfsObjectOid": "d8aa516187201f4b2ab945dcdd0389a2bcd0d1cf423aecacd8a3d3c3e068a63e",
++      "lfsObjectSize": 7950672,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "5aff53af93a64aa0436b4f4ea7cd60d02b7aead68d8e3a06284336b53856f4f3",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/d8/aa/d8aa516187201f4b2ab945dcdd0389a2bcd0d1cf423aecacd8a3d3c3e068a63e",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/linux_arm64/libLiteRt.so",
++      "pointerSha256": "c400b9cc1b308ccc7aaeba67c6be9fcfb99c17b8e4ea66c69bc9c4b4f39e4e26",
++      "lfsObjectOid": "33cb3d45b236f18f8ace07e49c24b82e44af399177f0f64969962f42702337fc",
++      "lfsObjectSize": 8892096,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "c400b9cc1b308ccc7aaeba67c6be9fcfb99c17b8e4ea66c69bc9c4b4f39e4e26",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/33/cb/33cb3d45b236f18f8ace07e49c24b82e44af399177f0f64969962f42702337fc",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/linux_arm64/libLiteRtWebGpuAccelerator.so",
++      "pointerSha256": "e2c58122a7a08635cba865c610ea79a06518bab96898b1a013d55be20dc117c9",
++      "lfsObjectOid": "d402079befef07549633286c247ed0d8a2ca7275aecd88203fc3db10711d1bc0",
++      "lfsObjectSize": 16902816,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "e2c58122a7a08635cba865c610ea79a06518bab96898b1a013d55be20dc117c9",
++      "originalWorkingFileSize": 133,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/d4/02/d402079befef07549633286c247ed0d8a2ca7275aecd88203fc3db10711d1bc0",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/linux_x86_64/libLiteRt.so",
++      "pointerSha256": "100dc87e8cccb66da60452b56fc06032d05a2a5e2481686ddff55980b1b48d7e",
++      "lfsObjectOid": "74c4ab6c13ec9a48651cb8820940e8e1beb16a34d0e0cfe532165b5cf1b80c79",
++      "lfsObjectSize": 10960848,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "100dc87e8cccb66da60452b56fc06032d05a2a5e2481686ddff55980b1b48d7e",
++      "originalWorkingFileSize": 133,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/74/c4/74c4ab6c13ec9a48651cb8820940e8e1beb16a34d0e0cfe532165b5cf1b80c79",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/linux_x86_64/libLiteRtCompilerPlugin_IntelOpenvino.so",
++      "pointerSha256": "e4d43fe8764dbe12ba3eec812df1d25d055f69c8a84ff34f9325e61ce882eb70",
++      "lfsObjectOid": "d333873b1373999b63813065eab961216ff8a475cded6ea7f002cc044f0be478",
++      "lfsObjectSize": 875368,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "e4d43fe8764dbe12ba3eec812df1d25d055f69c8a84ff34f9325e61ce882eb70",
++      "originalWorkingFileSize": 131,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/d3/33/d333873b1373999b63813065eab961216ff8a475cded6ea7f002cc044f0be478",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/linux_x86_64/libLiteRtCompilerPlugin_Qualcomm.so",
++      "pointerSha256": "89a8655a3f16721765ef639ddd716787e77ee44d57dba41eee9d822dfa9fa007",
++      "lfsObjectOid": "8f2df3cd53d8c67beee74c8883aee164e787406c8a1b0bbe5b36b749edb656ba",
++      "lfsObjectSize": 1279536,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "89a8655a3f16721765ef639ddd716787e77ee44d57dba41eee9d822dfa9fa007",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/8f/2d/8f2df3cd53d8c67beee74c8883aee164e787406c8a1b0bbe5b36b749edb656ba",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/linux_x86_64/libLiteRtCompilerPlugin_google_tensor.so",
++      "pointerSha256": "f5307999281af50565db5a9326b86bc40170954b5a48ff3d2a8a1592125a3952",
++      "lfsObjectOid": "41fa11d6c24b37e6930950ebc4ca41ed8b3b871e2816ec1349ae1094f1f38e4b",
++      "lfsObjectSize": 4129008,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "f5307999281af50565db5a9326b86bc40170954b5a48ff3d2a8a1592125a3952",
++      "originalWorkingFileSize": 132,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/41/fa/41fa11d6c24b37e6930950ebc4ca41ed8b3b871e2816ec1349ae1094f1f38e4b",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/linux_x86_64/libLiteRtWebGpuAccelerator.so",
++      "pointerSha256": "44330683a29fcd23cfead2639bb1dbe222382c471f3267aaefea02798d86002e",
++      "lfsObjectOid": "93421fb42fe0763cc43a5464c9351befcd6f28c70c422ccf18f4fe5696ce7f1f",
++      "lfsObjectSize": 18618992,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "44330683a29fcd23cfead2639bb1dbe222382c471f3267aaefea02798d86002e",
++      "originalWorkingFileSize": 133,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/93/42/93421fb42fe0763cc43a5464c9351befcd6f28c70c422ccf18f4fe5696ce7f1f",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/macos_arm64/libLiteRt.dylib",
++      "pointerSha256": "922f126c0bb1f81fc754c8cb93e609d494789b29ad852e2e57451a948918812f",
++      "lfsObjectOid": "ade8a460d4c0dafce4c3b3620ac9f197ffdf1a1c99129ff8c96ec03635326aa9",
++      "lfsObjectSize": 11362288,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "922f126c0bb1f81fc754c8cb93e609d494789b29ad852e2e57451a948918812f",
++      "originalWorkingFileSize": 133,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/ad/e8/ade8a460d4c0dafce4c3b3620ac9f197ffdf1a1c99129ff8c96ec03635326aa9",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/macos_arm64/libLiteRtMetalAccelerator.dylib",
++      "pointerSha256": "07bf643a908a54f28edda47250866816af9e05d5cb744f114e6f39ee73901084",
++      "lfsObjectOid": "006a9afe3bfd9268c8335dec3cefd8df91e85bed8d4934d0100f038a0eed2f5e",
++      "lfsObjectSize": 11397632,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "07bf643a908a54f28edda47250866816af9e05d5cb744f114e6f39ee73901084",
++      "originalWorkingFileSize": 133,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/00/6a/006a9afe3bfd9268c8335dec3cefd8df91e85bed8d4934d0100f038a0eed2f5e",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/windows_x86_64/libLiteRt.dll",
++      "pointerSha256": "aaeaaa4253ae87b57dc6b602257bddbf79c5575a818b98d345147ad9b42be5e2",
++      "lfsObjectOid": "4c4628d3964fba705555d1745804fda0fce404f93f3ddcdee49ee13dd783462b",
++      "lfsObjectSize": 11987968,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "aaeaaa4253ae87b57dc6b602257bddbf79c5575a818b98d345147ad9b42be5e2",
++      "originalWorkingFileSize": 133,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/4c/46/4c4628d3964fba705555d1745804fda0fce404f93f3ddcdee49ee13dd783462b",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    },
++    {
++      "repository": "third_party/litert/src",
++      "originalCommit": "f67457790c9c2ab67347d6fe53270e8d3df20868",
++      "path": "litert/prebuilt/windows_x86_64/libLiteRtWebGpuAccelerator.dll",
++      "pointerSha256": "6401b66d7229d0519857700710b8c70611dbdd9a9713204db3a68b7670f36432",
++      "lfsObjectOid": "32060cfe52e67b433471486dcbad722b290ff5fd7042ac9dd376a1b53f6320d0",
++      "lfsObjectSize": 24048640,
++      "originalWorkingFileExists": true,
++      "originalWorkingFileSha256": "6401b66d7229d0519857700710b8c70611dbdd9a9713204db3a68b7670f36432",
++      "originalWorkingFileSize": 133,
++      "originalWorkingFileIsPointer": true,
++      "localObjectPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/litert/src/.git/lfs/objects/32/06/32060cfe52e67b433471486dcbad722b290ff5fd7042ac9dd376a1b53f6320d0",
++      "localObjectExists": false,
++      "localObjectHashMatches": false,
++      "localObjectSizeMatches": false
++    }
++  ]
++}

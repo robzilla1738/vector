@@ -1,0 +1,52 @@
+{
+  "sourceOnly": true,
+  "nativeEffects": false,
+  "stockQualified": false,
+  "prerequisite": "/private/tmp/aux-l10-stock-graph-verifier/docs/lane-requests/l10/stock-graph-evidence/FREEZE.json",
+  "prerequisiteRequestSha256": "8eab5b3309859b65ebf4fae3c9c53fdca0ad0e357be28aa751ca56bc9211123d",
+  "rows": [
+    {
+      "path": "tests/host/lib/stock-graph-evidence.mjs",
+      "beforeSha256": "13ed2441f5c3fec4ac0bedce0f02a2587381a3b171643ba4c01b16136caf7958",
+      "beforeAbsent": false,
+      "afterSha256": "4aaaba8b189bd6026ba952d587f8d30f3d4a64a41209b8038235ae16ff78d24c",
+      "afterBytes": 9802
+    },
+    {
+      "path": "tests/host/lib/stock-graph-evidence.test.mjs",
+      "beforeSha256": "720735ed84123a4c38466c720598e9eb30270657c4bcfb50b95e8ab961304f43",
+      "beforeAbsent": false,
+      "afterSha256": "4c859acdf646490dc0f56d8f8ee8627c540fb1cd28b2c052c0d72d79e9002207",
+      "afterBytes": 5624
+    },
+    {
+      "path": "tests/host/lib/stock-graph-collector.mjs",
+      "beforeSha256": null,
+      "beforeAbsent": true,
+      "afterSha256": "3ea7cd8ebe724dd2be0b41a5baeba78e00229ebcb771b937120016e06edda916",
+      "afterBytes": 7483
+    },
+    {
+      "path": "tests/host/lib/stock-graph-collector.test.mjs",
+      "beforeSha256": null,
+      "beforeAbsent": true,
+      "afterSha256": "be8f65a16f24419541f0b4f880388a43a87aa8533b2457b06ba2a4cf05c18bdf",
+      "afterBytes": 5202
+    },
+    {
+      "path": "docs/lane-requests/l10/stock-graph-collector/gpu_registry.cc",
+      "beforeSha256": null,
+      "beforeAbsent": true,
+      "afterSha256": "66c5b72658d3d50b0ebbf9bff225a28498912e958a10ea0bfe56a4e1e1814611",
+      "afterBytes": 5938
+    }
+  ],
+  "requestSha256": "031eac8412b61183895c51ac62470b0b10cfb827b9cdf2d932931af9ed9627d8",
+  "actualSourcePin": {
+    "path": "/Users/rcourson/aux-chromium-stock-measurement/chromium/src/third_party/litert/src/litert/runtime/accelerators/gpu_registry.cc",
+    "sha256": "66c5b72658d3d50b0ebbf9bff225a28498912e958a10ea0bfe56a4e1e1814611"
+  },
+  "controlsPassed": 12,
+  "controlLogSha256": "1b1edcba0960a8cdebcea5ebf0017c37a9c528b521a2795361fcf5df243a59c6",
+  "genuineGnCommandMacroCaptureAvailable": false
+}

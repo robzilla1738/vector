@@ -1,0 +1,390 @@
+--- a/tests/host/lib/stock-graph-evidence.mjs
++++ b/tests/host/lib/stock-graph-evidence.mjs
+@@ -7,7 +7,7 @@
+ const inputs = ['sources', 'inputs', 'data', 'script', 'outputs'];
+ export const stockLfsInventorySha256 = '50d9fbfbff0a832253aefbae477a31661119702dce7e9052a59f7ef90b263eee';
+ const digest = raw => createHash('sha256').update(raw).digest('hex');
+-function document(artifact, maximum = 64 * 1024 * 1024) {
++export function readStockEvidenceDocument(artifact, maximum = 64 * 1024 * 1024) {
+   assert.equal(typeof artifact?.raw, 'string');
+   assert.ok(Buffer.byteLength(artifact.raw) <= maximum);
+   assert.ok(HASH.test(artifact.sha256));
+@@ -53,13 +53,15 @@
+ /** Checks retained candidate evidence only. Expected artifact hashes must come
+  * from the independently audited original GN controller, never this verifier.
+  * Successful verification does not authorize compilation, launch or Stock11. */
+-export function verifyStockGraphEvidence({ inventory, graph, commands, loader, expected }) {
+-  assert.deepEqual(Object.keys(expected).sort(), ['commands', 'graph', 'inventory', 'loader'].sort());
+-  for (const [key, artifact] of Object.entries({ inventory, graph, commands, loader })) {
++export function verifyStockGraphEvidence({ inventory, graph, commands, loader, loaderSource, expected }) {
++  assert.deepEqual(Object.keys(expected).sort(), ['commands', 'graph', 'inventory', 'loader', 'loaderSource'].sort());
++  for (const [key, artifact] of Object.entries({ inventory, graph, commands, loader, loaderSource })) {
+     assert.ok(HASH.test(expected[key])); assert.equal(artifact.sha256, expected[key], `Unadmitted ${key} artifact`);
+   }
+   assert.equal(expected.inventory, stockLfsInventorySha256);
+-  const original = document(inventory), nodes = document(graph), actions = document(commands), dynamic = document(loader, 1024 * 1024);
++  assert.equal(loaderSource.sha256, '66c5b72658d3d50b0ebbf9bff225a28498912e958a10ea0bfe56a4e1e1814611', 'Unreviewed loader source');
++  assert.equal(digest(loaderSource.raw), loaderSource.sha256, 'Original loader source changed');
++  const original = readStockEvidenceDocument(inventory), nodes = readStockEvidenceDocument(graph), actions = readStockEvidenceDocument(commands), dynamic = readStockEvidenceDocument(loader, 1024 * 1024);
+   assert.equal(original.repositoryCount, 136); assert.equal(original.lfsPointerCount, 23);
+   assert.equal(original.pointerOnlyCount, 23); assert.equal(original.missingLocalObjectCount, 23);
+   assert.equal(original.paths.length, 23);
+@@ -106,13 +108,30 @@
+       assert.ok(command, 'Loader macros lack original command join');
+       assert.deepEqual(names(witness.defines).sort(), command.argv.filter(arg => arg.startsWith('-D')).map(arg => arg.slice(2)).sort(), 'Loader macros differ from original command');
+       assert.ok(HASH.test(witness.commandSha256));
+-      assert.ok(witness.defines.includes('LITERT_DISABLE_METAL_SUPPORT') && witness.defines.includes('LITERT_STATIC'), 'Unclosed selected LiteRT loader macros');
++
+     }
+   }
+   // Both macOS original missing objects require an explicit exact source witness,
+   // even when no selected LiteRT target reaches them.
+-  assert.ok(HASH.test(dynamic.sourceSha256));
+-  assert.equal(dynamic.sourcePath, '//third_party/litert/src/litert/runtime/gpu_registry.cc');
++  assert.equal(dynamic.sourceSha256, loaderSource.sha256);
++  assert.equal(dynamic.sourcePath, '//third_party/litert/src/litert/runtime/accelerators/gpu_registry.cc');
++  for (const target of reached) {
++    const declared = ['sources','inputs','script'].flatMap(key => typeof nodes[target][key] === 'string' ? [nodes[target][key]] : nodes[target][key] ?? []);
++    if (declared.includes(dynamic.sourcePath)) assert.ok(actions.rows.some(command => command.target === target && command.inputs.includes(dynamic.sourcePath)), 'Uncaptured selected GPU source');
++  }
++  const gpuCommands = actions.rows.filter(command => command.inputs.includes(dynamic.sourcePath));
++  assert.ok(Array.isArray(dynamic.gpuBranches));
++  assert.deepEqual(dynamic.gpuBranches.map(branch => branch.commandSha256).sort(), gpuCommands.map(command => command.commandSha256).sort(), 'Missing selected GPU source branch witness');
++  for (const branch of dynamic.gpuBranches) {
++    assert.equal(branch.condition, '!defined(LITERT_DISABLE_GPU)');
++    assert.equal(branch.active, false, 'Unresolved enabled GPU runtime-directory loader');
++    assert.equal(branch.sourceSha256, loaderSource.sha256);
++    assert.equal(typeof branch.macroRaw, 'string'); assert.ok(Buffer.byteLength(branch.macroRaw) <= 1024 * 1024);
++    assert.equal(digest(branch.macroRaw), branch.macroRawSha256, 'Original effective macro bytes changed');
++    const definitions = branch.macroRaw.split('\n').filter(line => /^#define LITERT_DISABLE_GPU(?:\s|$)/.test(line));
++    assert.equal(definitions.length, 1, 'No genuine effective GPU-disabled macro');
++    assert.ok(!branch.macroRaw.includes('#undef LITERT_DISABLE_GPU'));
++  }
+   const macos = [...missing].filter(item => item.includes('/macos_arm64/')).sort();
+   assert.deepEqual(names(dynamic.macosPaths).sort(), macos);
+   for (const item of names(dynamic.runtimeLoads)) selected.add(path(item));
+--- a/tests/host/lib/stock-graph-evidence.test.mjs
++++ b/tests/host/lib/stock-graph-evidence.test.mjs
+@@ -7,19 +7,20 @@
+ const artifact = value => { const raw = JSON.stringify(value); return {raw, sha256:hash(raw)}; };
+ const originalRaw = readFileSync(new URL('../../../docs/lane-requests/l10/stock-graph-evidence/original-local-lfs-inventory.json', import.meta.url), 'utf8');
+ const original = JSON.parse(originalRaw);
++const sourceRaw=readFileSync(new URL('../../../docs/lane-requests/l10/stock-graph-collector/gpu_registry.cc', import.meta.url),'utf8');
+ const labels = ['//chrome:chrome','//chrome/test:unit_tests','//chrome/test:browser_tests','//content/test:content_unittests'];
+ function specimen() {
+   const nodes = Object.fromEntries(labels.map(label => [label, {deps:[], public_deps:[], data_deps:[], sources:[]} ]));
+   const missing = original.paths.map(row => `//third_party/litert/src/${row.path}`);
+   const loader = {producer:'stock-original-litert-loader-closure/v1', unresolvedDynamicLoads:false, effectiveUseLitertTflite:false,
+-    selectedTargets:[], sourcePath:'//third_party/litert/src/litert/runtime/gpu_registry.cc', sourceSha256:'a'.repeat(64),
++    selectedTargets:[], sourcePath:'//third_party/litert/src/litert/runtime/accelerators/gpu_registry.cc', sourceSha256:hash(sourceRaw),gpuBranches:[],
+     macosPaths:missing.filter(path => path.includes('/macos_arm64/')), runtimeLoads:[],
+     classifications:missing.map(path => ({path,classification:'absent_from_selected_graph_and_source_load_closure'}))};
+   return {inventory:{raw:originalRaw,sha256:hash(originalRaw)}, nodes, actions:{targetLabels:labels, dynamicUndeclaredReads:false,
+     rows:labels.map(target => ({target,inputs:[],runtimeLoads:[],argv:[],commandSha256:hash('[]')}))}, loader};
+ }
+ function evidence(state) {
+-  const value = {inventory:state.inventory, graph:artifact(state.nodes), commands:artifact(state.actions), loader:artifact(state.loader)};
++  const value = {inventory:state.inventory, graph:artifact(state.nodes), commands:artifact(state.actions), loader:artifact(state.loader),loaderSource:{raw:sourceRaw,sha256:hash(sourceRaw)}};
+   return {...value, expected:Object.fromEntries(Object.entries(value).map(([key,v]) => [key,v.sha256]))};
+ }
+ test('joins retained original23 inventory; mock graph success grants no compile/SDK/deployed/native acceptance', () => {
+@@ -51,7 +52,7 @@
+     const s=specimen();change(s);assert.throws(()=>verifyStockGraphEvidence(evidence(s)));
+   }
+ });
+-test('selected LiteRT target macros must join exact original command and retain static/Metal-disabled branches', () => {
++test('selected LiteRT macro witnesses must join every original command argv', () => {
+   const s=specimen();const target='//third_party/litert:runtime';s.nodes[labels[0]].deps=[target];s.nodes[target]={};
+   s.actions.targetLabels=[...labels,target];const argv=['-DLITERT_STATIC','-DLITERT_DISABLE_METAL_SUPPORT']; const commandSha256=hash(JSON.stringify(argv));
+   s.actions.rows.push({target,inputs:[],runtimeLoads:[],argv,commandSha256});
+--- /dev/null
++++ b/tests/host/lib/stock-graph-collector.mjs
+@@ -0,0 +1,87 @@
++import assert from 'node:assert/strict';
++import { createHash } from 'node:crypto';
++import { posix } from 'node:path';
++import { readStockEvidenceDocument, verifyStockGraphEvidence } from './stock-graph-evidence.mjs';
++const sourceRoot = '/Users/rcourson/aux-chromium-stock-measurement/chromium/src';
++const buildDirectory = `${sourceRoot}/out/StockMemory`;
++const roots = ['//chrome:chrome','//chrome/test:unit_tests','//chrome/test:browser_tests','//content/test:content_unittests'];
++const gpuSource = '//third_party/litert/src/litert/runtime/accelerators/gpu_registry.cc';
++const hash = raw => createHash('sha256').update(raw).digest('hex');
++const artifact = value => {const raw=JSON.stringify(value);return {raw,sha256:hash(raw)};};
++function originalPath(value) {
++  assert.equal(typeof value,'string');assert.ok(!value.includes('\\') && !value.includes('\0'));
++  if (value.startsWith('//')) {assert.ok(!value.split('/').includes('..'));return value;}
++  const absolute=posix.resolve(buildDirectory,value);
++  assert.ok(absolute.startsWith(`${sourceRoot}/`),'Foreign/build-relative source input');
++  return `//${absolute.slice(sourceRoot.length+1)}`;
++}
++/** Offline conversion of independently pinned original GN/command/macro captures.
++ * Capture rows require exact original target mapping; compdb file names alone
++ * cannot assign an ambiguous target. This function never invokes a producer. */
++export function collectStockGraphEvidence({inventory,graph,capturedCommands,loaderSource,effectiveArgs,expected}) {
++  assert.deepEqual(Object.keys(expected).sort(),['inventory','graph','capturedCommands','loaderSource','effectiveArgs'].sort());
++  for (const [key,value] of Object.entries({inventory,graph,capturedCommands,loaderSource,effectiveArgs})) {
++    assert.equal(value.sha256,expected[key],`Unadmitted original ${key}`);assert.equal(hash(value.raw),value.sha256);
++  }
++  const original=readStockEvidenceDocument(inventory), nodes=readStockEvidenceDocument(graph), capture=readStockEvidenceDocument(capturedCommands);
++  assert.equal(effectiveArgs.raw.trim(),'use_litert_tflite = false','Actual effective GN argument is required');
++  assert.equal(capture.producer,'stock-original-target-command-capture/v1');
++  assert.equal(capture.dynamicUndeclaredReads,false);assert.equal(capture.unresolvedDynamicLoads,false);
++  assert.equal(capture.sourceRoot,sourceRoot);assert.equal(capture.buildDirectory,buildDirectory);
++  assert.ok(Array.isArray(capture.rows));
++  const reached=new Set();
++  function visit(target) {
++    if(reached.has(target))return;const node=nodes[target];assert.ok(node,`Missing original GN target ${target}`);reached.add(target);
++    for(const key of ['deps','public_deps','data_deps']) {assert.ok(Array.isArray(node[key]??[]));for(const child of node[key]??[])visit(child);}
++  }
++  roots.forEach(visit);
++  const seen=new Set(),rows=[];
++  for(const captured of capture.rows) {
++    assert.ok(reached.has(captured.target),'Foreign target command');assert.ok(Array.isArray(captured.argv)&&captured.argv.every(arg=>typeof arg==='string'));
++    // Complete original argv is captured, not reconstructed from a shell string.
++    const commandSha256=hash(JSON.stringify(captured.argv));assert.equal(commandSha256,captured.commandSha256);
++    const key=`${captured.target}:${commandSha256}`;assert.ok(!seen.has(key),'Ambiguous duplicate command mapping');seen.add(key);
++    assert.ok(Array.isArray(captured.inputs)&&Array.isArray(captured.runtimeLoads));
++    rows.push({target:captured.target,argv:captured.argv,commandSha256,inputs:captured.inputs.map(originalPath),runtimeLoads:captured.runtimeLoads.map(originalPath)});
++  }
++  for(const target of reached) {
++    const targetRows=rows.filter(row=>row.target===target);assert.ok(targetRows.length,'Missing original target command capture');
++    const declared=['sources','inputs','data','script'].flatMap(key=>typeof nodes[target][key]==='string'?[nodes[target][key]]:nodes[target][key]??[]).map(originalPath);
++    for(const input of declared)assert.ok(targetRows.some(row=>row.inputs.includes(input)),`Uncaptured declared target input ${input}`);
++  }
++  const gpuBranches=[];
++  for(const command of rows.filter(row=>row.inputs.includes(gpuSource))) {
++    const originalRow=capture.rows.find(row=>row.target===command.target&&row.commandSha256===command.commandSha256);
++    const macro=originalRow.effectiveMacros;
++    assert.ok(macro,'Missing original effective macro capture');assert.equal(macro.source,gpuSource);
++    assert.equal(macro.originalCommandSha256,command.commandSha256);assert.equal(macro.exitCode,0);
++    assert.equal(hash(macro.raw),macro.rawSha256);
++    // The pinned actual source's entire dynamic registry lies in this branch.
++    // Enabled branches include arbitrary RuntimeLibraryDir path construction;
++    // a basename list or static/Metal-disabled labels cannot establish closure.
++    assert.ok(/^#define LITERT_DISABLE_GPU(?:\s|$)/m.test(macro.raw),'Enabled GPU runtime-directory loader is unresolved');
++    gpuBranches.push({commandSha256:command.commandSha256,condition:'!defined(LITERT_DISABLE_GPU)',active:false,
++      sourceSha256:loaderSource.sha256,macroRaw:macro.raw,macroRawSha256:macro.rawSha256});
++  }
++  const missing=original.paths.map(row=>`//third_party/litert/src/${row.path}`);
++  const selectedPaths=new Set(rows.flatMap(row=>[...row.inputs,...row.runtimeLoads]));
++  for(const target of reached)for(const key of ['sources','inputs','data','script','outputs']) {
++    for(const value of typeof nodes[target][key]==='string'?[nodes[target][key]]:nodes[target][key]??[])selectedPaths.add(originalPath(value));
++  }
++  for(const value of missing)assert.ok(!selectedPaths.has(value),`Missing original object required ${value}`);
++  const loader=artifact({producer:'stock-original-litert-loader-closure/v1',unresolvedDynamicLoads:false,effectiveUseLitertTflite:false,
++    selectedTargets:[...reached].filter(target=>target.startsWith('//third_party/litert')).map(target=>({target,
++      commands:rows.filter(row=>row.target===target).map(row=>({commandSha256:row.commandSha256,defines:row.argv.filter(arg=>arg.startsWith('-D')).map(arg=>arg.slice(2))}))})),
++    sourceSha256:loaderSource.sha256,sourcePath:gpuSource,gpuBranches,
++    macosPaths:missing.filter(value=>value.includes('/macos_arm64/')),runtimeLoads:rows.flatMap(row=>row.runtimeLoads),
++    classifications:missing.map(path=>({path,classification:'absent_from_selected_graph_and_source_load_closure'}))});
++  const commands=artifact({targetLabels:[...reached],dynamicUndeclaredReads:false,rows});
++  // Normalize GN paths only; retain original raw graph + hash in the source join.
++  const normalized=Object.fromEntries([...reached].map(target=>[target,{...nodes[target],...Object.fromEntries(['sources','inputs','data','script','outputs'].filter(key=>nodes[target][key]!==undefined).map(key=>[key,typeof nodes[target][key]==='string'?originalPath(nodes[target][key]):nodes[target][key].map(originalPath)]))}]));
++  const normalizedGraph=artifact(normalized);
++  const evidence={inventory,graph:normalizedGraph,commands,loader,loaderSource,
++    expected:{inventory:inventory.sha256,graph:normalizedGraph.sha256,commands:commands.sha256,loader:loader.sha256,loaderSource:loaderSource.sha256}};
++  const result=verifyStockGraphEvidence(evidence);
++  return Object.freeze({evidence,sourceJoin:Object.freeze({...expected}),result,originalGraphRaw:graph.raw,
++    requiresIndependentRootAudit:true,compilationAdmitted:false,stock11Qualified:false});
++}
+--- /dev/null
++++ b/tests/host/lib/stock-graph-collector.test.mjs
+@@ -0,0 +1,31 @@
++import assert from 'node:assert/strict';
++import {createHash} from 'node:crypto';
++import {readFileSync} from 'node:fs';
++import test from 'node:test';
++import {collectStockGraphEvidence} from './stock-graph-collector.mjs';
++const hash=raw=>createHash('sha256').update(raw).digest('hex');
++const art=value=>{const raw=JSON.stringify(value);return{raw,sha256:hash(raw)};};
++const file=name=>{const raw=readFileSync(new URL(name,import.meta.url),'utf8');return{raw,sha256:hash(raw)};};
++const inventory=file('../../../docs/lane-requests/l10/stock-graph-evidence/original-local-lfs-inventory.json');
++const loaderSource=file('../../../docs/lane-requests/l10/stock-graph-collector/gpu_registry.cc');
++const gpu='//third_party/litert/src/litert/runtime/accelerators/gpu_registry.cc';
++const roots=['//chrome:chrome','//chrome/test:unit_tests','//chrome/test:browser_tests','//content/test:content_unittests'];
++function specimen(){return{nodes:Object.fromEntries(roots.map(target=>[target,{deps:[],sources:[]} ])),capture:{producer:'stock-original-target-command-capture/v1',
++ sourceRoot:'/Users/rcourson/aux-chromium-stock-measurement/chromium/src',buildDirectory:'/Users/rcourson/aux-chromium-stock-measurement/chromium/src/out/StockMemory',
++ dynamicUndeclaredReads:false,unresolvedDynamicLoads:false,rows:roots.map(target=>({target,argv:[],commandSha256:hash('[]'),inputs:[],runtimeLoads:[]}))}};}
++function collect(s,mutate=()=>{}){const a={inventory,loaderSource,graph:art(s.nodes),capturedCommands:art(s.capture),effectiveArgs:{raw:'use_litert_tflite = false\n',sha256:hash('use_litert_tflite = false\n')}};a.expected=Object.fromEntries(Object.entries(a).map(([key,v])=>[key,v.sha256]));mutate(a);return collectStockGraphEvidence(a);}
++function gpuSpecimen(){const s=specimen();const target='//third_party/litert:gpu';s.nodes[roots[0]].deps=[target];s.nodes[target]={sources:[gpu]};
++ const argv=['clang++','-DLITERT_DISABLE_GPU','-c',gpu],commandSha256=hash(JSON.stringify(argv));const raw='#define LITERT_DISABLE_GPU 1\n';
++ s.capture.rows.push({target,argv,commandSha256,inputs:[gpu],runtimeLoads:[],effectiveMacros:{source:gpu,originalCommandSha256:commandSha256,exitCode:0,raw,rawSha256:hash(raw)}});return s;}
++test('retains original raw GN source join; explicit mock candidate cannot authorize Stock',()=>{const s=specimen();const r=collect(s);assert.equal(r.originalGraphRaw,JSON.stringify(s.nodes));assert.equal(r.result.classifiedMissingObjects,23);assert.equal(r.requiresIndependentRootAudit,true);assert.equal(r.stock11Qualified,false);assert.equal(r.compilationAdmitted,false);});
++test('actual installed pinned GPU source + original command/macro join supports disabled branch only',()=>{const r=collect(gpuSpecimen());const d=JSON.parse(r.evidence.loader.raw);assert.equal(d.sourceSha256,loaderSource.sha256);assert.equal(d.gpuBranches.length,1);assert.equal(d.gpuBranches[0].active,false);});
++test('static/Metal labels and enabled arbitrary runtime directory never become false absence',()=>{const s=gpuSpecimen();const row=s.capture.rows.at(-1);row.argv=['clang++','-DLITERT_STATIC','-DLITERT_DISABLE_METAL_SUPPORT','-c',gpu];row.commandSha256=hash(JSON.stringify(row.argv));row.effectiveMacros.originalCommandSha256=row.commandSha256;row.effectiveMacros.raw='#define LITERT_STATIC 1\n#define LITERT_DISABLE_METAL_SUPPORT 1\n';row.effectiveMacros.rawSha256=hash(row.effectiveMacros.raw);assert.throws(()=>collect(s),/runtime-directory loader/);});
++test('unadmitted/changed raw source, missing macro producer, source/command substitution and late failed macro capture refuse',()=>{
++ assert.throws(()=>collect(specimen(),a=>a.loaderSource={...a.loaderSource,raw:a.loaderSource.raw+' '}));
++ for(const change of [row=>delete row.effectiveMacros,row=>row.effectiveMacros.source='//foreign.cc',row=>row.effectiveMacros.originalCommandSha256='a'.repeat(64),row=>row.effectiveMacros.exitCode=1]){const s=gpuSpecimen();change(s.capture.rows.at(-1));assert.throws(()=>collect(s));}
++});
++test('relative GN inputs resolve only exact original Stock tree; foreign and ambiguous target mappings refuse',()=>{const s=specimen();s.nodes[roots[0]].sources=['../../chrome/example.cc'];s.capture.rows[0].inputs=['../../chrome/example.cc'];const r=collect(s);assert.deepEqual(JSON.parse(r.evidence.graph.raw)[roots[0]].sources,['//chrome/example.cc']);s.capture.rows[0].inputs=['../../../../foreign.cc'];assert.throws(()=>collect(s),/Foreign/);const d=specimen();d.capture.rows.push({...d.capture.rows[0]});assert.throws(()=>collect(d),/Ambiguous/);});
++test('missing transitive/actions/declared source or runtime23/macOS inputs, unknown effective args and unresolved loads refuse',()=>{
++ for(const change of [s=>s.nodes[roots[0]].data_deps=['//missing:target'],s=>s.capture.rows.pop(),s=>s.nodes[roots[0]].sources=['//missing.cc'],s=>s.capture.unresolvedDynamicLoads=true,s=>s.capture.rows[0].runtimeLoads=['//third_party/litert/src/litert/prebuilt/macos_arm64/libLiteRtMetalAccelerator.dylib']]){const s=specimen();change(s);assert.throws(()=>collect(s));}
++ assert.throws(()=>collect(specimen(),a=>{a.effectiveArgs=art({defaultUseLitertTflite:false});a.expected.effectiveArgs=a.effectiveArgs.sha256;}),/effective GN/);
++});
+--- /dev/null
++++ b/docs/lane-requests/l10/stock-graph-collector/gpu_registry.cc
+@@ -0,0 +1,164 @@
++// Copyright 2026 Google LLC.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//      http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++#include "litert/runtime/accelerators/gpu_registry.h"
++
++#include <filesystem>  // NOLINT
++#include <string>
++
++#include "absl/strings/string_view.h"  // from @com_google_absl
++#include "litert/c/internal/litert_accelerator_def.h"
++#include "litert/c/internal/litert_logging.h"
++#include "litert/c/litert_any.h"
++#include "litert/c/litert_common.h"
++#include "litert/c/litert_environment_options.h"
++#include "litert/cc/litert_expected.h"
++#include "litert/core/environment.h"
++#include "litert/runtime/accelerators/gpu_static_registry.h"
++#include "litert/runtime/accelerators/registration_helper.h"
++
++extern "C" {
++const LiteRtAcceleratorDef* LiteRtStaticLinkedAcceleratorGpuDef = nullptr;
++}
++
++namespace litert::internal {
++
++#if defined(LITERT_WINDOWS_OS)
++#define SO_EXT ".dll"
++#elif defined(__APPLE__)
++#define SO_EXT ".dylib"
++#else
++#define SO_EXT ".so"
++#endif
++
++LiteRtStatus RegisterGpuAccelerator(LiteRtEnvironment environment) {
++#if !defined(LITERT_DISABLE_GPU)
++  static constexpr absl::string_view kGpuAcceleratorLibs[] = {
++      "libLiteRtGpuAccelerator" SO_EXT,
++#ifdef __ANDROID__
++#if LITERT_HAS_OPENCL_SUPPORT
++      "libLiteRtClGlAccelerator" SO_EXT,   "libLiteRtOpenClAccelerator" SO_EXT,
++#endif  // LITERT_HAS_OPENCL_SUPPORT
++#if LITERT_HAS_WEBGPU_SUPPORT
++      "libLiteRtWebGpuAccelerator" SO_EXT,
++#endif  // LITERT_HAS_WEBGPU_SUPPORT
++
++#elif TARGET_OS_IPHONE
++#if LITERT_HAS_METAL_SUPPORT
++      "libLiteRtMetalAccelerator" SO_EXT,
++#endif  // LITERT_HAS_METAL_SUPPORT
++#if LITERT_HAS_WEBGPU_SUPPORT
++      "libLiteRtWebGpuAccelerator" SO_EXT,
++#endif  // LITERT_HAS_WEBGPU_SUPPORT
++
++#else  // !__ANDROID__ && !TARGET_OS_IPHONE
++#if LITERT_HAS_WEBGPU_SUPPORT
++      "libLiteRtWebGpuAccelerator" SO_EXT,
++#endif  // LITERT_HAS_WEBGPU_SUPPORT
++#if LITERT_HAS_OPENCL_SUPPORT
++      "libLiteRtOpenClAccelerator" SO_EXT,
++#endif  // LITERT_HAS_OPENCL_SUPPORT
++#if LITERT_HAS_METAL_SUPPORT
++      "libLiteRtMetalAccelerator" SO_EXT,
++#endif  // LITERT_HAS_METAL_SUPPORT
++#endif  // !__ANDROID__ && !TARGET_OS_IPHONE
++
++#if LITERT_HAS_VULKAN_SUPPORT
++      "libLiteRtVulkanAccelerator" SO_EXT,
++#endif  // LITERT_HAS_VULKAN_SUPPORT
++  };
++
++  bool gpu_accelerator_registered = false;
++  auto gpu_handle_option =
++      environment->GetOption(kLiteRtEnvOptionTagSystemGpuAcceleratorHandle);
++  if (gpu_handle_option.has_value()) {
++    const LiteRtAcceleratorDef* accelerator_def = nullptr;
++    if (gpu_handle_option->type == kLiteRtAnyTypeVoidPtr) {
++      accelerator_def = static_cast<const LiteRtAcceleratorDef*>(
++          gpu_handle_option->ptr_value);
++    } else {
++      LITERT_LOG(LITERT_WARNING,
++                 "Unsupported type for system GPU accelerator handle: %d",
++                 gpu_handle_option->type);
++    }
++
++    if (accelerator_def != nullptr &&
++        RegisterAcceleratorFromDef(environment, accelerator_def) ==
++            kLiteRtStatusOk) {
++      LITERT_LOG(LITERT_INFO, "GPU accelerator registered from handle option.");
++      gpu_accelerator_registered = true;
++    }
++  }
++
++  if (!gpu_accelerator_registered &&
++      LiteRtStaticLinkedAcceleratorGpuDef != nullptr &&
++      RegisterAcceleratorFromDef(environment,
++                                 LiteRtStaticLinkedAcceleratorGpuDef) ==
++          kLiteRtStatusOk) {
++    LITERT_LOG(LITERT_INFO, "Statically linked GPU accelerator registered.");
++    gpu_accelerator_registered = true;
++  }
++
++  if (!gpu_accelerator_registered) {
++    std::filesystem::path runtime_lib_path;
++    auto option = environment->GetOption(kLiteRtEnvOptionTagRuntimeLibraryDir);
++    if (option.has_value() && option->type == kLiteRtAnyTypeString) {
++      runtime_lib_path = option->str_value;
++    }
++    for (auto plugin_path : kGpuAcceleratorLibs) {
++      std::filesystem::path full_plugin_path =
++          std::filesystem::path(runtime_lib_path) / std::string(plugin_path);
++      LITERT_LOG(LITERT_INFO, "Attempting to load GPU accelerator(%s).",
++                 full_plugin_path.c_str());
++      // Try to load a GPU accelerator using `LiteRtAcceleratorImpl` symbol.
++      auto registration = RegisterSharedObjectAcceleratorViaAcceleratorDef(
++          *environment, full_plugin_path.string(), "LiteRtAcceleratorImpl",
++          /*try_default_on_failure=*/false);
++      if (registration.HasValue()) {
++        LITERT_LOG(LITERT_INFO,
++                   "Dynamically loaded GPU accelerator(%s) registered.",
++                   plugin_path.data());
++        gpu_accelerator_registered = true;
++        break;
++      }
++      // Try to load a GPU accelerator using `LiteRtRegisterGpuAccelerator`
++      // symbol.
++      registration = RegisterSharedObjectAcceleratorViaFunctionPointer(
++          *environment, full_plugin_path.string(),
++          "LiteRtRegisterGpuAccelerator",
++          /*try_default_on_failure=*/true);
++      if (registration.HasValue()) {
++        LITERT_LOG(LITERT_INFO,
++                   "Dynamically loaded GPU accelerator(%s) registered.",
++                   plugin_path.data());
++        gpu_accelerator_registered = true;
++        break;
++      }
++    }
++  }
++
++  if (!gpu_accelerator_registered) {
++    LITERT_LOG(LITERT_WARNING,
++               "GPU accelerator could not be loaded and registered.");
++    return kLiteRtStatusErrorUnsupported;
++  }
++
++  return kLiteRtStatusOk;
++#else
++  LITERT_LOG(LITERT_VERBOSE, "GPU accelerator registration disabled.");
++  return kLiteRtStatusErrorUnsupported;
++#endif
++}
++
++}  // namespace litert::internal
