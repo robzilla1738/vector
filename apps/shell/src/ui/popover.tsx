@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useId, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { createPortal } from "react-dom";
 import { positionAnchoredPopover } from "../position-context-menu";
 import { requestStageReport } from "../stage-obstruction";
@@ -30,11 +39,14 @@ export function Popover({
   const panel = useRef<HTMLDialogElement>(null);
   const id = useId();
   const close = () => setOpen(false);
-  const activate = useCallback(() => setOpen(value => !value), []);
-  const setButton = useCallback((node: HTMLButtonElement | null) => {
-    button.current = node;
-    triggerControl?.(node, activate);
-  }, [triggerControl, activate]);
+  const activate = useCallback(() => setOpen((value) => !value), []);
+  const setButton = useCallback(
+    (node: HTMLButtonElement | null) => {
+      button.current = node;
+      triggerControl?.(node, activate);
+    },
+    [triggerControl, activate],
+  );
   useNativeDialog(open && !disabled, panel, button, initialFocusRef);
   useEffect(() => {
     if (disabled) setOpen(false);
@@ -70,7 +82,7 @@ export function Popover({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
-        onClick={event => onTrigger ? onTrigger(event) : activate()}
+        onClick={(event) => (onTrigger ? onTrigger(event) : activate())}
       >
         {trigger}
       </button>

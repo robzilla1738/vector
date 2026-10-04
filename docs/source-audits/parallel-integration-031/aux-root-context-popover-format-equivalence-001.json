@@ -1,0 +1,7 @@
+{
+  "leaf": "apps/shell/src/ui/popover.tsx",
+  "beforeSha256": "ed0f7b27f1abff35948a82465be096426f096f20cd4b5c9ffa54937193a5a21e",
+  "afterSha256": "1b28a85904af9083999c6e2ad84e09ccc28736fbd7cd434534a1dfd9836b512a",
+  "native154LoweredCodeExact": true,
+  "initialDependencyResolutionFailure": "Root esbuild unhoisted; resolved existing Vite dependency without installation."
+}
