@@ -1,0 +1,131 @@
+{
+  "status": "ROOT actual original source review/full8 F/R/F PASS;6exact owned/shared leaves and4metadata rows adopted",
+  "packets": [
+    {
+      "group": "owned",
+      "path": "owned.request.patch",
+      "sha256": "5fa938d186d50cff25ef7f635894671d74ee9f50b81f191e5c62ad4c32d08eee",
+      "paths": [
+        "apps/shell/src/components/StepTimeline.tsx",
+        "apps/shell/src/components/StepTimeline.test.tsx",
+        "apps/shell/src/components/StepTimeline.commands.test.tsx"
+      ]
+    },
+    {
+      "group": "shared",
+      "path": "shared.request.patch",
+      "sha256": "bc3f4625f3bfee66bec708b9e1efceff5043a64c514fd72dc6335e1163972bcf",
+      "paths": [
+        "apps/shell/src/components/RunPanelAction.tsx",
+        "apps/shell/src/components/RunPanel.tsx",
+        "apps/shell/src/scoped-control-commands.ts"
+      ]
+    },
+    {
+      "group": "commands",
+      "path": "commands.request.patch",
+      "sha256": "05125d701d537f6fcb5c37475542bc708dfe9b29578ddaa9734c42de2ddd61e3",
+      "paths": [
+        "packages/contracts/src/commands.ts",
+        "apps/shell/src/commands.ts"
+      ]
+    }
+  ],
+  "sourceRows": [
+    {
+      "path": "apps/shell/src/components/StepTimeline.tsx",
+      "group": "owned",
+      "before": {
+        "sha256": "89cd41fd8fb876385940c4fd988b3c8b3b18788bdb8dea96307fd077e77abea5",
+        "bytes": 12384
+      },
+      "after": {
+        "sha256": "6cfc7eb3943f83c79a1df3907172b2e01e4202b99d3316c586f8d8a88bb50a65",
+        "bytes": 13618
+      }
+    },
+    {
+      "path": "apps/shell/src/components/StepTimeline.test.tsx",
+      "group": "owned",
+      "before": {
+        "sha256": "55a4da1235211a8ede76d831c99b7155d6a43e5f01c4ba2b92b7b3be0f6de3bc",
+        "bytes": 10275
+      },
+      "after": {
+        "sha256": "e75820ee2259c5e4f38ee0904e08e6363dcccf676a4c6d933008cdf7d2696b37",
+        "bytes": 11241
+      }
+    },
+    {
+      "path": "apps/shell/src/components/StepTimeline.commands.test.tsx",
+      "group": "owned",
+      "before": null,
+      "after": {
+        "sha256": "0e7f4f82234923d0568fbd6a72b23e46b404a9e4f9097630a3f960c9fceddf1a",
+        "bytes": 12280
+      }
+    },
+    {
+      "path": "apps/shell/src/components/RunPanelAction.tsx",
+      "group": "shared",
+      "before": {
+        "sha256": "6e8789edb3b85da5a4b347d801b52be3d31aa70340e35fd47c68ce7fab7b5b24",
+        "bytes": 3206
+      },
+      "after": {
+        "sha256": "0480f19d79f50b16d13a23e6aa0ce86808091165b7137ebb2c251f39b58caf65",
+        "bytes": 3545
+      }
+    },
+    {
+      "path": "apps/shell/src/components/RunPanel.tsx",
+      "group": "shared",
+      "before": {
+        "sha256": "744f265c0189adfc9ea8682b4c4e4295bced5d88cf3a5943fdf1f36e7e2d6eed",
+        "bytes": 23073
+      },
+      "after": {
+        "sha256": "566979fe7e3772811ba284a0776cab2bd01ed9ebee85bb23256b06fa32fdc435",
+        "bytes": 23322
+      }
+    },
+    {
+      "path": "apps/shell/src/scoped-control-commands.ts",
+      "group": "shared",
+      "before": {
+        "sha256": "17c4083e4ea72a100e36c29b39b22c84e626f29515988dcb7ab0da2900ef2205",
+        "bytes": 1829
+      },
+      "after": {
+        "sha256": "1d734e4ca4b41ccc3e80fc502254e7bd7c559602e0b18c3c85e26c8d55ff6f66",
+        "bytes": 1887
+      }
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "group": "commands",
+      "before": {
+        "sha256": "f375bd67fe99fe7ededf8e0cb5f58a009295f578f29150715a1714442ffcf372",
+        "bytes": 36592
+      },
+      "after": {
+        "sha256": "8911ed71b3a804d6027b88fe84ef04044311e9671197024a03b35bab43e1bbe7",
+        "bytes": 36839
+      }
+    },
+    {
+      "path": "apps/shell/src/commands.ts",
+      "group": "commands",
+      "before": {
+        "sha256": "d4bc801e18602abee398c325a7f600a55916d1aca37270ecc51358f682e4cbaf",
+        "bytes": 21475
+      },
+      "after": {
+        "sha256": "e68f0586aa3b80f8445a1757c6e118f6791a07af7c64a9928d4f92003c048ebc",
+        "bytes": 21573
+      }
+    }
+  ],
+  "commands": 357,
+  "nativeQualification": "pending"
+}

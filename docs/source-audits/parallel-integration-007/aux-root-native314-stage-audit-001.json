@@ -1,0 +1,29 @@
+{
+  "status": "ROOT ACTUAL STAGE PASS; NO GN/BUILD/PAIR/APP ADMITTED",
+  "proofSha256": "8e0fedf7f4b8a2820fe644e94f489184dce39c03eea47da4c6354b9a1d924f42",
+  "actualNative": 690,
+  "actualGenerated": 3,
+  "presentCompiled": 8800,
+  "explicitVizAbsent": true,
+  "assets": 175,
+  "originalChildStreams": 6,
+  "originalPidsAbsent": [
+    46087,
+    46146,
+    46151,
+    46182,
+    46188,
+    46192,
+    46204,
+    46210,
+    46304,
+    46321
+  ],
+  "originalGroupsAbsent": [
+    46087,
+    46146,
+    46151,
+    46182
+  ],
+  "runtimeHelperCacheUnchanged": true
+}

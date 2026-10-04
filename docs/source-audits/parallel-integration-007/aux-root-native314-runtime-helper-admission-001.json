@@ -1,0 +1,11 @@
+{
+  "launcher": "/private/tmp/aux-builder-native314-source-preparation-001/runtime-helper-native314-259693e2-launch-001.json",
+  "sha256": "0b03238c88ed28c05f91cbd69ebc57099ea583b8470c776562bc0141bd2bce85",
+  "launcherPins": 10,
+  "actualToolPins": 12,
+  "freshCacheAbsent": true,
+  "slotAbsent": true,
+  "appAbsent": true,
+  "scope": "matching314 offline runtime staging +single fresh733 helper compile/MachO sidecar +nonprompting trusted preflight only; no App/assertions/qualification; original partial failures/group debt retained",
+  "passed": true
+}
