@@ -34,19 +34,26 @@ export function PageRecovery({ page }: { page: PageTarget }) {
         bridge.windowId !== windowId ||
         bridge.privateMode !== privateMode ||
         bridge.windowKind !== kind
-      )
+      ) {
+        original.active = false;
         return false;
-      if (!Number.isSafeInteger(page.documentEpoch) || page.documentEpoch < 0 || !page.targetId) return false;
+      }
+      if (!Number.isSafeInteger(page.documentEpoch) || page.documentEpoch < 0 || !page.targetId) {
+        original.active = false;
+        return false;
+      }
       const state = useStore.getState();
       const matches = state.pages.filter((item) => item.pageId === page.pageId);
       const live = matches.length === 1 ? matches[0] : undefined;
-      return (
+      const valid = (
         !!live &&
         state.mode === "focus" &&
         state.activePageId === page.pageId &&
         live.windowId === windowId &&
         JSON.stringify(live) === snapshot
       );
+      if (!valid) original.active = false;
+      return valid;
     },
     [identity, windowId, privateMode, kind, page.pageId, page.documentEpoch, page.targetId, snapshot],
   );

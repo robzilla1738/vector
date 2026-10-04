@@ -1,0 +1,76 @@
+{
+  "base": "7fd681bb11fecc9f67517bc42a4e673f62493b28",
+  "status": "source-only NEXT request, no native/OS execution",
+  "owned": [
+    {
+      "path": "apps/shell/src/components/PageRecovery.tsx",
+      "beforeSha256": "f0bc4366d26a8414ac807acaecbc6c7d46b807bf65a4689e7196c60bc849d8db",
+      "afterSha256": "19067e524e9d3fbe4ba05141e6817d53bdb37f54aa2f61ccfbea3d11994f6057"
+    },
+    {
+      "path": "apps/shell/src/components/PageRecovery.owner.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "069e8de5e8f6acaa9e50cfa847aaf5a79d6bb6455ae0a68ca9244cf8c1d1f3c5"
+    }
+  ],
+  "patchSha256": "05bbb04fc333bd35175623399085c0d06716ba5cb76604a286539e1d9c4d5e0c",
+  "referencePins": [
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "sha256": "122fdcf4e95cd25b6811661d9856e328faecdb3366246238b5b93b196c7d1eba"
+    },
+    {
+      "path": "apps/shell/src/commands.ts",
+      "sha256": "14909d2804944009ad36ecb1730bec592f3f6b6f2dad6227bdcd34775ef8bef7"
+    },
+    {
+      "path": "apps/shell/src/scoped-control-commands.ts",
+      "sha256": "1d734e4ca4b41ccc3e80fc502254e7bd7c559602e0b18c3c85e26c8d55ff6f66"
+    },
+    {
+      "path": "apps/shell/src/components/PageRecovery.controls.test.tsx",
+      "sha256": "5bf6ffcd77b3b9f8bc1085f92014f6eeae926237696cc8d88004d502e1a7d9d4"
+    }
+  ],
+  "replay": {
+    "exactForwardReverseForward": "PASS",
+    "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-l10-page-recovery-replay-ohd1qus8"
+  },
+  "controls": {
+    "originalSource": "2 FAIL/1 PASS",
+    "corrected": "12 PASS (9 original+3 new)",
+    "types": "focused imported-source closure PASS",
+    "lint": "original one status-role warning retained; no new warning",
+    "originalNineTestFileByteUnchanged": true
+  },
+  "logs": [
+    {
+      "path": "docs/lane-requests/l10/page-recovery-observed-retirement/logs/aux-l10-page-recovery-red-001.log",
+      "sha256": "11716171ab2e6b0101f43ae045ee52801dcdc2f146cce67cdc75f5c664dde444"
+    },
+    {
+      "path": "docs/lane-requests/l10/page-recovery-observed-retirement/logs/aux-l10-page-recovery-red-002.log",
+      "sha256": "94427ecf1379ff790070a9b25564c585030f440cee375a71f29b5c5b887b46d8"
+    },
+    {
+      "path": "docs/lane-requests/l10/page-recovery-observed-retirement/logs/aux-l10-page-recovery-red-003.log",
+      "sha256": "7a04aa47b03ee6df13e3f8d1c0f3c0c1c98efa2fcd388ef855080ec4ae5157d7"
+    },
+    {
+      "path": "docs/lane-requests/l10/page-recovery-observed-retirement/logs/aux-l10-page-recovery-green-001.log",
+      "sha256": "2f808ee21b0e77ae5b614ce9bd3689b9749659654033d916cc8ba604440397e0"
+    },
+    {
+      "path": "docs/lane-requests/l10/page-recovery-observed-retirement/logs/aux-l10-page-recovery-types-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/lane-requests/l10/page-recovery-observed-retirement/logs/aux-l10-page-recovery-lint-001.log",
+      "sha256": "385b5266dae62a4852499e21cdea58bd74c6f4ce4d67b5f14dc87e0c452c0380"
+    },
+    {
+      "path": "docs/lane-requests/l10/page-recovery-observed-retirement/logs/aux-l10-page-recovery-lint-002.log",
+      "sha256": "385b5266dae62a4852499e21cdea58bd74c6f4ce4d67b5f14dc87e0c452c0380"
+    }
+  ]
+}

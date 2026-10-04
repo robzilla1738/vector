@@ -1,0 +1,7 @@
+# PageRecovery observed owner retirement
+
+All six existing user actions already dispatch through registered commands, so this packet adds no commands or permissions. Current originally refused foreign bridge/live-page state but did not retire that retained owner, allowing observed A→B refusal→A revival. The narrow hunk permanently retires only the captured original owner before refusal, preserving exact live-page checks and original unknown ACK/rejection/action busy semantics.
+
+Three NEW mounted cases use actual Settings-independent command dispatcher and scoped resolver, real store.call with disposable mocked bridge.invoke, original callback/error/ACK objects. Original source gives two real failures: a revived foreign-window command calls the producer, and observed live-page ABA delivers the old diagnostic. Corrected cases plus all nine original controls pass. Original test file remains byte-identical. A third positive checks original unknown ACK and fresh action busy state after original retirement. No native authority, fabricated epoch producer, OS/native operation or broad source audit is added.
+
+Early dependency-view failures are retained (root and shell/contracts node_modules borrowed read-only via new own symlinks, no install/relink). Focused imported-source typecheck passes; lint has its same original status-role warning. The initial max-zero lint refusal is retained, not represented as a new warning or full workspace gate. Root unchanged aggregate gates and NEXT renderer budget remain mandatory.
