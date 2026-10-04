@@ -1,0 +1,21 @@
+✔ fixed original private launch admits an observed native private window without runtime handshake (68.205417ms)
+✔ unbranded, selectable, retired and replaced-before-spawn admission refuses before effects (28.249833ms)
+✔ actual synchronous spawn failure releases acquired original slot and preserves failure (20.503667ms)
+✔ spawn without PID waits for original close; no browser PID signaling or helper fallback (18.532167ms)
+✔ close debt retains original slot and rejects cleanup without inventing success (14.987625ms)
+✔ actual paired App aborts before LS/helper spawn when persistent reservation refuses (15.15025ms)
+✔ actual paired App retires an awaited reservation on quit before any LS dispatch (14.877208ms)
+✔ exact original owner attaches through the existing peer/identity route; quit delegates only owner (61.214458ms)
+✔ foreign clone, unknown owner and replacement cannot attach (25.142042ms)
+✔ retired owner refuses attachment before peer or identity (19.685542ms)
+✔ owner closes during awaited peer validation; identity cannot escape as valid (30.433584ms)
+✔ fixture inode replacement during awaited peer validation refuses (15.308584ms)
+✔ attached owner cannot use ordinary launcher/restart/effect paths (17.697ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 369.431208
