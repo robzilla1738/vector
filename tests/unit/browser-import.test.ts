@@ -43,7 +43,9 @@ function chromiumProfile(visits = 3): string {
       .run((1_700_000_000_000 + CHROME_EPOCH) * 1000, (1_700_000_100_000 + CHROME_EPOCH) * 1000, (1_700_000_200_000 + CHROME_EPOCH) * 1000);
   } else {
     const insert = db.prepare("INSERT INTO visits(id,url,visit_time) VALUES(?,1,?)");
+    db.exec("BEGIN");
     for (let i = 1; i <= visits; i++) insert.run(i, (1_700_000_000_000 + CHROME_EPOCH + i * 1000) * 1000);
+    db.exec("COMMIT");
   }
   db.close();
   return dir;

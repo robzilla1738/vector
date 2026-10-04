@@ -1,0 +1,7 @@
+{
+  "wholeUnitRun": "1 unchanged cancellation fixture timeout; other606files pass; original log retained",
+  "smallestOriginalFileCheck": "11 PASS with original fixture; cancellation4091ms",
+  "correction": "Synthetic1500-row fixture uses one SQLite transaction with identical schema,rowcount,ids,urls,times. No runtime/source assertions/deadlines changed.",
+  "correctedOriginalFileCheck": "11 PASS wholefile776ms",
+  "fullCoherentUnitRerun": "pending next complete Conversation/design cohort"
+}
