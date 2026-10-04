@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { moveListFocus } from "../keyboard-list";
 import { useStore } from "../store";
@@ -16,7 +17,7 @@ const ClosedTabRow = memo(function ClosedTabRow({ tabId, groupCount, firstInGrou
   return <div className="library-item">
     <button ref={rowRef} className="library-open" disabled={busy} title={tab.url} onClick={() => void useStore.getState().reopenClosedTab(tab.pageId)}>
       <span className="library-title">{tab.title || hostOf(tab.url)}</span><span className="library-url">{tab.url}</span>
-      <span className="hint">{location}{archived ? " · Space will be restored" : ""} · {new Date(tab.closedAt).toLocaleString()}</span>
+      <span {...staticHintProps}>{location}{archived ? " · Space will be restored" : ""} · {new Date(tab.closedAt).toLocaleString()}</span>
     </button>
     {firstInGroup && groupCount > 1 && <button {...smallButtonProps} disabled={busy} onClick={() => void useStore.getState().reopenClosedTab(tab.pageId, true)}>Reopen group · {groupCount}</button>}
     <button {...smallButtonProps} disabled={busy} aria-label={`Reopen ${tab.title || hostOf(tab.url)}`} onClick={() => void useStore.getState().reopenClosedTab(tab.pageId)}>{shellIconReopen} Reopen</button>

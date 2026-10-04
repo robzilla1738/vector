@@ -6,7 +6,7 @@ import { bridge } from "../bridge";
 import { GeneratedResultPreview } from "./GeneratedResultPreview";
 
 let host:HTMLDialogElement,root:ReturnType<typeof createRoot>;
-beforeEach(()=>{vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);host=document.createElement("dialog");host.open=true;document.body.append(host);root=createRoot(host);});
+beforeEach(()=>{vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);host=document.createElement("dialog");host.open=true;document.body.append(host);root=createRoot(host);});
 afterEach(async()=>{await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();vi.unstubAllGlobals();});
 const file={artifactId:"artifact-a",chatId:"chat-a",filename:"report.docx",mediaType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",byteLength:1200,createdAt:1,sha256:"a".repeat(64),kind:"docx" as const,revision:1,rootArtifactId:"artifact-a",parentArtifactId:"artifact-a",sourceRunId:"turn-a",preview:{title:"Brief",lines:["<script>alert(1)</script>"]},spec:{kind:"docx" as const,title:"Brief",paragraphs:["Current text"],tables:[]}};
 const button=(label:string)=>[...host.querySelectorAll<HTMLButtonElement>("button")].find(element=>element.textContent===label)!;

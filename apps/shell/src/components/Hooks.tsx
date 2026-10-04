@@ -1,3 +1,4 @@
+import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
@@ -97,18 +98,18 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
 
   return (
     <section className="field hooks-panel" aria-label="Hooks">
-      <div className="row">
+      <div {...staticRowProps}>
         <h4 className="grow">Hooks</h4>
         <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {})}>
           Refresh
         </button>
       </div>
-      <p className="hint">
+      <p {...staticHintProps}>
         A run lifecycle Hook calls a granted MCP tool or a sandboxed local command. Review its exact handler
         before approving it; revoking its grant, folder, or Hook stops future calls.
       </p>
       {error && <p role="alert">{error}</p>}
-      {handlerType === "mcp_tool" && !choices.length && !error && <p className="hint">No standing MCP tool grants in this Space. Create one in MCP &amp; Connectors.</p>}
+      {handlerType === "mcp_tool" && !choices.length && !error && <p {...staticHintProps}>No standing MCP tool grants in this Space. Create one in MCP &amp; Connectors.</p>}
       <label>Handler
         <select aria-label="Hook handler" value={handlerType} onChange={event => setHandlerType(event.target.value as "mcp_tool" | "command")}>
           <option value="mcp_tool">Granted MCP tool</option>
@@ -157,7 +158,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
           <textarea aria-label="Hook command" rows={2} maxLength={8000} value={command}
             onChange={event => setCommand(event.target.value)} />
         </label>
-        <p className="hint">The exact command runs without network access inside this folder and Aux's sandbox. Archive the folder or revoke the Hook to stop future runs.</p>
+        <p {...staticHintProps}>The exact command runs without network access inside this folder and Aux's sandbox. Archive the folder or revoke the Hook to stop future runs.</p>
       </>}
       <button
         {...smallButtonProps}
@@ -225,7 +226,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
             <p>Working folder <code>{selected.handler.workdir}</code></p>
             <p>Command <code>{selected.handler.command}</code></p>
           </>}
-          <div className="row">
+          <div {...staticRowProps}>
             {selected.trust === "untrusted" && (
               <button
                 {...smallButtonProps}
@@ -262,7 +263,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
             )}
           </div>
           <h5>Invocations</h5>
-          {!invocations.length && <p className="hint">No invocations yet.</p>}
+          {!invocations.length && <p {...staticHintProps}>No invocations yet.</p>}
           {invocations.map((item) => (
             <p key={item.invocationId}>
               {item.state} · {new Date(item.createdAt).toLocaleString()}

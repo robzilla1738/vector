@@ -1,3 +1,4 @@
+import { staticIconButtonProps, staticMenuItemProps } from "../../ui/class-props";
 import { useRef, useState } from "react";
 import { useFeature } from "../../use-feature";
 import { useStore } from "../../store";
@@ -11,9 +12,9 @@ export function NightRunOverflow({ runId }: { runId: string }) {
   const trigger = useRef<HTMLButtonElement>(null);
   if (!enabled || bridge.privateMode || !run) return null;
   return <div>
-    <button ref={trigger} className="icon-btn" aria-label="Run actions" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)}>⋯</button>
+    <button ref={trigger} {...staticIconButtonProps} aria-label="Run actions" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)}>⋯</button>
     {open && <Menu className="menu" label="Run actions" anchor={trigger} returnFocus={trigger} onClose={() => setOpen(false)}>
-      <button className="menu-item" role="menuitem" onClick={() => { setOpen(false); void executeCommand("queue-for-tonight"); }}>Queue for tonight</button>
+      <button {...staticMenuItemProps} role="menuitem" onClick={() => { setOpen(false); void executeCommand("queue-for-tonight"); }}>Queue for tonight</button>
     </Menu>}
   </div>;
 }

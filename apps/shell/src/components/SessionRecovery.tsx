@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -69,16 +70,16 @@ export function SessionRecovery({compact=false}:{compact?:boolean}) {
         {busy?<button {...smallGhostButtonProps} onClick={()=>{stopped.current=true;setMessage("Stopping after the current tab…");}}>Stop</button>
           :tabs.length>1&&<button {...smallButtonProps} disabled={!tabs.some(tab=>!tab.retrying)} onClick={()=>void retry(tabs.filter(tab=>!tab.retrying))}>Retry all</button>}
       </div>
-      <p className="hint">Their addresses and places in your sidebar have been kept. Retry restores each tab in its original window.</p>
+      <p {...staticHintProps}>Their addresses and places in your sidebar have been kept. Retry restores each tab in its original window.</p>
       <div className="session-recovery-list">{tabs.map(tab=><div className="session-recovery-row" key={tab.pageId}>
         <div><span>{tab.title||hostOf(tab.url)||"New tab"}</span><small title={tab.url}>{tab.url}</small>
           {rowErrors[tab.pageId]?<p className="hint err" role="alert">{rowErrors[tab.pageId]}</p>
-            :tab.error&&<details><summary>Why it couldn’t reopen</summary><p className="hint">{tab.error}</p></details>}
+            :tab.error&&<details><summary>Why it couldn’t reopen</summary><p {...staticHintProps}>{tab.error}</p></details>}
         </div>
         <button {...smallButtonProps} disabled={!!busy||tab.retrying} onClick={()=>void retry([tab])}>{busy===tab.pageId||tab.retrying?"Restoring…":"Retry"}</button>
       </div>)}</div>
     </>}
-    {message&&<output className="hint" data-block>{message}</output>}
+    {message&&<output {...staticHintProps} data-block>{message}</output>}
     {error&&<p className="hint err" role="alert">{error} <button {...smallGhostButtonProps} disabled={!!busy} onClick={()=>{setError("");setRefresh(value=>value+1);}}>Refresh</button></p>}
   </section>;
 }

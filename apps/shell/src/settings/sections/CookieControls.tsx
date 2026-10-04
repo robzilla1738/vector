@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -39,13 +41,13 @@ export function CookieControlsSetting({ active }: { active: boolean }) {
     }
   }
 
-  if (bridge.privateMode) return <span className="hint">Private windows use their own cookie protections. Change the regular Profile setting outside Private mode.</span>;
-  if (!inNativeHost) return <span className="hint">Available in the Aux desktop app.</span>;
-  return <div className="row">
+  if (bridge.privateMode) return <span {...staticHintProps}>Private windows use their own cookie protections. Change the regular Profile setting outside Private mode.</span>;
+  if (!inNativeHost) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
+  return <div {...staticRowProps}>
     {value ? <Switch aria-label="Block third-party cookies" checked={value.blockThirdParty}
       disabled={busy || value.managed} onChange={event => void change(event.target.checked)} />
-      : <span className="hint">Reading cookie setting…</span>}
-    {value?.managed && <span className="hint">Managed by your organization</span>}
-    {error && <span role="alert" className="field-error">{error} <button {...smallGhostButtonProps} onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
+      : <span {...staticHintProps}>Reading cookie setting…</span>}
+    {value?.managed && <span {...staticHintProps}>Managed by your organization</span>}
+    {error && <span role="alert" {...staticFieldErrorProps}>{error} <button {...smallGhostButtonProps} onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
   </div>;
 }

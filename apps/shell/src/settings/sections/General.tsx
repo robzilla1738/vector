@@ -1,3 +1,4 @@
+import { staticRowProps, staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
@@ -254,7 +255,7 @@ export function GeneralSettings({
             typeof window !== "undefined" &&
             Boolean((window as Window & { auxHostProof?: unknown }).auxHostProof)
           ) && (
-            <div className="row">
+            <div {...staticRowProps}>
               <button
                 {...smallGhostButtonProps}
                 disabled={backupBusy || backupOperation !== null}
@@ -280,7 +281,7 @@ export function GeneralSettings({
           )}
           {typeof window !== "undefined" &&
             Boolean((window as Window & { auxHostProof?: unknown }).auxHostProof) && <MigrationImport />}
-          {backupMessage && <output className="hint">{backupMessage}</output>}
+          {backupMessage && <output {...staticHintProps}>{backupMessage}</output>}
         </Field>
       </section>
     </>

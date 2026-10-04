@@ -1,0 +1,2710 @@
+{
+  "files": [
+    {
+      "path": "apps/shell/src/components/AgentRail.tsx",
+      "addedImport": "import { staticIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3307,
+          "end": 3327,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 3660,
+          "end": 3680,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 3809,
+          "end": 3829,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 3998,
+          "end": 4018,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ArchivePolicy.tsx",
+      "addedImport": "import { staticFieldInputProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 638,
+          "end": 661,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.tsx",
+      "addedImport": "import { staticFieldInputProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5775,
+          "end": 5798,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 6702,
+          "end": 6725,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowserProfiles.tsx",
+      "addedImport": "import { staticFieldInputProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 8421,
+          "end": 8444,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowsingMemory.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 15377,
+          "end": 15400,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CalendarConnections.tsx",
+      "addedImport": "import { staticFieldProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5023,
+          "end": 5040,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 5825,
+          "end": 5842,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 6820,
+          "end": 6837,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CalendarTaskGrants.tsx",
+      "addedImport": "import { staticFieldProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3738,
+          "end": 3755,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 5481,
+          "end": 5498,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearBrowsingData.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5867,
+          "end": 5890,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearHistory.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2628,
+          "end": 2651,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ContentMemory.tsx",
+      "addedImport": "import { staticFieldInputProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6849,
+          "end": 6872,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 22822,
+          "end": 22845,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Downloads.tsx",
+      "addedImport": "import { staticSmallIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6447,
+          "end": 6470,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 12824,
+          "end": 12847,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ExtensionActions.tsx",
+      "addedImport": "import { staticIconButtonProps, staticMenuItemProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1801,
+          "end": 1821,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 2240,
+          "end": 2260,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 3209,
+          "end": 3230,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 4376,
+          "end": 4397,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgentOversight.tsx",
+      "addedImport": "import { staticFieldProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3693,
+          "end": 3710,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgents.tsx",
+      "addedImport": "import { staticFieldProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5560,
+          "end": 5577,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/FilterListManager.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4596,
+          "end": 4619,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 9926,
+          "end": 9949,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/FindBar.tsx",
+      "addedImport": "import { staticSmallIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6358,
+          "end": 6381,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 7248,
+          "end": 7271,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 7471,
+          "end": 7494,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/GithubConnections.tsx",
+      "addedImport": "import { staticFieldInputProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2272,
+          "end": 2295,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 2465,
+          "end": 2488,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/HorizontalPins.tsx",
+      "addedImport": "import { staticMenuItemProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3533,
+          "end": 3554,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/HorizontalTabs.tsx",
+      "addedImport": "import { staticIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 14728,
+          "end": 14748,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/HttpAuthPrompt.tsx",
+      "addedImport": "import { staticFieldInputProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2632,
+          "end": 2655,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 2813,
+          "end": 2836,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/InlineAssist.tsx",
+      "addedImport": "import { staticSmallIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4393,
+          "end": 4416,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "addedImport": "import { staticSmallIconButtonProps, staticFieldInputProps, staticIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5175,
+          "end": 5198,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 5515,
+          "end": 5538,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 5703,
+          "end": 5726,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 6338,
+          "end": 6361,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 7075,
+          "end": 7098,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 7538,
+          "end": 7561,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 8650,
+          "end": 8673,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 8910,
+          "end": 8933,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 9253,
+          "end": 9276,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 22488,
+          "end": 22508,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 31796,
+          "end": 31816,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 31985,
+          "end": 32005,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 38289,
+          "end": 38312,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 38688,
+          "end": 38711,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/LittleWindow.tsx",
+      "addedImport": "import { staticSmallIconButtonProps, staticMenuItemProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3587,
+          "end": 3610,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 3832,
+          "end": 3855,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 4007,
+          "end": 4030,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 4742,
+          "end": 4763,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/LiveFolderEditor.tsx",
+      "addedImport": "import { staticFieldInputProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3584,
+          "end": 3607,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 4020,
+          "end": 4043,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 4259,
+          "end": 4282,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 4686,
+          "end": 4709,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 5068,
+          "end": 5091,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 5284,
+          "end": 5307,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryExclusions.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6257,
+          "end": 6280,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryItems.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 16408,
+          "end": 16431,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryPasteImport.tsx",
+      "addedImport": "import { staticFieldProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 12414,
+          "end": 12431,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryRecoveryNotice.tsx",
+      "addedImport": "import { staticFieldProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4712,
+          "end": 4729,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 5282,
+          "end": 5299,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemorySettings.tsx",
+      "addedImport": "import { staticFieldInputProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3851,
+          "end": 3874,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 4157,
+          "end": 4180,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 5546,
+          "end": 5569,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/NavigationButtons.tsx",
+      "addedImport": "import { staticIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 786,
+          "end": 806,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 1315,
+          "end": 1335,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 1905,
+          "end": 1925,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 2093,
+          "end": 2113,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "addedImport": "import { staticMcpSourceLabelProps, staticMcpSourceValueProps, staticFieldProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1518,
+          "end": 1546,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 1574,
+          "end": 1602,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 1662,
+          "end": 1690,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 1716,
+          "end": 1744,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 2022,
+          "end": 2050,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 2086,
+          "end": 2114,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 2230,
+          "end": 2258,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 2293,
+          "end": 2321,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 2713,
+          "end": 2741,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 2784,
+          "end": 2812,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 2993,
+          "end": 3021,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 3055,
+          "end": 3083,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 3195,
+          "end": 3223,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 3263,
+          "end": 3291,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 3463,
+          "end": 3491,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 3532,
+          "end": 3560,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 3673,
+          "end": 3701,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 3733,
+          "end": 3761,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 3849,
+          "end": 3877,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 3925,
+          "end": 3953,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 4081,
+          "end": 4109,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 4149,
+          "end": 4177,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 18151,
+          "end": 18179,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 18230,
+          "end": 18258,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 18421,
+          "end": 18449,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 18491,
+          "end": 18519,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 18637,
+          "end": 18665,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 18708,
+          "end": 18736,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 18901,
+          "end": 18929,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 18980,
+          "end": 19008,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 21425,
+          "end": 21442,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 25740,
+          "end": 25768,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 25833,
+          "end": 25861,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 27512,
+          "end": 27529,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 35349,
+          "end": 35377,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 35427,
+          "end": 35455,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 35589,
+          "end": 35617,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 35679,
+          "end": 35707,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 35923,
+          "end": 35951,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 35999,
+          "end": 36027,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 36239,
+          "end": 36267,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 36316,
+          "end": 36344,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 36576,
+          "end": 36604,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 36656,
+          "end": 36684,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 37113,
+          "end": 37141,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 37193,
+          "end": 37221,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 37458,
+          "end": 37486,
+          "original": "className=\"mcp-source-label\"",
+          "value": "mcp-source-label",
+          "symbol": "staticMcpSourceLabelProps"
+        },
+        {
+          "start": 37542,
+          "end": 37570,
+          "original": "className=\"mcp-source-value\"",
+          "value": "mcp-source-value",
+          "symbol": "staticMcpSourceValueProps"
+        },
+        {
+          "start": 39394,
+          "end": 39411,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 44365,
+          "end": 44388,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "addedImport": "import { staticIconButtonProps, staticFieldInputProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 23588,
+          "end": 23608,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 24936,
+          "end": 24959,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 25904,
+          "end": 25927,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PasswordTransferSetting.tsx",
+      "addedImport": "import { staticFieldProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1327,
+          "end": 1344,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 2471,
+          "end": 2494,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PinMenu.tsx",
+      "addedImport": "import { staticMenuItemProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1243,
+          "end": 1264,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 1362,
+          "end": 1383,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 1491,
+          "end": 1512,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 1646,
+          "end": 1667,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 1787,
+          "end": 1808,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 2019,
+          "end": 2040,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 2161,
+          "end": 2182,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 2346,
+          "end": 2367,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 2489,
+          "end": 2510,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PluginsPanel.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6696,
+          "end": 6719,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/QuickAskSetting.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3406,
+          "end": 3429,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RecentWork.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5131,
+          "end": 5154,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ResultsTable.tsx",
+      "addedImport": "import { staticIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5747,
+          "end": 5767,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RoutineSchedule.tsx",
+      "addedImport": "import { staticFieldProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5913,
+          "end": 5930,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 8269,
+          "end": 8292,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 10302,
+          "end": 10325,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "addedImport": "import { staticFieldProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 16014,
+          "end": 16031,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 17596,
+          "end": 17613,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 18427,
+          "end": 18450,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 18712,
+          "end": 18729,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 24796,
+          "end": 24813,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 36020,
+          "end": 36037,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 36547,
+          "end": 36570,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 38637,
+          "end": 38654,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 42072,
+          "end": 42089,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 42348,
+          "end": 42365,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 42636,
+          "end": 42653,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 42927,
+          "end": 42944,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 44634,
+          "end": 44651,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 45515,
+          "end": 45538,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 45982,
+          "end": 46005,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 46104,
+          "end": 46121,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 47981,
+          "end": 47998,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 48791,
+          "end": 48814,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 49232,
+          "end": 49249,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 51488,
+          "end": 51511,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 54199,
+          "end": 54222,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunControls.tsx",
+      "addedImport": "import { staticSmallIconButtonProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5780,
+          "end": 5803,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 6057,
+          "end": 6080,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 6331,
+          "end": 6354,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 8767,
+          "end": 8790,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunImages.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 982,
+          "end": 1005,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 2734,
+          "end": 2757,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunPanel.tsx",
+      "addedImport": "import { staticSmallIconButtonProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 15438,
+          "end": 15461,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 15711,
+          "end": 15734,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 17407,
+          "end": 17430,
+          "original": "className=\"icon-btn sm\"",
+          "value": "icon-btn sm",
+          "symbol": "staticSmallIconButtonProps"
+        },
+        {
+          "start": 23071,
+          "end": 23094,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SaveConversationTask.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3355,
+          "end": 3378,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SearchEngineSetting.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5747,
+          "end": 5770,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SearchEnginesSetting.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6592,
+          "end": 6615,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Settings.tsx",
+      "addedImport": "import { staticIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 15307,
+          "end": 15327,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 16140,
+          "end": 16160,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ShortcutsSetting.tsx",
+      "addedImport": "import { staticFieldInputProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6214,
+          "end": 6237,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 8402,
+          "end": 8425,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 8930,
+          "end": 8953,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 9408,
+          "end": 9431,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "addedImport": "import { staticMenuItemProps, staticIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 14997,
+          "end": 15018,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 15880,
+          "end": 15901,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 35698,
+          "end": 35718,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 42872,
+          "end": 42892,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 43000,
+          "end": 43020,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 43623,
+          "end": 43643,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 49003,
+          "end": 49024,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 50281,
+          "end": 50302,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 50439,
+          "end": 50460,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SiteControls.tsx",
+      "addedImport": "import { staticIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 7138,
+          "end": 7158,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SiteCustomization.tsx",
+      "addedImport": "import { staticIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5863,
+          "end": 5883,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SkillMetadata.tsx",
+      "addedImport": "import { staticFieldProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2380,
+          "end": 2397,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 2630,
+          "end": 2647,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 2867,
+          "end": 2884,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 3145,
+          "end": 3162,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 3554,
+          "end": 3577,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SkillReplayPanel.tsx",
+      "addedImport": "import { staticFieldProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2657,
+          "end": 2674,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 7899,
+          "end": 7922,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SpaceEditor.tsx",
+      "addedImport": "import { staticFieldInputProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3014,
+          "end": 3037,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 7489,
+          "end": 7512,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SpaceMemoryEditor.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 10111,
+          "end": 10134,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TabMenu.tsx",
+      "addedImport": "import { staticMenuItemProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 11399,
+          "end": 11420,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 11608,
+          "end": 11629,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 11808,
+          "end": 11829,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 12403,
+          "end": 12424,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 12523,
+          "end": 12544,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 14041,
+          "end": 14062,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 14784,
+          "end": 14805,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 15090,
+          "end": 15111,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 15690,
+          "end": 15711,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 15978,
+          "end": 15999,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 16544,
+          "end": 16565,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 17165,
+          "end": 17186,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 17302,
+          "end": 17323,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 17495,
+          "end": 17516,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 17715,
+          "end": 17736,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 18004,
+          "end": 18025,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 18348,
+          "end": 18369,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 18774,
+          "end": 18795,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 19057,
+          "end": 19078,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 19377,
+          "end": 19398,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 19695,
+          "end": 19716,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 19947,
+          "end": 19968,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 20182,
+          "end": 20203,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        },
+        {
+          "start": 20467,
+          "end": 20488,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TaskHistory.tsx",
+      "addedImport": "import { staticFieldProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6266,
+          "end": 6283,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 7450,
+          "end": 7467,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 8004,
+          "end": 8021,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "addedImport": "import { staticFieldProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 10437,
+          "end": 10454,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 12025,
+          "end": 12042,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 13124,
+          "end": 13141,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 20304,
+          "end": 20321,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 22209,
+          "end": 22226,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 22899,
+          "end": 22916,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 23694,
+          "end": 23711,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 24736,
+          "end": 24753,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 26087,
+          "end": 26104,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 27339,
+          "end": 27356,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 28353,
+          "end": 28370,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 29059,
+          "end": 29076,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 30696,
+          "end": 30713,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 32616,
+          "end": 32633,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "addedImport": "import { staticIconButtonProps, staticFieldProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 14563,
+          "end": 14583,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 14748,
+          "end": 14765,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 15708,
+          "end": 15725,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 22375,
+          "end": 22392,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 24890,
+          "end": 24907,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 26591,
+          "end": 26608,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 26918,
+          "end": 26935,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 27297,
+          "end": 27314,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 28791,
+          "end": 28808,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 29335,
+          "end": 29352,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 32532,
+          "end": 32549,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Toolbar.tsx",
+      "addedImport": "import { staticIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2406,
+          "end": 2426,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 3160,
+          "end": 3180,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 3453,
+          "end": 3473,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/VaultOfferBanner.tsx",
+      "addedImport": "import { staticFieldInputProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2321,
+          "end": 2344,
+          "original": "className=\"field-input\"",
+          "value": "field-input",
+          "symbol": "staticFieldInputProps"
+        },
+        {
+          "start": 2629,
+          "end": 2652,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "addedImport": "import { staticFieldProps, staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1842,
+          "end": 1859,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 2597,
+          "end": 2620,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 3442,
+          "end": 3459,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/WorkbookPreview.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3559,
+          "end": 3582,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/composer/SuspensionPanel.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4657,
+          "end": 4680,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/commands/ExtensionShortcuts.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3279,
+          "end": 3302,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 4520,
+          "end": 4543,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/extensions/SidePanelSurface.tsx",
+      "addedImport": "import { staticIconButtonProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 638,
+          "end": 658,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/NightRunOverflow.tsx",
+      "addedImport": "import { staticIconButtonProps, staticMenuItemProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 644,
+          "end": 664,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        },
+        {
+          "start": 925,
+          "end": 946,
+          "original": "className=\"menu-item\"",
+          "value": "menu-item",
+          "symbol": "staticMenuItemProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/NightSettings.tsx",
+      "addedImport": "import { staticFieldProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4556,
+          "end": 4573,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/SettingsNav.tsx",
+      "addedImport": "import { staticIconButtonProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2376,
+          "end": 2396,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/AboutAux.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4608,
+          "end": 4631,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/ArchivedChats.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4304,
+          "end": 4327,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "addedImport": "import { staticFieldErrorProps, staticFieldProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6610,
+          "end": 6633,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 14648,
+          "end": 14665,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackgroundRuntime.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2436,
+          "end": 2459,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CookieControls.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2317,
+          "end": 2340,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CrashReporting.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3066,
+          "end": 3089,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DefaultPageZoom.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2962,
+          "end": 2985,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DownloadFolder.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2631,
+          "end": 2654,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Languages.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 7420,
+          "end": 7443,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Models.tsx",
+      "addedImport": "import { staticFieldProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 20077,
+          "end": 20094,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        },
+        {
+          "start": 26576,
+          "end": 26593,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PasswordsAutofill.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3637,
+          "end": 3660,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 5302,
+          "end": 5325,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PictureInPicture.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2747,
+          "end": 2770,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Startup.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 7306,
+          "end": 7329,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/UsageBudgets.tsx",
+      "addedImport": "import { staticFieldErrorProps, staticFieldProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6506,
+          "end": 6529,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 7258,
+          "end": 7281,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        },
+        {
+          "start": 7484,
+          "end": 7501,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "addedImport": "import { staticFieldProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4264,
+          "end": 4281,
+          "original": "className=\"field\"",
+          "value": "field",
+          "symbol": "staticFieldProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/native-preference-control.tsx",
+      "addedImport": "import { staticFieldErrorProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2177,
+          "end": 2200,
+          "original": "className=\"field-error\"",
+          "value": "field-error",
+          "symbol": "staticFieldErrorProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/ui/index.tsx",
+      "addedImport": "import { staticIconButtonProps } from \"./class-props\";\n",
+      "edits": [
+        {
+          "start": 12424,
+          "end": 12444,
+          "original": "className=\"icon-btn\"",
+          "value": "icon-btn",
+          "symbol": "staticIconButtonProps"
+        }
+      ]
+    }
+  ],
+  "refused": [
+    {
+      "path": "apps/shell/src/components/CalendarConnections.tsx",
+      "start": 6934,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/CalendarTaskGrants.tsx",
+      "start": 5047,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgentOversight.tsx",
+      "start": 4244,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgents.tsx",
+      "start": 6507,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "start": 37372,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "start": 37207,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/TabMenu.tsx",
+      "start": 13709,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/TabMenu.tsx",
+      "start": 14371,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "start": 23247,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "start": 27726,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "start": 13090,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "start": 18687,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SpaceMemory.tsx",
+      "start": 13906,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SpaceMemory.tsx",
+      "start": 17574,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "start": 6836,
+      "reason": "key-after-class"
+    }
+  ],
+  "values": [
+    [
+      "field-error",
+      "staticFieldErrorProps"
+    ],
+    [
+      "field",
+      "staticFieldProps"
+    ],
+    [
+      "menu-item",
+      "staticMenuItemProps"
+    ],
+    [
+      "icon-btn",
+      "staticIconButtonProps"
+    ],
+    [
+      "mcp-source-label",
+      "staticMcpSourceLabelProps"
+    ],
+    [
+      "mcp-source-value",
+      "staticMcpSourceValueProps"
+    ],
+    [
+      "icon-btn sm",
+      "staticSmallIconButtonProps"
+    ],
+    [
+      "field-input",
+      "staticFieldInputProps"
+    ]
+  ]
+}

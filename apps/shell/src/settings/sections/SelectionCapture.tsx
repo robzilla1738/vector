@@ -1,3 +1,4 @@
+import { staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -143,7 +144,7 @@ export function SelectionCaptureSettings({ active, settings, onSave, nativeStatu
     catch (reason) { preview = reason instanceof Error ? reason.message : "Invalid template."; }
   }
   return <SettingsSection name="Selection & Capture" hidden={!active}>
-    <p className="hint">Actions open an editable chat draft. Nothing is sent to a model until you send it. Capture is unavailable in Private windows and must respect the source site’s policy.</p>
+    <p {...staticHintProps}>Actions open an editable chat draft. Nothing is sent to a model until you send it. Capture is unavailable in Private windows and must respect the source site’s policy.</p>
     <SettingsField label="Selection actions" hint="Order controls the selection menu. Use {text} for quoted text, {code} for quoted code, or {image} for a captured image. No page scripts or template commands run." searchTerms={["Lasso", "prompt", "template", "sort", "double tap"]}>
       <ol className="plain-list">
         {draft.actions.map((action,index)=><ActionRow key={action.id} action={action} index={index} count={draft.actions.length} disabled={busy || unavailable} scopeId={scopeId} publish={publish} run={run} toggle={toggleAction} change={updateAction} move={moveAction} preview={previewAction} remove={removeAction}/>)}
@@ -153,11 +154,11 @@ export function SelectionCaptureSettings({ active, settings, onSave, nativeStatu
     </SettingsField>
     <SettingsField label="Selection double-tap shortcut" hint="Press the same shortcut twice to request the selection menu. The native handler must ignore held keys; no selection is captured by this settings page.">
       <Hotkey label="selection double-tap shortcut" value={draft.selectionDoubleTap} disabled={busy || unavailable} active={active} current={current} scopeId={scopeId} onChange={selectionDoubleTap => update({ selectionDoubleTap })}/>
-      <output className="hint">{registration("selectionDoubleTap")}</output>
+      <output {...staticHintProps}>{registration("selectionDoubleTap")}</output>
     </SettingsField>
     <SettingsField label="Region-capture shortcut" hint="Requests an explicit region picker. Review the captured image in the chat draft before sending it.">
       <Hotkey label="region-capture shortcut" value={draft.regionCapture} disabled={busy || unavailable} active={active} current={current} scopeId={scopeId} onChange={regionCapture => update({ regionCapture })}/>
-      <output className="hint">{registration("regionCapture")}</output>
+      <output {...staticHintProps}>{registration("regionCapture")}</output>
     </SettingsField>
     <SettingsField label="Inline assist" hint="On explicit request, read a non-sensitive editable web field, draft a replacement, and apply it only after your review. Turn off to block new capture, drafting and insertion.">
       <label><input type="checkbox" checked={draft.inlineAssist} disabled={busy || unavailable} ref={element => publish("inline", "toggle-inline-assist", element, () => update({ inlineAssist: !draftRef.current.inlineAssist }))} data-command-id="toggle-inline-assist" onChange={event => run("toggle-inline-assist", event)}/> Enable inline assist</label>

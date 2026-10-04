@@ -1,3 +1,4 @@
+import { staticHintProps } from "../../ui/class-props";
 import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -104,7 +105,7 @@ export function ExtensionShortcuts({ active = true }: { active?: boolean }) {
   return (
     <section aria-label="Extension shortcuts" className="extension-shortcuts">
       <h3>Extensions</h3>
-      <p className="hint">
+      <p {...staticHintProps}>
         Aux shortcuts take priority. Enter a Chromium shortcut, or leave it empty to unbind.
       </p>
       {error && (
@@ -112,7 +113,7 @@ export function ExtensionShortcuts({ active = true }: { active?: boolean }) {
           {error}
         </p>
       )}
-      {!commands.length && !error && <p className="hint">No extension commands available.</p>}
+      {!commands.length && !error && <p {...staticHintProps}>No extension commands available.</p>}
       {commands.map((command) => (
         <CommandShortcut
           key={`${command.extensionId}:${command.name}:${command.shortcut}`}

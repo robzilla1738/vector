@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { useScopedCommandControls } from "../scoped-command-controls";
 import {
@@ -59,7 +61,7 @@ export function QuickAskSetting() {
       >
         Open Quick Ask
       </button>
-      <p className="hint">
+      <p {...staticHintProps}>
         A compact chat that expands into a full browser window. Your draft stays with it.
       </p>
       {status && (
@@ -80,7 +82,7 @@ export function QuickAskSetting() {
         </label>
       )}
       {(error || status?.error) && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {error || status?.error}{" "}
           <button
             ref={retryRef}
@@ -92,8 +94,8 @@ export function QuickAskSetting() {
           </button>
         </p>
       )}
-      {!inNativeHost && <p className="hint">Available in the Aux desktop app.</p>}
-      {inNativeHost && privateMode && <p className="hint">Open Quick Ask from a regular window.</p>}
+      {!inNativeHost && <p {...staticHintProps}>Available in the Aux desktop app.</p>}
+      {inNativeHost && privateMode && <p {...staticHintProps}>Open Quick Ask from a regular window.</p>}
     </div>
   );
 }

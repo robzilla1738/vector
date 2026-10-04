@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
@@ -99,8 +101,8 @@ export function ClearBrowsingData({ active }: { active: boolean }) {
     <label><input type="checkbox" aria-label={cookiesLabel} checked={selected.cookies} disabled={busy} onChange={event => setSelected(value => ({ ...value, cookies: event.target.checked }))} /> {cookiesLabel}</label>
     <label><input type="checkbox" aria-label={cacheLabel} checked={selected.cache} disabled={busy} onChange={event => setSelected(value => ({ ...value, cache: event.target.checked }))} /> {cacheLabel}</label>
     <p>Clearing cookies can sign you out. Bookmarks, downloads, saved work and Aux memory stay in place.</p>
-    {error && <p className="field-error" role="alert">{error}</p>}
-    <div className="row">
+    {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+    <div {...staticRowProps}>
       <button {...smallButtonProps} disabled={busy} onClick={() => { setCutoff(null); setPreview(null); setError(""); }}>Cancel</button>
       <button className="btn sm danger" disabled={busy || !preview || !amount} onClick={() => void clear()}>{busy ? "Clearing…" : "Clear selected data"}</button>
     </div>

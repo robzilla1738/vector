@@ -1,3 +1,5 @@
+import { staticFieldProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
@@ -78,16 +80,16 @@ export function MemoryRecoveryNotice({ possible = false }: { possible?: boolean 
   }
   if(bridge.privateMode)return <p>Memory recovery is unavailable in private browsing.</p>;
   const controls={scopeId,owner,report};
-  if(issued)return <div className="field">
-    <output className="hint">Fresh Aux-managed task-data backup issued after Forget. Protected Space and page memory need a new encrypted offline package.</output>
-    <p className="hint">Previously copied offline recovery packages and their original phrases remain usable after Forget. Copies and phrases outside Aux cannot be revoked.</p>
+  if(issued)return <div {...staticFieldProps}>
+    <output {...staticHintProps}>Fresh Aux-managed task-data backup issued after Forget. Protected Space and page memory need a new encrypted offline package.</output>
+    <p {...staticHintProps}>Previously copied offline recovery packages and their original phrases remain usable after Forget. Copies and phrases outside Aux cannot be revoked.</p>
     <RecoveryControl {...controls} command="open-memory-offline-recovery" {...smallGhostButtonProps} action={offline}>Create a fresh encrypted offline package…</RecoveryControl>
   </div>;
-  return <div className="field">
+  return <div {...staticFieldProps}>
     <p>{possible?"If this change removed saved Memory, older Aux-managed backups can no longer restore.":"Older Aux-managed backups can no longer restore after this Memory removal."} A fresh backup has not been confirmed; create one for the current state.</p>
-    <p className="hint">Previously copied offline recovery packages and their original phrases remain usable after Forget. Copies and phrases outside Aux cannot be revoked.</p>
+    <p {...staticHintProps}>Previously copied offline recovery packages and their original phrases remain usable after Forget. Copies and phrases outside Aux cannot be revoked.</p>
     <RecoveryControl {...controls} command="create-memory-local-backup" {...smallButtonProps} disabled={busy} action={backup}>Create fresh local backup…</RecoveryControl>
     <RecoveryControl {...controls} command="open-memory-offline-recovery" {...smallGhostButtonProps} action={offline}>Create a fresh encrypted offline package…</RecoveryControl>
-    {message&&<output className="hint">{message}</output>}
+    {message&&<output {...staticHintProps}>{message}</output>}
   </div>;
 }

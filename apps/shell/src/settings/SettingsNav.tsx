@@ -1,3 +1,4 @@
+import { staticIconButtonProps } from "../ui/class-props";
 import type { RefObject } from "react";
 import { shellIconClose, shellIconSearch } from "../components/icons";
 import { moveListFocus } from "../keyboard-list";
@@ -77,7 +78,7 @@ export function SettingsNav({
         />
         {query && (
           <button
-            className="icon-btn"
+            {...staticIconButtonProps}
             aria-label="Clear settings search"
             onClick={() => {
               onQueryChange("");

@@ -1,3 +1,5 @@
+import { staticFieldProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { constructAwaitedOperation } from "./owned-operation-construction";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
@@ -220,7 +222,7 @@ export function MemoryPasteImport({
         Bring a few useful notes from another assistant. Paste plain text with one note per line, up to 40
         notes and 32 KiB. Nothing is read from your clipboard automatically.
       </p>
-      <p className="hint">
+      <p {...staticHintProps}>
         Preview uses local checks only and makes no model call. Remove passwords, tokens, financial and health
         details. These checks cannot identify every sensitive fact; review each note yourself. Imported notes
         remain unverified and are not used by the agent until you accept them in Memory review.
@@ -266,11 +268,11 @@ export function MemoryPasteImport({
           placeholder="One useful preference or piece of project context per line"
         />
       </label>
-      <p className="hint">
+      <p {...staticHintProps}>
         {bytes.toLocaleString()} of {MEMORY_PASTE_MAX_BYTES.toLocaleString()} bytes. Drafts and previews are
         not restored after closing this form or restarting Aux.
       </p>
-      <div className="row">
+      <div {...staticRowProps}>
         <PasteControl
           {...props}
           command="preview-memory-import"
@@ -315,7 +317,7 @@ export function MemoryPasteImport({
               the destination or text requires a fresh preview.
             </p>
             {preview.candidates.map((candidate) => (
-              <label key={candidate.candidateId} className="field">
+              <label key={candidate.candidateId} {...staticFieldProps}>
                 <PasteControl
                   {...props}
                   command="select-memory-import-note"
@@ -334,7 +336,7 @@ export function MemoryPasteImport({
                 <span>
                   {candidate.text}
                   {candidate.duplicate && (
-                    <small className="hint"> · Already in Memory or repeated in this paste</small>
+                    <small {...staticHintProps}> · Already in Memory or repeated in this paste</small>
                   )}
                 </span>
               </label>
@@ -438,7 +440,7 @@ export function MemoryPasteImport({
               {receipt.accepted} approved, {receipt.restorable} in history, {receipt.removed} removed.
             </p>
           ))}
-          <p className="hint">
+          <p {...staticHintProps}>
             Counts survive restart. Forget removes matching notes from the inbox, approved Memory and
             restorable history; receipts retain counts only. Copied offline recovery packages must be replaced
             separately after Forget.

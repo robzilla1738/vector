@@ -1,3 +1,5 @@
+import { staticFieldProps, staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { WorkRow } from "../ui";
@@ -293,9 +295,9 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       <div className="routines-heading">
         <div>
           <h4>Skills</h4>
-          <p className="hint">Saved work you can revise, rerun, or schedule.</p>
+          <p {...staticHintProps}>Saved work you can revise, rerun, or schedule.</p>
         </div>
-        <div className="row">
+        <div {...staticRowProps}>
           {task && (
             <button
               {...smallButtonProps}
@@ -371,23 +373,23 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       </div>
       <details className="routine-safety">
         <summary>How Skills run safely</summary>
-        <p className="hint">
+        <p {...staticHintProps}>
           Scheduled writes wait for review. Monitors coalesce missed reads. Overlapping runs are blocked until
           you reconcile an uncertain write.
         </p>
       </details>
-      <section className="field" aria-label="Automation results inbox">
+      <section {...staticFieldProps} aria-label="Automation results inbox">
         <strong>Automation results</strong>
-        <span className="hint">
+        <span {...staticHintProps}>
           {inbox.filter((item) => !item.readAt).length} unread · Runs are recorded only while Aux is open.
         </span>
-        {inbox.length === 0 && <span className="hint">No automatic runs yet.</span>}
+        {inbox.length === 0 && <span {...staticHintProps}>No automatic runs yet.</span>}
         {inbox.map((item) => (
           <div className="routine-run hint" key={item.run.routineRunId}>
             <strong>{item.title}</strong> · {item.run.status.replaceAll("_", " ")} ·{" "}
             {item.triggerKind.replaceAll("_", " ")} · {new Date(item.run.createdAt).toLocaleString()}
             {item.run.reason ? ` · ${item.run.reason}` : ""}
-            <div className="row">
+            <div {...staticRowProps}>
               <button
                 {...smallGhostButtonProps}
                 disabled={busy}
@@ -414,9 +416,9 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         ))}
       </section>
       {alerts.length > 0 && (
-        <section className="field" aria-label="Routine alerts">
+        <section {...staticFieldProps} aria-label="Routine alerts">
           <strong>Alerts</strong>
-          <span className="hint">Local run records only. They do not prove a business outcome.</span>
+          <span {...staticHintProps}>Local run records only. They do not prove a business outcome.</span>
           {alerts.map((alert) => (
             <div className="hint" key={alert.routineRunId}>
               {alert.title} · {alert.status.replaceAll("_", " ")} · {alert.triggerKind}
@@ -426,7 +428,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         </section>
       )}
       {task && (
-        <div className="row">
+        <div {...staticRowProps}>
           <input
             aria-label="Skill name"
             placeholder="Skill name"
@@ -436,24 +438,24 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         </div>
       )}
       {error && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {error}
         </p>
       )}
       {notice && (
-        <output className="hint" data-block>
+        <output {...staticHintProps} data-block>
           {notice}
         </output>
       )}
       {!selected && (
         <>
           {suggestions.length > 0 && (
-            <section className="field" aria-label="Suggested Skills">
+            <section {...staticFieldProps} aria-label="Suggested Skills">
               <strong>Suggested for this context</strong>
-              <p className="hint">
+              <p {...staticHintProps}>
                 Suggestions never start a Skill. Open one to review its scope and run it yourself.
               </p>
-              <div className="row">
+              <div {...staticRowProps}>
                 {suggestions.map((item) => (
                   <button
                     className="btn sm ghost"
@@ -489,12 +491,12 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
                 </button>
               ))}
             </div>
-            <output className="hint">
+            <output {...staticHintProps}>
               {visibleRoutines.length} {visibleRoutines.length === 1 ? "Skill" : "Skills"}
             </output>
           </div>
           {loading ? (
-            <output className="hint" data-block>
+            <output {...staticHintProps} data-block>
               Loading Skills…
             </output>
           ) : (
@@ -577,8 +579,8 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             {shellIconBack}All Skills
           </button>
           <h3>{selected.routine.title}</h3>
-          <span className="hint">Revision {selected.routine.revision}</span>
-          <p className="hint">{selected.routine.objective}</p>
+          <span {...staticHintProps}>Revision {selected.routine.revision}</span>
+          <p {...staticHintProps}>{selected.routine.objective}</p>
           <div className="routine-overview">
             <div>
               <span className="routine-overview-label">Status</span>
@@ -596,18 +598,18 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             </div>
           </div>
           {selected.routine.activationReview && (
-            <div className="field" role="status">
+            <div {...staticFieldProps} role="status">
               <strong>Review before activation</strong>
-              <span className="hint">
+              <span {...staticHintProps}>
                 {selected.routine.activationReview === "imported" ? "Imported Skill" :
                   selected.routine.activationReview === "untrusted_task" ? "Skill based on an external or saved-conversation task" :
                     "Skill saved from a run result"}
                 {" "}may contain page or tool instructions. Check the objective, source task, trigger, resources,
                 and model spend cap. It stays paused until you activate this exact revision.
               </span>
-              {activationBlock && <span className="hint">{activationBlock}</span>}
+              {activationBlock && <span {...staticHintProps}>{activationBlock}</span>}
               {activationReview === `${selected.routine.routineId}:${selected.routine.revision}` ? (
-                <div className="row">
+                <div {...staticRowProps}>
                   <button {...smallButtonProps} disabled={busy || !!activationBlock}
                     onClick={() => void action(async () => {
                       const reviewed = selected.routine;
@@ -626,7 +628,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               )}
             </div>
           )}
-          <span className="hint">
+          <span {...staticHintProps}>
             {selected.routine.reviewRequired
               ? "Review required before writes."
               : "May run without extra review."}{" "}
@@ -634,7 +636,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               `Timezone ${selected.routine.trigger.timezone}. `}
           </span>{" "}
           {!selected.routine.sourceTaskId && (
-            <p className="hint">
+            <p {...staticHintProps}>
               This imported definition is inactive. Binding it to a saved task gives it that task's current
               page and grants. Review the task and Accounts below before resuming.
             </p>
@@ -693,7 +695,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               })
             }
           />
-          <div className="row">
+          <div {...staticRowProps}>
             <button
               {...smallButtonProps}
               disabled={busy || !!selected.routine.activationReview || (selected.routine.paused && !selected.routine.sourceTaskId)}
@@ -806,12 +808,12 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             }
           />
           {comparison && comparison.routineId === selected.routine.routineId && (
-            <output className="hint" data-block>
+            <output {...staticHintProps} data-block>
               {comparison.summary}
             </output>
           )}
           <h4>Run history</h4>
-          {!selected.runs.length && <p className="hint">This Skill has not run yet.</p>}
+          {!selected.runs.length && <p {...staticHintProps}>This Skill has not run yet.</p>}
           {selected.runs.map((run) => (
             <div className="routine-run hint" key={run.routineRunId}>
               {run.status.replaceAll("_", " ")}
@@ -855,7 +857,7 @@ function RoutineOutcome({ run }: { run: RoutineRun }) {
     }
   };
   return (
-    <div className="field">
+    <div {...staticFieldProps}>
       <button
         {...smallGhostButtonProps}
         aria-expanded={open}
@@ -869,12 +871,12 @@ function RoutineOutcome({ run }: { run: RoutineRun }) {
       {open && (
         <div aria-busy={loading}>
           {loading && (
-            <output className="hint" data-block>
+            <output {...staticHintProps} data-block>
               Loading outcome evidence…
             </output>
           )}
           {error && (
-            <p className="field-error" role="alert">
+            <p {...staticFieldErrorProps} role="alert">
               {error}{" "}
               <button {...smallGhostButtonProps} onClick={() => void load()}>
                 Retry
@@ -883,7 +885,7 @@ function RoutineOutcome({ run }: { run: RoutineRun }) {
           )}
           {outcome && (
             <>
-              <p className="hint">
+              <p {...staticHintProps}>
                 Skill revision {outcome.run.revision}
                 {outcome.sourceTaskRevision
                   ? ` · source task revision ${outcome.sourceTaskRevision}`
@@ -905,14 +907,14 @@ function RoutineOutcome({ run }: { run: RoutineRun }) {
                       </span>
                     ))}
                     {item.review && (
-                      <span className="hint">
+                      <span {...staticHintProps}>
                         Human review: {item.review.outcome} · {item.review.note || "No note"}
                       </span>
                     )}
                   </div>
                 ))
               ) : (
-                <p className="hint">This Skill revision defined no success criteria.</p>
+                <p {...staticHintProps}>This Skill revision defined no success criteria.</p>
               )}
             </>
           )}
@@ -934,7 +936,7 @@ function RoutineRunReview({
   const [note, setNote] = useState("");
   const uncertain = run.status === "uncertain";
   return (
-    <div className="field">
+    <div {...staticFieldProps}>
       <label>
         {uncertain ? "What did you verify happened?" : "Review note"}
         <textarea
@@ -945,11 +947,11 @@ function RoutineRunReview({
         />
       </label>
       {uncertain && (
-        <span className="hint">
+        <span {...staticHintProps}>
           Check the destination before choosing an outcome. Aux will not retry this run automatically.
         </span>
       )}
-      <div className="row">
+      <div {...staticRowProps}>
         <button
           {...smallButtonProps}
           disabled={busy || !note.trim()}
@@ -1029,7 +1031,7 @@ function RoutineDefinitionEditor({
   return (
     <details className="routine-accounts">
       <summary>Skill definition and outcome</summary>
-      <div className="field">
+      <div {...staticFieldProps}>
         <label>
           Skill name
           <input
@@ -1040,7 +1042,7 @@ function RoutineDefinitionEditor({
           />
         </label>
       </div>
-      <div className="field">
+      <div {...staticFieldProps}>
         <label>
           Objective
           <textarea
@@ -1051,7 +1053,7 @@ function RoutineDefinitionEditor({
           />
         </label>
       </div>
-      <div className="field">
+      <div {...staticFieldProps}>
         <label>
           Expected output
           <input
@@ -1062,9 +1064,9 @@ function RoutineDefinitionEditor({
           />
         </label>
       </div>
-      <div className="field">
+      <div {...staticFieldProps}>
         <strong>Parameters</strong>
-        <span className="hint">
+        <span {...staticHintProps}>
           Use a parameter in the objective as {"{{name}}"}; enter its value when running the Skill.
         </span>
         {parameters.map((item, index) => (
@@ -1107,7 +1109,7 @@ function RoutineDefinitionEditor({
           Add parameter
         </button>
       </div>
-      <div className="field">
+      <div {...staticFieldProps}>
         <strong>Success criteria</strong>
         {criteria.length ? (
           criteria.map((item) => (
@@ -1116,13 +1118,13 @@ function RoutineDefinitionEditor({
             </span>
           ))
         ) : (
-          <span className="hint">
+          <span {...staticHintProps}>
             The bound task's criteria will be used. Sync them to keep this Skill revision explicit.
           </span>
         )}
         {source && (
           <>
-            <span className="hint">
+            <span {...staticHintProps}>
               Source task: {source.title} · revision {source.revision}
               {source.revision !== routine.sourceTaskRevision
                 ? " · changed since this Skill was reviewed"
@@ -1130,7 +1132,7 @@ function RoutineDefinitionEditor({
               . Edit criteria in the task, then sync this Skill.
             </span>
             {!sourceMatches && (
-              <span className="field-error">
+              <span {...staticFieldErrorProps}>
                 The source task criteria differ. Sync before running this Skill.
               </span>
             )}
@@ -1143,10 +1145,10 @@ function RoutineDefinitionEditor({
             </button>
           </>
         )}
-        {loadError && <span className="field-error">Source task could not be loaded. {loadError}</span>}
+        {loadError && <span {...staticFieldErrorProps}>Source task could not be loaded. {loadError}</span>}
       </div>
       {source && (
-        <div className="field">
+        <div {...staticFieldProps}>
           <strong>Source task resources</strong>
           {source.resources.length ? (
             source.resources.map((item) => (
@@ -1155,9 +1157,9 @@ function RoutineDefinitionEditor({
               </span>
             ))
           ) : (
-            <span className="hint">No resources attached to this task.</span>
+            <span {...staticHintProps}>No resources attached to this task.</span>
           )}
-          <span className="hint">
+          <span {...staticHintProps}>
             References do not grant access. Live pages and current grants are checked again when the Skill
             runs.
           </span>
@@ -1209,9 +1211,9 @@ function RoutineSourceTask({
     };
   }, [routine.workspaceId]);
   return (
-    <div className="field">
+    <div {...staticFieldProps}>
       <label htmlFor={`routine-source-${routine.routineId}`}>Source task</label>
-      <div className="row">
+      <div {...staticRowProps}>
         <select
           id={`routine-source-${routine.routineId}`}
           value={picked}
@@ -1233,7 +1235,7 @@ function RoutineSourceTask({
           Bind task
         </button>
       </div>
-      {loadError && <span className="field-error">Tasks could not be loaded. {loadError}</span>}
+      {loadError && <span {...staticFieldErrorProps}>Tasks could not be loaded. {loadError}</span>}
     </div>
   );
 }
@@ -1251,7 +1253,7 @@ function RoutineRunControls({
     Object.fromEntries(routine.parameters.map((item) => [item.name, item.value ?? ""])),
   );
   return (
-    <div className="field">
+    <div {...staticFieldProps}>
       {routine.parameters.map((item) => (
         <label key={item.name}>
           {item.label}
@@ -1313,17 +1315,17 @@ function RoutineAccounts({
   return (
     <details className="routine-accounts">
       <summary>Accounts{picked.length ? ` — ${picked.length} labeled` : " — any"}</summary>
-      <p className="hint">
+      <p {...staticHintProps}>
         Pick the labeled accounts this routine may fill. Runs only see grants for the labels you choose; an
         empty list means any account. Label vault items in Vault settings.
       </p>
       {loadError && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           Vault labels could not be loaded. {loadError}
         </p>
       )}
       {items !== null && !choices.length && (
-        <p className="hint">
+        <p {...staticHintProps}>
           No labeled vault items yet — every vault item without an account label stays unrestricted.
         </p>
       )}
@@ -1386,18 +1388,18 @@ function RoutineCalendarGrants({
   return (
     <details className="routine-accounts">
       <summary>Calendar accounts — {picked.length} allowed</summary>
-      <p className="hint">
+      <p {...staticHintProps}>
         This Skill can read only the Calendar grants selected here and still active on its saved task. New
         task grants are not added automatically.
       </p>
-      {!routine.sourceTaskId && <p className="hint">Bind a saved task before selecting Calendar accounts.</p>}
+      {!routine.sourceTaskId && <p {...staticHintProps}>Bind a saved task before selecting Calendar accounts.</p>}
       {error && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           Calendar grants could not be loaded. {error}
         </p>
       )}
       {grants?.length === 0 && (
-        <p className="hint">No Calendar accounts are granted to this task revision.</p>
+        <p {...staticHintProps}>No Calendar accounts are granted to this task revision.</p>
       )}
       {grants?.map((grant) => (
         <label className="routine-account" key={grant.grantId}>
@@ -1413,7 +1415,7 @@ function RoutineCalendarGrants({
         </label>
       ))}
       {grants && stale.length > 0 && (
-        <p className="hint">
+        <p {...staticHintProps}>
           {stale.length} saved Calendar grant{stale.length === 1 ? " is" : "s are"} no longer available.
           Remove them before this Skill can run.
         </p>

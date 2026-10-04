@@ -1,3 +1,5 @@
+import { staticIconButtonProps, staticFieldProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./Tasks.css";
@@ -379,12 +381,12 @@ export function Tasks() {
         <div className="drawer-head">
           <h3>{creating ? "New task" : selected ? selected.task.title : "Tasks"}</h3>
           <span className="sp" />
-          <button ref={closeButton} className="icon-btn" aria-label="Close tasks" onClick={() => close(null)}>
+          <button ref={closeButton} {...staticIconButtonProps} aria-label="Close tasks" onClick={() => close(null)}>
             {shellIconClose}
           </button>
         </div>
         {error && (
-          <p role="alert" className="field">
+          <p role="alert" {...staticFieldProps}>
             {error}
           </p>
         )}
@@ -418,7 +420,7 @@ export function Tasks() {
             minWidth: 0,
           }}
         >
-          <div className="field">
+          <div {...staticFieldProps}>
             <label htmlFor="task-workspace">Space</label>
             <select
               id="task-workspace"
@@ -461,7 +463,7 @@ export function Tasks() {
                     { value: "archived", label: "Archived" },
                   ]}
                 />
-                <output className="hint">
+                <output {...staticHintProps}>
                   {visibleTasks.length} {visibleTasks.length === 1 ? "task" : "tasks"}
                 </output>
               </div>
@@ -540,7 +542,7 @@ export function Tasks() {
             </>
           )}
           {selected && !showHistory && (
-            <div className="row">
+            <div {...staticRowProps}>
               <button {...smallButtonProps} onClick={() => reset(selected.task.taskId)}>
                 New child task
               </button>
@@ -583,7 +585,7 @@ export function Tasks() {
                 </output>
               )}
               {conflict && selected && (
-                <div className="field" role="alert">
+                <div {...staticFieldProps} role="alert">
                   <p>
                     This task changed since your draft began. Review the current saved version before applying
                     your draft.
@@ -637,8 +639,8 @@ export function Tasks() {
                 </p>
               )}
               {selected && !!selected.children.length && (
-                <section className="field" aria-label="Coordinated child tasks">
-                  <div className="row">
+                <section {...staticFieldProps} aria-label="Coordinated child tasks">
+                  <div {...staticRowProps}>
                     <h4 className="grow">Coordinated work</h4>
                     <button
                       {...smallButtonProps}
@@ -647,7 +649,7 @@ export function Tasks() {
                       Export plan…
                     </button>
                   </div>
-                  <span className="hint">
+                  <span {...staticHintProps}>
                     Each child keeps its own revision, resources, runs, evidence and cloud authority.
                   </span>
                   {selected.children.map((child) => (
@@ -671,7 +673,7 @@ export function Tasks() {
                   ))}
                 </section>
               )}
-              <div className="field">
+              <div {...staticFieldProps}>
                 <label htmlFor="task-title">Title</label>
                 <input
                   id="task-title"
@@ -680,7 +682,7 @@ export function Tasks() {
                   maxLength={200}
                 />
               </div>
-              <div className="field">
+              <div {...staticFieldProps}>
                 <label htmlFor="task-objective">Objective</label>
                 <textarea
                   id="task-objective"
@@ -690,7 +692,7 @@ export function Tasks() {
                   maxLength={10000}
                 />
               </div>
-              <div className="field">
+              <div {...staticFieldProps}>
                 <label htmlFor="task-criteria">What must be true when this is done?</label>
                 <textarea
                   id="task-criteria"
@@ -698,7 +700,7 @@ export function Tasks() {
                   value={criteria}
                   onChange={(e) => change("criteria", e.target.value)}
                 />
-                <span className="hint">
+                <span {...staticHintProps}>
                   One criterion per line. New criteria require your review; a finished run does not mark the
                   task verified.
                 </span>
@@ -726,7 +728,7 @@ export function Tasks() {
                 )}
               </div>
               {!selected && (title || objective || criteria) && (
-                <div className="field">
+                <div {...staticFieldProps}>
                   <button
                     className="btn"
                     onClick={() =>
@@ -743,8 +745,8 @@ export function Tasks() {
               {selected && (
                 <>
                   {needsSetup && (
-                    <div className="field">
-                      <span className="hint">
+                    <div {...staticFieldProps}>
+                      <span {...staticHintProps}>
                         Set up a model connection before running this task. You can still attach a tab and
                         review evidence.
                       </span>
@@ -811,8 +813,8 @@ export function Tasks() {
                       {selected.task.state === "archived" ? "Restore" : "Archive"}
                     </button>
                   </div>
-                  <div className="field">
-                    <span className="hint">
+                  <div {...staticFieldProps}>
+                    <span {...staticHintProps}>
                       {dirty
                         ? "Save your changes before starting a run."
                         : `Revision ${selected.task.revision}`}

@@ -1,3 +1,4 @@
+import { staticRowProps, staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
@@ -184,7 +185,7 @@ export function BackupSettings({
     current() && !externalBusy && !owner.pending() && loaded?.items.includes(item);
   return (
     <>
-      <div className="row">
+      <div {...staticRowProps}>
         <PreferenceAction
           command="create-local-runtime-backup"
           scopeId={id}
@@ -318,7 +319,7 @@ export function BackupSettings({
           ))}
         </details>
       )}
-      {message?.owner === owner && <output className="hint">{message.text}</output>}
+      {message?.owner === owner && <output {...staticHintProps}>{message.text}</output>}
     </>
   );
 }

@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { usePreferenceCommand } from "./preference-command";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
@@ -25,15 +27,15 @@ export function PictureInPictureSetting({ active }: { active: boolean }) {
   });
   if (bridge.privateMode)
     return (
-      <span className="hint">
+      <span {...staticHintProps}>
         Automatic picture in picture follows the regular Profile and cannot be changed in Private mode.
       </span>
     );
-  if (!available) return <span className="hint">Available in the Aux desktop app.</span>;
+  if (!available) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
   if (!active || bridge.windowKind !== "normal") return null;
   if (!value)
     return (
-      <span className="hint">
+      <span {...staticHintProps}>
         {error || "Reading picture-in-picture setting…"}{" "}
         {error && (
           <NativePreferenceRetry
@@ -46,7 +48,7 @@ export function PictureInPictureSetting({ active }: { active: boolean }) {
       </span>
     );
   return (
-    <div className="row">
+    <div {...staticRowProps}>
       <select
         ref={controlRef}
         data-command-id="set-auto-picture-in-picture"
@@ -59,9 +61,9 @@ export function PictureInPictureSetting({ active }: { active: boolean }) {
         <option value="block">Block automatic picture in picture</option>
         <option value="allow">Allow on all sites</option>
       </select>
-      {value.managed && <span className="hint">Managed by your organization</span>}
+      {value.managed && <span {...staticHintProps}>Managed by your organization</span>}
       {error && (
-        <span role="alert" className="field-error">
+        <span role="alert" {...staticFieldErrorProps}>
           {error}{" "}
           <NativePreferenceRetry
             command="retry-auto-picture-in-picture"

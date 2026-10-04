@@ -1,3 +1,5 @@
+import { staticFieldProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useState } from "react";
@@ -58,7 +60,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
   }
 
   return <SettingsSection name="Workspaces" title="Workspaces" hidden={!active}>
-    <p className="hint">Bind local folders to a Space. Read access lets the agent inspect files; read and write access also lets it change them. Network access stays off by default.</p>
+    <p {...staticHintProps}>Bind local folders to a Space. Read access lets the agent inspect files; read and write access also lets it change them. Network access stays off by default.</p>
     {error && <p role="alert">{error}</p>}
     <SettingsField label="Space" hint="Folder access and AGENTS.md context apply only to runs in this Space.">
       <select aria-label="Folder Space" value={workspaceId} onChange={event => { setWorkspaceId(event.target.value); setReview(null); setFolders([]); }}>
@@ -66,7 +68,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
       </select>
     </SettingsField>
     <SettingsField label="Local folder" hint="Choose an existing folder. Review its canonical path and AGENTS.md before granting access.">
-      <div className="row">
+      <div {...staticRowProps}>
         <input aria-label="Local folder path" value={path} onChange={event => { setPath(event.target.value); setReview(null); }} placeholder="/Users/you/Projects/example" />
         <select aria-label="Folder access" value={access} onChange={event => { setAccess(event.target.value as WorkspaceFolderAccess); setReview(null); }}>
           <option value="read">Read only</option>
@@ -77,7 +79,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
         })}>Review folder</button>
       </div>
     </SettingsField>
-    {review && <div className="field" role="group" aria-label="Folder access review">
+    {review && <div {...staticFieldProps} role="group" aria-label="Folder access review">
       <strong>Review folder access</strong>
       <p>Space: {workspaces.find(item => item.workspaceId === review.workspaceId)?.name} · {review.access === "read" ? "Read only" : "Read and write"}</p>
       <p>Canonical path: <code>{review.path}</code></p>
@@ -93,7 +95,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
       })}>Grant reviewed folder access</button>
     </div>}
     <SettingsField label="Bound folders" hint="Archiving immediately removes file and bash access. A changed folder or AGENTS.md pauses access until a fresh review.">
-      {!folders.some(item => !item.archivedAt) && <p className="hint">No active folders in this Space.</p>}
+      {!folders.some(item => !item.archivedAt) && <p {...staticHintProps}>No active folders in this Space.</p>}
       {folders.filter(item => !item.archivedAt).map(item => <div className="row" key={item.folderId}>
         <span className="grow"><code>{item.path}</code> · {item.access === "read" ? "Read only" : "Read and write"}
           {item.agentsChanged ? " · Folder or AGENTS.md changed; access paused. Archive and review again." : ""}</span>
@@ -105,7 +107,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
     </SettingsField>
     <SettingsField label="Command exceptions" hint="Escalated commands run outside the file and network sandbox. Review each literal segment and reason. One-time approvals are consumed at dispatch; reusable prefixes are limited to read-only commands and flag-only variants.">
       <button {...smallButtonProps} disabled={busy || !workspaceId} onClick={() => void act(refreshCommands)}>Refresh requests</button>
-      {!commandRequests.some(item => item.state === "pending") && <p className="hint">No command requests awaiting review.</p>}
+      {!commandRequests.some(item => item.state === "pending") && <p {...staticHintProps}>No command requests awaiting review.</p>}
       {commandRequests.filter(item => item.state === "pending").map(item => <div className="field" role="group" aria-label="Command exception review" key={item.requestId}>
         <strong>Escalated command request</strong>
         <p>Run: <code>{item.runId}</code></p>
@@ -116,7 +118,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
         {item.prefixRule && <label>Reviewed prefix <input aria-label={`Reviewed prefix for ${item.requestId}`}
           value={prefixAmendments[item.requestId] ?? item.prefixRule}
           onChange={event => setPrefixAmendments(current => ({ ...current, [item.requestId]: event.target.value }))} /></label>}
-        <div className="row">
+        <div {...staticRowProps}>
           <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {
             await call("commands.escalations.decide", { requestId: item.requestId, decision: "decline" });
             await refreshCommands();
@@ -139,7 +141,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
           await refreshCommands();
         })}>Revoke command prefix</button>
       </div>)}
-      {commandRequests.some(item => item.state === "pending" || item.grantActive) && <p className="hint">After deciding, answer the paused run so the agent can retry the exact command. Approval does not execute it by itself. Changed or archived folder scope invalidates this approval.</p>}
+      {commandRequests.some(item => item.state === "pending" || item.grantActive) && <p {...staticHintProps}>After deciding, answer the paused run so the agent can retry the exact command. Approval does not execute it by itself. Changed or archived folder scope invalidates this approval.</p>}
     </SettingsField>
   </SettingsSection>;
 }

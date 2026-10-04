@@ -1,0 +1,46 @@
+{
+  "baseCommit": "f648a45535b49ade546316fe76f0ac1c6219197e",
+  "files": [
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "beforeSha256": "93e03ffc2c707d41e17ef9df366fb4e7ed54cc2c7b0b12af12a512f42d4aac3c",
+      "afterSha256": "5fc9b34e50a7f36513c24e7bf66c648b0b9597c558b18bd27bca335cebef7401"
+    },
+    {
+      "path": "apps/shell/src/components/AttachmentTray.tsx",
+      "beforeSha256": "ede59b9e658341e3b940a4e0f2e71d483d5ca8dde868810ba65e1f0d2ec93a09",
+      "afterSha256": "f3313084a2464462d6230265bc67e3af7cdc4471a693cb8ade9a9cfd5367288e"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationAttachmentControls.tsx",
+      "beforeSha256": null,
+      "afterSha256": "b521ad0a03e10a9b0352ebeace26e2f091d510251f3c1015d8e1f6c592dca91e"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.attachment-controls.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "c8cbcc7548a62bdfc5f65f201d4d3ecdc5d135d1c75bce8233d5004270947606"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "bf627afb15e8225e6f149cd5f7729e45f15eab4b50ca6627d00308f545c733b9",
+      "afterSha256": "33228f65c27d5c47c02ad2a5901253f9ad4bfada6e856a244c6526cbde33a6c4"
+    }
+  ],
+  "patchSha256": "174ae38546bed09bde67ab5fa38ecec1921c68b4e446d1a86081fef6d81d5592",
+  "forwardReverseForward": true,
+  "exactResultBytes": true,
+  "checks": {
+    "cohort": 87,
+    "newMountedCases": 15,
+    "originalImageCohort": "see actual retained log",
+    "shellTypes": true,
+    "scopedLint": "pass; original warnings retained",
+    "falsifiers": [
+      "Exact original changeDocument/changeResult engine transposed under mounted controls: stale retired remove toast RED",
+      "Original activeChat equality and unconditional release predicates restored: retired result publication RED"
+    ]
+  },
+  "nativeExecuted": false,
+  "rendererBudgetAccepted": false
+}

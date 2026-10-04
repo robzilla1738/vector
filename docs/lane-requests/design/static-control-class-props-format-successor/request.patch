@@ -1,0 +1,15 @@
+diff --git a/apps/shell/src/components/OutboundMcpSettings.tsx b/apps/shell/src/components/OutboundMcpSettings.tsx
+index 5a85a98e5..5c0ce01dc 100644
+--- a/apps/shell/src/components/OutboundMcpSettings.tsx
++++ b/apps/shell/src/components/OutboundMcpSettings.tsx
+@@ -1,4 +1,9 @@
+-import { staticMcpSourceLabelProps, staticMcpSourceValueProps, staticFieldProps, staticFieldErrorProps } from "../ui/class-props";
++import {
++  staticMcpSourceLabelProps,
++  staticMcpSourceValueProps,
++  staticFieldProps,
++  staticFieldErrorProps,
++} from "../ui/class-props";
+ import { staticHintProps, staticRowProps } from "../ui/class-props";
+ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+ import { errorMessage } from "../error-message";

@@ -1,3 +1,10 @@
+import {
+  staticMcpSourceLabelProps,
+  staticMcpSourceValueProps,
+  staticFieldProps,
+  staticFieldErrorProps,
+} from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./OutboundMcpSettings.css";
@@ -40,12 +47,12 @@ function ServerSource({ server }: { server: OutboundMcpServer }) {
   return (
     <div className="mcp-source-details">
       <div>
-        <span className="mcp-source-label">Server</span>
-        <div className="mcp-source-value">{server.name}</div>
+        <span {...staticMcpSourceLabelProps}>Server</span>
+        <div {...staticMcpSourceValueProps}>{server.name}</div>
       </div>
       <div>
-        <span className="mcp-source-label">Kind</span>
-        <div className="mcp-source-value">
+        <span {...staticMcpSourceLabelProps}>Kind</span>
+        <div {...staticMcpSourceValueProps}>
           {source.kind === "local"
             ? "Local command"
             : source.kind === "remote"
@@ -56,14 +63,14 @@ function ServerSource({ server }: { server: OutboundMcpServer }) {
       {source.kind === "local" && (
         <>
           <div>
-            <span className="mcp-source-label">Executable</span>
-            <div className="mcp-source-value">
+            <span {...staticMcpSourceLabelProps}>Executable</span>
+            <div {...staticMcpSourceValueProps}>
               <code>{source.command}</code>
             </div>
           </div>
           <div>
-            <span className="mcp-source-label">Arguments</span>
-            <div className="mcp-source-value">
+            <span {...staticMcpSourceLabelProps}>Arguments</span>
+            <div {...staticMcpSourceValueProps}>
               {source.args.length ? (
                 <ol>
                   {source.args.map((arg, index) => (
@@ -78,8 +85,8 @@ function ServerSource({ server }: { server: OutboundMcpServer }) {
             </div>
           </div>
           <div>
-            <span className="mcp-source-label">Working directory</span>
-            <div className="mcp-source-value">
+            <span {...staticMcpSourceLabelProps}>Working directory</span>
+            <div {...staticMcpSourceValueProps}>
               <code>{source.cwd}</code>
             </div>
           </div>
@@ -88,40 +95,40 @@ function ServerSource({ server }: { server: OutboundMcpServer }) {
       {source.kind === "remote" && (
         <>
           <div>
-            <span className="mcp-source-label">Endpoint</span>
-            <div className="mcp-source-value">
+            <span {...staticMcpSourceLabelProps}>Endpoint</span>
+            <div {...staticMcpSourceValueProps}>
               <code>{source.url}</code>
             </div>
           </div>
           <div>
-            <span className="mcp-source-label">Authentication</span>
-            <div className="mcp-source-value">{source.auth === "oauth" ? "OAuth" : "None"}</div>
+            <span {...staticMcpSourceLabelProps}>Authentication</span>
+            <div {...staticMcpSourceValueProps}>{source.auth === "oauth" ? "OAuth" : "None"}</div>
           </div>
         </>
       )}
       {source.kind === "bundle" && (
         <>
           <div>
-            <span className="mcp-source-label">Original bundle</span>
-            <div className="mcp-source-value">
+            <span {...staticMcpSourceLabelProps}>Original bundle</span>
+            <div {...staticMcpSourceValueProps}>
               <code>{source.path}</code>
             </div>
           </div>
           <div>
-            <span className="mcp-source-label">Format</span>
-            <div className="mcp-source-value">{source.format.toUpperCase()}</div>
+            <span {...staticMcpSourceLabelProps}>Format</span>
+            <div {...staticMcpSourceValueProps}>{source.format.toUpperCase()}</div>
           </div>
           <div>
-            <span className="mcp-source-label">Installed copy SHA-256</span>
-            <div className="mcp-source-value">
+            <span {...staticMcpSourceLabelProps}>Installed copy SHA-256</span>
+            <div {...staticMcpSourceValueProps}>
               <code>{source.sha256}</code>
             </div>
           </div>
         </>
       )}
       <div>
-        <span className="mcp-source-label">Source fingerprint</span>
-        <div className="mcp-source-value">
+        <span {...staticMcpSourceLabelProps}>Source fingerprint</span>
+        <div {...staticMcpSourceValueProps}>
           <code>{server.sourceDigest}</code>
         </div>
       </div>
@@ -357,13 +364,13 @@ export function OutboundMcpSettings() {
   return (
     <section className="field outbound-mcp" aria-label="MCP servers" data-setting="MCP servers">
       <div className="drawer-section">MCP servers</div>
-      <p className="hint">
+      <p {...staticHintProps}>
         Add a server to a Space, review its exact source, then grant individual tools. Server approval alone
         never grants tool access. Local commands run with network and file writes blocked. OAuth connections
         require a native credential.
       </p>
       {!workspaces.length ? (
-        <p className="hint">
+        <p {...staticHintProps}>
           {loadingWorkspaces
             ? "Loading Spaces…"
             : error
@@ -443,7 +450,7 @@ export function OutboundMcpSettings() {
             )}
             {sourceKind === "local" && (
               <>
-                <p className="hint">
+                <p {...staticHintProps}>
                   Enter an executable and one argument per line. Aux does not run the command while it is
                   pending review. The approved working directory is readable by the server. Network and file
                   writes are blocked. Do not put secrets in arguments.
@@ -476,7 +483,7 @@ export function OutboundMcpSettings() {
             )}
             {sourceKind === "bundle" && (
               <>
-                <p className="hint">
+                <p {...staticHintProps}>
                   Aux supports self-contained Node bundles with static arguments and bundled files. Python,
                   UV, binary servers, host settings and environment values are not supported yet.
                 </p>
@@ -491,24 +498,24 @@ export function OutboundMcpSettings() {
                 {bundle && (
                   <div className="mcp-source-details">
                     <div>
-                      <span className="mcp-source-label">Original bundle</span>
-                      <div className="mcp-source-value">
+                      <span {...staticMcpSourceLabelProps}>Original bundle</span>
+                      <div {...staticMcpSourceValueProps}>
                         <code>{bundle.path}</code>
                       </div>
                     </div>
                     <div>
-                      <span className="mcp-source-label">Format</span>
-                      <div className="mcp-source-value">{bundle.format.toUpperCase()}</div>
+                      <span {...staticMcpSourceLabelProps}>Format</span>
+                      <div {...staticMcpSourceValueProps}>{bundle.format.toUpperCase()}</div>
                     </div>
                     <div>
-                      <span className="mcp-source-label">SHA-256</span>
-                      <div className="mcp-source-value">
+                      <span {...staticMcpSourceLabelProps}>SHA-256</span>
+                      <div {...staticMcpSourceValueProps}>
                         <code>{bundle.sha256}</code>
                       </div>
                     </div>
                     <div>
-                      <span className="mcp-source-label">Manifest server</span>
-                      <div className="mcp-source-value">
+                      <span {...staticMcpSourceLabelProps}>Manifest server</span>
+                      <div {...staticMcpSourceValueProps}>
                         <code>{JSON.stringify(bundle.server)}</code>
                       </div>
                     </div>
@@ -532,7 +539,7 @@ export function OutboundMcpSettings() {
             </button>
           </fieldset>
           <div className="drawer-section">Servers in this Space</div>
-          {!servers.length && <p className="hint">No MCP servers saved in this Space.</p>}
+          {!servers.length && <p {...staticHintProps}>No MCP servers saved in this Space.</p>}
           {!!servers.length && (
             <label>
               Review server
@@ -561,7 +568,7 @@ export function OutboundMcpSettings() {
               <strong>
                 {selectedServer.name} · {selectedServer.state}
               </strong>
-              <p className="hint">
+              <p {...staticHintProps}>
                 Registered {new Date(selectedServer.createdAt).toLocaleString()} in{" "}
                 {workspaces.find((item) => item.workspaceId === selectedServer.workspaceId)?.name ??
                   "this Space"}
@@ -571,9 +578,9 @@ export function OutboundMcpSettings() {
               {selectedServer.state === "approved" &&
                 selectedServer.source.kind === "remote" &&
                 selectedServer.source.auth === "oauth" && (
-                  <div className="field">
+                  <div {...staticFieldProps}>
                     <strong>OAuth authorization</strong>
-                    <p className="hint">
+                    <p {...staticHintProps}>
                       {oauthStatus?.connected
                         ? `Connected in this Profile${oauthExpiry}.`
                         : pendingOAuth?.serverId === selectedServer.serverId
@@ -581,7 +588,7 @@ export function OutboundMcpSettings() {
                           : "Connect this reviewed server before loading tools. " +
                             "Aux stores credentials in the Profile Keychain."}
                     </p>
-                    <div className="row">
+                    <div {...staticRowProps}>
                       {!oauthStatus?.connected && (
                         <button
                           {...smallButtonProps}
@@ -644,13 +651,13 @@ export function OutboundMcpSettings() {
                     </div>
                     {authorizationReview?.serverId === selectedServer.serverId && (
                       <fieldset className="mcp-source-details" aria-label="Review MCP authorization">
-                        <p className="hint">
+                        <p {...staticHintProps}>
                           Aux will open this HTTPS authorization page. Confirm its host belongs to the
                           provider you chose.
                         </p>
                         <div>
-                          <span className="mcp-source-label">Authorization destination</span>
-                          <div className="mcp-source-value">
+                          <span {...staticMcpSourceLabelProps}>Authorization destination</span>
+                          <div {...staticMcpSourceValueProps}>
                             <code>{authorizationReview.url}</code>
                           </div>
                         </div>
@@ -683,8 +690,8 @@ export function OutboundMcpSettings() {
                   </div>
                 )}
               {selectedServer.state === "pending" && (
-                <div className="field">
-                  <p className="hint">
+                <div {...staticFieldProps}>
+                  <p {...staticHintProps}>
                     Approval trusts only the source shown above. Review its executable or endpoint, arguments,
                     bundle hash and fingerprint. No tools are granted by this action.
                   </p>
@@ -751,7 +758,7 @@ export function OutboundMcpSettings() {
                 </button>
               )}
               {selectedServer.state === "revoked" && (
-                <p className="hint">
+                <p {...staticHintProps}>
                   This server is revoked. Register a new reviewed source to reconnect it.
                 </p>
               )}
@@ -759,7 +766,7 @@ export function OutboundMcpSettings() {
                 <fieldset className="field mcp-grant-form">
                   <legend>Grant one tool</legend>
                   {!tools.length ? (
-                    <p className="hint">The server reported no tools.</p>
+                    <p {...staticHintProps}>The server reported no tools.</p>
                   ) : (
                     <>
                       <label>
@@ -781,7 +788,9 @@ export function OutboundMcpSettings() {
                         </select>
                       </label>
                       {tools.find((tool) => tool.name === toolName)?.description && (
-                        <p className="hint">{tools.find((tool) => tool.name === toolName)?.description}</p>
+                        <p {...staticHintProps}>
+                          {tools.find((tool) => tool.name === toolName)?.description}
+                        </p>
                       )}
                       <label>
                         Scope
@@ -856,30 +865,30 @@ export function OutboundMcpSettings() {
                           <strong>Confirm this tool grant</strong>
                           <div className="mcp-source-details">
                             <div>
-                              <span className="mcp-source-label">Server</span>
-                              <div className="mcp-source-value">{selectedServer.name}</div>
+                              <span {...staticMcpSourceLabelProps}>Server</span>
+                              <div {...staticMcpSourceValueProps}>{selectedServer.name}</div>
                             </div>
                             <div>
-                              <span className="mcp-source-label">Server fingerprint</span>
-                              <div className="mcp-source-value">
+                              <span {...staticMcpSourceLabelProps}>Server fingerprint</span>
+                              <div {...staticMcpSourceValueProps}>
                                 <code>{grantReview.sourceDigest}</code>
                               </div>
                             </div>
                             <div>
-                              <span className="mcp-source-label">Tool</span>
-                              <div className="mcp-source-value">
+                              <span {...staticMcpSourceLabelProps}>Tool</span>
+                              <div {...staticMcpSourceValueProps}>
                                 <code>{grantReview.toolName}</code>
                               </div>
                             </div>
                             <div>
-                              <span className="mcp-source-label">Scope</span>
-                              <div className="mcp-source-value">
+                              <span {...staticMcpSourceLabelProps}>Scope</span>
+                              <div {...staticMcpSourceValueProps}>
                                 {grantScopeLabel(grantReview.scope, tasks, workspaces)}
                               </div>
                             </div>
                             <div>
-                              <span className="mcp-source-label">Scope ID</span>
-                              <div className="mcp-source-value">
+                              <span {...staticMcpSourceLabelProps}>Scope ID</span>
+                              <div {...staticMcpSourceValueProps}>
                                 <code>
                                   {grantReview.scope.kind === "workspace"
                                     ? grantReview.scope.workspaceId
@@ -888,14 +897,14 @@ export function OutboundMcpSettings() {
                               </div>
                             </div>
                             <div>
-                              <span className="mcp-source-label">Duration</span>
-                              <div className="mcp-source-value">
+                              <span {...staticMcpSourceLabelProps}>Duration</span>
+                              <div {...staticMcpSourceValueProps}>
                                 {grantReview.mode === "once" ? "One call" : "Until revoked"}
                               </div>
                             </div>
                             <div>
-                              <span className="mcp-source-label">Output limit</span>
-                              <div className="mcp-source-value">
+                              <span {...staticMcpSourceLabelProps}>Output limit</span>
+                              <div {...staticMcpSourceValueProps}>
                                 {grantReview.outputTokenLimit.toLocaleString()} tokens
                               </div>
                             </div>
@@ -933,16 +942,16 @@ export function OutboundMcpSettings() {
                   )}
                 </fieldset>
               )}
-              <div className="field">
+              <div {...staticFieldProps}>
                 <strong>Tool grants</strong>
                 {!grants.length && (
-                  <p className="hint">No tools granted. This server cannot act on any task.</p>
+                  <p {...staticHintProps}>No tools granted. This server cannot act on any task.</p>
                 )}
                 {grants.map((grant) => (
                   <div className="mcp-grant-row" key={grant.grantId}>
                     <div>
                       <strong>{grant.toolName}</strong>
-                      <span className="hint">
+                      <span {...staticHintProps}>
                         {grantScopeLabel(grant.scope, tasks, workspaces)} ·{" "}
                         {grant.mode === "once" ? "one call" : "until revoked"} ·{" "}
                         {grant.outputTokenLimit.toLocaleString()} output tokens
@@ -989,7 +998,7 @@ export function OutboundMcpSettings() {
                             onChange={(event) => setTestArguments(event.target.value)}
                           />
                         </label>
-                        <p className="hint">
+                        <p {...staticHintProps}>
                           This call uses the grant shown above. A one-call grant is consumed.
                         </p>
                         <button
@@ -1033,12 +1042,12 @@ export function OutboundMcpSettings() {
         </>
       )}
       {error && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {error}
         </p>
       )}
       {message && (
-        <output className="hint" data-block>
+        <output {...staticHintProps} data-block>
           {message}
         </output>
       )}

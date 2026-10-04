@@ -1,3 +1,4 @@
+import { staticIconButtonProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -178,7 +179,7 @@ export function SiteCustomization() {
           <span className="zap-eyebrow">Page customization</span>
           <h2>{origin ?? "Open a website"}</h2>
         </div>
-        <button className="icon-btn" aria-label="Close site customization" onClick={close}>
+        <button {...staticIconButtonProps} aria-label="Close site customization" onClick={close}>
           {shellIconClose}
         </button>
       </header>

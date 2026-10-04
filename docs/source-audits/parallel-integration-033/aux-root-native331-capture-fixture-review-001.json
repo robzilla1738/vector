@@ -1,0 +1,11 @@
+{
+  "result": "SOURCE_ONLY_PASS",
+  "freezeSHA256": "56f77a85ffa9b880cfdac0f9eb882ba2959b00f11191b5682ab081ff2eb8625e",
+  "patchSHA256": "2c5e7752070cafb2383b5117f819dbd4a8c7df6515e9a2747fc3e862b393a57d",
+  "wholeFileInverseExact": true,
+  "installedAPIHashesChecked": 5,
+  "originalRawStackSliceExact": true,
+  "actualBoundary": "Chrome Profile::FromBrowserContext rejects generic BrowserContext in WebContents construction before capture guard. TestingProfile supplies genuine Chrome Profile.",
+  "allOriginalAssertionsCallbacksDeadlinesUntouched": true,
+  "nativeExecution": false
+}

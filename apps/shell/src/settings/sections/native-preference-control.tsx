@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { usePreferenceCommand } from "./preference-command";
 import type { ReactNode } from "react";
 import { bridge } from "../../bridge";
@@ -40,11 +42,11 @@ export function NativePreferenceControl<T extends Preference>({
       return Promise.reject(new Error("Choose the current unmanaged preference control."));
     return perform(!value.enabled, value);
   });
-  if (bridge.privateMode) return <span className="hint">{privateHint}</span>;
-  if (!available) return <span className="hint">Available in the Aux desktop app.</span>;
+  if (bridge.privateMode) return <span {...staticHintProps}>{privateHint}</span>;
+  if (!available) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
   if (!active || bridge.windowKind !== "normal") return null;
   return (
-    <div className="row">
+    <div {...staticRowProps}>
       {value ? (
         <Switch
           controlRef={controlRef}
@@ -55,11 +57,11 @@ export function NativePreferenceControl<T extends Preference>({
           onChange={run}
         />
       ) : (
-        <span className="hint">{reading}</span>
+        <span {...staticHintProps}>{reading}</span>
       )}
       {value && hint(value)}
       {error && (
-        <span role="alert" className="field-error">
+        <span role="alert" {...staticFieldErrorProps}>
           {error} <NativePreferenceRetry command={retry} scopeId={scopeId} disabled={busy} read={refresh} />
         </span>
       )}

@@ -1,3 +1,4 @@
+import { staticSmallIconButtonProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./Downloads.css";
@@ -73,7 +74,7 @@ const DownloadRow = memo(function DownloadRow({ id, busy, rowError, retried, act
               </>
             )}
             {rename && <button {...smallGhostButtonProps} data-command-id="undo-download-rename" disabled={busy !== null} title={`Restore ${rename.originalName}`} onClick={() => void action(d.id, () => executeCommand("undo-download-rename", { payload: { receiptId: rename.receiptId } }), true)}>Undo rename</button>}
-            {canDismissDownload(d) && <button className="icon-btn sm" disabled={busy!==null} aria-label={`Remove ${d.filename} from downloads`} title="Remove from list; keep file" onClick={()=>void dismissDownloads([d.id])}>{shellIconClose}</button>}
+            {canDismissDownload(d) && <button {...staticSmallIconButtonProps} disabled={busy!==null} aria-label={`Remove ${d.filename} from downloads`} title="Remove from list; keep file" onClick={()=>void dismissDownloads([d.id])}>{shellIconClose}</button>}
             </div>
             {rowError&&<p className="dl-error" role="alert">{rowError}</p>}
           </div>
@@ -182,7 +183,7 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
         {!!dismissibleIds.length&&<button {...smallGhostButtonProps} disabled={busy!==null} title="Remove inactive downloads matching this view. Files remain on your computer." onClick={()=>void dismissDownloads(dismissibleIds)}>Clear list</button>}
         {!bridge.privateMode&&<button {...smallGhostButtonProps} aria-expanded={showFolder} onClick={()=>setShowFolder(!showFolder)}>Save location</button>}
         <button {...smallGhostButtonProps} disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Refresh</button>
-        <button className="icon-btn sm" title="Close (Esc)" aria-label="Close downloads" onClick={() => onClose ? onClose() : setOverlay(null)}>{shellIconClose}</button>
+        <button {...staticSmallIconButtonProps} title="Close (Esc)" aria-label="Close downloads" onClick={() => onClose ? onClose() : setOverlay(null)}>{shellIconClose}</button>
       </div>
       <div className="download-tools">
         <label className="download-search">{shellIconSearch}<input ref={searchRef} autoFocus={!!onClose} aria-label="Search downloads" placeholder="Find a download…" value={query} onChange={event => setQuery(event.target.value)} /></label>

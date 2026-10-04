@@ -1,3 +1,4 @@
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -222,23 +223,23 @@ export function ImportDataSetting() {
 
   return (
     <div className="import-setting">
-      <p className="hint">
+      <p {...staticHintProps}>
         Choose bookmarks and history from Chrome, Arc, Safari or Firefox. Live tabs require an attached
         Chrome. Nothing is imported until you confirm.
       </p>
-      <p className="hint">
+      <p {...staticHintProps}>
         Passwords, cookies, extensions and agent permissions are not imported here.
       </p>
       <details>
         <summary>Folders and retries</summary>
-        <p className="hint">
+        <p {...staticHintProps}>
           Arc Spaces and pinned pages become bookmark folders. Existing bookmarks keep their titles and
           folders. Matching bookmark URLs and history visits are skipped on retry.
         </p>
       </details>
       <details>
         <summary>Keychain and macOS access</summary>
-        <p className="hint">
+        <p {...staticHintProps}>
           This import does not ask for browser Keychain passwords. Aux may separately ask macOS to unlock
           its protected local storage. Check the app and purpose in that system prompt; you can cancel it.
           Review password transfers separately in Passwords &amp; Autofill. Reading Safari data may require
@@ -246,7 +247,7 @@ export function ImportDataSetting() {
         </p>
       </details>
       {!preview && (
-        <div className="row">
+        <div {...staticRowProps}>
           <button {...smallButtonProps} disabled={loading || running} onClick={() => void loadPreview()}>
             {loading ? "Checking…" : "See what can be imported"}
           </button>
@@ -262,7 +263,7 @@ export function ImportDataSetting() {
             : [{ profileId: "", categories: source.categories }]
           ).map((profile) => (
             <fieldset key={profile.profileId || source.id}>
-              {profile.profileId && <legend className="hint">Profile: {profile.profileId}</legend>}
+              {profile.profileId && <legend {...staticHintProps}>Profile: {profile.profileId}</legend>}
               {profile.categories.map((entry) => {
                 const usable = entry.available && !entry.blocker;
                 return (
@@ -285,7 +286,7 @@ export function ImportDataSetting() {
                       }
                     />
                     <span>{categoryLabel(entry.category)}</span>
-                    <span className="hint">{availability(entry)}</span>
+                    <span {...staticHintProps}>{availability(entry)}</span>
                   </label>
                 );
               })}
@@ -293,7 +294,7 @@ export function ImportDataSetting() {
           ))}
         </fieldset>
       ))}
-      <div className="row">
+      <div {...staticRowProps}>
         {preview && !running && (
           <button {...smallButtonProps} disabled={!selected.length || loading} onClick={() => void run()}>
             Import selected ({selected.reduce((count, item) => count + item.categories.length, 0)})
@@ -317,7 +318,7 @@ export function ImportDataSetting() {
       </div>
       {job && (
         <section aria-label="Import progress">
-          <output className="hint" aria-live="polite">
+          <output {...staticHintProps} aria-live="polite">
             {completion(job)}
           </output>
           {job.error && <p className="hint err">{job.error}</p>}
@@ -354,7 +355,7 @@ export function ImportDataSetting() {
                 (entry) => entry.state === "error" || (entry.category === "tabs" && entry.skipped > 0),
               )) && (
               <>
-                <p className="hint">
+                <p {...staticHintProps}>
                   Review sources and select what to retry. Bookmarks and history merge safely; live tabs can open
                   duplicates. Counts cover confirmed batches; an interrupted request may have added more.
                 </p>

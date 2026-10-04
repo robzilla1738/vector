@@ -12,6 +12,9 @@ export type AttachmentItem = {
   detail?: string;
   icon?: ReactNode;
   imageCurrent?(): boolean;
+  openControl?(props: React.ButtonHTMLAttributes<HTMLButtonElement>, content: ReactNode, invoke: () => unknown): ReactNode;
+  choiceControl?(props: React.InputHTMLAttributes<HTMLInputElement>, invoke: (included:boolean) => unknown): ReactNode;
+  removeControl?(props: React.ButtonHTMLAttributes<HTMLButtonElement>, content: ReactNode, invoke: () => unknown): ReactNode;
   onOpen(): unknown;
   onToggle(included: boolean): unknown;
   onRemove?(): unknown;
@@ -30,8 +33,8 @@ function AttachmentChip({item,disabled,busy}:{item:AttachmentItem;disabled:boole
   const content = <><span className="attachment-icon" aria-hidden="true">{item.icon ?? shellIconResult}</span><span><strong>{item.name}</strong><small>{item.included ? item.detail || ({ document: "Document", image: "Image", result: "Saved result" }[item.kind]) : "Excluded from next reply"}</small></span></>;
   const removeProps = {type:"button" as const,className:"icon-btn xs","aria-label":`Remove ${item.name}`,disabled:disabled || busy};
   return <div key={item.key} className={`attachment-chip${item.included ? "" : " excluded"}`}>
-      {item.imageCurrent ? <ConversationImageAction {...openProps} command="preview-conversation-image" current={item.imageCurrent} invoke={item.onOpen}>{content}</ConversationImageAction> : <button {...openProps} onClick={item.onOpen}>{content}</button>}
-      {item.imageCurrent ? <ConversationImageChoice className="ui-checkbox" aria-label={`Use ${item.name} in next reply`} title="Include in next reply" checked={item.included} disabled={disabled || busy} current={item.imageCurrent} invoke={item.onToggle}/> : <Checkbox aria-label={`Use ${item.name} in next reply`} title="Include in next reply" checked={item.included} disabled={disabled || busy} onChange={event => item.onToggle(event.target.checked)}/>}
-      {item.onRemove && (item.imageCurrent ? <ConversationImageAction {...removeProps} command="remove-conversation-image" current={item.imageCurrent} invoke={item.onRemove}>{shellIconClose}</ConversationImageAction> : <button {...removeProps} onClick={item.onRemove}>{shellIconClose}</button>)}
+      {item.imageCurrent ? <ConversationImageAction {...openProps} command="preview-conversation-image" current={item.imageCurrent} invoke={item.onOpen}>{content}</ConversationImageAction> : item.openControl ? item.openControl(openProps,content,item.onOpen) : <button {...openProps} onClick={item.onOpen}>{content}</button>}
+      {item.imageCurrent ? <ConversationImageChoice className="ui-checkbox" aria-label={`Use ${item.name} in next reply`} title="Include in next reply" checked={item.included} disabled={disabled || busy} current={item.imageCurrent} invoke={item.onToggle}/> : item.choiceControl ? item.choiceControl({className:"ui-checkbox ","aria-label":`Use ${item.name} in next reply`,title:"Include in next reply",checked:item.included,disabled:disabled || busy},item.onToggle) : <Checkbox aria-label={`Use ${item.name} in next reply`} title="Include in next reply" checked={item.included} disabled={disabled || busy} onChange={event => item.onToggle(event.target.checked)}/>}
+      {item.onRemove && (item.imageCurrent ? <ConversationImageAction {...removeProps} command="remove-conversation-image" current={item.imageCurrent} invoke={item.onRemove}>{shellIconClose}</ConversationImageAction> : item.removeControl ? item.removeControl(removeProps,shellIconClose,item.onRemove) : <button {...removeProps} onClick={item.onRemove}>{shellIconClose}</button>)}
     </div>;
 }

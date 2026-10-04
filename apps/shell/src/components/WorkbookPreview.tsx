@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useMemo, useRef, useState } from "react";
@@ -35,7 +37,7 @@ export function WorkbookPreview({ content }: { content: string }) {
     <div className="workbook-sheets" role="group" aria-label="Workbook sheets">
       {snapshot.sheets.map((item, index) => <button key={index} {...smallGhostButtonProps} aria-pressed={index === selected} disabled={busy} onClick={() => {setSelected(index);setError("");}}>{item.name}{item.hidden ? " · hidden" : ""}</button>)}
     </div>
-    <div className="workbook-preview-tools"><span className="hint">{sheet.rows.length.toLocaleString()} populated rows · {columns.length.toLocaleString()} populated columns{sheet.rows.length > 100 || columns.length > 20 ? " · Showing up to 100 rows and 20 columns" : ""}</span></div>
+    <div className="workbook-preview-tools"><span {...staticHintProps}>{sheet.rows.length.toLocaleString()} populated rows · {columns.length.toLocaleString()} populated columns{sheet.rows.length > 100 || columns.length > 20 ? " · Showing up to 100 rows and 20 columns" : ""}</span></div>
     <div className="workbook-export-actions">
       <button {...smallButtonProps} disabled={busy} onClick={()=>void exportSheet("xlsx")}>{busy ? "Exporting…" : "Export Excel…"}</button>
       <details className="workbook-more"><summary>More options</summary><div>
@@ -45,11 +47,11 @@ export function WorkbookPreview({ content }: { content: string }) {
         <button {...smallGhostButtonProps} aria-pressed={source} onClick={() => setSource(value => !value)}>{source ? "Show table" : "Show full source"}</button>
       </div></details>
     </div>
-    {error&&<p className="field-error" role="alert">{error}</p>}
-    <p className="hint">Exports keep saved cell values and coordinates. Formulas stay text. Source hyperlinks are included only when a cell stores a safe http(s) address.</p>
+    {error&&<p {...staticFieldErrorProps} role="alert">{error}</p>}
+    <p {...staticHintProps}>Exports keep saved cell values and coordinates. Formulas stay text. Source hyperlinks are included only when a cell stores a safe http(s) address.</p>
     {source ? <pre role="group" tabIndex={0} aria-label="Workbook snapshot source">{content}</pre> : sheet.rows.length ? <div role="group" className="structured-result-table workbook-table" tabIndex={0} aria-label={`${sheet.name} cell values`}><table><thead><tr><th scope="col" aria-label="Row number" />{visibleColumns.map(column => <th scope="col" key={column}>{workbookColumnLabel(column)}</th>)}</tr></thead><tbody>{sheet.rows.slice(0, 100).map(row => {
       const values = new Map(row.cells.map(cell => [cell.column, cell]));
       return <tr key={row.number}><th scope="row">{row.number}</th>{visibleColumns.map(column => { const cell = values.get(column); return <td key={column} title={cell?.hyperlink}>{cell?.value ?? ""}</td>; })}</tr>;
-    })}</tbody></table></div> : <p className="hint">This sheet has no cell values.</p>}
+    })}</tbody></table></div> : <p {...staticHintProps}>This sheet has no cell values.</p>}
   </div>;
 }

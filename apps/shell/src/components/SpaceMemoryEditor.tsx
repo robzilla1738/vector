@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
@@ -105,14 +107,14 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
     <details className="memory-overview" open={overviewOpen}><MemoryControl onError={controlError} command="toggle-space-memory-overview" scopeId={memory.workspaceId} summary action={() => { if (!mounted.current || !scope.active || bridge.privateMode) throw new Error("The Space changed."); setOverviewOpen(value => !value); }}>Space overview{changed ? " · Unsaved" : ""}</MemoryControl>
     <textarea aria-label="Space memory" value={content} maxLength={16_000} disabled={disabled || busy}
       placeholder="Project context, preferences, and decisions worth keeping…" onChange={event => edit(event.target.value)} />
-    <div className="space-memory-editor-actions"><span className="hint">{changed ? "Unsaved notes" : memory.content ? "Saved notes" : "No saved notes"} · {content.length.toLocaleString()}/16,000</span><span className="sp" />
+    <div className="space-memory-editor-actions"><span {...staticHintProps}>{changed ? "Unsaved notes" : memory.content ? "Saved notes" : "No saved notes"} · {content.length.toLocaleString()}/16,000</span><span className="sp" />
       {content && <MemoryControl onError={controlError} command="clear-space-memory-draft" scopeId={memory.workspaceId} {...smallGhostButtonProps} disabled={disabled || busy} action={() => { assertDraft(); edit(""); }}>Clear notes</MemoryControl>}
       {draft && <MemoryControl onError={controlError} command="discard-space-memory-draft" scopeId={memory.workspaceId} {...smallGhostButtonProps} disabled={disabled || busy} action={() => { assertDraft(); useMemoryDrafts.getState().write(memory.workspaceId, null); setConflict(null); setError(""); }}>Discard draft</MemoryControl>}
       <MemoryControl onError={controlError} command="save-space-memory" scopeId={memory.workspaceId} disabled={disabled || busy || !changed} action={() => save()}>{busy ? "Saving…" : "Save notes"}</MemoryControl>
     </div>
-    {!content && memory.content && <p className="hint">Save to remove these notes from future context. Earlier task records retain their original snapshots.</p>}
-    {memory.updatedAt && <p className="hint">Saved {new Date(memory.updatedAt).toLocaleString()} · Written by you · {memory.enabled===false?"Paused for future replies":"Used in this Space"}.</p>}
-    {memory.enabled===false&&<p className="hint">Pausing applies to new context. Active runs and earlier task records retain their existing snapshots.</p>}
+    {!content && memory.content && <p {...staticHintProps}>Save to remove these notes from future context. Earlier task records retain their original snapshots.</p>}
+    {memory.updatedAt && <p {...staticHintProps}>Saved {new Date(memory.updatedAt).toLocaleString()} · Written by you · {memory.enabled===false?"Paused for future replies":"Used in this Space"}.</p>}
+    {memory.enabled===false&&<p {...staticHintProps}>Pausing applies to new context. Active runs and earlier task records retain their existing snapshots.</p>}
     </details>
     <MemoryItems memory={memory} disabled={disabled || busy} onSaved={saved => {
       const current = useMemoryDrafts.getState().drafts[memory.workspaceId];
@@ -122,9 +124,9 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
     }}/>
     <BrowsingMemory key={memory.workspaceId} memory={memory}/>
     <ContentMemory key={`content-${memory.workspaceId}`} memory={memory}/>
-    {storageError && <output data-block className="hint">Your draft is available in this window but could not be saved for restart.</output>}
-    {error && errorSnapshot === snapshot && <p role="alert" className="field-error">{error}</p>}
-    {currentConflict && currentConflict.workspaceId === memory.workspaceId && <div className="memory-conflict"><strong>These notes changed elsewhere</strong><p>Your draft is preserved. Review the latest saved notes before choosing which version to keep.</p><pre>{currentConflict.content || "No saved notes"}</pre><div className="row">
+    {storageError && <output data-block {...staticHintProps}>Your draft is available in this window but could not be saved for restart.</output>}
+    {error && errorSnapshot === snapshot && <p role="alert" {...staticFieldErrorProps}>{error}</p>}
+    {currentConflict && currentConflict.workspaceId === memory.workspaceId && <div className="memory-conflict"><strong>These notes changed elsewhere</strong><p>Your draft is preserved. Review the latest saved notes before choosing which version to keep.</p><pre>{currentConflict.content || "No saved notes"}</pre><div {...staticRowProps}>
       <MemoryControl onError={controlError} command="use-saved-space-memory" scopeId={memory.workspaceId} disabled={disabled || busy} action={() => { assertDraft(); useMemoryDrafts.getState().write(memory.workspaceId, null); onSaved(currentConflict); setConflict(null); setError(""); }}>Use saved notes</MemoryControl>
       <MemoryControl onError={controlError} command="overwrite-space-memory" scopeId={memory.workspaceId} disabled={disabled || busy} action={() => save(currentConflict.revision)}>Save my notes instead</MemoryControl>
     </div></div>}

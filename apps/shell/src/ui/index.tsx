@@ -1,3 +1,5 @@
+import { staticIconButtonProps } from "./class-props";
+import { staticHintProps } from "./class-props";
 import { useCallback, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type MouseEvent, type KeyboardEvent, type RefObject, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { shellIconClose, shellIconFolder, shellIconMore } from "../components/icons";
 import { Menu } from "./dialog";
@@ -58,7 +60,7 @@ export function SettingsRow({ label, hint, children, compact = false }: { label:
   return <div className={`field ui-setting${compact ? " compact" : ""}`} data-setting={label} tabIndex={-1} role="group" aria-labelledby={`${id}-label`} aria-describedby={hint ? `${id}-hint` : undefined}>
     <span id={`${id}-label`} className="setting-label">{label}</span>
     <div className="ui-setting-control">{children}</div>
-    {hint && <span id={`${id}-hint`} className="hint">{hint}</span>}
+    {hint && <span id={`${id}-hint`} {...staticHintProps}>{hint}</span>}
   </div>;
 }
 
@@ -164,7 +166,7 @@ export function EmptyState({ title, description, action, icon = shellIconFolder 
 }
 
 export function DetailPane({ title, metadata, actions, onClose, children, className = "", headingRef, closeRef }: { title: string; metadata?: ReactNode; actions?: ReactNode; onClose?: (event?: MouseEvent<HTMLButtonElement>) => void; closeRef?: (node: HTMLButtonElement | null) => void; children: ReactNode; className?: string; headingRef?: RefObject<HTMLElement | null> }) {
-  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button ref={closeRef} type="button" className="icon-btn" aria-label={`Close ${title}`} onClick={onClose}>{shellIconClose}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
+  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button ref={closeRef} type="button" {...staticIconButtonProps} aria-label={`Close ${title}`} onClick={onClose}>{shellIconClose}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
 }
 
 export function ComposerFrame({ context, notices, children }: { context?: ReactNode; notices?: ReactNode; children: ReactNode }) {

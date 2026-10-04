@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./PluginsPanel.css";
@@ -107,7 +109,7 @@ export function PluginsPanel() {
   return (
     <section className="plugin-review field" aria-label="Plugins">
       <div className="drawer-section">Plugins</div>
-      <p className="hint">
+      <p {...staticHintProps}>
         Review a portable Aux bundle or Claude Code plugin folder before installing it into one Space.
       </p>
       <div className="plugin-review-actions">
@@ -147,8 +149,8 @@ export function PluginsPanel() {
             {inspection.name}
             {inspection.version ? ` · ${inspection.version}` : ""}
           </strong>
-          {inspection.description && <p className="hint">{inspection.description}</p>}
-          <p className="hint">
+          {inspection.description && <p {...staticHintProps}>{inspection.description}</p>}
+          <p {...staticHintProps}>
             {inspection.format === "claude-code"
               ? "Skills, MCP servers, and hooks have zero authority. Nothing runs or connects on import."
               : `${inspection.routineCount} portable Skills will be imported paused and unbound.`}
@@ -169,10 +171,10 @@ export function PluginsPanel() {
               ))}
             </ul>
           )}
-          <p className="hint">
+          <p {...staticHintProps}>
             Reviewed digest {inspection.digest.slice(0, 16)}… · contents must still match when installed.
           </p>
-          <div className="row">
+          <div {...staticRowProps}>
             <button {...smallButtonProps} disabled={busy || !workspaceId} onClick={install}>
               Install into this Space
             </button>
@@ -183,12 +185,12 @@ export function PluginsPanel() {
         </fieldset>
       )}
       {error && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {error}
         </p>
       )}
       {message && (
-        <output className="hint" data-block>
+        <output {...staticHintProps} data-block>
           {message}
         </output>
       )}
@@ -207,18 +209,18 @@ export function PluginsPanel() {
               </span>
             </button>
           ))}
-          {!visible.length && <p className="hint">No plugins installed in this Space.</p>}
+          {!visible.length && <p {...staticHintProps}>No plugins installed in this Space.</p>}
         </aside>
         <div className="plugin-review-detail">
-          {!selected && <p className="hint">Choose an installed plugin to inspect its components.</p>}
+          {!selected && <p {...staticHintProps}>Choose an installed plugin to inspect its components.</p>}
           {selected && (
             <>
               <strong>
                 {selected.name}
                 {selected.version ? ` · ${selected.version}` : ""}
               </strong>
-              {selected.description && <p className="hint">{selected.description}</p>}
-              <p className="hint">
+              {selected.description && <p {...staticHintProps}>{selected.description}</p>}
+              <p {...staticHintProps}>
                 Installed {new Date(selected.installedAt).toLocaleString()} · {selected.routineIds.length}
                 {" imported Skills"}
               </p>
@@ -227,13 +229,13 @@ export function PluginsPanel() {
                   <strong>
                     {asset.kind.replace("_", " ")} · {asset.name}
                   </strong>
-                  <span className="hint">
+                  <span {...staticHintProps}>
                     {grants.some((grant) => grant.assetId === asset.assetId && !grant.revokedAt)
                       ? "Granted in this Space"
                       : "No authority"}{" "}
                     · digest {asset.digest.slice(0, 16)}…
                   </span>
-                  {asset.description && <span className="hint">{asset.description}</span>}
+                  {asset.description && <span {...staticHintProps}>{asset.description}</span>}
                   {asset.kind === "skill" &&
                     !grants.some((grant) => grant.assetId === asset.assetId && !grant.revokedAt) && (
                       <button

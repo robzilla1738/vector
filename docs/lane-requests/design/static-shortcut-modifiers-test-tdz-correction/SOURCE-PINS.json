@@ -1,0 +1,10 @@
+{
+  "base": "e64474c18",
+  "path": "tests/unit/shortcut-modifier-construction.test.ts",
+  "before": "2b08590004412b4b64ecc07119ffe915844b5f45a38c86faa9ac3386dee1a5a0",
+  "after": "7e43c473746e0fdf052c7627422e3cf7ec940bcf87685ae5ac4e2d698e39af8b",
+  "patchSHA256": "291fe20b16b2045d4170939e606f88b5d45f46145884223bc7d3c12dd8d2b17e",
+  "failedOriginal": "/tmp/aux-shortcut-modifier-controls-003.log",
+  "corrected10Pass": "/tmp/aux-shortcut-modifier-controls-004.log",
+  "lint": "/tmp/aux-shortcut-modifier-lint-004.log"
+}

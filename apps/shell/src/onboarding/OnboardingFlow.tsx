@@ -1,3 +1,4 @@
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { ModelDataDisclosure } from "./ModelDataDisclosure";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -344,7 +345,7 @@ export function OnboardingFlow({
           {step === "import" && (
             <>
               <ImportDataSetting />
-              <p className="hint">
+              <p {...staticHintProps}>
                 Imports continue if you leave. Check progress here before retrying.
               </p>
             </>
@@ -366,7 +367,7 @@ export function OnboardingFlow({
                 </button>
               ) : (
                 <>
-                  <p className="hint">
+                  <p {...staticHintProps}>
                     A connection test sends a model request only when you choose Test. Setup itself makes no
                     model call.
                   </p>
@@ -428,7 +429,7 @@ export function OnboardingFlow({
                   </select>
                 </label>
               )}
-              <p className="hint">Your system’s reduced motion and contrast preferences still apply.</p>
+              <p {...staticHintProps}>Your system’s reduced motion and contrast preferences still apply.</p>
             </>
           )}
           {step === "default" && (
@@ -659,7 +660,7 @@ export function OnboardingFlow({
                         <h2>{card.question}</h2>
                         <p>{card.prompt}</p>
                         {/* chrome:// web UI fatals when aria-label is on a generic div. */}
-                        <div className="row" role="group" aria-label="Tools for this question">
+                        <div {...staticRowProps} role="group" aria-label="Tools for this question">
                           {card.tools.map((tool) => (
                             <Badge key={tool} label={tool} />
                           ))}
@@ -667,10 +668,10 @@ export function OnboardingFlow({
                         {card.id === "plan" &&
                           catalog?.entries.some(
                             (entry) => entry.kind === "calendar" && entry.state === "active",
-                          ) && <p className="hint">Calendar connected · task approval still required</p>}
+                          ) && <p {...staticHintProps}>Calendar connected · task approval still required</p>}
                         {catalog?.entries.some(
                           (entry) => entry.kind === "mcp" && entry.state === "approved",
-                        ) && <p className="hint">MCP connected · tool approval still required</p>}
+                        ) && <p {...staticHintProps}>MCP connected · tool approval still required</p>}
                         <button
                           className="btn"
                           disabled={

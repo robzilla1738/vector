@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { useSettingsSaveOwner } from "../settings/sections/use-settings-save-owner";
 import { useScopedCommandControls } from "../scoped-command-controls";
@@ -109,7 +111,7 @@ export function SearchEnginesSetting({
         </ul>
       )}
       <div className="engine-add">
-        <div className="row">
+        <div {...staticRowProps}>
           <input
             aria-label="Keyword"
             placeholder="kw"
@@ -150,13 +152,13 @@ export function SearchEnginesSetting({
             Add
           </button>
         </div>
-        <p className="hint">
+        <p {...staticHintProps}>
           Type <code>keyword terms</code> in the address bar — e.g. <code>gh aux browser</code>. Built-ins
           (ddg, g, gh, mdn, npm, yt, wiki, so, maps) merge unless you override the keyword.
         </p>
       </div>
       {error && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {error}
         </p>
       )}

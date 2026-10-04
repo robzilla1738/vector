@@ -1,3 +1,5 @@
+import { staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props";
+import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -102,9 +104,9 @@ export function AutofillSetting({
   return (
     <div className="autofill-setting">
       {!draft && (
-        <div className="row">
+        <div {...staticRowProps}>
           {filled.length ? (
-            <span className="hint">
+            <span {...staticHintProps}>
               {filled.length} detail{filled.length === 1 ? "" : "s"} saved —{" "}
               {filled
                 .slice(0, 3)
@@ -113,7 +115,7 @@ export function AutofillSetting({
               {filled.length > 3 ? "…" : ""}
             </span>
           ) : (
-            <span className="hint">
+            <span {...staticHintProps}>
               No personal info saved. Forms fill only when you choose Fill personal info.
             </span>
           )}
@@ -142,7 +144,7 @@ export function AutofillSetting({
             <label className="autofill-field" key={field.key}>
               <span>{field.label}</span>
               <input
-                className="field-input"
+                {...staticFieldInputProps}
                 autoComplete={field.auto}
                 disabled={busy || disabled}
                 value={draft[field.key] ?? ""}
@@ -150,7 +152,7 @@ export function AutofillSetting({
               />
             </label>
           ))}
-          <div className="row">
+          <div {...staticRowProps}>
             <button {...smallButtonProps} type="submit" disabled={busy || disabled}>
               {busy ? "Saving…" : "Save"}
             </button>
@@ -166,7 +168,7 @@ export function AutofillSetting({
             </button>
           </div>
           {error && (
-            <p className="field-error" role="alert">
+            <p {...staticFieldErrorProps} role="alert">
               {error}
             </p>
           )}

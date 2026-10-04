@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { useRef, useState } from "react";
 import { bridge, inMock, inNativeHost } from "../../bridge";
@@ -82,11 +84,11 @@ export function LanguagesSetting({ active }: { active: boolean }) {
   });
   if (bridge.privateMode)
     return (
-      <span className="hint">
+      <span {...staticHintProps}>
         Languages follow the regular Profile and cannot be changed in Private mode.
       </span>
     );
-  if (!available) return <span className="hint">Available in the Aux desktop app.</span>;
+  if (!available) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
   if (!active || bridge.windowKind !== "normal") return null;
   const message = invalid?.owner === owner ? invalid.message : error;
   const retry = (
@@ -102,16 +104,16 @@ export function LanguagesSetting({ active }: { active: boolean }) {
   );
   if (!value)
     return (
-      <span className="hint">
+      <span {...staticHintProps}>
         {message || "Reading languages…"} {message && retry}
       </span>
     );
   const editable = !busy && !value.managed;
   return (
     <div className="settings-startup">
-      {value.managed && <span className="hint">Managed by your organization</span>}
+      {value.managed && <span {...staticHintProps}>Managed by your organization</span>}
       {value.forced.length > 0 && (
-        <span className="hint">Required by policy: {value.forced.map(name).join(", ")}</span>
+        <span {...staticHintProps}>Required by policy: {value.forced.map(name).join(", ")}</span>
       )}
       <div className="settings-startup-pages">
         {value.selected.map((code, index) => (
@@ -166,7 +168,7 @@ export function LanguagesSetting({ active }: { active: boolean }) {
         ))}
         <form
           ref={addRef}
-          className="row"
+          {...staticRowProps}
 
           onSubmit={(event) => {
             event.preventDefault();
@@ -205,7 +207,7 @@ export function LanguagesSetting({ active }: { active: boolean }) {
         </form>
       </div>
       {message && (
-        <span role="alert" className="field-error">
+        <span role="alert" {...staticFieldErrorProps}>
           {message} {retry}
         </span>
       )}

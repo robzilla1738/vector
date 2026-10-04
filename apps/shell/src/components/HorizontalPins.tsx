@@ -1,3 +1,4 @@
+import { staticMenuItemProps } from "../ui/class-props";
 import { useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { errToast, useStore } from "../store";
@@ -41,7 +42,7 @@ export function HorizontalPins({ pins, spaceId, activePageId }: { pins: Pin[]; s
       {pins.length > 5 && <div className="horizontal-pin-overflow">
         <button ref={overflow} type="button" aria-label={`${pins.length - 5} more pinned sites`} aria-haspopup="menu" aria-expanded={overflowOpen} onClick={() => setOverflowOpen(value => !value)}>+{pins.length - 5}</button>
         {overflowOpen && <Menu className="menu horizontal-pin-overflow-menu" label="More pinned sites" anchor={overflow} returnFocus={overflow} onClose={() => setOverflowOpen(false)}>
-          {pins.slice(5).map(pin => <button key={pin.url} className="menu-item" role="menuitem" onClick={event => openPin(pin, event.metaKey || event.ctrlKey)} onContextMenu={event => { event.preventDefault(); contextMenu(pin, event.clientX, event.clientY); }}><FavIcon url={pin.url} src={tabs.find(page => page.url === pin.url)?.favicon} size="sm" /><span className="t">{pin.title}</span></button>)}
+          {pins.slice(5).map(pin => <button key={pin.url} {...staticMenuItemProps} role="menuitem" onClick={event => openPin(pin, event.metaKey || event.ctrlKey)} onContextMenu={event => { event.preventDefault(); contextMenu(pin, event.clientX, event.clientY); }}><FavIcon url={pin.url} src={tabs.find(page => page.url === pin.url)?.favicon} size="sm" /><span className="t">{pin.title}</span></button>)}
         </Menu>}
       </div>}
     </div>

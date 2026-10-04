@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./MemoryItems.css";
@@ -118,32 +120,32 @@ export function MemoryItems({ memory, disabled, onSaved }: { memory: WorkspaceMe
   const [filterRef,filterRun]=useMemoryNoteControl("filter-memory-notes",memory.workspaceId,element=>{current(undefined,false);const value=(element as HTMLSelectElement).value;if(!["all","active","excluded"].includes(value))throw new Error("Choose a current note filter.");setFilter(value);});
   const [closeRef,closeRun]=useMemoryNoteControl("close-memory-note-detail",selectedItem?.itemId??memory.workspaceId,()=>{const owner=current(selectedItem,false),target=detailOpener.current;setSelectedId(null);requestAnimationFrame(()=>{if(owner.active&&owner===lifetime.current&&target?.isConnected)target.focus();});});
   const [saveFormRef,saveFormRun]=useMemoryNoteControl("save-memory-note",memory.workspaceId,()=>{if(busy||latest)throw new Error("Review the current note first.");return save();});
-  if(privateMode)return <p className="hint">Memory notes are unavailable in private browsing.</p>;
+  if(privateMode)return <p {...staticHintProps}>Memory notes are unavailable in private browsing.</p>;
   return <section className="memory-items" aria-label="Saved memory notes">
     <div className="conversation-documents-head"><div><b>Individual notes</b><small>Preferences and facts you choose to keep in this Space.</small></div><MemoryNoteButton command="add-memory-note" scopeId={memory.workspaceId} invoke={()=>{if(busy||draft||items.length>=40)throw new Error("Review the current notes first.");edit();}} {...smallButtonProps} disabled={disabled || busy || !!draft || items.length >= 40}>Add note</MemoryNoteButton></div>
     {!!items.length && <div className="memory-list-tools"><TextField type="search" aria-label="Search memory notes" placeholder="Find a note…" value={query} onChange={event => setQuery(event.target.value)} />
       <Select controlRef={filterRef} aria-label="Filter memory notes" value={filter} onChange={filterRun}><option value="all">All notes</option><option value="active">Used in replies</option><option value="excluded">Paused or excluded</option></Select></div>}
     <div className="memory-items-list">{visibleItems.map(item=><MemoryNoteRow key={item.itemId} item={item} selected={selectedId===item.itemId} description={`${noteStatus(item)} · Updated ${new Date(item.updatedAt).toLocaleDateString()}`} disabled={disabled||busy||!!draft} items={items} persist={persist} edit={edit} validate={item=>current(item,false)} select={item=>{current(item,false);detailOpener.current=document.activeElement as HTMLElement;setSelectedId(item.itemId);}}/>)}</div>
-    {!!items.length && !visibleItems.length && <output className="hint" data-block>No notes match these filters.</output>}
+    {!!items.length && !visibleItems.length && <output {...staticHintProps} data-block>No notes match these filters.</output>}
     {selectedItem && <DetailPane title="Memory note" metadata={noteStatus(selectedItem)} closeRef={closeRef} onClose={closeRun}>
       <p className="memory-note-content selectable">{selectedItem.content}</p>
       <div className="memory-note-metadata"><span className="meta-k">Scope</span><span className="meta-v">This Space</span><span className="meta-k">Source</span><span className="meta-v selectable">{selectedItem.sourceUrl || "Added directly"}</span><span className="meta-k">Expires</span><span className="meta-v">{selectedItem.expiresAt === undefined ? "No expiry" : new Date(selectedItem.expiresAt).toLocaleDateString()}</span><span className="meta-k">Updated</span><span className="meta-v">{new Date(selectedItem.updatedAt).toLocaleString()}</span></div>
     </DetailPane>}
-    {!items.length && !draft && <p className="hint">No individual notes yet. Aux only saves notes you explicitly add here.</p>}
+    {!items.length && !draft && <p {...staticHintProps}>No individual notes yet. Aux only saves notes you explicitly add here.</p>}
     {draft && <form ref={saveFormRef} className="memory-note-form" onSubmit={event => { event.preventDefault();saveFormRun(event); }}>
-      <p className="hint">Review before saving · {draft.content.length.toLocaleString()}/2,000 characters{draft.content.length > 2000 ? " · Shorten this selection to keep the useful part." : ""}{draft.selectionTruncated ? " · The page supplied only the first part of the selection." : ""}</p>
+      <p {...staticHintProps}>Review before saving · {draft.content.length.toLocaleString()}/2,000 characters{draft.content.length > 2000 ? " · Shorten this selection to keep the useful part." : ""}{draft.selectionTruncated ? " · The page supplied only the first part of the selection." : ""}</p>
       <label>Note<textarea ref={noteInput} aria-label="Memory note" value={draft.content} maxLength={2000} disabled={disabled || busy} onChange={event => write({ ...draft!, content: event.target.value })}/></label>
-      <label>Source address <span className="hint">optional</span><input type="url" aria-label="Memory source address" value={draft.sourceUrl} maxLength={2048} disabled={disabled || busy} onChange={event => write({ ...draft!, sourceUrl: event.target.value })}/></label>
-      <label>Use until <span className="hint">leave blank to keep using</span><input type="date" aria-label="Memory expiry date" value={draft.expires} disabled={disabled || busy} onChange={event => write({ ...draft!, expires: event.target.value })}/></label>
+      <label>Source address <span {...staticHintProps}>optional</span><input type="url" aria-label="Memory source address" value={draft.sourceUrl} maxLength={2048} disabled={disabled || busy} onChange={event => write({ ...draft!, sourceUrl: event.target.value })}/></label>
+      <label>Use until <span {...staticHintProps}>leave blank to keep using</span><input type="date" aria-label="Memory expiry date" value={draft.expires} disabled={disabled || busy} onChange={event => write({ ...draft!, expires: event.target.value })}/></label>
       <div className="capture-actions"><MemoryNoteButton command="discard-memory-note-draft" scopeId={memory.workspaceId} {...smallGhostButtonProps} disabled={busy} invoke={()=>{current();if(busy)throw new Error("Wait for the original save.");write(null);setError("");setLatest(null);}}>Discard draft</MemoryNoteButton><button {...smallButtonProps} disabled={disabled || busy || !!latest}>{busy ? "Saving…" : "Save note"}</button></div>
     </form>}
-    {error && <p className="field-error" role="alert">{error}</p>}
-    {latest && <div className="memory-conflict"><strong>Memory changed elsewhere</strong><p>Your draft is preserved. Latest saved version of this note:</p><pre>{latest.items?.find(item => item.itemId === draft?.itemId)?.content ?? "This note is not in the saved list."}</pre><div className="row"><MemoryNoteButton command="load-latest-memory-notes" scopeId={memory.workspaceId} {...smallButtonProps} disabled={busy||disabled} invoke={()=>{current();if(busy||latest.workspaceId!==memory.workspaceId)throw new Error("Review the current saved list.");if(draft)write(draft,latest.revision);setLatest(null);setError("");onSaved(latest);}}>Load latest list</MemoryNoteButton>{draft && <MemoryNoteButton command="save-memory-note-against-latest" scopeId={memory.workspaceId} {...smallButtonProps} disabled={busy||disabled} invoke={()=>{current();if(busy||latest.workspaceId!==memory.workspaceId)throw new Error("Review the current saved list.");return save(latest);}}>Save my note against latest</MemoryNoteButton>}</div></div>}
+    {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+    {latest && <div className="memory-conflict"><strong>Memory changed elsewhere</strong><p>Your draft is preserved. Latest saved version of this note:</p><pre>{latest.items?.find(item => item.itemId === draft?.itemId)?.content ?? "This note is not in the saved list."}</pre><div {...staticRowProps}><MemoryNoteButton command="load-latest-memory-notes" scopeId={memory.workspaceId} {...smallButtonProps} disabled={busy||disabled} invoke={()=>{current();if(busy||latest.workspaceId!==memory.workspaceId)throw new Error("Review the current saved list.");if(draft)write(draft,latest.revision);setLatest(null);setError("");onSaved(latest);}}>Load latest list</MemoryNoteButton>{draft && <MemoryNoteButton command="save-memory-note-against-latest" scopeId={memory.workspaceId} {...smallButtonProps} disabled={busy||disabled} invoke={()=>{current();if(busy||latest.workspaceId!==memory.workspaceId)throw new Error("Review the current saved list.");return save(latest);}}>Save my note against latest</MemoryNoteButton>}</div></div>}
     <MemoryExclusions memory={memory} disabled={disabled || busy || !!draft} onSaved={saved => {
       current();if(saved.workspaceId!==memory.workspaceId)throw new Error("The memory Space changed.");
       if (draft && savedDraft?.revision === memory.revision) write(draft, saved.revision);
       onSaved(saved);
     }}/>
-    {items.length > 0 && <p className="hint">Pausing, expiry and deletion affect new replies. Earlier task records retain the memory they used.</p>}
+    {items.length > 0 && <p {...staticHintProps}>Pausing, expiry and deletion affect new replies. Earlier task records retain the memory they used.</p>}
   </section>;
 }

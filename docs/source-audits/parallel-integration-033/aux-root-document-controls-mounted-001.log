@@ -1,0 +1,21 @@
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+ ✓ |unit| apps/shell/src/ui/control-class-props.test.tsx (3 tests) 17ms
+ ✓ |unit| apps/shell/src/ui/class-props.test.tsx (3 tests) 25ms
+ ✓ |unit| tests/unit/shortcut-modifier-construction.test.ts (3 tests) 119ms
+(node:6789) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6787) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6788) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/DocumentSnapshot.commands.test.tsx (11 tests) 99ms
+ ✓ |unit| apps/shell/src/components/SupportingContent.commands.test.tsx (10 tests) 163ms
+ ✓ |unit| apps/shell/src/components/Conversation.attachment-controls.test.tsx (15 tests) 521ms
+
+ Test Files  6 passed (6)
+      Tests  45 passed (45)
+   Start at  14:42:28
+   Duration  5.56s (transform 1.22s, setup 0ms, collect 10.41s, tests 944ms, environment 1.66s, prepare 337ms)
+

@@ -1,0 +1,4111 @@
+{
+  "files": [
+    {
+      "path": "apps/shell/src/agent/RunAttentionFeed.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3912,
+          "end": 3928,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3988,
+          "end": 4003,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 4531,
+          "end": 4547,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/agent/RunNoticeControls.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4361,
+          "end": 4377,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4420,
+          "end": 4435,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ActionConfirmation.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3250,
+          "end": 3266,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ArchivePolicy.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1039,
+          "end": 1055,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ArchivedTabs.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1299,
+          "end": 1315,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4239,
+          "end": 4254,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 4303,
+          "end": 4319,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4641,
+          "end": 4657,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5994,
+          "end": 6009,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextTray.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 14007,
+          "end": 14023,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowserProfiles.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6133,
+          "end": 6149,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6310,
+          "end": 6326,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7106,
+          "end": 7122,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9120,
+          "end": 9136,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9717,
+          "end": 9733,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowsingMemory.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 10723,
+          "end": 10739,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 10909,
+          "end": 10925,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 11636,
+          "end": 11652,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 12065,
+          "end": 12081,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 14076,
+          "end": 14092,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 14272,
+          "end": 14288,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 14355,
+          "end": 14371,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 14503,
+          "end": 14518,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 14543,
+          "end": 14559,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 14987,
+          "end": 15003,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 15184,
+          "end": 15200,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CalendarConnections.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5078,
+          "end": 5094,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5305,
+          "end": 5321,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5404,
+          "end": 5419,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 6117,
+          "end": 6133,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6268,
+          "end": 6284,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6381,
+          "end": 6396,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 6949,
+          "end": 6965,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7054,
+          "end": 7070,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7303,
+          "end": 7319,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CalendarTaskGrants.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3758,
+          "end": 3774,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4082,
+          "end": 4098,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4246,
+          "end": 4261,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 4268,
+          "end": 4284,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4469,
+          "end": 4484,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 5001,
+          "end": 5016,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 5412,
+          "end": 5428,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5629,
+          "end": 5645,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5867,
+          "end": 5883,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearBrowsingData.tsx",
+      "addedImport": "import { staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5874,
+          "end": 5889,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearHistory.tsx",
+      "addedImport": "import { staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2635,
+          "end": 2650,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ContentMemory.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6346,
+          "end": 6362,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6578,
+          "end": 6594,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6745,
+          "end": 6760,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 18102,
+          "end": 18118,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 18983,
+          "end": 18999,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 19929,
+          "end": 19945,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 20543,
+          "end": 20559,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 20963,
+          "end": 20979,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 21878,
+          "end": 21893,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 21918,
+          "end": 21934,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/DefaultBrowserSetting.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2574,
+          "end": 2589,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 3375,
+          "end": 3391,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/DeferredSurface.tsx",
+      "addedImport": "import { staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1776,
+          "end": 1791,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/DocumentContent.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 316,
+          "end": 332,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 515,
+          "end": 531,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 652,
+          "end": 668,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1024,
+          "end": 1040,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/DocumentSnapshot.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1712,
+          "end": 1728,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2927,
+          "end": 2943,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3113,
+          "end": 3129,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Extensions.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2794,
+          "end": 2810,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3016,
+          "end": 3032,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3285,
+          "end": 3301,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3390,
+          "end": 3406,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3837,
+          "end": 3853,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgentOversight.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3689,
+          "end": 3704,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 3923,
+          "end": 3939,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4084,
+          "end": 4100,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4386,
+          "end": 4402,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4539,
+          "end": 4555,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4665,
+          "end": 4680,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgents.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4791,
+          "end": 4806,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 5095,
+          "end": 5111,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5555,
+          "end": 5571,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6677,
+          "end": 6693,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8481,
+          "end": 8497,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8893,
+          "end": 8908,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 9682,
+          "end": 9698,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 10242,
+          "end": 10258,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/FilterListManager.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2356,
+          "end": 2372,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2576,
+          "end": 2592,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3748,
+          "end": 3764,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3890,
+          "end": 3906,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3971,
+          "end": 3987,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4225,
+          "end": 4241,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4690,
+          "end": 4705,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 6643,
+          "end": 6659,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7592,
+          "end": 7607,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 8491,
+          "end": 8507,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8859,
+          "end": 8874,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 9926,
+          "end": 9942,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3365,
+          "end": 3381,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3429,
+          "end": 3445,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3573,
+          "end": 3588,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 4433,
+          "end": 4449,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/GithubConnections.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1352,
+          "end": 1368,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1646,
+          "end": 1662,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Goals.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2912,
+          "end": 2927,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 3297,
+          "end": 3313,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3649,
+          "end": 3665,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6170,
+          "end": 6186,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6323,
+          "end": 6338,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 6533,
+          "end": 6549,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6686,
+          "end": 6702,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6779,
+          "end": 6795,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6945,
+          "end": 6961,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7613,
+          "end": 7629,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7940,
+          "end": 7955,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 9606,
+          "end": 9622,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Hooks.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3653,
+          "end": 3668,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 3864,
+          "end": 3880,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4201,
+          "end": 4217,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6415,
+          "end": 6431,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9182,
+          "end": 9197,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 10435,
+          "end": 10451,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/HttpAuthPrompt.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2253,
+          "end": 2269,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2451,
+          "end": 2467,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2930,
+          "end": 2946,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 7965,
+          "end": 7981,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8162,
+          "end": 8178,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8349,
+          "end": 8365,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8664,
+          "end": 8680,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9095,
+          "end": 9110,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 9849,
+          "end": 9865,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 10996,
+          "end": 11012,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 11185,
+          "end": 11200,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 12110,
+          "end": 12126,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13660,
+          "end": 13676,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4919,
+          "end": 4935,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 27621,
+          "end": 27636,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 28282,
+          "end": 28297,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 30120,
+          "end": 30136,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 30514,
+          "end": 30530,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 33975,
+          "end": 33991,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 34816,
+          "end": 34832,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 39442,
+          "end": 39458,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/LiveFolderEditor.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3394,
+          "end": 3410,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4485,
+          "end": 4501,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/LiveFolderRows.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4171,
+          "end": 4187,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryExclusions.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4888,
+          "end": 4904,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5089,
+          "end": 5105,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6116,
+          "end": 6132,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryItems.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 12086,
+          "end": 12102,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13697,
+          "end": 13713,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 14583,
+          "end": 14599,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 14820,
+          "end": 14836,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 15353,
+          "end": 15369,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 15618,
+          "end": 15634,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 16645,
+          "end": 16660,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 17738,
+          "end": 17754,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryPasteImport.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 8803,
+          "end": 8819,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 10404,
+          "end": 10420,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 10617,
+          "end": 10632,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 13159,
+          "end": 13175,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 17589,
+          "end": 17605,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryRecoveryNotice.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4690,
+          "end": 4706,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4849,
+          "end": 4865,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5507,
+          "end": 5523,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6048,
+          "end": 6064,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemorySettings.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3407,
+          "end": 3423,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3528,
+          "end": 3544,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4010,
+          "end": 4026,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5234,
+          "end": 5250,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5397,
+          "end": 5413,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6181,
+          "end": 6197,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MigrationImport.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2347,
+          "end": 2362,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 2582,
+          "end": 2598,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2684,
+          "end": 2700,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3454,
+          "end": 3470,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3750,
+          "end": 3766,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4136,
+          "end": 4152,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4258,
+          "end": 4274,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4508,
+          "end": 4524,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4719,
+          "end": 4735,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5026,
+          "end": 5042,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5220,
+          "end": 5235,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/OpenBookmarkFolder.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3342,
+          "end": 3358,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4415,
+          "end": 4431,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4480,
+          "end": 4496,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 12996,
+          "end": 13012,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13321,
+          "end": 13337,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 16097,
+          "end": 16113,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 17409,
+          "end": 17425,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 19755,
+          "end": 19771,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 20804,
+          "end": 20820,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 21431,
+          "end": 21447,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 21932,
+          "end": 21947,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 25377,
+          "end": 25393,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 27447,
+          "end": 27463,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 30404,
+          "end": 30420,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 30785,
+          "end": 30801,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 31754,
+          "end": 31770,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 39343,
+          "end": 39359,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 39658,
+          "end": 39674,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 42036,
+          "end": 42052,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 44294,
+          "end": 44310,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 11360,
+          "end": 11376,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 15510,
+          "end": 15526,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 15572,
+          "end": 15588,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 16077,
+          "end": 16092,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 17139,
+          "end": 17155,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 25057,
+          "end": 25073,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 25361,
+          "end": 25376,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 28282,
+          "end": 28298,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PasswordTransferSetting.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1286,
+          "end": 1301,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 1542,
+          "end": 1558,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1751,
+          "end": 1766,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PluginsPanel.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3851,
+          "end": 3867,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5211,
+          "end": 5227,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5271,
+          "end": 5287,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6065,
+          "end": 6081,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6219,
+          "end": 6234,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 6721,
+          "end": 6737,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7435,
+          "end": 7451,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7584,
+          "end": 7600,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7888,
+          "end": 7904,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7950,
+          "end": 7966,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8389,
+          "end": 8405,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8727,
+          "end": 8743,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/QuickAskSetting.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2614,
+          "end": 2630,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3731,
+          "end": 3747,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3828,
+          "end": 3844,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RecentWork.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4998,
+          "end": 5014,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RecentlyClosed.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1105,
+          "end": 1121,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ReviewedConnectors.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5286,
+          "end": 5302,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5522,
+          "end": 5538,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8396,
+          "end": 8412,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8484,
+          "end": 8500,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8911,
+          "end": 8927,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9013,
+          "end": 9029,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 11527,
+          "end": 11543,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13527,
+          "end": 13543,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13919,
+          "end": 13934,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RoutineSchedule.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6943,
+          "end": 6959,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7464,
+          "end": 7480,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8721,
+          "end": 8737,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 10332,
+          "end": 10348,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 10974,
+          "end": 10990,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 12695,
+          "end": 12711,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 12791,
+          "end": 12806,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 15715,
+          "end": 15731,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 16048,
+          "end": 16064,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 16226,
+          "end": 16242,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 16648,
+          "end": 16663,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 17600,
+          "end": 17616,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 18064,
+          "end": 18079,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 18439,
+          "end": 18455,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 18731,
+          "end": 18747,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 18886,
+          "end": 18901,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 20269,
+          "end": 20285,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 20460,
+          "end": 20476,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 23734,
+          "end": 23750,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 23808,
+          "end": 23824,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 24776,
+          "end": 24792,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 25336,
+          "end": 25352,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 25501,
+          "end": 25516,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 26551,
+          "end": 26567,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 26977,
+          "end": 26993,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 29556,
+          "end": 29571,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 34158,
+          "end": 34174,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 34327,
+          "end": 34343,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 36241,
+          "end": 36257,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 36657,
+          "end": 36673,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 37770,
+          "end": 37786,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 38018,
+          "end": 38034,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 38779,
+          "end": 38795,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 38936,
+          "end": 38951,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 42811,
+          "end": 42827,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 44747,
+          "end": 44763,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 44946,
+          "end": 44962,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 46267,
+          "end": 46283,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 46356,
+          "end": 46372,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 47887,
+          "end": 47902,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 51030,
+          "end": 51046,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 51448,
+          "end": 51464,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 53649,
+          "end": 53665,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 53869,
+          "end": 53885,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 54133,
+          "end": 54149,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 54695,
+          "end": 54711,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunImages.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1253,
+          "end": 1269,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2967,
+          "end": 2983,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunPanel.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 22941,
+          "end": 22957,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SaveConversationTask.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2170,
+          "end": 2186,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3179,
+          "end": 3195,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3337,
+          "end": 3352,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SavedResultPreview.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1713,
+          "end": 1729,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6361,
+          "end": 6377,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6464,
+          "end": 6480,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6654,
+          "end": 6670,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6880,
+          "end": 6896,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SearchEngineSetting.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4484,
+          "end": 4499,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 5534,
+          "end": 5550,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SearchEnginesSetting.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4695,
+          "end": 4710,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 6243,
+          "end": 6259,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SessionRecovery.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3888,
+          "end": 3904,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4413,
+          "end": 4429,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4690,
+          "end": 4706,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Settings.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 17934,
+          "end": 17950,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ShortcutsSetting.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5108,
+          "end": 5124,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6446,
+          "end": 6462,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6834,
+          "end": 6850,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7212,
+          "end": 7228,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9270,
+          "end": 9286,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SitePermissions.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 7932,
+          "end": 7948,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9019,
+          "end": 9035,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9191,
+          "end": 9207,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9634,
+          "end": 9650,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 10318,
+          "end": 10334,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 10411,
+          "end": 10427,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 12213,
+          "end": 12229,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 12311,
+          "end": 12327,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 12914,
+          "end": 12930,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SkillMetadata.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2175,
+          "end": 2191,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3372,
+          "end": 3388,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SkillReplayPanel.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2708,
+          "end": 2724,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3257,
+          "end": 3273,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4695,
+          "end": 4711,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4804,
+          "end": 4820,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SpaceMemoryEditor.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 7751,
+          "end": 7767,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8764,
+          "end": 8780,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8916,
+          "end": 8932,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9116,
+          "end": 9132,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9860,
+          "end": 9876,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 10377,
+          "end": 10392,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/StructuredResult.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1086,
+          "end": 1102,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1322,
+          "end": 1338,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TaskHistory.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5587,
+          "end": 5602,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 5912,
+          "end": 5928,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6941,
+          "end": 6957,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7219,
+          "end": 7235,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 10443,
+          "end": 10459,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 10804,
+          "end": 10820,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 11004,
+          "end": 11020,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 11243,
+          "end": 11259,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 11534,
+          "end": 11550,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 12041,
+          "end": 12057,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13197,
+          "end": 13213,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13364,
+          "end": 13380,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13748,
+          "end": 13763,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 14269,
+          "end": 14285,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 15503,
+          "end": 15518,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 16799,
+          "end": 16814,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 17881,
+          "end": 17897,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 18205,
+          "end": 18221,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 18380,
+          "end": 18395,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 18864,
+          "end": 18879,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 19987,
+          "end": 20003,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 20294,
+          "end": 20310,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 21289,
+          "end": 21305,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 21404,
+          "end": 21420,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 22573,
+          "end": 22589,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 22876,
+          "end": 22892,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 23271,
+          "end": 23287,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 24058,
+          "end": 24074,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 24707,
+          "end": 24723,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 25392,
+          "end": 25408,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 26053,
+          "end": 26069,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 26668,
+          "end": 26684,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 27301,
+          "end": 27317,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 27883,
+          "end": 27899,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 27965,
+          "end": 27981,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 28262,
+          "end": 28278,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 29028,
+          "end": 29044,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 29763,
+          "end": 29778,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 30629,
+          "end": 30645,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 31483,
+          "end": 31498,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 32594,
+          "end": 32610,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 32806,
+          "end": 32822,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 33595,
+          "end": 33610,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 39819,
+          "end": 39835,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TaskResources.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1014,
+          "end": 1029,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 1586,
+          "end": 1602,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1842,
+          "end": 1857,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 2521,
+          "end": 2537,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4398,
+          "end": 4414,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4672,
+          "end": 4688,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4957,
+          "end": 4973,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5501,
+          "end": 5516,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 17330,
+          "end": 17346,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 20742,
+          "end": 20757,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 24892,
+          "end": 24907,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 25270,
+          "end": 25286,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 27560,
+          "end": 27576,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 29293,
+          "end": 29309,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 32484,
+          "end": 32500,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/VaultOfferBanner.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2106,
+          "end": 2122,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2640,
+          "end": 2655,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1891,
+          "end": 1907,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2179,
+          "end": 2195,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2579,
+          "end": 2594,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 4473,
+          "end": 4488,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 5030,
+          "end": 5046,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5211,
+          "end": 5226,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 6394,
+          "end": 6410,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/WebsiteSizes.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2470,
+          "end": 2486,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2811,
+          "end": 2827,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3046,
+          "end": 3062,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3143,
+          "end": 3159,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/WorkbookPreview.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2370,
+          "end": 2386,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3559,
+          "end": 3575,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4510,
+          "end": 4526,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/composer/SuspensionPanel.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3143,
+          "end": 3159,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3362,
+          "end": 3378,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3476,
+          "end": 3492,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3589,
+          "end": 3605,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/commands/ExtensionShortcuts.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3130,
+          "end": 3146,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3377,
+          "end": 3393,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3904,
+          "end": 3920,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/extensions/ExtensionShortcuts.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3582,
+          "end": 3598,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3848,
+          "end": 3864,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/NightSettings.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4585,
+          "end": 4601,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5864,
+          "end": 5880,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/trust/SiteAgentAccess.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6046,
+          "end": 6062,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/trust/SiteRulesTable.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1664,
+          "end": 1680,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/onboarding/OnboardingFlow.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 12056,
+          "end": 12072,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 12851,
+          "end": 12867,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 15212,
+          "end": 15228,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 25328,
+          "end": 25343,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 25796,
+          "end": 25812,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 26037,
+          "end": 26053,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/onboarding/SetupReview.tsx",
+      "addedImport": "import { staticRowProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6564,
+          "end": 6579,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 9150,
+          "end": 9165,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/primitives.tsx",
+      "addedImport": "import { staticHintProps } from \"../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1547,
+          "end": 1563,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/AboutAux.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4435,
+          "end": 4451,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5193,
+          "end": 5209,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5332,
+          "end": 5347,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 5361,
+          "end": 5377,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/ArchivedChats.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5174,
+          "end": 5190,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5286,
+          "end": 5302,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5326,
+          "end": 5342,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 12805,
+          "end": 12821,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 12897,
+          "end": 12913,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13112,
+          "end": 13128,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13300,
+          "end": 13316,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13558,
+          "end": 13573,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 14793,
+          "end": 14808,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 17057,
+          "end": 17073,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 17929,
+          "end": 17945,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 18467,
+          "end": 18483,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 18682,
+          "end": 18698,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 19734,
+          "end": 19750,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 20281,
+          "end": 20297,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackgroundRuntime.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1158,
+          "end": 1174,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1322,
+          "end": 1338,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1482,
+          "end": 1498,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1812,
+          "end": 1827,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 2146,
+          "end": 2162,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2233,
+          "end": 2249,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackupSettings.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6091,
+          "end": 6106,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 11321,
+          "end": 11337,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CookieControls.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1602,
+          "end": 1618,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1768,
+          "end": 1784,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1841,
+          "end": 1856,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 2060,
+          "end": 2076,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2138,
+          "end": 2154,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CrashReporting.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1716,
+          "end": 1732,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1825,
+          "end": 1841,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1908,
+          "end": 1923,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 2149,
+          "end": 2165,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2246,
+          "end": 2262,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2401,
+          "end": 2417,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2513,
+          "end": 2528,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DefaultPageZoom.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1571,
+          "end": 1587,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1734,
+          "end": 1750,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1894,
+          "end": 1910,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2214,
+          "end": 2229,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 2771,
+          "end": 2787,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DiagnosticsStorage.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 6465,
+          "end": 6480,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 7481,
+          "end": 7497,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8492,
+          "end": 8507,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 9170,
+          "end": 9186,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9558,
+          "end": 9573,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 10288,
+          "end": 10304,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DownloadFolder.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1303,
+          "end": 1319,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1409,
+          "end": 1425,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1612,
+          "end": 1628,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1735,
+          "end": 1750,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/General.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 14353,
+          "end": 14368,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 15471,
+          "end": 15487,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/HttpsFirst.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 642,
+          "end": 658,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Languages.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3045,
+          "end": 3061,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3199,
+          "end": 3215,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3656,
+          "end": 3672,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3880,
+          "end": 3896,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3984,
+          "end": 4000,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6198,
+          "end": 6213,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/ModelConnections.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5444,
+          "end": 5460,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6974,
+          "end": 6990,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7128,
+          "end": 7144,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 8932,
+          "end": 8947,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 9130,
+          "end": 9146,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Models.tsx",
+      "addedImport": "import { staticRowProps, staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3210,
+          "end": 3225,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 4961,
+          "end": 4977,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 21793,
+          "end": 21808,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 24957,
+          "end": 24972,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 26746,
+          "end": 26761,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 28864,
+          "end": 28880,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PasswordsAutofill.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3339,
+          "end": 3355,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3462,
+          "end": 3478,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PictureInPicture.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1399,
+          "end": 1415,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1573,
+          "end": 1589,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1733,
+          "end": 1749,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 2068,
+          "end": 2083,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 2556,
+          "end": 2572,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PrivacySecurity.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1516,
+          "end": 1532,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RecoveryPackage.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 5943,
+          "end": 5959,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6583,
+          "end": 6599,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7040,
+          "end": 7055,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 8246,
+          "end": 8262,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 9310,
+          "end": 9326,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RestoreBackupControls.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 7093,
+          "end": 7109,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7283,
+          "end": 7299,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7522,
+          "end": 7538,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 11526,
+          "end": 11542,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13782,
+          "end": 13798,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 14251,
+          "end": 14267,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SidebarOptions.tsx",
+      "addedImport": "import { staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2253,
+          "end": 2268,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SpaceMemory.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 4511,
+          "end": 4527,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 11144,
+          "end": 11160,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 12070,
+          "end": 12085,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 13267,
+          "end": 13283,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13452,
+          "end": 13468,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 13934,
+          "end": 13950,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 14392,
+          "end": 14407,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 15099,
+          "end": 15115,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 15262,
+          "end": 15277,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 15293,
+          "end": 15309,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 16096,
+          "end": 16112,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SpellCheck.tsx",
+      "addedImport": "import { staticHintProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 392,
+          "end": 408,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Startup.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 3847,
+          "end": 3863,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3982,
+          "end": 3998,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 4438,
+          "end": 4454,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5262,
+          "end": 5278,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6297,
+          "end": 6312,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/UsageBudgets.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1813,
+          "end": 1829,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 5188,
+          "end": 5203,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 6749,
+          "end": 6764,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 2604,
+          "end": 2620,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 3389,
+          "end": 3404,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 5391,
+          "end": 5407,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 6608,
+          "end": 6624,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 7515,
+          "end": 7530,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 9113,
+          "end": 9129,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/native-preference-control.tsx",
+      "addedImport": "import { staticHintProps, staticRowProps } from \"../../ui/class-props\";\n",
+      "edits": [
+        {
+          "start": 1453,
+          "end": 1469,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1523,
+          "end": 1539,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        },
+        {
+          "start": 1664,
+          "end": 1679,
+          "original": "className=\"row\"",
+          "symbol": "staticRowProps"
+        },
+        {
+          "start": 1972,
+          "end": 1988,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/ui/index.tsx",
+      "addedImport": "import { staticHintProps } from \"./class-props\";\n",
+      "edits": [
+        {
+          "start": 3661,
+          "end": 3677,
+          "original": "className=\"hint\"",
+          "symbol": "staticHintProps"
+        }
+      ]
+    }
+  ],
+  "refused": [
+    {
+      "path": "apps/shell/src/components/ExternalAgents.tsx",
+      "start": 4874,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgents.tsx",
+      "start": 6543,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "start": 28508,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "start": 17738,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "start": 37482,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "start": 43003,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "start": 44588,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "start": 46079,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "start": 20501,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "start": 22212,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "start": 23705,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "start": 24977,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "start": 26267,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "start": 29308,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "start": 5782,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "start": 6528,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "start": 7154,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackupSettings.tsx",
+      "start": 8149,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Languages.tsx",
+      "start": 4182,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SpaceMemory.tsx",
+      "start": 16009,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Startup.tsx",
+      "start": 5413,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "start": 5511,
+      "reason": "key-after-class"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "start": 8602,
+      "reason": "key-after-class"
+    }
+  ]
+}

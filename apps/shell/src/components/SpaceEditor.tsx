@@ -1,3 +1,4 @@
+import { staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props";
 import { errorMessage } from "../error-message";
 import { ArchivePolicy } from "./ArchivePolicy";
 import { useFeature } from "../use-feature";
@@ -88,7 +89,7 @@ export default function SpaceEditor({
       <h3>{space ? "Edit space" : "New space"}</h3>
       <input
         autoFocus
-        className="field-input"
+        {...staticFieldInputProps}
         value={name}
         maxLength={100}
         disabled={saving}
@@ -225,7 +226,7 @@ export default function SpaceEditor({
         </div>
       </div>
       {error && (
-        <p role="alert" className="field-error">
+        <p role="alert" {...staticFieldErrorProps}>
           {error}
         </p>
       )}

@@ -1,3 +1,4 @@
+import { staticIconButtonProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -209,7 +210,7 @@ export function SiteControls() {
           <h2 id="site-controls-title">{info?.origin ?? "Site controls"}</h2>
           <p>{security.title}</p>
         </div>
-        <button ref={closeRef} className="icon-btn" aria-label="Close site controls" onClick={close}>
+        <button ref={closeRef} {...staticIconButtonProps} aria-label="Close site controls" onClick={close}>
           {shellIconClose}
         </button>
       </header>

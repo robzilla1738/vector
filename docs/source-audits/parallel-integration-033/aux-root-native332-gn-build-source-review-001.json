@@ -1,0 +1,17 @@
+{
+  "sourceOnly": true,
+  "gnInputPhysical21Pins": true,
+  "exact18OriginalInputPinsAnd3ReviewedSuccessorBindings": true,
+  "actualCurrent92RuntimeAndFreshHelperBindings": true,
+  "genuineOriginalVersionActionAnd8Flags": true,
+  "exactOriginalFull18GraphCode": true,
+  "gnController": {
+    "path": "/private/tmp/aux-builder-native332-preparation-001/gn-native332-d9a0e06e-REQUEST-ONLY-001.py",
+    "sha256": "f0a3576e97ec757bf711c9131bfb796f94847968cff125d363481b3509af92f0"
+  },
+  "buildController": {
+    "path": "/private/tmp/aux-builder-native332-preparation-001/build-native332-d9a0e06e-REQUEST-ONLY-001.py",
+    "sha256": "db4698029b4a227cb55616d7696a224fd8cab2d5bd7d5274ac6a3a6c5b0e42c5"
+  },
+  "actualStageAndGNProofsStillRequired": true
+}

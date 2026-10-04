@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
@@ -67,20 +68,20 @@ export function Extensions() {
           Install unpacked extension…
         </button>
       </div>
-      <p className="hint">
+      <p {...staticHintProps}>
         Store extensions update through Chromium. Unpacked extensions remain linked to the folder you choose.
         Native tab groups are separate from Aux folders.
       </p>
-      {message && <output className="hint">{message}</output>}
+      {message && <output {...staticHintProps}>{message}</output>}
       {error && (
         <p className="hint err" role="alert">
           {error}
         </p>
       )}
       <section className="extension-list" aria-label="Installed extensions" aria-busy={busy || loading}>
-        {loading && <p className="hint">Loading extensions…</p>}
+        {loading && <p {...staticHintProps}>Loading extensions…</p>}
         {!loading && !items.length && !error && (
-          <p className="hint">
+          <p {...staticHintProps}>
             No extensions installed. Choose a Store extension or an unpacked folder to get started.
           </p>
         )}
@@ -88,7 +89,7 @@ export function Extensions() {
           <article className="extension-row" key={extension.key} aria-label={extension.name}>
             <div className="extension-copy">
               <strong>{extension.name}</strong> <span className="extension-version">{extension.version}</span>
-              <p className="hint">
+              <p {...staticHintProps}>
                 {extension.enabled ? "Enabled" : "Disabled"}
                 {!extension.managed ? " · Managed outside Aux" : ""}
               </p>

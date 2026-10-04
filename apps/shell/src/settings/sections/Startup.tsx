@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { useRef, useState } from "react";
 import { bridge, inMock, inNativeHost } from "../../bridge";
@@ -87,9 +89,9 @@ export function StartupSetting({ active }: { active: boolean }) {
   });
   if (bridge.privateMode)
     return (
-      <span className="hint">Startup uses your regular Profile and cannot be changed in Private mode.</span>
+      <span {...staticHintProps}>Startup uses your regular Profile and cannot be changed in Private mode.</span>
     );
-  if (!available) return <span className="hint">Available in the Aux desktop app.</span>;
+  if (!available) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
   if (!active || bridge.windowKind !== "normal") return null;
   const message = invalid?.owner === owner ? invalid.message : error;
   const retry = (
@@ -105,7 +107,7 @@ export function StartupSetting({ active }: { active: boolean }) {
   );
   if (!value)
     return (
-      <span className="hint">
+      <span {...staticHintProps}>
         {message || "Reading startup preference…"} {message && retry}
       </span>
     );
@@ -129,7 +131,7 @@ export function StartupSetting({ active }: { active: boolean }) {
           Continue and open specific pages
         </option>
       </select>
-      {value.managed && <span className="hint">Managed by your organization</span>}
+      {value.managed && <span {...staticHintProps}>Managed by your organization</span>}
       <div className="settings-startup-pages">
         {value.urls.map((url) => (
           <div className="row" key={url}>
@@ -157,7 +159,7 @@ export function StartupSetting({ active }: { active: boolean }) {
         ))}
         <form
           ref={addRef}
-          className="row"
+          {...staticRowProps}
 
           onSubmit={(event) => {
             event.preventDefault();
@@ -190,7 +192,7 @@ export function StartupSetting({ active }: { active: boolean }) {
         </form>
       </div>
       {message && (
-        <span role="alert" className="field-error">
+        <span role="alert" {...staticFieldErrorProps}>
           {message} {retry}
         </span>
       )}

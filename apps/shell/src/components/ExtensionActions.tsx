@@ -1,3 +1,4 @@
+import { staticIconButtonProps, staticMenuItemProps } from "../ui/class-props";
 import { useCallback, useRef, useState } from "react";
 import type { HostMethodResult } from "@aux/contracts";
 import { bridge, inNativeHost } from "../bridge";
@@ -37,7 +38,7 @@ export function ExtensionActions() {
           <button
             key={item.id}
             type="button"
-            className="icon-btn"
+            {...staticIconButtonProps}
             aria-label={`${item.name}${item.badgeText ? ` · ${item.badgeText}` : ""}`}
             title={item.name}
             disabled={!item.enabled}
@@ -50,7 +51,7 @@ export function ExtensionActions() {
       <button
         ref={anchor}
         type="button"
-        className="icon-btn"
+        {...staticIconButtonProps}
         title="Extensions"
         aria-label="Extensions"
         aria-haspopup="menu"
@@ -81,7 +82,7 @@ export function ExtensionActions() {
               <button
                 type="button"
                 role="menuitem"
-                className="menu-item"
+                {...staticMenuItemProps}
                 disabled={!item.enabled}
                 data-command-id="extension-action"
                 onClick={(event) => invoke(item, event.currentTarget)}
@@ -112,7 +113,7 @@ export function ExtensionActions() {
           <button
             type="button"
             role="menuitem"
-            className="menu-item"
+            {...staticMenuItemProps}
             data-command-id="show-extensions"
             onClick={() => {
               close();

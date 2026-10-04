@@ -1,3 +1,4 @@
+import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
@@ -84,7 +85,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
 
   return (
     <section className="field goals-panel" aria-label="Goals">
-      <div className="row">
+      <div {...staticRowProps}>
         <h4 className="grow">Goals</h4>
         <button {...smallButtonProps} onClick={() => void act(async () => {})} disabled={busy}>
           Refresh
@@ -93,12 +94,12 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
           {showForm ? "Close" : "New Goal"}
         </button>
       </div>
-      <p className="hint">
+      <p {...staticHintProps}>
         Give a Goal an objective and limits before it runs. Defaults are 200,000 tokens, $1 and 30 minutes.
         Aux reserves the prompt, tool descriptions and maximum output before each model call. Clear the cost
         limit for a local model without a price. You can pause or cancel at any time.
       </p>
-      {chatId && <p className="hint">{unfinishedHere ? "Finish or cancel this conversation’s current Goal before creating another." : "New Goals belong to the current conversation."}</p>}
+      {chatId && <p {...staticHintProps}>{unfinishedHere ? "Finish or cancel this conversation’s current Goal before creating another." : "New Goals belong to the current conversation."}</p>}
       {error && <p role="alert">{error}</p>}
       {showForm && (
         <div className="goals-form">
@@ -173,17 +174,17 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
           </button>
         </div>
       )}
-      {!goals.length && <p className="hint">No Goals in this Space yet.</p>}
+      {!goals.length && <p {...staticHintProps}>No Goals in this Space yet.</p>}
       {goals.map((goal) => (
         <article className="goals-item" key={goal.goalId}>
-          <div className="row">
+          <div {...staticRowProps}>
             <strong className="grow">{goal.objective}</strong>
             <span className="work-status">{goal.status.replaceAll("_", " ")}</span>
           </div>
-          {goal.chatId && <p className="hint">{goal.chatId === chatId ? "Current conversation" : "Conversation Goal"}</p>}
-          {goal.status === "blocked" && goal.blocker && <p className="hint">Blocked: {goal.blocker}</p>}
-          {goal.status === "needs_input" && <p className="hint">This Goal needs your review. A stopped model call or run may have had an effect or a charge; Aux will not resume it automatically.</p>}
-          <p className="hint">
+          {goal.chatId && <p {...staticHintProps}>{goal.chatId === chatId ? "Current conversation" : "Conversation Goal"}</p>}
+          {goal.status === "blocked" && goal.blocker && <p {...staticHintProps}>Blocked: {goal.blocker}</p>}
+          {goal.status === "needs_input" && <p {...staticHintProps}>This Goal needs your review. A stopped model call or run may have had an effect or a charge; Aux will not resume it automatically.</p>}
+          <p {...staticHintProps}>
             {goal.usedTokens.toLocaleString()} / {goal.budget.maxTokens?.toLocaleString() ?? "unlimited"}{" "}
             tokens
             {goal.budget.maxCostUsd !== undefined && (
@@ -197,12 +198,12 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
               <> · {Math.round(goal.budget.deadlineMs / 60_000)} minute limit</>
             )}
           </p>
-          {!!(goal.reservedTokens || goal.reservedCostUsd) && <p className="hint">
+          {!!(goal.reservedTokens || goal.reservedCostUsd) && <p {...staticHintProps}>
             Held capacity: {(goal.reservedTokens ?? 0).toLocaleString()} tokens
             {goal.budget.maxCostUsd !== undefined && <> · ${(goal.reservedCostUsd ?? 0).toFixed(2)}</>}
             . This includes in-flight or uncertain calls and is not confirmed provider usage.
           </p>}
-          <div className="row">
+          <div {...staticRowProps}>
             {goal.status === "draft" && (
               <button
                 {...smallButtonProps}
@@ -249,7 +250,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
           </div>
         </article>
       ))}
-      {!modelConfigured && <p className="hint">Set up a model connection before starting a Goal.</p>}
+      {!modelConfigured && <p {...staticHintProps}>Set up a model connection before starting a Goal.</p>}
     </section>
   );
 }

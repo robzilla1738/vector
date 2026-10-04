@@ -1,3 +1,5 @@
+import { staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { ExtensionShortcuts } from "../features/extensions/ExtensionShortcuts";
 import { useEffect, useRef, useState } from "react";
@@ -149,7 +151,7 @@ export function ShortcutsSetting({
   );
   return (
     <div className="shortcuts-setting">
-      <p className="hint">Make Aux feel familiar. Your shortcuts are saved for this Profile.</p>
+      <p {...staticHintProps}>Make Aux feel familiar. Your shortcuts are saved for this Profile.</p>
       <div className="field-row">
         <button {...smallButtonProps} disabled={busy} onClick={exportFile}>
           Export shortcuts
@@ -178,7 +180,7 @@ export function ShortcutsSetting({
         />
       </div>
       <input
-        className="field-input"
+        {...staticFieldInputProps}
         aria-label="Find keyboard shortcut"
         placeholder="Find a command or shortcut…"
         value={query}
@@ -186,7 +188,7 @@ export function ShortcutsSetting({
         onChange={(event) => setQuery(event.target.value)}
       />
       {!visibleDefs.length && (
-        <p className="hint" role="status">
+        <p {...staticHintProps} role="status">
           No matching shortcuts. Try another command name.
         </p>
       )}
@@ -196,14 +198,14 @@ export function ShortcutsSetting({
           return (
             <li key={def.id} className="shortcut-row">
               <span className="shortcut-label">
-                <span className="hint">{COMMANDS.find((command) => command.id === def.id)?.section}</span>{" "}
+                <span {...staticHintProps}>{COMMANDS.find((command) => command.id === def.id)?.section}</span>{" "}
                 {def.label}
               </span>
               <span className="shortcut-chords">
                 {def.bindings.length ? (
                   def.bindings.map((b) => <kbd key={bindingKey(b)}>{bindingLabel(b, platform)}</kbd>)
                 ) : (
-                  <span className="hint">No shortcut</span>
+                  <span {...staticHintProps}>No shortcut</span>
                 )}
               </span>
               {recording === def.id ? (
@@ -237,7 +239,7 @@ export function ShortcutsSetting({
       </ul>
       {active && <FeatureSettings category="Keyboard shortcuts" />}
       {pending && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {bindingLabel(pending.binding, platform)} is used by{" "}
           {pending.rivals.map((def) => `“${def.label}”`).join(", ")}.
           <button {...smallButtonProps} disabled={busy} onClick={() => steal(pending)}>
@@ -249,7 +251,7 @@ export function ShortcutsSetting({
         </p>
       )}
       {conflicts.length > 0 && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {conflicts
             .map(
               (entry) =>
@@ -259,9 +261,9 @@ export function ShortcutsSetting({
           — the first command wins; reassign one.
         </p>
       )}
-      {notice && <output className="hint">{notice}</output>}
+      {notice && <output {...staticHintProps}>{notice}</output>}
       {error && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {error}
         </p>
       )}

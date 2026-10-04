@@ -1,3 +1,5 @@
+import { staticFieldProps, staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -44,11 +46,11 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
     catch (reason) { if (current()) setError(errorMessage(reason)); }
     finally { if (current()) setBusy(false); }
   }
-  return <section className="field" aria-label="Skill replay" aria-busy={busy}>
+  return <section {...staticFieldProps} aria-label="Skill replay" aria-busy={busy}>
     <strong>Tested replay</strong>
-    <p className="hint">Save a verified browser trace from this task. Source values are replaced with named parameters before the replay is saved. The Skill stays paused until a separate test passes and you review activation.</p>
+    <p {...staticHintProps}>Save a verified browser trace from this task. Source values are replaced with named parameters before the replay is saved. The Skill stays paused until a separate test passes and you review activation.</p>
     {replay && <p role="status">{replay.state === "tested" ? "Tested replay ready for review" : replay.state === "needs_repair" ? "Needs repair before reuse" : replay.state === "testing" ? "Replay test in progress" : "Replay needs a test"} · {replay.siteOrigin} · {replay.steps.length} steps</p>}
-    {replay?.testRunId && <p className="hint">Test run {replay.testRunId}{replay.testedAt ? ` · passed ${new Date(replay.testedAt).toLocaleString()}` : ""}</p>}
+    {replay?.testRunId && <p {...staticHintProps}>Test run {replay.testRunId}{replay.testedAt ? ` · passed ${new Date(replay.testedAt).toLocaleString()}` : ""}</p>}
     <label>Completed source run
       <select aria-label="Completed source run" value={sourceRunId} disabled={disabled || busy} onChange={event => setSourceRunId(event.target.value)}>
         <option value="">Choose a completed run</option>
@@ -64,9 +66,9 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
         expectedRevision: routine.revision, sourceRunId, pageId: pageId!, samples } } }))}>
       {replay ? "Repair from this run" : "Prepare replay from run"}
     </button>
-    {source && pageId && !source.pageIds.includes(pageId) && <p className="hint">Open the source run’s exact tab before preparing its trace.</p>}
+    {source && pageId && !source.pageIds.includes(pageId) && <p {...staticHintProps}>Open the source run’s exact tab before preparing its trace.</p>}
     {replay && <>
-      <p className="hint">Test on the current tab at the same site using fresh values. Browser writes still need their normal approval.</p>
+      <p {...staticHintProps}>Test on the current tab at the same site using fresh values. Browser writes still need their normal approval.</p>
       {routine.parameters.map(item => <label key={`test:${item.name}`}>Test value for {item.label}
         <input aria-label={`Test value for ${item.label}`} type="text" autoComplete="off" value={values[item.name] ?? ""}
           disabled={disabled || busy} onChange={event => setValues(current => ({ ...current, [item.name]: event.target.value }))}/>
@@ -92,6 +94,6 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
           await executeCommand("approve-skill-repair", { payload: { applyRepair: { proposalId: proposal.proposalId, expectedRevision: routine.revision } } }); if (current()) setProposal(null);
         })}>Approve this diff and require retest</button></>}
     </>}
-    {error && <p className="field-error" role="alert">{error}</p>}
+    {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
   </section>;
 }

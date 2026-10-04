@@ -1,3 +1,5 @@
+import { staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { constructAwaitedOperation } from "./owned-operation-construction";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
@@ -77,10 +79,10 @@ function ContentDetail({ document, question, busy, workspaceId, ask, close, setQ
 }) {
   const closer = useControl("close-content-memory-detail", `${workspaceId}:${document.memoryId}`, close, onError);
   return <DetailPane className="content-memory-document" title={document.title} metadata="Historical article · This Space" closeRef={closer.attach} onClose={closer.run}>
-    <p className="hint">Saved {new Date(document.capturedAt).toLocaleString()} from {document.url}. This is a historical copy; open the source to check for updates.</p>
+    <p {...staticHintProps}>Saved {new Date(document.capturedAt).toLocaleString()} from {document.url}. This is a historical copy; open the source to check for updates.</p>
     <div className="content-memory-text">{document.text}</div>
-    <p className="hint">Ask Aux sends up to 8,000 characters of this saved article to your selected AI provider. The saved copy may be older than the live page.</p>
-    <div className="row"><input className="field-input" aria-label="Question about saved article" placeholder="Ask about this saved article…" value={question} onChange={event => setQuestion(event.target.value)}/><ContentControl command="ask-content-memory" scopeId={`${workspaceId}:${document.memoryId}`} action={ask} onError={onError} disabled={busy || !question.trim()}>Ask Aux</ContentControl></div>
+    <p {...staticHintProps}>Ask Aux sends up to 8,000 characters of this saved article to your selected AI provider. The saved copy may be older than the live page.</p>
+    <div {...staticRowProps}><input {...staticFieldInputProps} aria-label="Question about saved article" placeholder="Ask about this saved article…" value={question} onChange={event => setQuestion(event.target.value)}/><ContentControl command="ask-content-memory" scopeId={`${workspaceId}:${document.memoryId}`} action={ask} onError={onError} disabled={busy || !question.trim()}>Ask Aux</ContentControl></div>
   </DetailPane>;
 }
 
@@ -219,26 +221,26 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
   const [sitesOpen, setSitesOpen] = useState(false);
   return <section className="browsing-memory" aria-label="Page-content recall">
     <h4>Page-content recall</h4>
-    <p className="hint">Use a tab’s “Remember article” action to save readable text in this Space. Aux only captures an active HTTPS article after you confirm its site. Saved content stays protected on this device and expires automatically.</p>
+    <p {...staticHintProps}>Use a tab’s “Remember article” action to save readable text in this Space. Aux only captures an active HTTPS article after you confirm its site. Saved content stays protected on this device and expires automatically.</p>
     {needsFreshBackup && <MemoryRecoveryNotice possible={possiblyRemoved} />}
     {policy && <>
       <label className="memory-use-toggle" htmlFor={enabledId}><ContentControl command="toggle-content-memory" scopeId={memory.workspaceId} kind="checkbox" inputId={enabledId} checked={policy.enabled} disabled={busy} onError={report} action={() => change({ ...policy, enabled: !policy.enabled })}/><span>Use remembered article content<small>{policy.enabled ? "Search and capture are available for allowed sites." : "Paused. Saved articles remain until they expire or you forget them."}</small></span></label>
-      {memory.enabled === false && <p className="hint">Space memory is paused above. Article capture and search are unavailable.</p>}
+      {memory.enabled === false && <p {...staticHintProps}>Space memory is paused above. Article capture and search are unavailable.</p>}
       <label className="browsing-retention" htmlFor={retentionId}>Keep remembered articles for<ContentControl command="set-content-memory-retention" inputId={retentionId} scopeId={memory.workspaceId} kind="select" disabled={busy} value={policy.retentionDays} onError={report} action={value => { if (value !== "30" && value !== "90") throw new Error("Choose the current article retention."); return change({ ...policy, retentionDays: value === "30" ? 30 : 90 }); }}><option value={30}>30 days</option><option value={90}>90 days</option></ContentControl></label>
       <details open={sitesOpen}><ContentControl command="toggle-content-memory-sites" scopeId={memory.workspaceId} kind="summary" onError={report} action={() => { assertCurrent(); setSitesOpen(value => !value); }}>Allowed sites · {policy.allowedOrigins.length}</ContentControl>
-        <p className="hint">Only articles from these exact sites can be saved. Removing a site deletes its saved content from this Space.</p>
+        <p {...staticHintProps}>Only articles from these exact sites can be saved. Removing a site deletes its saved content from this Space.</p>
         <div className="browsing-memory-list">{policy.allowedOrigins.map(origin => <article key={origin}><span>{origin}</span><ContentControl command="remove-content-memory-site" scopeId={`${memory.workspaceId}:${origin}`} {...smallGhostButtonProps} disabled={busy} onError={report} action={() => change({ ...policy, allowedOrigins: policy.allowedOrigins.filter(item => item !== origin) })}>Remove site</ContentControl></article>)}</div>
-        {!policy.allowedOrigins.length && <p className="hint">No sites allowed yet. Confirm “Remember article” on an active tab to add one.</p>}
+        {!policy.allowedOrigins.length && <p {...staticHintProps}>No sites allowed yet. Confirm “Remember article” on an active tab to add one.</p>}
       </details>
       <TextField type="search" aria-label="Search remembered articles" placeholder="Search remembered articles…" value={query} onChange={event => setQuery(event.target.value)} disabled={!policy.enabled || memory.enabled === false}/>
-      {query.trim() && policy.enabled && !visibleMatches.length && <p className="hint">{searching ? "Searching remembered articles…" : "No matching remembered articles."}</p>}
+      {query.trim() && policy.enabled && !visibleMatches.length && <p {...staticHintProps}>{searching ? "Searching remembered articles…" : "No matching remembered articles."}</p>}
       <div className="browsing-memory-list">{visibleMatches.map(item => <ContentRow key={item.memoryId} item={item} workspaceId={memory.workspaceId} selected={document?.memoryId === item.memoryId} disabled={busy}
         current={() => checkItem(item)} read={() => read(item)} forget={() => forget(item)} onError={report}
         open={() => { checkItem(item); return useStore.getState().newTab(item.url); }} />)}</div>
       {document && <ContentDetail document={document} workspaceId={memory.workspaceId} question={question} busy={busy} setQuestion={setQuestion} ask={ask} onError={report}
         close={() => { assertCurrent(); ++readSequence.current; setDocument(null); requestAnimationFrame(() => { if (current() && detailOpener.current?.isConnected) detailOpener.current.focus(); }); }} />}
-      <div className="row">{confirmClear ? <><span className="hint">Forget all saved articles in this Space?</span><ContentControl command="clear-content-memory" scopeId={memory.workspaceId} disabled={busy} onError={report} action={() => forget()}>Forget all</ContentControl><ContentControl command="cancel-clear-content-memory" scopeId={memory.workspaceId} disabled={busy} {...smallGhostButtonProps} onError={report} action={() => { assertCurrent(); setConfirmClear(false); }}>Cancel</ContentControl></> : <ContentControl command="confirm-clear-content-memory" scopeId={memory.workspaceId} disabled={busy} {...smallGhostButtonProps} onError={report} action={() => { assertCurrent(); setConfirmClear(true); }}>Forget all remembered articles…</ContentControl>}</div>
+      <div {...staticRowProps}>{confirmClear ? <><span {...staticHintProps}>Forget all saved articles in this Space?</span><ContentControl command="clear-content-memory" scopeId={memory.workspaceId} disabled={busy} onError={report} action={() => forget()}>Forget all</ContentControl><ContentControl command="cancel-clear-content-memory" scopeId={memory.workspaceId} disabled={busy} {...smallGhostButtonProps} onError={report} action={() => { assertCurrent(); setConfirmClear(false); }}>Cancel</ContentControl></> : <ContentControl command="confirm-clear-content-memory" scopeId={memory.workspaceId} disabled={busy} {...smallGhostButtonProps} onError={report} action={() => { assertCurrent(); setConfirmClear(true); }}>Forget all remembered articles…</ContentControl>}</div>
     </>}
-    {error && (errorScope === scope || errorScope === loadScope) && <p className="field-error" role="alert">{error}</p>}
+    {error && (errorScope === scope || errorScope === loadScope) && <p {...staticFieldErrorProps} role="alert">{error}</p>}
   </section>;
 }

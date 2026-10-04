@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { bridge } from "../bridge";
 import { useEffect, useState } from "react";
@@ -72,7 +74,7 @@ export function RecentWork() {
       {!loading && !error && !count && <RecentWorkEmpty view={tab} onCreateTask={() => useStore.getState().setOverlay("tasks")} />}
     </div>
     {tab === "chats" && <ConversationDrafts limit={3} compact exclude={items.map(item => item.chatId)} />}
-    {loading && !count && <output className="hint" data-block>Loading recent work…</output>}
-    {error && <p className="field-error" role="alert">Recent work couldn’t be loaded. <button {...smallGhostButtonProps} title={error} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
+    {loading && !count && <output {...staticHintProps} data-block>Loading recent work…</output>}
+    {error && <p {...staticFieldErrorProps} role="alert">Recent work couldn’t be loaded. <button {...smallGhostButtonProps} title={error} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
   </section>;
 }

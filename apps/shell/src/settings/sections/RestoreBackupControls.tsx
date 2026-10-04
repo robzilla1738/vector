@@ -1,3 +1,4 @@
+import { staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
@@ -215,17 +216,17 @@ export function RestoreBackupControls({
   const statusView = (
     <>
       {status.pending && (
-        <output className="hint">
+        <output {...staticHintProps}>
           A restore is staged for the next launch. Changes made before quitting will be replaced.
         </output>
       )}
       {status.lastAppliedAt && (
-        <span className="hint">
+        <span {...staticHintProps}>
           Last restored {new Date(status.lastAppliedAt).toLocaleString()}. Aux kept a private recovery
           snapshot of the prior runtime database.
         </span>
       )}
-      {message?.owner === owner && <output className="hint">{message.text}</output>}
+      {message?.owner === owner && <output {...staticHintProps}>{message.text}</output>}
     </>
   );
   return children({

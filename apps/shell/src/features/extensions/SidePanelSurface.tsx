@@ -1,3 +1,4 @@
+import { staticIconButtonProps } from "../../ui/class-props";
 import { useStore as useBoundStore } from "zustand";
 import { runCommand } from "../../commands";
 import { shellIconClose } from "../../components/icons";
@@ -14,7 +15,7 @@ export function SidePanelSurface() {
         <span className="sp" />
         <button
           type="button"
-          className="icon-btn"
+          {...staticIconButtonProps}
           aria-label={`Close ${panel.title} side panel`}
           data-command-id="close-extension-panel"
           onClick={() => runCommand("close-extension-panel")}

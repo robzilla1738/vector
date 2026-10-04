@@ -1,3 +1,5 @@
+import { staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useState } from "react";
@@ -44,15 +46,15 @@ export function VaultOfferBanner() {
   return <dialog className="vault-offer" open aria-label="Save sign-in">
     <div className="vault-offer-text">
       <strong>{offer.kind === "update" ? "Update sign-in?" : "Save sign-in?"}</strong>
-      <span className="hint">{offer.username ? `${offer.username} · ` : ""}{offer.origin}</span>
+      <span {...staticHintProps}>{offer.username ? `${offer.username} · ` : ""}{offer.origin}</span>
       {offer.locked && <>
-        <input type="password" className="field-input" autoComplete="off" aria-label="Vault passphrase" placeholder="Vault passphrase" value={passphrase} disabled={busy}
+        <input type="password" {...staticFieldInputProps} autoComplete="off" aria-label="Vault passphrase" placeholder="Vault passphrase" value={passphrase} disabled={busy}
           onChange={event => setPassphrase(event.target.value)}
           onKeyDown={event => { if (event.key === "Enter") void act(true); }} />
-        {error && <span className="field-error" role="alert">{error}</span>}
+        {error && <span {...staticFieldErrorProps} role="alert">{error}</span>}
       </>}
     </div>
-    <div className="row">
+    <div {...staticRowProps}>
       <button {...smallGhostButtonProps} disabled={busy} onClick={() => void act(false)}>Not now</button>
       <button className="btn sm primary" disabled={busy || (offer.locked && passphrase.length < 8)} onClick={() => void act(true)}>{offer.locked ? "Unlock & save" : offer.kind === "update" ? "Update" : "Save"}</button>
     </div>

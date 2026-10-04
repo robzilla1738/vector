@@ -1,0 +1,10 @@
+{
+  "status": "SOURCE_ONLY_REVIEW_PASS",
+  "freezeSHA256": "c84996bb2caf030cd0a5c25b56c82e49ba98ecc9c4c726919f73717526b65d7f",
+  "actualBeforeAndAfterPins": true,
+  "installedAPIsVerified": 6,
+  "exactReplay": true,
+  "allOriginalTestBodiesAndTeardownByteExact": true,
+  "actualFailureCauseProved": false,
+  "nativeExecuted": false
+}

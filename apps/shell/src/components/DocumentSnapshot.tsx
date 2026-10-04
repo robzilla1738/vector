@@ -1,7 +1,12 @@
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ConversationAttachment } from "@aux/contracts";
-import { call } from "../store";
+import { call, useStore } from "../store";
+import { useConversationOwner } from "./ConversationControls";
+import { useConversationAttachmentOwner } from "./ConversationAttachmentControls";
+import { DocumentSnapshotControl } from "./DocumentSnapshotControls";
+import { shellIconClose } from "./icons";
 import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
 import { ViewerFrame } from "./ViewerFrame";
 
@@ -13,23 +18,32 @@ export function DocumentSnapshot({ chatId, attachmentId, onClose }: { chatId: st
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const [includedOnly, setIncludedOnly] = useState(false);
+  const connected=useStore(state=>state.connected), chatCurrent=useConversationOwner(chatId,connected);
+  const reference=useMemo(()=>({attachmentId}),[attachmentId]), referenceCurrent=useConversationAttachmentOwner(chatCurrent,[reference]);
+  const current=useCallback(()=>referenceCurrent(reference),[referenceCurrent,reference]);
+  const published=useRef<Snapshot|null>(null);
+  useLayoutEffect(()=>{published.current=snapshot;},[snapshot]);
+  const recordCurrent=useConversationAttachmentOwner(current,snapshot ? [snapshot.attachment] : []);
+  const loadedCurrent=()=>!!snapshot && published.current===snapshot && recordCurrent(snapshot.attachment);
+
   useEffect(() => {
     let live = true;
     setSnapshot(null); setError(""); setIncludedOnly(false);
+    if(!current())return;
     void call("conversations.attachments.read", { chatId, attachmentId })
-      .then(value => { if (live) setSnapshot(value); })
-      .catch(reason => { if (live) setError(String(reason)); });
+      .then(value => { if (live && current()) setSnapshot(value); })
+      .catch(reason => { if (live && current()) setError(String(reason)); });
     return () => { live = false; };
-  }, [chatId, attachmentId, retry]);
-  return <ViewerFrame label="Document snapshot" title={snapshot?.attachment.filename ?? "Document snapshot"} onClose={onClose} closeLabel="Close document preview" metadata={snapshot && `Saved ${new Date(snapshot.attachment.createdAt).toLocaleString()}`}>
-    {error ? <p role="alert">{error} <button {...smallButtonProps} onClick={() => setRetry(value => value + 1)}>Retry</button></p> : !snapshot ? <output className="hint" data-block>Loading snapshot…</output> : <>
+  }, [chatId, attachmentId, retry, current]);
+  return <ViewerFrame label="Document snapshot" title={snapshot?.attachment.filename ?? "Document snapshot"} onClose={onClose} closeLabel="Close document preview" closeControl={<DocumentSnapshotControl command="close-conversation-document-preview" current={current} invoke={onClose} className="icon-btn xs" aria-label="Close document preview">{shellIconClose}</DocumentSnapshotControl>} metadata={snapshot && `Saved ${new Date(snapshot.attachment.createdAt).toLocaleString()}`}>
+    {error ? <p role="alert">{error} <DocumentSnapshotControl {...smallButtonProps} command="retry-conversation-document-read" current={()=>current() && !!error} invoke={() => setRetry(value => value + 1)}>Retry</DocumentSnapshotControl></p> : !snapshot ? <output {...staticHintProps} data-block>Loading snapshot…</output> : <>
       <div className="document-snapshot-scope"><span>{!snapshot.attachment.included ? "Excluded from new replies" : snapshot.contextCharacters === (snapshot.contextTotalCharacters ?? snapshot.content.length) ? "Entire text reference included in new replies" : `${snapshot.contextCharacters.toLocaleString()} of ${(snapshot.contextTotalCharacters ?? snapshot.content.length).toLocaleString()} characters included · shared context limit`}</span>
-        {snapshot.contextCharacters > 0 && (snapshot.contextText !== undefined || snapshot.contextCharacters < snapshot.content.length) && <button {...smallGhostButtonProps} aria-pressed={includedOnly} onClick={() => setIncludedOnly(value => !value)}>{includedOnly ? "Show full snapshot" : "Show included text"}</button>}
+        {snapshot.contextCharacters > 0 && (snapshot.contextText !== undefined || snapshot.contextCharacters < snapshot.content.length) && <DocumentSnapshotControl {...smallGhostButtonProps} aria-pressed={includedOnly} command="toggle-conversation-document-text" current={loadedCurrent} invoke={() => setIncludedOnly(value => !value)}>{includedOnly ? "Show full snapshot" : "Show included text"}</DocumentSnapshotControl>}
       </div>
       {includedOnly ? <pre role="group" tabIndex={0} aria-label="Included document text">{snapshot.contextText ?? snapshot.content.slice(0, snapshot.contextCharacters)}</pre> : <DocumentContent key={attachmentId} filename={snapshot.attachment.filename} content={snapshot.content} />}
-      <details className="snapshot-details"><summary>About this snapshot</summary>
-      <p className="hint">Saved {new Date(snapshot.attachment.createdAt).toLocaleString()}. Changes to the original {snapshot.attachment.sourceUrl ? "page" : "file"} are not synced.</p>
-      <p className="hint">Removing this snapshot stops its use in new turns. Earlier turns and retries keep the text they used until you delete the chat.</p>
+      <details className="snapshot-details"><DocumentSnapshotControl summary command="toggle-conversation-document-details" current={loadedCurrent} invoke={()=>{}}>About this snapshot</DocumentSnapshotControl>
+      <p {...staticHintProps}>Saved {new Date(snapshot.attachment.createdAt).toLocaleString()}. Changes to the original {snapshot.attachment.sourceUrl ? "page" : "file"} are not synced.</p>
+      <p {...staticHintProps}>Removing this snapshot stops its use in new turns. Earlier turns and retries keep the text they used until you delete the chat.</p>
       <DocumentExtractionNote filename={snapshot.attachment.filename} />
       {snapshot.attachment.sourceUrl && <p className="snapshot-source">{snapshot.attachment.sourceUrl}{snapshot.attachment.sourceTruncated && " · Partial page text"}</p>}
       </details>

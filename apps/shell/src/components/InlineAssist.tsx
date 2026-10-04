@@ -1,3 +1,4 @@
+import { staticSmallIconButtonProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -72,7 +73,7 @@ export function InlineAssist() {
 
   return <section className="shelf slide-up inline-assist" aria-label="Assist writing">
     <div className="shelf-head"><span>{shellIconAgentSm} Assist writing</span><span className="sp" />
-      <button className="icon-btn sm" aria-label="Close Assist writing" onClick={close}>{shellIconClose}</button></div>
+      <button {...staticSmallIconButtonProps} aria-label="Close Assist writing" onClick={close}>{shellIconClose}</button></div>
     <div className="inline-assist-body">
       {loading ? <output>Reading the focused field…</output> : capture ? <>
         <p className="inline-assist-context">{capture.fieldLabel} · {capture.origin} · {capture.mode === "selection" ? "Replace selection" : "Replace field text"}</p>

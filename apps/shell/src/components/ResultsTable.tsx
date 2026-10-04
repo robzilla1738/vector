@@ -1,3 +1,4 @@
+import { staticIconButtonProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { runCommand } from "../commands";
 import { memo, useEffect, useRef, useState } from "react";
@@ -116,7 +117,7 @@ export function ResultsTable() {
   return (
     <div className="results-wrap fade-in">
       <div className="results-head">
-        <button className="icon-btn" title="Back to page" aria-label="Back to page" onClick={() => setMode("focus")}>{shellIconBack}</button>
+        <button {...staticIconButtonProps} title="Back to page" aria-label="Back to page" onClick={() => setMode("focus")}>{shellIconBack}</button>
         <h2>{setName ?? "Set results"}</h2>
         <span className="count nums">{rowIds.length}{filter ? ` of ${resultCount}` : ""} rows</span>
         <span className="sp" />

@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { errorMessage } from "../error-message";
 import { useRef, useState } from "react";
 import type { Run, Suspension } from "@aux/contracts";
@@ -52,10 +54,10 @@ export function SuspensionPanel({ run, suspension, hydrated, question, readOnly 
   return <section className="needs-input" aria-label="Run suspension" data-suspension-kind={kind ?? "unavailable"}>
     <header className="ni-head"><strong>{kind ? TITLE[kind] : "Waiting for your input"}</strong></header>
     <p className="ni-q">{instruction}</p>
-    {!typed && <p className="hint">{hydrated ? "The current request is unavailable. Refresh this run before continuing." : "Loading the current request…"}</p>}
-    {typed?.request.guidance && typed.request.guidance !== instruction && <p className="hint">{typed.request.guidance}</p>}
-    {(kind === "approval" || kind === "action-confirmation") && <p className="hint">Review the approval prompt. Aux will wait for your decision.</p>}
-    {kind === "handoff" && <p className="hint">Use the page, return control, then tell Aux when you’re done.</p>}
+    {!typed && <p {...staticHintProps}>{hydrated ? "The current request is unavailable. Refresh this run before continuing." : "Loading the current request…"}</p>}
+    {typed?.request.guidance && typed.request.guidance !== instruction && <p {...staticHintProps}>{typed.request.guidance}</p>}
+    {(kind === "approval" || kind === "action-confirmation") && <p {...staticHintProps}>Review the approval prompt. Aux will wait for your decision.</p>}
+    {kind === "handoff" && <p {...staticHintProps}>Use the page, return control, then tell Aux when you’re done.</p>}
     {canAnswer && !answerInComposer && <div className="ni-row">
       {kind === "ask-user-question" && <textarea rows={2} maxLength={20000} value={text} disabled={readOnly || answerPending || busy}
         placeholder="Type an answer…" aria-label="Your answer" onChange={(event) => setText(event.target.value)}
@@ -66,6 +68,6 @@ export function SuspensionPanel({ run, suspension, hydrated, question, readOnly 
         {busy || answerPending ? "Sending…" : kind === "handoff" ? "I’m done, continue" : "Send"}
       </button>
     </div>}
-    {error && <p className="field-error" role="alert">{error} Your answer is kept.</p>}
+    {error && <p {...staticFieldErrorProps} role="alert">{error} Your answer is kept.</p>}
   </section>;
 }

@@ -1,0 +1,30 @@
+diff --git a/apps/shell/src/components/OutboundMcpSettings.tsx b/apps/shell/src/components/OutboundMcpSettings.tsx
+index 604dd4c92..e71fb262a 100644
+--- a/apps/shell/src/components/OutboundMcpSettings.tsx
++++ b/apps/shell/src/components/OutboundMcpSettings.tsx
+@@ -782,7 +782,9 @@ export function OutboundMcpSettings() {
+                         </select>
+                       </label>
+                       {tools.find((tool) => tool.name === toolName)?.description && (
+-                        <p {...staticHintProps}>{tools.find((tool) => tool.name === toolName)?.description}</p>
++                        <p {...staticHintProps}>
++                          {tools.find((tool) => tool.name === toolName)?.description}
++                        </p>
+                       )}
+                       <label>
+                         Scope
+diff --git a/apps/shell/src/components/RoutineSchedule.tsx b/apps/shell/src/components/RoutineSchedule.tsx
+index ce03c0ed7..b4e73bece 100644
+--- a/apps/shell/src/components/RoutineSchedule.tsx
++++ b/apps/shell/src/components/RoutineSchedule.tsx
+@@ -177,7 +177,9 @@ export function RoutineSchedule({
+               trigger.grantId &&
+               calendar?.status === "ready" &&
+               !selectedGrant && (
+-                <p {...staticHintProps}>The previous task grant is unavailable. Choose another reviewed grant.</p>
++                <p {...staticHintProps}>
++                  The previous task grant is unavailable. Choose another reviewed grant.
++                </p>
+               )}
+           </div>
+         )}

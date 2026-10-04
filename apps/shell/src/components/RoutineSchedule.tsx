@@ -1,3 +1,5 @@
+import { staticFieldProps, staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { useState } from "react";
 import type { RoutineTrigger } from "@aux/contracts";
@@ -135,7 +137,7 @@ export function RoutineSchedule({
           </select>
         </label>
         {kind === "calendar_event" && (
-          <div className="field">
+          <div {...staticFieldProps}>
             <label>
               Calendar task grant
               <select
@@ -163,7 +165,7 @@ export function RoutineSchedule({
                 onChange={(event) => setBeforeMinutes(event.target.valueAsNumber)}
               />
             </label>
-            {calendar?.status === "loading" && <p className="hint">Loading Calendar grants…</p>}
+            {calendar?.status === "loading" && <p {...staticHintProps}>Loading Calendar grants…</p>}
             {calendar?.message && (
               <p
                 className={calendar.status === "error" ? "field-error" : "hint"}
@@ -176,7 +178,9 @@ export function RoutineSchedule({
               trigger.grantId &&
               calendar?.status === "ready" &&
               !selectedGrant && (
-                <p className="hint">The previous task grant is unavailable. Choose another reviewed grant.</p>
+                <p {...staticHintProps}>
+                  The previous task grant is unavailable. Choose another reviewed grant.
+                </p>
               )}
           </div>
         )}
@@ -196,7 +200,7 @@ export function RoutineSchedule({
               />
             </label>
             {siteError && (
-              <output className="field-error" data-block>
+              <output {...staticFieldErrorProps} data-block>
                 {siteError}
               </output>
             )}
@@ -213,7 +217,7 @@ export function RoutineSchedule({
                 />
               </label>
             )}
-            <p className="hint">
+            <p {...staticHintProps}>
               Add this site to the Skill’s reviewed site scope. Events are observed only while Aux is open.
             </p>
           </>
@@ -251,11 +255,11 @@ export function RoutineSchedule({
               ))}
             </div>
             {!days.length && (
-              <output className="field-error" data-block>
+              <output {...staticFieldErrorProps} data-block>
                 Choose at least one day.
               </output>
             )}
-            <p className="hint">
+            <p {...staticHintProps}>
               On clock-change days, a missing local time is skipped. A repeated local time runs once at its
               first occurrence.
             </p>
@@ -276,7 +280,7 @@ export function RoutineSchedule({
           </label>
         )}
         {(kind === "schedule" || kind === "monitor") && (
-          <p className="hint">
+          <p {...staticHintProps}>
             {timezone} ·{" "}
             {mode === "create"
               ? "Saved task review criteria carry into this Skill."

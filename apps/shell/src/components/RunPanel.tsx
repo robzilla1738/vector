@@ -1,3 +1,5 @@
+import { staticSmallIconButtonProps, staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { RunPanelAction, RunPanelDisclosure } from "./RunPanelAction";
@@ -254,9 +256,9 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
         <span className="sp" />
         <span className="run-acts">
           {!live && (run.config?.taskId
-            ? <RunPanelAction command="open-run-task" run={run} className="icon-btn sm" title="Open saved task" aria-label="Open saved task" invoke={() => openSavedTask(run.config!.taskId!)}>{shellIconLayersSm}</RunPanelAction>
+            ? <RunPanelAction command="open-run-task" run={run} {...staticSmallIconButtonProps} title="Open saved task" aria-label="Open saved task" invoke={() => openSavedTask(run.config!.taskId!)}>{shellIconLayersSm}</RunPanelAction>
             : !conversation && !run.failure
-                ? <RunPanelAction command="repeat-run" run={run} className="icon-btn sm" title="Run again" aria-label="Run again" invoke={() => startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{shellIconReload}</RunPanelAction>
+                ? <RunPanelAction command="repeat-run" run={run} {...staticSmallIconButtonProps} title="Run again" aria-label="Run again" invoke={() => startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{shellIconReload}</RunPanelAction>
                 : null)}
         </span>
       </div>}
@@ -271,7 +273,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
 
       {live && run.statusMessage && !asksMe && !conversation && <p className="run-msg">{run.statusMessage}</p>}
 
-      <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <RunPanelAction command="retry-run-turn" run={run} className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !retryAvailable || retrying || multiTabBlocked} invoke={() => retryRun(run.runId)}>{shellIconReload}</RunPanelAction> : null} />
+      <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <RunPanelAction command="retry-run-turn" run={run} {...staticSmallIconButtonProps} title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !retryAvailable || retrying || multiTabBlocked} invoke={() => retryRun(run.runId)}>{shellIconReload}</RunPanelAction> : null} />
       <RunTranscriptDetails savedAnswerIds={savedAnswerIds} run={run} question={question} readOnly={readOnly} answerInComposer={questionInComposer} />
 
       {(calls != null || stats || !conversation) && <RunPanelDisclosure command="toggle-run-details" run={run} className="run-provenance" summary="Run details">
@@ -324,7 +326,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
             <span>Page</span>
             {obs && <span className="count nums">{obs.refs.length}</span>}
           </RunPanelAction>
-          {showObs && (obsLoading ? <output className="hint" data-block>Loading saved page…</output> : obsError ? <p className="field-error" role="alert">{obsError} {(inspectedArtifact || observationArtifact) && <RunPanelAction command="retry-run-page-observation" run={run} {...smallButtonProps} invoke={(current)=>inspect((inspectedArtifact || observationArtifact)!, current)}>Retry</RunPanelAction>}</p> : obs ? <ObservationPanel compact obs={obs} /> : null)}
+          {showObs && (obsLoading ? <output {...staticHintProps} data-block>Loading saved page…</output> : obsError ? <p {...staticFieldErrorProps} role="alert">{obsError} {(inspectedArtifact || observationArtifact) && <RunPanelAction command="retry-run-page-observation" run={run} {...smallButtonProps} invoke={(current)=>inspect((inspectedArtifact || observationArtifact)!, current)}>Retry</RunPanelAction>}</p> : obs ? <ObservationPanel compact obs={obs} /> : null)}
         </section>
       )}
     </div>

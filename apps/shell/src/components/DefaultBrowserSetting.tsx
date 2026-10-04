@@ -1,3 +1,4 @@
+import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { bridge, inNativeHost } from "../bridge";
@@ -54,7 +55,7 @@ export function DefaultBrowserSetting() {
   );
   if (!inNativeHost || privateMode) return null;
   return (
-    <div className="row">
+    <div {...staticRowProps}>
       {isDefault ? (
         <span className="hint ok">
           Aux is your default browser — links open here, in your most recently used profile.
@@ -75,7 +76,7 @@ export function DefaultBrowserSetting() {
             {busy ? "Setting…" : "Make Aux the default browser"}
           </button>
           {isDefault === false && !error && (
-            <span className="hint">Links from other apps currently open in a different browser.</span>
+            <span {...staticHintProps}>Links from other apps currently open in a different browser.</span>
           )}
         </>
       )}

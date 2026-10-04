@@ -1,3 +1,4 @@
+import { staticMenuItemProps, staticIconButtonProps } from "../ui/class-props";
 import { ReturnControlButton } from "./ReturnControlButton";
 import { runCommand } from "../commands";
 import { useSidebarControl } from "./use-sidebar-control";
@@ -274,7 +275,7 @@ export function SpaceMenu({ anchor, spaces, active, onPick, onNew, onNewFolder, 
         </span>
       </div>)}
       {archivedSpaces.length > 0 && <>
-        <button className="menu-item" role="menuitem" aria-expanded={showArchived} onClick={() => setShowArchived(value => !value)}>
+        <button {...staticMenuItemProps} role="menuitem" aria-expanded={showArchived} onClick={() => setShowArchived(value => !value)}>
           <span className="menu-ico">{shellIconReload}</span><span className="t">Archived spaces</span><span className="muted">{archivedSpaces.length}</span>
         </button>
         {showArchived && archivedSpaces.filter(matchesSpace).map(space => <button key={space.id} className="menu-item space-restore-item" role="menuitem"
@@ -285,7 +286,7 @@ export function SpaceMenu({ anchor, spaces, active, onPick, onNew, onNewFolder, 
       <div className="menu-sep" role="separator" />
       {actions.map(action => <div key={action.label} role="none">
         {action.separator && <div className="menu-sep" role="separator" />}
-        <button className="menu-item" role="menuitem" onClick={() => choose(action.run)}>
+        <button {...staticMenuItemProps} role="menuitem" onClick={() => choose(action.run)}>
           <span className="menu-ico">{action.icon}</span><span className="t">{action.label}</span>{action.key && <kbd>{action.key}</kbd>}
         </button>
       </div>)}
@@ -654,7 +655,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
 
   const full = (
     <>
-      <div className={`sb-head ${inNativeHost ? "native-host" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{shellIconSidebarClose}</button></div>
+      <div className={`sb-head ${inNativeHost ? "native-host" : ""}`}><button {...staticIconButtonProps} aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{shellIconSidebarClose}</button></div>
       <FeatureSlots slot="sidebarItems" />
       {pins.length > 0 && (
         <div className="sb-pins" role="group" aria-label="Pinned sites">
@@ -764,13 +765,13 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
           />
         )}
       </div>
-        {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button data-command-id="overview" onClick={() => runCommand("overview")} className="icon-btn" aria-label="Tab overview">{shellIconGrid}</button></> : <>
+        {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button data-command-id="overview" onClick={() => runCommand("overview")} {...staticIconButtonProps} aria-label="Tab overview">{shellIconGrid}</button></> : <>
         <span className="sp" />
-        <button className="icon-btn" title={withShortcut("Search", key("palette"))} aria-label="Search browser" data-command-id="palette" onClick={() => runCommand("palette")}>{shellIconSearch}</button>
+        <button {...staticIconButtonProps} title={withShortcut("Search", key("palette"))} aria-label="Search browser" data-command-id="palette" onClick={() => runCommand("palette")}>{shellIconSearch}</button>
         {activeController === "human" && <ReturnControlButton pageId={activePageId!} compact />}
         <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpenNow} data-command-id="agent-rail" onClick={() => runCommand("agent-rail")}>{shellIconAgent}</button>
         <div className="sb-more">
-          <button ref={moreTrigger} className="icon-btn" aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More" title={withShortcut("More", key("toggle-sidebar-more"))} data-command-id="toggle-sidebar-more" onClick={more}>{shellIconMore}</button>
+          <button ref={moreTrigger} {...staticIconButtonProps} aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More" title={withShortcut("More", key("toggle-sidebar-more"))} data-command-id="toggle-sidebar-more" onClick={more}>{shellIconMore}</button>
           {moreOpen && <Menu className="sidebar-native-menu sb-more-menu" label="Browser tools" anchor={moreTrigger} placement="above-end" returnFocus={moreTrigger} onClose={() => setMoreOpen(false)}>
             <button role="menuitem" aria-label="Chats" data-command-id="open-chat-history" onClick={() => chooseMore("open-chat-history")}>{shellIconAgentSm}<span>Chats</span>{key("open-chat-history") && <kbd>{key("open-chat-history")}</kbd>}</button>
             <button role="menuitem" aria-label="Tasks" data-command-id="open-tasks" onClick={() => chooseMore("open-tasks")}>{shellIconLayersSm}<span>Tasks</span>{key("open-tasks") && <kbd>{key("open-tasks")}</kbd>}</button>
@@ -845,7 +846,7 @@ export function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename
   const updateFolder = useStore((s) => s.updateFolder);
   return (
     <Menu className="menu ctx-menu" label={group ? "Tab group actions" : "Folder actions"} point={{ x, y }} onClose={finishClose} returnFocus={trigger}>
-      <button className="menu-item" role="menuitem" data-command-id="make-live-folder" onClick={() => { finishClose(); void executeCommand("make-live-folder", { payload: { folderId: folder.id } }).catch(errToast); }}>{folder.live ? "Edit live folder…" : "Make live folder…"}</button>
+      <button {...staticMenuItemProps} role="menuitem" data-command-id="make-live-folder" onClick={() => { finishClose(); void executeCommand("make-live-folder", { payload: { folderId: folder.id } }).catch(errToast); }}>{folder.live ? "Edit live folder…" : "Make live folder…"}</button>
       <div role="group" className="menu-swatches" aria-label="Folder colour">
         {SPACE_COLORS.map((color) => (
           <button key={color} role="menuitemradio" aria-checked={folder.color === color} aria-label={color} data-space={color}
@@ -863,10 +864,10 @@ export function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename
           );
         })}
       </div>
-      <button className="menu-item" role="menuitem" onClick={() => { onRename(); finishClose(); }}>
+      <button {...staticMenuItemProps} role="menuitem" onClick={() => { onRename(); finishClose(); }}>
         <span className="t">Rename</span>
       </button>
-      <button className="menu-item" role="menuitem" onClick={() => { onDelete(); finishClose(); }}>
+      <button {...staticMenuItemProps} role="menuitem" onClick={() => { onDelete(); finishClose(); }}>
         <span className="t">{group ? "Ungroup tabs" : `Delete “${folder.name}”`}</span>
       </button>
     </Menu>

@@ -1,3 +1,4 @@
+import { staticHintProps } from "../../ui/class-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useState } from "react";
 import { bridge } from "../../bridge";
@@ -45,7 +46,7 @@ export function SiteRulesTable() {
   return (
     <div aria-label="Site rules and grants">
       <h3>Site rules and grants</h3>
-      <p className="hint">
+      <p {...staticHintProps}>
         Change a website's agent access from its site controls. Saved grants apply only to this Profile.
       </p>
       {error && <p role="alert">{error}</p>}

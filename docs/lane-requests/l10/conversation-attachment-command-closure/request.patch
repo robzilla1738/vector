@@ -1,0 +1,302 @@
+diff --git a/apps/shell/src/components/AttachmentTray.tsx b/apps/shell/src/components/AttachmentTray.tsx
+index 6eb9f81b8..cbbdbfe1b 100644
+--- a/apps/shell/src/components/AttachmentTray.tsx
++++ b/apps/shell/src/components/AttachmentTray.tsx
+@@ -12,6 +12,9 @@ export type AttachmentItem = {
+   detail?: string;
+   icon?: ReactNode;
+   imageCurrent?(): boolean;
++  openControl?(props: React.ButtonHTMLAttributes<HTMLButtonElement>, content: ReactNode, invoke: () => unknown): ReactNode;
++  choiceControl?(props: React.InputHTMLAttributes<HTMLInputElement>, invoke: (included:boolean) => unknown): ReactNode;
++  removeControl?(props: React.ButtonHTMLAttributes<HTMLButtonElement>, content: ReactNode, invoke: () => unknown): ReactNode;
+   onOpen(): unknown;
+   onToggle(included: boolean): unknown;
+   onRemove?(): unknown;
+@@ -30,8 +33,8 @@ function AttachmentChip({item,disabled,busy}:{item:AttachmentItem;disabled:boole
+   const content = <><span className="attachment-icon" aria-hidden="true">{item.icon ?? shellIconResult}</span><span><strong>{item.name}</strong><small>{item.included ? item.detail || ({ document: "Document", image: "Image", result: "Saved result" }[item.kind]) : "Excluded from next reply"}</small></span></>;
+   const removeProps = {type:"button" as const,className:"icon-btn xs","aria-label":`Remove ${item.name}`,disabled:disabled || busy};
+   return <div key={item.key} className={`attachment-chip${item.included ? "" : " excluded"}`}>
+-      {item.imageCurrent ? <ConversationImageAction {...openProps} command="preview-conversation-image" current={item.imageCurrent} invoke={item.onOpen}>{content}</ConversationImageAction> : <button {...openProps} onClick={item.onOpen}>{content}</button>}
+-      {item.imageCurrent ? <ConversationImageChoice className="ui-checkbox" aria-label={`Use ${item.name} in next reply`} title="Include in next reply" checked={item.included} disabled={disabled || busy} current={item.imageCurrent} invoke={item.onToggle}/> : <Checkbox aria-label={`Use ${item.name} in next reply`} title="Include in next reply" checked={item.included} disabled={disabled || busy} onChange={event => item.onToggle(event.target.checked)}/>}
+-      {item.onRemove && (item.imageCurrent ? <ConversationImageAction {...removeProps} command="remove-conversation-image" current={item.imageCurrent} invoke={item.onRemove}>{shellIconClose}</ConversationImageAction> : <button {...removeProps} onClick={item.onRemove}>{shellIconClose}</button>)}
++      {item.imageCurrent ? <ConversationImageAction {...openProps} command="preview-conversation-image" current={item.imageCurrent} invoke={item.onOpen}>{content}</ConversationImageAction> : item.openControl ? item.openControl(openProps,content,item.onOpen) : <button {...openProps} onClick={item.onOpen}>{content}</button>}
++      {item.imageCurrent ? <ConversationImageChoice className="ui-checkbox" aria-label={`Use ${item.name} in next reply`} title="Include in next reply" checked={item.included} disabled={disabled || busy} current={item.imageCurrent} invoke={item.onToggle}/> : item.choiceControl ? item.choiceControl({className:"ui-checkbox ","aria-label":`Use ${item.name} in next reply`,title:"Include in next reply",checked:item.included,disabled:disabled || busy},item.onToggle) : <Checkbox aria-label={`Use ${item.name} in next reply`} title="Include in next reply" checked={item.included} disabled={disabled || busy} onChange={event => item.onToggle(event.target.checked)}/>}
++      {item.onRemove && (item.imageCurrent ? <ConversationImageAction {...removeProps} command="remove-conversation-image" current={item.imageCurrent} invoke={item.onRemove}>{shellIconClose}</ConversationImageAction> : item.removeControl ? item.removeControl(removeProps,shellIconClose,item.onRemove) : <button {...removeProps} onClick={item.onRemove}>{shellIconClose}</button>)}
+     </div>;
+ }
+diff --git a/apps/shell/src/components/Conversation.attachment-controls.test.tsx b/apps/shell/src/components/Conversation.attachment-controls.test.tsx
+new file mode 100644
+index 000000000..a75240a0e
+--- /dev/null
++++ b/apps/shell/src/components/Conversation.attachment-controls.test.tsx
+@@ -0,0 +1,125 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { COMMANDS, type ConversationSource, type ConversationAttachment, type ConversationArtifact } from "@aux/contracts";
++import { bridge, type BrowserProfile } from "../bridge";
++import { useStore } from "../store";
++import { executeCommand, dispatchShortcut } from "../commands";
++import { makePage, makeRun } from "../mock/fixtures";
++import { Conversation } from "./Conversation";
++
++const initial = useStore.getState(), windowId = bridge.windowId;
++const scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>, sources: ConversationSource[], documents: ConversationAttachment[], artifacts: ConversationArtifact[];
++const url = "http://127.0.0.1:3210/original-source";
++const profiles: BrowserProfile[] = [{ id: "own-profile", name: "Personal", current: true }, { id: "work-profile", name: "Work", current: false }];
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
++  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1100);
++  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
++  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { callback(0); return 1; }); vi.stubGlobal("cancelAnimationFrame", () => {});
++  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
++  documents = [{attachmentId:"doc-a",filename:"Original document.txt",excerpt:"Original text",byteLength:12,createdAt:1,included:true}];
++  artifacts = [{artifactId:"result-a",runId:"run-a",filename:"Original result.md",mediaType:"text/markdown",excerpt:"Original result",byteLength:15,createdAt:1,turnGoal:"Original goal",included:true,revision:1}];
++  sources = [{ kind: "browser", sourceId: "original-source", runId: "run-a", pageId: "page-1", url, title: "Original recorded source", documentEpoch: 7, revision: 3, observedAt: 1 }];
++  const runs = ["a", "b"].map(chat => makeRun({ runId: `run-${chat}`, config: { chatId: chat }, pageIds: [], status: "completed", result: { answer: `[Read recorded source](${url})` } }));
++  useStore.setState({ ...initial, runs, steps: {}, pages: [makePage(0, { url, documentEpoch: 7, windowId })], activePageId: "page-1", connected: true, toasts: [], pendingTurns: [], prompt: null, conversationDrafts: { "chat:a": "Keep A draft", "chat:b": "Keep B draft" }, conversationContexts: {} }, true);
++  vi.spyOn(bridge, "onEvent").mockImplementation(() => () => {}); vi.spyOn(bridge, "overlay").mockResolvedValue(false); vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
++  vi.spyOn(bridge, "browserProfiles").mockResolvedValue(profiles); vi.spyOn(bridge, "openBrowserProfileUrl").mockResolvedValue(true);
++  vi.spyOn(bridge, "invoke").mockImplementation(async (method, params) => {
++    const chat = (params as { chatId?: string }).chatId;
++    if (method === "runs.list") return runs.filter(run => run.config?.chatId === chat);
++    if (method === "runs.get") return { run: useStore.getState().runs.find(run => run.runId === (params as { runId: string }).runId)!, steps: [], suspension: null };
++    if (method === "conversations.get") return { title: "Original chat", archived: false };
++    if (method === "runs.messages.list") return [];
++    if (method === "conversations.artifacts.get") return { artifacts: chat === "a" ? artifacts : [] };
++    if (method === "conversations.images.get") return { images: [] };
++    if (method === "conversations.attachments.get") return { attachments: chat === "a" ? documents : [] };
++    if (method === "conversations.attachments.read") return { attachment:documents[0], content:"Original text", contextCharacters:12 };
++    if (method === "results.read") return { ...artifacts[0],chatId:"a",content:"Original result" };
++    if (method === "conversations.sources.get") return { sources: chat === "a" ? sources : [] };
++    if (method === "runs.context.get") return { entries: [], historyEnabled: true };
++    return { workspace: null, memory: null };
++  });
++  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
++});
++afterEach(async () => {
++  await act(async () => root.unmount()); host.remove(); useStore.setState(initial, true); bridge.windowId = windowId; vi.restoreAllMocks(); vi.unstubAllGlobals();
++  if (scroll) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", scroll); else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
++});
++async function render(chat = "a") { await act(async () => root.render(<Conversation chatId={chat}/>)); }
++
++const control = (id:string) => host.querySelector<HTMLElement>(`[data-command-id="${id}"]`)!;
++async function dispatch(command:string) { let completion!:Promise<unknown>; await act(async () => { control(command).focus(); completion = executeCommand(command); void completion.catch(() => {}); }); return {completion}; }
++function hold(method:string) {
++  const original = vi.mocked(bridge.invoke).getMockImplementation()!;
++  const pending:{resolve(value:unknown):void;reject(reason:unknown):void;params:unknown}[] = [];
++  vi.mocked(bridge.invoke).mockImplementation((name,params) => name===method ? new Promise((resolve,reject) => pending.push({resolve,reject,params})) : original(name,params));
++  return pending;
++}
++const toggle = "toggle-conversation-document", remove = "remove-conversation-document", result = "toggle-conversation-result";
++it("document/result original mounted previews retain draft, transcript and original read IDs",async () => {
++  await render(); const input=host.querySelector("textarea"), drafts=useStore.getState().conversationDrafts;
++  await dispatch("preview-conversation-document"); expect(bridge.invoke).toHaveBeenCalledWith("conversations.attachments.read",{chatId:"a",attachmentId:"doc-a"});
++  await dispatch("preview-conversation-result"); expect(useStore.getState().resultPreview).toBe("result-a"); expect(bridge.invoke).toHaveBeenCalledWith("results.read",{artifactId:"result-a"});
++  expect(host.querySelector("textarea")).toBe(input); expect(useStore.getState().conversationDrafts).toBe(drafts);
++});
++it.each([toggle,remove,result])("%s retains exact native args and admitted ACK",async command => {
++  await render(); const method=command===result ? "conversations.artifacts.toggle" : command===remove ? "conversations.attachments.remove" : "conversations.attachments.toggle";
++  const pending=hold(method), original=await dispatch(command);
++  expect(pending).toHaveLength(1); expect(pending[0]!.params).toEqual(command===result ? {chatId:"a",artifactId:"result-a",included:false} : command===remove ? {chatId:"a",attachmentId:"doc-a"} : {chatId:"a",attachmentId:"doc-a",included:false});
++  const ack=command===result ? {artifacts:[{...artifacts[0]!,included:false}]} : {attachments:command===remove ? [] : [{...documents[0]!,included:false}]};
++  await act(async () => {if ("attachments" in ack) documents=ack.attachments!; else artifacts=ack.artifacts; pending[0]!.resolve(ack);}); await expect(original.completion).resolves.toBe(ack);
++  expect({present:!!control(toggle),checked:(control(command) as HTMLInputElement|null)?.checked}).toEqual(command===remove ? {present:false,checked:undefined} : {present:true,checked:false});
++  expect(useStore.getState().conversationDrafts["chat:a"]).toBe("Keep A draft");
++});
++it("native checkbox original click preserves actual selected included payload",async () => {
++  await render(); const pending=hold("conversations.attachments.toggle"); await act(async () => control(toggle).click()); expect(pending[0]!.params).toEqual({chatId:"a",attachmentId:"doc-a",included:false});
++  await act(async () => {documents=[{...documents[0]!,included:false}];pending[0]!.resolve({attachments:documents});}); expect((control(toggle) as HTMLInputElement).checked).toBe(false);
++});
++it("same tick duplicate and shared document/result busy refuse second native mutation",async () => {
++  await render(); const pending=hold("conversations.attachments.toggle"), original=await dispatch(toggle); await expect(executeCommand(toggle)).rejects.toThrow(); await expect(executeCommand(result)).rejects.toThrow(); expect(pending).toHaveLength(1);
++  expect(control(remove).hasAttribute("disabled")).toBe(true); expect(control(result).hasAttribute("disabled")).toBe(true); await act(async () => pending[0]!.resolve({attachments:documents})); await original.completion;
++});
++it("held A→B→A document reply cannot publish old records or clear newer busy",async () => {
++  await render(); const pending=hold("conversations.attachments.toggle"), old=await dispatch(toggle); await render("b"); await render("a"); const fresh=await dispatch(toggle); expect(pending).toHaveLength(2);
++  const oldAck={attachments:[{...documents[0]!,filename:"Retired record",included:false}]}; await act(async () => pending[0]!.resolve(oldAck)); await expect(old.completion).resolves.toBe(oldAck);
++  expect(host.textContent).not.toContain("Retired record"); expect(control(toggle).hasAttribute("disabled")).toBe(true); expect(host.querySelector(".attachment-progress")).not.toBeNull();
++  await act(async () => pending[1]!.resolve({attachments:[{...documents[0]!,included:false}]})); await fresh.completion; expect(control(toggle).hasAttribute("disabled")).toBe(false);
++});
++it("held original result click across A→B→A cannot publish retired result or release newer busy",async () => {
++  await render(); const pending=hold("conversations.artifacts.toggle"); await act(async () => control(result).click()); await render("b"); await render("a"); await act(async () => control(result).click()); expect(pending).toHaveLength(2);
++  await act(async () => pending[0]!.resolve({artifacts:[{...artifacts[0]!,filename:"Retired result",included:false}]}));
++  expect(host.textContent).not.toContain("Retired result"); expect(control(result).hasAttribute("disabled")).toBe(true); expect(host.querySelector(".attachment-progress")).not.toBeNull();
++  await act(async () => pending[1]!.resolve({artifacts:[{...artifacts[0]!,included:false}]})); expect(control(result).hasAttribute("disabled")).toBe(false);
++});
++it("held result error after A→B→A retains exact rejection without stale toast or clearing fresh busy",async () => {
++  await render(); const pending=hold("conversations.artifacts.toggle"), old=await dispatch(result); await render("b"); await render("a"); const fresh=await dispatch(result), reason=new Error("Original retained result rejection");
++  await act(async () => pending[0]!.reject(reason)); await expect(old.completion).rejects.toBe(reason); expect(useStore.getState().toasts).toEqual([]); expect(control(result).hasAttribute("disabled")).toBe(true);
++  await act(async () => pending[1]!.resolve({artifacts:[{...artifacts[0]!,included:false}]})); await fresh.completion; expect(control(result).hasAttribute("disabled")).toBe(false);
++});
++it("observed foreign window retirement refuses restored old control and held ACK publication",async () => {
++  await render(); const pending=hold("conversations.attachments.toggle"), old=await dispatch(toggle); bridge.windowId="foreign";
++  await act(async () => control("preview-conversation-document").click()); bridge.windowId=windowId;
++  await expect(executeCommand("preview-conversation-document")).rejects.toThrow(); const ack={attachments:[{...documents[0]!,filename:"Retired foreign record"}]}; await act(async () => pending[0]!.resolve(ack)); await expect(old.completion).resolves.toBe(ack); expect(host.textContent).not.toContain("Retired foreign record"); expect(useStore.getState().toasts).toEqual([]);
++});
++it("original admitted remove failure after A→B→A cannot publish stale error",async () => {
++  await render(); const pending=hold("conversations.attachments.remove"); await act(async () => control(remove).click()); await render("b"); await render("a"); await act(async () => pending[0]!.reject(new Error("Retired original remove failure"))); expect(useStore.getState().toasts).toEqual([]); expect(control(remove).hasAttribute("disabled")).toBe(false);
++});
++it("current native rejection retains identity and actual click reports once",async () => {
++  await render(); const pending=hold("conversations.attachments.remove"), reason=new Error("Original remove rejected"); await act(async () => control(remove).click()); await act(async () => pending[0]!.reject(reason)); expect(useStore.getState().toasts).toHaveLength(1); expect(useStore.getState().toasts[0]!.text).toContain(reason.message); expect(control(remove).hasAttribute("disabled")).toBe(false);
++  const original=await dispatch(remove); await act(async () => pending[1]!.reject(reason)); await expect(original.completion).rejects.toBe(reason);
++});
++it("focused remapped preview and result choice preserve disconnected existing controls",async () => {
++  await render(); act(() => useStore.setState({connected:false,settings:{...useStore.getState().settings,shortcutOverrides:{"preview-conversation-document":[{key:"j",command:true,alt:true}],"toggle-conversation-result":[{key:"k",command:true,alt:true}]}}}));
++  await act(async () => {control("preview-conversation-document").focus();expect(dispatchShortcut({key:"j",meta:true,alt:true,shift:false})).toBe(true);}); expect(bridge.invoke).toHaveBeenCalledWith("conversations.attachments.read",{chatId:"a",attachmentId:"doc-a"});
++  expect(control(result).hasAttribute("disabled")).toBe(true);
++  await act(async () => useStore.setState({connected:true}));
++  const pending=hold("conversations.artifacts.toggle"); await act(async () => {control(result).focus();expect(dispatchShortcut({key:"k",meta:true,alt:true,shift:false})).toBe(true);}); expect(pending[0]!.params).toEqual({chatId:"a",artifactId:"result-a",included:false}); await act(async () => pending[0]!.resolve({artifacts:artifacts}));
++});
++it("hidden preview and detached original element cannot gain mutation authority",async () => {
++  await render(); vi.spyOn(control("preview-conversation-document"),"getClientRects").mockReturnValue([] as unknown as DOMRectList); control("preview-conversation-document").focus(); await expect(executeCommand("preview-conversation-document")).rejects.toThrow(); expect(useStore.getState().resultPreview).toBeNull();
++  const original=control(remove); original.remove(); original.focus(); await expect(executeCommand(remove)).rejects.toThrow(); expect(bridge.invoke).not.toHaveBeenCalledWith("conversations.attachments.remove",expect.anything());
++});
++it("five metadata rows remain normal scoped and remappable",() => {for(const id of ["preview-conversation-document",toggle,remove,"preview-conversation-result",result]) expect(COMMANDS.find(row=>row.id===id)).toMatchObject({palette:false,windows:["normal"]});});
+diff --git a/apps/shell/src/components/Conversation.tsx b/apps/shell/src/components/Conversation.tsx
+index 540dfab43..de695320d 100644
+--- a/apps/shell/src/components/Conversation.tsx
++++ b/apps/shell/src/components/Conversation.tsx
+@@ -15,6 +15,7 @@ import { FeatureComposer } from "../features/registry";
+ import { Popover } from "../ui/popover";
+ import { RunControls } from "./RunControls";
+ import { CalendarSourceChoiceDialog } from "./CalendarSourceChoiceDialog";
++import { ConversationAttachmentAction, ConversationAttachmentChoice, useConversationAttachmentOwner } from "./ConversationAttachmentControls";
+ import { AttachmentTray, type AttachmentItem } from "./AttachmentTray";
+ import { SupportingContent } from "./SupportingContent";
+ import { ComposerFrame } from "../ui";
+@@ -588,24 +589,31 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+     })();
+     return guardCommandCompletion(completion,current);
+   };
+-  const changeDocument = async (attachmentId: string, included?: boolean) => {
+-    if (!id || documentBusy.current) return;
+-    documentBusy.current = true;
+-    setAttachmentSaving(true);
+-    try {
+-      const value = await call(included === undefined ? "conversations.attachments.remove" : "conversations.attachments.toggle", { chatId: id, attachmentId, ...(included === undefined ? {} : { included }) });
+-      if (activeChat.current === id) { setAttachments(value.attachments); setDocumentPreview(null); }
+-    } catch (error) { errToast(error); }
+-    finally { documentBusy.current = false; setAttachmentSaving(false); }
+-  };
+-  const changeResult = async (artifactId: string, included: boolean) => {
+-    if (!id || documentBusy.current || attachmentSaving || contextLocked) return;
+-    documentBusy.current = true; setAttachmentSaving(true);
+-    try {
+-      const value = await call("conversations.artifacts.toggle", {chatId:id,artifactId,included});
+-      if (activeChat.current === id) setGenerated(value.artifacts);
+-    } catch (error) { errToast(error); }
+-    finally { documentBusy.current = false; setAttachmentSaving(false); }
++  const attachmentCurrent = useConversationAttachmentOwner(conversationCurrent, [...attachments,...generated]);
++  const attachmentMutation = useRef<{release():void} | null>(null);
++  useLayoutEffect(() => () => { attachmentMutation.current?.release(); }, [attachmentCurrent]);
++  const changeAttachment = (item: ConversationAttachment | ConversationArtifact, included?: boolean) => {
++    const current = () => attachmentCurrent(item);
++    if (!id || !current() || documentBusy.current || attachmentSaving || contextLocked) throw new Error("Choose the current conversation attachment.");
++    const chatId = id, document = "attachmentId" in item;
++    const operation = { release() {
++      if (attachmentMutation.current !== operation) return;
++      attachmentMutation.current = null; documentBusy.current = false; setAttachmentSaving(false);
++    }};
++    attachmentMutation.current = operation; documentBusy.current = true; setAttachmentSaving(true);
++    const completion = (async () => {
++      try {
++        const value = document
++          ? await call(included === undefined ? "conversations.attachments.remove" : "conversations.attachments.toggle", {chatId,attachmentId:item.attachmentId,...(included === undefined ? {} : {included})})
++          : await call("conversations.artifacts.toggle", {chatId,artifactId:item.artifactId,included:included!});
++        if (current() && attachmentMutation.current === operation) {
++          if ("attachments" in value) { setAttachments(value.attachments); setDocumentPreview(null); }
++          else setGenerated(value.artifacts);
++        }
++        return value;
++      } finally { operation.release(); }
++    })();
++    return guardCommandCompletion(completion,current);
+   };
+   const exportConversation = () => {
+     if (!id || !turns.length || !conversationCurrent() || exportPending.current?.owner === conversationCurrent) return;
+@@ -839,15 +847,20 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+   </Popover></span></div>;
+ 
+   const attachmentItems: AttachmentItem[] = [
+-    ...attachments.map(item => ({ key:`document:${item.attachmentId}`, name:item.filename, kind:"document" as const, included:item.included,
++    ...attachments.map<AttachmentItem>(item => ({ key:`document:${item.attachmentId}`, name:item.filename, kind:"document" as const, included:item.included,
+       onOpen:() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(item.attachmentId); },
+-      onToggle:(included:boolean) => void changeDocument(item.attachmentId,included), onRemove:() => void changeDocument(item.attachmentId) })),
++      onToggle:(included:boolean) => changeAttachment(item,included), onRemove:() => changeAttachment(item),
++      openControl:(props,children,invoke) => <ConversationAttachmentAction {...props} command="preview-conversation-document" current={() => attachmentCurrent(item)} invoke={invoke}>{children}</ConversationAttachmentAction>,
++      choiceControl:(props,invoke) => <ConversationAttachmentChoice {...props} command="toggle-conversation-document" current={() => attachmentCurrent(item)} invoke={invoke}/>,
++      removeControl:(props,children,invoke) => <ConversationAttachmentAction {...props} command="remove-conversation-document" current={() => attachmentCurrent(item)} invoke={invoke}>{children}</ConversationAttachmentAction> })),
+     ...images.map(item => ({ imageCurrent:() => currentImage(item), key:`image:${item.imageId}`, name:item.filename, kind:"image" as const, included:item.included, detail:`${item.width} × ${item.height}`,
+       onOpen:() => { if (!currentImage(item)) throw new Error("Choose the current image control."); setSourceDetail(null); useStore.setState({resultPreview:null}); setDocumentPreview(null); setImagePreview(item.imageId); setImagePreviewGeneration(value => value + 1); },
+       onToggle:(included:boolean) => changeImage(item,included), onRemove:() => changeImage(item) })),
+-    ...generated.filter(item => !item.automaticReport || item.included).map(item => ({ key:`result:${item.artifactId}`, name:item.filename, kind:"result" as const, included:item.included, detail:`Saved result · v${item.revision ?? artifactVersions[item.artifactId] ?? 1}`,
++    ...generated.filter(item => !item.automaticReport || item.included).map<AttachmentItem>(item => ({ key:`result:${item.artifactId}`, name:item.filename, kind:"result" as const, included:item.included, detail:`Saved result · v${item.revision ?? artifactVersions[item.artifactId] ?? 1}`,
+       onOpen:() => { setSourceDetail(null); setImagePreview(null); setDocumentPreview(null); useStore.setState({resultPreview:item.artifactId}); },
+-      onToggle:(included:boolean) => void changeResult(item.artifactId,included) })),
++      onToggle:(included:boolean) => changeAttachment(item,included),
++      openControl:(props,children,invoke) => <ConversationAttachmentAction {...props} command="preview-conversation-result" current={() => attachmentCurrent(item)} invoke={invoke}>{children}</ConversationAttachmentAction>,
++      choiceControl:(props,invoke) => <ConversationAttachmentChoice {...props} command="toggle-conversation-result" current={() => attachmentCurrent(item)} invoke={invoke}/> })),
+   ];
+   const queued = queuedMessages.filter(message => message.mode === "queue" && !["delivered", "cancelled"].includes(message.status));
+   const closedPage = !linked && !!last?.pageIds.length;
+diff --git a/apps/shell/src/components/ConversationAttachmentControls.tsx b/apps/shell/src/components/ConversationAttachmentControls.tsx
+new file mode 100644
+index 000000000..996a278d1
+--- /dev/null
++++ b/apps/shell/src/components/ConversationAttachmentControls.tsx
+@@ -0,0 +1,36 @@
++import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes } from "react";
++import { usePreferenceCommand } from "../settings/sections/preference-command";
++import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
++import { executeCommand } from "../commands";
++import { errToast } from "../store";
++
++type AttachmentCommand = "preview-conversation-document" | "toggle-conversation-document" | "remove-conversation-document" | "preview-conversation-result" | "toggle-conversation-result";
++export function useConversationAttachmentOwner(current: () => boolean, records: object[]) {
++  const snapshot = JSON.stringify(records);
++  const identity = useMemo(() => ({ current, records: new Set((JSON.parse(snapshot) as object[]).map(value => JSON.stringify(value))) }), [snapshot,current]);
++  const committed = useRef<{ identity: typeof identity; active: boolean } | null>(null);
++  useLayoutEffect(() => { const original = { identity, active: true }; committed.current = original; return () => { original.active = false; }; }, [identity]);
++  return useCallback((record: object) => {
++    const original = committed.current;
++    if (!original?.active || original.identity !== identity) return false;
++    if (identity.current() && identity.records.has(JSON.stringify(record))) return true;
++    original.active = false; return false;
++  }, [current,identity]);
++}
++function useAttachmentControl<T extends HTMLButtonElement | HTMLInputElement>(command: AttachmentCommand, current: () => boolean, invoke: (element: T,event?: Event) => unknown) {
++  const scope = useId();
++  const [ref] = usePreferenceCommand<T>(command,scope,(element,event) => current() ? invoke(element,event) : guardCommandCompletion(Promise.reject(new Error("Choose the original conversation attachment.")),current));
++  const run = (event: { nativeEvent: Event }) => {
++    const completion = executeCommand(command,{payload:{scopeId:scope},nativeInputEvent:event.nativeEvent});
++    void completion.catch(reason => reportCommandCompletionFailure(completion,reason,error => { if (current()) errToast(error); }));
++  };
++  return [ref,run] as const;
++}
++export function ConversationAttachmentAction({command,current,invoke,...props}: Omit<ButtonHTMLAttributes<HTMLButtonElement>,"onClick"> & {command: AttachmentCommand; current(): boolean; invoke(): unknown}) {
++  const [ref,run] = useAttachmentControl<HTMLButtonElement>(command,current,invoke);
++  return <button {...props} ref={ref} data-command-id={command} onClick={run}/>;
++}
++export function ConversationAttachmentChoice({command,current,invoke,...props}: Omit<InputHTMLAttributes<HTMLInputElement>,"type"|"onChange"> & {command: "toggle-conversation-document" | "toggle-conversation-result"; current(): boolean; invoke(included:boolean): unknown}) {
++  const [ref,run] = useAttachmentControl<HTMLInputElement>(command,current,(element,event) => invoke(event?.type === "click" || event?.type === "change" ? element.checked : !element.checked));
++  return <input {...props} type="checkbox" ref={ref} data-command-id={command} onChange={run}/>;
++}
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index fb03531c3..ae8caa679 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -137,6 +137,11 @@ export const COMMANDS = [
+   S("open-conversation-recorded-source", "Open recorded conversation source", browserContextControl),
+   S("choose-conversation-source-profile", "Open Calendar source in chosen Profile", browserContextControl),
+   S("cancel-conversation-source-profile", "Cancel Calendar source Profile choice", browserContextControl),
++  S("preview-conversation-document", "Preview conversation document", browserContextControl),
++  S("toggle-conversation-document", "Include or exclude conversation document", browserContextControl),
++  S("remove-conversation-document", "Remove conversation document", browserContextControl),
++  S("preview-conversation-result", "Preview saved conversation result", browserContextControl),
++  S("toggle-conversation-result", "Include or exclude saved conversation result", browserContextControl),
+   ...G(pageRecoveryControl, "-page-recovery", [
+     ["retry", "", "Retry this page"],
+     ["edit", "-address", "Edit failing page address"],

@@ -1,3 +1,4 @@
+import { staticIconButtonProps } from "../ui/class-props";
 import { memo, useEffect, useRef, useState } from "react";
 import { useFeatureRailView } from "../features/registry";
 import { useShallow } from "zustand/react/shallow";
@@ -54,10 +55,10 @@ export const AgentRail = memo(function AgentRail() {
           {!connected && <output className="rail-sub offline">Connecting…</output>}
           {selectedRun && <RunPresence run={selectedRun} pages={selectedPages} compact />}
           <span className="sp" />
-          <button className="icon-btn" title={recentOpen ? "Return to conversation" : "Recent conversations"} aria-label={recentOpen ? "Return to conversation" : "Recent conversations"} aria-pressed={recentOpen} onClick={() => setRecentOpen(value => !value)}>{recentOpen ? shellIconLeft : shellIconChats}</button>
-          {!recentOpen && view.kind !== "set" && <button className="icon-btn" title="Open full conversation" aria-label="Open full conversation" onClick={expand}>{shellIconOpen}</button>}
-          <button className="icon-btn" title="New conversation" aria-label="New conversation" onClick={() => { setRecentOpen(false); setRailView({kind:"home"}); }}>{shellIconPlus}</button>
-          <button className="icon-btn" title={withShortcut("Hide", key("agent-rail"))} aria-label="Hide assistant" onClick={toggleRail}>{shellIconRail}</button>
+          <button {...staticIconButtonProps} title={recentOpen ? "Return to conversation" : "Recent conversations"} aria-label={recentOpen ? "Return to conversation" : "Recent conversations"} aria-pressed={recentOpen} onClick={() => setRecentOpen(value => !value)}>{recentOpen ? shellIconLeft : shellIconChats}</button>
+          {!recentOpen && view.kind !== "set" && <button {...staticIconButtonProps} title="Open full conversation" aria-label="Open full conversation" onClick={expand}>{shellIconOpen}</button>}
+          <button {...staticIconButtonProps} title="New conversation" aria-label="New conversation" onClick={() => { setRecentOpen(false); setRailView({kind:"home"}); }}>{shellIconPlus}</button>
+          <button {...staticIconButtonProps} title={withShortcut("Hide", key("agent-rail"))} aria-label="Hide assistant" onClick={toggleRail}>{shellIconRail}</button>
         </div>
         <div className={`rail-body${recentOpen ? " rail-recents" : ""}`}>
           {railOpen && recentOpen && <RailHistory />}

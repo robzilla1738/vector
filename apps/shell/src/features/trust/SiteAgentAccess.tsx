@@ -1,3 +1,4 @@
+import { staticHintProps } from "../../ui/class-props";
 import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -163,7 +164,7 @@ export function SiteAgentAccess({
           </div>
         ))
       ) : (
-        <p className="hint">No saved grants for this site.</p>
+        <p {...staticHintProps}>No saved grants for this site.</p>
       )}
     </section>
   );

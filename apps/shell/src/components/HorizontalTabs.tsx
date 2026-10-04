@@ -1,3 +1,4 @@
+import { staticIconButtonProps } from "../ui/class-props";
 import { runCommand } from "../commands";
 import { windowTabHint } from "../tab-window-transfer";
 import "./HorizontalTabs.css";
@@ -161,7 +162,7 @@ export function HorizontalTabs() {
       </div>}</Fragment>; })}
     </div>
       <div className="horizontal-tab-tools">
-        <button className="icon-btn" aria-label="New tab" title={withShortcut("New tab", key("new-tab"))} data-command-id="new-tab" onClick={() => runCommand("new-tab")}>{shellIconPlus}</button>
+        <button {...staticIconButtonProps} aria-label="New tab" title={withShortcut("New tab", key("new-tab"))} data-command-id="new-tab" onClick={() => runCommand("new-tab")}>{shellIconPlus}</button>
       </div>
       <div className="horizontal-tabs-spacer" />
       <div className="horizontal-space" data-space={space?.color} style={spaceThemeStyle(space)}>

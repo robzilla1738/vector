@@ -1,3 +1,5 @@
+import { staticIconButtonProps, staticFieldInputProps, staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { runCommand } from "../commands";
@@ -204,7 +206,7 @@ export function Overview() {
     }
   }}>
     <div className="ov-head">
-      <div><h2>Your tabs</h2><p className="hint">{visible.length} {visible.length === 1 ? "tab" : "tabs"}{selection.length ? ` · ${selection.length} selected` : " · Everything in its place"}</p></div>
+      <div><h2>Your tabs</h2><p {...staticHintProps}>{visible.length} {visible.length === 1 ? "tab" : "tabs"}{selection.length ? ` · ${selection.length} selected` : " · Everything in its place"}</p></div>
       <span className="sp" />
       <button {...smallButtonProps} disabled={busy} data-command-id="new-tab" onClick={() => runCommand("new-tab")}>{shellIconPlusSm} New tab</button>
       <button {...smallGhostButtonProps} disabled={busy} onClick={() => useStore.getState().setMode("focus")}>Done</button>
@@ -239,12 +241,12 @@ export function Overview() {
       })}>Select duplicates · {duplicates.length}</button>}
     </div>
     {tidy && <section className="ov-tidy" aria-label="AI Tidy preview">
-      <div className="ov-tidy-head"><strong>Suggested folders</strong><span className="sp" /><span className="hint">Review before applying</span></div>
-      <p className="hint">Only tab titles and site domains were sent to your configured AI model. Tabs stay open; ungrouped tabs stay where they are.</p>
+      <div className="ov-tidy-head"><strong>Suggested folders</strong><span className="sp" /><span {...staticHintProps}>Review before applying</span></div>
+      <p {...staticHintProps}>Only tab titles and site domains were sent to your configured AI model. Tabs stay open; ungrouped tabs stay where they are.</p>
       <div className="ov-tidy-groups">{tidy.proposal.groups.map((group, index) => <div className="ov-tidy-group" key={`${group.name}-${index}`}>
         <strong>{group.name}</strong><ul>{group.pageIds.map(pageId => <li key={pageId}>{tidy.proposal.pages.find(page => page.pageId === pageId)?.title || "Untitled tab"}</li>)}</ul>
       </div>)}</div>
-      <div className="row"><button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {
+      <div {...staticRowProps}><button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {
         const state = useStore.getState();
         const applied = applyTidyProposal(state.layout, state.pages, tidy.spaceId, tidy.proposal);
         const receipt = tidyUndoRecord(state.layout, applied);
@@ -256,7 +258,7 @@ export function Overview() {
         setProgress(`Created ${tidy.proposal.groups.length} ${tidy.proposal.groups.length === 1 ? "folder" : "folders"}. You can undo this change.`);
       })}>Apply folders</button><button {...smallGhostButtonProps} disabled={busy} onClick={() => setTidy(null)}>Dismiss</button></div>
     </section>}
-    {tidyUndo && tidyUndo.moved.every(item => pages.some(page => page.pageId === item.pageId)) && <div className="ov-tidy-undo"><span className="hint">AI Tidy created folders in this Space.</span><button {...smallGhostButtonProps} disabled={busy} onClick={() => void act(async () => {
+    {tidyUndo && tidyUndo.moved.every(item => pages.some(page => page.pageId === item.pageId)) && <div className="ov-tidy-undo"><span {...staticHintProps}>AI Tidy created folders in this Space.</span><button {...smallGhostButtonProps} disabled={busy} onClick={() => void act(async () => {
       const before = useStore.getState().layout;
       if (!before.tidyUndo) throw new Error("This Tidy change is no longer available to undo.");
       let restored;
@@ -334,7 +336,7 @@ export function Overview() {
         } finally { setClosing(false); }
       })}>Close tabs</button>
       {closing && <button {...smallGhostButtonProps} onClick={() => { stopClosing.current=true; setProgress("Stopping after the current tab…"); }}>Stop</button>}
-      <span className="sp" /><button className="icon-btn" disabled={busy} aria-label="Clear tab selection" onClick={() => {duplicateSelection.current=false;setSelected(new Set());setSavingFolder(false);}}>{shellIconClose}</button>
+      <span className="sp" /><button {...staticIconButtonProps} disabled={busy} aria-label="Clear tab selection" onClick={() => {duplicateSelection.current=false;setSelected(new Set());setSavingFolder(false);}}>{shellIconClose}</button>
     </section>}
     {savingFolder && selection.length > 0 && <form className="ov-save-folder" onSubmit={event => {
       event.preventDefault(); void act(async () => {
@@ -352,12 +354,12 @@ export function Overview() {
         setSavingFolder(false);
       });
     }}>
-      <label>{savingFolder === "tabs" ? "Tab folder" : "Bookmark folder"}<input className="field-input" autoFocus disabled={busy} value={folderName} maxLength={200} placeholder="Reading, trip ideas, project research…" onChange={event=>setFolderName(event.target.value)} /></label>
-      <p className="hint">{savingFolder === "tabs" ? `Move the selected open tabs into a new folder in ${folderSpace?.name ?? "the selected Space"}. Their pages stay open.` : "Save web pages for later. Existing bookmarks keep their current folders. Open the folder’s pages together from Library."}</p>
-      <div className="row"><button {...smallButtonProps} disabled={busy||!folderName.trim()||(savingFolder === "tabs" && !folderSpace)}>{savingFolder === "tabs" ? "Create folder" : "Save folder"}</button><button type="button" {...smallGhostButtonProps} disabled={busy} onClick={()=>setSavingFolder(false)}>Cancel</button></div>
+      <label>{savingFolder === "tabs" ? "Tab folder" : "Bookmark folder"}<input {...staticFieldInputProps} autoFocus disabled={busy} value={folderName} maxLength={200} placeholder="Reading, trip ideas, project research…" onChange={event=>setFolderName(event.target.value)} /></label>
+      <p {...staticHintProps}>{savingFolder === "tabs" ? `Move the selected open tabs into a new folder in ${folderSpace?.name ?? "the selected Space"}. Their pages stay open.` : "Save web pages for later. Existing bookmarks keep their current folders. Open the folder’s pages together from Library."}</p>
+      <div {...staticRowProps}><button {...smallButtonProps} disabled={busy||!folderName.trim()||(savingFolder === "tabs" && !folderSpace)}>{savingFolder === "tabs" ? "Create folder" : "Save folder"}</button><button type="button" {...smallGhostButtonProps} disabled={busy} onClick={()=>setSavingFolder(false)}>Cancel</button></div>
     </form>}
     {progress && <output className="hint ov-progress" data-block>{progress}</output>}
-    {error && <p role="alert" className="field-error">{error}</p>}
+    {error && <p role="alert" {...staticFieldErrorProps}>{error}</p>}
     {!visible.length && <div className="empty-state ov-empty"><span className="empty-ico">{query ? shellIconSearch : shellIconGrid}</span><h2>{query ? "No matching tabs" : "Room for something new"}</h2><p>{query ? "Try another title or address, or look in all spaces." : "Open a page to start browsing in this space."}</p></div>}
     <div role="group" className="ov-grid" aria-label="Open tabs" aria-description="Arrow keys move between tabs. Space selects a tab. Enter opens it.">
       {visible.map(page => {
@@ -375,7 +377,7 @@ export function Overview() {
       })}
     </div>
     {archiveEnabled && !!layout.archivedTabs?.some(entry => entry.state === "archived" && !pages.some(page => page.pageId === entry.pageId)) &&
-      <section aria-label="Archived tabs" className="ov-archive"><h2>Archived tabs</h2><p className="hint">Saved in this Profile. Restore a tab to reopen it.</p>
+      <section aria-label="Archived tabs" className="ov-archive"><h2>Archived tabs</h2><p {...staticHintProps}>Saved in this Profile. Restore a tab to reopen it.</p>
         {layout.archivedTabs.filter(entry => entry.state === "archived" && !pages.some(page => page.pageId === entry.pageId)).map(entry =>
           <div className="row" key={entry.archiveId}><span>{entry.title || hostOf(entry.url)}</span><span className="sp" />
             <button {...smallGhostButtonProps} disabled={busy} onClick={() => void act(() => restoreArchive(entry))}>Restore</button></div>)}</section>}

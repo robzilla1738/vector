@@ -1,0 +1,21 @@
+{
+  "rootBeforeSHA256": "339fce6baa0adf0ce1d9f8ca195880341151ce2925e812cbac2f7149072411b0",
+  "rootBefore": "339fce6baa0adf0ce1d9f8ca195880341151ce2925e812cbac2f7149072411b0",
+  "leaves": [
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "before": "339fce6baa0adf0ce1d9f8ca195880341151ce2925e812cbac2f7149072411b0",
+      "after": "f61c9dfbd292566ffc1c8320cf443fcc3649e58a75ee23f2b7be76005a46ae7a"
+    },
+    {
+      "path": "tests/unit/shortcut-modifier-construction.test.ts",
+      "before": null,
+      "after": "2084d99de990d2c5bb8a3cf4cdacb18f37c252f46dd787d12be3f55c31bdcf84"
+    }
+  ],
+  "patchSHA256": "5bbabd0b359615f27f1b2e9bd74810d8359b8dcc17c2b081d355b6f802c8bc16",
+  "spans": 67,
+  "controls": "/tmp/aux-shortcut-modifier-controls-001.log",
+  "publicTypes": "/tmp/aux-shortcut-modifier-public-types-001.json",
+  "lint": "/tmp/aux-shortcut-modifier-lint-001.log"
+}

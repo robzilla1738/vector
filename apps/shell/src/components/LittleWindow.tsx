@@ -1,3 +1,4 @@
+import { staticSmallIconButtonProps, staticMenuItemProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useStore } from "../store";
@@ -57,14 +58,14 @@ export function LittleWindow() {
       <span className="little-host" title={page?.url}>{page?.url.startsWith("https:") && <span role="img" aria-label="Secure connection">{shellIconLock}</span>}{host}</span>
       <CommandBar compact />
       <button {...smallButtonProps} data-command-id="promote-tab" onClick={() => runCommand("promote-tab")}>Open in Aux</button>
-      <button ref={spacesTrigger} className="icon-btn sm" data-command-id="little-space-picker" aria-haspopup="menu" aria-label="Choose destination Space" aria-expanded={panel === "spaces"} onClick={() => runCommand("little-space-picker")}>{shellIconDown}</button>
-      <button className="icon-btn sm" data-command-id="copy-url" aria-label="Copy link" onClick={() => runCommand("copy-url")}>{shellIconCopy}</button>
-      <button ref={downloadsTrigger} className="icon-btn sm" data-command-id="little-downloads" aria-haspopup="dialog" aria-label="Downloads for this page" aria-expanded={panel === "downloads"} onClick={() => runCommand("little-downloads")}>{shellIconDownloadSm}</button>
+      <button ref={spacesTrigger} {...staticSmallIconButtonProps} data-command-id="little-space-picker" aria-haspopup="menu" aria-label="Choose destination Space" aria-expanded={panel === "spaces"} onClick={() => runCommand("little-space-picker")}>{shellIconDown}</button>
+      <button {...staticSmallIconButtonProps} data-command-id="copy-url" aria-label="Copy link" onClick={() => runCommand("copy-url")}>{shellIconCopy}</button>
+      <button ref={downloadsTrigger} {...staticSmallIconButtonProps} data-command-id="little-downloads" aria-haspopup="dialog" aria-label="Downloads for this page" aria-expanded={panel === "downloads"} onClick={() => runCommand("little-downloads")}>{shellIconDownloadSm}</button>
     </header>
     {panel === "spaces" && <Menu className="little-spaces menu" label="Open in Aux Space" anchor={spacesTrigger} returnFocus={spacesTrigger} menuRef={spacesMenu} initialFocusRef={firstSpace} onClose={() => runCommand("little-space-picker")}>
       {spaceError && <p role="alert">{spaceError}</p>}
       {!spacesReady && !spaceError && <output>Loading Spaces…</output>}
-      {spacesReady && spaces.map((space, index) => <button ref={index === 0 ? firstSpace : undefined} key={space.id} className="menu-item" role="menuitem" data-command-id="promote-tab" onClick={() => { runCommand("little-space-picker"); runCommand("promote-tab", { payload: { spaceId: space.id } }); }}>{space.name}</button>)}
+      {spacesReady && spaces.map((space, index) => <button ref={index === 0 ? firstSpace : undefined} key={space.id} {...staticMenuItemProps} role="menuitem" data-command-id="promote-tab" onClick={() => { runCommand("little-space-picker"); runCommand("promote-tab", { payload: { spaceId: space.id } }); }}>{space.name}</button>)}
     </Menu>}
     {panel === "downloads" && <Dialog className="little-downloads popover" label="Downloads for this page" returnFocus={downloadsTrigger} onClose={() => runCommand("little-downloads")}><Suspense fallback={<output>Loading downloads…</output>}><Downloads tabUrl={page?.url ?? ""} onClose={() => runCommand("little-downloads")} /></Suspense></Dialog>}
     <section ref={pageSection} className="little-page" data-little-stage data-stage-dragging="false">

@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -41,21 +43,21 @@ export function CrashReportingSetting({ active }: { active: boolean }) {
     }
   }
 
-  if (bridge.privateMode) return <span className="hint">Change crash-report consent outside Private mode.</span>;
-  if (!inNativeHost) return <span className="hint">Available in the Aux desktop app.</span>;
+  if (bridge.privateMode) return <span {...staticHintProps}>Change crash-report consent outside Private mode.</span>;
+  if (!inNativeHost) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
   return <div>
-    <div className="row">
+    <div {...staticRowProps}>
       {value ? <Switch aria-label="Send crash reports" checked={value.consent} disabled={busy || !value.available}
         onChange={event => event.target.checked ? setConfirming(true) : void save(false)} />
-        : <span className="hint">Reading crash-report consent…</span>}
-      {value && !value.available && <span className="hint">Off — this build has no crash-report destination. Reports stay on this device.</span>}
-      {value?.available && !value.decided && <span className="hint">Choose whether Aux may upload future crash reports.</span>}
+        : <span {...staticHintProps}>Reading crash-report consent…</span>}
+      {value && !value.available && <span {...staticHintProps}>Off — this build has no crash-report destination. Reports stay on this device.</span>}
+      {value?.available && !value.decided && <span {...staticHintProps}>Choose whether Aux may upload future crash reports.</span>}
     </div>
-    {confirming && <div className="row" role="group" aria-label="Confirm crash reports">
+    {confirming && <div {...staticRowProps} role="group" aria-label="Confirm crash reports">
       <span>Crash reports can contain diagnostic details. Allow future uploads to this build’s configured destination?</span>
       <button {...smallButtonProps} disabled={busy} onClick={() => void save(true)}>Allow uploads</button>
       <button {...smallGhostButtonProps} disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>
     </div>}
-    {error && <span role="alert" className="field-error">{error} <button {...smallGhostButtonProps} onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
+    {error && <span role="alert" {...staticFieldErrorProps}>{error} <button {...smallGhostButtonProps} onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
   </div>;
 }

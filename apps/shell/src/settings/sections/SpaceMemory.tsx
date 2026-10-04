@@ -1,3 +1,4 @@
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { memoryControlElement, useMemoryElementControl } from "../../components/memory-control-construction";
@@ -59,7 +60,7 @@ class DecisionControls {
 export function SpaceMemory({ workspaceId, includePasteImport = true }: { workspaceId: string; includePasteImport?: boolean }) {
   const layout = useStore(state => state.layout);
   const owners = [...layout.spaces, ...(layout.archivedSpaces ?? [])].filter(space => space.workspaceId === workspaceId);
-  if (bridge.privateMode || owners.length !== 1) return <SettingsField label="Space memory"><p className="hint">Choose the original non-private Space to review its memory.</p></SettingsField>;
+  if (bridge.privateMode || owners.length !== 1) return <SettingsField label="Space memory"><p {...staticHintProps}>Choose the original non-private Space to review its memory.</p></SettingsField>;
   return <SpaceMemoryContent key={JSON.stringify([workspaceId, owners[0]!.id])} workspaceId={workspaceId} includePasteImport={includePasteImport}/>;
 }
 function SpaceMemoryContent({ workspaceId, includePasteImport }: { workspaceId: string; includePasteImport: boolean }) {
@@ -130,46 +131,46 @@ function SpaceMemoryContent({ workspaceId, includePasteImport }: { workspaceId: 
     })(), current);
   }
   return <SettingsField label="Space memory" hint="Eligible completed runs produce encrypted notes for your review. Only accepted notes appear in later runs. Memory is off by default.">
-    {preview ? <p className="hint">Space memory is in preview in this build.</p> : <>
+    {preview ? <p {...staticHintProps}>Space memory is in preview in this build.</p> : <>
     {error && <p role="alert">{error}</p>}
     <label htmlFor={enabledId}><PipelineControl inputId={enabledId} command="toggle-space-memory-pipeline" scopeId={workspaceId} kind="checkbox" checked={enabled} disabled={!snapshot || busy || bridge.privateMode} onError={report} action={() => act(() => call("memory.pipeline.setPolicy", { workspaceId, enabled: !enabled }))}/> Enable memory for this Space</label>
     {includePasteImport && <><PipelineControl command="toggle-space-memory-import" expanded={showPasteImport} scopeId={workspaceId} {...smallGhostButtonProps} disabled={!snapshot || bridge.privateMode} onError={report} action={() => { assertCurrent(); setShowPasteImport(value => !value); }}>Import pasted assistant notes</PipelineControl>
       {showPasteImport && <MemoryPasteImport workspaceId={workspaceId} />}</>}
     {enabled && <>
-      <div className="row">
+      <div {...staticRowProps}>
         <PipelineControl command="select-space-memory-source" scopeId={workspaceId} kind="select" value={sourceId} disabled={busy} onError={report} action={element => { assertCurrent(); if (!(element instanceof HTMLSelectElement) || sources.filter(source => source.runId === element.value).length !== 1) throw new Error("Choose the current completed run."); setSourceId(element.value); }}>
           {sources.map(source => <option key={source.runId} value={source.runId}>{source.goal} · {source.runId}</option>)}
         </PipelineControl>
         <PipelineControl command="extract-space-memory-source" scopeId={workspaceId} disabled={busy || !sourceId} onError={report} action={() => { assertCurrent(); if (sources.filter(source => source.runId === sourceId).length !== 1) throw new Error("The completed run changed."); return act(() => call("memory.pipeline.extractRun", { workspaceId, runId: sourceId })); }}>Create review notes</PipelineControl>
         <PipelineControl command="refresh-space-memory-pipeline" scopeId={workspaceId} disabled={busy} onError={report} action={() => act(async () => {})}>Refresh memory</PipelineControl>
       </div>
-      {!sources.length && <p className="hint">No eligible completed runs are available for extraction. Sensitive, excluded, stale, or uncited page sources and runs using inherited Memory are omitted.</p>}
-      <p className="hint">Page notes require a verified run citation and the same live document. Review the report quote before accepting; a changed or missing source is withheld from recall.</p>
+      {!sources.length && <p {...staticHintProps}>No eligible completed runs are available for extraction. Sensitive, excluded, stale, or uncited page sources and runs using inherited Memory are omitted.</p>}
+      <p {...staticHintProps}>Page notes require a verified run citation and the same live document. Review the report quote before accepting; a changed or missing source is withheld from recall.</p>
       <p>{inbox.length} pending notes · {overview?.claimCount ?? 0} approved notes</p>
       {needsFreshBackup && <MemoryRecoveryNotice />}
       {inbox.map(note => <fieldset className="field" key={note.claimId}>
         <legend>Memory note review</legend>
         <p>{note.text}</p>
-        <p className="hint">{note.source?.kind === "owner-paste"
+        <p {...staticHintProps}>{note.source?.kind === "owner-paste"
           ? <>Owner-pasted note · import {note.source.importId.slice(0, 8)} · unverified. Accepting stores it as personal context; it does not verify another assistant's claim.</>
           : <>Source run: <code>{note.sourceRunId}</code>{note.source && <> · Exact report quote <code>{note.source.quoteSha256.slice(0, 12)}</code></>} · Source must still verify when accepted</>}
         </p>
-        <div className="row">
+        <div {...staticRowProps}>
           <PipelineControl command="accept-space-memory-note" scopeId={`${workspaceId}:${note.claimId}`} disabled={busy} onError={report} action={() => act(() => call("memory.pipeline.review", { workspaceId, claimId: note.claimId, decision: "accept" }))}>{note.source?.kind === "owner-paste" ? "Accept as personal context" : "Accept note"}</PipelineControl>
           <PipelineControl command="discard-space-memory-note" scopeId={`${workspaceId}:${note.claimId}`} disabled={busy} onError={report} action={() => act(() => call("memory.pipeline.review", { workspaceId, claimId: note.claimId, decision: "discard" }))}>Discard note</PipelineControl>
         </div>
       </fieldset>)}
-      <p className="hint">Approved summary used in later runs</p>
+      <p {...staticHintProps}>Approved summary used in later runs</p>
       <pre>{overview?.summary || "No approved notes yet."}</pre>
-      {!!sourcesWithNotes.length && <div className="row">
-        <span className="hint">Remove notes from one source and restorable revisions.</span>
+      {!!sourcesWithNotes.length && <div {...staticRowProps}>
+        <span {...staticHintProps}>Remove notes from one source and restorable revisions.</span>
         {sourcesWithNotes.map(runId => <PipelineControl command="forget-space-memory-source" scopeId={`${workspaceId}:${runId}`} onError={report} className="btn sm danger" key={runId} disabled={busy}
           action={() => forget({ sourceRunId: runId }, `All notes from ${runId.startsWith("paste:") ? `pasted import ${runId.slice(6, 14)}` : `run ${runId}`} will be removed from current memory and every restorable revision. This cannot be undone.`)}>
           {runId.startsWith("paste:") ? `Forget pasted import ${runId.slice(6, 14)}` : `Forget run ${runId}`}
         </PipelineControl>)}
       </div>}
       {claims.map(claim => <div className="row" key={claim.claimId}>
-        <span className="grow">{claim.text} <span className="hint">[{claim.source?.kind === "owner-paste" ? `pasted import ${claim.source.importId.slice(0, 8)} · unverified` : `run:${claim.sourceRunId}${claim.source ? `#${claim.source.quoteSha256.slice(0, 12)}` : ""}`}]</span></span>
+        <span className="grow">{claim.text} <span {...staticHintProps}>[{claim.source?.kind === "owner-paste" ? `pasted import ${claim.source.importId.slice(0, 8)} · unverified` : `run:${claim.sourceRunId}${claim.source ? `#${claim.source.quoteSha256.slice(0, 12)}` : ""}`}]</span></span>
         <PipelineControl command="forget-space-memory-note" scopeId={`${workspaceId}:${claim.claimId}`} onError={report} disabled={busy} action={() => forget({ claimId: claim.claimId },
           "This note will be removed from current memory and every restorable revision. This cannot be undone.")}>Forget note</PipelineControl>
       </div>)}

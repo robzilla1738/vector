@@ -1,0 +1,3 @@
+Closed hint/row attributes
+
+108 existing leaves replace557 exact className literal attributes with same-position spreads of two frozen own-data-only className records.23 key-after-class spans refused; active Conversation/Attachment/SupportingContent/ImageViewer/ImageSnapshot/Home/CommandBar/Source leaves excluded. No owner/callback/CSS/metadata/loading policy changes. Whole108 source inverse and installed native154 lowering AST inverse PASS;597 original/new controls across91 files, shell types and scoped lint pass. Two migrated files require a separately saved narrow formatting successor. No Vite/net-byte/graph or native acceptance claim.

@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./ViewerFrame.css";
@@ -17,8 +18,8 @@ export function StructuredResult({content,mediaType}: {content:string;mediaType:
   },[content,mediaType]);
   const structured=!!parsed.csv||parsed.json!==undefined;
   return <>
-    {structured && <div className="structured-result-tools"><button {...smallGhostButtonProps} aria-pressed={raw} onClick={()=>setRaw(value=>!value)}>{raw?"Show formatted":"Show source"}</button>{parsed.csv&&<span className="hint">{parsed.csv.rowCount.toLocaleString()} rows · {parsed.csv.columnCount} columns{parsed.csv.rowCount>201||parsed.csv.columnCount>40?" · Preview limited to 201 rows and 40 columns":""}</span>}</div>}
-    {parsed.error&&<p className="hint">This file could not be formatted. Showing the saved source.</p>}
+    {structured && <div className="structured-result-tools"><button {...smallGhostButtonProps} aria-pressed={raw} onClick={()=>setRaw(value=>!value)}>{raw?"Show formatted":"Show source"}</button>{parsed.csv&&<span {...staticHintProps}>{parsed.csv.rowCount.toLocaleString()} rows · {parsed.csv.columnCount} columns{parsed.csv.rowCount>201||parsed.csv.columnCount>40?" · Preview limited to 201 rows and 40 columns":""}</span>}</div>}
+    {parsed.error&&<p {...staticHintProps}>This file could not be formatted. Showing the saved source.</p>}
     {!raw&&parsed.csv&&parsed.csv.rows.length?<div role="group" className="structured-result-table" aria-label="Saved CSV table"><table><thead><tr>{Array.from({length:Math.min(parsed.csv.columnCount,40)},(_,i)=><th key={i} scope="col">Column {i+1}</th>)}</tr></thead><tbody>{parsed.csv.rows.map((row,i)=><tr key={i} ref={node=>{if(node)rows.current.set(i,node);else rows.current.delete(i);}} tabIndex={selected===i || selected===null&&i===0 ? 0 : -1} aria-selected={selected===i} aria-label={`Row ${i+1}`} onClick={()=>setSelected(i)} onKeyDown={event=>{
       if(event.key==="Enter"||event.key===" "){event.preventDefault();setSelected(i);}
       if(["ArrowDown","ArrowUp","Home","End"].includes(event.key)){

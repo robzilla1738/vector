@@ -1,3 +1,5 @@
+import { staticFieldProps } from "../ui/class-props";
+import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { useEffect, useMemo, useState } from "react";
 import type { AgentConnection, AgentConnectionScope, Task, Workspace } from "@aux/contracts";
@@ -75,14 +77,14 @@ export function ExternalAgents() {
   return <section className="field external-agents" aria-label="External agents">
     <div className="drawer-section">External agents</div>
     <p>Connect Codex or Claude Code to one saved task or workspace through MCP. The client uses its own account and model.</p>
-    <div role="group" className="row" aria-label="Detected agent clients">{installations.map(item=><span className="hint" key={item.client}><strong>{item.client==='codex'?'Codex':'Claude Code'}</strong> · {item.installed?(item.version??(item.error?'version unavailable':'installed')):'not installed'}</span>)}</div>
-    <span className="hint">The generated token can access only the selected task scope, its attached browser tabs and attached Aux-managed checkouts. File changes, local commands, preview tabs and commits require native approval. It cannot accept evidence, reconcile actions, create workspaces, or expand its own scope. Use the client’s approval controls for its non-Aux tools.</span>
-    <details className="field"><summary>Tools this token can call</summary>
-      <p className="hint">{scopeKind === "task" ? "Task-scoped connections see this filtered catalog. Workspace connections add child-task creation." : "Workspace-scoped connections can create tasks inside the selected workspace."} Vault, routines, backups and human review stay in Aux.</p>
+    <div role="group" {...staticRowProps} aria-label="Detected agent clients">{installations.map(item=><span className="hint" key={item.client}><strong>{item.client==='codex'?'Codex':'Claude Code'}</strong> · {item.installed?(item.version??(item.error?'version unavailable':'installed')):'not installed'}</span>)}</div>
+    <span {...staticHintProps}>The generated token can access only the selected task scope, its attached browser tabs and attached Aux-managed checkouts. File changes, local commands, preview tabs and commits require native approval. It cannot accept evidence, reconcile actions, create workspaces, or expand its own scope. Use the client’s approval controls for its non-Aux tools.</span>
+    <details {...staticFieldProps}><summary>Tools this token can call</summary>
+      <p {...staticHintProps}>{scopeKind === "task" ? "Task-scoped connections see this filtered catalog. Workspace connections add child-task creation." : "Workspace-scoped connections can create tasks inside the selected workspace."} Vault, routines, backups and human review stay in Aux.</p>
       <label>Filter tools<input aria-label="Filter scoped MCP tools" value={catalogQuery} onChange={event => setCatalogQuery(event.target.value)} placeholder="Name or description" /></label>
       <div className="seg" role="group" aria-label="Tool group">{(["all", "browser", "task", "workspace"] as const).map(value => <button key={value} className={catalogGroup === value ? "on" : ""} aria-pressed={catalogGroup === value} onClick={() => setCatalogGroup(value)}>{value === "all" ? "All" : value[0]!.toUpperCase() + value.slice(1)}</button>)}</div>
       {catalogGroups.map(group => <div className="field" key={group.group}><div className="drawer-section">{group.label}</div>{group.tools.map(tool => <div className="hint" key={tool.name}><strong>{tool.name}</strong> · {tool.description}</div>)}</div>)}
-      {!catalogGroups.length && <p className="hint">No scoped tools match this filter.</p>}
+      {!catalogGroups.length && <p {...staticHintProps}>No scoped tools match this filter.</p>}
     </details>
     <div className="seg" role="group" aria-label="Agent client">{(["codex", "claude"] as const).map(value => <button key={value} className={client === value ? "on" : ""} aria-pressed={client === value} onClick={() => setClient(value)}>{value === "codex" ? "Codex" : "Claude Code"}</button>)}</div>
     {!workspaces.length ? <output data-block>Create a saved task and workspace before connecting an external agent.</output> : <>
@@ -94,17 +96,17 @@ export function ExternalAgents() {
     </>}
     {error && <p role="alert">{error}</p>}
     {config && <>
-      <span className="hint">{client === "codex" ? "Merge this server entry into Codex config.toml." : "Merge this server entry into your project .mcp.json or another supported Claude Code scope."} Keep existing entries. This token is shown once; create a replacement if it is lost.</span>
+      <span {...staticHintProps}>{client === "codex" ? "Merge this server entry into Codex config.toml." : "Merge this server entry into your project .mcp.json or another supported Claude Code scope."} Keep existing entries. This token is shown once; create a replacement if it is lost.</span>
       <textarea aria-label="Agent configuration" readOnly rows={12} value={snippet} spellCheck={false} className="mono" />
-      <div className="row"><button {...smallButtonProps} onClick={() => void navigator.clipboard.writeText(snippet).then(() => setMessage("Configuration copied.")).catch(() => setError("Copy failed. Select and copy the configuration text."))}>Copy configuration</button>
+      <div {...staticRowProps}><button {...smallButtonProps} onClick={() => void navigator.clipboard.writeText(snippet).then(() => setMessage("Configuration copied.")).catch(() => setError("Copy failed. Select and copy the configuration text."))}>Copy configuration</button>
         <button {...smallButtonProps} onClick={() => void bridge.openExternal(client === "codex" ? "https://developers.openai.com/codex/mcp" : "https://code.claude.com/docs/en/mcp")}>Client setup guide</button></div>
     </>}
     {!!connections.length && <div className="external-agent-connections"><div className="drawer-section">Connections</div>{connections.map(connection => <div className="external-agent-row" key={connection.connectionId}>
-      <div className="external-agent-copy"><strong>{connection.name}</strong><span className="hint">{connection.client === "codex" ? "Codex" : "Claude Code"} · {connectionTarget(connection)}{connection.lastUsedAt ? ` · used ${new Date(connection.lastUsedAt).toLocaleString()}` : " · not used yet"}{connection.revokedAt ? " · revoked" : ""}</span></div>
+      <div className="external-agent-copy"><strong>{connection.name}</strong><span {...staticHintProps}>{connection.client === "codex" ? "Codex" : "Claude Code"} · {connectionTarget(connection)}{connection.lastUsedAt ? ` · used ${new Date(connection.lastUsedAt).toLocaleString()}` : " · not used yet"}{connection.revokedAt ? " · revoked" : ""}</span></div>
       {!connection.revokedAt && <button {...smallButtonProps} disabled={busy} onClick={() => void revoke(connection.connectionId)}>Revoke</button>}
     </div>)}</div>}
     <ExternalAgentOversight connections={connections} />
     {message && <output data-block>{message}</output>}
-    <span className="hint">Removing the client entry stops normal use. Revoking it here invalidates the token immediately. Quitting Aux stops the runtime.</span>
+    <span {...staticHintProps}>Removing the client entry stops normal use. Revoking it here invalidates the token immediately. Quitting Aux stops the runtime.</span>
   </section>;
 }

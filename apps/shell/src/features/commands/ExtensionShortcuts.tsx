@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps } from "../../ui/class-props";
 import { smallGhostButtonProps } from "../../ui/button-props";
 import { useEffect, useState } from "react";
 import {
@@ -88,14 +90,14 @@ export function ExtensionShortcuts({
   return (
     <section aria-label="Extensions shortcuts">
       <h3>Extensions</h3>
-      {loading && <output className="hint">Loading extension shortcuts…</output>}
+      {loading && <output {...staticHintProps}>Loading extension shortcuts…</output>}
       {loadError && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {loadError}
         </p>
       )}
       {!loading && !loadError && !commands.length && !error && (
-        <p className="hint">Installed extensions with keyboard commands appear here.</p>
+        <p {...staticHintProps}>Installed extensions with keyboard commands appear here.</p>
       )}
       <ul className="shortcut-list">
         {commands.map((command) => (
@@ -105,7 +107,7 @@ export function ExtensionShortcuts({
               <kbd>{command.shortcut || "No shortcut"}</kbd>
             </span>
             {recording === command ? (
-              <output className="hint">Press keys… Esc cancels</output>
+              <output {...staticHintProps}>Press keys… Esc cancels</output>
             ) : (
               <button
                 {...smallGhostButtonProps}
@@ -123,7 +125,7 @@ export function ExtensionShortcuts({
         ))}
       </ul>
       {error && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {error}
         </p>
       )}

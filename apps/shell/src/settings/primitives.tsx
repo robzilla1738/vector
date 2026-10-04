@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { useId, type ReactNode } from "react";
 
 export function SettingsSection({
@@ -58,7 +59,7 @@ export function SettingsField({
       </span>
       <div className="ui-setting-control">{children}</div>
       {supportingText && (
-        <span id={`${id}-hint`} className="hint">
+        <span id={`${id}-hint`} {...staticHintProps}>
           {supportingText}
         </span>
       )}

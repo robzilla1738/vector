@@ -1,3 +1,4 @@
+import { staticHintProps } from "../../ui/class-props";
 import { ClearBrowsingData } from "../../components/ClearBrowsingData";
 import { SitePermissions } from "../../components/SitePermissions";
 import { useFeature } from "../../use-feature";
@@ -20,7 +21,7 @@ export function PrivacySecuritySettings({ active }: { active: boolean }) {
         <CrashReportingSetting active={active} />
       </SettingsField>
       <SettingsField label="Help improve Aux" description="Optional product usage analytics are not available in this build.">
-        <span className="hint">Off</span>
+        <span {...staticHintProps}>Off</span>
       </SettingsField>
       <SitePermissions query="" />
       <SettingsField

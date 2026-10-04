@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useRef, useState } from "react";
@@ -26,14 +28,14 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
       resources: page && /^https?:/.test(page.url) && page.url.length <= 4000 ? [{ resourceId: "source-page", kind: "url", locator: page.url, label: (page.title || page.url).slice(0,200) }] : [],
     }).then(onSaved).catch(reason => setError(errorMessage(reason))).finally(() => { pending.current = false; setBusy(false); });
   }}>
-    <strong>Save as task</strong><p className="hint">Keeps this conversation and its context together. Nothing runs until you start it.</p>
+    <strong>Save as task</strong><p {...staticHintProps}>Keeps this conversation and its context together. Nothing runs until you start it.</p>
     <label>What should Aux accomplish?<textarea value={objective} maxLength={10000} required disabled={busy} onChange={event => setObjective(event.target.value)} /></label>
     <details className="task-save-details"><summary>Task details</summary>
     <label>Task name<input value={title} maxLength={200} required disabled={busy} onChange={event => setTitle(event.target.value)} /></label>
     <label>What does done look like?<textarea value={success} maxLength={1000} required disabled={busy} onChange={event => setSuccess(event.target.value)} /></label>
     <label>Space<select value={space} disabled={busy} required onChange={event => setSpace(event.target.value)}><option value="" disabled>Choose a Space</option>{spaces.map(entry => { const [id, workspaceId, name] = entry.split("\u0001"); return <option key={id} value={workspaceId}>{name}</option>; })}</select></label></details>
-    {!space && <p className="hint">Choose a Space in Task details to keep this work organized.</p>}
-    {error && <p className="field-error" role="alert">{error}</p>}
-    <div className="row"><button type="button" {...smallButtonProps} disabled={busy} onClick={() => setOpen(false)}>Cancel</button><button {...smallButtonProps} disabled={busy || !space || !title.trim() || !objective.trim() || !success.trim()}>{busy ? "Saving…" : "Save task"}</button></div>
+    {!space && <p {...staticHintProps}>Choose a Space in Task details to keep this work organized.</p>}
+    {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+    <div {...staticRowProps}><button type="button" {...smallButtonProps} disabled={busy} onClick={() => setOpen(false)}>Cancel</button><button {...smallButtonProps} disabled={busy || !space || !title.trim() || !objective.trim() || !success.trim()}>{busy ? "Saving…" : "Save task"}</button></div>
   </form>;
 }

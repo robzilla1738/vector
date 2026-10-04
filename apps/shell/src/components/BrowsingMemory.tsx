@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { constructAwaitedOperation } from "./owned-operation-construction";
@@ -108,16 +110,16 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
   const selectedRecord=selected?{...selected}:undefined;
   const [visitSelectedAttach,visitSelectedRun]=useBrowsingMemoryControl("open-browsing-memory-page",selected?.memoryId??memory.workspaceId,()=>{if(!selectedRecord)throw new Error("Choose a saved page.");current(selectedRecord);openSource(selectedRecord.url);});
   const [closeAttach,closeRun]=useBrowsingMemoryControl("close-browsing-memory-detail",selected?.memoryId??memory.workspaceId,()=>{const owner=current(selectedRecord), target=opener.current;setSelectedId(null);requestAnimationFrame(()=>{if(owner.active && owner===lifetime.current && target?.isConnected)target.focus();});});
-  if(bridge.privateMode)return <p className="hint">Browsing memory is unavailable in private browsing.</p>;
+  if(bridge.privateMode)return <p {...staticHintProps}>Browsing memory is unavailable in private browsing.</p>;
   return <section className="browsing-memory" aria-label="Browsing memory">
     <h4>Browsing memory</h4>
-    <p className="hint">Optionally remember page titles and addresses from foreground tabs in this Space. Query strings and fragments are removed. Page contents and forms are not read. Private windows and agent tabs are excluded.</p>
+    <p {...staticHintProps}>Optionally remember page titles and addresses from foreground tabs in this Space. Query strings and fragments are removed. Page contents and forms are not read. Private windows and agent tabs are excluded.</p>
     {needsFreshBackup && <MemoryRecoveryNotice />}
     {saved ? <>
       <label className="memory-use-toggle"><input ref={toggleAttach} type="checkbox" checked={saved.policy.enabled} disabled={busy} onChange={toggleRun}/><span>Remember pages I browse<small>{saved.policy.enabled ? "Recent page references may be included in new replies in this Space." : "Off. No new visits are remembered or included in replies."}</small></span></label>
-      {saved.policy.enabled && memory.enabled === false && <p className="hint">Space memory is paused above. Recording and use are paused too.</p>}
+      {saved.policy.enabled && memory.enabled === false && <p {...staticHintProps}>Space memory is paused above. Recording and use are paused too.</p>}
       <label className="browsing-retention">Keep remembered pages for<select ref={retentionAttach} aria-label="Browsing memory retention" disabled={busy} value={saved.policy.retentionDays} onChange={retentionRun}><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option></select></label>
-      <p className="hint">Up to 200 recent pages per Space. Shortening retention removes older entries. Pausing keeps saved entries until they expire. Excluded sites are not remembered or used.</p>
+      <p {...staticHintProps}>Up to 200 recent pages per Space. Shortening retention removes older entries. Pausing keeps saved entries until they expire. Excluded sites are not remembered or used.</p>
       <details><summary ref={discloseAttach} onClick={event=>{event.preventDefault();discloseRun(event);}}>Remembered pages · {saved.pages.length}</summary>
         <TextField type="search" aria-label="Search remembered pages" placeholder="Search titles and addresses…" value={query} onChange={event => setQuery(event.target.value)}/>
         <div className="browsing-memory-list">{visiblePages.map(page => <BrowsingMemoryPageRow key={page.memoryId} page={page} selected={selectedId===page.memoryId} busy={busy} validate={current}
@@ -126,14 +128,14 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
           open={record=>{current(record);openSource(record.url);}} forget={record=>{current(record);return change("workspaces.browsingMemory.forget",{memoryId:record.memoryId});}} />)}</div>
         {selected && <DetailPane title={selected.title} metadata="Page reference · This Space" actions={<button ref={visitSelectedAttach} {...smallButtonProps} onClick={visitSelectedRun}>Open page</button>} closeRef={closeAttach} onClose={closeRun}>
           <div className="memory-note-metadata"><span className="meta-k">Source</span><span className="meta-v selectable">{selected.url}</span><span className="meta-k">Last visited</span><span className="meta-v">{new Date(selected.lastVisitedAt).toLocaleString()}</span><span className="meta-k">Use</span><span className="meta-v">{memorySourceExcluded(memory, selected.url) ? "Site excluded" : !saved.policy.enabled || memory.enabled === false ? "Paused" : "Available in this Space"}</span></div>
-          <p className="hint">Only this page’s title and address are remembered. No page contents or forms were captured.</p>
+          <p {...staticHintProps}>Only this page’s title and address are remembered. No page contents or forms were captured.</p>
         </DetailPane>}
-        {!!saved.pages.length && !visiblePages.length && <p className="hint">No pages match “{query}”.</p>}
-        {!saved.pages.length && <p className="hint">No remembered pages. When enabled, spend a few seconds browsing a tab to remember it.</p>}
-        {saved.pages.length > 0 && <div className="row">{confirmClear ? <><span className="hint">Forget all {saved.pages.length} saved page references?</span><button {...smallButtonProps} disabled={busy} ref={confirmAttach} onClick={confirmRun}>Forget all</button><button {...smallGhostButtonProps} disabled={busy} ref={cancelAttach} onClick={cancelRun}>Cancel</button></> : <button {...smallGhostButtonProps} disabled={busy} ref={prepareAttach} onClick={prepareRun}>Forget all remembered pages…</button>}</div>}
-        <p className="hint">Revisiting a forgotten page can remember it again. Exclude its site to prevent this. Earlier replies retain the context they used.</p>
+        {!!saved.pages.length && !visiblePages.length && <p {...staticHintProps}>No pages match “{query}”.</p>}
+        {!saved.pages.length && <p {...staticHintProps}>No remembered pages. When enabled, spend a few seconds browsing a tab to remember it.</p>}
+        {saved.pages.length > 0 && <div {...staticRowProps}>{confirmClear ? <><span {...staticHintProps}>Forget all {saved.pages.length} saved page references?</span><button {...smallButtonProps} disabled={busy} ref={confirmAttach} onClick={confirmRun}>Forget all</button><button {...smallGhostButtonProps} disabled={busy} ref={cancelAttach} onClick={cancelRun}>Cancel</button></> : <button {...smallGhostButtonProps} disabled={busy} ref={prepareAttach} onClick={prepareRun}>Forget all remembered pages…</button>}</div>}
+        <p {...staticHintProps}>Revisiting a forgotten page can remember it again. Exclude its site to prevent this. Earlier replies retain the context they used.</p>
       </details>
-    </> : !error && <output className="hint" data-block>Loading browsing memory…</output>}
-    {error && <p className="field-error" role="alert">{error} <button {...smallGhostButtonProps} disabled={busy} ref={retryAttach} onClick={retryRun}>Retry</button></p>}
+    </> : !error && <output {...staticHintProps} data-block>Loading browsing memory…</output>}
+    {error && <p {...staticFieldErrorProps} role="alert">{error} <button {...smallGhostButtonProps} disabled={busy} ref={retryAttach} onClick={retryRun}>Retry</button></p>}
   </section>;
 }

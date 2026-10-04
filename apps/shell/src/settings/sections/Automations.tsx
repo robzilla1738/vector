@@ -1,3 +1,5 @@
+import { staticFieldErrorProps, staticFieldProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -117,7 +119,7 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
     <dialog ref={dialog} className="automation-create-dialog" aria-label="Create automation"
       onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>
       <h3>Create automation</h3>
-      <p className="hint">Start from a saved task. New automations stay paused until you review and resume them.</p>
+      <p {...staticHintProps}>Start from a saved task. New automations stay paused until you review and resume them.</p>
       <label>Saved task
         <select aria-label="Automation source task" value={taskId} onChange={(event) => setTaskId(event.target.value)} disabled={busy}>
           {!taskId && <option value="">Choose a task</option>}
@@ -131,7 +133,7 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
         <input aria-label="New automation model spend cap" type="number" min="0.01" max="50" step="0.01" value={cap} onChange={(event) => setCap(event.target.value)} disabled={busy} />
       </label>
       <RoutineSchedule mode="create" trigger={{ kind: "schedule", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", hour: 9, minute: 0, days: [1, 2, 3, 4, 5] }} calendar={calendar} disabled={busy || !taskId} onSave={(trigger) => void create(trigger)} />
-      {error && <p className="field-error" role="alert">{error}</p>}
+      {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
       <button {...smallGhostButtonProps} type="button" onClick={onClose} disabled={busy}>Cancel</button>
     </dialog>, document.body,
   );
@@ -276,18 +278,18 @@ export function AutomationsSettings({ active }: { active: boolean }) {
             ))}
           </select>
         </label>
-        {loading && <output className="hint">Loading automations…</output>}
-        {!loading && !routines.length && <p className="hint">No scheduled Skills in this Space.</p>}
+        {loading && <output {...staticHintProps}>Loading automations…</output>}
+        {!loading && !routines.length && <p {...staticHintProps}>No scheduled Skills in this Space.</p>}
         {routines.map((routine) => (
           <div className="field" key={routine.routineId}>
             <strong>{routine.title}</strong>
-            <span className="hint">
+            <span {...staticHintProps}>
               {routine.trigger.kind.replaceAll("_", " ")} · {routine.archivedAt ? "Archived" : routine.paused ? "Paused" : "Ready"}
             </span>
-            <span className="hint">{routine.replay
+            <span {...staticHintProps}>{routine.replay
               ? routine.replay.state === "tested" ? "Tested browser replay on its reviewed site" : "Replay requires a fresh test and review"
               : "Model-led Skill; model spend cap applies"}</span>
-            <div className="row">
+            <div {...staticRowProps}>
               <button
                 {...smallGhostButtonProps}
                 onClick={() => void openSavedSkill(routine).catch(errToast)}
@@ -310,9 +312,9 @@ export function AutomationsSettings({ active }: { active: boolean }) {
               )}
             </div>
             {routine.pauseCause === "unread_results" && (
-              <div className="field" role="status">
+              <div {...staticFieldProps} role="status">
                 <span>Paused after three unread results over at least a day while model work was recorded. Review the results before continuing; the model spend cap still applies.</span>
-                <div className="row">
+                <div {...staticRowProps}>
                   <button {...smallButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: false })}>Keep running</button>
                   <button {...smallGhostButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: true })}>Pause Skill</button>
                   <button {...smallGhostButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: false, presenceGuardExempt: true })}>Don’t ask again · keep running</button>
@@ -354,7 +356,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                 <button {...smallButtonProps} type="submit" disabled={!!busyId}>Save cap</button>
               </form>
             )}
-            {!routine.archivedAt && <span className="hint">Checks recorded model spending before each new run and pauses at this cap. A running model call may go over it; tested browser replays do not call a model.</span>}
+            {!routine.archivedAt && <span {...staticHintProps}>Checks recorded model spending before each new run and pauses at this cap. A running model call may go over it; tested browser replays do not call a model.</span>}
             {!routine.archivedAt && routine.trigger.kind === "schedule" && (
               <label>
                 When Aux missed a scheduled time
@@ -367,7 +369,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                   <option value="record_only">Record missed runs</option>
                   <option value="run_once_on_wake">Run once when Aux opens</option>
                 </select>
-                <span className="hint">Earlier missed times stay in the results inbox. If a current scheduled time is due, it takes priority. Writes still wait for review.</span>
+                <span {...staticHintProps}>Earlier missed times stay in the results inbox. If a current scheduled time is due, it takes priority. Writes still wait for review.</span>
               </label>
             )}
           </div>
@@ -378,11 +380,11 @@ export function AutomationsSettings({ active }: { active: boolean }) {
         hint="Missed read-only checks are combined into one run when Aux resumes. Writes wait for review; overlapping runs are blocked."
         searchTerms={["catch up", "coalesce", "inbox"]}
       >
-        {!inbox.length && <p className="hint">No automatic results in this Space yet.</p>}
+        {!inbox.length && <p {...staticHintProps}>No automatic results in this Space yet.</p>}
         {inbox.map((item) => (
           <div className="field" key={item.run.routineRunId}>
             <strong>{item.title}</strong>
-            <span className="hint">
+            <span {...staticHintProps}>
               {item.run.status.replaceAll("_", " ")} · {new Date(item.run.createdAt).toLocaleString()}
               {item.run.reason ? ` · ${item.run.reason}` : ""}
             </span>
@@ -398,7 +400,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                   .catch((reason) => setError(errorMessage(reason)))
                   .finally(() => setOutcomeBusy(""));
               }}>View result</button>}
-            {outcome?.run.routineRunId === item.run.routineRunId && <div aria-live="polite" className="hint">
+            {outcome?.run.routineRunId === item.run.routineRunId && <div aria-live="polite" {...staticHintProps}>
               <div>Linked run: <code>{outcome.run.runId ?? "unavailable"}</code> · {outcome.linkedRunFound ? "Saved run available" : "Linked run unavailable"}</div>
               {outcome.criteria.map(entry => <div key={entry.criterion.criterionId}>
                 {entry.criterion.description}: {entry.status.replaceAll("_", " ")} · {entry.evidence.length} evidence record{entry.evidence.length === 1 ? "" : "s"}
@@ -407,7 +409,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
           </div>
         ))}
       </SettingsField>
-      {error && <p className="hint" role="alert">{error}</p>}
+      {error && <p {...staticHintProps} role="alert">{error}</p>}
       {creating && workspaceId && <CreateAutomationDialog workspaceId={workspaceId} onClose={() => setCreating(false)} onCreated={(routine) => {
         setRoutines((items) => items.some((item) => item.routineId === routine.routineId)
           ? items.map((item) => item.routineId === routine.routineId ? routine : item)

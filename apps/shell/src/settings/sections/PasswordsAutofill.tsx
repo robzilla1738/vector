@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps } from "../../ui/class-props";
 import { smallGhostButtonProps } from "../../ui/button-props";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { AutofillProfile } from "@aux/contracts";
@@ -78,12 +80,12 @@ export function PasswordsAutofillSettings({
         hint="Fill contact and address fields on a form with the context menu or command palette. Passwords and payment details are never stored here."
       >
         {blocked ? (
-          <output className="hint">Personal info is available in your regular Aux window.</output>
+          <output {...staticHintProps}>Personal info is available in your regular Aux window.</output>
         ) : loading ? (
-          <output className="hint">Loading Chromium personal info…</output>
+          <output {...staticHintProps}>Loading Chromium personal info…</output>
         ) : error ? (
           <div>
-            <p className="field-error" role="alert">
+            <p {...staticFieldErrorProps} role="alert">
               {error}
             </p>
             <NativePreferenceRetry
@@ -121,7 +123,7 @@ export function PasswordsAutofillSettings({
             </button>
           )}
         {importing === legacySnapshot && native.value && native.error && (
-          <p className="field-error" role="alert">
+          <p {...staticFieldErrorProps} role="alert">
             {native.error}
           </p>
         )}

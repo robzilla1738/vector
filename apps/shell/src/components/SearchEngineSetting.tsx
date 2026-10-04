@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { useSettingsSaveOwner } from "../settings/sections/use-settings-save-owner";
 import { useScopedCommandControls } from "../scoped-command-controls";
@@ -103,7 +105,7 @@ export function SearchEngineSetting({
       {custom && (
         <div className="search-engine-custom">
           <label htmlFor="search-engine-template">Search URL</label>
-          <div className="row">
+          <div {...staticRowProps}>
             <input
               ref={(element) => publish("input", "save-search-engine", element, () => save(draftRef.current))}
               id="search-engine-template"
@@ -127,13 +129,13 @@ export function SearchEngineSetting({
               {busy ? "Saving…" : "Save"}
             </button>
           </div>
-          <p id="search-engine-help" className="hint">
+          <p id="search-engine-help" {...staticHintProps}>
             Use %s where the search terms belong.
           </p>
         </div>
       )}
       {error && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {error}
         </p>
       )}

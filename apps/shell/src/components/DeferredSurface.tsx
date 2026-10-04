@@ -1,3 +1,4 @@
+import { staticRowProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { Component, Suspense, lazy, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useStore } from "../store";
@@ -25,7 +26,7 @@ function SurfaceStatus({label, error, retry, pane, onClose}: {label:string; erro
     }
   }}>{error ? <div>
     <h2>{label} couldn’t open</h2>
-    <p>Try again. Your browser tabs and saved work stay available.</p><div className="row"><button className="btn primary" onClick={retry}>Try again</button><button className="btn" onClick={close}>Close</button></div><details><summary>Details</summary><p>{error.message}</p></details>
+    <p>Try again. Your browser tabs and saved work stay available.</p><div {...staticRowProps}><button className="btn primary" onClick={retry}>Try again</button><button className="btn" onClick={close}>Close</button></div><details><summary>Details</summary><p>{error.message}</p></details>
   </div> : <div className="surface-loading">
     <SurfaceSkeleton label={`Opening ${label.toLowerCase()}…`} />
     <button {...smallGhostButtonProps} onClick={close}>Cancel</button>

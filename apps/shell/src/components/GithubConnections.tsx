@@ -1,3 +1,5 @@
+import { staticFieldInputProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { call } from "../store";
@@ -21,12 +23,12 @@ export function GithubConnections() {
     catch (error) { if (alive.current.value) setError(errorMessage(error)); }
     finally { if (alive.current.value) setBusy(false); }
   };
-  return <section className="settings-section"><h3>GitHub live folders</h3><p className="hint">Paste a fine-grained personal access token with read access to the repositories you choose. Aux keeps it in secure native storage. Agents cannot read it.</p>
-    {accounts.map(account => <div className="settings-row" key={account.id}><span className="grow">{account.name}<span className="hint"> · {account.login}</span></span><button className="btn ghost sm" data-command-id="revoke-github" disabled={busy} onClick={() => {
+  return <section className="settings-section"><h3>GitHub live folders</h3><p {...staticHintProps}>Paste a fine-grained personal access token with read access to the repositories you choose. Aux keeps it in secure native storage. Agents cannot read it.</p>
+    {accounts.map(account => <div className="settings-row" key={account.id}><span className="grow">{account.name}<span {...staticHintProps}> · {account.login}</span></span><button className="btn ghost sm" data-command-id="revoke-github" disabled={busy} onClick={() => {
       setBusy(true); void executeCommand("revoke-github", { payload: { connectionId: account.id } }).then(async () => { const accounts = await load(); if (alive.current.value) setAccounts(accounts); }).catch((error: unknown) => { if (alive.current.value) setError(errorMessage(error)); }).finally(() => { if (alive.current.value) setBusy(false); });
     }}>Disconnect</button></div>)}
-    <label>Connection name<input className="field-input" value={name} maxLength={200} disabled={busy} onChange={event => setName(event.target.value)} placeholder="Work GitHub" /></label>
-    <label>Personal access token<input className="field-input" type="password" autoComplete="off" value={token} maxLength={1000} disabled={busy} onChange={event => setToken(event.target.value)} /></label>
+    <label>Connection name<input {...staticFieldInputProps} value={name} maxLength={200} disabled={busy} onChange={event => setName(event.target.value)} placeholder="Work GitHub" /></label>
+    <label>Personal access token<input {...staticFieldInputProps} type="password" autoComplete="off" value={token} maxLength={1000} disabled={busy} onChange={event => setToken(event.target.value)} /></label>
     {error && <p role="alert" className="error-text">{error}</p>}
     <button className="btn" data-command-id="connect-github" disabled={busy || !name.trim() || !token} onClick={() => void connect()}>{busy ? "Connecting…" : "Connect GitHub"}</button>
   </section>;

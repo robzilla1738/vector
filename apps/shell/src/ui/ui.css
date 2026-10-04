@@ -50,7 +50,7 @@ input.ui-checkbox { width:16px; height:16px; min-width:16px; min-height:16px; pa
 .ui-list-icon { display:flex; flex:none; width:20px; color:var(--ink-2); }
 .ui-list-copy { flex:1; min-width:0; }
 .ui-list-copy strong { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:var(--fs-sm); font-weight:var(--fw-medium); }
-.ui-list-copy small { display:block; font-size:var(--fs-xs); color:var(--ink-2); }
+.ui-list-copy small { display:block; font-size:var(--fs-xs); color:var(--ink-2); overflow-wrap:anywhere; }
 .ui-list-actions { display:flex; flex:none; align-items:center; gap:var(--space-1); padding-right:var(--space-2); }
 .ui-status { display:inline-flex; align-items:center; gap:var(--space-1); font-size:var(--fs-xs); color:var(--ink-2); white-space:nowrap; }
 .ui-status > span { width:var(--dot); height:var(--dot); border-radius:50%; background:currentColor; }

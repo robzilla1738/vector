@@ -1,3 +1,4 @@
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import {
   useEffect,
@@ -136,9 +137,9 @@ export function RunNoticeBanner({
     <aside className="run-failure run-notice-banner" aria-live="polite" aria-label="Task notice">
       <div>
         <strong>{notice.title}</strong>
-        <p className="hint">{notice.body}</p>
+        <p {...staticHintProps}>{notice.body}</p>
       </div>
-      <div className="row">
+      <div {...staticRowProps}>
         <NoticeButton
           command="review-task-notice"
           className="btn sm primary"

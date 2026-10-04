@@ -1,0 +1,27 @@
+[
+  {
+    "name": "conversation-attachment-command-closure",
+    "leaves": 5,
+    "patch": "174ae38546bed09bde67ab5fa38ecec1921c68b4e446d1a86081fef6d81d5592"
+  },
+  {
+    "name": "conversation-supporting-command-closure",
+    "leaves": 4,
+    "patch": "9b17f1001e17186362c3f42a3dc64a6b140fdb3e128006b0aab57142fc2ffa75"
+  },
+  {
+    "name": "source-row-metadata-wrap",
+    "leaves": 2,
+    "patch": "40a75d778f5d885667dda1b6b8e902e6c8edce7dab89d679ba75d2121efa56e3"
+  },
+  {
+    "name": "static-hint-row-props",
+    "leaves": 110,
+    "patch": "65840767adebc72726b1cdfbbabe390781103f533987bf75ba39e3ff6d107c8c"
+  },
+  {
+    "name": "static-hint-row-props-format-successor",
+    "leaves": 2,
+    "patch": "9c0c4d174a588bb5ca8103cce68cfb061c4a9e74668ad03e607847dc83069af6"
+  }
+]

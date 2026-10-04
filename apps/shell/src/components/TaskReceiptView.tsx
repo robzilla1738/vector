@@ -1,3 +1,5 @@
+import { staticFieldProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
@@ -128,68 +130,68 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
   const usableEvidence = receipt.criteria.flatMap(item => item.evidence.filter(evidence => !evidence.stale));
   const treeUsage={calls:receipt.modelCalls+receipt.childTasks.reduce((total,child)=>total+child.modelCalls,0),cost:receipt.knownCostUsd+receipt.childTasks.reduce((total,child)=>total+child.knownCostUsd,0),complete:receipt.costComplete&&receipt.childTasks.every(child=>child.costComplete)};
   const runUndoIds = receipt.undoReviews.filter(item => item.eligibleStepIds.length).map(item => item.runId);
-  return <div className="field">
+  return <div {...staticFieldProps}>
     <h4>Evidence and receipt</h4>
-    {historical && <p className="hint">Earlier revision {receipt.taskRevision} · Current task revision {receipt.currentTaskRevision}. This review does not establish the current task’s outcome. Freshness is assessed now, not reconstructed as of the revision date.</p>}
+    {historical && <p {...staticHintProps}>Earlier revision {receipt.taskRevision} · Current task revision {receipt.currentTaskRevision}. This review does not establish the current task’s outcome. Freshness is assessed now, not reconstructed as of the revision date.</p>}
     <ReceiptExportControls owner={readOwner} />
     <output data-block>{STATUS[receipt.status]}</output>
-    <span className="hint">Your acceptance records your review of the selected evidence. Captured pages, documents and command results are dated snapshots, not a live guarantee of the outcome.</span>
-    <span className="hint">{receipt.modelCalls} model calls · ${receipt.knownCostUsd.toFixed(4)} {receipt.costComplete ? "recorded model cost" : "known model cost; some costs are unknown or estimated"}</span>
-    {!!receipt.childTasks.length&&<span className="hint">Coordinated total: {treeUsage.calls} model calls · ${treeUsage.cost.toFixed(4)} {treeUsage.complete?'recorded model cost':'known model cost; some descendant costs are unknown or estimated'}</span>}
-    {(receipt.providers.length > 0 || receipt.modelIds.length > 0) && <span className="hint">{[receipt.providers.join(", "), receipt.modelIds.join(", ")].filter(Boolean).join(" · ")}{receipt.destinations.length ? ` · ${receipt.destinations.join(", ")}` : " · destination not recorded"}</span>}
+    <span {...staticHintProps}>Your acceptance records your review of the selected evidence. Captured pages, documents and command results are dated snapshots, not a live guarantee of the outcome.</span>
+    <span {...staticHintProps}>{receipt.modelCalls} model calls · ${receipt.knownCostUsd.toFixed(4)} {receipt.costComplete ? "recorded model cost" : "known model cost; some costs are unknown or estimated"}</span>
+    {!!receipt.childTasks.length&&<span {...staticHintProps}>Coordinated total: {treeUsage.calls} model calls · ${treeUsage.cost.toFixed(4)} {treeUsage.complete?'recorded model cost':'known model cost; some descendant costs are unknown or estimated'}</span>}
+    {(receipt.providers.length > 0 || receipt.modelIds.length > 0) && <span {...staticHintProps}>{[receipt.providers.join(", "), receipt.modelIds.join(", ")].filter(Boolean).join(" · ")}{receipt.destinations.length ? ` · ${receipt.destinations.join(", ")}` : " · destination not recorded"}</span>}
     {importError && <p role="alert">{importError}</p>}
     {artifactError?.owner===readOwner && <p role="alert">{artifactError.message}</p>}
-    {!!receipt.childTasks.length&&<section className="field" aria-label="Coordinated task outcomes"><strong>Coordinated task outcomes</strong><span className="hint">The parent receipt cannot be accepted while descendant work is active, uncertain, not met or awaiting review.</span>{receipt.childTasks.map(child=><div className="document-source hint" key={child.taskId} style={{marginLeft:`${Math.min(child.depth-1,3)*12}px`}}><span><b>{child.title}</b> · revision {child.revision} · {STATUS[child.status]}{child.state==='archived'?' · archived':''} · {child.modelCalls} calls · ${child.knownCostUsd.toFixed(4)}{child.costComplete?'':' known cost'}</span></div>)}</section>}
+    {!!receipt.childTasks.length&&<section {...staticFieldProps} aria-label="Coordinated task outcomes"><strong>Coordinated task outcomes</strong><span {...staticHintProps}>The parent receipt cannot be accepted while descendant work is active, uncertain, not met or awaiting review.</span>{receipt.childTasks.map(child=><div className="document-source hint" key={child.taskId} style={{marginLeft:`${Math.min(child.depth-1,3)*12}px`}}><span><b>{child.title}</b> · revision {child.revision} · {STATUS[child.status]}{child.state==='archived'?' · archived':''} · {child.modelCalls} calls · ${child.knownCostUsd.toFixed(4)}{child.costComplete?'':' known cost'}</span></div>)}</section>}
     {receipt.criteria.map(({ criterion, status, evidence, review }) => {
       const note = notes[criterion.criterionId] ?? "";
       const chosen = (selected[criterion.criterionId] ?? []).filter(id => evidence.some(item => item.record.evidenceId === id && !item.stale));
       const verification = receipt.verifications.find(item => item.criterionId === criterion.criterionId);
-      return <section key={criterion.criterionId} aria-label={criterion.description} className="field" style={{ borderTop: "1px solid var(--accent-line)", paddingTop: "var(--space-3)" }}>
+      return <section key={criterion.criterionId} aria-label={criterion.description} {...staticFieldProps} style={{ borderTop: "1px solid var(--accent-line)", paddingTop: "var(--space-3)" }}>
         <strong>{criterion.description}</strong>
-        <span className="hint">{status === "accepted" ? "Accepted by you" : status.replaceAll("_", " ")}</span>
+        <span {...staticHintProps}>{status === "accepted" ? "Accepted by you" : status.replaceAll("_", " ")}</span>
         {review && <p>{review.note}</p>}
-        {verification && <p className="hint">Local check · {verification.method} · {verification.status.replaceAll("_", " ")} · {verification.localMatch ? "matched saved evidence" : "no local match"} · {verification.reason} This is not acceptance.</p>}
+        {verification && <p {...staticHintProps}>Local check · {verification.method} · {verification.status.replaceAll("_", " ")} · {verification.localMatch ? "matched saved evidence" : "no local match"} · {verification.reason} This is not acceptance.</p>}
         {!evidence.length && <p>No evidence recorded.</p>}
         {evidence.map(({ record, stale, reason }) => <div key={record.evidenceId}>
-          <label className="row" style={{ alignItems: "flex-start" }}>{editable && <ReceiptChoice owner={readOwner} command="select-task-receipt-evidence" style={{width:16,height:16,flexShrink:0}} aria-label={`Use evidence ${record.evidenceId}`} disabled={stale} checked={chosen.includes(record.evidenceId)} invoke={checked=>setSelected(previous=>({...previous,[criterion.criterionId]:checked?[...chosen,record.evidenceId]:chosen.filter(id=>id!==record.evidenceId)}))}/>}
+          <label {...staticRowProps} style={{ alignItems: "flex-start" }}>{editable && <ReceiptChoice owner={readOwner} command="select-task-receipt-evidence" style={{width:16,height:16,flexShrink:0}} aria-label={`Use evidence ${record.evidenceId}`} disabled={stale} checked={chosen.includes(record.evidenceId)} invoke={checked=>setSelected(previous=>({...previous,[criterion.criterionId]:checked?[...chosen,record.evidenceId]:chosen.filter(id=>id!==record.evidenceId)}))}/>}
             <span>{record.summary}</span></label>
-          <span className="hint">{record.kind === "command_snapshot" ? "Saved local command result selected by you" : record.kind === "document_snapshot" ? "Document selected by you" : record.actor === "runtime" ? "Captured by Aux" : record.actor === "desktop_user" ? "Your note" : "Client-submitted claim"} · {new Date(record.observedAt).toLocaleString()}{stale ? ` · Stale: ${reason}` : ""}</span>
+          <span {...staticHintProps}>{record.kind === "command_snapshot" ? "Saved local command result selected by you" : record.kind === "document_snapshot" ? "Document selected by you" : record.actor === "runtime" ? "Captured by Aux" : record.actor === "desktop_user" ? "Your note" : "Client-submitted claim"} · {new Date(record.observedAt).toLocaleString()}{stale ? ` · Stale: ${reason}` : ""}</span>
           {record.source.url && <p>{record.source.url}</p>}
           {record.kind === "document_snapshot" && <div className="document-source hint">
             <span>{record.source.filename} · {record.source.byteLength?.toLocaleString()} bytes · Saved local copy; original changes are not tracked.</span>
             <ReceiptDisclosure owner={readOwner} record={record} command="toggle-task-receipt-fingerprint" title="Snapshot fingerprint"><code>{record.source.sha256}</code><span>SHA-256 identifies these saved bytes; it does not verify the document’s claims.</span></ReceiptDisclosure>
           </div>}
-          {!!record.source.cloudArtifacts?.length&&<div className="document-source hint"><span>{record.source.cloudArtifacts.length} cloud result artifact{record.source.cloudArtifacts.length===1?'':'s'} preserved in Aux task data.</span><div className="row">{record.source.cloudArtifacts.map(item=><ReceiptArtifactSave key={item.artifactId} owner={readOwner} record={record} item={item} onError={message=>setArtifactError({owner:readOwner,message})} />)}</div><ReceiptDisclosure owner={readOwner} record={record} command="toggle-task-receipt-fingerprint" title="Preserved artifact fingerprints">{record.source.cloudArtifacts.map(item=><code key={item.artifactId}>{item.label} · {item.bytes.toLocaleString()} bytes · {item.sha256}</code>)}</ReceiptDisclosure></div>}
+          {!!record.source.cloudArtifacts?.length&&<div className="document-source hint"><span>{record.source.cloudArtifacts.length} cloud result artifact{record.source.cloudArtifacts.length===1?'':'s'} preserved in Aux task data.</span><div {...staticRowProps}>{record.source.cloudArtifacts.map(item=><ReceiptArtifactSave key={item.artifactId} owner={readOwner} record={record} item={item} onError={message=>setArtifactError({owner:readOwner,message})} />)}</div><ReceiptDisclosure owner={readOwner} record={record} command="toggle-task-receipt-fingerprint" title="Preserved artifact fingerprints">{record.source.cloudArtifacts.map(item=><code key={item.artifactId}>{item.label} · {item.bytes.toLocaleString()} bytes · {item.sha256}</code>)}</ReceiptDisclosure></div>}
           {record.snapshot && <ReceiptDisclosure owner={readOwner} record={record} command="toggle-task-receipt-snapshot" title={record.kind === "command_snapshot" ? "Saved command and output" : record.kind === "document_snapshot" ? "Saved document text" : "Captured page text"}><DocumentExtractionNote filename={record.snapshot.title} /><DocumentContent filename={record.snapshot.title} content={record.snapshot.text} /></ReceiptDisclosure>}
         </div>)}
         {editable && <>
         <textarea aria-label="Evidence or review note" rows={3} placeholder="Describe the evidence you checked and what it establishes." value={note} onChange={event => setNotes(previous => ({ ...previous, [criterion.criterionId]: event.target.value }))} maxLength={4000} />
-        <div className="row">
+        <div {...staticRowProps}>
           <ReceiptEditAction command="add-task-receipt-note" owner={readOwner} valid={originalDraft("notes",notes)} {...smallButtonProps} disabled={!note.trim()} invoke={()=>submitOwned("tasks.recordEvidence",{...base,criterionId:criterion.criterionId,summary:note})}>Add note</ReceiptEditAction>
           <ReceiptEditAction command="capture-task-receipt-page" owner={readOwner} {...smallButtonProps} disabled={!pageId} invoke={()=>submitOwned("tasks.captureEvidence",{...base,criterionId:criterion.criterionId,pageId:pageId as string})}>Capture current page</ReceiptEditAction>
           <ReceiptEditAction command="import-task-receipt-document" owner={readOwner} {...smallButtonProps} disabled={active || importing || !!visibleDocument} invoke={current=>pickDocument(criterion.criterionId,current)}>Import document</ReceiptEditAction>
         </div>
         {visibleDocument?.criterionId === criterion.criterionId && <section className="document-preview field" aria-label="Document preview">
           <strong>{visibleDocument.filename}</strong>
-          <span className="hint">{new TextEncoder().encode(visibleDocument.content).length.toLocaleString()} bytes of saved text · Up to 512 KB</span>
+          <span {...staticHintProps}>{new TextEncoder().encode(visibleDocument.content).length.toLocaleString()} bytes of saved text · Up to 512 KB</span>
           <DocumentExtractionNote filename={visibleDocument.filename} />
           <DocumentContent filename={visibleDocument.filename} content={visibleDocument.content} />
-          <span className="hint">Save a local copy as evidence for this criterion. Importing does not send the text to a model. The original file will not be monitored.</span>
-          <div className="row"><ReceiptEditAction command="save-task-receipt-document" owner={readOwner} valid={originalDraft("document",document)} {...smallButtonProps} disabled={importing||active} invoke={saveDocument}>Save document evidence</ReceiptEditAction>
+          <span {...staticHintProps}>Save a local copy as evidence for this criterion. Importing does not send the text to a model. The original file will not be monitored.</span>
+          <div {...staticRowProps}><ReceiptEditAction command="save-task-receipt-document" owner={readOwner} valid={originalDraft("document",document)} {...smallButtonProps} disabled={importing||active} invoke={saveDocument}>Save document evidence</ReceiptEditAction>
             <ReceiptEditAction command="cancel-task-receipt-document" owner={readOwner} {...smallButtonProps} disabled={importing} invoke={()=>setDocument(null)}>Cancel import</ReceiptEditAction></div>
         </section>}
-        <div className="row">
+        <div {...staticRowProps}>
           <ReceiptEditAction command="accept-task-receipt-criterion" owner={readOwner} valid={()=>originalDraft("notes",notes)()&&originalDraft("selected",selected)()} {...smallButtonProps} disabled={!chosen.length||!note.trim()||active} invoke={()=>submitOwned("tasks.reviewCriterion",{...base,criterionId:criterion.criterionId,evidenceIds:chosen,note,outcome:"accepted"})}>Accept criterion</ReceiptEditAction>
           <ReceiptEditAction command="reject-task-receipt-criterion" owner={readOwner} valid={()=>originalDraft("notes",notes)()&&originalDraft("selected",selected)()} {...smallButtonProps} disabled={!chosen.length||!note.trim()||active} invoke={()=>submitOwned("tasks.reviewCriterion",{...base,criterionId:criterion.criterionId,evidenceIds:chosen,note,outcome:"rejected"})}>Mark not met</ReceiptEditAction>
           <ReceiptEditAction command="verify-task-receipt-criterion" owner={readOwner} {...smallButtonProps} disabled={active} invoke={()=>submitOwned("tasks.verifyCriterion",{...base,criterionId:criterion.criterionId})}>Run local check</ReceiptEditAction>
         </div>
-        <span className="hint">A local check compares saved evidence. It never records acceptance.</span>
+        <span {...staticHintProps}>A local check compares saved evidence. It never records acceptance.</span>
         </>}
       </section>;
     })}
-    {!!receipt.browserChanges.length && <section className="field" aria-label="Browser changes">
+    {!!receipt.browserChanges.length && <section {...staticFieldProps} aria-label="Browser changes">
       <h4>Browser form changes · {receipt.browserChanges.length}</h4>
-      <p className="hint">These are the values Aux observed before agent input. A failed step may still have changed the page; review its outcome before retrying.</p>
+      <p {...staticHintProps}>These are the values Aux observed before agent input. A failed step may still have changed the page; review its outcome before retrying.</p>
       {receipt.browserChanges.map(change => <div className="row" key={change.stepId}>
         <span className="grow"><strong>{change.op}</strong> · {change.status === "ok" ? "completed" : "outcome uncertain"}
           {change.target ? <> · <code>{change.target}</code></> : null}
@@ -198,120 +200,120 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
           {!change.before && <span> · Before-state unavailable</span>}
           {change.after && <span> · After: {change.after.checked !== undefined ? String(change.after.checked)
             : change.after.selected !== undefined ? change.after.selected : change.after.value ?? "unavailable"}</span>}
-          <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
-          {change.undoneAt && <span className="hint"> · Undone {new Date(change.undoneAt).toLocaleString()}</span>}
+          <span {...staticHintProps}> · run {change.runId} · revision {change.taskRevision}</span>
+          {change.undoneAt && <span {...staticHintProps}> · Undone {new Date(change.undoneAt).toLocaleString()}</span>}
         </span>
         {editable && !historical && !active && change.status === "ok" && !change.undoneAt && change.before && change.after &&
           <ReceiptEditAction command="undo-task-receipt-form" owner={readOwner} {...smallButtonProps} disabled={pageId!==change.pageId} title={pageId!==change.pageId?"Open the original page to undo this edit":undefined} invoke={()=>submitOwned("tasks.undoBrowserChange",{...base,runId:change.runId,stepId:change.stepId})}>Undo form edit</ReceiptEditAction>}
       </div>)}
     </section>}
-    {!!receipt.tabChanges.length && <section className="field" aria-label="Tab changes">
+    {!!receipt.tabChanges.length && <section {...staticFieldProps} aria-label="Tab changes">
       <h4>Agent tab changes · {receipt.tabChanges.length}</h4>
       {receipt.tabChanges.map(change => <div className="row" key={change.stepId}>
         <span className="grow">{change.op === "tab.open" ? "Opened" : "Closed"} run-owned tab · {change.status === "ok" ? "completed" : "outcome uncertain"}
           {change.url && <> · <code>{change.url}</code></>}
           {change.undoneAt && <> · Undone {new Date(change.undoneAt).toLocaleString()}</>}
-          <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+          <span {...staticHintProps}> · run {change.runId} · revision {change.taskRevision}</span>
         </span>
       </div>)}
     </section>}
-    {!!receipt.groupChanges.length && <section className="field" aria-label="Tab group changes">
+    {!!receipt.groupChanges.length && <section {...staticFieldProps} aria-label="Tab group changes">
       <h4>Agent tab group changes · {receipt.groupChanges.length}</h4>
-      <p className="hint">Native group state was observed before and after the change. Undo is unavailable until Aux can compare the current group revision and membership.</p>
+      <p {...staticHintProps}>Native group state was observed before and after the change. Undo is unavailable until Aux can compare the current group revision and membership.</p>
       {receipt.groupChanges.map(change => <div className="field" key={change.stepId}>
         <span>Group {change.after.title ?? change.groupId} · revision {change.before.revision} → {change.after.revision}</span>
-        <span className="hint">{change.before.memberPageIds.length} tabs before · {change.after.memberPageIds.length} tabs after · run {change.runId} · task revision {change.taskRevision}</span>
+        <span {...staticHintProps}>{change.before.memberPageIds.length} tabs before · {change.after.memberPageIds.length} tabs after · run {change.runId} · task revision {change.taskRevision}</span>
       </div>)}
     </section>}
-    {!!receipt.bookmarkChanges.length && <section className="field" aria-label="Bookmark changes">
+    {!!receipt.bookmarkChanges.length && <section {...staticFieldProps} aria-label="Bookmark changes">
       <h4>Agent bookmark changes · {receipt.bookmarkChanges.length}</h4>
       {receipt.bookmarkChanges.map(change => <div className="row" key={change.stepId}>
         <span className="grow">Saved bookmark · {change.status === "ok" ? "completed" : "outcome uncertain"}
           {change.title && <> · {change.title}</>}{change.url && <> · <code>{change.url}</code></>}
           {change.undoneAt && <> · Undone {new Date(change.undoneAt).toLocaleString()}</>}
-          <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+          <span {...staticHintProps}> · run {change.runId} · revision {change.taskRevision}</span>
         </span>
         {editable && !historical && !active && change.status === "ok" && !change.undoneAt &&
           <ReceiptEditAction command="undo-task-receipt-bookmark" owner={readOwner} {...smallButtonProps} invoke={()=>submitOwned("tasks.undoBookmarkChange",{...base,runId:change.runId,stepId:change.stepId})}>Undo bookmark</ReceiptEditAction>}
       </div>)}
     </section>}
-    {!!receipt.downloadChanges.length && <section className="field" aria-label="Download changes">
+    {!!receipt.downloadChanges.length && <section {...staticFieldProps} aria-label="Download changes">
       <h4>Downloads during agent runs · {receipt.downloadChanges.length}</h4>
-      <p className="hint">A download occurred in a run-controlled tab. Completed files can be moved to recoverable Trash only while their recorded bytes and identity still match. Started or interrupted downloads need review.</p>
+      <p {...staticHintProps}>A download occurred in a run-controlled tab. Completed files can be moved to recoverable Trash only while their recorded bytes and identity still match. Started or interrupted downloads need review.</p>
       {receipt.downloadChanges.map(change => <div className="row" key={change.stepId}>
         <span className="grow">Download · {change.status}
           {change.filename && <> · {change.filename}</>}
           {change.size !== undefined && <> · {change.size.toLocaleString()} bytes</>}
           {change.path && <> · <code>{change.path}</code></>}
           {change.undoneAt && <> · Moved to Trash {new Date(change.undoneAt).toLocaleString()}</>}
-          <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+          <span {...staticHintProps}> · run {change.runId} · revision {change.taskRevision}</span>
         </span>
         {editable && !historical && !active && change.cleanupAvailable && !change.undoneAt &&
           <ReceiptEditAction command="undo-task-receipt-download" owner={readOwner} {...smallButtonProps} invoke={()=>submitOwned("tasks.undoDownloadChange",{...base,runId:change.runId,stepId:change.stepId})}>Move download to Trash</ReceiptEditAction>}
       </div>)}
     </section>}
-    {!!receipt.historyChanges.length && <section className="field" aria-label="History changes">
+    {!!receipt.historyChanges.length && <section {...staticFieldProps} aria-label="History changes">
       <h4>History visits during agent runs · {receipt.historyChanges.length}</h4>
-      <p className="hint">These exact visits were recorded by Chromium while an agent controlled the page. Removing a visit cannot be undone. A changed visit is refused.</p>
+      <p {...staticHintProps}>These exact visits were recorded by Chromium while an agent controlled the page. Removing a visit cannot be undone. A changed visit is refused.</p>
       {receipt.historyChanges.map(change => <div className="row" key={change.stepId}>
         <span className="grow">History visit
           {change.title && <> · {change.title}</>}
           {change.url && <> · <code>{change.url}</code></>}
           {change.visitedAt !== undefined && <> · {new Date(change.visitedAt).toLocaleString()}</>}
           {change.undoneAt && <> · Removed {new Date(change.undoneAt).toLocaleString()}</>}
-          <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+          <span {...staticHintProps}> · run {change.runId} · revision {change.taskRevision}</span>
         </span>
         {editable && !historical && !active && !change.undoneAt &&
           <ReceiptEditAction command="undo-task-receipt-history" owner={readOwner} {...smallButtonProps} invoke={()=>submitOwned("tasks.undoHistoryChange",{...base,runId:change.runId,stepId:change.stepId})}>Remove history visit</ReceiptEditAction>}
       </div>)}
     </section>}
-    {!!receipt.remoteActions.length && <section className="field" aria-label="Consequential page actions">
+    {!!receipt.remoteActions.length && <section {...staticFieldProps} aria-label="Consequential page actions">
       <h4>Consequential page actions · {receipt.remoteActions.length}</h4>
-      <p className="hint">Browser observations show what Aux saw after a step. They do not prove that a remote service committed a change. These actions cannot be reversed by Undo browser changes.</p>
+      <p {...staticHintProps}>Browser observations show what Aux saw after a step. They do not prove that a remote service committed a change. These actions cannot be reversed by Undo browser changes.</p>
       {receipt.remoteActions.map(action => <div className="field" key={action.stepId}>
         <span><strong>{action.op}</strong> · {action.uncertain ? "outcome uncertain" : action.status === "ok" ? "browser step completed" : "step failed"}
           {action.remoteConfirmed ? " · remote confirmation recorded" : " · no remote confirmation"}</span>
-        {action.browserObserved && <span className="hint">Browser observed: {action.browserObserved}</span>}
-        <span className="hint">Run {action.runId} · revision {action.taskRevision}</span>
+        {action.browserObserved && <span {...staticHintProps}>Browser observed: {action.browserObserved}</span>}
+        <span {...staticHintProps}>Run {action.runId} · revision {action.taskRevision}</span>
       </div>)}
     </section>}
-    {editable && onChanged && !historical && !active && !!runUndoIds.length && <section className="field" aria-label="Undo run changes">
+    {editable && onChanged && !historical && !active && !!runUndoIds.length && <section {...staticFieldProps} aria-label="Undo run changes">
       <h4>Undo a run’s browser changes</h4>
-      <p className="hint">Restores matching form fields, removes unchanged bookmarks and history visits, moves unchanged managed downloads to recoverable Trash, and closes unused background tabs. Changed items are skipped. Removed visits, closed tabs, and remote effects cannot be reconstructed.</p>
+      <p {...staticHintProps}>Restores matching form fields, removes unchanged bookmarks and history visits, moves unchanged managed downloads to recoverable Trash, and closes unused background tabs. Changed items are skipped. Removed visits, closed tabs, and remote effects cannot be reconstructed.</p>
       {runUndoIds.map(runId => <ReceiptEditAction command="review-task-receipt-run-undo" owner={readOwner} className="btn sm" key={runId} disabled={undoBusy} invoke={current=>reviewRunUndo(runId,current)}>Review browser changes in run {runId}</ReceiptEditAction>)}
-      {undoDraft?.owner===readOwner && <div className="field" role="group" aria-label="Review selected browser undo">
+      {undoDraft?.owner===readOwner && <div {...staticFieldProps} role="group" aria-label="Review selected browser undo">
         <strong>Select browser changes to undo in run {undoDraft.runId}</strong>
-        <p className="hint">Only selected local changes will be attempted. A changed receipt cancels the request before any undo. Each selected item is checked against live state; changed items are skipped. Remote effects remain irreversible.</p>
+        <p {...staticHintProps}>Only selected local changes will be attempted. A changed receipt cancels the request before any undo. Each selected item is checked against live state; changed items are skipped. Remote effects remain irreversible.</p>
         {undoDraft.items.map(item => <label className="row" key={item.stepId}><ReceiptChoice owner={readOwner} command="select-task-receipt-undo-change" aria-label={item.label} disabled={undoBusy} checked={undoDraft.selectedStepIds.includes(item.stepId)} invoke={checked=>setUndoDraft(current=>current&&({...current,selectedStepIds:checked?[...current.selectedStepIds,item.stepId]:current.selectedStepIds.filter(id=>id!==item.stepId)}))}/>
           <span>{item.label}</span></label>)}
-        <div className="row"><ReceiptEditAction command="undo-task-receipt-selected-changes" owner={readOwner} valid={originalDraft("undoDraft",undoDraft)} className="btn sm danger" disabled={undoBusy||!undoDraft.selectedStepIds.length} invoke={undoRun}>Undo selected browser changes</ReceiptEditAction>
+        <div {...staticRowProps}><ReceiptEditAction command="undo-task-receipt-selected-changes" owner={readOwner} valid={originalDraft("undoDraft",undoDraft)} className="btn sm danger" disabled={undoBusy||!undoDraft.selectedStepIds.length} invoke={undoRun}>Undo selected browser changes</ReceiptEditAction>
           <ReceiptEditAction command="cancel-task-receipt-run-undo" owner={readOwner} {...smallButtonProps} disabled={undoBusy} invoke={()=>setUndoDraft(null)}>Cancel</ReceiptEditAction></div>
       </div>}
       {undoMessage && <output data-block>{undoMessage}</output>}
     </section>}
     {receipt.unresolvedActions.length > 0 && <h4>Uncertain actions</h4>}
-    {receipt.unresolvedActions.map(action => <section key={action.intentId} className="field" aria-label={`Uncertain action ${action.intentId}`}>
+    {receipt.unresolvedActions.map(action => <section key={action.intentId} {...staticFieldProps} aria-label={`Uncertain action ${action.intentId}`}>
       <p>Action {action.intentId} · {action.status}</p>
-      <span className="hint">Check independent records before deciding whether this action happened. Recording a decision does not dispatch another action.</span>
+      <span {...staticHintProps}>Check independent records before deciding whether this action happened. Recording a decision does not dispatch another action.</span>
       {editable && <>
       <ReceiptSelection owner={readOwner} command="select-task-receipt-action-evidence" aria-label="Reconciliation evidence" value={actionEvidence[action.intentId]??""} invoke={value=>setActionEvidence(previous=>({...previous,[action.intentId]:value}))}>
         <option value="">Select evidence</option>{usableEvidence.map(item => <option key={item.record.evidenceId} value={item.record.evidenceId}>{item.record.summary}</option>)}
       </ReceiptSelection>
       <textarea aria-label="Reconciliation reason" rows={3} value={actionNotes[action.intentId] ?? ""} onChange={event => setActionNotes(previous => ({ ...previous, [action.intentId]: event.target.value }))} />
-      <div className="row">{(["applied", "not_applied"] as const).map(outcome => <ReceiptEditAction command={outcome==="applied"?"accept-task-receipt-action":"reject-task-receipt-action"} owner={readOwner} valid={()=>originalDraft("actionEvidence",actionEvidence)()&&originalDraft("actionNotes",actionNotes)()} className="btn sm" key={outcome} disabled={active||!actionEvidence[action.intentId]||!actionNotes[action.intentId]?.trim()} invoke={()=>submitOwned("tasks.reconcileAction",{...base,intentId:action.intentId,evidenceId:actionEvidence[action.intentId] as string,outcome,note:actionNotes[action.intentId] as string})}>
+      <div {...staticRowProps}>{(["applied", "not_applied"] as const).map(outcome => <ReceiptEditAction command={outcome==="applied"?"accept-task-receipt-action":"reject-task-receipt-action"} owner={readOwner} valid={()=>originalDraft("actionEvidence",actionEvidence)()&&originalDraft("actionNotes",actionNotes)()} className="btn sm" key={outcome} disabled={active||!actionEvidence[action.intentId]||!actionNotes[action.intentId]?.trim()} invoke={()=>submitOwned("tasks.reconcileAction",{...base,intentId:action.intentId,evidenceId:actionEvidence[action.intentId] as string,outcome,note:actionNotes[action.intentId] as string})}>
         {outcome === "applied" ? "Record as applied" : "Record as not applied"}
       </ReceiptEditAction>)}</div>
       </>}
     </section>)}
     {receipt.unresolvedOperations.length>0&&<h4>Uncertain operations</h4>}
-    {receipt.unresolvedOperations.map(operation=><section key={operation.invocationId} className="field" aria-label={`Uncertain operation ${operation.invocationId}`}>
+    {receipt.unresolvedOperations.map(operation=><section key={operation.invocationId} {...staticFieldProps} aria-label={`Uncertain operation ${operation.invocationId}`}>
       <p><strong>{operation.operation}</strong> · {operation.effectClass} · {operation.status}</p>
-      <span className="hint">Aux cannot prove whether this operation took effect. Check the project checkout or service records before continuing; this decision never repeats the operation.</span>
-      {operation.error&&<p className="hint">Last error: {operation.error}</p>}
+      <span {...staticHintProps}>Aux cannot prove whether this operation took effect. Check the project checkout or service records before continuing; this decision never repeats the operation.</span>
+      {operation.error&&<p {...staticHintProps}>Last error: {operation.error}</p>}
       {editable&&<><ReceiptSelection owner={readOwner} command="select-task-receipt-operation-evidence" aria-label="Operation reconciliation evidence" value={operationEvidence[operation.invocationId]??""} invoke={value=>setOperationEvidence(previous=>({...previous,[operation.invocationId]:value}))}>
         <option value="">Select evidence</option>{usableEvidence.map(item=><option key={item.record.evidenceId} value={item.record.evidenceId}>{item.record.summary}</option>)}</ReceiptSelection>
       <textarea aria-label="Operation reconciliation reason" rows={3} value={operationNotes[operation.invocationId]??''} onChange={event=>setOperationNotes(previous=>({...previous,[operation.invocationId]:event.target.value}))}/>
-      <div className="row">{(['applied','not_applied'] as const).map(outcome=><ReceiptEditAction command={outcome==="applied"?"accept-task-receipt-operation":"reject-task-receipt-operation"} owner={readOwner} valid={()=>originalDraft("operationEvidence",operationEvidence)()&&originalDraft("operationNotes",operationNotes)()} className="btn sm" key={outcome} disabled={active||!operationEvidence[operation.invocationId]||!operationNotes[operation.invocationId]?.trim()} invoke={()=>submitOwned("tasks.reconcileOperation",{...base,invocationId:operation.invocationId,evidenceId:operationEvidence[operation.invocationId] as string,outcome,note:operationNotes[operation.invocationId] as string})}>{outcome==='applied'?'Record as applied':'Record as not applied'}</ReceiptEditAction>)}</div></>}
+      <div {...staticRowProps}>{(['applied','not_applied'] as const).map(outcome=><ReceiptEditAction command={outcome==="applied"?"accept-task-receipt-operation":"reject-task-receipt-operation"} owner={readOwner} valid={()=>originalDraft("operationEvidence",operationEvidence)()&&originalDraft("operationNotes",operationNotes)()} className="btn sm" key={outcome} disabled={active||!operationEvidence[operation.invocationId]||!operationNotes[operation.invocationId]?.trim()} invoke={()=>submitOwned("tasks.reconcileOperation",{...base,invocationId:operation.invocationId,evidenceId:operationEvidence[operation.invocationId] as string,outcome,note:operationNotes[operation.invocationId] as string})}>{outcome==='applied'?'Record as applied':'Record as not applied'}</ReceiptEditAction>)}</div></>}
     </section>)}
   </div>;
 }
@@ -471,7 +473,7 @@ function ReceiptExportControls({ owner }: { owner: ReceiptReadOwner }) {
         />{" "}
         Include captured text
       </label>
-      <span className="hint">
+      <span {...staticHintProps}>
         Exports objective, evidence summaries and sources, reviews, unresolved actions, run history and
         recorded usage. Page, document and command text is optional.
       </span>

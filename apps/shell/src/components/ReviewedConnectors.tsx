@@ -1,3 +1,4 @@
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./ReviewedConnectors.css";
@@ -169,12 +170,12 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
       data-setting="Connector access"
     >
       <div className="drawer-section">Connector access</div>
-      <p className="hint">
+      <p {...staticHintProps}>
         Review each connection and the access currently available to a saved task. A connected account or
         approved server alone does not grant a task access.
       </p>
       {!workspaces.length ? (
-        <p className="hint">{loading ? "Loading Spaces…" : "Create a Space to review connectors."}</p>
+        <p {...staticHintProps}>{loading ? "Loading Spaces…" : "Create a Space to review connectors."}</p>
       ) : (
         <>
           <div className="reviewed-connectors-scope">
@@ -247,8 +248,8 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
               ))}
             </aside>
             <div className="reviewed-connectors-detail" aria-live="polite">
-              {loading && <p className="hint">Loading connector access…</p>}
-              {!loading && !entry && <p className="hint">Choose a connection to review.</p>}
+              {loading && <p {...staticHintProps}>Loading connector access…</p>}
+              {!loading && !entry && <p {...staticHintProps}>Choose a connection to review.</p>}
               {entry && (
                 <>
                   <div className="reviewed-connectors-heading">
@@ -257,8 +258,8 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                   </div>
                   {entry.kind === "calendar" && (
                     <>
-                      <p className="hint">Google Calendar · {entry.accountKey} · read-only events</p>
-                      <p className="hint">
+                      <p {...staticHintProps}>Google Calendar · {entry.accountKey} · read-only events</p>
+                      <p {...staticHintProps}>
                         Task access requires an explicit account grant for this task revision. Events read
                         during a task may be sent to its selected AI model.
                       </p>
@@ -311,7 +312,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                   )}
                   {entry.kind === "mcp" && (
                     <>
-                      <p className="hint">
+                      <p {...staticHintProps}>
                         Each MCP server source needs review. Each tool needs a separate Space or task grant.
                       </p>
                       {task &&
@@ -355,7 +356,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
             <p>
               {entry.label} · {entry.accountKey} · {task.title} · revision {task.revision}
             </p>
-            <p className="hint">
+            <p {...staticHintProps}>
               {review.kind === "grant" ? (
                 <>
                   This task and its scoped agents may read events from this account. Provider credentials
@@ -365,7 +366,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                 <>Further task reads through this grant will stop immediately.</>
               )}
             </p>
-            <div className="row">
+            <div {...staticRowProps}>
               <button {...smallButtonProps} disabled={busy} onClick={() => void submit()}>
                 {review.kind === "grant" ? "Grant account" : "Revoke grant"}
               </button>

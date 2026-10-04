@@ -1,3 +1,5 @@
+import { staticFieldErrorProps, staticFieldProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useState } from "react";
@@ -53,7 +55,7 @@ function UsageTable({
           </tbody>
         </table>
       ) : (
-        <p className="hint">No model calls recorded.</p>
+        <p {...staticHintProps}>No model calls recorded.</p>
       )}
     </section>
   );
@@ -159,7 +161,7 @@ export function UsageBudgetsSettings({
         hint="Caps stop the next model step after recorded spending reaches the limit. Leave a field empty for no cap."
       >
         <form key={JSON.stringify(caps)} onSubmit={(event) => void saveCaps(event)}>
-          <div className="row">
+          <div {...staticRowProps}>
             <label>
               Per run (USD)
               <input
@@ -201,7 +203,7 @@ export function UsageBudgetsSettings({
             </button>
           </div>
           {capError && (
-            <p role="alert" className="field-error">
+            <p role="alert" {...staticFieldErrorProps}>
               {capError}
             </p>
           )}
@@ -211,7 +213,7 @@ export function UsageBudgetsSettings({
         label="Usage report"
         hint="Export contains all recorded runs, plus model and local-day totals. Choose the destination in the native save dialog."
       >
-        <div className="row">
+        <div {...staticRowProps}>
           <button {...smallGhostButtonProps} disabled={busy} onClick={() => void refresh()}>
             {busy ? "Refreshing…" : "Refresh usage"}
           </button>
@@ -220,7 +222,7 @@ export function UsageBudgetsSettings({
           </button>
         </div>
         {error && (
-          <p role="alert" className="field-error">
+          <p role="alert" {...staticFieldErrorProps}>
             {error}
           </p>
         )}
@@ -228,7 +230,7 @@ export function UsageBudgetsSettings({
       {!report && !error && <output className="field hint">Loading usage…</output>}
       {report && (
         <>
-          <output className="field" data-block>
+          <output {...staticFieldProps} data-block>
             {report.total.calls} model calls · {usd(report.total.recordedUsd)} recorded
             {report.total.unpricedCalls ? ` · ${report.total.unpricedCalls} unpriced` : ""}
             {report.total.estimatedCalls ? ` · ${report.total.estimatedCalls} estimated` : ""}

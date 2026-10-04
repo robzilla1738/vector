@@ -1,3 +1,5 @@
+import { staticSmallIconButtonProps, staticFieldInputProps, staticIconButtonProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { ArchivedTabs } from "./ArchivedTabs";
@@ -65,16 +67,16 @@ const SavedPageRow = memo(function SavedPageRow({ view, itemKey, position, selec
     <button ref={firstResult} className="library-open" disabled={busy} onClick={event => view === "bookmarks" && selecting ? onSelect(item) : onOpen(item, backgroundLink(event), event.currentTarget)}
       onAuxClick={event => { if (event.button === 1) { event.preventDefault(); if (!selecting) onOpen(item, true, event.currentTarget); } }} title={`${title} — ${item.url}`}>
       <span className="library-row-heading"><span className="library-title">{title}</span></span><span className="library-url">{item.url}</span>
-      {showFolderPath && item.folderPath?.length ? <span className="hint">{item.folderPath.join(" / ")}</span> : null}
+      {showFolderPath && item.folderPath?.length ? <span {...staticHintProps}>{item.folderPath.join(" / ")}</span> : null}
     </button>
     <div className="library-actions" hidden={view === "bookmarks" && selecting}>
-      {canPeek && <button className="icon-btn sm" title="Preview link" disabled={busy} aria-label={`Preview ${title}`} onClick={() => {
+      {canPeek && <button {...staticSmallIconButtonProps} title="Preview link" disabled={busy} aria-label={`Preview ${title}`} onClick={() => {
         useStore.getState().setOverlay(null);
         void openPeekLink(item.url).catch(error => useStore.getState().toast(errorMessage(error)));
       }}>{shellIconSearch}</button>}
       {view === "bookmarks" ? <>
-      <button className="icon-btn sm" title="Edit bookmark" disabled={busy} aria-label={`Edit ${title}`} onClick={() => setEditing({ ...item, original: item })}>{shellIconPencil}</button>
-      <button className="icon-btn sm" title="Remove bookmark" disabled={busy} aria-label={`Remove ${title}`} onClick={() => void action(async () => {
+      <button {...staticSmallIconButtonProps} title="Edit bookmark" disabled={busy} aria-label={`Edit ${title}`} onClick={() => setEditing({ ...item, original: item })}>{shellIconPencil}</button>
+      <button {...staticSmallIconButtonProps} title="Remove bookmark" disabled={busy} aria-label={`Remove ${title}`} onClick={() => void action(async () => {
         await call("bookmarks.remove", { url: item.url, nodeId: item.nodeId });
         useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
         setRemoved(item); setNotice("");
@@ -82,7 +84,7 @@ const SavedPageRow = memo(function SavedPageRow({ view, itemKey, position, selec
       })}>{shellIconTrash}</button>
       </> : <>
         {item.offline && <span className="hint library-offline" title="Offline copy saved">offline</span>}
-        {offlinePage && <button className="icon-btn sm" title={item.offline ? "Refresh offline copy" : "Save offline copy"} disabled={busy} aria-label={`${item.offline ? "Refresh" : "Save"} offline copy of ${title}`} onClick={() => void action(async () => {
+        {offlinePage && <button {...staticSmallIconButtonProps} title={item.offline ? "Refresh offline copy" : "Save offline copy"} disabled={busy} aria-label={`${item.offline ? "Refresh" : "Save"} offline copy of ${title}`} onClick={() => void action(async () => {
           const page = useStore.getState().pages.find(page => page.url === item.url && page.backend === "aux" && !page.ownedByRuntime);
           if (!page) return;
           const article = await readReaderArticle(page.pageId);
@@ -90,11 +92,11 @@ const SavedPageRow = memo(function SavedPageRow({ view, itemKey, position, selec
           useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
           setNotice("Offline copy saved.");
         })}>{shellIconDownloadSm}</button>}
-        <button className="icon-btn sm" title={item.readAt ? "Mark unread" : "Mark read"} disabled={busy} aria-label={`Mark ${title} ${item.readAt ? "unread" : "read"}`} onClick={() => void action(async () => {
+        <button {...staticSmallIconButtonProps} title={item.readAt ? "Mark unread" : "Mark read"} disabled={busy} aria-label={`Mark ${title} ${item.readAt ? "unread" : "read"}`} onClick={() => void action(async () => {
           await call("bookmarks.markRead", { url: item.url, nodeId: item.nodeId, read: !item.readAt });
           useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
         })}>{item.readAt ? shellIconCircle : shellIconCheck}</button>
-        <button className="icon-btn sm" title="Remove from reading list" disabled={busy} aria-label={`Remove ${title} from reading list`} onClick={() => void action(async () => {
+        <button {...staticSmallIconButtonProps} title="Remove from reading list" disabled={busy} aria-label={`Remove ${title} from reading list`} onClick={() => void action(async () => {
           await call("bookmarks.readingList", { url: item.url, nodeId: item.nodeId, readingList: false });
           useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
         })}>{shellIconTrash}</button>
@@ -108,9 +110,9 @@ const SavedPageRow = memo(function SavedPageRow({ view, itemKey, position, selec
         expected: { title: editing.original.title, folderPath: editing.original.folderPath } });
       setEditing(null); setNotice("Bookmark updated.");
     }); }}>
-      <label className="library-edit-field">Name<input className="field-input" aria-label="Bookmark title" autoFocus disabled={busy} value={editing.title} maxLength={1000} onChange={event => setEditing({ ...editing, title: event.target.value })} /></label>
-      <label className="library-edit-field">Address<input className="field-input" aria-label="Bookmark address" placeholder="https://example.com" value={editing.url} maxLength={8192} disabled={busy} spellCheck={false} autoCapitalize="none" onChange={event => setEditing({ ...editing, url: event.target.value })} /></label>
-      <label className="library-edit-field library-edit-folder">Folder<select className="field-input" aria-label="Bookmark folder" disabled={busy} value={JSON.stringify(editing.folderPath ?? [])} onChange={event => setEditing({ ...editing, folderPath: JSON.parse(event.target.value) as string[] })}>
+      <label className="library-edit-field">Name<input {...staticFieldInputProps} aria-label="Bookmark title" autoFocus disabled={busy} value={editing.title} maxLength={1000} onChange={event => setEditing({ ...editing, title: event.target.value })} /></label>
+      <label className="library-edit-field">Address<input {...staticFieldInputProps} aria-label="Bookmark address" placeholder="https://example.com" value={editing.url} maxLength={8192} disabled={busy} spellCheck={false} autoCapitalize="none" onChange={event => setEditing({ ...editing, url: event.target.value })} /></label>
+      <label className="library-edit-field library-edit-folder">Folder<select {...staticFieldInputProps} aria-label="Bookmark folder" disabled={busy} value={JSON.stringify(editing.folderPath ?? [])} onChange={event => setEditing({ ...editing, folderPath: JSON.parse(event.target.value) as string[] })}>
         <option value="[]">Bookmarks</option>{folders.map(path => <option key={JSON.stringify(path)} value={JSON.stringify(path)}>{path.join(" / ")}</option>)}
       </select></label>
       <div className="library-edit-buttons"><button {...smallGhostButtonProps} type="button" disabled={busy} onClick={cancelEditor}>Cancel</button><button {...smallButtonProps} disabled={busy || !editing.title.trim() || !editing.url.trim()} type="submit">{busy ? "Saving…" : "Save"}</button></div>
@@ -326,7 +328,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }}>
-      <div className="library-head"><h3>Library</h3><span className="sp" /><button className="icon-btn" aria-label="Close library" onClick={() => close(null)}>{shellIconClose}</button></div>
+      <div className="library-head"><h3>Library</h3><span className="sp" /><button {...staticIconButtonProps} aria-label="Close library" onClick={() => close(null)}>{shellIconClose}</button></div>
       <div className="library-tabs seg" role="tablist" aria-label="Library views">{views.map(tab => <button key={tab} ref={node => { if (node) viewButtons.current.set(tab, node); else viewButtons.current.delete(tab); }} id={`library-${tab}`} role="tab" aria-selected={view === tab} aria-controls="library-results" tabIndex={view === tab ? 0 : -1} className={view === tab ? "on" : ""}
         onClick={() => choose(tab)} onKeyDown={event => { if (["ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); const next = views[(views.indexOf(tab) + (event.key === "ArrowRight" ? 1 : views.length - 1)) % views.length]!; choose(next); viewButtons.current.get(next)?.focus(); } }}>{VIEW_NAMES[tab]}</button>)}</div>
       <div className="library-field"><span className="library-icon">{shellIconSearch}</span><input ref={search} value={query} aria-label={`Search ${VIEW_NAMES[view].toLowerCase()}`} placeholder={`Search ${VIEW_NAMES[view].toLowerCase()} by title or address…`} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
@@ -358,11 +360,11 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
         {view === "history" && <><div className="library-ranges" role="group" aria-label="History date range">{[["all","All time"],["today","Today"],["week","7 days"],["month","30 days"]].map(([value,label]) => <button key={value} {...smallGhostButtonProps} aria-pressed={historyRange === value} onClick={() => setHistoryRange(value!)}>{label}</button>)}</div><ClearHistory initiallyOpen={confirmClear} /></>}
       </div>
       {view === "bookmarks" && selecting && <section className="library-selection" aria-label="Move selected bookmarks">
-        <div className="row"><strong>{selection.length} selected</strong><span className="sp" />
+        <div {...staticRowProps}><strong>{selection.length} selected</strong><span className="sp" />
           <button ref={items.length ? firstSelection : undefined} {...smallGhostButtonProps} disabled={busy || !items.length} onClick={() => setSelection(current => [...current, ...items.filter(item => !current.some(selected => bookmarkKey(selected) === bookmarkKey(item))).map(item => ({...item, folderPath:[...("folderPath" in item ? item.folderPath ?? [] : [])]}))])}>Select this view</button>
           <button ref={!items.length ? firstSelection : undefined} {...smallGhostButtonProps} disabled={busy} onClick={cancelSelection}>Cancel</button>
         </div>
-        <div className="row"><label htmlFor="bookmark-move-destination">Move to</label>
+        <div {...staticRowProps}><label htmlFor="bookmark-move-destination">Move to</label>
           <select id="bookmark-move-destination" className="grow field-input" value={moveFolder} disabled={busy} onChange={event => setMoveFolder(event.target.value)}>
             <option value="[]">Bookmarks</option>{folders.map(path => <option key={JSON.stringify(path)} value={JSON.stringify(path)}>{path.join(" / ")}</option>)}
             <option value="new">New folder in {folder.length ? folder.join(" / ") : "Bookmarks"}…</option>
@@ -378,8 +380,8 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
       </section>}
       {view === "bookmarks" && importPreview && <section className="library-import" aria-label="Bookmark import preview">
         <strong>{importPreview.bookmarks.length} web bookmarks ready</strong>
-        <p className="hint">From {importSource} into Bookmarks · {importDuplicates} already saved · {importPreview.folders.length} folders preserved. Existing bookmarks keep their titles and folders. {importPreview.skipped > 0 ? `${importPreview.skipped} duplicate or unsupported links skipped.` : ""}</p>
-        <ul>{importPreview.bookmarks.slice(0, 4).map(item => <li key={item.url}>{item.title} <span className="hint">{hostOf(item.url)}</span></li>)}</ul>
+        <p {...staticHintProps}>From {importSource} into Bookmarks · {importDuplicates} already saved · {importPreview.folders.length} folders preserved. Existing bookmarks keep their titles and folders. {importPreview.skipped > 0 ? `${importPreview.skipped} duplicate or unsupported links skipped.` : ""}</p>
+        <ul>{importPreview.bookmarks.slice(0, 4).map(item => <li key={item.url}>{item.title} <span {...staticHintProps}>{hostOf(item.url)}</span></li>)}</ul>
         <div className="library-tools"><button {...smallButtonProps} disabled={busy} onClick={() => void action(async () => {
           const result = await call("bookmarks.import", { bookmarks: importPreview.bookmarks, folders: importPreview.folders });
           useStore.setState({ bookmarks: await call("bookmarks.list", {}) });
@@ -391,8 +393,8 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
         <button className="btn ghost sm" onClick={() => openFolder([])}>Bookmarks</button>
         {folder.map((part, index) => <span key={index}>{shellIconRight}<button className="btn ghost sm" onClick={() => openFolder(folder.slice(0, index + 1))}>{part}</button></span>)}
         <span className="sp" />
-        {folder.length > 0 && <><button className="icon-btn" title="Rename folder" aria-label="Rename folder" onClick={() => setFolderEditor({ mode: "rename", name: folder.at(-1)! })}>{shellIconPencil}</button>
-          <button className="icon-btn" title="Remove empty folder" aria-label="Remove empty folder" disabled={busy} onClick={() => void action(async () => {
+        {folder.length > 0 && <><button {...staticIconButtonProps} title="Rename folder" aria-label="Rename folder" onClick={() => setFolderEditor({ mode: "rename", name: folder.at(-1)! })}>{shellIconPencil}</button>
+          <button {...staticIconButtonProps} title="Remove empty folder" aria-label="Remove empty folder" disabled={busy} onClick={() => void action(async () => {
             setFolders(await call("bookmarks.folders.remove", { path: folder })); setFolder(folder.slice(0, -1));
           })}>{shellIconTrash}</button></>}
       </nav>}
@@ -418,10 +420,10 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
       </form>}
       {error && <p className="library-message" role="alert">{error} {failedLoad && <button {...smallButtonProps} disabled={loading || loadingMore} onClick={() => failedLoad === "more" ? void loadMoreHistory() : setRefresh(value => value + 1)}>Retry</button>}</p>}
       {notice && <output className="library-message" data-block>{notice}</output>}
-      {removed && <div className="library-tools"><span className="hint">Removed {removed.title || hostOf(removed.url)}</span><button {...smallButtonProps} disabled={busy} onClick={() => void action(async () => { await save(removed, true); setRemoved(null); setNotice("Bookmark restored."); })}>Undo remove</button></div>}
+      {removed && <div className="library-tools"><span {...staticHintProps}>Removed {removed.title || hostOf(removed.url)}</span><button {...smallButtonProps} disabled={busy} onClick={() => void action(async () => { await save(removed, true); setRemoved(null); setNotice("Bookmark restored."); })}>Undo remove</button></div>}
       <div ref={results} className="library-list" id="library-results" role="tabpanel" aria-labelledby={`library-${view}`} aria-busy={loading} onKeyDown={event => moveListFocus(event, ".library-folder, .library-open")}>
         {view === "bookmarks" && childFolders.map((path, index) => <button key={JSON.stringify(path)} ref={index === 0 ? firstResult : undefined} className="library-folder" onClick={() => openFolder(path)}>
-          <span className="library-folder-icon">{shellIconFolderClosed}</span><span className="t">{q ? path.join(" / ") : path.at(-1)}</span><span className="hint">{bookmarks.filter(item => path.every((part, index) => item.folderPath?.[index] === part)).length}</span>{shellIconRight}
+          <span className="library-folder-icon">{shellIconFolderClosed}</span><span className="t">{q ? path.join(" / ") : path.at(-1)}</span><span {...staticHintProps}>{bookmarks.filter(item => path.every((part, index) => item.folderPath?.[index] === part)).length}</span>{shellIconRight}
         </button>)}
         {loading && (items.length ? <output className="library-message hint" data-block>Updating…</output> : <SkeletonRows label="Loading…" />)}
         {!loading && !error && !displayItems.length && (view !== "bookmarks" || !childFolders.length) ? <p className="library-empty">{query ? view === "bookmarks" ? "No matching bookmarks or folders." : "No matching pages." : view === "bookmarks" ? `Save a page with Bookmark current page${key("bookmark") ? ` or ${key("bookmark")}` : ""}.` : view === "reading" ? "Save pages to read later — Add to reading list on any tab." : "Pages you visit will appear here."}</p> : displayItems.map((item, index) => view === "bookmarks" ?
@@ -445,15 +447,15 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
             <span className="library-row-heading"><span className="library-title">{item.title || hostOf(item.url)}</span>{"visitedAt" in item && <time className="library-time" dateTime={new Date(Number(item.visitedAt)).toISOString()}>{new Date(Number(item.visitedAt)).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time>}</span><span className="library-url">{item.url}</span>
           </button>
           <div className="library-actions">
-            <button className="icon-btn sm" title={isSaved(item.url) ? "Already bookmarked" : "Bookmark page"} disabled={busy || isSaved(item.url)} aria-label={`Bookmark ${item.title || hostOf(item.url)}`} onClick={() => void action(async () => { await save(item); setNotice("Page bookmarked."); })}>{isSaved(item.url) ? shellIconBookmarkFill : shellIconBookmark}</button>
-              {"visitedAt" in item && <button className="icon-btn sm" title="Remove this visit" disabled={busy} aria-label={`Remove visit to ${item.title || hostOf(item.url)}`} onClick={() => void action(async () => {
+            <button {...staticSmallIconButtonProps} title={isSaved(item.url) ? "Already bookmarked" : "Bookmark page"} disabled={busy || isSaved(item.url)} aria-label={`Bookmark ${item.title || hostOf(item.url)}`} onClick={() => void action(async () => { await save(item); setNotice("Page bookmarked."); })}>{isSaved(item.url) ? shellIconBookmarkFill : shellIconBookmark}</button>
+              {"visitedAt" in item && <button {...staticSmallIconButtonProps} title="Remove this visit" disabled={busy} aria-label={`Remove visit to ${item.title || hostOf(item.url)}`} onClick={() => void action(async () => {
                 await call("history.remove", { url: item.url, visitedAt: item.visitedAt });
                 setHistory(current => current.filter(entry => entry.url !== item.url || entry.visitedAt !== item.visitedAt));
                 setNotice("Visit removed from browsing history. Bookmarks and saved work are unchanged.");
               })}>{shellIconTrash}</button>}
           </div>
         </div></Fragment>)}
-        {view === "history" && moreHistory && !loading && <div className="library-more"><button {...smallButtonProps} disabled={loadingMore || busy} onClick={() => void loadMoreHistory()}>{loadingMore ? "Loading older visits…" : "Load older visits"}</button><span className="hint">{history.length} visits shown</span></div>}
+        {view === "history" && moreHistory && !loading && <div className="library-more"><button {...smallButtonProps} disabled={loadingMore || busy} onClick={() => void loadMoreHistory()}>{loadingMore ? "Loading older visits…" : "Load older visits"}</button><span {...staticHintProps}>{history.length} visits shown</span></div>}
       </div>
       </>}
     </div>

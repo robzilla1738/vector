@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
@@ -35,8 +37,8 @@ export function ClearHistory({ initiallyOpen = false }: { initiallyOpen?: boolea
     </div>
     <p>This cannot be undone. Cookies, bookmarks, downloads, saved work and Aux memory are kept.</p>
     <output>{count === null ? "Counting visits…" : `${count} ${count === 1 ? "visit" : "visits"} in this period`}</output>
-    {error && <p className="field-error" role="alert">{error}</p>}
-    <div className="row"><button {...smallButtonProps} disabled={busy} onClick={() => { setCutoff(null); setError(""); }}>Cancel</button>
+    {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+    <div {...staticRowProps}><button {...smallButtonProps} disabled={busy} onClick={() => { setCutoff(null); setError(""); }}>Cancel</button>
       <button className="btn sm danger" disabled={busy || count === null || count === 0} onClick={() => {
         setBusy(true); setError("");
         void call("history.count", rangeParams!)

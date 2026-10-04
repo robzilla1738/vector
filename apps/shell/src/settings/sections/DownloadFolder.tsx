@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 
@@ -32,18 +34,18 @@ export function DownloadFolderSetting({ active }: { active: boolean }) {
     return change(reset, folder);
   }
   if (bridge.privateMode)
-    return <span className="hint">Choose a save location for each Private download.</span>;
-  if (!available) return <span className="hint">Available in the Aux desktop app.</span>;
+    return <span {...staticHintProps}>Choose a save location for each Private download.</span>;
+  if (!available) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
   if (!active || bridge.windowKind !== "normal") return null;
   return (
     <div aria-busy={busy}>
       {busy && !folder && (
-        <output className="hint" data-block>
+        <output {...staticHintProps} data-block>
           Loading download folder…
         </output>
       )}
       {folder && (
-        <div className="row">
+        <div {...staticRowProps}>
           <span className="hint mono selectable grow">{folder.path}</span>
           <PreferenceAction
             {...smallButtonProps}
@@ -68,7 +70,7 @@ export function DownloadFolderSetting({ active }: { active: boolean }) {
         </div>
       )}
       {(error || folder?.error) && (
-        <p role="alert" className="field-error">
+        <p role="alert" {...staticFieldErrorProps}>
           {error || folder?.error}{" "}
           <NativePreferenceRetry
             command="retry-download-folder"

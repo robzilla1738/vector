@@ -1,3 +1,4 @@
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
@@ -175,7 +176,7 @@ export function RecoveryPackage({
   return (
     <section aria-label="Protected recovery package">
       <h3>Protected recovery package</h3>
-      <p className="hint">
+      <p {...staticHintProps}>
         Create a phrase-encrypted offline copy of this Profile's task data, saved evidence, remembered pages,
         and current Space memory. It excludes browser cookies, passwords, Keychain credentials, connector
         tokens, and deleted memory. The reviewed package is limited to 64 MB; larger Profiles fail without a
@@ -183,7 +184,7 @@ export function RecoveryPackage({
         for review. Previously exported copies remain restorable with their original phrase after Forget.
         Copies and phrases kept outside Aux cannot be revoked.
       </p>
-      <p className="hint">Creating or staging a package asks for fresh device authentication.</p>
+      <p {...staticHintProps}>Creating or staging a package asks for fresh device authentication.</p>
       <label>
         Recovery phrase
         <input
@@ -198,7 +199,7 @@ export function RecoveryPackage({
           }}
         />
       </label>
-      <div className="row">
+      <div {...staticRowProps}>
         <PreferenceAction
           command="create-protected-recovery"
           scopeId={scopeId}
@@ -239,7 +240,7 @@ export function RecoveryPackage({
         Review package
       </PreferenceAction>
       {review && (
-        <div className="hint" aria-label="Recovery package review">
+        <div {...staticHintProps} aria-label="Recovery package review">
           <p>
             Created {new Date(review.manifest.createdAt).toLocaleString()} ·{" "}
             {review.manifest.artifactIds.length} artifacts · {review.manifest.pageMemoryCount} remembered
@@ -262,7 +263,7 @@ export function RecoveryPackage({
           </PreferenceAction>
         </div>
       )}
-      {message && <output className="hint">{message}</output>}
+      {message && <output {...staticHintProps}>{message}</output>}
     </section>
   );
 }

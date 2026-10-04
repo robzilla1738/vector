@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { memo, useLayoutEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -199,7 +200,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
           <div role="group" aria-label="Additional browser tabs">{matchingIds.map(pageId => {
             const selected = sources.some(source => source.pageId === pageId);
             return <AdditionalTabChoice key={pageId} pageId={pageId} selected={selected} disabled={disabled || !!busyPageId || (additionalSources.length >= 8 && !selected)} onToggle={toggle} />;
-          })}{!matchingIds.length && <p className="hint">No matching available tabs.</p>}</div></>}
+          })}{!matchingIds.length && <p {...staticHintProps}>No matching available tabs.</p>}</div></>}
       </Popover>
     </div>
     {sources.length > 0 && <div role="group" className="conversation-browser-sources" aria-label="Selected browser tabs">

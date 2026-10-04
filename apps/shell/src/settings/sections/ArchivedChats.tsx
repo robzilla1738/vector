@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -104,7 +106,7 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
           }}
         />
       </SettingsField>
-      {error && <p role="alert" className="field-error">{error} <button {...smallButtonProps} onClick={() => void load(false)}>Try again</button></p>}
+      {error && <p role="alert" {...staticFieldErrorProps}>{error} <button {...smallButtonProps} onClick={() => void load(false)}>Try again</button></p>}
       <div className="settings-archived-list" aria-busy={loading}>
         {rows.map(item => <div className="settings-archived-row" key={item.chatId}>
           <button className="settings-archived-open" disabled={busyId !== null} onClick={() => {
@@ -118,8 +120,8 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
             {busyId === item.chatId ? "Restoring…" : "Restore"}
           </button>
         </div>)}
-        {loading && <output className="hint" data-block>Loading archived chats…</output>}
-        {!loading && !error && !rows.length && <p className="hint">{query.trim() ? "No archived chats match your search." : "No archived chats yet."}</p>}
+        {loading && <output {...staticHintProps} data-block>Loading archived chats…</output>}
+        {!loading && !error && !rows.length && <p {...staticHintProps}>{query.trim() ? "No archived chats match your search." : "No archived chats yet."}</p>}
         {more && !error && <button {...smallButtonProps} disabled={loading || busyId !== null} onClick={() => void load(true)}>Load more</button>}
       </div>
     </SettingsSection>

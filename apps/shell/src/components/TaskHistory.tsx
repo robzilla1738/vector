@@ -1,3 +1,5 @@
+import { staticFieldProps } from "../ui/class-props";
+import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import {
   useCallback,
@@ -168,7 +170,7 @@ function HistorySession({ taskId, onClose }: { taskId: string; onClose: () => vo
   const task = revisions.find((item) => item.revision === revision);
   return (
     <section className="task-history field" aria-label="Saved task history">
-      <div className="row">
+      <div {...staticRowProps}>
         <h3 ref={heading} tabIndex={-1}>
           Saved task history
         </h3>
@@ -177,12 +179,12 @@ function HistorySession({ taskId, onClose }: { taskId: string; onClose: () => vo
           Back to current task
         </PreferenceAction>
       </div>
-      <p className="hint">
+      <p {...staticHintProps}>
         Inspect earlier objectives, resources, evidence and reviews. Your current draft stays unchanged. Saved
         history stays on this Mac and is available in every Aux window without signing in.
       </p>
       {!!revisions.length && (
-        <label className="field" htmlFor={scopeId}>
+        <label {...staticFieldProps} htmlFor={scopeId}>
           Saved revision
           <RevisionSelect
             scopeId={scopeId}
@@ -205,14 +207,14 @@ function HistorySession({ taskId, onClose }: { taskId: string; onClose: () => vo
         <>
           <div className="task-history-definition field">
             <h3>{task.title}</h3>
-            <span className="hint">
+            <span {...staticHintProps}>
               Revision {task.revision} · {task.state === "archived" ? "Archived" : "Open"} when saved
             </span>
             <p className="selectable">{task.objective}</p>
             <h4>Saved resources</h4>
-            {!task.resources.length && <p className="hint">No resources in this revision.</p>}
+            {!task.resources.length && <p {...staticHintProps}>No resources in this revision.</p>}
             {task.resources.map((resource) => (
-              <div key={resource.resourceId} className="field">
+              <div key={resource.resourceId} {...staticFieldProps}>
                 <strong>{resource.label}</strong>
                 <span className="hint selectable">
                   {resource.kind} · {resource.locator}
@@ -226,7 +228,7 @@ function HistorySession({ taskId, onClose }: { taskId: string; onClose: () => vo
             scopeId={scopeId}
             title={`Runs through revision ${task.revision} (${receipt.runs.length})`}
           >
-            <div className="field">
+            <div {...staticFieldProps}>
               {receipt.runs.map((run) => (
                 <PreferenceAction
                   className="btn sm"

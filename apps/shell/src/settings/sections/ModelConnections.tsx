@@ -1,3 +1,4 @@
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import {
   IMAGE_MODELS,
@@ -142,7 +143,7 @@ export function ModelConnections({
         hint="Disconnect stops future requests in this Profile, including environment credentials and localhost. Saved keys and model choices are kept for explicit reconnect. Requests already sent may finish. Remove saved key also disconnects the provider."
       >
         {!parsed.success ? (
-          <p className="hint">Provider management is unavailable until the runtime reconnects.</p>
+          <p {...staticHintProps}>Provider management is unavailable until the runtime reconnects.</p>
         ) : (
           parsed.data.map((connection) => (
             <ProviderConnectionRow
@@ -179,11 +180,11 @@ export function ModelConnections({
           ))}
         </select>
         {!!settings.imageModel && (!gateway?.enabled || gateway.credentialSource === "none") && (
-          <p className="hint">
+          <p {...staticHintProps}>
             Connect Gateway with a key authorized for this image model before generating an image.
           </p>
         )}
-        <p className="hint">
+        <p {...staticHintProps}>
           Image generation is unavailable while a run, day or routine spend cap is set. Image spend is
           recorded separately and is not yet included in Usage totals.
         </p>
@@ -231,13 +232,13 @@ function ProviderConnectionRow({
   );
   const name = MODEL_PROVIDER_NAMES[connection.provider];
   return (
-    <div className="row" data-provider={connection.provider}>
+    <div {...staticRowProps} data-provider={connection.provider}>
       <div className="grow">
         <strong>
           {name}
           {connection.selected ? " · Selected" : ""}
         </strong>
-        <p className="hint">
+        <p {...staticHintProps}>
           {!connection.enabled
             ? "Disconnected"
             : connection.credentialUnavailable

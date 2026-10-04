@@ -1,3 +1,4 @@
+import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useState } from "react";
@@ -66,17 +67,17 @@ export function MigrationImport() {
   }
   return (
     <>
-      <div className="row">
+      <div {...staticRowProps}>
         <button {...smallGhostButtonProps} disabled={busy} onClick={() => void inspect()}>
           {busy ? "Checking…" : "Review Chromium migration…"}
         </button>
       </div>
       {error && (
-        <output className="hint" role="alert">
+        <output {...staticHintProps} role="alert">
           {error}
         </output>
       )}
-      {message && <output className="hint">{message}</output>}
+      {message && <output {...staticHintProps}>{message}</output>}
       {review && (
         <Dialog
           label="Review Chromium migration"
@@ -95,44 +96,44 @@ export function MigrationImport() {
             <li>Bookmarks: {review.bookmarks.toLocaleString()}</li>
             <li>Bookmark folders: {review.bookmarkFolders.toLocaleString()}</li>
           </ul>
-          <p className="hint">
+          <p {...staticHintProps}>
             Manifest SHA-256: <code>{review.manifestSha256}</code>
           </p>
           {(review.omitted.unsafeTabs ||
             review.omitted.unsafeBookmarks ||
             review.omitted.missingArtifacts ||
             review.omitted.layoutMissing) && (
-            <p className="hint">
+            <p {...staticHintProps}>
               Omitted during preparation: {review.omitted.unsafeTabs} unsafe tabs,{" "}
               {review.omitted.unsafeBookmarks} unsafe bookmarks, {review.omitted.missingArtifacts} missing
               artifacts{review.omitted.layoutMissing ? "; layout export unavailable" : ""}.
             </p>
           )}
           {review.vaultPending && (
-            <p className="hint">The sealed credential package remains pending a separate OS-backed import.</p>
+            <p {...staticHintProps}>The sealed credential package remains pending a separate OS-backed import.</p>
           )}
-          <p className="hint">
+          <p {...staticHintProps}>
             Cookies, saved browser passwords, extensions, and downloads are not imported. The Electron source
             profile is left untouched.
           </p>
           {review.status === "interrupted" && (
-            <output className="hint" data-block>
+            <output {...staticHintProps} data-block>
               A previous import stopped. Resume its verified batches or roll back the native changes.
             </output>
           )}
           {progress && (
-            <output className="hint" data-block>
+            <output {...staticHintProps} data-block>
               Imported {progress.folders}/{review.bookmarkFolders} folders · {progress.bookmarks}/
               {review.bookmarks} bookmarks · {progress.tabs}/{review.tabs} tabs
             </output>
           )}
           {review.status === "applied" && (
-            <output className="hint" data-block>
+            <output {...staticHintProps} data-block>
               This migration was already applied to this Profile.
             </output>
           )}
           {error && <p role="alert">{error}</p>}
-          <div className="row">
+          <div {...staticRowProps}>
             {review.status !== "applied" && (
               <button {...smallButtonProps} disabled={busy} onClick={() => void apply()}>
                 {busy

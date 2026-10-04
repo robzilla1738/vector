@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -138,24 +139,24 @@ export function SitePermissions({ query = "" }: { query?: string }) {
     setNotice(`${host} will block trackers and ads again. Reload its tabs to apply.`);
   });
   return <div ref={root} className="site-permissions">
-    <p className="hint">Manage saved website access for the shared human and agent browsing profile. Resetting a decision makes the site ask again; it does not clear cookies or sign you out.</p>
+    <p {...staticHintProps}>Manage saved website access for the shared human and agent browsing profile. Resetting a decision makes the site ask again; it does not clear cookies or sign you out.</p>
     {contentBlockingAvailable && <section className="site-data-group" aria-label="Privacy">
       <header><strong>Privacy</strong></header>
       {privacyError && <p role="alert">Couldn’t refresh blocking settings. {privacyError}</p>}
       <label className="memory-use-toggle"><input type="checkbox" checked={privacy?.trackerBlock ?? false} disabled={!!busy||!privacy} onChange={() => void toggleTracking()}/><span>Block trackers and ads<small>{!privacy ? "Load privacy settings to see the current state." : privacy.trackerBlock === false ? "Off. Advertising and tracking domains load on every website." : `Known tracker, ad and telemetry domains can't load on any website${privacy.blocked > 0 ? ` — ${privacy.blocked} request${privacy.blocked === 1 ? "" : "s"} blocked this session` : ""}.`}</small></span></label>
-      {privacy?.allowedHosts?.length ? <div className="filter-exceptions"><strong className="hint">Sites where blocking is paused</strong>
-        {privacy.allowedHosts.map(host => <div className="site-permission-row" key={host}><span>{host}</span><span className="hint">Blocking paused</span><button {...smallButtonProps} aria-label={`Resume blocking on ${host}`} disabled={!!busy} onClick={() => void removeAllowed(host)}>{busy === `allow-${host}` ? "Resuming…" : "Resume blocking"}</button></div>)}
+      {privacy?.allowedHosts?.length ? <div className="filter-exceptions"><strong {...staticHintProps}>Sites where blocking is paused</strong>
+        {privacy.allowedHosts.map(host => <div className="site-permission-row" key={host}><span>{host}</span><span {...staticHintProps}>Blocking paused</span><button {...smallButtonProps} aria-label={`Resume blocking on ${host}`} disabled={!!busy} onClick={() => void removeAllowed(host)}>{busy === `allow-${host}` ? "Resuming…" : "Resume blocking"}</button></div>)}
       </div> : null}
       <FilterListManager />
     </section>}
     <section className="site-data-group" aria-label="Website data">
       <header><strong>Website data</strong></header>
-      <p className="hint">Clear cookies and stored data for an open website. This can sign you out; cookies for related subdomains are included.</p>
+      <p {...staticHintProps}>Clear cookies and stored data for an open website. This can sign you out; cookies for related subdomains are included.</p>
       {chosenPage ? <div className="site-permission-row">
         <select aria-label="Website to clear" value={chosenPage.pageId} disabled={!!busy} onChange={event => {setSiteDataReview("");setSelectedPage(event.target.value);}}>{openSites.map(page => <option key={page.pageId} value={page.pageId}>{new URL(page.url).origin}</option>)}</select>
         <button {...smallButtonProps} disabled={!!busy||!currentSiteDataCount} onClick={() => {setSiteDataError(null);setSiteDataReview(siteDataKey);}}>Clear website data…</button>
-      </div> : <p className="hint">Open a website to manage its stored data.</p>}
-      {chosenPage && <output className="hint" data-block>{currentSiteDataCount
+      </div> : <p {...staticHintProps}>Open a website to manage its stored data.</p>}
+      {chosenPage && <output {...staticHintProps} data-block>{currentSiteDataCount
         ? `${currentSiteDataCount.cookies} ${currentSiteDataCount.cookies===1?"cookie":"cookies"} in ${currentSiteDataCount.domain}. Other website storage is not counted.`
         : currentSiteDataError ? `Couldn’t count cookies: ${currentSiteDataError}` : "Counting website cookies…"}</output>}
       {currentSiteDataError && !currentSiteDataCount && <button {...smallButtonProps} onClick={() => {setSiteDataError(null);setSiteDataRetry(current=>current+1);}}>Retry count</button>}
@@ -170,12 +171,12 @@ export function SitePermissions({ query = "" }: { query?: string }) {
     {loading && <output data-block>Loading site permissions…</output>}
     {error && <p role="alert">{error}</p>}
     {loadError && <div role="alert"><p>Couldn’t refresh permissions. {loadError}</p><button {...smallButtonProps} disabled={loading||!!busy} onClick={() => void load()}>Refresh permissions</button></div>}
-    {notice && <output className="hint" data-block>{notice}</output>}
-    {!loading && !loadError && !sites.length && <p className="hint">{Object.keys(decisions).length ? "No matching websites." : "No saved website permissions. Websites ask when they need access."}</p>}
+    {notice && <output {...staticHintProps} data-block>{notice}</output>}
+    {!loading && !loadError && !sites.length && <p {...staticHintProps}>{Object.keys(decisions).length ? "No matching websites." : "No saved website permissions. Websites ask when they need access."}</p>}
     {sites.map(([origin, permissions]) => <section className="site-permission-group" key={origin} aria-label={origin}>
       <header><strong>{origin}</strong><button {...smallButtonProps} disabled={!!busy} onClick={() => void reset(origin)}>Reset site</button></header>
       {Object.entries(permissions).map(([permission, decision]) => <div className="site-permission-row" key={permission}>
-        <span>{labels[permission] ?? permission}</span><span className="hint">{permission === "media" ? "Ask again" : decision === "allow" ? "Allowed" : "Blocked"}</span>
+        <span>{labels[permission] ?? permission}</span><span {...staticHintProps}>{permission === "media" ? "Ask again" : decision === "allow" ? "Allowed" : "Blocked"}</span>
         <button {...smallButtonProps} aria-label={`Reset ${labels[permission] ?? permission} for ${origin}`} disabled={!!busy} onClick={() => void reset(origin, permission)}>Reset</button>
       </div>)}
     </section>)}

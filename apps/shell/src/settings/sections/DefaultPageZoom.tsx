@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
 import { usePreferenceCommand } from "./preference-command";
@@ -32,15 +34,15 @@ export function DefaultPageZoomSetting({ active }: { active: boolean }) {
   );
   if (bridge.privateMode)
     return (
-      <span className="hint">
+      <span {...staticHintProps}>
         Default page zoom follows the regular Profile and cannot be changed in Private mode.
       </span>
     );
-  if (!available) return <span className="hint">Available in the Aux desktop app.</span>;
+  if (!available) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
   if (!active || bridge.windowKind !== "normal") return null;
   if (!value)
     return (
-      <span className="hint">
+      <span {...staticHintProps}>
         {error || "Reading default page zoom…"}{" "}
         {error && (
           <NativePreferenceRetry
@@ -53,7 +55,7 @@ export function DefaultPageZoomSetting({ active }: { active: boolean }) {
       </span>
     );
   return (
-    <div className="row">
+    <div {...staticRowProps}>
       <select
         ref={controlRef}
         data-command-id="set-default-page-zoom"
@@ -69,9 +71,9 @@ export function DefaultPageZoomSetting({ active }: { active: boolean }) {
         ))}
         {!CHOICES.includes(value.percentage) && <option value={value.percentage}>{value.percentage}%</option>}
       </select>
-      {value.managed && <span className="hint">Managed by your organization</span>}
+      {value.managed && <span {...staticHintProps}>Managed by your organization</span>}
       {error && (
-        <span role="alert" className="field-error">
+        <span role="alert" {...staticFieldErrorProps}>
           {error}{" "}
           <NativePreferenceRetry
             command="retry-default-page-zoom"

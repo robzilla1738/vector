@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { usePreferenceCommand } from "./preference-command";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { Switch } from "../../ui";
@@ -27,15 +29,15 @@ export function BackgroundRuntimeSetting({ active }: { active: boolean }) {
   });
   if (bridge.privateMode)
     return (
-      <span className="hint">
+      <span {...staticHintProps}>
         Background runtime follows the regular Profile and cannot be changed in Private mode.
       </span>
     );
-  if (!available) return <span className="hint">Available in the Aux desktop app.</span>;
+  if (!available) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
   if (!active || bridge.windowKind !== "normal") return null;
   if (!value)
     return (
-      <span className="hint">
+      <span {...staticHintProps}>
         {error || "Reading background runtime setting…"}{" "}
         {error && (
           <NativePreferenceRetry
@@ -48,7 +50,7 @@ export function BackgroundRuntimeSetting({ active }: { active: boolean }) {
       </span>
     );
   return (
-    <div className="row">
+    <div {...staticRowProps}>
       <Switch
         controlRef={controlRef}
         data-command-id="toggle-background-runtime"
@@ -57,10 +59,10 @@ export function BackgroundRuntimeSetting({ active }: { active: boolean }) {
         disabled={busy || value.managed || !value.available}
         onChange={run}
       />
-      {value.managed && <span className="hint">Managed by your organization</span>}
-      {!value.available && <span className="hint">Browser background mode is disabled.</span>}
+      {value.managed && <span {...staticHintProps}>Managed by your organization</span>}
+      {!value.available && <span {...staticHintProps}>Browser background mode is disabled.</span>}
       {error && (
-        <span role="alert" className="field-error">
+        <span role="alert" {...staticFieldErrorProps}>
           {error}{" "}
           <NativePreferenceRetry
             command="retry-background-runtime"

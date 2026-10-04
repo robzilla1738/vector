@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { readResultDraft, revokeResultDrafts, writeResultDraft } from "../result-drafts";
@@ -26,7 +27,7 @@ function IsolatedHtmlResult({html}:{html:string}) {
   },[html]);
   if(error)return <p role="alert" className="field-error">{error}</p>;
   if(!inNativeHost)return <iframe title="Inert HTML result" sandbox="" referrerPolicy="no-referrer" srcDoc={isolatedHtmlDocument(html)}/>;
-  return url?<iframe title="Isolated HTML result" sandbox="allow-scripts" referrerPolicy="no-referrer" src={url}/>:<output data-block className="hint">Preparing isolated preview…</output>;
+  return url?<iframe title="Isolated HTML result" sandbox="allow-scripts" referrerPolicy="no-referrer" src={url}/>:<output data-block {...staticHintProps}>Preparing isolated preview…</output>;
 }
 export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved, contextDisabled=false, onCitationOpen}: {artifactId:string;chatId:string;onClose():void;onVersionSaved?:(artifactId:string)=>void;contextDisabled?:boolean;onCitationOpen?:(url:string,background:boolean)=>boolean}) {
   const [result,setResult]=useState<Result|null>(null), [error,setError]=useState(""), [retry,setRetry]=useState(0), [saving,setSaving]=useState(false);
@@ -88,10 +89,10 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
       {label:"Export file…",disabled:saving||attaching||!valid,onSelect:()=>void save()},
       ...(result.mediaType === "text/csv" ? [{label:"Export Excel…",disabled:saving||attaching||!valid,onSelect:()=>void save(true)}] : []),
     ]}>{saving ? "Exporting…" : "Export…"}</ActionMenu></>}>
-    {error?<p role="alert">{error} <button {...smallButtonProps} onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:!result?<output className="hint" data-block>Loading saved result…</output>:<>
-      {result.mediaType==="text/csv"&&<p className="hint">Excel export writes cell values. Safe http(s) source URLs become hyperlinks. Formatting, formulas and images are not created.</p>}
-      {result.mediaType==="text/html"&&<p className="hint">Interactive preview runs in an isolated origin. Network, files, forms, and Aux access are blocked; generated content may contain unverified text.</p>}
-      {draft && <div className="result-edit-status"><span className="hint">Edited copy · original preserved</span><button {...smallGhostButtonProps} disabled={saving||attaching} onClick={()=>{if(!writeResultDraft(artifactId,null)){setDraftError("The saved draft could not be removed. Try Discard edits again.");return;}setDraft(null);setEditing(false);setAttached(null);setDraftError("");}}>Discard edits</button><button {...smallButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged} onClick={()=>void saveVersion()}>{attaching?"Saving…":"Save version"}</button><button {...smallGhostButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content} onClick={()=>void attachCopy()}>{attached===content?"Copy attached":"Attach as document"}</button></div>}
+    {error?<p role="alert">{error} <button {...smallButtonProps} onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:!result?<output {...staticHintProps} data-block>Loading saved result…</output>:<>
+      {result.mediaType==="text/csv"&&<p {...staticHintProps}>Excel export writes cell values. Safe http(s) source URLs become hyperlinks. Formatting, formulas and images are not created.</p>}
+      {result.mediaType==="text/html"&&<p {...staticHintProps}>Interactive preview runs in an isolated origin. Network, files, forms, and Aux access are blocked; generated content may contain unverified text.</p>}
+      {draft && <div className="result-edit-status"><span {...staticHintProps}>Edited copy · original preserved</span><button {...smallGhostButtonProps} disabled={saving||attaching} onClick={()=>{if(!writeResultDraft(artifactId,null)){setDraftError("The saved draft could not be removed. Try Discard edits again.");return;}setDraft(null);setEditing(false);setAttached(null);setDraftError("");}}>Discard edits</button><button {...smallButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged} onClick={()=>void saveVersion()}>{attaching?"Saving…":"Save version"}</button><button {...smallGhostButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content} onClick={()=>void attachCopy()}>{attached===content?"Copy attached":"Attach as document"}</button></div>}
       {sourceChanged&&<p className="field-error" role="alert">The saved source changed since this draft began. Export your edits or discard them to work from the current source.</p>}
       {draftError&&<p className="field-error" role="alert">{draftError}</p>}
       {!valid&&<p className="field-error" role="alert">Use text without null characters, up to 256 KB.</p>}

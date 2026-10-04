@@ -1,0 +1,27 @@
+{
+  "base": "345cac596be821bd812e1ac755d8047c663fbca8",
+  "leaves": [
+    {
+      "path": "apps/shell/src/ui/ui.css",
+      "before": "2cfadb3b3ef2a36c40ba57fe9f05efe09eb9da9b80a0d504e2f7e84c796f5e28",
+      "after": "344fb2fc66a65d4d3c9c94780f35872c497325bb5726240a528de5db64c49ecf"
+    },
+    {
+      "path": "apps/shell/src/components/SourceRow.metadata-wrap.test.tsx",
+      "before": null,
+      "after": "8e5462ec0237473580e01b231cc65fd8f0a8dd188091128f21e8c13e83245292"
+    }
+  ],
+  "patchSHA256": "40a75d778f5d885667dda1b6b8e902e6c8edce7dab89d679ba75d2121efa56e3",
+  "reference": {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/extension/assets_globals-D6PBr-GP.css",
+    "sha256": "2c2b198d715f3894d41c96b88ef9a32a4f61404891baf954d7e4e5a33d976e79",
+    "exactRule": ".wrap-anywhere{overflow-wrap:anywhere}"
+  },
+  "controls": {
+    "originalFail": "/tmp/aux-source-row-metadata-original-004.log",
+    "resultPass": "/tmp/aux-source-row-metadata-controls-005.log",
+    "lint": "/tmp/aux-source-row-metadata-lint-001.log",
+    "types": "/tmp/aux-source-row-metadata-types-002.log"
+  }
+}

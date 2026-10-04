@@ -15,6 +15,7 @@ import { FeatureComposer } from "../features/registry";
 import { Popover } from "../ui/popover";
 import { RunControls } from "./RunControls";
 import { CalendarSourceChoiceDialog } from "./CalendarSourceChoiceDialog";
+import { ConversationAttachmentAction, ConversationAttachmentChoice, useConversationAttachmentOwner } from "./ConversationAttachmentControls";
 import { AttachmentTray, type AttachmentItem } from "./AttachmentTray";
 import { SupportingContent } from "./SupportingContent";
 import { ComposerFrame } from "../ui";
@@ -588,24 +589,31 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     })();
     return guardCommandCompletion(completion,current);
   };
-  const changeDocument = async (attachmentId: string, included?: boolean) => {
-    if (!id || documentBusy.current) return;
-    documentBusy.current = true;
-    setAttachmentSaving(true);
-    try {
-      const value = await call(included === undefined ? "conversations.attachments.remove" : "conversations.attachments.toggle", { chatId: id, attachmentId, ...(included === undefined ? {} : { included }) });
-      if (activeChat.current === id) { setAttachments(value.attachments); setDocumentPreview(null); }
-    } catch (error) { errToast(error); }
-    finally { documentBusy.current = false; setAttachmentSaving(false); }
-  };
-  const changeResult = async (artifactId: string, included: boolean) => {
-    if (!id || documentBusy.current || attachmentSaving || contextLocked) return;
-    documentBusy.current = true; setAttachmentSaving(true);
-    try {
-      const value = await call("conversations.artifacts.toggle", {chatId:id,artifactId,included});
-      if (activeChat.current === id) setGenerated(value.artifacts);
-    } catch (error) { errToast(error); }
-    finally { documentBusy.current = false; setAttachmentSaving(false); }
+  const attachmentCurrent = useConversationAttachmentOwner(conversationCurrent, [...attachments,...generated]);
+  const attachmentMutation = useRef<{release():void} | null>(null);
+  useLayoutEffect(() => () => { attachmentMutation.current?.release(); }, [attachmentCurrent]);
+  const changeAttachment = (item: ConversationAttachment | ConversationArtifact, included?: boolean) => {
+    const current = () => attachmentCurrent(item);
+    if (!id || !current() || documentBusy.current || attachmentSaving || contextLocked) throw new Error("Choose the current conversation attachment.");
+    const chatId = id, document = "attachmentId" in item;
+    const operation = { release() {
+      if (attachmentMutation.current !== operation) return;
+      attachmentMutation.current = null; documentBusy.current = false; setAttachmentSaving(false);
+    }};
+    attachmentMutation.current = operation; documentBusy.current = true; setAttachmentSaving(true);
+    const completion = (async () => {
+      try {
+        const value = document
+          ? await call(included === undefined ? "conversations.attachments.remove" : "conversations.attachments.toggle", {chatId,attachmentId:item.attachmentId,...(included === undefined ? {} : {included})})
+          : await call("conversations.artifacts.toggle", {chatId,artifactId:item.artifactId,included:included!});
+        if (current() && attachmentMutation.current === operation) {
+          if ("attachments" in value) { setAttachments(value.attachments); setDocumentPreview(null); }
+          else setGenerated(value.artifacts);
+        }
+        return value;
+      } finally { operation.release(); }
+    })();
+    return guardCommandCompletion(completion,current);
   };
   const exportConversation = () => {
     if (!id || !turns.length || !conversationCurrent() || exportPending.current?.owner === conversationCurrent) return;
@@ -839,15 +847,20 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   </Popover></span></div>;
 
   const attachmentItems: AttachmentItem[] = [
-    ...attachments.map(item => ({ key:`document:${item.attachmentId}`, name:item.filename, kind:"document" as const, included:item.included,
+    ...attachments.map<AttachmentItem>(item => ({ key:`document:${item.attachmentId}`, name:item.filename, kind:"document" as const, included:item.included,
       onOpen:() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(item.attachmentId); },
-      onToggle:(included:boolean) => void changeDocument(item.attachmentId,included), onRemove:() => void changeDocument(item.attachmentId) })),
+      onToggle:(included:boolean) => changeAttachment(item,included), onRemove:() => changeAttachment(item),
+      openControl:(props,children,invoke) => <ConversationAttachmentAction {...props} command="preview-conversation-document" current={() => attachmentCurrent(item)} invoke={invoke}>{children}</ConversationAttachmentAction>,
+      choiceControl:(props,invoke) => <ConversationAttachmentChoice {...props} command="toggle-conversation-document" current={() => attachmentCurrent(item)} invoke={invoke}/>,
+      removeControl:(props,children,invoke) => <ConversationAttachmentAction {...props} command="remove-conversation-document" current={() => attachmentCurrent(item)} invoke={invoke}>{children}</ConversationAttachmentAction> })),
     ...images.map(item => ({ imageCurrent:() => currentImage(item), key:`image:${item.imageId}`, name:item.filename, kind:"image" as const, included:item.included, detail:`${item.width} × ${item.height}`,
       onOpen:() => { if (!currentImage(item)) throw new Error("Choose the current image control."); setSourceDetail(null); useStore.setState({resultPreview:null}); setDocumentPreview(null); setImagePreview(item.imageId); setImagePreviewGeneration(value => value + 1); },
       onToggle:(included:boolean) => changeImage(item,included), onRemove:() => changeImage(item) })),
-    ...generated.filter(item => !item.automaticReport || item.included).map(item => ({ key:`result:${item.artifactId}`, name:item.filename, kind:"result" as const, included:item.included, detail:`Saved result · v${item.revision ?? artifactVersions[item.artifactId] ?? 1}`,
+    ...generated.filter(item => !item.automaticReport || item.included).map<AttachmentItem>(item => ({ key:`result:${item.artifactId}`, name:item.filename, kind:"result" as const, included:item.included, detail:`Saved result · v${item.revision ?? artifactVersions[item.artifactId] ?? 1}`,
       onOpen:() => { setSourceDetail(null); setImagePreview(null); setDocumentPreview(null); useStore.setState({resultPreview:item.artifactId}); },
-      onToggle:(included:boolean) => void changeResult(item.artifactId,included) })),
+      onToggle:(included:boolean) => changeAttachment(item,included),
+      openControl:(props,children,invoke) => <ConversationAttachmentAction {...props} command="preview-conversation-result" current={() => attachmentCurrent(item)} invoke={invoke}>{children}</ConversationAttachmentAction>,
+      choiceControl:(props,invoke) => <ConversationAttachmentChoice {...props} command="toggle-conversation-result" current={() => attachmentCurrent(item)} invoke={invoke}/> })),
   ];
   const queued = queuedMessages.filter(message => message.mode === "queue" && !["delivered", "cancelled"].includes(message.status));
   const closedPage = !linked && !!last?.pageIds.length;
@@ -888,6 +901,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     : sourceDetail ? <><ConversationSourceRow command="open-conversation-recorded-source" current={() => sourceCurrent(sourceDetail)} source={sourceDetail} profileNames={sourceProfileNames} invoke={() => openSource(sourceDetail)}/><p className="hint selectable">{sourceDetail.url}</p><ConversationSourceAction command="open-conversation-recorded-source" current={() => sourceCurrent(sourceDetail)} className="btn" invoke={() => openSource(sourceDetail)}>Open recorded source {shellIconOpen}</ConversationSourceAction></>
     : browserPreview;
   const supportingKey = resultPreview || imagePreview || documentPreview || sourceDetail?.sourceId || "browser";
+  const supportingCurrent = useCallback(() => conversationCurrent(), [conversationCurrent,supportingKey]);
   const closeSupporting = () => { useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(null); setSourceDetail(null); setPreviewOpen(false); };
   return <section ref={conversationRoot} className={`conversation${embedded ? " conversation-embedded" : ""}${home ? " conversation-home" : ""}${newChat ? " conversation-new" : ""}`} aria-label={embedded ? "Conversation" : undefined} aria-labelledby={embedded ? undefined : "conversation-title"}>
     {!embedded && <header className="conversation-head">{newChat && <span className="new-chat-brand"><AuxMark />Aux<span aria-hidden="true">/</span></span>}<h1 id="conversation-title">{taskTitle || savedTitle || turns[0]?.goal || "New chat"}</h1><div className="sp"/>{last && <NightRunOverflow runId={last.runId}/>} {selectedContext && selectedContext.url !== "about:blank" && <ConversationViewAction command="toggle-conversation-browser-preview" current={conversationCurrent} className="icon-btn" aria-label={previewOpen ? "Hide browser preview" : "Show browser preview"} title="Browser preview" aria-pressed={previewOpen} invoke={() => setPreviewOpen(value => !value)}>{shellIconGlobe}</ConversationViewAction>}{turns.length > 0 && <Tooltip content="Export conversation as Markdown">{descriptionId => <ConversationViewAction command="export-conversation-markdown" current={conversationCurrent} className="icon-btn" disabled={exporting?.owner === conversationCurrent} aria-describedby={descriptionId} aria-label="Export conversation as Markdown" invoke={exportConversation}>{shellIconDownloadSm}</ConversationViewAction>}</Tooltip>}<ConversationViewAction command="continue-conversation-in-rail" current={conversationCurrent} className="icon-btn" title="Continue in side panel" aria-label="Continue in side panel" invoke={() => useStore.getState().showConversationInRail(id)}>{shellIconRail}</ConversationViewAction></header>}
@@ -932,7 +946,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
 
       </ComposerFrame>
     </div></div>
-    </div>{supporting && <SupportingContent key={imagePreview ? `${supportingKey}:${imagePreviewGeneration}` : supportingKey} container={conversationRoot} viewer={!!(resultPreview || documentPreview || imagePreview)} title={supportingKey === "browser" ? "Browser preview" : sourceDetail && supportingKey === sourceDetail.sourceId ? "Source details" : "Result details"} initiallyExpanded={supportingKey !== "browser"} onClose={closeSupporting}>{supporting}</SupportingContent>}</div>
+    </div>{supporting && <SupportingContent key={imagePreview ? `${supportingKey}:${imagePreviewGeneration}` : supportingKey} container={conversationRoot} current={supportingCurrent} viewer={!!(resultPreview || documentPreview || imagePreview)} title={supportingKey === "browser" ? "Browser preview" : sourceDetail && supportingKey === sourceDetail.sourceId ? "Source details" : "Result details"} initiallyExpanded={supportingKey !== "browser"} onClose={closeSupporting}>{supporting}</SupportingContent>}</div>
     {calendarSourceChoice && <CalendarSourceChoiceDialog choice={calendarSourceChoice} returnFocus={calendarChoiceOpener} initialFocus={calendarChoiceCancel} onClose={() => setCalendarSourceChoice(null)} onChoose={profile => void openCalendarSourceInProfile(profile)} cancelControl={<ConversationSourceAction command="cancel-conversation-source-profile" current={currentCalendarChoice} controlRef={calendarChoiceCancel} className="icon-btn" aria-label="Cancel" invoke={() => setCalendarSourceChoice(null)}>{shellIconClose}</ConversationSourceAction>} profileControl={profile => <ConversationSourceAction key={profile.id} command="choose-conversation-source-profile" current={currentCalendarChoice} className="btn sm" invoke={() => openCalendarSourceInProfile(profile)}>{profile.name}{profile.current ? " · current" : ""}</ConversationSourceAction>} />}
   </section>;
 }

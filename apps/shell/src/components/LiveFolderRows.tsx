@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { errorMessage } from "../error-message";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { LiveFolderItem } from "@aux/contracts";
@@ -65,6 +66,6 @@ function Rows({ folderId }: { folderId: string }) {
     {items.map(item => <button key={item.id} className="tab-row live-folder-item" data-command-id="open-live-folder-item" aria-label={`${item.title}${item.unread ? ", unread" : ""}`} onClick={() => {
       const scope = lifetime.current;
       void executeCommand("open-live-folder-item", { payload: { folderId, itemId: item.id } }).then(() => { if (scope.live) { ++scope.request; setItems(rows => rows.map(row => row.id === item.id ? { ...row, unread: false } : row)); } }).catch((error: unknown) => { if (scope.live) setError(errorMessage(error)); });
-    }}><span className="tab-favicon"><FavIcon url={item.url} size="sm" /></span><span className="live-folder-copy"><span>{item.title}</span>{item.subtitle && <span className="hint">{item.subtitle}</span>}</span>{item.unread && <span className="live-folder-dot" aria-hidden />}</button>)}
+    }}><span className="tab-favicon"><FavIcon url={item.url} size="sm" /></span><span className="live-folder-copy"><span>{item.title}</span>{item.subtitle && <span {...staticHintProps}>{item.subtitle}</span>}</span>{item.unread && <span className="live-folder-dot" aria-hidden />}</button>)}
   </div>;
 }

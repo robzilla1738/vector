@@ -1,3 +1,4 @@
+import { staticRowProps } from "../../ui/class-props";
 import { runCommand } from "../../commands";
 import { useStore } from "../../store";
 import { bridge } from "../../bridge";
@@ -33,7 +34,7 @@ export function SidebarOptions() {
     </SettingsField>
     <SettingsField label="Sidebar sections" hint="Choose which sections start expanded. Their headings stay available so you can reopen them." searchTerms={["bookmarks", "chats", "tabs", "aside"]}>
       <div className="settings-check-list">
-        {sections.map(section => <label key={section.id} className="row">
+        {sections.map(section => <label key={section.id} {...staticRowProps}>
           <input type="checkbox" aria-label={`Expand ${section.label} in sidebar`} checked={open[section.id]}
             disabled={bridge.privateMode && section.id !== "tabs"}
             onChange={() => toggle(section.id)} />

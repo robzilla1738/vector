@@ -1,3 +1,4 @@
+import { staticHintProps } from "../../ui/class-props";
 import { bridge, inNativeHost } from "../../bridge";
 import { NativePreferenceControl } from "./native-preference-control";
 type HttpsUpgrade = { enabled:boolean;available:boolean;managed:boolean };
@@ -10,7 +11,7 @@ async function write(enabled:boolean,current:()=>boolean) {
   return {ack,value};
 }
 const writable=(value:HttpsUpgrade)=>value.available;
-const hint=(value:HttpsUpgrade)=>!value.available&&<span className="hint">{value.managed?"Disabled by your organization":"Unavailable in this browser build"}</span>;
+const hint=(value:HttpsUpgrade)=>!value.available&&<span {...staticHintProps}>{value.managed?"Disabled by your organization":"Unavailable in this browser build"}</span>;
 export function HttpsFirstSetting({active}:{active:boolean}) {
   return <NativePreferenceControl active={active} available={inNativeHost} kind="https-first" label="Automatically upgrade eligible HTTP pages" reading="Reading HTTPS-first setting…" privateHint="HTTPS-first follows the regular Profile and cannot be changed in Private mode." read={read} write={write} writable={writable} hint={hint}/>;
 }

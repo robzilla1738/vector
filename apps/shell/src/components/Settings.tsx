@@ -1,3 +1,5 @@
+import { staticIconButtonProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { FeatureSettings, featureSettingsAvailable } from "../features/registry";
 import "./Settings.css";
 import { MemorySettings } from "./MemorySettings";
@@ -305,7 +307,7 @@ export function Settings() {
         <div className="drawer-head">
           {subview && !searching && (
             <button
-              className="icon-btn"
+              {...staticIconButtonProps}
               aria-label="Back to General settings"
               onClick={() => {
                 setSubview(null);
@@ -328,7 +330,7 @@ export function Settings() {
           <span className="sp" />
           {saved && <output className="saved">{shellIconCheck} Saved</output>}
           <button
-            className="icon-btn"
+            {...staticIconButtonProps}
             title="Close (Esc)"
             aria-label="Close settings"
             onClick={() => setOverlay(null)}
@@ -380,7 +382,7 @@ export function Settings() {
           <FeatureSettings category={!searching && !subview && (category !== "Connections" || connectionTab === "Services") ? category : null} />
           {searching && (
             <div className="settings-search-results">
-              <output className="hint" data-block>
+              <output {...staticHintProps} data-block>
                 {results.length
                   ? `${results.length} matching ${results.length === 1 ? "setting" : "settings"}`
                   : `No settings found for “${query.trim()}”. Try theme, privacy, models or backup.`}

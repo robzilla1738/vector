@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../../ui/class-props";
+import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallGhostButtonProps } from "../../ui/button-props";
 import { AUX_FEATURES, type AuxFeature } from "@aux/contracts";
 import { featureStage } from "../../use-feature";
@@ -68,8 +70,8 @@ export function AboutAuxSetting({ active }: { active: boolean }) {
   }, [build, current, owner]);
   const [errorRef, errorInput] = usePreferenceCommand<HTMLElement>("toggle-installed-build-error-details", scopeId, toggleError);
   const [featureRef, featureInput] = usePreferenceCommand<HTMLElement>("toggle-installed-feature-availability", scopeId, toggleFeatures);
-  if (!available) return <span className="hint">Available in the Aux desktop app.</span>;
-  if (error) return <div role="alert" className="field-error">
+  if (!available) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
+  if (error) return <div role="alert" {...staticFieldErrorProps}>
     <span>Could not read the installed build.</span>{" "}
     <PreferenceAction command="retry-installed-build" scopeId={scopeId} invoke={retry} {...smallGhostButtonProps}>Retry</PreferenceAction>
     <details open={expandedError === error}>
@@ -77,11 +79,11 @@ export function AboutAuxSetting({ active }: { active: boolean }) {
       <pre className="hint mono" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 180, overflow: "auto", userSelect: "text" }}>{error.text}</pre>
     </details>
   </div>;
-  if (!build) return <span className="hint">Reading installed build…</span>;
+  if (!build) return <span {...staticHintProps}>Reading installed build…</span>;
   const [chromiumVersion, manifestHash] = build.buildId.split("+");
   return <>
-    <div className="row">
-      <span className="hint">Chromium {chromiumVersion}</span>
+    <div {...staticRowProps}>
+      <span {...staticHintProps}>Chromium {chromiumVersion}</span>
       {manifestHash && <span className="hint mono" title={build.buildId}>Build {manifestHash.slice(0, 8)}</span>}
       <span className="hint mono" title={build.sourceCommit}>Source {build.sourceCommit.slice(0, 8)}</span>
       {build.sourceCommit.endsWith("+dirty") && <span className="badge" title="This build includes uncommitted product changes">+dirty</span>}

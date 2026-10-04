@@ -1,3 +1,4 @@
+import { staticRowProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -183,7 +184,7 @@ export function SetupReview({
             {summary.running && <p>Starting a chat does not wait for or cancel this import.</p>}
           </>
         )}
-        <div className="row">
+        <div {...staticRowProps}>
           <button {...smallGhostButtonProps} disabled={!connected} onClick={() => onVisit("import")}>
             Review browser import
           </button>
@@ -239,7 +240,7 @@ export function SetupReview({
                 ? "Checking recovery readiness…"
                 : "Recovery readiness is unavailable. Check again before starting a chat."}
         </p>
-        <div className="row">
+        <div {...staticRowProps}>
           <button {...smallGhostButtonProps} disabled={!connected} onClick={() => onVisit("welcome")}>
             Review recovery options
           </button>

@@ -1,3 +1,5 @@
+import { staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./FilterListManager.css";
@@ -64,12 +66,12 @@ export function FilterListManager() {
   return (
     <section className="filter-manager" aria-label="Filter lists">
       <div className="drawer-section">Filter lists</div>
-      <p className="hint">
+      <p {...staticHintProps}>
         Choose HTTPS hosts or cookie-banner lists you trust. Downloads update in Aux while it is open. The
         built-in protection works without a download.
       </p>
       {status && (
-        <p className="hint">
+        <p {...staticHintProps}>
           {status.builtinHosts.toLocaleString()} built-in domains · {status.hosts.toLocaleString()} enabled
           list entries · {status.cookieSelectors.toLocaleString()} cookie-banner selectors
           {preview && " · Browser preview only; no requests are blocked here."}
@@ -93,26 +95,26 @@ export function FilterListManager() {
               </span>
             </button>
           ))}
-          {status && !status.sources.length && <p className="hint">No downloaded lists selected.</p>}
+          {status && !status.sources.length && <p {...staticHintProps}>No downloaded lists selected.</p>}
         </aside>
         <div className="filter-manager-detail">
-          {!status && <p className="hint">Loading filter lists…</p>}
-          {status && !selected && <p className="hint">Choose a list to review its source and status.</p>}
+          {!status && <p {...staticHintProps}>Loading filter lists…</p>}
+          {status && !selected && <p {...staticHintProps}>Choose a list to review its source and status.</p>}
           {selected && (
             <>
               <strong>{selected.name}</strong>
               <span className="hint filter-manager-url">{selected.url}</span>
-              <span className="hint">
+              <span {...staticHintProps}>
                 {selected.meta?.fetchedAt
                   ? `Last checked ${new Date(selected.meta.fetchedAt).toLocaleString()}`
                   : "No downloaded copy yet."}
               </span>
               {selected.meta?.error && (
-                <p className="field-error" role="status">
+                <p {...staticFieldErrorProps} role="status">
                   Last update: {selected.meta.error}. The previous copy remains available.
                 </p>
               )}
-              <div className="row">
+              <div {...staticRowProps}>
                 <button
                   {...smallButtonProps}
                   disabled={busy || preview}
@@ -167,7 +169,7 @@ export function FilterListManager() {
           </select>
         </label>
         {nativeHostsOnly && (
-          <p className="hint">
+          <p {...staticHintProps}>
             Chromium applies downloaded domain lists to network requests. Cosmetic lists need a separate
             native stylesheet backend.
           </p>
@@ -199,7 +201,7 @@ export function FilterListManager() {
             }}
           />
         </label>
-        <div className="row">
+        <div {...staticRowProps}>
           <button {...smallButtonProps} disabled={busy || preview || !url.trim()} onClick={inspect}>
             Review list
           </button>
@@ -223,14 +225,14 @@ export function FilterListManager() {
             <p>
               {review.name} · {review.url}
             </p>
-            <p className="hint">
+            <p {...staticHintProps}>
               Aux will fetch this source and use{" "}
               {review.kind === "hosts"
                 ? "validated host entries for subresource blocking"
                 : "validated cosmetic selectors to hide cookie banners on matching sites"}
               . The source sees this browser's network address.
             </p>
-            <div className="row">
+            <div {...staticRowProps}>
               <button
                 {...smallButtonProps}
                 disabled={busy}
@@ -256,12 +258,12 @@ export function FilterListManager() {
         )}
       </div>
       {error && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {error}
         </p>
       )}
       {notice && (
-        <output className="hint" data-block>
+        <output {...staticHintProps} data-block>
           {notice}
         </output>
       )}

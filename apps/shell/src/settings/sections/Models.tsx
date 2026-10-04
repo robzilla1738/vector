@@ -1,3 +1,5 @@
+import { staticFieldProps } from "../../ui/class-props";
+import { staticRowProps, staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
@@ -83,7 +85,7 @@ function ModelRoleField({
     });
   return (
     <IndexedField label={`${role.label} model`} hint={role.hint}>
-      <div className="row">
+      <div {...staticRowProps}>
         <input
           className="grow"
           aria-label={`${role.label} model ID`}
@@ -137,7 +139,7 @@ function ModelRoleField({
           </PreferenceAction>
         )}
       </div>
-      <span className="hint">
+      <span {...staticHintProps}>
         {override ? "Custom route" : "Automatic · follows the configured default for this role"}
       </span>
     </IndexedField>
@@ -551,7 +553,7 @@ export function ModelsSettings({
 
   return (
     <SettingsSection name="Models" title="AI model" hidden={!active}>
-      <output className="field" data-block>
+      <output {...staticFieldProps} data-block>
         {!connected
           ? `${providerNames[provider]} is disconnected. Reconnect explicitly before making requests.`
           : probe?.ok
@@ -593,7 +595,7 @@ export function ModelsSettings({
           label="Endpoint"
           hint="Prompts and screenshots are sent here. Remote endpoints must use HTTPS; localhost may use HTTP."
         >
-          <div className="row" ref={endpointControlRef}>
+          <div {...staticRowProps} ref={endpointControlRef}>
             <input
               ref={endpointInputRef}
               className="grow"
@@ -675,7 +677,7 @@ export function ModelsSettings({
           </>
         }
       >
-        <div className="row" ref={keyControlRef}>
+        <div {...staticRowProps} ref={keyControlRef}>
           <input
             ref={(node) => {
               keyInput.current = node;
@@ -722,7 +724,7 @@ export function ModelsSettings({
       </IndexedField>
 
       {connectionError && (
-        <p className="field" role="alert">
+        <p {...staticFieldProps} role="alert">
           {connectionError}
         </p>
       )}
@@ -730,7 +732,7 @@ export function ModelsSettings({
         label="Planner model"
         hint="Enter the exact model ID for the selected provider. Availability depends on your account."
       >
-        <div className="row" ref={plannerControlRef}>
+        <div {...staticRowProps} ref={plannerControlRef}>
           <input
             className="grow"
             ref={(node) => {
@@ -795,7 +797,7 @@ export function ModelsSettings({
           </PreferenceAction>
         </div>
         {contributorSelected && (
-          <p className="hint" id="contributor-data-use">
+          <p {...staticHintProps} id="contributor-data-use">
             <strong>Contributor data use.</strong> This tier lets Meta use prompts and completions sent to it
             to improve its models.
           </p>

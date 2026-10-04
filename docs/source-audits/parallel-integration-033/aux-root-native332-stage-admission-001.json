@@ -1,0 +1,14 @@
+{
+  "stageOnlyAdmission": true,
+  "candidate": "d9a0e06ed2a263b95bb02a1b91a128a3fcf74d78",
+  "fourDeltaExact": true,
+  "full733ForwardReverseForward": true,
+  "original331PrefixExact": true,
+  "retained524SourceClosure": true,
+  "actualBinaryEnumerationPending": true,
+  "launcherSha256": "e8d898f6fe7728cb210080816ed40f1ebf131f9309b72f5df4907b3d17d83e0a",
+  "controllerSha256": "0e4c66b5ad61c09cebc42e2b7b32f2bc7c6c572e8e9a6668bc62bb401568bbc2",
+  "outerSha256": "ecdb17792426e7e217055a8aeb37336bad92bbcf4f1656dee06b2bd91397839b",
+  "GNBuildAppAdmitted": false,
+  "correctedAuditAssumption": "Two capture source fixtures change but exact original ordered declarations remain; initial overstrict unchanged-source audit refused after complete replay."
+}

@@ -1,0 +1,64 @@
+{
+  "prerequisitePackets": [
+    "Document4 6a6bc2ba8",
+    "Designer hint/row75df1c309 + format5ba1f4ef4",
+    "Designer modifier b90881abd"
+  ],
+  "files": [
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.tsx",
+      "beforeSha256": "89a1e4de43573c8a59a2fea54d8867ca0af948a4632f350da930ba8fc155fa5e",
+      "afterSha256": "83b84c03bbf1263c44f176941448350734e064a2036df91ceb0abef464a16750"
+    },
+    {
+      "path": "apps/shell/src/components/ResultPreviewControls.tsx",
+      "beforeSha256": null,
+      "afterSha256": "9f033865e0037aa7056e5cdad7b31a1d09e5273a35066d9130db7ae9df6e17fa"
+    },
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.commands.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "57c8fc2c23e318732cc6075610607def3073befd140e86e348049197527288a3"
+    },
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.test.tsx",
+      "beforeSha256": "d7927a72c34738195ba974745ac9c1f689186dac7bcc1ce2088e9a59c647cc4f",
+      "afterSha256": "729cc5b82f8d655623a68977c39aea5e471dd12c4e0086cd5e6fc3bba8265901"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "503938409ca0845815a7d9f63fcfd7ac3b37d74e11ceb8aba61ed19efeaecaa7",
+      "afterSha256": "56868b5d0aa7a672d5feb3a565ab0c0ee8f3b783cfc94b4f229a7344235da136"
+    }
+  ],
+  "unchangedPrerequisites": [
+    {
+      "path": "apps/shell/src/ui/button-props.ts",
+      "sha256": "23a580bbc95060ab70d78845b52f3b41fcc701205f058620d9ea56aac209398e",
+      "policy": "readonly adopted prerequisite; excluded from patch"
+    },
+    {
+      "path": "apps/shell/src/ui/class-props.ts",
+      "sha256": "26ede734c35859e363a506c7749e791f77b7bb50ae67a02a03e35194c971c799",
+      "policy": "readonly adopted prerequisite; excluded from patch"
+    },
+    {
+      "path": "apps/shell/src/error-message.ts",
+      "sha256": "7ee2b978c3b95a0d051475f0a071af80485c51a3786918c9cac4900b1c38899e",
+      "policy": "readonly adopted prerequisite; excluded from patch"
+    }
+  ],
+  "patchSha256": "6fbf95307eeaa104d0891b860e8652ab7dce2a38e326d5b6984da9bf99d776a8",
+  "forwardReverseForward": true,
+  "exactResultBytes": true,
+  "checks": {
+    "newMounted": 14,
+    "originalGenerated": 1,
+    "documentCohort": 11,
+    "types": true,
+    "lint": "pass with two effect warnings",
+    "falsifier": "Original unguarded revision completion publishes retired version after real chat A\u2192B\u2192A; original assertion RED"
+  },
+  "nativeExecuted": false,
+  "budgetAccepted": false
+}

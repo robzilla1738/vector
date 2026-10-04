@@ -1,0 +1,132 @@
+diff --git a/apps/shell/src/components/DocumentSnapshot.commands.test.tsx b/apps/shell/src/components/DocumentSnapshot.commands.test.tsx
+new file mode 100644
+index 0000000..ac5721d
+--- /dev/null
++++ b/apps/shell/src/components/DocumentSnapshot.commands.test.tsx
+@@ -0,0 +1,32 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { beforeEach,afterEach,expect,it,vi } from "vitest";
++import { COMMANDS, type ConversationAttachment } from "@aux/contracts";
++import { bridge } from "../bridge";
++import { useStore } from "../store";
++import { executeCommand,dispatchShortcut } from "../commands";
++import { DocumentSnapshot } from "./DocumentSnapshot";
++const initial=useStore.getState(),windowId=bridge.windowId;let host:HTMLDivElement,root:ReturnType<typeof createRoot>;
++const close=vi.fn();
++type ReadSnapshot={attachment:ConversationAttachment;content:string;contextCharacters:number;contextText?:string;contextTotalCharacters?:number};
++const snapshot=(id="one",content="Original full snapshot text"):ReadSnapshot=>({attachment:{attachmentId:id,filename:"Original document.txt",excerpt:"Original full",included:true,createdAt:1,byteLength:content.length},content,contextCharacters:8,contextText:content.slice(0,8),contextTotalCharacters:content.length});
++let reads:{params:unknown;resolve(value:ReturnType<typeof snapshot>):void;reject(reason:unknown):void}[];
++beforeEach(()=>{vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);useStore.setState({...initial,connected:false,toasts:[]},true);close.mockReset();reads=[];vi.spyOn(bridge,"invoke").mockImplementation((method,params)=>{if(method!=="conversations.attachments.read")throw new Error(`Unexpected ${method}`);return new Promise((resolve,reject)=>reads.push({params,resolve,reject}));});host=document.createElement("div");document.body.append(host);root=createRoot(host);});
++afterEach(async()=>{await act(async()=>root.unmount());host.remove();useStore.setState(initial,true);bridge.windowId=windowId;vi.restoreAllMocks();vi.unstubAllGlobals();});
++async function render(chat="a",id="one"){await act(async()=>root.render(<DocumentSnapshot chatId={chat} attachmentId={id} onClose={close}/>));}
++async function ready(){await render();await act(async()=>reads[0]!.resolve(snapshot()));}
++const control=(command:string)=>host.querySelector<HTMLElement>(`[data-command-id="${command}"]`)!;
++async function command(id:string){let result!:Promise<unknown>;await act(async()=>{control(id).focus();result=executeCommand(id);void result.catch(()=>{});});return {result};}
++const text="toggle-conversation-document-text",details="toggle-conversation-document-details",retry="retry-conversation-document-read",closeId="close-conversation-document-preview";
++it("actual original read/filename/scope/source disclosure and full text remain intact",async()=>{await ready();expect(reads[0]!.params).toEqual({chatId:"a",attachmentId:"one"});expect(host.textContent).toContain("Original document.txt");expect(host.textContent).toContain("Original full snapshot text");await command(text);expect(host.querySelector('pre[aria-label="Included document text"]')?.textContent).toBe("Original");expect(control(text).getAttribute("aria-pressed")).toBe("true");await command(text);expect(host.querySelector('pre[aria-label="Included document text"]')).toBeNull();const pointer=new MouseEvent("click",{bubbles:true,cancelable:true});await act(async()=>{expect(control(details).dispatchEvent(pointer)).toBe(false);});expect(pointer.defaultPrevented).toBe(true);expect(host.querySelector<HTMLDetailsElement>("details")!.open).toBe(true);expect(host.textContent).toContain("Earlier turns and retries keep the text they used");});
++it("retry actual producer keeps error identity text and resolves fresh original request",async()=>{await render();const reason=new Error("Original read failed");await act(async()=>reads[0]!.reject(reason));expect(host.querySelector('[role="alert"]')?.textContent).toContain(String(reason));await command(retry);expect(reads).toHaveLength(2);expect(reads[1]!.params).toEqual(reads[0]!.params);await act(async()=>reads[1]!.resolve(snapshot()));expect(host.querySelector('[role="alert"]')).toBeNull();});
++it("close loading snapshot is registered and retains original callback ACK",async()=>{await render();const ack={original:"close"};close.mockReturnValue(ack);const original=await command(closeId);await expect(original.result).resolves.toBe(ack);expect(close).toHaveBeenCalledTimes(1);});
++it("held chat A→B→A replies cannot replace the newest actual snapshot",async()=>{await render();await render("b");await render("a");expect(reads).toHaveLength(3);await act(async()=>reads[2]!.resolve(snapshot("one","Current accepted source")));await act(async()=>{reads[0]!.resolve(snapshot("one","Retired original source"));reads[1]!.resolve(snapshot("one","Foreign chat source"));});expect(host.textContent).toContain("Current accepted source");expect(host.textContent).not.toContain("Retired original source");expect(host.textContent).not.toContain("Foreign chat source");});
++it("held attachment one→two→one failure cannot replace current source",async()=>{await render();await render("a","two");await render("a","one");await act(async()=>reads[2]!.resolve(snapshot()));await act(async()=>reads[0]!.reject(new Error("Retired source failure")));expect(host.querySelector('[role="alert"]')).toBeNull();expect(host.textContent).toContain("Original full snapshot text");});
++it("observed foreign window ABA refuses old close and held reply publication",async()=>{await render();bridge.windowId="foreign";await act(async()=>control(closeId).click());bridge.windowId=windowId;await expect(executeCommand(closeId)).rejects.toThrow();await act(async()=>reads[0]!.resolve(snapshot()));expect(host.textContent).not.toContain("Original full snapshot text");expect(close).not.toHaveBeenCalled();expect(useStore.getState().toasts).toEqual([]);});
++it("committed disconnected→connected→disconnected renews exact read and refuses old failures",async()=>{await render();await act(async()=>useStore.setState({connected:true}));await act(async()=>useStore.setState({connected:false}));expect(reads).toHaveLength(3);await act(async()=>reads[2]!.resolve(snapshot("one","Latest source after renewal")));await act(async()=>reads[0]!.reject(new Error("Old disconnected reply")));expect(host.textContent).toContain("Latest source after renewal");expect(host.querySelector('[role="alert"]')).toBeNull();});
++it("focused remaps use actual loaded summary and included-text controls",async()=>{useStore.setState({settings:{shortcutOverrides:{[details]:[{key:"j",command:true,alt:true}],[text]:[{key:"k",command:true,alt:true}]}}});await ready();await act(async()=>{control(details).focus();expect(dispatchShortcut({key:"j",meta:true,alt:true,shift:false})).toBe(true);});expect(host.querySelector<HTMLDetailsElement>("details")!.open).toBe(true);await act(async()=>{control(text).focus();expect(dispatchShortcut({key:"k",meta:true,alt:true,shift:false})).toBe(true);});expect(host.querySelector('pre[aria-label="Included document text"]')).not.toBeNull();});
++it("full included reference hides text-scope control exactly as original",async()=>{await render();const value=snapshot();value.contextCharacters=value.content.length;delete value.contextText;await act(async()=>reads[0]!.resolve(value));expect(control(text)).toBeNull();expect(host.textContent).toContain("Entire text reference included in new replies");});
++it("hidden/unfocused controls refuse original close or display mutation",async()=>{await ready();control(closeId).setAttribute("hidden","");control(closeId).focus();await expect(executeCommand(closeId)).rejects.toThrow();host.focus();await expect(executeCommand(text)).rejects.toThrow();expect(close).not.toHaveBeenCalled();});
++it("all four actions remain original normal scoped controls",()=>{for(const id of [text,details,retry,closeId])expect(COMMANDS.find(row=>row.id===id)).toMatchObject({windows:["normal"],palette:false,bindings:[],intercept:true});});
+diff --git a/apps/shell/src/components/DocumentSnapshot.tsx b/apps/shell/src/components/DocumentSnapshot.tsx
+index 741d8fb..6728057 100644
+--- a/apps/shell/src/components/DocumentSnapshot.tsx
++++ b/apps/shell/src/components/DocumentSnapshot.tsx
+@@ -1,8 +1,12 @@
+ import { staticHintProps } from "../ui/class-props";
+ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+-import { useEffect, useState } from "react";
++import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+ import type { ConversationAttachment } from "@aux/contracts";
+-import { call } from "../store";
++import { call, useStore } from "../store";
++import { useConversationOwner } from "./ConversationControls";
++import { useConversationAttachmentOwner } from "./ConversationAttachmentControls";
++import { DocumentSnapshotControl } from "./DocumentSnapshotControls";
++import { shellIconClose } from "./icons";
+ import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
+ import { ViewerFrame } from "./ViewerFrame";
+ 
+@@ -14,21 +18,30 @@ export function DocumentSnapshot({ chatId, attachmentId, onClose }: { chatId: st
+   const [error, setError] = useState("");
+   const [retry, setRetry] = useState(0);
+   const [includedOnly, setIncludedOnly] = useState(false);
++  const connected=useStore(state=>state.connected), chatCurrent=useConversationOwner(chatId,connected);
++  const reference=useMemo(()=>({attachmentId}),[attachmentId]), referenceCurrent=useConversationAttachmentOwner(chatCurrent,[reference]);
++  const current=useCallback(()=>referenceCurrent(reference),[referenceCurrent,reference]);
++  const published=useRef<Snapshot|null>(null);
++  useLayoutEffect(()=>{published.current=snapshot;},[snapshot]);
++  const recordCurrent=useConversationAttachmentOwner(current,snapshot ? [snapshot.attachment] : []);
++  const loadedCurrent=()=>!!snapshot && published.current===snapshot && recordCurrent(snapshot.attachment);
++
+   useEffect(() => {
+     let live = true;
+     setSnapshot(null); setError(""); setIncludedOnly(false);
++    if(!current())return;
+     void call("conversations.attachments.read", { chatId, attachmentId })
+-      .then(value => { if (live) setSnapshot(value); })
+-      .catch(reason => { if (live) setError(String(reason)); });
++      .then(value => { if (live && current()) setSnapshot(value); })
++      .catch(reason => { if (live && current()) setError(String(reason)); });
+     return () => { live = false; };
+-  }, [chatId, attachmentId, retry]);
+-  return <ViewerFrame label="Document snapshot" title={snapshot?.attachment.filename ?? "Document snapshot"} onClose={onClose} closeLabel="Close document preview" metadata={snapshot && `Saved ${new Date(snapshot.attachment.createdAt).toLocaleString()}`}>
+-    {error ? <p role="alert">{error} <button {...smallButtonProps} onClick={() => setRetry(value => value + 1)}>Retry</button></p> : !snapshot ? <output {...staticHintProps} data-block>Loading snapshot…</output> : <>
++  }, [chatId, attachmentId, retry, current]);
++  return <ViewerFrame label="Document snapshot" title={snapshot?.attachment.filename ?? "Document snapshot"} onClose={onClose} closeLabel="Close document preview" closeControl={<DocumentSnapshotControl command="close-conversation-document-preview" current={current} invoke={onClose} className="icon-btn xs" aria-label="Close document preview">{shellIconClose}</DocumentSnapshotControl>} metadata={snapshot && `Saved ${new Date(snapshot.attachment.createdAt).toLocaleString()}`}>
++    {error ? <p role="alert">{error} <DocumentSnapshotControl {...smallButtonProps} command="retry-conversation-document-read" current={()=>current() && !!error} invoke={() => setRetry(value => value + 1)}>Retry</DocumentSnapshotControl></p> : !snapshot ? <output {...staticHintProps} data-block>Loading snapshot…</output> : <>
+       <div className="document-snapshot-scope"><span>{!snapshot.attachment.included ? "Excluded from new replies" : snapshot.contextCharacters === (snapshot.contextTotalCharacters ?? snapshot.content.length) ? "Entire text reference included in new replies" : `${snapshot.contextCharacters.toLocaleString()} of ${(snapshot.contextTotalCharacters ?? snapshot.content.length).toLocaleString()} characters included · shared context limit`}</span>
+-        {snapshot.contextCharacters > 0 && (snapshot.contextText !== undefined || snapshot.contextCharacters < snapshot.content.length) && <button {...smallGhostButtonProps} aria-pressed={includedOnly} onClick={() => setIncludedOnly(value => !value)}>{includedOnly ? "Show full snapshot" : "Show included text"}</button>}
++        {snapshot.contextCharacters > 0 && (snapshot.contextText !== undefined || snapshot.contextCharacters < snapshot.content.length) && <DocumentSnapshotControl {...smallGhostButtonProps} aria-pressed={includedOnly} command="toggle-conversation-document-text" current={loadedCurrent} invoke={() => setIncludedOnly(value => !value)}>{includedOnly ? "Show full snapshot" : "Show included text"}</DocumentSnapshotControl>}
+       </div>
+       {includedOnly ? <pre role="group" tabIndex={0} aria-label="Included document text">{snapshot.contextText ?? snapshot.content.slice(0, snapshot.contextCharacters)}</pre> : <DocumentContent key={attachmentId} filename={snapshot.attachment.filename} content={snapshot.content} />}
+-      <details className="snapshot-details"><summary>About this snapshot</summary>
++      <details className="snapshot-details"><DocumentSnapshotControl summary command="toggle-conversation-document-details" current={loadedCurrent} invoke={()=>{}}>About this snapshot</DocumentSnapshotControl>
+       <p {...staticHintProps}>Saved {new Date(snapshot.attachment.createdAt).toLocaleString()}. Changes to the original {snapshot.attachment.sourceUrl ? "page" : "file"} are not synced.</p>
+       <p {...staticHintProps}>Removing this snapshot stops its use in new turns. Earlier turns and retries keep the text they used until you delete the chat.</p>
+       <DocumentExtractionNote filename={snapshot.attachment.filename} />
+diff --git a/apps/shell/src/components/DocumentSnapshotControls.tsx b/apps/shell/src/components/DocumentSnapshotControls.tsx
+new file mode 100644
+index 0000000..f49b42d
+--- /dev/null
++++ b/apps/shell/src/components/DocumentSnapshotControls.tsx
+@@ -0,0 +1,16 @@
++import { useId, type ButtonHTMLAttributes } from "react";
++import { usePreferenceCommand } from "../settings/sections/preference-command";
++import { executeCommand } from "../commands";
++import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
++import { errToast } from "../store";
++type DocumentCommand = "retry-conversation-document-read" | "toggle-conversation-document-text" | "toggle-conversation-document-details" | "close-conversation-document-preview";
++export function DocumentSnapshotControl({command,current,invoke,summary,...props}:Omit<ButtonHTMLAttributes<HTMLButtonElement>,"onClick"> & {command:DocumentCommand;current():boolean;invoke():unknown;summary?:boolean}) {
++  const scope=useId();
++  const [ref]=usePreferenceCommand<HTMLElement>(command,scope,(element,event)=>{
++    if(!current())return guardCommandCompletion(Promise.reject(new Error("Choose the original document snapshot.")),current);
++    if(summary){const details=element.parentElement;if(!(details instanceof HTMLDetailsElement)||details.firstElementChild!==element)throw new Error("Choose the original snapshot disclosure.");event?.preventDefault();details.open=!details.open;return;}
++    return invoke();
++  });
++  const run=(event:{nativeEvent:Event})=>{const completion=executeCommand(command,{payload:{scopeId:scope},nativeInputEvent:event.nativeEvent});void completion.catch(reason=>reportCommandCompletionFailure(completion,reason,error=>{if(current())errToast(error);}));};
++  return summary ? <summary ref={ref} data-command-id={command} onClick={run}>{props.children}</summary> : <button {...props} ref={ref} data-command-id={command} onClick={run}/>;
++}
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index 35b289c..68833af 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -152,6 +152,10 @@ export const COMMANDS = [
+   S("increase-conversation-supporting-width", "Widen supporting conversation content", browserContextControl),
+   S("decrease-conversation-supporting-width", "Narrow supporting conversation content", browserContextControl),
+   S("reset-conversation-supporting-width", "Reset supporting conversation content width", browserContextControl),
++  S("retry-conversation-document-read", "Retry document snapshot read", browserContextControl),
++  S("toggle-conversation-document-text", "Show included or full document snapshot text", browserContextControl),
++  S("toggle-conversation-document-details", "Toggle document snapshot details", browserContextControl),
++  S("close-conversation-document-preview", "Close document snapshot preview", browserContextControl),
+   ...G(pageRecoveryControl, "-page-recovery", [
+     ["retry", "", "Retry this page"],
+     ["edit", "-address", "Edit failing page address"],

@@ -1,3 +1,4 @@
+import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
@@ -75,8 +76,8 @@ export function RunAttentionFeed({ runs, onOpenRun, limit = 8 }: {
   return <section className="run-attention-feed" aria-label="Tasks needing your input">
     <h2>Needs your input</h2>
     {visible.map((item) => <article className="run-failure run-attention-card" key={item.suspension.suspensionId}>
-      <div><strong>{LABELS[item.suspension.kind].title}</strong><p className="hint">{LABELS[item.suspension.kind].detail}</p></div>
-      <div className="row">
+      <div><strong>{LABELS[item.suspension.kind].title}</strong><p {...staticHintProps}>{LABELS[item.suspension.kind].detail}</p></div>
+      <div {...staticRowProps}>
         <button className="btn sm primary" onKeyDown={(event) => dismissOnEscape(event, item.suspension.suspensionId)}
           onClick={() => void review(item)}>Review task</button>
         <button {...smallGhostButtonProps} aria-label={`Dismiss ${LABELS[item.suspension.kind].title}`}
@@ -84,7 +85,7 @@ export function RunAttentionFeed({ runs, onOpenRun, limit = 8 }: {
           onClick={() => dismiss(item.suspension.suspensionId)}>Dismiss</button>
       </div>
     </article>)}
-    {items.length > visible.length && <p className="hint">More tasks need your input in Tasks.</p>}
+    {items.length > visible.length && <p {...staticHintProps}>More tasks need your input in Tasks.</p>}
     {error && <p role="alert">{error}</p>}
   </section>;
 }

@@ -1,3 +1,5 @@
+import { staticFieldProps, staticFieldErrorProps } from "../ui/class-props";
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { useState } from "react";
 import type { Routine } from "@aux/contracts";
@@ -67,10 +69,10 @@ export function SkillMetadata({
   return (
     <details className="routine-accounts" aria-label="Skill sharing and suggestions">
       <summary>Sharing and suggestions</summary>
-      <p className="hint">
+      <p {...staticHintProps}>
         These details are saved in SKILL.md. Matches only suggest this Skill to you; they never start it.
       </p>
-      <label className="field">
+      <label {...staticFieldProps}>
         Description
         <textarea
           value={description}
@@ -79,7 +81,7 @@ export function SkillMetadata({
           onChange={(event) => setDescription(event.target.value)}
         />
       </label>
-      <label className="field">
+      <label {...staticFieldProps}>
         Icon name or URL
         <input
           value={icon}
@@ -88,7 +90,7 @@ export function SkillMetadata({
           onChange={(event) => setIcon(event.target.value)}
         />
       </label>
-      <label className="field">
+      <label {...staticFieldProps}>
         Suggestion keywords · one per line
         <textarea
           value={keywords}
@@ -97,7 +99,7 @@ export function SkillMetadata({
           onChange={(event) => setKeywords(event.target.value)}
         />
       </label>
-      <label className="field">
+      <label {...staticFieldProps}>
         Suggestion URL prefixes · one per line
         <textarea
           value={urls}
@@ -106,9 +108,9 @@ export function SkillMetadata({
           onChange={(event) => setUrls(event.target.value)}
         />
       </label>
-      <p className="hint">URL matches require the exact site origin and a matching path segment.</p>
+      <p {...staticHintProps}>URL matches require the exact site origin and a matching path segment.</p>
       {error && (
-        <p className="field-error" role="alert">
+        <p {...staticFieldErrorProps} role="alert">
           {error}
         </p>
       )}

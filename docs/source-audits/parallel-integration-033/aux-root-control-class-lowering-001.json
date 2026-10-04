@@ -1,0 +1,522 @@
+{
+  "esbuildVersion": "0.28.2",
+  "target": "chrome154",
+  "checks": [
+    {
+      "path": "apps/shell/src/components/AgentRail.tsx",
+      "sites": 4,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ArchivePolicy.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/BrowserProfiles.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/BrowsingMemory.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/CalendarConnections.tsx",
+      "sites": 3,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/CalendarTaskGrants.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ClearBrowsingData.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ClearHistory.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ContentMemory.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Downloads.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ExtensionActions.tsx",
+      "sites": 4,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgentOversight.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgents.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/FilterListManager.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/FindBar.tsx",
+      "sites": 3,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/GithubConnections.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/HorizontalPins.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/HorizontalTabs.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/HttpAuthPrompt.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/InlineAssist.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "sites": 14,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/LittleWindow.tsx",
+      "sites": 4,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/LiveFolderEditor.tsx",
+      "sites": 6,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemoryExclusions.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemoryItems.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemoryPasteImport.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemoryRecoveryNotice.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemorySettings.tsx",
+      "sites": 3,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/NavigationButtons.tsx",
+      "sites": 4,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "sites": 50,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "sites": 3,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/PasswordTransferSetting.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/PinMenu.tsx",
+      "sites": 9,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/PluginsPanel.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/QuickAskSetting.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RecentWork.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ResultsTable.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RoutineSchedule.tsx",
+      "sites": 3,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "sites": 21,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RunControls.tsx",
+      "sites": 4,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RunImages.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RunPanel.tsx",
+      "sites": 4,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SaveConversationTask.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SearchEngineSetting.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SearchEnginesSetting.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Settings.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ShortcutsSetting.tsx",
+      "sites": 4,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "sites": 9,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SiteControls.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SiteCustomization.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SkillMetadata.tsx",
+      "sites": 5,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SkillReplayPanel.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SpaceEditor.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SpaceMemoryEditor.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/TabMenu.tsx",
+      "sites": 24,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/TaskHistory.tsx",
+      "sites": 3,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "sites": 14,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "sites": 11,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Toolbar.tsx",
+      "sites": 3,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/VaultOfferBanner.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "sites": 3,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/WorkbookPreview.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/composer/SuspensionPanel.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/commands/ExtensionShortcuts.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/extensions/SidePanelSurface.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/NightRunOverflow.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/NightSettings.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/SettingsNav.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/AboutAux.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/ArchivedChats.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackgroundRuntime.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CookieControls.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CrashReporting.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DefaultPageZoom.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DownloadFolder.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Languages.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Models.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PasswordsAutofill.tsx",
+      "sites": 2,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PictureInPicture.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Startup.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/UsageBudgets.tsx",
+      "sites": 3,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/native-preference-control.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    },
+    {
+      "path": "apps/shell/src/ui/index.tsx",
+      "sites": 1,
+      "wholeSourceInverse": true,
+      "native154ConstructorASTInverse": true
+    }
+  ]
+}

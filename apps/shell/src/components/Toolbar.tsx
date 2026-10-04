@@ -1,3 +1,4 @@
+import { staticIconButtonProps } from "../ui/class-props";
 import { ReturnControlButton } from "./ReturnControlButton";
 import {executeCommand, runCommand} from "../commands";
 import { FeatureSlots } from "../features/registry";
@@ -37,7 +38,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
     <header inert={hidden} aria-hidden={hidden} className={`toolbar ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
       style={themeColor ? { "--page-toolbar-glass": `color-mix(in srgb, ${themeColor} 14%, var(--toolbar-glass))` } as CSSProperties : undefined}>
       <div className="tb-left">
-        {!horizontal && <button className="icon-btn" title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} data-command-id="sidebar" onClick={()=>runCommand("sidebar")}>{shellIconSidebarOpen}</button>}
+        {!horizontal && <button {...staticIconButtonProps} title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} data-command-id="sidebar" onClick={()=>runCommand("sidebar")}>{shellIconSidebarOpen}</button>}
         <div className="nav-btns">
           <NavigationButtons page={page} settingsRoute={settingsRoute} />
         </div>
@@ -48,8 +49,8 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
 
       <div className="tb-right">
         <FeatureSlots slot="toolbarItems" />
-        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title={withShortcut("Library", key("command-bookmarks"))} aria-label="Library" data-command-id="command-bookmarks" onClick={() => runCommand("command-bookmarks")}>{shellIconBookmark}</button>}
-        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{shellIconGear}</button>}
+        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button {...staticIconButtonProps} title={withShortcut("Library", key("command-bookmarks"))} aria-label="Library" data-command-id="command-bookmarks" onClick={() => runCommand("command-bookmarks")}>{shellIconBookmark}</button>}
+        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button {...staticIconButtonProps} title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{shellIconGear}</button>}
         {page?.controller === "human" && <ReturnControlButton pageId={page.pageId} />}
         {page && (page.controller === "agent" || page.controller === "external") && (
           <button type="button" className="ctl-chip agent" title={withShortcut("Take control of this page", key("take-page-control"))} aria-label="Take control of this page" data-command-id="take-page-control" onClick={() => void takeControl(page.pageId)}>

@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -55,14 +56,14 @@ export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[
 
   if (!expanded) return <button {...smallButtonProps} disabled={!pages.length} onClick={() => setExpanded(true)}>Open folder’s {pages.length} {pages.length === 1 ? "page" : "pages"}</button>;
   return <section className="library-folder-open" aria-label="Open bookmark folder">
-    <div><strong>Open {folder.at(-1)}</strong><p className="hint">Includes subfolders. Pages open in background tabs; pages already open in this Space are reused.</p></div>
+    <div><strong>Open {folder.at(-1)}</strong><p {...staticHintProps}>Includes subfolders. Pages open in background tabs; pages already open in this Space are reused.</p></div>
     <div className="library-folder-open-actions">
       <select aria-label="Open bookmarks in Space" value={spaceId} disabled={running || remaining !== null} onChange={event => setSpaceId(event.target.value)}>{spaces.map(entry => { const [id, name] = entry.split("\u0001"); return <option key={id} value={id}>{name}</option>; })}</select>
       <button {...smallButtonProps} disabled={running || remaining?.length === 0 || !spaces.some(entry => entry.startsWith(`${spaceId}\u0001`))} onClick={() => void open()}>{remaining?.length ? `Open remaining ${remaining.length}` : "Open pages"}</button>
       {running ? <button {...smallGhostButtonProps} onClick={() => { stopped.current = true; setMessage("Stopping after the current page…"); }}>Stop</button>
         : <button ref={done} {...smallGhostButtonProps} onClick={() => { setExpanded(false); setRemaining(null); setMessage(""); setError(""); }}>Done</button>}
     </div>
-    {message && <output className="hint" data-block>{message}</output>}
-    {error && <p className="hint" role="alert">{error}</p>}
+    {message && <output {...staticHintProps} data-block>{message}</output>}
+    {error && <p {...staticHintProps} role="alert">{error}</p>}
   </section>;
 }

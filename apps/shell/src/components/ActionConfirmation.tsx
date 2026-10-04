@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { isScrimOverlay } from "../chrome";
@@ -63,7 +64,7 @@ function Confirm({ confirmation }: { confirmation: TrustConfirmation }) {
         onSubmit={event => { event.preventDefault(); void decide(handoff ? "takeover" : "accept"); }}>
         <h3 id="action-confirm-title">{handoff ? "Take over this action" : "Allow this action"}</h3>
         <p>{confirmation.instruction}</p>
-        {site && <p className="hint">{site}</p>}
+        {site && <p {...staticHintProps}>{site}</p>}
         {error && <p role="alert">{error}</p>}
         <div className="sheet-acts">
           <button ref={decline} type="button" className="btn" disabled={busy} data-command-id="deny-agent-action" onClick={() => void decide("decline")}>{handoff ? "Close" : "Deny"}</button>

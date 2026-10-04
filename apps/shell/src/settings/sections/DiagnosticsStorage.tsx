@@ -1,3 +1,4 @@
+import { staticRowProps, staticHintProps } from "../../ui/class-props";
 import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
@@ -198,7 +199,7 @@ export function DiagnosticsStorage({
       </summary>
       {dataDir && (
         <IndexedField label="Data directory">
-          <div className="row">
+          <div {...staticRowProps}>
             <span className="hint mono selectable grow">{dataDir}</span>
             <PreferenceAction
               command="reveal-runtime-data-directory"
@@ -222,7 +223,7 @@ export function DiagnosticsStorage({
             >
               Reveal
             </PreferenceAction>
-            {text("reveal") && <output className="hint">{text("reveal")}</output>}
+            {text("reveal") && <output {...staticHintProps}>{text("reveal")}</output>}
           </div>
         </IndexedField>
       )}
@@ -234,7 +235,7 @@ export function DiagnosticsStorage({
             : "Aux records local browser process CPU and memory, UI scheduling delay, window and tab counts, and page crashes and hangs while open. It never records URLs or page content."
         }
       >
-        <div className="row">
+        <div {...staticRowProps}>
           <span className="hint grow">
             {health.samples
               ? `${health.samples.toLocaleString()} private samples${health.startupMs != null ? ` · typical startup ${health.startupMs} ms` : ""}`
@@ -249,14 +250,14 @@ export function DiagnosticsStorage({
           >
             {busy("clear") ? "Clearing…" : "Clear"}
           </PreferenceAction>
-          {text("clear") && <output className="hint">{text("clear")}</output>}
+          {text("clear") && <output {...staticHintProps}>{text("clear")}</output>}
         </div>
       </IndexedField>
       <IndexedField
         label="Support report"
         hint="Exports the browser build, available host method count, aggregate browser health, nonsecret modes, and known limits. It excludes credentials, URLs, browsing history, task text, account identity, local paths, and content."
       >
-        <div className="row">
+        <div {...staticRowProps}>
           <PreferenceAction
             command="export-support-report"
             scopeId={scopeId}
@@ -277,7 +278,7 @@ export function DiagnosticsStorage({
           >
             {busy("report") ? "Preparing…" : "Export support report…"}
           </PreferenceAction>
-          {text("report") && <output className="hint">{text("report")}</output>}
+          {text("report") && <output {...staticHintProps}>{text("report")}</output>}
         </div>
       </IndexedField>
     </details>

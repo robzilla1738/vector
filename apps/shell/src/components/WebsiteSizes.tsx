@@ -1,3 +1,4 @@
+import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
@@ -48,12 +49,12 @@ export function WebsiteSizes() {
   }
   const matching = sites.filter(site => site.origin.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   return <div ref={root} tabIndex={-1} role="group" aria-label="Saved website sizes" className="website-sizes">
-    <p className="hint">Saved page sizes for this profile. Reset applies to open tabs too; cookies and website permissions stay unchanged.</p>
+    <p {...staticHintProps}>Saved page sizes for this profile. Reset applies to open tabs too; cookies and website permissions stay unchanged.</p>
     {sites.length > 0 && <input ref={searchInput} aria-label="Search website sizes" placeholder="Find a website…" value={query} onChange={event => setQuery(event.target.value)} />}
-    {loading && <output className="hint" data-block>Loading website sizes…</output>}
+    {loading && <output {...staticHintProps} data-block>Loading website sizes…</output>}
     {error && <p role="alert">{error} <button {...smallButtonProps} disabled={loading||!!busy} onClick={() => void load()}>Refresh sizes</button></p>}
-    {notice && <output className="hint" data-block>{notice}</output>}
-    {!loading && !error && !matching.length && <p className="hint">{sites.length ? "No matching websites." : "Websites use the default size. Sizes you change appear here."}</p>}
+    {notice && <output {...staticHintProps} data-block>{notice}</output>}
+    {!loading && !error && !matching.length && <p {...staticHintProps}>{sites.length ? "No matching websites." : "Websites use the default size. Sizes you change appear here."}</p>}
     {matching.map(site => <div className="site-permission-row" key={site.origin}><span title={site.origin}>{site.origin}</span><span className="hint nums">{site.percentage}%</span><button {...smallButtonProps} aria-label={`Reset size for ${site.origin}`} disabled={!!busy} onClick={() => void reset(site.origin)}>{busy === site.origin ? "Resetting…" : "Reset"}</button></div>)}
   </div>;
 }
