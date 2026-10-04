@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { memo, useLayoutEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageContextRef, PageTarget } from "@aux/contracts";
@@ -190,7 +191,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
         if (chosen && sources.some(source => source.pageId === chosen.pageId)) onSources(sources.filter(source => source.pageId !== chosen.pageId));
       }} linkedPageId={linkedPageId} disabled={disabled} />
       {splitCompanion && !sources.some(source => source.pageId === splitCompanion.pageId) &&
-        <button ref={splitButton} type="button" data-command-id="toggle-browser-source" className="btn sm ghost" disabled={disabled || !!busyPageId || additionalSources.length >= 8}
+        <button ref={splitButton} type="button" data-command-id="toggle-browser-source" {...smallGhostButtonProps} disabled={disabled || !!busyPageId || additionalSources.length >= 8}
           title={withShortcut(`Include ${splitCompanion.title || hostOf(splitCompanion.url)} from the current split`, splitShortcut)}
           onClick={event => { void executeCommand("toggle-browser-source", { payload: { pageId: splitCompanion.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>Add split tab</button>}
       <Popover label="Add browser tabs" disabled={disabled} trigger={<span>{busyPageId ? "Loading tab…" : `Add tabs${additionalSources.length ? ` · ${additionalSources.length}` : ""}`}</span>}>

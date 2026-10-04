@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../../ui/button-props";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_NIGHT_SHIFT, NightShiftSettingsSchema } from "@aux/contracts";
 import { useStore } from "../../store";
@@ -27,7 +28,7 @@ function NightControl({ command, scopeId, invoke, disabled, checked, children }:
     void completion.catch(reason => reportCommandCompletionFailure(completion, reason, () => {}));
   };
   return checked === undefined
-    ? <button ref={node => { element.current = node; }} className="btn sm" data-command-id={command} disabled={disabled} onClick={event => run(event.nativeEvent)}>{children}</button>
+    ? <button ref={node => { element.current = node; }} {...smallButtonProps} data-command-id={command} disabled={disabled} onClick={event => run(event.nativeEvent)}>{children}</button>
     : <label><input ref={node => { element.current = node; }} data-command-id={command} disabled={disabled} type="checkbox" checked={checked} onChange={event => run(event.nativeEvent)}/>{children}</label>;
 }
 export function NightSettings() {

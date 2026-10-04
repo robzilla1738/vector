@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -201,7 +202,7 @@ export function RecoveryPackage({
         <PreferenceAction
           command="create-protected-recovery"
           scopeId={scopeId}
-          className="btn sm"
+          {...smallButtonProps}
           disabled={!owner.current() || pending || busy || phrase.length < 16}
           invoke={create}
         >
@@ -210,7 +211,7 @@ export function RecoveryPackage({
         <PreferenceAction
           command="choose-protected-recovery"
           scopeId={scopeId}
-          className="btn sm ghost"
+          {...smallGhostButtonProps}
           disabled={!owner.current() || pending || busy}
           invoke={choose}
         >
@@ -231,7 +232,7 @@ export function RecoveryPackage({
       <PreferenceAction
         command="review-protected-recovery"
         scopeId={scopeId}
-        className="btn sm"
+        {...smallButtonProps}
         disabled={!owner.current() || pending || busy || !path || !phrase}
         invoke={inspect}
       >

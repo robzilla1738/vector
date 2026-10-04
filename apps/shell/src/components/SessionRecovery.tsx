@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { bridge } from "../bridge";
@@ -65,8 +66,8 @@ export function SessionRecovery({compact=false}:{compact?:boolean}) {
   return <section className="session-recovery" aria-label="Session recovery">
     {tabs.length>0&&<>
       <div className="session-recovery-heading"><strong>Saved tabs waiting to reopen</strong>
-        {busy?<button className="btn sm ghost" onClick={()=>{stopped.current=true;setMessage("Stopping after the current tab…");}}>Stop</button>
-          :tabs.length>1&&<button className="btn sm" disabled={!tabs.some(tab=>!tab.retrying)} onClick={()=>void retry(tabs.filter(tab=>!tab.retrying))}>Retry all</button>}
+        {busy?<button {...smallGhostButtonProps} onClick={()=>{stopped.current=true;setMessage("Stopping after the current tab…");}}>Stop</button>
+          :tabs.length>1&&<button {...smallButtonProps} disabled={!tabs.some(tab=>!tab.retrying)} onClick={()=>void retry(tabs.filter(tab=>!tab.retrying))}>Retry all</button>}
       </div>
       <p className="hint">Their addresses and places in your sidebar have been kept. Retry restores each tab in its original window.</p>
       <div className="session-recovery-list">{tabs.map(tab=><div className="session-recovery-row" key={tab.pageId}>
@@ -74,10 +75,10 @@ export function SessionRecovery({compact=false}:{compact?:boolean}) {
           {rowErrors[tab.pageId]?<p className="hint err" role="alert">{rowErrors[tab.pageId]}</p>
             :tab.error&&<details><summary>Why it couldn’t reopen</summary><p className="hint">{tab.error}</p></details>}
         </div>
-        <button className="btn sm" disabled={!!busy||tab.retrying} onClick={()=>void retry([tab])}>{busy===tab.pageId||tab.retrying?"Restoring…":"Retry"}</button>
+        <button {...smallButtonProps} disabled={!!busy||tab.retrying} onClick={()=>void retry([tab])}>{busy===tab.pageId||tab.retrying?"Restoring…":"Retry"}</button>
       </div>)}</div>
     </>}
     {message&&<output className="hint" data-block>{message}</output>}
-    {error&&<p className="hint err" role="alert">{error} <button className="btn sm ghost" disabled={!!busy} onClick={()=>{setError("");setRefresh(value=>value+1);}}>Refresh</button></p>}
+    {error&&<p className="hint err" role="alert">{error} <button {...smallGhostButtonProps} disabled={!!busy} onClick={()=>{setError("");setRefresh(value=>value+1);}}>Refresh</button></p>}
   </section>;
 }

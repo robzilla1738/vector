@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { Mic } from "./central-icons";
@@ -243,14 +244,14 @@ export function Dictation({
       />
       <div className="dictation-actions">
         {phase === "recording" && (
-          <button ref={stopButton} className="btn sm" onClick={() => void stop()}>
+          <button ref={stopButton} {...smallButtonProps} onClick={() => void stop()}>
             Stop recording
           </button>
         )}
         {phase === "review" && (
           <>
             <button
-              className="btn sm"
+              {...smallButtonProps}
               disabled={disabled || !text.trim()}
               onClick={() => {
                 onInsert(text.trim());
@@ -264,7 +265,7 @@ export function Dictation({
             </button>
             {voiceCommand && (
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 disabled={disabled}
                 onClick={() => {
                   void runVoiceCommand(voiceCommand, bridge)
@@ -275,14 +276,14 @@ export function Dictation({
                 {voiceCommandLabels[voiceCommand]}
               </button>
             )}
-            <button className="btn sm ghost" disabled={disabled || !available} onClick={() => void start()}>
+            <button {...smallGhostButtonProps} disabled={disabled || !available} onClick={() => void start()}>
               Record again
             </button>
           </>
         )}
         <button
           ref={cancelButton}
-          className="btn sm ghost"
+          {...smallGhostButtonProps}
           onClick={phase === "review" ? discard : cancelCapture}
         >
           {phase === "review" ? "Discard" : "Cancel"}

@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
 import { useEffect, useLayoutEffect, useMemo, useState, useId, type ReactNode } from "react";
@@ -80,13 +81,13 @@ export function MemoryRecoveryNotice({ possible = false }: { possible?: boolean 
   if(issued)return <div className="field">
     <output className="hint">Fresh Aux-managed task-data backup issued after Forget. Protected Space and page memory need a new encrypted offline package.</output>
     <p className="hint">Previously copied offline recovery packages and their original phrases remain usable after Forget. Copies and phrases outside Aux cannot be revoked.</p>
-    <RecoveryControl {...controls} command="open-memory-offline-recovery" className="btn sm ghost" action={offline}>Create a fresh encrypted offline package…</RecoveryControl>
+    <RecoveryControl {...controls} command="open-memory-offline-recovery" {...smallGhostButtonProps} action={offline}>Create a fresh encrypted offline package…</RecoveryControl>
   </div>;
   return <div className="field">
     <p>{possible?"If this change removed saved Memory, older Aux-managed backups can no longer restore.":"Older Aux-managed backups can no longer restore after this Memory removal."} A fresh backup has not been confirmed; create one for the current state.</p>
     <p className="hint">Previously copied offline recovery packages and their original phrases remain usable after Forget. Copies and phrases outside Aux cannot be revoked.</p>
-    <RecoveryControl {...controls} command="create-memory-local-backup" className="btn sm" disabled={busy} action={backup}>Create fresh local backup…</RecoveryControl>
-    <RecoveryControl {...controls} command="open-memory-offline-recovery" className="btn sm ghost" action={offline}>Create a fresh encrypted offline package…</RecoveryControl>
+    <RecoveryControl {...controls} command="create-memory-local-backup" {...smallButtonProps} disabled={busy} action={backup}>Create fresh local backup…</RecoveryControl>
+    <RecoveryControl {...controls} command="open-memory-offline-recovery" {...smallGhostButtonProps} action={offline}>Create a fresh encrypted offline package…</RecoveryControl>
     {message&&<output className="hint">{message}</output>}
   </div>;
 }

@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { AutofillProfile } from "@aux/contracts";
@@ -118,7 +119,7 @@ export function AutofillSetting({
           )}
           <button
             ref={(element) => publish("edit", "edit-personal-info", element, start)}
-            className="btn sm"
+            {...smallButtonProps}
             disabled={disabled}
             data-command-id="edit-personal-info"
             onClick={(event) => run("edit-personal-info", event)}
@@ -150,12 +151,12 @@ export function AutofillSetting({
             </label>
           ))}
           <div className="row">
-            <button className="btn sm" type="submit" disabled={busy || disabled}>
+            <button {...smallButtonProps} type="submit" disabled={busy || disabled}>
               {busy ? "Saving…" : "Save"}
             </button>
             <button
               ref={(element) => publish("cancel", "cancel-personal-info", element, cancel)}
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               type="button"
               data-command-id="cancel-personal-info"
               disabled={busy || disabled}

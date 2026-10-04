@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./FilterListManager.css";
 import { useEffect, useState } from "react";
@@ -113,7 +114,7 @@ export function FilterListManager() {
               )}
               <div className="row">
                 <button
-                  className="btn sm"
+                  {...smallButtonProps}
                   disabled={busy || preview}
                   onClick={() =>
                     void action(async () => {
@@ -130,7 +131,7 @@ export function FilterListManager() {
                   {selected.enabled ? "Pause list" : "Enable list"}
                 </button>
                 <button
-                  className="btn sm ghost"
+                  {...smallGhostButtonProps}
                   disabled={busy || preview}
                   onClick={() =>
                     void action(async () => {
@@ -199,11 +200,11 @@ export function FilterListManager() {
           />
         </label>
         <div className="row">
-          <button className="btn sm" disabled={busy || preview || !url.trim()} onClick={inspect}>
+          <button {...smallButtonProps} disabled={busy || preview || !url.trim()} onClick={inspect}>
             Review list
           </button>
           <button
-            className="btn sm ghost"
+            {...smallGhostButtonProps}
             disabled={busy || preview || !status?.sources.length}
             onClick={() =>
               void action(async () => {
@@ -231,7 +232,7 @@ export function FilterListManager() {
             </p>
             <div className="row">
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 disabled={busy}
                 onClick={() =>
                   void action(async () => {
@@ -247,7 +248,7 @@ export function FilterListManager() {
               >
                 Add selected list
               </button>
-              <button className="btn sm ghost" disabled={busy} onClick={() => setReview(null)}>
+              <button {...smallGhostButtonProps} disabled={busy} onClick={() => setReview(null)}>
                 Cancel
               </button>
             </div>

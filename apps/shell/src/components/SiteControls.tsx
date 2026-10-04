@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { bridge, type BrowserSiteInfo } from "../bridge";
@@ -216,7 +217,7 @@ export function SiteControls() {
         <div className="site-controls-error" role="alert">
           <span>{error}</span>
           <button
-            className="btn sm"
+            {...smallButtonProps}
             disabled={loading || !!busy || !!page?.loading}
             onClick={() => void load()}
           >
@@ -250,7 +251,7 @@ export function SiteControls() {
                   address
                 </span>
               </div>
-              <button className="btn sm" disabled={!!busy} onClick={() => void clear()}>
+              <button {...smallButtonProps} disabled={!!busy} onClick={() => void clear()}>
                 {busy === "data" ? "Clearing…" : "Clear…"}
               </button>
             </div>
@@ -263,7 +264,7 @@ export function SiteControls() {
                 </span>
               </div>
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 role="switch"
                 aria-checked={!info.trackersAllowed}
                 disabled={!!busy}
@@ -280,7 +281,7 @@ export function SiteControls() {
                 <span>{bridge.privateMode ? "Only for this private window" : "Saved for this website"}</span>
               </div>
               {Object.keys(info.permissions).length > 0 && (
-                <button className="btn sm" disabled={!!busy} onClick={() => void reset()}>
+                <button {...smallButtonProps} disabled={!!busy} onClick={() => void reset()}>
                   {busy === "all" ? "Resetting…" : "Reset all"}
                 </button>
               )}
@@ -293,7 +294,7 @@ export function SiteControls() {
                     {decision === "allow" ? "Allowed" : "Blocked"}
                   </span>
                   <button
-                    className="btn sm"
+                    {...smallButtonProps}
                     aria-label={`Reset ${labels[permission] ?? permission}`}
                     disabled={!!busy}
                     onClick={() => void reset(permission)}
@@ -319,7 +320,7 @@ export function SiteControls() {
                   <strong>Customize this site</strong>
                   <span>Hide page elements or add CSS for this Profile</span>
                 </div>
-                <button className="btn sm" disabled={!!busy} onClick={() => setOverlay("zap")}>
+                <button {...smallButtonProps} disabled={!!busy} onClick={() => setOverlay("zap")}>
                   Open…
                 </button>
               </div>

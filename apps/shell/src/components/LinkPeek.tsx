@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { useEffect, useRef, useState } from "react";
 import { useStore, errToast } from "../store";
 import { closePeekLink, promotePeekLink } from "../peek-link";
@@ -23,7 +24,7 @@ export function LinkPeek() {
       <span className="link-peek-label">Preview link</span>
       <span className="link-peek-address" title={page?.url}>{page?.title || page?.url || "Opening link…"}</span>
       <button className="btn sm primary" disabled={busy || !page} onClick={promote}>Open as tab</button>
-      <button ref={close} className="btn sm" disabled={busy} onClick={dismiss}>Close preview</button>
+      <button ref={close} {...smallButtonProps} disabled={busy} onClick={dismiss}>Close preview</button>
     </header>
     <div className="link-peek-page">{page ? <PageSurface page={page} /> : <output data-block>Opening link…</output>}</div>
   </section>;

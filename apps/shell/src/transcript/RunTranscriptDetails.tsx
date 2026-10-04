@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { ObservationSchema, type Run, type RunTranscriptItem, type RunTranscriptProjection, type Suspension } from "@aux/contracts";
@@ -161,18 +162,18 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
   return <section className="run-section transcript-details" aria-label="Run evidence and recovery">
     {waiting && waiting.state !== "needs_input" && <WaitingItem item={waiting} />}
     {run.status === "needs_input" && <SuspensionPanel run={run} suspension={suspension} hydrated={hydrated} question={question} readOnly={readOnly} answerInComposer={answerInComposer} />}
-    {run.status === "needs_input" && loadError && <p role="alert">{loadError} <RunPanelAction command="retry-run-evidence" run={run} className="btn sm" invoke={() => setRefresh((value) => value + 1)}>Retry loading</RunPanelAction></p>}
+    {run.status === "needs_input" && loadError && <p role="alert">{loadError} <RunPanelAction command="retry-run-evidence" run={run} {...smallButtonProps} invoke={() => setRefresh((value) => value + 1)}>Retry loading</RunPanelAction></p>}
     {proposals.map((item, index) => <TextProposal key={`${run.runId}-${index}`} run={run} proposal={item} readOnly={readOnly} />)}
     <ToolFold tools={tools} summary={toolSummary} />
     {citations.length > 0 && <RunPanelDisclosure command="toggle-run-citations" run={run} className="transcript-citations" summary={<>Verified evidence · {citations.length}</>}>
       <ul>{citations.map((item, index) => item.kind === "citation" && <li key={`${item.observationId}-${index}`}>
         <blockquote>{item.quote}</blockquote>
         {item.artifactId && artifacts.some((artifact) => artifact.artifactId === item.artifactId) &&
-          <RunPanelAction command="inspect-run-citation" run={run} className="btn sm ghost" invoke={current => open(artifacts.find((artifact) => artifact.artifactId === item.artifactId)!, item, current)}>Inspect cited snapshot</RunPanelAction>}
+          <RunPanelAction command="inspect-run-citation" run={run} {...smallGhostButtonProps} invoke={current => open(artifacts.find((artifact) => artifact.artifactId === item.artifactId)!, item, current)}>Inspect cited snapshot</RunPanelAction>}
       </li>)}</ul>
     </RunPanelDisclosure>}
     {listedArtifacts.length > 0 && <RunPanelDisclosure command="toggle-run-artifacts" run={run} className="transcript-artifacts" summary={<>Saved artifacts · {listedArtifacts.length}</>}>
-      <ul>{listedArtifacts.map((item) => <li key={item.artifactId}><RunPanelAction command="inspect-run-artifact" run={run} className="btn sm ghost" invoke={current => open(item, undefined, current)}>
+      <ul>{listedArtifacts.map((item) => <li key={item.artifactId}><RunPanelAction command="inspect-run-artifact" run={run} {...smallGhostButtonProps} invoke={current => open(item, undefined, current)}>
         {item.mediaType} · {Math.max(1, Math.ceil(item.size / 1024))} KB
       </RunPanelAction></li>)}</ul>
     </RunPanelDisclosure>}
@@ -184,7 +185,7 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
       {loading ? <output data-block>Loading artifact…</output> : preview?.image ? <img src={preview.image} alt="Saved run artifact" style={{ maxWidth: "100%" }} />
         : preview?.html !== undefined ? <IsolatedArtifactHtml key={selected.artifactId} html={preview.html} />
           : preview?.text !== undefined ? <pre>{preview.text}</pre> : null}
-      {preview?.source && <RunPanelAction command="open-run-cited-page" run={run} className="btn sm" disabled={openingSource} invoke={current => openSource(current)}>
+      {preview?.source && <RunPanelAction command="open-run-cited-page" run={run} {...smallButtonProps} disabled={openingSource} invoke={current => openSource(current)}>
         {openingSource ? "Checking cited page…" : "Open cited page"}
       </RunPanelAction>}
       {error && <p role="alert">{error}</p>}

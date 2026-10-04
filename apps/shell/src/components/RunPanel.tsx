@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { RunPanelAction, RunPanelDisclosure } from "./RunPanelAction";
 import { bridge } from "../bridge";
@@ -261,7 +262,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
       </div>}
       {!live && latestConversationTurn && !run.config?.taskId && !retryAvailable && retryPage && (!run.failure || run.failure.retryable) && <section className="run-failure" role="status">
         <div className="run-failure-copy"><strong>The original tab is unavailable</strong><p>Retry using {retryPage.title || retryPage.url}. The saved request and context stay the same; the browser page changes.</p></div>
-        <RunPanelAction command="retry-run-selected-tab" run={run} className="btn sm" disabled={readOnly || retrying} invoke={() => retryRun(run.runId, retryPage.pageId)}>{retrying ? "Retrying…" : "Retry in selected tab"}</RunPanelAction>
+        <RunPanelAction command="retry-run-selected-tab" run={run} {...smallButtonProps} disabled={readOnly || retrying} invoke={() => retryRun(run.runId, retryPage.pageId)}>{retrying ? "Retrying…" : "Retry in selected tab"}</RunPanelAction>
       </section>}
       {!live && latestConversationTurn && !run.config?.taskId && multiTabBlocked && <section className="run-failure" role="status">
         <div className="run-failure-copy"><strong>Original tabs are missing</strong><p>This turn used {run.pageIds.length} tabs. Restore those tabs before retrying. Aux will not retry a subset.</p></div>
@@ -287,9 +288,9 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
             <p>{run.failure.message}</p>
           </div>
           {latestConversationTurn && !run.config?.taskId && ["retry", "permission_settings"].includes(run.failure.action) && retryAvailable && (
-            <RunPanelAction command="retry-run-turn" run={run} className="btn sm" disabled={readOnly || retrying} invoke={() => retryRun(run.runId)}>{shellIconReload}{retrying ? "Retrying…" : "Retry turn"}</RunPanelAction>
+            <RunPanelAction command="retry-run-turn" run={run} {...smallButtonProps} disabled={readOnly || retrying} invoke={() => retryRun(run.runId)}>{shellIconReload}{retrying ? "Retrying…" : "Retry turn"}</RunPanelAction>
           )}
-          {run.failure.action === "edit_request" && latestConversationTurn && <RunPanelAction command="revise-run-request" run={run} className="btn sm" disabled={readOnly} invoke={(current) => {
+          {run.failure.action === "edit_request" && latestConversationTurn && <RunPanelAction command="revise-run-request" run={run} {...smallButtonProps} disabled={readOnly} invoke={(current) => {
             if (run.config?.taskId) { return openSavedTask(run.config.taskId); }
             const chatId = run.config?.chatId ?? run.runId;
             const state = useStore.getState();
@@ -297,11 +298,11 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
             state.openConversation(run.runId);
             requestAnimationFrame(() => { if (current()) composerRef?.current?.focus(); });
           }}>{run.config?.taskId ? "Edit task" : "Revise request"}</RunPanelAction>}
-          {run.failure.action === "permission_settings" && <RunPanelAction command="review-run-permissions" run={run} className="btn sm" invoke={() => { useStore.setState({ settingsCategory: "Agent permissions" }); useStore.getState().setOverlay("settings"); }}>{shellIconLock}Review permissions</RunPanelAction>}
-          {run.failure.action === "permission_settings" && run.config?.taskId && <RunPanelAction command="open-run-task" run={run} className="btn sm" invoke={() => openSavedTask(run.config!.taskId!)}>Open task</RunPanelAction>}
-          {/vault|credential grant|opaque reference|Unlock the agent vault/i.test(run.failure.message) && <RunPanelAction command="open-run-vault" run={run} className="btn sm" invoke={() => { useStore.setState({ settingsCategory: "Vault" }); useStore.getState().setOverlay("settings"); }}>{shellIconLock}Open vault</RunPanelAction>}
+          {run.failure.action === "permission_settings" && <RunPanelAction command="review-run-permissions" run={run} {...smallButtonProps} invoke={() => { useStore.setState({ settingsCategory: "Agent permissions" }); useStore.getState().setOverlay("settings"); }}>{shellIconLock}Review permissions</RunPanelAction>}
+          {run.failure.action === "permission_settings" && run.config?.taskId && <RunPanelAction command="open-run-task" run={run} {...smallButtonProps} invoke={() => openSavedTask(run.config!.taskId!)}>Open task</RunPanelAction>}
+          {/vault|credential grant|opaque reference|Unlock the agent vault/i.test(run.failure.message) && <RunPanelAction command="open-run-vault" run={run} {...smallButtonProps} invoke={() => { useStore.setState({ settingsCategory: "Vault" }); useStore.getState().setOverlay("settings"); }}>{shellIconLock}Open vault</RunPanelAction>}
           {run.failure.action === "model_settings" && (
-            <RunPanelAction command="open-run-model-settings" run={run} className="btn sm" invoke={openModelSettings}>{shellIconGearSm}Model settings</RunPanelAction>
+            <RunPanelAction command="open-run-model-settings" run={run} {...smallButtonProps} invoke={openModelSettings}>{shellIconGearSm}Model settings</RunPanelAction>
           )}
         </section>
       )}
@@ -323,7 +324,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
             <span>Page</span>
             {obs && <span className="count nums">{obs.refs.length}</span>}
           </RunPanelAction>
-          {showObs && (obsLoading ? <output className="hint" data-block>Loading saved page…</output> : obsError ? <p className="field-error" role="alert">{obsError} {(inspectedArtifact || observationArtifact) && <RunPanelAction command="retry-run-page-observation" run={run} className="btn sm" invoke={(current)=>inspect((inspectedArtifact || observationArtifact)!, current)}>Retry</RunPanelAction>}</p> : obs ? <ObservationPanel compact obs={obs} /> : null)}
+          {showObs && (obsLoading ? <output className="hint" data-block>Loading saved page…</output> : obsError ? <p className="field-error" role="alert">{obsError} {(inspectedArtifact || observationArtifact) && <RunPanelAction command="retry-run-page-observation" run={run} {...smallButtonProps} invoke={(current)=>inspect((inspectedArtifact || observationArtifact)!, current)}>Retry</RunPanelAction>}</p> : obs ? <ObservationPanel compact obs={obs} /> : null)}
         </section>
       )}
     </div>

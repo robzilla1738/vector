@@ -1,0 +1,3836 @@
+{
+  "excluded": [
+    "Conversation.tsx",
+    "ConversationControls.tsx",
+    "ConversationLiveControls.tsx",
+    "ConversationQueuedControls.tsx",
+    "ConversationViewControls.tsx",
+    "ConversationRecoveryControls.tsx",
+    "ConversationLiveControl.tsx",
+    "HomeEntryControls.tsx",
+    "HomeAsk.tsx",
+    "CommandBar.tsx",
+    "popover.tsx",
+    "ConversationContextControls.tsx"
+  ],
+  "refused": [
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.tsx",
+      "line": 53,
+      "reason": "key-after-class or duplicate class"
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "line": 458,
+      "reason": "key-after-class or duplicate class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskHistory.tsx",
+      "line": 231,
+      "reason": "key-after-class or duplicate class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "line": 280,
+      "reason": "key-after-class or duplicate class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "line": 300,
+      "reason": "key-after-class or duplicate class"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "line": 313,
+      "reason": "key-after-class or duplicate class"
+    }
+  ],
+  "files": [
+    {
+      "path": "apps/shell/src/agent/RunAttentionFeed.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4145,
+          "end": 4169,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/agent/RunNoticeControls.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4681,
+          "end": 4705,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/AnswerMarkdown.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1671,
+          "end": 1695,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 1778,
+          "end": 1796,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 3202,
+          "end": 3226,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 3347,
+          "end": 3371,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ArchivedTabs.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1052,
+          "end": 1070,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4819,
+          "end": 4837,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5950,
+          "end": 5968,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6202,
+          "end": 6226,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextTray.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 12746,
+          "end": 12770,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowserProfiles.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3833,
+          "end": 3851,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6599,
+          "end": 6623,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 8469,
+          "end": 8487,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 8631,
+          "end": 8655,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 8753,
+          "end": 8771,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9330,
+          "end": 9354,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowsingMemory.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 13376,
+          "end": 13394,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 14548,
+          "end": 14566,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 14651,
+          "end": 14675,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 14760,
+          "end": 14784,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 15229,
+          "end": 15253,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CalendarConnections.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5373,
+          "end": 5391,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5499,
+          "end": 5517,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6344,
+          "end": 6362,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6483,
+          "end": 6501,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7070,
+          "end": 7088,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CalendarSourceChoiceDialog.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1389,
+          "end": 1407,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CalendarTaskGrants.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4276,
+          "end": 4294,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4719,
+          "end": 4737,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5032,
+          "end": 5050,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5167,
+          "end": 5185,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5639,
+          "end": 5657,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ChatSessions.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 8773,
+          "end": 8791,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 8849,
+          "end": 8873,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearBrowsingData.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3779,
+          "end": 3803,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4788,
+          "end": 4812,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5823,
+          "end": 5841,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearHistory.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1570,
+          "end": 1594,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 2069,
+          "end": 2093,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 2577,
+          "end": 2595,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CommandSurface.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 11433,
+          "end": 11457,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ContentMemory.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 20223,
+          "end": 20247,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 22179,
+          "end": 22203,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 22410,
+          "end": 22434,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ConversationDrafts.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3576,
+          "end": 3600,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5088,
+          "end": 5112,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5247,
+          "end": 5271,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5572,
+          "end": 5590,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ConversationHistory.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 9317,
+          "end": 9341,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 9472,
+          "end": 9496,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 10417,
+          "end": 10441,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 11079,
+          "end": 11097,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 11168,
+          "end": 11192,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 14265,
+          "end": 14283,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImages.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 17956,
+          "end": 17980,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 18152,
+          "end": 18176,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 18352,
+          "end": 18370,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 18632,
+          "end": 18650,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 18812,
+          "end": 18830,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 19012,
+          "end": 19030,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 19342,
+          "end": 19360,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 20911,
+          "end": 20935,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ConversationTask.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4036,
+          "end": 4054,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4347,
+          "end": 4365,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5206,
+          "end": 5230,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6650,
+          "end": 6668,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7103,
+          "end": 7127,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/DefaultBrowserSetting.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2783,
+          "end": 2801,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/DeferredSurface.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2049,
+          "end": 2073,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Dictation.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 8576,
+          "end": 8594,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 8762,
+          "end": 8780,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9198,
+          "end": 9216,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9607,
+          "end": 9631,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 9825,
+          "end": 9849,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/DocumentSnapshot.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1526,
+          "end": 1544,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2282,
+          "end": 2306,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Downloads.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4095,
+          "end": 4119,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4273,
+          "end": 4297,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4446,
+          "end": 4470,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4686,
+          "end": 4710,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5041,
+          "end": 5065,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5389,
+          "end": 5413,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5690,
+          "end": 5714,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6041,
+          "end": 6065,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 12234,
+          "end": 12258,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 12478,
+          "end": 12502,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 12611,
+          "end": 12635,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 13434,
+          "end": 13458,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 13678,
+          "end": 13702,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 14476,
+          "end": 14500,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 14631,
+          "end": 14655,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 14874,
+          "end": 14898,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Extensions.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4575,
+          "end": 4599,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5097,
+          "end": 5121,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5485,
+          "end": 5509,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6027,
+          "end": 6051,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgentOversight.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3675,
+          "end": 3699,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4609,
+          "end": 4633,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4782,
+          "end": 4800,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgents.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 8862,
+          "end": 8880,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9111,
+          "end": 9129,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9931,
+          "end": 9949,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/FilterListManager.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4671,
+          "end": 4689,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5389,
+          "end": 5413,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 7544,
+          "end": 7562,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7698,
+          "end": 7722,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 8826,
+          "end": 8844,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9510,
+          "end": 9534,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/FindBar.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 6864,
+          "end": 6888,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 7621,
+          "end": 7645,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2899,
+          "end": 2923,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 3086,
+          "end": 3110,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4010,
+          "end": 4028,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Goals.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2930,
+          "end": 2948,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 3059,
+          "end": 3077,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7976,
+          "end": 7994,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 8391,
+          "end": 8409,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 8724,
+          "end": 8742,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9059,
+          "end": 9077,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9333,
+          "end": 9351,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Hooks.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3671,
+          "end": 3689,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6554,
+          "end": 6572,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9225,
+          "end": 9243,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9730,
+          "end": 9748,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 10048,
+          "end": 10066,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4007,
+          "end": 4025,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ImageViewer.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 869,
+          "end": 893,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 1057,
+          "end": 1081,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 1253,
+          "end": 1277,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 1604,
+          "end": 1628,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 9052,
+          "end": 9070,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 11173,
+          "end": 11191,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 11430,
+          "end": 11454,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 11666,
+          "end": 11690,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 13106,
+          "end": 13130,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 13853,
+          "end": 13877,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/InlineAssist.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5785,
+          "end": 5803,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6317,
+          "end": 6341,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6472,
+          "end": 6490,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Inspector.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2224,
+          "end": 2248,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 2544,
+          "end": 2562,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 9560,
+          "end": 9584,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 9661,
+          "end": 9679,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 24451,
+          "end": 24469,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 24881,
+          "end": 24899,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 25402,
+          "end": 25420,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 25654,
+          "end": 25672,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 25802,
+          "end": 25820,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 25908,
+          "end": 25926,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 27194,
+          "end": 27218,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 27668,
+          "end": 27692,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 28064,
+          "end": 28088,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 28978,
+          "end": 28996,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 30506,
+          "end": 30524,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 31040,
+          "end": 31058,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 33213,
+          "end": 33231,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 33364,
+          "end": 33382,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 33542,
+          "end": 33560,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 33928,
+          "end": 33946,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 39146,
+          "end": 39164,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/LinkPeek.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1323,
+          "end": 1341,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/LittleWindow.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3383,
+          "end": 3401,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryExclusions.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5531,
+          "end": 5549,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5879,
+          "end": 5903,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6261,
+          "end": 6285,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryItems.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 12489,
+          "end": 12507,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 15889,
+          "end": 15913,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 16092,
+          "end": 16110,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 16657,
+          "end": 16675,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 17044,
+          "end": 17062,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryPasteImport.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 10651,
+          "end": 10669,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 11381,
+          "end": 11405,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 14512,
+          "end": 14530,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 16063,
+          "end": 16087,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 17925,
+          "end": 17943,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryRecoveryNotice.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5015,
+          "end": 5039,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5669,
+          "end": 5687,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5839,
+          "end": 5863,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemorySettings.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4088,
+          "end": 4112,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4547,
+          "end": 4565,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5458,
+          "end": 5476,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MigrationImport.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2302,
+          "end": 2326,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5225,
+          "end": 5243,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5765,
+          "end": 5789,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ObservationPanel.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2537,
+          "end": 2561,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/OpenBookmarkFolder.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2970,
+          "end": 2988,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 3738,
+          "end": 3756,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4002,
+          "end": 4026,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4162,
+          "end": 4186,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 17600,
+          "end": 17618,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 21889,
+          "end": 21907,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 24004,
+          "end": 24028,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 25772,
+          "end": 25790,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 26891,
+          "end": 26915,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 28424,
+          "end": 28448,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 29213,
+          "end": 29237,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 34444,
+          "end": 34462,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 38733,
+          "end": 38757,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 40112,
+          "end": 40136,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 40601,
+          "end": 40625,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 42042,
+          "end": 42060,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 11495,
+          "end": 11513,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 11643,
+          "end": 11667,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 12764,
+          "end": 12782,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 12959,
+          "end": 12983,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 13755,
+          "end": 13779,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 16011,
+          "end": 16029,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 16800,
+          "end": 16824,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 17114,
+          "end": 17138,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 20037,
+          "end": 20055,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 21371,
+          "end": 21389,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 21627,
+          "end": 21645,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 21801,
+          "end": 21819,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 23217,
+          "end": 23241,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 25274,
+          "end": 25292,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 25462,
+          "end": 25486,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 28521,
+          "end": 28545,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PageZoom.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1930,
+          "end": 1948,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2207,
+          "end": 2225,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2366,
+          "end": 2384,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2564,
+          "end": 2582,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PaneBoundary.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1030,
+          "end": 1048,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PasswordTransferSetting.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1262,
+          "end": 1280,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2014,
+          "end": 2032,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2163,
+          "end": 2181,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PluginsPanel.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4483,
+          "end": 4507,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4635,
+          "end": 4659,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6135,
+          "end": 6153,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6285,
+          "end": 6309,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 8847,
+          "end": 8871,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 10024,
+          "end": 10048,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 10876,
+          "end": 10900,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/QuickAsk.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1309,
+          "end": 1333,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 1439,
+          "end": 1463,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/QuickAskSetting.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2357,
+          "end": 2375,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 3403,
+          "end": 3427,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RailHistory.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 6036,
+          "end": 6060,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ReaderView.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 6391,
+          "end": 6409,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6518,
+          "end": 6542,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6938,
+          "end": 6956,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7118,
+          "end": 7136,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9515,
+          "end": 9533,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RecentWork.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5091,
+          "end": 5115,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RecentlyClosed.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1235,
+          "end": 1253,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 1395,
+          "end": 1413,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ResultCard.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2567,
+          "end": 2591,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ResultsTable.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4129,
+          "end": 4153,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6268,
+          "end": 6286,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6422,
+          "end": 6440,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ReviewedConnectors.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 7105,
+          "end": 7129,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 9303,
+          "end": 9321,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 10365,
+          "end": 10389,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 11158,
+          "end": 11182,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 12269,
+          "end": 12293,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 13869,
+          "end": 13887,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 14058,
+          "end": 14082,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RoutineSchedule.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 9116,
+          "end": 9140,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 9268,
+          "end": 9292,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 12785,
+          "end": 12803,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 13353,
+          "end": 13377,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 14121,
+          "end": 14145,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 14815,
+          "end": 14839,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 16616,
+          "end": 16640,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 16894,
+          "end": 16918,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 25453,
+          "end": 25471,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 26004,
+          "end": 26028,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 26152,
+          "end": 26170,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 29508,
+          "end": 29526,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 30271,
+          "end": 30295,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 30896,
+          "end": 30914,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 35793,
+          "end": 35817,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 36360,
+          "end": 36384,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 38868,
+          "end": 38886,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 39107,
+          "end": 39131,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 43814,
+          "end": 43838,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 44079,
+          "end": 44103,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 45375,
+          "end": 45399,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 46441,
+          "end": 46459,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 48231,
+          "end": 48249,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 49274,
+          "end": 49292,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 51970,
+          "end": 51988,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 54809,
+          "end": 54827,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 55078,
+          "end": 55096,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunControls.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 7055,
+          "end": 7073,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7791,
+          "end": 7809,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunImages.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 948,
+          "end": 972,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 2693,
+          "end": 2717,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 3052,
+          "end": 3076,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunPanel.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 16305,
+          "end": 16323,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 19251,
+          "end": 19269,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 19557,
+          "end": 19575,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 20264,
+          "end": 20282,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 20591,
+          "end": 20609,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 20845,
+          "end": 20863,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 21149,
+          "end": 21167,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 23096,
+          "end": 23114,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SaveConversationTask.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1270,
+          "end": 1294,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 3295,
+          "end": 3313,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 3384,
+          "end": 3402,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SavedResultPreview.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5493,
+          "end": 5517,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5658,
+          "end": 5682,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6183,
+          "end": 6201,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6859,
+          "end": 6883,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 7156,
+          "end": 7174,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7330,
+          "end": 7354,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SearchEngineSetting.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3441,
+          "end": 3459,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4035,
+          "end": 4059,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5173,
+          "end": 5191,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SearchEnginesSetting.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4249,
+          "end": 4273,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5893,
+          "end": 5911,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SessionRecovery.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3487,
+          "end": 3511,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 3644,
+          "end": 3662,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4405,
+          "end": 4423,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4717,
+          "end": 4741,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SetPanel.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2312,
+          "end": 2330,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ShortcutsSetting.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5168,
+          "end": 5186,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5286,
+          "end": 5304,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7400,
+          "end": 7424,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 7838,
+          "end": 7862,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 8439,
+          "end": 8457,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 8588,
+          "end": 8612,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 9378,
+          "end": 9402,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SiteControls.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 7353,
+          "end": 7371,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 8586,
+          "end": 8604,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9133,
+          "end": 9151,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9953,
+          "end": 9971,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 10629,
+          "end": 10647,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 11861,
+          "end": 11879,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SiteCustomization.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 8231,
+          "end": 8249,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9240,
+          "end": 9258,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SitePermissions.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 9183,
+          "end": 9201,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 10077,
+          "end": 10095,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 10760,
+          "end": 10778,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 11406,
+          "end": 11424,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 12010,
+          "end": 12028,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 12557,
+          "end": 12575,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 12967,
+          "end": 12985,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SkillMetadata.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3530,
+          "end": 3548,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SkillReplayPanel.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4129,
+          "end": 4147,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5238,
+          "end": 5256,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5654,
+          "end": 5678,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6678,
+          "end": 6696,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7367,
+          "end": 7385,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SpaceMemoryEditor.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 7981,
+          "end": 8005,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 8227,
+          "end": 8251,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/StartPage.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1776,
+          "end": 1794,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/StructuredResult.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 880,
+          "end": 904,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 2678,
+          "end": 2702,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TaskHistory.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5738,
+          "end": 5756,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6535,
+          "end": 6553,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 16877,
+          "end": 16895,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 17138,
+          "end": 17156,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 17421,
+          "end": 17439,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 18449,
+          "end": 18467,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 18650,
+          "end": 18668,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 18979,
+          "end": 18997,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 19388,
+          "end": 19406,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 19712,
+          "end": 19730,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 21627,
+          "end": 21645,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 24248,
+          "end": 24266,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 25580,
+          "end": 25598,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 26825,
+          "end": 26843,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 30049,
+          "end": 30067,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 39194,
+          "end": 39212,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 43087,
+          "end": 43105,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TaskResources.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1313,
+          "end": 1331,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 1384,
+          "end": 1402,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 1821,
+          "end": 1839,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 1961,
+          "end": 1979,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2306,
+          "end": 2324,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2970,
+          "end": 2988,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5059,
+          "end": 5077,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5678,
+          "end": 5696,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 20726,
+          "end": 20744,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 20883,
+          "end": 20901,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 21208,
+          "end": 21226,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 24958,
+          "end": 24976,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 29452,
+          "end": 29470,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/VaultOfferBanner.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2611,
+          "end": 2635,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2774,
+          "end": 2792,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 3012,
+          "end": 3030,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4422,
+          "end": 4440,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4558,
+          "end": 4582,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5155,
+          "end": 5173,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5394,
+          "end": 5412,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5849,
+          "end": 5867,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6034,
+          "end": 6052,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6565,
+          "end": 6583,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6770,
+          "end": 6788,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/WebsiteSizes.tsx",
+      "addedImport": "import { smallButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2863,
+          "end": 2881,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 3401,
+          "end": 3419,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/WorkbookPreview.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2048,
+          "end": 2072,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 2584,
+          "end": 2602,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2801,
+          "end": 2825,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 2944,
+          "end": 2968,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 3089,
+          "end": 3113,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 3218,
+          "end": 3242,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/commands/ExtensionShortcuts.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3947,
+          "end": 3971,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/demonstration/RecorderControls.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 336,
+          "end": 354,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 1002,
+          "end": 1020,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 1215,
+          "end": 1233,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 1334,
+          "end": 1358,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/download-naming/Settings.tsx",
+      "addedImport": "import { smallButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4025,
+          "end": 4043,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/extensions/ExtensionShortcuts.tsx",
+      "addedImport": "import { smallButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1687,
+          "end": 1705,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/MorningReview.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1122,
+          "end": 1140,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 1350,
+          "end": 1368,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 1584,
+          "end": 1608,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/NightSettings.tsx",
+      "addedImport": "import { smallButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1977,
+          "end": 1995,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/trust/SiteAgentAccess.tsx",
+      "addedImport": "import { smallButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3443,
+          "end": 3461,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5420,
+          "end": 5438,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/onboarding/OnboardingFlow.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 9628,
+          "end": 9652,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 9901,
+          "end": 9925,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 21186,
+          "end": 21204,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 22908,
+          "end": 22932,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 28392,
+          "end": 28410,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 28885,
+          "end": 28903,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 29408,
+          "end": 29432,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/onboarding/SetupReview.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 6539,
+          "end": 6563,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6705,
+          "end": 6729,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 7851,
+          "end": 7875,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 9119,
+          "end": 9143,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 9321,
+          "end": 9345,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 9617,
+          "end": 9641,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/AboutAux.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4639,
+          "end": 4663,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Appearance.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 6160,
+          "end": 6178,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7791,
+          "end": 7815,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/ArchivedChats.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4207,
+          "end": 4225,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4871,
+          "end": 4895,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5340,
+          "end": 5358,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 6517,
+          "end": 6541,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 12009,
+          "end": 12027,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 13527,
+          "end": 13551,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 13788,
+          "end": 13806,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 14097,
+          "end": 14115,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 14742,
+          "end": 14760,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 14892,
+          "end": 14916,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 15046,
+          "end": 15070,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 15371,
+          "end": 15395,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 16801,
+          "end": 16819,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 18800,
+          "end": 18824,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 19053,
+          "end": 19077,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackupSettings.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 6134,
+          "end": 6152,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7434,
+          "end": 7458,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 8848,
+          "end": 8866,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 10075,
+          "end": 10099,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 10686,
+          "end": 10710,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CookieControls.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2202,
+          "end": 2226,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CrashReporting.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 2637,
+          "end": 2655,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2741,
+          "end": 2765,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 2920,
+          "end": 2944,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DiagnosticsStorage.tsx",
+      "addedImport": "import { smallButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 6627,
+          "end": 6645,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 9628,
+          "end": 9646,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DownloadFolder.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1786,
+          "end": 1804,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2111,
+          "end": 2135,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/General.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5702,
+          "end": 5720,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7992,
+          "end": 8016,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 10634,
+          "end": 10658,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 14320,
+          "end": 14344,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Languages.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4311,
+          "end": 4335,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4997,
+          "end": 5021,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 5751,
+          "end": 5775,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6967,
+          "end": 6985,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Models.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4192,
+          "end": 4210,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4710,
+          "end": 4734,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 22559,
+          "end": 22577,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 23189,
+          "end": 23207,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 26002,
+          "end": 26020,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 27767,
+          "end": 27785,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 28312,
+          "end": 28330,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PasswordsAutofill.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 4753,
+          "end": 4777,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RecoveryPackage.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 7086,
+          "end": 7104,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7394,
+          "end": 7418,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 7949,
+          "end": 7967,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RestoreBackupControls.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5035,
+          "end": 5053,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6046,
+          "end": 6064,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6743,
+          "end": 6767,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 9078,
+          "end": 9096,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 1824,
+          "end": 1842,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 2900,
+          "end": 2924,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4207,
+          "end": 4231,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4458,
+          "end": 4482,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4716,
+          "end": 4740,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 4930,
+          "end": 4954,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 12550,
+          "end": 12568,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 13006,
+          "end": 13030,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SpaceMemory.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 11690,
+          "end": 11714,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Startup.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5548,
+          "end": 5572,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6857,
+          "end": 6875,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/UsageBudgets.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 6192,
+          "end": 6210,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6700,
+          "end": 6724,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 6864,
+          "end": 6882,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "addedImport": "import { smallButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3822,
+          "end": 3840,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4660,
+          "end": 4678,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 5736,
+          "end": 5754,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 6350,
+          "end": 6368,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7480,
+          "end": 7498,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 7754,
+          "end": 7772,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 8053,
+          "end": 8071,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 8693,
+          "end": 8711,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/use-native-preference.tsx",
+      "addedImport": "import { smallGhostButtonProps } from \"../../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 5566,
+          "end": 5590,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/transcript/RunTranscriptDetails.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 10807,
+          "end": 10825,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 11600,
+          "end": 11624,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 12136,
+          "end": 12160,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        },
+        {
+          "start": 13704,
+          "end": 13722,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/transcript/TextProposal.tsx",
+      "addedImport": "import { smallButtonProps, smallGhostButtonProps } from \"../ui/button-props\";\n",
+      "edits": [
+        {
+          "start": 3651,
+          "end": 3669,
+          "before": "className=\"btn sm\"",
+          "after": "{...smallButtonProps}"
+        },
+        {
+          "start": 4713,
+          "end": 4737,
+          "before": "className=\"btn sm ghost\"",
+          "after": "{...smallGhostButtonProps}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -246,7 +247,7 @@ export function ImportDataSetting() {
       </details>
       {!preview && (
         <div className="row">
-          <button className="btn sm" disabled={loading || running} onClick={() => void loadPreview()}>
+          <button {...smallButtonProps} disabled={loading || running} onClick={() => void loadPreview()}>
             {loading ? "Checking…" : "See what can be imported"}
           </button>
         </div>
@@ -294,17 +295,17 @@ export function ImportDataSetting() {
       ))}
       <div className="row">
         {preview && !running && (
-          <button className="btn sm" disabled={!selected.length || loading} onClick={() => void run()}>
+          <button {...smallButtonProps} disabled={!selected.length || loading} onClick={() => void run()}>
             Import selected ({selected.reduce((count, item) => count + item.categories.length, 0)})
           </button>
         )}
         {running && (
-          <button className="btn sm ghost" disabled={stopping || job.cancelled} onClick={() => void cancel()}>
+          <button {...smallGhostButtonProps} disabled={stopping || job.cancelled} onClick={() => void cancel()}>
             {stopping || job.cancelled ? "Stopping…" : "Cancel import"}
           </button>
         )}
         {preview && (
-          <button className="btn sm ghost" disabled={running || loading} onClick={() => void loadPreview()}>
+          <button {...smallGhostButtonProps} disabled={running || loading} onClick={() => void loadPreview()}>
             Refresh
           </button>
         )}
@@ -340,7 +341,7 @@ export function ImportDataSetting() {
           {progressError && (
             <p role="alert" className="hint err">
               {progressError}{" "}
-              <button className="btn sm ghost" onClick={() => void syncProgress(job.jobId)}>
+              <button {...smallGhostButtonProps} onClick={() => void syncProgress(job.jobId)}>
                 Check progress
               </button>
             </p>
@@ -357,7 +358,7 @@ export function ImportDataSetting() {
                   Review sources and select what to retry. Bookmarks and history merge safely; live tabs can open
                   duplicates. Counts cover confirmed batches; an interrupted request may have added more.
                 </p>
-                <button className="btn sm ghost" disabled={loading} onClick={() => void loadPreview()}>
+                <button {...smallGhostButtonProps} disabled={loading} onClick={() => void loadPreview()}>
                   Review sources to retry
                 </button>
               </>

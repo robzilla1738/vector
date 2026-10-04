@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./ChatSessions.css";
 import { ActionMenu } from "../ui";
@@ -128,7 +129,7 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
     </div>
     {renaming === item.chatId && <form className="session-editor" onSubmit={event => { event.preventDefault(); void rename(item); }}>
       <input autoFocus aria-label="Conversation name" maxLength={160} value={chatName} onChange={event => setChatName(event.target.value)} />
-      <button className="btn sm" disabled={busy || !chatName.trim()}>Save</button><button className="btn sm ghost" type="button" onClick={() => dismiss(item.chatId)}>Cancel</button>
+      <button {...smallButtonProps} disabled={busy || !chatName.trim()}>Save</button><button {...smallGhostButtonProps} type="button" onClick={() => dismiss(item.chatId)}>Cancel</button>
     </form>}
     <div className={`session-disclosure${moving === item.chatId ? " open" : ""}`} aria-hidden={moving !== item.chatId} inert={moving !== item.chatId}><div><label className="session-move">Project<select ref={node => { if (node) projectSelectors.current.set(item.chatId, node); else projectSelectors.current.delete(item.chatId); }} aria-label={`Project for ${item.title}`} value={organization.members[item.chatId] && organization.folders.some(f => f.id === organization.members[item.chatId]) ? organization.members[item.chatId] : ""} onChange={event => { organize(() => moveChatToFolder(localStorage, item.chatId, event.target.value)); focusReturn.current = { kind: "chat", id: item.chatId }; setMoving(null); }}><option value="">No project</option>{organization.folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label></div></div>
     <div className={`session-disclosure${deleting === item.chatId ? " open" : ""}`} aria-hidden={deleting !== item.chatId} inert={deleting !== item.chatId}><div><div className="session-confirm" role="group" aria-label={`Delete ${item.title} permanently?`}><span>Delete this chat permanently?</span><button className="btn ghost danger" disabled={busy} onClick={() => void mutate(item, true)}>Delete permanently</button><button className="btn ghost" onClick={() => dismiss(item.chatId)}>Cancel</button></div></div></div>

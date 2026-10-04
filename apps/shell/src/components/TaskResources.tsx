@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import {memo,useState} from "react";
 import type {Task} from "@aux/contracts";
 import {useStore, errToast} from "../store";
@@ -14,21 +15,21 @@ const ResourceRow = memo(function ResourceRow({task, resource, archived, editing
   const href = resource.kind === "url" ? resourceWebUrl(resource.locator) : null;
   return <article className="task-resource" aria-label={resource.label}>
     {editing === resource.resourceId ? <form className="row" onSubmit={event => { event.preventDefault(); void update(task.resources.map(item => item.resourceId === resource.resourceId ? {...item, label:label.trim()} : item)).then(ok => {if(ok) setEditing(null);}); }}>
-      <input aria-label="Resource label" value={label} onChange={event => setLabel(event.target.value)} maxLength={200}/><button className="btn sm" disabled={!label.trim()}>Save label</button><button className="btn sm" type="button" onClick={() => setEditing(null)}>Cancel</button>
+      <input aria-label="Resource label" value={label} onChange={event => setLabel(event.target.value)} maxLength={200}/><button {...smallButtonProps} disabled={!label.trim()}>Save label</button><button {...smallButtonProps} type="button" onClick={() => setEditing(null)}>Cancel</button>
     </form> : <strong>{resource.label}</strong>}
     <span className="hint">{resource.kind === "page" ? page ? "Browser tab" : "Tab unavailable" : resource.kind} · {page?.url ?? resource.locator} · {(resource.access ?? (resource.kind === "repository" ? "write" : "reference")).replaceAll("_", " ")}</span>
     <div className="row">
-      {page && <button className="btn sm" onClick={() => void useStore.getState().activate(page.pageId).catch(errToast)}>Open tab</button>}
-      {href && <button className="btn sm" onClick={() => {
+      {page && <button {...smallButtonProps} onClick={() => void useStore.getState().activate(page.pageId).catch(errToast)}>Open tab</button>}
+      {href && <button {...smallButtonProps} onClick={() => {
         const state = useStore.getState();
         const existing = state.pages.find(item => item.url === href && !item.ownedByRuntime && item.viewStatus !== "detached");
         void (existing ? state.activate(existing.pageId) : state.newTab(href)).catch(errToast);
       }}>Open URL</button>}
-      <button className="btn sm" disabled={archived} onClick={() => {setEditing(resource.resourceId); setLabel(resource.label);}}>Rename</button>
+      <button {...smallButtonProps} disabled={archived} onClick={() => {setEditing(resource.resourceId); setLabel(resource.label);}}>Rename</button>
       <label className="hint">Access<select aria-label={`${resource.label} access`} disabled={archived} value={resource.access ?? (resource.kind === "repository" ? "write" : "reference")} onChange={event => void update(task.resources.map(item => item.resourceId === resource.resourceId ? {...item, access: event.target.value as Resource["access"]} : item))}>
         <option value="reference">Reference only</option><option value="read">Read</option><option value="write">Write in Aux</option>
       </select></label>
-      <button className="btn sm" disabled={archived} onClick={() => void update(task.resources.filter(item => item.resourceId !== resource.resourceId))}>Remove reference</button>
+      <button {...smallButtonProps} disabled={archived} onClick={() => void update(task.resources.filter(item => item.resourceId !== resource.resourceId))}>Remove reference</button>
     </div>
   </article>;
 });
@@ -57,12 +58,12 @@ export function TaskResources({task, activePageId, attached, update}: {
     {task.resources.map(resource => <ResourceRow key={resource.resourceId} task={task} resource={resource} archived={archived}
       editing={editing} label={label} setEditing={setEditing} setLabel={setLabel} update={update} />)}
     <span className="hint">{attached ? "Current tab is attached for evidence capture." : "Attach the current tab to capture page evidence without running an agent."}</span>
-    <button className="btn sm" disabled={!activePageId || attached || archived || task.resources.length >= 100} onClick={() => {
+    <button {...smallButtonProps} disabled={!activePageId || attached || archived || task.resources.length >= 100} onClick={() => {
       if (activePage) void update([...task.resources, {resourceId:crypto.randomUUID(), kind:"page", locator:activePage.pageId, label:(activePage.title || activePage.url || "Browser tab").slice(0,200)}]);
     }}>Attach current tab</button>
     <form className="row" onSubmit={event => {event.preventDefault(); void addUrl();}}>
       <input aria-label="Resource URL" placeholder="https://example.com/reference" value={url} onChange={event => setUrl(event.target.value)} maxLength={4000}/>
-      <button className="btn sm" disabled={archived || !url.trim() || task.resources.length >= 100}>Add URL</button>
+      <button {...smallButtonProps} disabled={archived || !url.trim() || task.resources.length >= 100}>Add URL</button>
     </form>
     {error && <p role="alert">{error}</p>}
   </section>;

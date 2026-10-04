@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./PluginsPanel.css";
 import { useEffect, useState } from "react";
@@ -128,10 +129,14 @@ export function PluginsPanel() {
             ))}
           </select>
         </label>
-        <button className="btn sm ghost" disabled={busy || !workspaceId} onClick={() => choose("file")}>
+        <button {...smallGhostButtonProps} disabled={busy || !workspaceId} onClick={() => choose("file")}>
           Choose Aux bundle…
         </button>
-        <button className="btn sm ghost" disabled={busy || !workspaceId} onClick={() => choose("directory")}>
+        <button
+          {...smallGhostButtonProps}
+          disabled={busy || !workspaceId}
+          onClick={() => choose("directory")}
+        >
           Choose Claude Code folder…
         </button>
       </div>
@@ -168,10 +173,10 @@ export function PluginsPanel() {
             Reviewed digest {inspection.digest.slice(0, 16)}… · contents must still match when installed.
           </p>
           <div className="row">
-            <button className="btn sm" disabled={busy || !workspaceId} onClick={install}>
+            <button {...smallButtonProps} disabled={busy || !workspaceId} onClick={install}>
               Install into this Space
             </button>
-            <button className="btn sm ghost" disabled={busy} onClick={() => setInspection(null)}>
+            <button {...smallGhostButtonProps} disabled={busy} onClick={() => setInspection(null)}>
               Cancel
             </button>
           </div>
@@ -232,7 +237,7 @@ export function PluginsPanel() {
                   {asset.kind === "skill" &&
                     !grants.some((grant) => grant.assetId === asset.assetId && !grant.revokedAt) && (
                       <button
-                        className="btn sm ghost"
+                        {...smallGhostButtonProps}
                         disabled={busy}
                         onClick={() =>
                           void action(async () => {
@@ -256,7 +261,7 @@ export function PluginsPanel() {
                     .map((grant) => (
                       <button
                         key={grant.grantId}
-                        className="btn sm ghost"
+                        {...smallGhostButtonProps}
                         disabled={busy}
                         onClick={() =>
                           void action(async () => {
@@ -276,7 +281,7 @@ export function PluginsPanel() {
                 </div>
               ))}
               <button
-                className="btn sm ghost"
+                {...smallGhostButtonProps}
                 disabled={busy}
                 onClick={() =>
                   void action(async () => {

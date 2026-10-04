@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { ExtensionShortcuts } from "../features/extensions/ExtensionShortcuts";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -150,10 +151,10 @@ export function ShortcutsSetting({
     <div className="shortcuts-setting">
       <p className="hint">Make Aux feel familiar. Your shortcuts are saved for this Profile.</p>
       <div className="field-row">
-        <button className="btn sm" disabled={busy} onClick={exportFile}>
+        <button {...smallButtonProps} disabled={busy} onClick={exportFile}>
           Export shortcuts
         </button>
-        <button className="btn sm" disabled={busy} onClick={() => importInput.current?.click()}>
+        <button {...smallButtonProps} disabled={busy} onClick={() => importInput.current?.click()}>
           Import shortcuts
         </button>
         <input
@@ -209,7 +210,7 @@ export function ShortcutsSetting({
                 <output className="hint shortcut-recording">Press keys… Esc cancels</output>
               ) : (
                 <button
-                  className="btn sm ghost"
+                  {...smallGhostButtonProps}
                   aria-label={`Change ${def.label} shortcut`}
                   disabled={busy || recording !== null}
                   onClick={() => {
@@ -222,7 +223,7 @@ export function ShortcutsSetting({
               )}
               {overridden && (
                 <button
-                  className="btn sm ghost"
+                  {...smallGhostButtonProps}
                   disabled={busy}
                   aria-label={`Reset ${def.label} shortcut`}
                   onClick={() => reset(def.id)}
@@ -239,10 +240,10 @@ export function ShortcutsSetting({
         <p className="field-error" role="alert">
           {bindingLabel(pending.binding, platform)} is used by{" "}
           {pending.rivals.map((def) => `“${def.label}”`).join(", ")}.
-          <button className="btn sm" disabled={busy} onClick={() => steal(pending)}>
+          <button {...smallButtonProps} disabled={busy} onClick={() => steal(pending)}>
             Assign anyway — remove it there
           </button>
-          <button className="btn sm ghost" disabled={busy} onClick={() => setPending(null)}>
+          <button {...smallGhostButtonProps} disabled={busy} onClick={() => setPending(null)}>
             Cancel
           </button>
         </p>
@@ -265,7 +266,7 @@ export function ShortcutsSetting({
         </p>
       )}
       {Object.keys(value).length > 0 && (
-        <button className="btn sm ghost" disabled={busy} onClick={() => void save({})}>
+        <button {...smallGhostButtonProps} disabled={busy} onClick={() => void save({})}>
           Reset all shortcuts
         </button>
       )}

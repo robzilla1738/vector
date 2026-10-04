@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { moveListFocus } from "../keyboard-list";
 import { useStore } from "../store";
 import { hostOf } from "../workspace";
@@ -17,8 +18,8 @@ const ClosedTabRow = memo(function ClosedTabRow({ tabId, groupCount, firstInGrou
       <span className="library-title">{tab.title || hostOf(tab.url)}</span><span className="library-url">{tab.url}</span>
       <span className="hint">{location}{archived ? " · Space will be restored" : ""} · {new Date(tab.closedAt).toLocaleString()}</span>
     </button>
-    {firstInGroup && groupCount > 1 && <button className="btn sm" disabled={busy} onClick={() => void useStore.getState().reopenClosedTab(tab.pageId, true)}>Reopen group · {groupCount}</button>}
-    <button className="btn sm" disabled={busy} aria-label={`Reopen ${tab.title || hostOf(tab.url)}`} onClick={() => void useStore.getState().reopenClosedTab(tab.pageId)}>{shellIconReopen} Reopen</button>
+    {firstInGroup && groupCount > 1 && <button {...smallButtonProps} disabled={busy} onClick={() => void useStore.getState().reopenClosedTab(tab.pageId, true)}>Reopen group · {groupCount}</button>}
+    <button {...smallButtonProps} disabled={busy} aria-label={`Reopen ${tab.title || hostOf(tab.url)}`} onClick={() => void useStore.getState().reopenClosedTab(tab.pageId)}>{shellIconReopen} Reopen</button>
   </div>;
 });
 import { useShallow } from "zustand/react/shallow";

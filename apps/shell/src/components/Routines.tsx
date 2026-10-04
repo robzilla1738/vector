@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { WorkRow } from "../ui";
 import { useEffect, useState } from "react";
@@ -297,7 +298,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         <div className="row">
           {task && (
             <button
-              className="btn sm"
+              {...smallButtonProps}
               disabled={busy}
               onClick={() =>
                 void action(async () => {
@@ -315,7 +316,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             </button>
           )}
           <button
-            className="btn sm ghost"
+            {...smallGhostButtonProps}
             disabled={busy}
             onClick={() =>
               void action(async () => {
@@ -333,7 +334,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             Export…
           </button>
           <button
-            className="btn sm ghost"
+            {...smallGhostButtonProps}
             disabled={busy}
             onClick={() =>
               void action(async () => {
@@ -350,7 +351,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             Import…
           </button>
           <button
-            className="btn sm ghost"
+            {...smallGhostButtonProps}
             disabled={busy}
             onClick={() =>
               void action(async () => {
@@ -388,7 +389,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             {item.run.reason ? ` · ${item.run.reason}` : ""}
             <div className="row">
               <button
-                className="btn sm ghost"
+                {...smallGhostButtonProps}
                 disabled={busy}
                 onClick={() => void action(() => refresh(item.run.routineId))}
               >
@@ -396,7 +397,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               </button>
               {!item.readAt && (
                 <button
-                  className="btn sm ghost"
+                  {...smallGhostButtonProps}
                   disabled={busy}
                   onClick={() =>
                     void action(async () => {
@@ -607,7 +608,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               {activationBlock && <span className="hint">{activationBlock}</span>}
               {activationReview === `${selected.routine.routineId}:${selected.routine.revision}` ? (
                 <div className="row">
-                  <button className="btn sm" disabled={busy || !!activationBlock}
+                  <button {...smallButtonProps} disabled={busy || !!activationBlock}
                     onClick={() => void action(async () => {
                       const reviewed = selected.routine;
                       await call("routines.update", { routineId: reviewed.routineId,
@@ -615,10 +616,10 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
                       setActivationReview("");
                       await refresh(reviewed.routineId);
                     })}>Activate reviewed Skill</button>
-                  <button className="btn sm ghost" onClick={() => setActivationReview("")}>Cancel</button>
+                  <button {...smallGhostButtonProps} onClick={() => setActivationReview("")}>Cancel</button>
                 </div>
               ) : (
-                <button className="btn sm" disabled={busy || !!activationBlock}
+                <button {...smallButtonProps} disabled={busy || !!activationBlock}
                   onClick={() => setActivationReview(`${selected.routine.routineId}:${selected.routine.revision}`)}>
                   Review activation
                 </button>
@@ -694,7 +695,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
           />
           <div className="row">
             <button
-              className="btn sm"
+              {...smallButtonProps}
               disabled={busy || !!selected.routine.activationReview || (selected.routine.paused && !selected.routine.sourceTaskId)}
               onClick={() =>
                 void action(async () => {
@@ -710,7 +711,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               {selected.routine.activationReview ? "Review above to activate" : selected.routine.paused ? "Resume" : "Pause"}
             </button>
             <button
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               disabled={busy}
               onClick={() =>
                 void action(async () => {
@@ -726,7 +727,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             </button>
             {selected.runs.length >= 2 && (
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 disabled={busy}
                 onClick={() =>
                   void action(async () => {
@@ -856,7 +857,7 @@ function RoutineOutcome({ run }: { run: RoutineRun }) {
   return (
     <div className="field">
       <button
-        className="btn sm ghost"
+        {...smallGhostButtonProps}
         aria-expanded={open}
         onClick={() => {
           setOpen(!open);
@@ -875,7 +876,7 @@ function RoutineOutcome({ run }: { run: RoutineRun }) {
           {error && (
             <p className="field-error" role="alert">
               {error}{" "}
-              <button className="btn sm ghost" onClick={() => void load()}>
+              <button {...smallGhostButtonProps} onClick={() => void load()}>
                 Retry
               </button>
             </p>
@@ -950,14 +951,14 @@ function RoutineRunReview({
       )}
       <div className="row">
         <button
-          className="btn sm"
+          {...smallButtonProps}
           disabled={busy || !note.trim()}
           onClick={() => onResolve("applied", note.trim())}
         >
           {uncertain ? "Confirmed applied" : "Approve and run"}
         </button>
         <button
-          className="btn sm ghost"
+          {...smallGhostButtonProps}
           disabled={busy || !note.trim()}
           onClick={() => onResolve("not_applied", note.trim())}
         >
@@ -1090,7 +1091,7 @@ function RoutineDefinitionEditor({
               onChange={(event) => changeParameter(index, { value: event.target.value })}
             />
             <button
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               disabled={disabled}
               onClick={() => setParameters((items) => items.filter((_, at) => at !== index))}
             >
@@ -1099,7 +1100,7 @@ function RoutineDefinitionEditor({
           </div>
         ))}
         <button
-          className="btn sm ghost"
+          {...smallGhostButtonProps}
           disabled={disabled || parameters.length >= 20}
           onClick={() => setParameters((items) => [...items, { name: "", label: "" }])}
         >
@@ -1134,7 +1135,7 @@ function RoutineDefinitionEditor({
               </span>
             )}
             <button
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               disabled={disabled || (sourceMatches && criteria.length > 0)}
               onClick={() => setCriteria(source.criteria)}
             >
@@ -1163,7 +1164,7 @@ function RoutineDefinitionEditor({
         </div>
       )}
       <button
-        className="btn sm"
+        {...smallButtonProps}
         disabled={disabled || !dirty || !title.trim() || !objective.trim() || !validNames}
         onClick={() =>
           onSave({
@@ -1225,7 +1226,7 @@ function RoutineSourceTask({
           ))}
         </select>
         <button
-          className="btn sm"
+          {...smallButtonProps}
           disabled={disabled || !picked || picked === routine.sourceTaskId}
           onClick={() => onSave(picked)}
         >
@@ -1262,7 +1263,7 @@ function RoutineRunControls({
         </label>
       ))}
       <button
-        className="btn sm"
+        {...smallButtonProps}
         disabled={disabled || routine.parameters.some((item) => !values[item.name]?.trim())}
         onClick={() => onRun(values)}
       >
@@ -1341,7 +1342,7 @@ function RoutineAccounts({
         </label>
       ))}
       {(items !== null || picked.length > 0) && (
-        <button className="btn sm" disabled={disabled || !dirty} onClick={() => onSave(picked)}>
+        <button {...smallButtonProps} disabled={disabled || !dirty} onClick={() => onSave(picked)}>
           Save accounts
         </button>
       )}
@@ -1419,7 +1420,7 @@ function RoutineCalendarGrants({
       )}
       {grants && dirty && (
         <button
-          className="btn sm"
+          {...smallButtonProps}
           disabled={disabled}
           onClick={() => onSave(picked.filter((id) => available.has(id)))}
         >
@@ -1428,7 +1429,7 @@ function RoutineCalendarGrants({
       )}
       {grants && stale.length > 0 && !dirty && (
         <button
-          className="btn sm"
+          {...smallButtonProps}
           disabled={disabled}
           onClick={() => onSave(picked.filter((id) => available.has(id)))}
         >

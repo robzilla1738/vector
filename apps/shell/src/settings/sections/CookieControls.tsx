@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import { bridge, inNativeHost } from "../../bridge";
@@ -45,6 +46,6 @@ export function CookieControlsSetting({ active }: { active: boolean }) {
       disabled={busy || value.managed} onChange={event => void change(event.target.checked)} />
       : <span className="hint">Reading cookie setting…</span>}
     {value?.managed && <span className="hint">Managed by your organization</span>}
-    {error && <span role="alert" className="field-error">{error} <button className="btn sm ghost" onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
+    {error && <span role="alert" className="field-error">{error} <button {...smallGhostButtonProps} onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
   </div>;
 }

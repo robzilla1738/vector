@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { InlineAssistCapture, Run, RunTranscriptItem } from "@aux/contracts";
@@ -62,7 +63,7 @@ export function TextProposal({ run, proposal, readOnly = false }: { run: Run; pr
   return <section className="text-proposal" aria-label="Text proposal">
     <header><strong>Text ready to insert</strong><span>From this completed run</span></header>
     <pre>{proposal.text}</pre>
-    {!inserted && !capture && <button className="btn sm" disabled={busy || readOnly || !page || page.ownedByRuntime || page.backend !== "aux"}
+    {!inserted && !capture && <button {...smallButtonProps} disabled={busy || readOnly || !page || page.ownedByRuntime || page.backend !== "aux"}
       onClick={() => void review()}>{busy ? "Checking field…" : "Review Insert"}</button>}
     {capture && !inserted && <div className="text-proposal-review">
       <p>Insert into <strong>{capture.fieldLabel}</strong> on {capture.origin}. {capture.mode === "selection" ? "The selected text will be replaced." : "The field text will be replaced."}</p>
@@ -72,7 +73,7 @@ export function TextProposal({ run, proposal, readOnly = false }: { run: Run; pr
       {stale && <p role="alert">The page changed. Review the field again.</p>}
       <button className="btn sm primary" disabled={busy || stale || readOnly || proposal.text.length > (capture.maxReplacementLength ?? 12_000)}
         onClick={() => void insert()}>{busy ? "Inserting…" : "Insert text"}</button>
-      <button className="btn sm ghost" disabled={busy} onClick={() => { setCapture(null); setError(""); }}>Cancel</button>
+      <button {...smallGhostButtonProps} disabled={busy} onClick={() => { setCapture(null); setError(""); }}>Cancel</button>
     </div>}
     {inserted && <output>Inserted into the page. Use Undo in that field (⌘Z) to revert the change.</output>}
     {error && <p role="alert">{error}</p>}

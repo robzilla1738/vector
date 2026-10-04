@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useState } from "react";
 import type { UsageReportResult } from "@aux/contracts";
@@ -195,7 +196,7 @@ export function UsageBudgetsSettings({
                 defaultValue={caps.routineUsd ?? ""}
               />
             </label>
-            <button className="btn sm" type="submit">
+            <button {...smallButtonProps} type="submit">
               Save caps
             </button>
           </div>
@@ -211,10 +212,10 @@ export function UsageBudgetsSettings({
         hint="Export contains all recorded runs, plus model and local-day totals. Choose the destination in the native save dialog."
       >
         <div className="row">
-          <button className="btn sm ghost" disabled={busy} onClick={() => void refresh()}>
+          <button {...smallGhostButtonProps} disabled={busy} onClick={() => void refresh()}>
             {busy ? "Refreshing…" : "Refresh usage"}
           </button>
-          <button className="btn sm" disabled={exporting || !!error} onClick={() => void exportCsv()}>
+          <button {...smallButtonProps} disabled={exporting || !!error} onClick={() => void exportCsv()}>
             {exporting ? "Exporting…" : "Export CSV…"}
           </button>
         </div>

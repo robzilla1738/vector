@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
@@ -102,7 +103,7 @@ export function GeneralSettings({
           </IndexedField>
           <IndexedField label="Set up Aux" hint="Replay import, model setup and your first chat. Saved work is kept.">
             {active && connected && <SetupProgress />}
-            <button className="btn sm" onClick={requestOnboardingReplay}>Replay setup</button>
+            <button {...smallButtonProps} onClick={requestOnboardingReplay}>Replay setup</button>
           </IndexedField>
 
           <IndexedField compact label="Search engine">
@@ -154,7 +155,7 @@ export function GeneralSettings({
             hint="Manage shortcuts for searching individual sites."
           >
             <button
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               data-settings-editor="Keyword engines"
               onClick={(event) => onOpenEditor("Keyword engines", event.currentTarget)}
               aria-label="Manage keyword engines"
@@ -195,7 +196,7 @@ export function GeneralSettings({
         <SettingsGroup title="Data and recovery">
           <IndexedField compact label="Task data backup" hint="Create, restore, and manage local backups.">
             <button
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               data-settings-editor="Task data backup"
               onClick={(event) => onOpenEditor("Task data backup", event.currentTarget)}
               aria-label="Manage task data backup"
@@ -255,7 +256,7 @@ export function GeneralSettings({
           ) && (
             <div className="row">
               <button
-                className="btn sm ghost"
+                {...smallGhostButtonProps}
                 disabled={backupBusy || backupOperation !== null}
                 onClick={() => {
                   setBackupBusy(true);

@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
@@ -156,7 +157,7 @@ export function RestoreBackupControls({
       <PreferenceAction
         command="choose-runtime-restore"
         scopeId={scopeId}
-        className="btn sm"
+        {...smallButtonProps}
         disabled={!current() || !ready || busy || status.pending}
         invoke={() => {
           if (!ready || status.pending)
@@ -181,7 +182,7 @@ export function RestoreBackupControls({
         <PreferenceAction
           command="cancel-pending-runtime-restore"
           scopeId={scopeId}
-          className="btn sm"
+          {...smallButtonProps}
           disabled={!current() || busy}
           invoke={() =>
             perform(
@@ -203,7 +204,7 @@ export function RestoreBackupControls({
       <PreferenceAction
         command="refresh-runtime-restore-status"
         scopeId={scopeId}
-        className="btn sm ghost"
+        {...smallGhostButtonProps}
         disabled={!current() || busy}
         invoke={() => perform(read, () => {})}
       >
@@ -301,7 +302,7 @@ function ListedRestoreBackup({
     <PreferenceAction
       command="restore-reviewed-local-backup"
       scopeId={scopeId}
-      className="btn sm"
+      {...smallButtonProps}
       disabled={busy || !ready || restorePending || !item.restorable || !parent.current()}
       invoke={() => {
         if (!incarnation.current() || !parent.current() || !item.restorable || !ready || restorePending)

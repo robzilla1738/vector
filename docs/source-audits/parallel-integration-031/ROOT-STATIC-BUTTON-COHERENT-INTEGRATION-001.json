@@ -1,0 +1,41 @@
+{
+  "rootExactInitialReplayLeaves": 126,
+  "rootExactFormattingSuccessorLeaves": 2,
+  "rootOriginalLiteralWholeFileInverses": 124,
+  "rootExactLiteralSpans": 507,
+  "rootActualInstalledNative154LoweringInverse": 124,
+  "exactBytes": {
+    "nativeTarget": "chrome154",
+    "metrics": {
+      "startupJS": 501058,
+      "startupCSS": 179481,
+      "totalJS": 1840983
+    },
+    "limits": {
+      "startupJS": 501760,
+      "startupCSS": 184320,
+      "totalJS": 1843200
+    },
+    "passAllExactBytes": true,
+    "startupManifestKeys": [
+      "_App-CWGCn7AR.js",
+      "_Cl_0thB_.js",
+      "index.html"
+    ],
+    "startupJSFiles": [
+      "assets/App-CWGCn7AR.js",
+      "assets/Cl_0thB_.js",
+      "assets/index-CGwfriks.js"
+    ],
+    "manifestSha256": "db753c91b057ade6027f473c3753b73cc83b602dc9fa1f3c699659097fbce0a4"
+  },
+  "wholeUnit": "618 files and 3881 cases pass; raw output retained",
+  "shellTypesExitCode": 0,
+  "fullLintExitCode": 0,
+  "formatExitCode": 0,
+  "native154ViteExitCode": 0,
+  "exactBundleLimitsPass": true,
+  "netByteAttribution": "Independent baseline/manifest graph evidence pending; no independent saving attribution claimed",
+  "nativeF21Qualified": false,
+  "followingAdoption": false
+}

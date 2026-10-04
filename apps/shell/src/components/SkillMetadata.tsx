@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { useState } from "react";
 import type { Routine } from "@aux/contracts";
 
@@ -111,7 +112,7 @@ export function SkillMetadata({
           {error}
         </p>
       )}
-      <button className="btn sm" disabled={disabled || !dirty} onClick={save}>
+      <button {...smallButtonProps} disabled={disabled || !dirty} onClick={save}>
         Save sharing details
       </button>
     </details>

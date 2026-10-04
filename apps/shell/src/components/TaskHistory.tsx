@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import {
   useCallback,
   useEffect,
@@ -172,7 +173,7 @@ function HistorySession({ taskId, onClose }: { taskId: string; onClose: () => vo
           Saved task history
         </h3>
         <span className="sp" />
-        <PreferenceAction command="close-task-history" scopeId={scopeId} className="btn sm" invoke={close}>
+        <PreferenceAction command="close-task-history" scopeId={scopeId} {...smallButtonProps} invoke={close}>
           Back to current task
         </PreferenceAction>
       </div>
@@ -194,7 +195,7 @@ function HistorySession({ taskId, onClose }: { taskId: string; onClose: () => vo
       {error && (
         <div role="alert">
           <p>{error}</p>
-          <PreferenceAction command="retry-task-history" scopeId={scopeId} className="btn sm" invoke={load}>
+          <PreferenceAction command="retry-task-history" scopeId={scopeId} {...smallButtonProps} invoke={load}>
             Retry history
           </PreferenceAction>
         </div>

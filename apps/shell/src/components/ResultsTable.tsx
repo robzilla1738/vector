@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { runCommand } from "../commands";
 import { memo, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -75,7 +76,7 @@ const ResultRow = memo(function ResultRow({ id, keys }: { id: string; keys: stri
         : typeof value === "object" ? <code>{JSON.stringify(value)}</code> : String(value)}</td>;
     })}
     <td className="nums muted">{new Date(result.observedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-    <td><button className="btn sm ghost" onClick={() => void copy()}>{copied ? "Copied" : "Copy"}</button></td>
+    <td><button {...smallGhostButtonProps} onClick={() => void copy()}>{copied ? "Copied" : "Copy"}</button></td>
   </tr>;
 });
 
@@ -125,8 +126,8 @@ export function ResultsTable() {
               {shellIconSearch}
               <input placeholder="Filter rows" aria-label="Filter rows" value={filter} onChange={(e) => setFilter(e.target.value)} />
             </div>
-            <button className="btn sm" onClick={() => void exportFile(`${setName ?? "results"}.csv`, toCsv(exportRows(), keys), "text/csv")}>CSV</button>
-            <button className="btn sm" onClick={() => void exportFile(`${setName ?? "results"}.json`, JSON.stringify(exportRows(), null, 2), "application/json")}>JSON</button>
+            <button {...smallButtonProps} onClick={() => void exportFile(`${setName ?? "results"}.csv`, toCsv(exportRows(), keys), "text/csv")}>CSV</button>
+            <button {...smallButtonProps} onClick={() => void exportFile(`${setName ?? "results"}.json`, JSON.stringify(exportRows(), null, 2), "application/json")}>JSON</button>
           </>
         )}
       </div>

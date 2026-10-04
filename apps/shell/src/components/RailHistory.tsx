@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { STATUS_LABEL } from "../run-status";
 import { recentConversations } from "../conversations";
 import { memo, useState, useSyncExternalStore } from "react";
@@ -111,7 +112,7 @@ export function RailHistory() {
         ) : (
           <div className="run-list">{past.map((runId) => <RunRow key={runId} runId={runId} />)}</div>
         )}
-        <button className="btn sm ghost" onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>Browse all conversations</button>
+        <button {...smallGhostButtonProps} onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>Browse all conversations</button>
       </section>
     </div>
   );

@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import {
   useEffect,
   useId,
@@ -148,7 +149,7 @@ export function RunNoticeBanner({
         </NoticeButton>
         <NoticeButton
           command="dismiss-task-notice"
-          className="btn sm ghost"
+          {...smallGhostButtonProps}
           aria-label="Dismiss task notice"
           invoke={onDismiss}
           dismiss={onDismiss}

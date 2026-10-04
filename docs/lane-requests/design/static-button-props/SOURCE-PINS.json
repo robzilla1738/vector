@@ -1,0 +1,638 @@
+{
+  "base": "a71af6e7c8c3e05726426d2c878a8989d4d03261",
+  "files": [
+    {
+      "path": "apps/shell/src/agent/RunAttentionFeed.tsx",
+      "beforeSHA256": "85c8095f5a443f38442b516f5bef115f512f5d930f604f009f27e203aeabf914",
+      "afterSHA256": "be48aaf4bed07849efe2a7f1b8f77fb91bb94a7fd87fb8c82abde12b9266d5fd"
+    },
+    {
+      "path": "apps/shell/src/agent/RunNoticeControls.tsx",
+      "beforeSHA256": "4909b43357be11c0bd3bf7453a7a9a5e388624f4922c6e119f98d88009555364",
+      "afterSHA256": "22300febf787db281ea56bd38f13a4d9921fb5b8bf2d87a80f693ec62e258f72"
+    },
+    {
+      "path": "apps/shell/src/components/AnswerMarkdown.tsx",
+      "beforeSHA256": "222687b3d4ff5762ea67275b54d047b9e4cb803d6e89bf74a96f803330b59c7d",
+      "afterSHA256": "b3d56575f633b87550781a743c45d376440e33d06d4fca64366a86d3d3e64be3"
+    },
+    {
+      "path": "apps/shell/src/components/ArchivedTabs.tsx",
+      "beforeSHA256": "46a9dba1c6e9a671cf5bb792795753224bb0c3c48c164ba35328799746f28ec7",
+      "afterSHA256": "1912184eed15ce9e72aa56a95a8dfb128d771b8371381a7cabf8aa956cbe6c9f"
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.tsx",
+      "beforeSHA256": "c3a1363babf3747bad1b1a84b44921a9594f5d0f63447a1db9d8d07cd8e70742",
+      "afterSHA256": "d62ae91daad59025cef821de8757a5cbf3f9835a3ba872dc978d6c545c1a5e61"
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextTray.tsx",
+      "beforeSHA256": "c763794d42fcbb1ba1ae1f6326cc93e1f2ed0fdcca3871e68d860c5ac7358a68",
+      "afterSHA256": "3adb7313acd9dfe247a196599aad2b44972908010cd150c9d8a4e40705a366ea"
+    },
+    {
+      "path": "apps/shell/src/components/BrowserProfiles.tsx",
+      "beforeSHA256": "500282bdaaefb686831cfdc335ff1d48d73b60b7ba4bc3acdf00e6ddb838355b",
+      "afterSHA256": "473f83f7eeac18abad26521114ac1b04c6eee96c1cb2051100f7f87b1f65f6a7"
+    },
+    {
+      "path": "apps/shell/src/components/BrowsingMemory.tsx",
+      "beforeSHA256": "6d0e73b987bda0adbfb2f88b7c4cfd7269463daa7a4bb4ce9c4506f40a039daa",
+      "afterSHA256": "6eff6a24f9c24e895900e090e3a84f4d2c2fce85d2b955ad9e887fc76cec48b8"
+    },
+    {
+      "path": "apps/shell/src/components/CalendarConnections.tsx",
+      "beforeSHA256": "8529abc222deb431ef37c3c9239b58317751ca1fbb2562995d01bc98308b215a",
+      "afterSHA256": "8517867f069840864559c9a3ea5d2521a01a1108bb7266033ff54783444a90a7"
+    },
+    {
+      "path": "apps/shell/src/components/CalendarSourceChoiceDialog.tsx",
+      "beforeSHA256": "c499cb47c7dd8bd143c068cb05334037182651185da08f9ffd30c1ed23893cfb",
+      "afterSHA256": "6517d06b7eccc58815025e736b41d6a2de1667504974047757bbbf0e40562ab1"
+    },
+    {
+      "path": "apps/shell/src/components/CalendarTaskGrants.tsx",
+      "beforeSHA256": "462ff6a54db52afb1eea14b7d0989f240e2196fdd1744828d3eef07595df3288",
+      "afterSHA256": "3c2d45e445be67b6398d796a7c06cc59872fd901d4842933aec610e093a2324a"
+    },
+    {
+      "path": "apps/shell/src/components/ChatSessions.tsx",
+      "beforeSHA256": "cade5ca9a84ba89ab6cfb27e4c1b1d9144d013d15f3827b80edc725dcd3ca7df",
+      "afterSHA256": "6c6266a0b765b4aa6354500bab332d0a6e8cf344f69cb935050a8cc37207a357"
+    },
+    {
+      "path": "apps/shell/src/components/ClearBrowsingData.tsx",
+      "beforeSHA256": "96f3bde789e7064706d3c6c813db73262290f410ea368971097bee9bcda2f528",
+      "afterSHA256": "a0f19f361f0195c5f7ffa04623e9c63f8b5d23c8eb4aa4bf257ea10f1d072458"
+    },
+    {
+      "path": "apps/shell/src/components/ClearHistory.tsx",
+      "beforeSHA256": "ffa1387281d9cb83e6cd6b9249da8b58fec889da46ad86668e7ba46bcbfdedf9",
+      "afterSHA256": "87504e0ddc936bda7eec321632c0c0568fb5281cc072a8c656a2f2e434b4a110"
+    },
+    {
+      "path": "apps/shell/src/components/CommandSurface.tsx",
+      "beforeSHA256": "35c1da15ab21043a2cb65d5092ae9f8ab019adf792627384b08357e8be1b0de6",
+      "afterSHA256": "6c690e0989b8e39ee16b6f584e7b618fe56a47318df6f8e18782c6136e898d3a"
+    },
+    {
+      "path": "apps/shell/src/components/ContentMemory.tsx",
+      "beforeSHA256": "12019086d5afd877e90f480cea27e379f2928c82417dd17fb6729f14140f5cf9",
+      "afterSHA256": "9d57290d7d02af3061a86432ca61521fee64e61668db47ab0acbb72acde69cfc"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationDrafts.tsx",
+      "beforeSHA256": "185d01997aa5665a6ceeec6536273ec80f3b48fea0e9f4d34cccaec8acc6dba1",
+      "afterSHA256": "a08a01a3599390b71f19184df07537101ba347053b4730aa5eb3ebf3e80d2bc7"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationHistory.tsx",
+      "beforeSHA256": "de33af61c70fcb605034a45cf8ea093c12767a5ee11903ebe9e5c35e0e4102a1",
+      "afterSHA256": "2b98fe4b13fd7d27e4bd169024cb27a576ae4a7432eb6c3a4746967b424638e0"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImages.tsx",
+      "beforeSHA256": "40848501448b4b5baa0f7e59a5517ba7d132302466c36cf7fa683ce6a88b97b8",
+      "afterSHA256": "9b85eb0934a405a80f6fe1db7fc655bfdb6b5bbb945a352bcc1c4d57b87abef1"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationTask.tsx",
+      "beforeSHA256": "509160feb374d4c4a33171cd329a79411f2f324690f7e83f1907fd0b6a732fd3",
+      "afterSHA256": "38fcb27054f0224dc119122f131ae3c7da850c81d4a4b6587797c9dfc64c8d60"
+    },
+    {
+      "path": "apps/shell/src/components/DefaultBrowserSetting.tsx",
+      "beforeSHA256": "a48c910fd728903adcd591286e06277b750c67ae7c6806f5dcb7386b8e06b566",
+      "afterSHA256": "2203da5dca6c78215a008ec0fc5d19fe5faa832237d9f427512b3396226ef4ab"
+    },
+    {
+      "path": "apps/shell/src/components/DeferredSurface.tsx",
+      "beforeSHA256": "5b3a51738fae8defaa1e5b32979c5ae5e7e2e4dd505fed458274507e53ebbf7d",
+      "afterSHA256": "dc5937e42811762379fa92475856bad8803877c20096794b0939acfe8d9a28de"
+    },
+    {
+      "path": "apps/shell/src/components/Dictation.tsx",
+      "beforeSHA256": "26c91de4ca190c6564cc9c90ddf74caf901ba10206cea98c56692870a1e1fa24",
+      "afterSHA256": "c8a413d49bbb86b0291aa8f0c1b0c44893660e8728730420fa7f35717912cb67"
+    },
+    {
+      "path": "apps/shell/src/components/DocumentSnapshot.tsx",
+      "beforeSHA256": "d05555332cf979f3337a6cd21eae8b56d70339dab9e0373e75bc0f4ac4c9beee",
+      "afterSHA256": "3c43edca89792f6a8d1b189e1b23e22f48e72a4643ac2753a2aa35203e2a6abf"
+    },
+    {
+      "path": "apps/shell/src/components/Downloads.tsx",
+      "beforeSHA256": "9dcdadfdcef182b5feb030c457b1bdf3d45c0e7d4d4dc5c0e0cc7346f5b8585e",
+      "afterSHA256": "96c77ea9110c2f38ca4d51dfb43357999055e4b67301f20a518d9da852a06f6a"
+    },
+    {
+      "path": "apps/shell/src/components/Extensions.tsx",
+      "beforeSHA256": "addb2c54064540009f10585d89908ee3ebcf09ecb6292348398007a69329545e",
+      "afterSHA256": "450da6cbb41e0af7936744ffd3ca8934b88533a17f92ef109d5f68017bd5947b"
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgentOversight.tsx",
+      "beforeSHA256": "492aaaa51a626420066065c8647fdf5d5973bea2466fb19526037f3281911367",
+      "afterSHA256": "47b44ae3b6040f0d223ce64dcf83e887c4e25fe667c6c8fd0a8db651ca5098cc"
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgents.tsx",
+      "beforeSHA256": "9eacf771a19cdef58328555839145387ccad5bb2948f1f6bcfbaabe905d6176d",
+      "afterSHA256": "969220bbd5184f93e28f84ccd089dec04e488c1730b5b8e5c8ac442b60bb9a81"
+    },
+    {
+      "path": "apps/shell/src/components/FilterListManager.tsx",
+      "beforeSHA256": "8c7cd92bfc9fd569abae11f560f4ce370c20be4fdcad9afa1848725d945869b2",
+      "afterSHA256": "9eae1f7d55f51d986309d286b7d990b4792dbe1c561488800a61306ef20a1e31"
+    },
+    {
+      "path": "apps/shell/src/components/FindBar.tsx",
+      "beforeSHA256": "7662fd498fecedce43b27cbb7477eec561069e34f8cb0e9063ac27e9e1c4267c",
+      "afterSHA256": "49dd44565162f9bd5fd2f8c733948b875913a270141bee5ceed80a16a41f3215"
+    },
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.tsx",
+      "beforeSHA256": "2d48d78b75955309345c6d1d2e6f3fdb6937a86a79ecf75d0baaa3540ae173ab",
+      "afterSHA256": "e2895f0933b26df61dcca45baf55a437a5ee984d9bb4ab1f7c4ddd877100ce50"
+    },
+    {
+      "path": "apps/shell/src/components/Goals.tsx",
+      "beforeSHA256": "e95acc7fe3b587c8d1abce0f02559b043e51c75dd0de8110c01abea08e19f8bc",
+      "afterSHA256": "d63b6b4fce007b78ff9bb1bb33656cf9f30f1cf29df42ec634c3484835e525f5"
+    },
+    {
+      "path": "apps/shell/src/components/Hooks.tsx",
+      "beforeSHA256": "cb432da5100c615d707d3ecb12379147901c66686b2a4466667f8685901d8f62",
+      "afterSHA256": "45b45134b4957db3110eeba0338fe48d8482ff680cbf74ea57270e39d5177635"
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.tsx",
+      "beforeSHA256": "e244eb21ef7eb7b7daf41a6bf1a1a1c6a8a2fb3b9458f0f8b4ff139f520509a5",
+      "afterSHA256": "f89225156909aaff70e5d8ecc1d48de62ad1a707a48738e6daad8928f05d3075"
+    },
+    {
+      "path": "apps/shell/src/components/ImageViewer.tsx",
+      "beforeSHA256": "c4216b8aa4b244dcf759356582b2319c8473670e346a7f845f26191a939e7b38",
+      "afterSHA256": "5401b78ad9d78d5072773abe08e0759be9231db34c5494a20d93bcb851184ca2"
+    },
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.tsx",
+      "beforeSHA256": "6d828b4abb3f3e02d554eff0c2a326046e2c4c163dfacdbb1cd322334ec65911",
+      "afterSHA256": "22926b488a9ea611dd7101f316778f01ed0104fcb079b2178430201fa68a9bb4"
+    },
+    {
+      "path": "apps/shell/src/components/InlineAssist.tsx",
+      "beforeSHA256": "8417a21ae8261a9edb1b8afd560cee4675395284505017b70d536145565fa171",
+      "afterSHA256": "44dce28c19cedb7e32d39500323e96e21ff915fa77ca1709a187d9d31e986ae2"
+    },
+    {
+      "path": "apps/shell/src/components/Inspector.tsx",
+      "beforeSHA256": "63691e9b64606eeaa659530d3e9fe5392217174cfd926ecb44284a814d48e2a5",
+      "afterSHA256": "32db6b4a0a2143ea4d31d1b1428651ee0142151e14d189a44871b31c0d1c5b7a"
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "beforeSHA256": "3769b9b0cf573595265e17b394b5267a143bf5ff6bacdcb878507fe07a9e97b4",
+      "afterSHA256": "ac09de44f7a7a210ae968118624b9d781bbb4db062aa436a082ce1b91303f384"
+    },
+    {
+      "path": "apps/shell/src/components/LinkPeek.tsx",
+      "beforeSHA256": "3d682bc0bb8c1b858836ae5e40e426b2b76c687772a210ecc107fc39a2d29ac2",
+      "afterSHA256": "835facd06aac3e097dc0a07f7b7d582e2206b7a49f8c029692e0e64b43cd89cd"
+    },
+    {
+      "path": "apps/shell/src/components/LittleWindow.tsx",
+      "beforeSHA256": "fdae8f200e728d9996427dd7a19bf77aec7e5691dbd13ed3bbbdc21c12452fe0",
+      "afterSHA256": "722a8d462fb6e4eba667ee8bb4be59b64c3216439d4cfb4c15b9ce3a1217547a"
+    },
+    {
+      "path": "apps/shell/src/components/MemoryExclusions.tsx",
+      "beforeSHA256": "6aa479c97c13286427b684e566a0ac0da430d6c99b8165914b8996c6f3ff7c08",
+      "afterSHA256": "6fc6a797877e1b4d73b893ac97d4fc1b5b6deee40ee0720ab7a01fdf6cf5a052"
+    },
+    {
+      "path": "apps/shell/src/components/MemoryItems.tsx",
+      "beforeSHA256": "485283f6b1f71593ae460a03d169aae807e8b1d45b44fdc0e849a1e3930e5276",
+      "afterSHA256": "1af1f56c2ffd89f814de70b7e3567be1bc7a9ac93c0469c3a6d65eaa8c739c60"
+    },
+    {
+      "path": "apps/shell/src/components/MemoryPasteImport.tsx",
+      "beforeSHA256": "20fa7800c82b43978f0f54859b4c4d5a12640fafa3f21dc6b37d1a1e32dbd934",
+      "afterSHA256": "262027dfae24bd01ed43d302367f1b77c28750cd0e9fecfebf48c3ecc48c54f0"
+    },
+    {
+      "path": "apps/shell/src/components/MemoryRecoveryNotice.tsx",
+      "beforeSHA256": "90c36fbced334ddf9f0c73bf302d049a7f5e1c9f63cec242edf5a6d9acfcd486",
+      "afterSHA256": "281cf4e0d3470a27778dd2b2f1dc9840659e5b243d8579c45afe66ecf304071b"
+    },
+    {
+      "path": "apps/shell/src/components/MemorySettings.tsx",
+      "beforeSHA256": "4d1262bba469a7598b3fad11b3dccba1cafc496a033b666e25fcd061689cb516",
+      "afterSHA256": "a03959457665499544e9db47a59c461aef323cab8bdad6f70346b1bf040f0e95"
+    },
+    {
+      "path": "apps/shell/src/components/MigrationImport.tsx",
+      "beforeSHA256": "f726ba5fc196b5c64df2fc0d69bc7815446d462a22ec5c256c214b315a11eef9",
+      "afterSHA256": "baf32f52ac4664c012c9ad8e1916c3ba4435c4e558786da9cb7a6e8e0e3c2d97"
+    },
+    {
+      "path": "apps/shell/src/components/ObservationPanel.tsx",
+      "beforeSHA256": "9a7925554d4ce58544b693e53b6fa755f7eed33ec837d478b72b7f4d92b32cf5",
+      "afterSHA256": "2c9b0c3d26219c649ede556f188939e4d94edad9552dc745807d0ae478f85666"
+    },
+    {
+      "path": "apps/shell/src/components/OpenBookmarkFolder.tsx",
+      "beforeSHA256": "1bd51413b839b479f3f652d27306833459affcf4289020673077e1759746e1a4",
+      "afterSHA256": "3531f728ec16180b435f54783d358323c001949d5c42fe248d25b8a4cc177538"
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "beforeSHA256": "1ed1b074ca83cbbbbfdf4f350f202d74d8346d5171732ca86c62745ad361e223",
+      "afterSHA256": "81857d0f954c320b6c30061f9d5e2db81333bbd34d3e5089f10fe333ad571424"
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "beforeSHA256": "39135d8be739f2a0a7e5f9811b89a5a541ce25175f89cd1ac6047f0779617c96",
+      "afterSHA256": "32019ac8c9bbb6421b6d72ca78a38df93da858d4f80985499a0f831b9a63d7a5"
+    },
+    {
+      "path": "apps/shell/src/components/PageZoom.tsx",
+      "beforeSHA256": "cc02f01dbc60b18d877e80dbd1c99ed1d03ce70e59d067f63ff4af3c995d9f6e",
+      "afterSHA256": "fd57803c396dec37b2d15bf3ebe753c80a11a7c8af86a9918e437065bf1fc9da"
+    },
+    {
+      "path": "apps/shell/src/components/PaneBoundary.tsx",
+      "beforeSHA256": "6d71d8018c7ac5b631a41cc7f451f7abdb666f2f518e9a156c51fdbc3145adbd",
+      "afterSHA256": "cff33a1493a6c6f39d63da485ccf281a9432d81e0086d383658df599b07c3e52"
+    },
+    {
+      "path": "apps/shell/src/components/PasswordTransferSetting.tsx",
+      "beforeSHA256": "467887a160843d6b224d269f725e584d5325ddf0685d3023b96d2107536928e4",
+      "afterSHA256": "f0b0cbb378a31a5b71b6314b774dcf4fc5bba657537265a4eb585c8e16ad0437"
+    },
+    {
+      "path": "apps/shell/src/components/PluginsPanel.tsx",
+      "beforeSHA256": "37c658d5d1923e96734a2a1da9ab4e263a3c33d9768a062aff9f1bfc9faebc5f",
+      "afterSHA256": "c91c1b128be14404adb4547b2a90047aaeaa574e738c5a8f2cd32e4cb8ee040c"
+    },
+    {
+      "path": "apps/shell/src/components/QuickAsk.tsx",
+      "beforeSHA256": "1f5f75035b945ffbaa1a3044e341e6c270d4ef07e58331fdd40731aa41f50fc2",
+      "afterSHA256": "7db0056430f964c5858a1d18f90da4c001aad8bc937e9ddddd0a182b2c17226c"
+    },
+    {
+      "path": "apps/shell/src/components/QuickAskSetting.tsx",
+      "beforeSHA256": "a793dd0b5f2eda6afc0ce0f973905ab19118650eecb5436cbc27f3b0ba2934a5",
+      "afterSHA256": "539eab8ca228a871bec9add1308d523f95318e4e1eb74bf849b61867064a25f4"
+    },
+    {
+      "path": "apps/shell/src/components/RailHistory.tsx",
+      "beforeSHA256": "807fb1253b1f518d37df6052e2e5db9cabd56d9ae18cfa67d9be0a24150b465e",
+      "afterSHA256": "6b285dc619fbedd1c448a444b53d8e86fb654dc067ed40aca103fd3253e178ba"
+    },
+    {
+      "path": "apps/shell/src/components/ReaderView.tsx",
+      "beforeSHA256": "20f9de3aa5ac9561a906154f0522594eb33b9ed8a544bd9e72ad98c3dbb6abe0",
+      "afterSHA256": "852e6e4ed8938075e76f55ce5bb1ba2a1f82674fcf609b8702a617ad4aaf611a"
+    },
+    {
+      "path": "apps/shell/src/components/RecentWork.tsx",
+      "beforeSHA256": "d7da2edc3eec7a79aa56cecb0b3882784c4759588c97c38ad5967e974da86531",
+      "afterSHA256": "a173e618e4a14aa89569e99ce4030c1a0b5eb5289718d4c169f9a878561dbbac"
+    },
+    {
+      "path": "apps/shell/src/components/RecentlyClosed.tsx",
+      "beforeSHA256": "ec0d3802441f4ef8a956e0e1057eb3441bc39e46acdff88ef00d06b36800c683",
+      "afterSHA256": "3a0529b8aecad5bfe0ac8fedf64f5e4d20b77e19a3e747aed40fe7a81106afcc"
+    },
+    {
+      "path": "apps/shell/src/components/ResultCard.tsx",
+      "beforeSHA256": "cd207c4ffb90e0b4491bf75bf6f8a494d2be032f1dd732f10a4693037fd9158b",
+      "afterSHA256": "d4e3012936fec6b8d946e376ad36ad386f4f684d99517ca3c177a2865c44cf5b"
+    },
+    {
+      "path": "apps/shell/src/components/ResultsTable.tsx",
+      "beforeSHA256": "f3aa18475c157b18f2a1a02ec231513061c5ba21783818eca601bc02be9b5b30",
+      "afterSHA256": "5d1ff1090445845cadeaa1e0ca6fdea8adff072272ce6730ac574bedf2d1e181"
+    },
+    {
+      "path": "apps/shell/src/components/ReviewedConnectors.tsx",
+      "beforeSHA256": "4860b6a184c1a5dd511300457f8d5b6c77adbd27a44e84bd30a7b8b206bfd552",
+      "afterSHA256": "122cd70d03474efb2a81d72864d529da5814cb6c2a0009a8cf18f9967c3eaad1"
+    },
+    {
+      "path": "apps/shell/src/components/RoutineSchedule.tsx",
+      "beforeSHA256": "ed8a2bb492af73f766873640dd13f07a739da9bfca67552d3a72d713a2babaa6",
+      "afterSHA256": "8efb94455e01a747cba9340d9c7ca92abe2bebc54efd1dd57cf9a5da110d311e"
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "beforeSHA256": "77b955aa22d5e010395d7d80a5b13eaa33ba40bb304fd56f7d036f5eaf32c653",
+      "afterSHA256": "4e778f138bed70cf8dd22d94fe717cffbfc6db461d1a1d7938c78a79d8235d19"
+    },
+    {
+      "path": "apps/shell/src/components/RunControls.tsx",
+      "beforeSHA256": "13a39753e8bde833af52448d929fada1531cccff358574ae90cb080df248740b",
+      "afterSHA256": "e21db572d5cfff73b28f3b01a1b6840ca786571cb1142ddea88a15893ca4d653"
+    },
+    {
+      "path": "apps/shell/src/components/RunImages.tsx",
+      "beforeSHA256": "03853f847eafd8a0c12d0a10dfd4c648230ebdd9c9c290784089f8e61aca00d2",
+      "afterSHA256": "5b61bacce77f3f2b306687d15c15f3fb7fc8234b047f0de15e583e4eb520a35a"
+    },
+    {
+      "path": "apps/shell/src/components/RunPanel.tsx",
+      "beforeSHA256": "93b06e2094d1aae95f7053a1ac4805c1dd037c12ee3aac4f3266a78f69c0decb",
+      "afterSHA256": "380f6542a23facf75c9437fb0823701aefe6b11adf105a4573d84303c1d988da"
+    },
+    {
+      "path": "apps/shell/src/components/SaveConversationTask.tsx",
+      "beforeSHA256": "b1eddc4b5c3f0b13798e6cfb4b1cb2f4cbf5a86724864f81f6e4a7f2c7becf2a",
+      "afterSHA256": "87cadf72c50fbed8d7680979cb4a95dbc2c07d078b58fa046485fff4f039eb03"
+    },
+    {
+      "path": "apps/shell/src/components/SavedResultPreview.tsx",
+      "beforeSHA256": "b5662fcbce0674a6a02bbdb3ce46002cc9e09c11e7f2ea46ae5b745275d5e797",
+      "afterSHA256": "e0e026f23154bef53e8431fb441b798f8ad2d86067dcefe1aa0f01b866ceceff"
+    },
+    {
+      "path": "apps/shell/src/components/SearchEngineSetting.tsx",
+      "beforeSHA256": "e6408aae71b179faad92ccc3264917501827ec9b31de9faa8d65605ea1a7cb72",
+      "afterSHA256": "25b7ba908615c733e43317ce962c7846bca3b177f91d86286eaf0a60233c355d"
+    },
+    {
+      "path": "apps/shell/src/components/SearchEnginesSetting.tsx",
+      "beforeSHA256": "34b1da7257757985363eddc87d02eae0c9a6dc62bea7fdd1ff7cf756e857aed2",
+      "afterSHA256": "b3dd8be218f4de019f8a2dc2b2539ed7a5dd735a8e8f76e271adb6d9003559fb"
+    },
+    {
+      "path": "apps/shell/src/components/SessionRecovery.tsx",
+      "beforeSHA256": "3134f031bccad17aefccc0e4761f5be7a57e19fb74cd7e3a27ed7450d8345fbf",
+      "afterSHA256": "9ab4ef94ae5f800ba5b774170ab30b14fe9f543019256dfb264c2d85f5e63103"
+    },
+    {
+      "path": "apps/shell/src/components/SetPanel.tsx",
+      "beforeSHA256": "53764103594ae920ff9b288df88d751db8f2bf8dd6b94cd9e95a06f163e8bdaf",
+      "afterSHA256": "20af75a3d3450e1b88ba3389784e6023c69aefe6d45ba5092aa66b0a63854149"
+    },
+    {
+      "path": "apps/shell/src/components/ShortcutsSetting.tsx",
+      "beforeSHA256": "8e88c43d8eff7d4397b2e231b5b26a16d030ad2595fcbdcf251821a178d89c42",
+      "afterSHA256": "4187380f8c77e7b2f2d1d12b4004a4e710ba3e57c95051100b7c31c0b11d8232"
+    },
+    {
+      "path": "apps/shell/src/components/SiteControls.tsx",
+      "beforeSHA256": "59bc5016e5eb81551226154a8f525894ab0141ce306780c0ee71c23b3a55c21a",
+      "afterSHA256": "3b41d1ae2709e029160b0eb83c9d437c52164a3b492292b1b6244805961f4c73"
+    },
+    {
+      "path": "apps/shell/src/components/SiteCustomization.tsx",
+      "beforeSHA256": "0b64095f6bb2140650cc2f20dfb742a02ddf796a11c3e8dbbcb9bd098a473b35",
+      "afterSHA256": "a10a247a5aa34f64c07f31bb598514b42aa53c128e95d9a3bcfd79b9d843e43c"
+    },
+    {
+      "path": "apps/shell/src/components/SitePermissions.tsx",
+      "beforeSHA256": "74a2f0a945ce7d5e04b9ace9f8c40a1f5291a356f88e7c9266099bb18f2a97ba",
+      "afterSHA256": "404e217a54b2130412e9fac7c101aeb5cedb4b8ea9c3f85e77336cbb843621eb"
+    },
+    {
+      "path": "apps/shell/src/components/SkillMetadata.tsx",
+      "beforeSHA256": "6a2d6c6aafc5a71147a7883ee1fde3310b3e7522e9c745555d4d83132448f494",
+      "afterSHA256": "691bea34f07e2ee6a8b196683d00946e8c6dc45e56e49b81d23e01f4d870a986"
+    },
+    {
+      "path": "apps/shell/src/components/SkillReplayPanel.tsx",
+      "beforeSHA256": "1513da6a2ee37b2ab2132498122e4a6d00544dfc17fec561ea66ffce230f9559",
+      "afterSHA256": "5d0f8a3f8dbd859ab95ee067e14bb0746f3d8dbe5899d2b0d9ef3d2e9b21fe92"
+    },
+    {
+      "path": "apps/shell/src/components/SpaceMemoryEditor.tsx",
+      "beforeSHA256": "22fc68e2719c6dfa233981658ea9c21139226c8bf38dbcea9b67bd5ddaa4ddce",
+      "afterSHA256": "04680f53079d0cf17555783318cd1c5e5b291d932d92f76c032104bfb49152d0"
+    },
+    {
+      "path": "apps/shell/src/components/StartPage.tsx",
+      "beforeSHA256": "139cfe004d826499c9d275bbfa253b593a9bff85abb38b054587bf261b091f46",
+      "afterSHA256": "cceffa3f55cca51db9ae09a3fb28d68f1396eed77586819abb553039fa0af7c6"
+    },
+    {
+      "path": "apps/shell/src/components/StructuredResult.tsx",
+      "beforeSHA256": "6b8109f251cb51c468ba054f3c271eccb914011a3c65ebe4513fa1b869a27ade",
+      "afterSHA256": "afa0ff7fe33a70865ec7ecb9586d58ef73d21b5d6127283a7bdd7c541fa79c65"
+    },
+    {
+      "path": "apps/shell/src/components/TaskHistory.tsx",
+      "beforeSHA256": "a5787cdc81203f3965b6289548e64de4392d8df4510d56cda3b7dec5ea005344",
+      "afterSHA256": "0b0c664fd4f65f19a5b5a323c8c5a9b38d0e729e068167b2e85b5a4c55aeaa19"
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "beforeSHA256": "660c6d1ec32ddcf76c006342b0f7b089601b35d45de2de82cc8df156ebba2af2",
+      "afterSHA256": "5fb5a53e5a8598c27d743eacc5ca6bf0e6a62894879263671bcb5411207e4fc6"
+    },
+    {
+      "path": "apps/shell/src/components/TaskResources.tsx",
+      "beforeSHA256": "f97cc70335ecaa31cc6aa006d64a344f44c043dd425b7ea9d89cc127f70722f6",
+      "afterSHA256": "44325272e0d62a6b208a6262fb2ab5146b8065a805a808a16cd335f69e2361c6"
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "beforeSHA256": "049f4eb9693323bd75db30c372c23d65f22534c758e3889737371ed12002bea9",
+      "afterSHA256": "e6b3e206262fbf305dbfc7db3dbe43a61673c19d57bf70fd4678211795654031"
+    },
+    {
+      "path": "apps/shell/src/components/VaultOfferBanner.tsx",
+      "beforeSHA256": "42dc7d471e373b05b1e6b4dfcfd74385d87fc637eb0caecb3663a0bc9a88357a",
+      "afterSHA256": "f1d1ba4a1cd3cbaf4dcfff502a94360b672968783ed23981c0750321ac4debb6"
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "beforeSHA256": "0b247ed437757b275bad9356c2f44bf21bf2643d2cf1d5d6bc698e7c6a32e334",
+      "afterSHA256": "2e4769a60190593f04b5d52eb860b16d8162f41f3818ec0bbb09af31235e565b"
+    },
+    {
+      "path": "apps/shell/src/components/WebsiteSizes.tsx",
+      "beforeSHA256": "e6e5b5b111b2c1a4b2052474e03f21fcdc103e6e8e927a50c1e6df7b6287e503",
+      "afterSHA256": "b23579d06af7f352205960264a4fe9d081e612b5302abf3ad4177cc79977e4eb"
+    },
+    {
+      "path": "apps/shell/src/components/WorkbookPreview.tsx",
+      "beforeSHA256": "a7e967085da33ea8c579ef6528783faa61198767e5b68e4946d8099d88ae2d81",
+      "afterSHA256": "9b217b9cfeadc0a0af4989c47a456d5fa4393dc8cf546dc731530ec4c53a3b70"
+    },
+    {
+      "path": "apps/shell/src/features/commands/ExtensionShortcuts.tsx",
+      "beforeSHA256": "97aed63a3cfbdb92d675996abdac49c5e758258a9ff6f7157ee1f6e3a252aa93",
+      "afterSHA256": "2ddb3ee5eb755dd55e9ea5160b5b609193ddcb7d575a58de7dec0b5c3506b35c"
+    },
+    {
+      "path": "apps/shell/src/features/demonstration/RecorderControls.tsx",
+      "beforeSHA256": "982f76a5de7749b937b2eccff170dd87a2763039c7b2b45a5e01ef0695bd5a19",
+      "afterSHA256": "9b26bc9060ed868e8daaa5574e0887a531cfef0543e0a9fce5f6c1191c3bafb7"
+    },
+    {
+      "path": "apps/shell/src/features/download-naming/Settings.tsx",
+      "beforeSHA256": "1519a8f2fcb6a535298eddeaa63a9498bdd1e445987ed2c7f69b9a8d40b23b70",
+      "afterSHA256": "87192427448babeaca81472c92951a465d296259433353ecd305b136752a6c5d"
+    },
+    {
+      "path": "apps/shell/src/features/extensions/ExtensionShortcuts.tsx",
+      "beforeSHA256": "dcaa7c6350dc82cdb4280aa099b373f76c6f4f5f39c6cac739a9cc061275d8bf",
+      "afterSHA256": "260bda716654f5f4b9ba5be043f8cc0bb0bd57f5693f2aa857893495903bf249"
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/MorningReview.tsx",
+      "beforeSHA256": "b89fb63ae3b1fe4faac29cba814f92ab5135baaf6d143585755350a033c93a5b",
+      "afterSHA256": "66feb375c1c39ee8305c6533c8fa79ae5c397bbaaac931e9d48296f8f610cd4b"
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/NightSettings.tsx",
+      "beforeSHA256": "d949c1b4202276dac45edecf5b658668ea5a02e96ba961e2f11cbc5b7a4b8920",
+      "afterSHA256": "017f329ac652979627fa50050088a669deb938475f4a33120cfc2e1f08dc569a"
+    },
+    {
+      "path": "apps/shell/src/features/trust/SiteAgentAccess.tsx",
+      "beforeSHA256": "884c9d27c4f6a221718c954d9f375f2dce30e1e1d0f8147066f4310e7027ff14",
+      "afterSHA256": "0ba60e13ce851dc897b9c091314f188b7bd46dc574c2a4825f3076aa61deb21e"
+    },
+    {
+      "path": "apps/shell/src/onboarding/OnboardingFlow.tsx",
+      "beforeSHA256": "26609a2a5658253bb1b3df3f5c0f5f0240af1abc614ab48a88bdaba4c2510319",
+      "afterSHA256": "be7f7e575268a19074e5a5473d9e9fcc42b928281925ec1749971777bb73b09b"
+    },
+    {
+      "path": "apps/shell/src/onboarding/SetupReview.tsx",
+      "beforeSHA256": "164fb326bcf9323202e3e9b6b5af33a76a896d481240572bf9612f0a43a16ae2",
+      "afterSHA256": "9ea0585214ff45757b0fe005886129352344f700c621f977efad0de0087d89b6"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/AboutAux.tsx",
+      "beforeSHA256": "2bed64a242e245e51f3a3ab18780e14dff5e8ef3583f5f84a8a7fb93dca14802",
+      "afterSHA256": "a340cc560a24f8f840a6f6db6189664095f8ae9b011a38639fd66eca5ac98ae1"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Appearance.tsx",
+      "beforeSHA256": "5f0f7385b81fad0539de69d038cbdf90af85ea7d498cbefac1934e807eeac4ba",
+      "afterSHA256": "c8a7a3abe5258c42a3687e5c106aba85dc94931ccf828a58ca21e7bc1c9b5511"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/ArchivedChats.tsx",
+      "beforeSHA256": "4cfd5433f09a40cef67d4f9bc7fba6e6d2f4441eb711b3c95d9edceaf204aa4b",
+      "afterSHA256": "4b9d6b5f382be4c7c643b96d0793141c62bc1b90d8b54ea23547bb0313061cf7"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "beforeSHA256": "f86050bca5af76a6f327667b5841ad1ed523a8af6f93e670b3454d9218321bcc",
+      "afterSHA256": "d202ecb074c65017db1ee36f4e42a86d5c478f8fee69afdd57203115b88f1c47"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackupSettings.tsx",
+      "beforeSHA256": "75737ca931c4328e70e42d2745653319d1edac938bb6ab0afea12a1db4179deb",
+      "afterSHA256": "75a28876cd985fa9aa54239a1b85108a122e028cfedf298ae0b30ee166d1baab"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CookieControls.tsx",
+      "beforeSHA256": "c3033303159cc1af16dcdfdcf30750e9d67b44848887fad82081fd50bc710740",
+      "afterSHA256": "c96fb6cdf815980390715a2f278dc0d338a9795c54e511e4940135d76a7f9be1"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CrashReporting.tsx",
+      "beforeSHA256": "ad2d825814608931450a66a2cc68b104f330474b5383406bce4a659513a47042",
+      "afterSHA256": "3c253fe2cd38a55a802db63a685d68c7f2ca9463893116504cb4f264a03f35b4"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DiagnosticsStorage.tsx",
+      "beforeSHA256": "296486d32f6f5a2904b9ad5dd3f3bbf0979f3f7acf781eb7e48d644ff5eeba87",
+      "afterSHA256": "5b70dfc05508b0a5e63d48e2af483af2007aa8bd0ab5f1ba56d57870408d6e64"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DownloadFolder.tsx",
+      "beforeSHA256": "4a3dd91c2c57c7687fac980f104b017228164cdfc77279b2658755913c919bc0",
+      "afterSHA256": "b1b88828c33d22b68823914070ae13bb16f5fad8fecec2b20110eb4ceb96907b"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/General.tsx",
+      "beforeSHA256": "6ef6285809db48a14e3c3bba94c5593473a973aed9e6cdfc5172884f5663aabb",
+      "afterSHA256": "ae8e8b937b3f4809826530c67cfc4f034da1e4be43893f52a3ff884fbcd47b63"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Languages.tsx",
+      "beforeSHA256": "1000a0a641a6882fdcc258fe878006ce6873d5e9e4ab01da0c69faf179796d82",
+      "afterSHA256": "136544686a54e726e4e06b07ca322cf1890bb9c5bfdc818b98781f427981f441"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Models.tsx",
+      "beforeSHA256": "ad5c14f22c4ba30e51383382d4aa68fc687812a7ce498e53f361aa98c344988f",
+      "afterSHA256": "37e44304eac3f141a2487b7e94b0720d7d61113e834e5109bd3fab9687ed8324"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PasswordsAutofill.tsx",
+      "beforeSHA256": "69af71c232286cacf20bc099955a74780bc8b84710e2ccfd4aa496901d49073a",
+      "afterSHA256": "dbbf297752c218eee085605b372bbc7c753f0efb79303285e673a0393b197359"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RecoveryPackage.tsx",
+      "beforeSHA256": "9e2cf0b4500e9514ac694b13f00c00c71179e617096cd72c80a3c004a8167631",
+      "afterSHA256": "8a4fc8283e6a7e11f447695a5df6add749c11c20251c292eedd8b91f9e465761"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RestoreBackupControls.tsx",
+      "beforeSHA256": "b10c13bbf680afe2471da049017ac0f9a428a418db165632551ff5469dbf5551",
+      "afterSHA256": "955b85592ddd70b39c9aea96bacd34eff457a2783b47efd8a889c168c7b00e42"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "beforeSHA256": "e9a8c2dc93fd4d75ad8cc0feff91d75f3676a8898934bbb425b512e93105f38f",
+      "afterSHA256": "09c64b8b06b1cd3004404a3a185d3ea87351ce1dbdfd8a97a2c0a66a403c6aa7"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SpaceMemory.tsx",
+      "beforeSHA256": "8a4f9431a9255bec648a53048ee640f9ef7f6f9a5f5494a56982f2dfae5f0549",
+      "afterSHA256": "56bb750a6a2acbf0fef0c41438c99e0652b62c8f7934d5b492872a428fd0e7c9"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Startup.tsx",
+      "beforeSHA256": "d9ab363f470101d11d65b486a50dcd021c5d93e7e1ca33dadff6431b6e033dd6",
+      "afterSHA256": "1ece5ba3b7ab0867bdf95eb8793f14691a4c433e0a29e3fc62b92da7a1249e03"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/UsageBudgets.tsx",
+      "beforeSHA256": "747da843e158d3b84ac5353b7e3bb798eaf30159eb3c2b4310ce4d781f07ead9",
+      "afterSHA256": "e0bae55315f6800bded2e79382d4535c7b8dce0bdee759156aa2f4fb109408f4"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "beforeSHA256": "2fbc7715802248dd57b4d11775857847d61c1f10fa7ebfe607dbf4e5465ed2c2",
+      "afterSHA256": "606decf1ed50ad841234fb79cadf6c00ed687c6528efb52ed7183b5b29120f64"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/use-native-preference.tsx",
+      "beforeSHA256": "c537e33d47888b6a3e957454590ff792798b147ac6c37dcc92fab2996582e9ec",
+      "afterSHA256": "e993a28bcae7c8623250b0f1a8177da282d716c11941fd698a87700a836044c5"
+    },
+    {
+      "path": "apps/shell/src/transcript/RunTranscriptDetails.tsx",
+      "beforeSHA256": "8cb57ba70212fa4c4149d48dfc7b2ff087d48b6844d74907b874a0a0a728cee8",
+      "afterSHA256": "cc7a587023aaebea89b6c38b42f6b3395732e2242cb7f7a04634e99c96fe88f9"
+    },
+    {
+      "path": "apps/shell/src/transcript/TextProposal.tsx",
+      "beforeSHA256": "52f6c6170cecc4f6204a8056051faea0429b6d5dd4331f2954a2350e4545693d",
+      "afterSHA256": "ee79650f9ca75cae5f5f21f7849c0c2c50159ce3cec77f574d109919b7073455"
+    },
+    {
+      "path": "apps/shell/src/ui/button-props.ts",
+      "beforeSHA256": null,
+      "afterSHA256": "23a580bbc95060ab70d78845b52f3b41fcc701205f058620d9ea56aac209398e"
+    },
+    {
+      "path": "apps/shell/src/ui/button-props.test.tsx",
+      "beforeSHA256": null,
+      "afterSHA256": "6ca537077f806ef5633490913c64b220ddebec15d62fe4d86c5edd144dd80a84"
+    }
+  ],
+  "patchSHA256": "074c2380b2fdd5ac622a8307cc05711e03b45846fc43941258ea195f79a90a0d",
+  "sourceOnly": true,
+  "netByteSavings": "unmeasured"
+}

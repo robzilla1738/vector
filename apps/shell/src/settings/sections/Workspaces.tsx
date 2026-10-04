@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useState } from "react";
 import type { CommandEscalationRequest, Workspace, WorkspaceFolder, WorkspaceFolderAccess, WorkspaceFolderReview } from "@aux/contracts";
@@ -71,7 +72,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
           <option value="read">Read only</option>
           <option value="readWrite">Read and write</option>
         </select>
-        <button className="btn sm" disabled={!workspaceId || !path.trim() || busy} onClick={() => void act(async () => {
+        <button {...smallButtonProps} disabled={!workspaceId || !path.trim() || busy} onClick={() => void act(async () => {
           setReview(await call("workspaces.folders.inspect", { workspaceId, path: path.trim(), access }));
         })}>Review folder</button>
       </div>
@@ -83,7 +84,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
       <p>Review fingerprint: <code>{review.reviewDigest}</code></p>
       <p>AGENTS.md: {review.agentsPreview ? "present" : "none"}</p>
       {review.agentsPreview && <pre>{review.agentsPreview}</pre>}
-      <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
+      <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {
         await call("workspaces.folders.add", { workspaceId: review.workspaceId, path: review.path,
           access: review.access, expectedDigest: review.reviewDigest });
         setFolders(await call("workspaces.folders.list", { workspaceId: review.workspaceId }));
@@ -96,14 +97,14 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
       {folders.filter(item => !item.archivedAt).map(item => <div className="row" key={item.folderId}>
         <span className="grow"><code>{item.path}</code> · {item.access === "read" ? "Read only" : "Read and write"}
           {item.agentsChanged ? " · Folder or AGENTS.md changed; access paused. Archive and review again." : ""}</span>
-        <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
+        <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {
           await call("workspaces.folders.archive", { workspaceId, folderId: item.folderId });
           setFolders(await call("workspaces.folders.list", { workspaceId }));
         })}>Archive folder access</button>
       </div>)}
     </SettingsField>
     <SettingsField label="Command exceptions" hint="Escalated commands run outside the file and network sandbox. Review each literal segment and reason. One-time approvals are consumed at dispatch; reusable prefixes are limited to read-only commands and flag-only variants.">
-      <button className="btn sm" disabled={busy || !workspaceId} onClick={() => void act(refreshCommands)}>Refresh requests</button>
+      <button {...smallButtonProps} disabled={busy || !workspaceId} onClick={() => void act(refreshCommands)}>Refresh requests</button>
       {!commandRequests.some(item => item.state === "pending") && <p className="hint">No command requests awaiting review.</p>}
       {commandRequests.filter(item => item.state === "pending").map(item => <div className="field" role="group" aria-label="Command exception review" key={item.requestId}>
         <strong>Escalated command request</strong>
@@ -116,15 +117,15 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
           value={prefixAmendments[item.requestId] ?? item.prefixRule}
           onChange={event => setPrefixAmendments(current => ({ ...current, [item.requestId]: event.target.value }))} /></label>}
         <div className="row">
-          <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
+          <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {
             await call("commands.escalations.decide", { requestId: item.requestId, decision: "decline" });
             await refreshCommands();
           })}>Decline command</button>
-          <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
+          <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {
             await call("commands.escalations.decide", { requestId: item.requestId, decision: "once" });
             await refreshCommands();
           })}>Allow this segment once</button>
-          {item.prefixRule && <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
+          {item.prefixRule && <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {
             await call("commands.escalations.decide", { requestId: item.requestId, decision: "prefix",
               prefixRule: prefixAmendments[item.requestId] ?? item.prefixRule });
             await refreshCommands();
@@ -133,7 +134,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
       </div>)}
       {commandRequests.filter(item => item.mode === "prefix" && item.grantActive).map(item => <div className="row" key={item.requestId}>
         <span className="grow">Reusable prefix <code>{item.prefixRule}</code> in <code>{item.workdir}</code></span>
-        <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
+        <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {
           await call("commands.escalations.revoke", { requestId: item.requestId });
           await refreshCommands();
         })}>Revoke command prefix</button>

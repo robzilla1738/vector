@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Run, Suspension } from "@aux/contracts";
@@ -78,7 +79,7 @@ export function RunAttentionFeed({ runs, onOpenRun, limit = 8 }: {
       <div className="row">
         <button className="btn sm primary" onKeyDown={(event) => dismissOnEscape(event, item.suspension.suspensionId)}
           onClick={() => void review(item)}>Review task</button>
-        <button className="btn sm ghost" aria-label={`Dismiss ${LABELS[item.suspension.kind].title}`}
+        <button {...smallGhostButtonProps} aria-label={`Dismiss ${LABELS[item.suspension.kind].title}`}
           onKeyDown={(event) => dismissOnEscape(event, item.suspension.suspensionId)}
           onClick={() => dismiss(item.suspension.suspensionId)}>Dismiss</button>
       </div>

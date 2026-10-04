@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useState } from "react";
 import { bridge, type MigrationProgress, type MigrationReview } from "../bridge";
@@ -66,7 +67,7 @@ export function MigrationImport() {
   return (
     <>
       <div className="row">
-        <button className="btn sm ghost" disabled={busy} onClick={() => void inspect()}>
+        <button {...smallGhostButtonProps} disabled={busy} onClick={() => void inspect()}>
           {busy ? "Checking…" : "Review Chromium migration…"}
         </button>
       </div>
@@ -133,7 +134,7 @@ export function MigrationImport() {
           {error && <p role="alert">{error}</p>}
           <div className="row">
             {review.status !== "applied" && (
-              <button className="btn sm" disabled={busy} onClick={() => void apply()}>
+              <button {...smallButtonProps} disabled={busy} onClick={() => void apply()}>
                 {busy
                   ? "Importing…"
                   : review.status === "interrupted"
@@ -146,7 +147,7 @@ export function MigrationImport() {
                 Roll back import
               </button>
             )}
-            <button className="btn sm ghost" disabled={busy} onClick={() => setReview(null)}>
+            <button {...smallGhostButtonProps} disabled={busy} onClick={() => setReview(null)}>
               Close
             </button>
           </div>

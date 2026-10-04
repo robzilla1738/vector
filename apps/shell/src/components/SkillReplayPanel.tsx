@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { SkillRepairProposalSchema, type Routine, type Run } from "@aux/contracts";
@@ -58,7 +59,7 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
       <input aria-label={`Recorded source value for ${item.label}`} type="text" autoComplete="off" value={samples[item.name] ?? ""}
         disabled={disabled || busy} onChange={event => setSamples(current => ({ ...current, [item.name]: event.target.value }))}/>
     </label>)}
-    <button className="btn sm" disabled={disabled || busy || !readySamples || !pageId || !source?.pageIds.includes(pageId)}
+    <button {...smallButtonProps} disabled={disabled || busy || !readySamples || !pageId || !source?.pageIds.includes(pageId)}
       onClick={() => void act(() => executeCommand("prepare-skill-replay", { payload: { compileReplay: { routineId: routine.routineId,
         expectedRevision: routine.revision, sourceRunId, pageId: pageId!, samples } } }))}>
       {replay ? "Repair from this run" : "Prepare replay from run"}
@@ -70,10 +71,10 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
         <input aria-label={`Test value for ${item.label}`} type="text" autoComplete="off" value={values[item.name] ?? ""}
           disabled={disabled || busy} onChange={event => setValues(current => ({ ...current, [item.name]: event.target.value }))}/>
       </label>)}
-      <button className="btn sm" disabled={disabled || busy || !pageId || !readyValues || replay.state === "testing"}
+      <button {...smallButtonProps} disabled={disabled || busy || !pageId || !readyValues || replay.state === "testing"}
         onClick={() => void act(() => executeCommand("test-skill-replay", { payload: { testReplay: { routineId: routine.routineId,
           expectedRevision: routine.revision, pageId: pageId!, parameters: values } } }))}>Run replay test</button>
-      {replay.state === "testing" && replay.testRunId && <button className="btn sm ghost" disabled={disabled || busy}
+      {replay.state === "testing" && replay.testRunId && <button {...smallGhostButtonProps} disabled={disabled || busy}
         onClick={() => void act(() => executeCommand("check-skill-replay", { payload: { replayResult: { routineId: routine.routineId,
           expectedRevision: routine.revision, runId: replay.testRunId! } } }))}>Check test result</button>}
     </>}
@@ -81,13 +82,13 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
       <p>A changed selector pauses this Skill. Propose a target from the current page, review the exact diff, then run a fresh test.</p>
       <label>Step to repair<select value={repairStep} onChange={event => { setRepairStep(event.target.value); setProposal(null); }}><option value="">Choose a step</option>{replay.steps.filter(step => "target" in step).map(step => <option key={step.id} value={step.id}>{step.id} · {step.op} · {"target" in step ? step.target : ""}</option>)}</select></label>
       <label>Proposed selector<input autoComplete="off" value={repairTarget} onChange={event => { setRepairTarget(event.target.value); setProposal(null); }}/></label>
-      <button className="btn sm" disabled={busy || disabled || !pageId || !repairStep || !repairTarget} onClick={() => void act(async current => {
+      <button {...smallButtonProps} disabled={busy || disabled || !pageId || !repairStep || !repairTarget} onClick={() => void act(async current => {
         const result = await executeCommand("propose-skill-repair", { payload: { proposeRepair: { routineId: routine.routineId, expectedRevision: routine.revision,
           pageId: pageId!, changes: [{ stepId: repairStep, selector: repairTarget }] } } });
         if (current()) setProposal(SkillRepairProposalSchema.parse(result));
       })}>Propose target repair</button>
       {proposal && <><ul>{proposal.changes.map(change => <li key={change.stepId}>{change.stepId}: <del>{change.before}</del> → <ins>{change.after}</ins></li>)}</ul>
-        <button className="btn sm" disabled={busy || disabled} onClick={() => void act(async current => {
+        <button {...smallButtonProps} disabled={busy || disabled} onClick={() => void act(async current => {
           await executeCommand("approve-skill-repair", { payload: { applyRepair: { proposalId: proposal.proposalId, expectedRevision: routine.revision } } }); if (current()) setProposal(null);
         })}>Approve this diff and require retest</button></>}
     </>}

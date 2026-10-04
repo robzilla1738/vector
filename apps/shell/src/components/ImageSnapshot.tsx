@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { ConversationImage } from "@aux/contracts";
@@ -46,6 +47,6 @@ export function ImageSnapshot({chatId,imageId,onClose,closeControl,current}:{cha
   },[chatId,imageId,retry,readCurrent]);
   if(snapshot)return <ImagePreview snapshot={snapshot} onClose={onClose} closeControl={closeControl} current={readCurrent}/>;
   return <ViewerFrame label="Image snapshot" title="Image reference" onClose={onClose} closeControl={closeControl} closeLabel="Close image preview">
-    {error?<p role="alert">{error} <ConversationImageAction command="retry-conversation-image-preview" current={()=>readCurrent() && !!error && !pending.current} className="btn sm" invoke={()=>{pending.current=true;setRetry(value=>value+1);}}>Retry</ConversationImageAction></p>:<output className="hint" data-block>Loading image…</output>}
+    {error?<p role="alert">{error} <ConversationImageAction command="retry-conversation-image-preview" current={()=>readCurrent() && !!error && !pending.current} {...smallButtonProps} invoke={()=>{pending.current=true;setRetry(value=>value+1);}}>Retry</ConversationImageAction></p>:<output className="hint" data-block>Loading image…</output>}
   </ViewerFrame>;
 }

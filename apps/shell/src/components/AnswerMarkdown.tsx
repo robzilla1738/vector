@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import type { ConversationSource } from "@aux/contracts";
 import { CitationChip } from "./CitationChip";
 import { backgroundLink, browserLinkUrl, openBrowserLink } from "../browser-links";
@@ -26,7 +27,7 @@ function CodeBlock({ children }: { children?: ReactNode }) {
       setCopied(true);
     } catch (error) { errToast(error); }
   }
-  return <div className="answer-code"><header><span>{language || "Code"}</span><button className="btn sm ghost" aria-pressed={wrap} onClick={() => setWrap(value => !value)}>Wrap</button><button className="btn sm" onClick={() => void copy()} aria-label="Copy code">{copied ? shellIconCheck : shellIconCopy}{copied ? "Copied" : "Copy code"}</button></header><pre role="group" ref={pre} className={wrap ? "wrap" : ""} tabIndex={0} aria-label={language ? `${language} code` : "Code block"}>{children}</pre></div>;
+  return <div className="answer-code"><header><span>{language || "Code"}</span><button {...smallGhostButtonProps} aria-pressed={wrap} onClick={() => setWrap(value => !value)}>Wrap</button><button {...smallButtonProps} onClick={() => void copy()} aria-label="Copy code">{copied ? shellIconCheck : shellIconCopy}{copied ? "Copied" : "Copy code"}</button></header><pre role="group" ref={pre} className={wrap ? "wrap" : ""} tabIndex={0} aria-label={language ? `${language} code` : "Code block"}>{children}</pre></div>;
 }
 
 function ResponseTable({ children }: { children?: ReactNode }) {
@@ -51,7 +52,7 @@ function ResponseTable({ children }: { children?: ReactNode }) {
     } catch (error) { errToast(error); }
     finally { setSaving(false); }
   }
-  return <div className="answer-table-wrap"><div className="answer-table-actions"><button className="btn sm ghost" onClick={() => void copy()}>{copied ? shellIconCheck : shellIconCopy}{copied ? "Copied" : "Copy table"}</button><button className="btn sm ghost" disabled={saving} onClick={() => void save()}>{shellIconDownloadSm}{saving ? "Saving…" : "Save CSV"}</button></div><section className="answer-table" tabIndex={0} aria-label="Response table"><table ref={table}>{children}</table></section></div>;
+  return <div className="answer-table-wrap"><div className="answer-table-actions"><button {...smallGhostButtonProps} onClick={() => void copy()}>{copied ? shellIconCheck : shellIconCopy}{copied ? "Copied" : "Copy table"}</button><button {...smallGhostButtonProps} disabled={saving} onClick={() => void save()}>{shellIconDownloadSm}{saving ? "Saving…" : "Save CSV"}</button></div><section className="answer-table" tabIndex={0} aria-label="Response table"><table ref={table}>{children}</table></section></div>;
 }
 
 const REMARK_PLUGINS = [remarkGfm, answerHeadings];

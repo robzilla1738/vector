@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { useEffect, useMemo, useState } from "react";
 import type { AgentConnection, AgentConnectionScope, Task, Workspace } from "@aux/contracts";
 import { mcpCatalogGrouped, type McpCatalogTool } from "@aux/contracts/mcp-catalog";
@@ -95,12 +96,12 @@ export function ExternalAgents() {
     {config && <>
       <span className="hint">{client === "codex" ? "Merge this server entry into Codex config.toml." : "Merge this server entry into your project .mcp.json or another supported Claude Code scope."} Keep existing entries. This token is shown once; create a replacement if it is lost.</span>
       <textarea aria-label="Agent configuration" readOnly rows={12} value={snippet} spellCheck={false} className="mono" />
-      <div className="row"><button className="btn sm" onClick={() => void navigator.clipboard.writeText(snippet).then(() => setMessage("Configuration copied.")).catch(() => setError("Copy failed. Select and copy the configuration text."))}>Copy configuration</button>
-        <button className="btn sm" onClick={() => void bridge.openExternal(client === "codex" ? "https://developers.openai.com/codex/mcp" : "https://code.claude.com/docs/en/mcp")}>Client setup guide</button></div>
+      <div className="row"><button {...smallButtonProps} onClick={() => void navigator.clipboard.writeText(snippet).then(() => setMessage("Configuration copied.")).catch(() => setError("Copy failed. Select and copy the configuration text."))}>Copy configuration</button>
+        <button {...smallButtonProps} onClick={() => void bridge.openExternal(client === "codex" ? "https://developers.openai.com/codex/mcp" : "https://code.claude.com/docs/en/mcp")}>Client setup guide</button></div>
     </>}
     {!!connections.length && <div className="external-agent-connections"><div className="drawer-section">Connections</div>{connections.map(connection => <div className="external-agent-row" key={connection.connectionId}>
       <div className="external-agent-copy"><strong>{connection.name}</strong><span className="hint">{connection.client === "codex" ? "Codex" : "Claude Code"} · {connectionTarget(connection)}{connection.lastUsedAt ? ` · used ${new Date(connection.lastUsedAt).toLocaleString()}` : " · not used yet"}{connection.revokedAt ? " · revoked" : ""}</span></div>
-      {!connection.revokedAt && <button className="btn sm" disabled={busy} onClick={() => void revoke(connection.connectionId)}>Revoke</button>}
+      {!connection.revokedAt && <button {...smallButtonProps} disabled={busy} onClick={() => void revoke(connection.connectionId)}>Revoke</button>}
     </div>)}</div>}
     <ExternalAgentOversight connections={connections} />
     {message && <output data-block>{message}</output>}

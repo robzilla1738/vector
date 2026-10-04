@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { bridge, inNativeHost } from "../bridge";
 import { executeCommand } from "../commands";
@@ -62,7 +63,7 @@ export function DefaultBrowserSetting() {
         <>
           <button
             ref={controlRef}
-            className="btn sm"
+            {...smallButtonProps}
             disabled={busy || isDefault === null}
             onClick={(event) => {
               const completion = executeCommand("set-default-browser", {

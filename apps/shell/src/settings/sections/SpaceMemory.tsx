@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { memoryControlElement, useMemoryElementControl } from "../../components/memory-control-construction";
 import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useId, type ReactNode } from "react";
@@ -132,7 +133,7 @@ function SpaceMemoryContent({ workspaceId, includePasteImport }: { workspaceId: 
     {preview ? <p className="hint">Space memory is in preview in this build.</p> : <>
     {error && <p role="alert">{error}</p>}
     <label htmlFor={enabledId}><PipelineControl inputId={enabledId} command="toggle-space-memory-pipeline" scopeId={workspaceId} kind="checkbox" checked={enabled} disabled={!snapshot || busy || bridge.privateMode} onError={report} action={() => act(() => call("memory.pipeline.setPolicy", { workspaceId, enabled: !enabled }))}/> Enable memory for this Space</label>
-    {includePasteImport && <><PipelineControl command="toggle-space-memory-import" expanded={showPasteImport} scopeId={workspaceId} className="btn sm ghost" disabled={!snapshot || bridge.privateMode} onError={report} action={() => { assertCurrent(); setShowPasteImport(value => !value); }}>Import pasted assistant notes</PipelineControl>
+    {includePasteImport && <><PipelineControl command="toggle-space-memory-import" expanded={showPasteImport} scopeId={workspaceId} {...smallGhostButtonProps} disabled={!snapshot || bridge.privateMode} onError={report} action={() => { assertCurrent(); setShowPasteImport(value => !value); }}>Import pasted assistant notes</PipelineControl>
       {showPasteImport && <MemoryPasteImport workspaceId={workspaceId} />}</>}
     {enabled && <>
       <div className="row">

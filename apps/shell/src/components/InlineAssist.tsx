@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { InlineAssistTextSchema, readSelectionCaptureSettings, type InlineAssistCapture } from "@aux/contracts";
@@ -84,12 +85,12 @@ export function InlineAssist() {
         {stale && <p role="alert">The page changed. Select the field and start again.</p>}
         {error && <p role="alert">{error}</p>}
         <div className="inline-assist-actions">
-          <button className="btn sm" disabled={busy !== null || stale || instruction.trim().length < 2} onClick={() => void draft()}>{busy === "draft" ? "Drafting…" : drafted ? "Redraft" : "Draft with AI"}</button>
+          <button {...smallButtonProps} disabled={busy !== null || stale || instruction.trim().length < 2} onClick={() => void draft()}>{busy === "draft" ? "Drafting…" : drafted ? "Redraft" : "Draft with AI"}</button>
           {drafted && <button className="btn sm primary" disabled={busy !== null || stale || !InlineAssistTextSchema.safeParse(replacement).success || replacement.length > (capture.maxReplacementLength ?? 12_000)}
             onClick={() => void apply()}>{busy === "apply" ? "Applying…" : "Apply to field"}</button>}
-          <button className="btn sm ghost" onClick={close}>Cancel</button>
+          <button {...smallGhostButtonProps} onClick={close}>Cancel</button>
         </div>
-      </> : <><p role="alert">{error || "No editable field was found."}</p><button className="btn sm" onClick={close}>Close</button></>}
+      </> : <><p role="alert">{error || "No editable field was found."}</p><button {...smallButtonProps} onClick={close}>Close</button></>}
     </div>
   </section>;
 }

@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { ConversationSummary } from "@aux/contracts";
@@ -103,7 +104,7 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
           }}
         />
       </SettingsField>
-      {error && <p role="alert" className="field-error">{error} <button className="btn sm" onClick={() => void load(false)}>Try again</button></p>}
+      {error && <p role="alert" className="field-error">{error} <button {...smallButtonProps} onClick={() => void load(false)}>Try again</button></p>}
       <div className="settings-archived-list" aria-busy={loading}>
         {rows.map(item => <div className="settings-archived-row" key={item.chatId}>
           <button className="settings-archived-open" disabled={busyId !== null} onClick={() => {
@@ -113,13 +114,13 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
             <strong>{item.title}</strong>
             <span>{new Date(item.updatedAt).toLocaleString()} · {item.turnCount} {item.turnCount === 1 ? "turn" : "turns"}</span>
           </button>
-          <button className="btn sm ghost" disabled={busyId !== null} onClick={() => void restore(item)}>
+          <button {...smallGhostButtonProps} disabled={busyId !== null} onClick={() => void restore(item)}>
             {busyId === item.chatId ? "Restoring…" : "Restore"}
           </button>
         </div>)}
         {loading && <output className="hint" data-block>Loading archived chats…</output>}
         {!loading && !error && !rows.length && <p className="hint">{query.trim() ? "No archived chats match your search." : "No archived chats yet."}</p>}
-        {more && !error && <button className="btn sm" disabled={loading || busyId !== null} onClick={() => void load(true)}>Load more</button>}
+        {more && !error && <button {...smallButtonProps} disabled={loading || busyId !== null} onClick={() => void load(true)}>Load more</button>}
       </div>
     </SettingsSection>
   );

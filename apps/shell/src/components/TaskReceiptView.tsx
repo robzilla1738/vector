@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes } from "react";
@@ -164,9 +165,9 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
         {editable && <>
         <textarea aria-label="Evidence or review note" rows={3} placeholder="Describe the evidence you checked and what it establishes." value={note} onChange={event => setNotes(previous => ({ ...previous, [criterion.criterionId]: event.target.value }))} maxLength={4000} />
         <div className="row">
-          <ReceiptEditAction command="add-task-receipt-note" owner={readOwner} valid={originalDraft("notes",notes)} className="btn sm" disabled={!note.trim()} invoke={()=>submitOwned("tasks.recordEvidence",{...base,criterionId:criterion.criterionId,summary:note})}>Add note</ReceiptEditAction>
-          <ReceiptEditAction command="capture-task-receipt-page" owner={readOwner} className="btn sm" disabled={!pageId} invoke={()=>submitOwned("tasks.captureEvidence",{...base,criterionId:criterion.criterionId,pageId:pageId as string})}>Capture current page</ReceiptEditAction>
-          <ReceiptEditAction command="import-task-receipt-document" owner={readOwner} className="btn sm" disabled={active || importing || !!visibleDocument} invoke={current=>pickDocument(criterion.criterionId,current)}>Import document</ReceiptEditAction>
+          <ReceiptEditAction command="add-task-receipt-note" owner={readOwner} valid={originalDraft("notes",notes)} {...smallButtonProps} disabled={!note.trim()} invoke={()=>submitOwned("tasks.recordEvidence",{...base,criterionId:criterion.criterionId,summary:note})}>Add note</ReceiptEditAction>
+          <ReceiptEditAction command="capture-task-receipt-page" owner={readOwner} {...smallButtonProps} disabled={!pageId} invoke={()=>submitOwned("tasks.captureEvidence",{...base,criterionId:criterion.criterionId,pageId:pageId as string})}>Capture current page</ReceiptEditAction>
+          <ReceiptEditAction command="import-task-receipt-document" owner={readOwner} {...smallButtonProps} disabled={active || importing || !!visibleDocument} invoke={current=>pickDocument(criterion.criterionId,current)}>Import document</ReceiptEditAction>
         </div>
         {visibleDocument?.criterionId === criterion.criterionId && <section className="document-preview field" aria-label="Document preview">
           <strong>{visibleDocument.filename}</strong>
@@ -174,13 +175,13 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
           <DocumentExtractionNote filename={visibleDocument.filename} />
           <DocumentContent filename={visibleDocument.filename} content={visibleDocument.content} />
           <span className="hint">Save a local copy as evidence for this criterion. Importing does not send the text to a model. The original file will not be monitored.</span>
-          <div className="row"><ReceiptEditAction command="save-task-receipt-document" owner={readOwner} valid={originalDraft("document",document)} className="btn sm" disabled={importing||active} invoke={saveDocument}>Save document evidence</ReceiptEditAction>
-            <ReceiptEditAction command="cancel-task-receipt-document" owner={readOwner} className="btn sm" disabled={importing} invoke={()=>setDocument(null)}>Cancel import</ReceiptEditAction></div>
+          <div className="row"><ReceiptEditAction command="save-task-receipt-document" owner={readOwner} valid={originalDraft("document",document)} {...smallButtonProps} disabled={importing||active} invoke={saveDocument}>Save document evidence</ReceiptEditAction>
+            <ReceiptEditAction command="cancel-task-receipt-document" owner={readOwner} {...smallButtonProps} disabled={importing} invoke={()=>setDocument(null)}>Cancel import</ReceiptEditAction></div>
         </section>}
         <div className="row">
-          <ReceiptEditAction command="accept-task-receipt-criterion" owner={readOwner} valid={()=>originalDraft("notes",notes)()&&originalDraft("selected",selected)()} className="btn sm" disabled={!chosen.length||!note.trim()||active} invoke={()=>submitOwned("tasks.reviewCriterion",{...base,criterionId:criterion.criterionId,evidenceIds:chosen,note,outcome:"accepted"})}>Accept criterion</ReceiptEditAction>
-          <ReceiptEditAction command="reject-task-receipt-criterion" owner={readOwner} valid={()=>originalDraft("notes",notes)()&&originalDraft("selected",selected)()} className="btn sm" disabled={!chosen.length||!note.trim()||active} invoke={()=>submitOwned("tasks.reviewCriterion",{...base,criterionId:criterion.criterionId,evidenceIds:chosen,note,outcome:"rejected"})}>Mark not met</ReceiptEditAction>
-          <ReceiptEditAction command="verify-task-receipt-criterion" owner={readOwner} className="btn sm" disabled={active} invoke={()=>submitOwned("tasks.verifyCriterion",{...base,criterionId:criterion.criterionId})}>Run local check</ReceiptEditAction>
+          <ReceiptEditAction command="accept-task-receipt-criterion" owner={readOwner} valid={()=>originalDraft("notes",notes)()&&originalDraft("selected",selected)()} {...smallButtonProps} disabled={!chosen.length||!note.trim()||active} invoke={()=>submitOwned("tasks.reviewCriterion",{...base,criterionId:criterion.criterionId,evidenceIds:chosen,note,outcome:"accepted"})}>Accept criterion</ReceiptEditAction>
+          <ReceiptEditAction command="reject-task-receipt-criterion" owner={readOwner} valid={()=>originalDraft("notes",notes)()&&originalDraft("selected",selected)()} {...smallButtonProps} disabled={!chosen.length||!note.trim()||active} invoke={()=>submitOwned("tasks.reviewCriterion",{...base,criterionId:criterion.criterionId,evidenceIds:chosen,note,outcome:"rejected"})}>Mark not met</ReceiptEditAction>
+          <ReceiptEditAction command="verify-task-receipt-criterion" owner={readOwner} {...smallButtonProps} disabled={active} invoke={()=>submitOwned("tasks.verifyCriterion",{...base,criterionId:criterion.criterionId})}>Run local check</ReceiptEditAction>
         </div>
         <span className="hint">A local check compares saved evidence. It never records acceptance.</span>
         </>}
@@ -201,7 +202,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
           {change.undoneAt && <span className="hint"> · Undone {new Date(change.undoneAt).toLocaleString()}</span>}
         </span>
         {editable && !historical && !active && change.status === "ok" && !change.undoneAt && change.before && change.after &&
-          <ReceiptEditAction command="undo-task-receipt-form" owner={readOwner} className="btn sm" disabled={pageId!==change.pageId} title={pageId!==change.pageId?"Open the original page to undo this edit":undefined} invoke={()=>submitOwned("tasks.undoBrowserChange",{...base,runId:change.runId,stepId:change.stepId})}>Undo form edit</ReceiptEditAction>}
+          <ReceiptEditAction command="undo-task-receipt-form" owner={readOwner} {...smallButtonProps} disabled={pageId!==change.pageId} title={pageId!==change.pageId?"Open the original page to undo this edit":undefined} invoke={()=>submitOwned("tasks.undoBrowserChange",{...base,runId:change.runId,stepId:change.stepId})}>Undo form edit</ReceiptEditAction>}
       </div>)}
     </section>}
     {!!receipt.tabChanges.length && <section className="field" aria-label="Tab changes">
@@ -231,7 +232,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
           <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
         </span>
         {editable && !historical && !active && change.status === "ok" && !change.undoneAt &&
-          <ReceiptEditAction command="undo-task-receipt-bookmark" owner={readOwner} className="btn sm" invoke={()=>submitOwned("tasks.undoBookmarkChange",{...base,runId:change.runId,stepId:change.stepId})}>Undo bookmark</ReceiptEditAction>}
+          <ReceiptEditAction command="undo-task-receipt-bookmark" owner={readOwner} {...smallButtonProps} invoke={()=>submitOwned("tasks.undoBookmarkChange",{...base,runId:change.runId,stepId:change.stepId})}>Undo bookmark</ReceiptEditAction>}
       </div>)}
     </section>}
     {!!receipt.downloadChanges.length && <section className="field" aria-label="Download changes">
@@ -246,7 +247,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
           <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
         </span>
         {editable && !historical && !active && change.cleanupAvailable && !change.undoneAt &&
-          <ReceiptEditAction command="undo-task-receipt-download" owner={readOwner} className="btn sm" invoke={()=>submitOwned("tasks.undoDownloadChange",{...base,runId:change.runId,stepId:change.stepId})}>Move download to Trash</ReceiptEditAction>}
+          <ReceiptEditAction command="undo-task-receipt-download" owner={readOwner} {...smallButtonProps} invoke={()=>submitOwned("tasks.undoDownloadChange",{...base,runId:change.runId,stepId:change.stepId})}>Move download to Trash</ReceiptEditAction>}
       </div>)}
     </section>}
     {!!receipt.historyChanges.length && <section className="field" aria-label="History changes">
@@ -261,7 +262,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
           <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
         </span>
         {editable && !historical && !active && !change.undoneAt &&
-          <ReceiptEditAction command="undo-task-receipt-history" owner={readOwner} className="btn sm" invoke={()=>submitOwned("tasks.undoHistoryChange",{...base,runId:change.runId,stepId:change.stepId})}>Remove history visit</ReceiptEditAction>}
+          <ReceiptEditAction command="undo-task-receipt-history" owner={readOwner} {...smallButtonProps} invoke={()=>submitOwned("tasks.undoHistoryChange",{...base,runId:change.runId,stepId:change.stepId})}>Remove history visit</ReceiptEditAction>}
       </div>)}
     </section>}
     {!!receipt.remoteActions.length && <section className="field" aria-label="Consequential page actions">
@@ -284,7 +285,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
         {undoDraft.items.map(item => <label className="row" key={item.stepId}><ReceiptChoice owner={readOwner} command="select-task-receipt-undo-change" aria-label={item.label} disabled={undoBusy} checked={undoDraft.selectedStepIds.includes(item.stepId)} invoke={checked=>setUndoDraft(current=>current&&({...current,selectedStepIds:checked?[...current.selectedStepIds,item.stepId]:current.selectedStepIds.filter(id=>id!==item.stepId)}))}/>
           <span>{item.label}</span></label>)}
         <div className="row"><ReceiptEditAction command="undo-task-receipt-selected-changes" owner={readOwner} valid={originalDraft("undoDraft",undoDraft)} className="btn sm danger" disabled={undoBusy||!undoDraft.selectedStepIds.length} invoke={undoRun}>Undo selected browser changes</ReceiptEditAction>
-          <ReceiptEditAction command="cancel-task-receipt-run-undo" owner={readOwner} className="btn sm" disabled={undoBusy} invoke={()=>setUndoDraft(null)}>Cancel</ReceiptEditAction></div>
+          <ReceiptEditAction command="cancel-task-receipt-run-undo" owner={readOwner} {...smallButtonProps} disabled={undoBusy} invoke={()=>setUndoDraft(null)}>Cancel</ReceiptEditAction></div>
       </div>}
       {undoMessage && <output data-block>{undoMessage}</output>}
     </section>}
@@ -452,7 +453,7 @@ function ReceiptExportControls({ owner }: { owner: ReceiptReadOwner }) {
   return (
     <div className="receipt-export">
       <PreferenceAction
-        className="btn sm"
+        {...smallButtonProps}
         command="export-task-receipt"
         scopeId={scopeId}
         disabled={visible.busy}
@@ -569,7 +570,7 @@ function ReceiptArtifactSave({
   };
   return (
     <PreferenceAction
-      className="btn sm"
+      {...smallButtonProps}
       command="save-task-receipt-artifact"
       scopeId={scopeId}
       disabled={busy === owner}

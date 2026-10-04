@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WorkspaceMemory } from "@aux/contracts";
@@ -47,9 +48,9 @@ export function MemoryExclusions({ memory, disabled, onSaved }: { memory: Worksp
   return <details className="memory-exclusions"><summary ref={summaryRef} onClick={event=>{event.preventDefault();toggle(event);}}>Excluded sites{origins.length > 0 ? ` · ${origins.length}` : ""}</summary>
     <p className="hint">Notes sourced from these addresses stay saved and searchable, but are excluded from new replies in this Space. This does not restrict browsing or explicitly attached pages.</p>
     <p className="hint">Each entry covers the exact site address shown, including its protocol and port. Subdomains are separate. Notes without a source and your Space overview are unaffected.</p>
-    <form className="memory-exclusion-form" ref={formRef} onSubmit={event=>{event.preventDefault();exclude(event);}}><input type="url" aria-label="Site to exclude from memory" placeholder="https://example.com" value={address} maxLength={2048} disabled={blocked || busy} onChange={event => setAddress(event.target.value)}/><button className="btn sm" disabled={blocked || busy || !address.trim() || origins.length >= 100}>Exclude site</button></form>
-    {origins.map(origin => <div className="memory-excluded-site" key={origin}><span>{origin}</span><MemoryExclusionButton command="allow-memory-site" scopeId={scopeId} invoke={()=>save(origins.filter(value => value !== origin))} className="btn sm ghost" disabled={blocked || busy} aria-label={`Allow memory from ${origin}`}>Allow</MemoryExclusionButton></div>)}
+    <form className="memory-exclusion-form" ref={formRef} onSubmit={event=>{event.preventDefault();exclude(event);}}><input type="url" aria-label="Site to exclude from memory" placeholder="https://example.com" value={address} maxLength={2048} disabled={blocked || busy} onChange={event => setAddress(event.target.value)}/><button {...smallButtonProps} disabled={blocked || busy || !address.trim() || origins.length >= 100}>Exclude site</button></form>
+    {origins.map(origin => <div className="memory-excluded-site" key={origin}><span>{origin}</span><MemoryExclusionButton command="allow-memory-site" scopeId={scopeId} invoke={()=>save(origins.filter(value => value !== origin))} {...smallGhostButtonProps} disabled={blocked || busy} aria-label={`Allow memory from ${origin}`}>Allow</MemoryExclusionButton></div>)}
     {busy && <output className="hint" data-block>Updating exclusions…</output>}
-    {error && <p className="field-error" role="alert">{error}{stale && <MemoryExclusionButton command="reload-memory-exclusions" scopeId={scopeId} invoke={()=>update()} className="btn sm ghost" disabled={blocked || busy}>Reload saved memory</MemoryExclusionButton>}</p>}
+    {error && <p className="field-error" role="alert">{error}{stale && <MemoryExclusionButton command="reload-memory-exclusions" scopeId={scopeId} invoke={()=>update()} {...smallGhostButtonProps} disabled={blocked || busy}>Reload saved memory</MemoryExclusionButton>}</p>}
   </details>;
 }

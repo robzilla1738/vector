@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
 import {
@@ -187,7 +188,7 @@ export function BackupSettings({
         <PreferenceAction
           command="create-local-runtime-backup"
           scopeId={id}
-          className="btn sm"
+          {...smallButtonProps}
           disabled={!current() || busy}
           invoke={() =>
             perform(
@@ -227,7 +228,7 @@ export function BackupSettings({
       <PreferenceAction
         command="refresh-local-backups"
         scopeId={id}
-        className="btn sm ghost"
+        {...smallGhostButtonProps}
         disabled={!current() || busy}
         invoke={() => perform(read, () => {})}
       >
@@ -259,7 +260,7 @@ export function BackupSettings({
                   <PreferenceAction
                     command="delete-reviewed-local-backup"
                     scopeId={`${id}:${item.name}`}
-                    className="btn sm"
+                    {...smallButtonProps}
                     disabled={busy || restorePending}
                     invoke={() => {
                       if (
@@ -287,7 +288,7 @@ export function BackupSettings({
                   <PreferenceAction
                     command="cancel-local-backup-deletion"
                     scopeId={`${id}:${item.name}`}
-                    className="btn sm ghost"
+                    {...smallGhostButtonProps}
                     disabled={busy}
                     invoke={() => {
                       if (!mayUse(item) || confirmation.inventory !== loaded)
@@ -302,7 +303,7 @@ export function BackupSettings({
                 <PreferenceAction
                   command="review-local-backup-deletion"
                   scopeId={`${id}:${item.name}`}
-                  className="btn sm ghost"
+                  {...smallGhostButtonProps}
                   disabled={busy || restorePending}
                   invoke={() => {
                     if (!mayUse(item) || !loaded || restorePending)

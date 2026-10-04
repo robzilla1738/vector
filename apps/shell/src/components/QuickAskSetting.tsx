@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { useScopedCommandControls } from "../scoped-command-controls";
 import {
   useCallback,
@@ -52,7 +53,7 @@ export function QuickAskSetting() {
   return (
     <div className="quick-ask-setting">
       <button
-        className="btn sm"
+        {...smallButtonProps}
         disabled={!inNativeHost || privateMode}
         onClick={(event) => run("quick-ask", event)}
       >
@@ -83,7 +84,7 @@ export function QuickAskSetting() {
           {error || status?.error}{" "}
           <button
             ref={retryRef}
-            className="btn sm ghost"
+            {...smallGhostButtonProps}
             disabled={busy || !inNativeHost}
             onClick={(event) => run("retry-quick-ask-shortcut", event)}
           >

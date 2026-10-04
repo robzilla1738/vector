@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { call, toast } from "../store";
@@ -26,16 +27,16 @@ export function ClearHistory({ initiallyOpen = false }: { initiallyOpen?: boolea
       .catch(reason => { if (current) setError(errorMessage(reason)); });
     return () => { current = false; };
   }, [cutoff, range]);
-  if (cutoff === null) return <button className="btn sm ghost" onClick={() => { setCount(null); setCutoff(Date.now()); setError(""); }}>Clear history…</button>;
+  if (cutoff === null) return <button {...smallGhostButtonProps} onClick={() => { setCount(null); setCutoff(Date.now()); setError(""); }}>Clear history…</button>;
   return <div className="clear-history" role="group" aria-label="Clear browsing history">
     <div><strong>Clear browsing history</strong><p>Remove visits from a period ending when you opened this panel. Newer visits are kept.</p></div>
     <div className="clear-history-ranges" role="group" aria-label="History time range">
-      {ranges.map(item => <button key={item.value} className="btn sm ghost" aria-pressed={range === item.value} disabled={busy} onClick={() => { setCount(null); setError(""); setRange(item.value); }}>{item.label}</button>)}
+      {ranges.map(item => <button key={item.value} {...smallGhostButtonProps} aria-pressed={range === item.value} disabled={busy} onClick={() => { setCount(null); setError(""); setRange(item.value); }}>{item.label}</button>)}
     </div>
     <p>This cannot be undone. Cookies, bookmarks, downloads, saved work and Aux memory are kept.</p>
     <output>{count === null ? "Counting visits…" : `${count} ${count === 1 ? "visit" : "visits"} in this period`}</output>
     {error && <p className="field-error" role="alert">{error}</p>}
-    <div className="row"><button className="btn sm" disabled={busy} onClick={() => { setCutoff(null); setError(""); }}>Cancel</button>
+    <div className="row"><button {...smallButtonProps} disabled={busy} onClick={() => { setCutoff(null); setError(""); }}>Cancel</button>
       <button className="btn sm danger" disabled={busy || count === null || count === 0} onClick={() => {
         setBusy(true); setError("");
         void call("history.count", rangeParams!)

@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { useEffect, useState } from "react";
 import type { AgentConnection, Run } from "@aux/contracts";
 import { call, useStore } from "../store";
@@ -57,15 +58,15 @@ export function ExternalAgentOversight({ connections }: { connections: readonly 
       .slice(-16).map(step => ({ op: step.op, status: step.outcome?.status ?? "running" })) });
   }
   return <section className="field" aria-label="External agent activity">
-    <div className="row"><strong>External agent activity</strong><button className="btn sm ghost" onClick={() => void refresh().catch(() => setError("External activity is unavailable. Refresh and try again."))}>Refresh</button></div>
+    <div className="row"><strong>External agent activity</strong><button {...smallGhostButtonProps} onClick={() => void refresh().catch(() => setError("External activity is unavailable. Refresh and try again."))}>Refresh</button></div>
     <p className="hint">Saved sessions appear here and in Tasks. Review their action ledger, approvals and available undo in the run panel.</p>
     {!runs.length && <p className="hint">No saved external session yet.</p>}
     {runs.map(run => <div className="field" key={run.runId}>
       <span>{connections.find(connection => connection.connectionId === run.config?.externalConnectionId)?.name ?? "External agent"} · {run.status.replaceAll("_", " ")}</span>
       <span className="hint">{safeStatus(run)} · {new Date(run.createdAt).toLocaleString()}</span>
       {!!pending[run.config?.externalConnectionId ?? ""] && <span className="hint">{pending[run.config?.externalConnectionId ?? ""]} approval request(s) need review in Aux.</span>}
-      <div className="row"><button className="btn sm ghost" onClick={() => void inspect(run).catch(() => setError("External activity changed. Refresh and try again."))}>Show activity</button>
-        <button className="btn sm" onClick={() => openRail({ kind: "run", runId: run.runId })}>Review run</button></div>
+      <div className="row"><button {...smallGhostButtonProps} onClick={() => void inspect(run).catch(() => setError("External activity changed. Refresh and try again."))}>Show activity</button>
+        <button {...smallButtonProps} onClick={() => openRail({ kind: "run", runId: run.runId })}>Review run</button></div>
       {activity?.runId === run.runId && <details open><summary>Recorded external actions · {activity.calls.length}</summary>
         <ol>{activity.calls.map((call, index) => <li key={`${call.op}:${index}`}>{call.op} · {call.status}</li>)}</ol>
       </details>}

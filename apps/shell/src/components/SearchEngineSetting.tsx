@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { useSettingsSaveOwner } from "../settings/sections/use-settings-save-owner";
 import { useScopedCommandControls } from "../scoped-command-controls";
 /* oxlint-disable jsx-a11y/prefer-tag-over-role -- Preserve the original Search engine group and its existing Settings layout. */
@@ -75,7 +76,7 @@ export function SearchEngineSetting({
           <button
             ref={(element) => publish(engine.name, "select-search-engine", element, () => save(engine.url))}
             key={engine.name}
-            className="btn sm"
+            {...smallButtonProps}
             disabled={busy}
             aria-pressed={value === engine.url}
             onClick={(event) => run("select-search-engine", event)}
@@ -91,7 +92,7 @@ export function SearchEngineSetting({
               edit((active) => ({ custom: !active.custom }));
             })
           }
-          className="btn sm ghost"
+          {...smallGhostButtonProps}
           disabled={busy}
           aria-expanded={custom}
           onClick={(event) => run("toggle-custom-search-engine", event)}
@@ -119,7 +120,7 @@ export function SearchEngineSetting({
             />
             <button
               ref={(element) => publish("save", "save-search-engine", element, () => save(draftRef.current))}
-              className="btn sm"
+              {...smallButtonProps}
               disabled={busy || draft.trim() === value}
               onClick={(event) => run("save-search-engine", event)}
             >

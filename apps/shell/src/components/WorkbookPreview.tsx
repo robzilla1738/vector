@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useMemo, useRef, useState } from "react";
 import { WorkbookSnapshotSchema } from "@aux/contracts/workbook-snapshot";
@@ -32,16 +33,16 @@ export function WorkbookPreview({ content }: { content: string }) {
   };
   return <div className="workbook-preview">
     <div className="workbook-sheets" role="group" aria-label="Workbook sheets">
-      {snapshot.sheets.map((item, index) => <button key={index} className="btn sm ghost" aria-pressed={index === selected} disabled={busy} onClick={() => {setSelected(index);setError("");}}>{item.name}{item.hidden ? " · hidden" : ""}</button>)}
+      {snapshot.sheets.map((item, index) => <button key={index} {...smallGhostButtonProps} aria-pressed={index === selected} disabled={busy} onClick={() => {setSelected(index);setError("");}}>{item.name}{item.hidden ? " · hidden" : ""}</button>)}
     </div>
     <div className="workbook-preview-tools"><span className="hint">{sheet.rows.length.toLocaleString()} populated rows · {columns.length.toLocaleString()} populated columns{sheet.rows.length > 100 || columns.length > 20 ? " · Showing up to 100 rows and 20 columns" : ""}</span></div>
     <div className="workbook-export-actions">
-      <button className="btn sm" disabled={busy} onClick={()=>void exportSheet("xlsx")}>{busy ? "Exporting…" : "Export Excel…"}</button>
+      <button {...smallButtonProps} disabled={busy} onClick={()=>void exportSheet("xlsx")}>{busy ? "Exporting…" : "Export Excel…"}</button>
       <details className="workbook-more"><summary>More options</summary><div>
-        <button className="btn sm ghost" disabled={busy||!sheet.rows.length} onClick={()=>void exportSheet("copy")}>Copy sheet as CSV</button>
-        <button className="btn sm ghost" disabled={busy||!sheet.rows.length} onClick={()=>void exportSheet("csv")}>Export sheet as CSV…</button>
-        <button className="btn sm ghost" disabled={busy} onClick={()=>void exportSheet("snapshot")}>Save full snapshot…</button>
-        <button className="btn sm ghost" aria-pressed={source} onClick={() => setSource(value => !value)}>{source ? "Show table" : "Show full source"}</button>
+        <button {...smallGhostButtonProps} disabled={busy||!sheet.rows.length} onClick={()=>void exportSheet("copy")}>Copy sheet as CSV</button>
+        <button {...smallGhostButtonProps} disabled={busy||!sheet.rows.length} onClick={()=>void exportSheet("csv")}>Export sheet as CSV…</button>
+        <button {...smallGhostButtonProps} disabled={busy} onClick={()=>void exportSheet("snapshot")}>Save full snapshot…</button>
+        <button {...smallGhostButtonProps} aria-pressed={source} onClick={() => setSource(value => !value)}>{source ? "Show table" : "Show full source"}</button>
       </div></details>
     </div>
     {error&&<p className="field-error" role="alert">{error}</p>}

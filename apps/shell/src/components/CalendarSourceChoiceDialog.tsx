@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import type { ConversationSource } from "@aux/contracts";
 import type { RefObject } from "react";
 import type { BrowserProfile } from "../bridge";
@@ -38,7 +39,7 @@ export function CalendarSourceChoiceDialog({ choice, returnFocus, initialFocus, 
       <p>Choose the browser Profile signed in to this account.</p>
       <div className="conversation-calendar-profiles">
         {choice.profiles.map((profile) => (
-          <button key={profile.id} className="btn sm" onClick={() => onChoose(profile)}>
+          <button key={profile.id} {...smallButtonProps} onClick={() => onChoose(profile)}>
             {profile.name}
             {profile.current ? " · current" : ""}
           </button>

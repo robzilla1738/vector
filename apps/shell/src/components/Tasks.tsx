@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./Tasks.css";
 import { Tabs, WorkRow } from "../ui";
@@ -540,11 +541,11 @@ export function Tasks() {
           )}
           {selected && !showHistory && (
             <div className="row">
-              <button className="btn sm" onClick={() => reset(selected.task.taskId)}>
+              <button {...smallButtonProps} onClick={() => reset(selected.task.taskId)}>
                 New child task
               </button>
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 onClick={() => {
                   setError("");
                   setShowHistory(true);
@@ -554,7 +555,7 @@ export function Tasks() {
               </button>
               {(selected.task.conversationId || selected.runs[0]) && (
                 <button
-                  className="btn sm"
+                  {...smallButtonProps}
                   onClick={() => {
                     if (selected.task.conversationId)
                       useStore.getState().openConversationDraft(selected.task.conversationId);
@@ -640,7 +641,7 @@ export function Tasks() {
                   <div className="row">
                     <h4 className="grow">Coordinated work</h4>
                     <button
-                      className="btn sm"
+                      {...smallButtonProps}
                       onClick={() => void action(() => exportCoordinationPlan(selected))}
                     >
                       Export plan…
@@ -747,7 +748,7 @@ export function Tasks() {
                         Set up a model connection before running this task. You can still attach a tab and
                         review evidence.
                       </span>
-                      <button className="btn sm" onClick={() => close("settings")}>
+                      <button {...smallButtonProps} onClick={() => close("settings")}>
                         Set up agent
                       </button>
                     </div>

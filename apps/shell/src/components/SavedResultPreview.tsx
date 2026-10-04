@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { readResultDraft, revokeResultDrafts, writeResultDraft } from "../result-drafts";
 import { StructuredResult } from "./StructuredResult";
@@ -83,14 +84,14 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
   }
   return <ViewerFrame label="Saved result preview" title={result?.filename ?? "Saved result"} onClose={onClose} closeLabel="Close result preview"
     metadata={result && <>v{result.revision ?? 1} · {result.mediaType} · {new Date(result.createdAt).toLocaleString()}</>}
-    toolbar={result && <><button className="btn sm ghost" disabled={attaching||saving} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Edit copy"}</button><button className="btn sm ghost" onClick={()=>void navigator.clipboard.writeText(content).then(()=>toast("Result copied")).catch(errToast)}>Copy</button><ActionMenu label="Export result" actions={[
+    toolbar={result && <><button {...smallGhostButtonProps} disabled={attaching||saving} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Edit copy"}</button><button {...smallGhostButtonProps} onClick={()=>void navigator.clipboard.writeText(content).then(()=>toast("Result copied")).catch(errToast)}>Copy</button><ActionMenu label="Export result" actions={[
       {label:"Export file…",disabled:saving||attaching||!valid,onSelect:()=>void save()},
       ...(result.mediaType === "text/csv" ? [{label:"Export Excel…",disabled:saving||attaching||!valid,onSelect:()=>void save(true)}] : []),
     ]}>{saving ? "Exporting…" : "Export…"}</ActionMenu></>}>
-    {error?<p role="alert">{error} <button className="btn sm" onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:!result?<output className="hint" data-block>Loading saved result…</output>:<>
+    {error?<p role="alert">{error} <button {...smallButtonProps} onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:!result?<output className="hint" data-block>Loading saved result…</output>:<>
       {result.mediaType==="text/csv"&&<p className="hint">Excel export writes cell values. Safe http(s) source URLs become hyperlinks. Formatting, formulas and images are not created.</p>}
       {result.mediaType==="text/html"&&<p className="hint">Interactive preview runs in an isolated origin. Network, files, forms, and Aux access are blocked; generated content may contain unverified text.</p>}
-      {draft && <div className="result-edit-status"><span className="hint">Edited copy · original preserved</span><button className="btn sm ghost" disabled={saving||attaching} onClick={()=>{if(!writeResultDraft(artifactId,null)){setDraftError("The saved draft could not be removed. Try Discard edits again.");return;}setDraft(null);setEditing(false);setAttached(null);setDraftError("");}}>Discard edits</button><button className="btn sm" disabled={contextDisabled||saving||attaching||!valid||sourceChanged} onClick={()=>void saveVersion()}>{attaching?"Saving…":"Save version"}</button><button className="btn sm ghost" disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content} onClick={()=>void attachCopy()}>{attached===content?"Copy attached":"Attach as document"}</button></div>}
+      {draft && <div className="result-edit-status"><span className="hint">Edited copy · original preserved</span><button {...smallGhostButtonProps} disabled={saving||attaching} onClick={()=>{if(!writeResultDraft(artifactId,null)){setDraftError("The saved draft could not be removed. Try Discard edits again.");return;}setDraft(null);setEditing(false);setAttached(null);setDraftError("");}}>Discard edits</button><button {...smallButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged} onClick={()=>void saveVersion()}>{attaching?"Saving…":"Save version"}</button><button {...smallGhostButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content} onClick={()=>void attachCopy()}>{attached===content?"Copy attached":"Attach as document"}</button></div>}
       {sourceChanged&&<p className="field-error" role="alert">The saved source changed since this draft began. Export your edits or discard them to work from the current source.</p>}
       {draftError&&<p className="field-error" role="alert">{draftError}</p>}
       {!valid&&<p className="field-error" role="alert">Use text without null characters, up to 256 KB.</p>}

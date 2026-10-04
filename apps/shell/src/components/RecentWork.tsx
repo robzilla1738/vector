@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { bridge } from "../bridge";
 import { useEffect, useState } from "react";
 import type { ConversationArtifact, ConversationSummary, Routine } from "@aux/contracts";
@@ -72,6 +73,6 @@ export function RecentWork() {
     </div>
     {tab === "chats" && <ConversationDrafts limit={3} compact exclude={items.map(item => item.chatId)} />}
     {loading && !count && <output className="hint" data-block>Loading recent work…</output>}
-    {error && <p className="field-error" role="alert">Recent work couldn’t be loaded. <button className="btn sm ghost" title={error} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
+    {error && <p className="field-error" role="alert">Recent work couldn’t be loaded. <button {...smallGhostButtonProps} title={error} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
   </section>;
 }

@@ -1,0 +1,17 @@
+{
+  "base": "c7d40dd3eb4143dde42de69f2123094beca32b2e",
+  "files": [
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "beforeSHA256": "81857d0f954c320b6c30061f9d5e2db81333bbd34d3e5089f10fe333ad571424",
+      "afterSHA256": "f681ed18dce7c825f98d52b30e054f0cf7deaf75d4077c04fb9575760211c15c"
+    },
+    {
+      "path": "apps/shell/src/components/PluginsPanel.tsx",
+      "beforeSHA256": "c91c1b128be14404adb4547b2a90047aaeaa574e738c5a8f2cd32e4cb8ee040c",
+      "afterSHA256": "489c6417c39638dbfc751f067c9135bd31dc2ec048d597040fdf6573f77a5e70"
+    }
+  ],
+  "patchSHA256": "d3752a28a0d1159fc19fd6fae30ed4fa320b20d09deaa588b8285939f7b695b1",
+  "scope": "Only two migrated ratchet files; initial source construction remains immutable."
+}

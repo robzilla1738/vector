@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./ReaderView.css";
 import { backgroundLink, openBrowserLink } from "../browser-links";
@@ -115,12 +116,12 @@ export function ReaderView() {
     if(event.key==='Escape'){event.preventDefault();event.stopPropagation();if(contentsOpen){setContentsOpen(false);contentsButton.current?.focus();}else back();}
   }}>
     <header className="reader-toolbar">
-      <button className="btn sm" ref={close} onClick={back}>Back to page</button>
-      {sections.length > 1 && <button ref={contentsButton} className="btn sm ghost" aria-expanded={contentsOpen} aria-controls="reader-contents" onClick={() => setContentsOpen(value => !value)}>Contents</button>}
+      <button {...smallButtonProps} ref={close} onClick={back}>Back to page</button>
+      {sections.length > 1 && <button ref={contentsButton} {...smallGhostButtonProps} aria-expanded={contentsOpen} aria-controls="reader-contents" onClick={() => setContentsOpen(value => !value)}>Contents</button>}
       <span className="sp" />
       <select aria-label="Reading font" value={preferences.font} onChange={event=>preference({...preferences,font:event.target.value})}><option value="serif">Serif</option><option value="sans">Sans serif</option></select>
-      <button className="btn sm" aria-label="Smaller reading text" disabled={preferences.size<=16} onClick={() => preference({...preferences,size:preferences.size-2})}>A−</button>
-      <button className="btn sm" aria-label="Larger reading text" disabled={preferences.size>=26} onClick={() => preference({...preferences,size:preferences.size+2})}>A+</button>
+      <button {...smallButtonProps} aria-label="Smaller reading text" disabled={preferences.size<=16} onClick={() => preference({...preferences,size:preferences.size-2})}>A−</button>
+      <button {...smallButtonProps} aria-label="Larger reading text" disabled={preferences.size>=26} onClick={() => preference({...preferences,size:preferences.size+2})}>A+</button>
       {storageNotice&&<output className="reader-notice" data-block>{storageNotice}</output>}
     {contentsOpen && <nav ref={contentsMenu} onKeyDown={event => moveListFocus(event, "button")} id="reader-contents" className="reader-contents" aria-label="Article contents">
       {sections.map((section, index) => <button key={section.id} ref={index === 0 ? firstSection : undefined} className={section.level > 2 ? "reader-subsection" : ""} onClick={() => { const target = scroll.current?.querySelector<HTMLElement>(`#${section.id}`); if (target) jump(target); }}>{section.title}</button>)}
@@ -150,7 +151,7 @@ export function ReaderView() {
       }
       void openBrowserLink(link.href, backgroundLink(event)).catch(errToast);
     }}>
-      {error ? <div className="reader-empty" role="status"><h2>Reader view isn’t available</h2><p>{error}</p><button className="btn sm" onClick={()=>setRefresh(value=>value+1)}>Try again</button></div> : !article ? <output className="reader-empty" data-block>Preparing article…</output> : <article className="reader-article" data-find-surface="reader">
+      {error ? <div className="reader-empty" role="status"><h2>Reader view isn’t available</h2><p>{error}</p><button {...smallButtonProps} onClick={()=>setRefresh(value=>value+1)}>Try again</button></div> : !article ? <output className="reader-empty" data-block>Preparing article…</output> : <article className="reader-article" data-find-surface="reader">
         <div className="reader-meta">{offlineSavedAt ? `Offline copy · saved ${new Date(offlineSavedAt).toLocaleString()} · ` : ""}{article.site} · {article.minutes} min read</div>
         <h1>{article.title}</h1>
         {article.byline && <p className="reader-byline">{article.byline}</p>}

@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Artifact } from "@aux/contracts";
@@ -17,7 +18,7 @@ function RunImage({artifact}:{artifact:Artifact}) {
     return()=>{live=false;};
   },[artifact.artifactId,artifact.mediaType,retry]);
   return <figure className="conversation-image">
-    {error ? <p className="field-error" role="alert">Couldn’t load this image. {error} <button className="btn sm ghost" onClick={()=>setRetry(value=>value+1)}>Retry image</button></p>
+    {error ? <p className="field-error" role="alert">Couldn’t load this image. {error} <button {...smallGhostButtonProps} onClick={()=>setRetry(value=>value+1)}>Retry image</button></p>
       : url ? <ImageViewer src={url} alt="Saved image from this turn" onError={()=>setError("The saved image could not be displayed.")}/>
       : <output className="hint" data-block>Loading image…</output>}
     <figcaption>Saved {new Date(artifact.createdAt).toLocaleString()}</figcaption>
@@ -46,10 +47,10 @@ export function RunImages({runId}:{runId:string}) {
   return <details className="conversation-sources conversation-images" onToggle={event=>setOpen(event.currentTarget.open)}>
     <summary>{shellIconResult}<span>Images</span>{artifacts.length>0 && <span className="count nums">{artifacts.length}</span>}</summary>
     {open && <div>
-      {error && <p className="field-error" role="alert">Couldn’t refresh images. {error} <button className="btn sm ghost" onClick={()=>setRetry(value=>value+1)}>Retry</button></p>}
+      {error && <p className="field-error" role="alert">Couldn’t refresh images. {error} <button {...smallGhostButtonProps} onClick={()=>setRetry(value=>value+1)}>Retry</button></p>}
       {previews.slice(0,limit).map(artifact=><RunImage key={artifact.artifactId} artifact={artifact}/>)}
       {large>0 && <p className="hint">{large} {large===1 ? "image exceeds" : "images exceed"} the 8 MB inline preview limit.</p>}
-      {previews.length>limit && <button className="btn sm ghost" onClick={()=>setLimit(value=>value+3)}>Show more images · {previews.length-limit} remaining</button>}
+      {previews.length>limit && <button {...smallGhostButtonProps} onClick={()=>setLimit(value=>value+3)}>Show more images · {previews.length-limit} remaining</button>}
     </div>}
   </details>;
 }

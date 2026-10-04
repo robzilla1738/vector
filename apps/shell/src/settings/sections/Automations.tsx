@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -131,7 +132,7 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
       </label>
       <RoutineSchedule mode="create" trigger={{ kind: "schedule", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", hour: 9, minute: 0, days: [1, 2, 3, 4, 5] }} calendar={calendar} disabled={busy || !taskId} onSave={(trigger) => void create(trigger)} />
       {error && <p className="field-error" role="alert">{error}</p>}
-      <button className="btn sm ghost" type="button" onClick={onClose} disabled={busy}>Cancel</button>
+      <button {...smallGhostButtonProps} type="button" onClick={onClose} disabled={busy}>Cancel</button>
     </dialog>, document.body,
   );
 }
@@ -260,7 +261,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
         hint="Scheduled Skills and Calendar checks run while Aux is open. Calendar checks poll granted accounts once a minute; no event titles are stored in automation runs."
         searchTerms={["monitor", "schedule", "calendar", "automation"]}
       >
-        <button className="btn sm" type="button" disabled={!workspaceId || !!busyId} onClick={() => setCreating(true)}>Create automation</button>
+        <button {...smallButtonProps} type="button" disabled={!workspaceId || !!busyId} onClick={() => setCreating(true)}>Create automation</button>
         <label>
           Space
           <select
@@ -288,19 +289,19 @@ export function AutomationsSettings({ active }: { active: boolean }) {
               : "Model-led Skill; model spend cap applies"}</span>
             <div className="row">
               <button
-                className="btn sm ghost"
+                {...smallGhostButtonProps}
                 onClick={() => void openSavedSkill(routine).catch(errToast)}
               >
                 Open Skill
               </button>
               {!routine.archivedAt && routine.activationReview && (
-                <button className="btn sm" onClick={() => void openSavedSkill(routine).catch(errToast)}>
+                <button {...smallButtonProps} onClick={() => void openSavedSkill(routine).catch(errToast)}>
                   Review Skill
                 </button>
               )}
               {!routine.archivedAt && !routine.activationReview && routine.pauseCause !== "unread_results" && (
                 <button
-                  className="btn sm"
+                  {...smallButtonProps}
                   disabled={!!busyId}
                   onClick={() => void changeRoutine(routine, { paused: !routine.paused })}
                 >
@@ -312,14 +313,14 @@ export function AutomationsSettings({ active }: { active: boolean }) {
               <div className="field" role="status">
                 <span>Paused after three unread results over at least a day while model work was recorded. Review the results before continuing; the model spend cap still applies.</span>
                 <div className="row">
-                  <button className="btn sm" disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: false })}>Keep running</button>
-                  <button className="btn sm ghost" disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: true })}>Pause Skill</button>
-                  <button className="btn sm ghost" disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: false, presenceGuardExempt: true })}>Don’t ask again · keep running</button>
+                  <button {...smallButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: false })}>Keep running</button>
+                  <button {...smallGhostButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: true })}>Pause Skill</button>
+                  <button {...smallGhostButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: false, presenceGuardExempt: true })}>Don’t ask again · keep running</button>
                 </div>
               </div>
             )}
             {!routine.archivedAt && routine.presenceGuardExempt && (
-              <button className="btn sm ghost" disabled={!!busyId} onClick={() => void changeRoutine(routine, { presenceGuardExempt: false })}>Re-enable unread-results pause</button>
+              <button {...smallGhostButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { presenceGuardExempt: false })}>Re-enable unread-results pause</button>
             )}
             {!routine.archivedAt && (
               <form
@@ -350,7 +351,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                     required
                   />
                 </label>
-                <button className="btn sm" type="submit" disabled={!!busyId}>Save cap</button>
+                <button {...smallButtonProps} type="submit" disabled={!!busyId}>Save cap</button>
               </form>
             )}
             {!routine.archivedAt && <span className="hint">Checks recorded model spending before each new run and pauses at this cap. A running model call may go over it; tested browser replays do not call a model.</span>}
@@ -385,9 +386,9 @@ export function AutomationsSettings({ active }: { active: boolean }) {
               {item.run.status.replaceAll("_", " ")} · {new Date(item.run.createdAt).toLocaleString()}
               {item.run.reason ? ` · ${item.run.reason}` : ""}
             </span>
-            <button className="btn sm ghost" type="button" onClick={() => void call("routines.get", { routineId: item.run.routineId })
+            <button {...smallGhostButtonProps} type="button" onClick={() => void call("routines.get", { routineId: item.run.routineId })
               .then(({ routine }) => openSavedSkill(routine)).catch(errToast)}>Open Skill</button>
-            {item.run.runId && <button className="btn sm ghost" type="button"
+            {item.run.runId && <button {...smallGhostButtonProps} type="button"
               disabled={!!outcomeBusy}
               onClick={() => {
                 setOutcomeBusy(item.run.routineRunId);

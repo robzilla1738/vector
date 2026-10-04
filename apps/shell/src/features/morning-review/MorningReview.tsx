@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { executeCommand } from "../../commands";
 import { useNightReview } from "./state";
 export function OvernightCard() {
@@ -17,9 +18,9 @@ export function MorningReviewInbox() {
     <ul>{items.map(item => <li key={item.id}>
       <strong>{item.payload.kind === "goal" ? "Goal" : item.payload.kind === "routine" ? "Skill" : "Space memory"}</strong>
       <output>{item.status.replace("_", " ")}</output>
-      {item.status === "proposed" && <button className="btn sm" disabled={busy} onClick={() => void executeCommand("review-overnight-item", { payload: { id: item.id, decision: "approve" } })}>Approve</button>}
-      {item.status === "needs_review" && item.runId && <button className="btn sm" disabled={busy} onClick={() => void executeCommand("review-overnight-item", { payload: { id: item.id, decision: "apply" } })}>Apply</button>}
-      {!["done", "failed", "discarded"].includes(item.status) && <button className="btn sm ghost" disabled={busy} onClick={() => void executeCommand("review-overnight-item", { payload: { id: item.id, decision: "discard" } })}>Discard</button>}
+      {item.status === "proposed" && <button {...smallButtonProps} disabled={busy} onClick={() => void executeCommand("review-overnight-item", { payload: { id: item.id, decision: "approve" } })}>Approve</button>}
+      {item.status === "needs_review" && item.runId && <button {...smallButtonProps} disabled={busy} onClick={() => void executeCommand("review-overnight-item", { payload: { id: item.id, decision: "apply" } })}>Apply</button>}
+      {!["done", "failed", "discarded"].includes(item.status) && <button {...smallGhostButtonProps} disabled={busy} onClick={() => void executeCommand("review-overnight-item", { payload: { id: item.id, decision: "discard" } })}>Discard</button>}
     </li>)}</ul>
     {error && <p role="alert">{error}</p>}
   </section>;

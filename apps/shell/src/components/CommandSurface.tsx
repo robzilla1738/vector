@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { COMMANDS, type CommandDef, type PreparedConversation } from "@aux/contracts";
 import { useShallow } from "zustand/react/shallow";
@@ -159,7 +160,7 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
   return <div role="presentation" className="command-surface-scrim" onMouseDown={event => { if (event.target === event.currentTarget) close(); }}>
     <dialog open className="command-surface" aria-modal="true" aria-label="Command surface" data-mode={request.mode} data-command-surface-sequence={request.sequence} style={placement ? { ...placement, transform: "none" } : undefined}
       ref={dialogRef}>
-      {picker && <button className="btn sm ghost" onClick={() => { setPicker(null); setRevision(value => value + 1); }}>Back to commands</button>}
+      {picker && <button {...smallGhostButtonProps} onClick={() => { setPicker(null); setRevision(value => value + 1); }}>Back to commands</button>}
       <CommandBar key={`${request.sequence}:${revision}`} surfaceMode={picker ? "command" : request.mode} seed={picker ? "" : request.seed}
         commandRows={rows} providerRows={providerRows} onQueryChange={setQuery} onClose={close} />
     </dialog>

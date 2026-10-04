@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { bridge } from "../bridge";
@@ -81,7 +82,7 @@ export function ClearBrowsingData({ active }: { active: boolean }) {
     }
   };
 
-  if (cutoff === null) return <button className="btn sm ghost" onClick={() => setCutoff(Date.now())}>Clear browsing data…</button>;
+  if (cutoff === null) return <button {...smallGhostButtonProps} onClick={() => setCutoff(Date.now())}>Clear browsing data…</button>;
   const amount = (selected.history ? preview?.visits ?? 0 : 0) +
     (selected.cookies ? preview?.cookies ?? 0 : 0) +
     (selected.cache ? preview?.cacheBytes ?? 0 : 0);
@@ -91,7 +92,7 @@ export function ClearBrowsingData({ active }: { active: boolean }) {
   return <div className="clear-history" role="group" aria-label="Clear browsing data">
     <p>Choose a period and data types. The period ends when this panel opened; newer data stays. This cannot be undone.</p>
     <div className="clear-history-ranges" role="group" aria-label="Browsing data time range">
-      {ranges.map(item => <button key={item.value} className="btn sm ghost" aria-pressed={range === item.value} disabled={busy}
+      {ranges.map(item => <button key={item.value} {...smallGhostButtonProps} aria-pressed={range === item.value} disabled={busy}
         onClick={() => { setRange(item.value); setError(""); }}>{item.label}</button>)}
     </div>
     <label><input type="checkbox" aria-label={historyLabel} checked={selected.history} disabled={busy} onChange={event => setSelected(value => ({ ...value, history: event.target.checked }))} /> {historyLabel}</label>
@@ -100,7 +101,7 @@ export function ClearBrowsingData({ active }: { active: boolean }) {
     <p>Clearing cookies can sign you out. Bookmarks, downloads, saved work and Aux memory stay in place.</p>
     {error && <p className="field-error" role="alert">{error}</p>}
     <div className="row">
-      <button className="btn sm" disabled={busy} onClick={() => { setCutoff(null); setPreview(null); setError(""); }}>Cancel</button>
+      <button {...smallButtonProps} disabled={busy} onClick={() => { setCutoff(null); setPreview(null); setError(""); }}>Cancel</button>
       <button className="btn sm danger" disabled={busy || !preview || !amount} onClick={() => void clear()}>{busy ? "Clearing…" : "Clear selected data"}</button>
     </div>
   </div>;

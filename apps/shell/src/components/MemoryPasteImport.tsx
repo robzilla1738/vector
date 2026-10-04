@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { constructAwaitedOperation } from "./owned-operation-construction";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
 import { useEffect, useLayoutEffect, useMemo, useCallback, useState, type ReactNode } from "react";
@@ -273,7 +274,7 @@ export function MemoryPasteImport({
         <PasteControl
           {...props}
           command="preview-memory-import"
-          className="btn sm"
+          {...smallButtonProps}
           disabled={busy || !destinationId || !text.trim() || bytes > MEMORY_PASTE_MAX_BYTES}
           action={() =>
             work(async (id, valid) => {
@@ -292,7 +293,7 @@ export function MemoryPasteImport({
         <PasteControl
           {...props}
           command="clear-memory-import-draft"
-          className="btn sm ghost"
+          {...smallGhostButtonProps}
           disabled={busy || (!text && !preview)}
           action={() => {
             setText("");
@@ -368,7 +369,7 @@ export function MemoryPasteImport({
             <PasteControl
               {...props}
               command="commit-memory-import"
-              className="btn sm"
+              {...smallButtonProps}
               disabled={busy || !enabled || !selectedIds.length}
               action={() =>
                 work(async (id, valid) => {
@@ -403,7 +404,7 @@ export function MemoryPasteImport({
           <PasteControl
             {...props}
             command="refresh-memory-import-receipts"
-            className="btn sm ghost"
+            {...smallGhostButtonProps}
             disabled={busy}
             action={() =>
               work(async (id, valid) => {
@@ -446,7 +447,7 @@ export function MemoryPasteImport({
             <PasteControl
               {...props}
               command="review-memory-import-space"
-              className="btn sm"
+              {...smallButtonProps}
               disabled={busy}
               action={() => onReview(destinationId)}
             >

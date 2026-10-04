@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./Downloads.css";
 import { useDownloadRenames } from "../features/download-naming/state";
@@ -58,20 +59,20 @@ const DownloadRow = memo(function DownloadRow({ id, busy, rowError, retried, act
             </span>
             <div className="dl-actions">
             {d.canCancel && <>
-              {d.paused || d.state === "interrupted" ? <button className="btn sm ghost" disabled={busy !== null || !d.canResume} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "resume"), true)}>Resume</button> : <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "pause"), true)}>Pause</button>}
-              <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "cancel"), true)}>Cancel</button>
+              {d.paused || d.state === "interrupted" ? <button {...smallGhostButtonProps} disabled={busy !== null || !d.canResume} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "resume"), true)}>Resume</button> : <button {...smallGhostButtonProps} disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "pause"), true)}>Pause</button>}
+              <button {...smallGhostButtonProps} disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "cancel"), true)}>Cancel</button>
             </>}
-            {!d.canCancel&&d.state!=='completed'&&d.sourceUrl&&<button className="btn sm ghost" title="Start a new download from the saved URL. Expired links or form-generated downloads may need the original page." disabled={busy!==null||retried} onClick={()=>void action(d.id,async()=>{await bridge.retryDownload(d.id);onRetried(d.id);},true)}>{retried?'Retry requested':'Retry'}</button>}
-            {sourcePage && <button className="btn sm ghost" title={`Return to ${sourcePage.title || sourcePage.url}`} onClick={() => void useStore.getState().activate(sourcePage.pageId).then(()=>{if(useStore.getState().overlay==="downloads")setOverlay(null);}).catch(errToast)}>Source page</button>}
+            {!d.canCancel&&d.state!=='completed'&&d.sourceUrl&&<button {...smallGhostButtonProps} title="Start a new download from the saved URL. Expired links or form-generated downloads may need the original page." disabled={busy!==null||retried} onClick={()=>void action(d.id,async()=>{await bridge.retryDownload(d.id);onRetried(d.id);},true)}>{retried?'Retry requested':'Retry'}</button>}
+            {sourcePage && <button {...smallGhostButtonProps} title={`Return to ${sourcePage.title || sourcePage.url}`} onClick={() => void useStore.getState().activate(sourcePage.pageId).then(()=>{if(useStore.getState().overlay==="downloads")setOverlay(null);}).catch(errToast)}>Source page</button>}
             {d.state === "completed" && (
               <>
-                <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, async () => { const error = await bridge.openPath(d.path); if (error) throw new Error(`Could not open ${d.filename}: ${error}. The file may have been moved or deleted.`); },true)}>Open</button>
-                <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, async () => {
+                <button {...smallGhostButtonProps} disabled={busy !== null} onClick={() => void action(d.id, async () => { const error = await bridge.openPath(d.path); if (error) throw new Error(`Could not open ${d.filename}: ${error}. The file may have been moved or deleted.`); },true)}>Open</button>
+                <button {...smallGhostButtonProps} disabled={busy !== null} onClick={() => void action(d.id, async () => {
                   if (!await bridge.revealPath(d.path)) throw new Error(`Could not reveal ${d.filename}. The file may have been moved or deleted.`);
                 },true)}>Reveal</button>
               </>
             )}
-            {rename && <button className="btn sm ghost" data-command-id="undo-download-rename" disabled={busy !== null} title={`Restore ${rename.originalName}`} onClick={() => void action(d.id, () => executeCommand("undo-download-rename", { payload: { receiptId: rename.receiptId } }), true)}>Undo rename</button>}
+            {rename && <button {...smallGhostButtonProps} data-command-id="undo-download-rename" disabled={busy !== null} title={`Restore ${rename.originalName}`} onClick={() => void action(d.id, () => executeCommand("undo-download-rename", { payload: { receiptId: rename.receiptId } }), true)}>Undo rename</button>}
             {canDismissDownload(d) && <button className="icon-btn sm" disabled={busy!==null} aria-label={`Remove ${d.filename} from downloads`} title="Remove from list; keep file" onClick={()=>void dismissDownloads([d.id])}>{shellIconClose}</button>}
             </div>
             {rowError&&<p className="dl-error" role="alert">{rowError}</p>}
@@ -178,27 +179,27 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
         <span>Downloads</span>
         <span className="count nums">{itemCount}</span>
         <span className="sp" />
-        {!!dismissibleIds.length&&<button className="btn sm ghost" disabled={busy!==null} title="Remove inactive downloads matching this view. Files remain on your computer." onClick={()=>void dismissDownloads(dismissibleIds)}>Clear list</button>}
-        {!bridge.privateMode&&<button className="btn sm ghost" aria-expanded={showFolder} onClick={()=>setShowFolder(!showFolder)}>Save location</button>}
-        <button className="btn sm ghost" disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Refresh</button>
+        {!!dismissibleIds.length&&<button {...smallGhostButtonProps} disabled={busy!==null} title="Remove inactive downloads matching this view. Files remain on your computer." onClick={()=>void dismissDownloads(dismissibleIds)}>Clear list</button>}
+        {!bridge.privateMode&&<button {...smallGhostButtonProps} aria-expanded={showFolder} onClick={()=>setShowFolder(!showFolder)}>Save location</button>}
+        <button {...smallGhostButtonProps} disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Refresh</button>
         <button className="icon-btn sm" title="Close (Esc)" aria-label="Close downloads" onClick={() => onClose ? onClose() : setOverlay(null)}>{shellIconClose}</button>
       </div>
       <div className="download-tools">
         <label className="download-search">{shellIconSearch}<input ref={searchRef} autoFocus={!!onClose} aria-label="Search downloads" placeholder="Find a download…" value={query} onChange={event => setQuery(event.target.value)} /></label>
         <div className="download-filters" role="group" aria-label="Filter downloads">
-          {([["all","All"],["active","In progress"],["finished","Finished"],["attention","Needs attention"]] as const).map(([value,label])=><button key={value} className="btn sm ghost" aria-pressed={filter===value} onClick={()=>setFilter(value)}>{label}</button>)}
+          {([["all","All"],["active","In progress"],["finished","Finished"],["attention","Needs attention"]] as const).map(([value,label])=><button key={value} {...smallGhostButtonProps} aria-pressed={filter===value} onClick={()=>setFilter(value)}>{label}</button>)}
         </div>
       </div>
-      {loadError && <p className="download-error" role="alert">Couldn’t refresh downloads. {loadError} <button className="btn sm ghost" disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Try again</button></p>}
+      {loadError && <p className="download-error" role="alert">Couldn’t refresh downloads. {loadError} <button {...smallGhostButtonProps} disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Try again</button></p>}
       {error && <p className="download-error" role="alert">{error}</p>}
       {bridge.privateMode ? <p className="download-private-note">Choose a save location for each private download. Files remain on your computer after this window closes.</p> : showFolder&&<section className="download-location" aria-label="Download save location" aria-busy={folderLoading}>
         {folderLoading&&<output className="download-private-note" data-block>Loading save location…</output>}
         {folder&&<div className="download-folder">
           <span className="download-folder-path" title={folder.path}>Save to <span className="selectable">{folder.path}</span></span>
-          <button className="btn sm ghost" disabled={busy!==null} onClick={()=>void changeFolder()}>Change folder</button>
-          {(folder.custom||folder.error)&&<button className="btn sm ghost" disabled={busy!==null} onClick={()=>void changeFolder(true)}>Use default</button>}
+          <button {...smallGhostButtonProps} disabled={busy!==null} onClick={()=>void changeFolder()}>Change folder</button>
+          {(folder.custom||folder.error)&&<button {...smallGhostButtonProps} disabled={busy!==null} onClick={()=>void changeFolder(true)}>Use default</button>}
         </div>}
-        {(folderError||folder?.error)&&<p className="download-error" role="alert">{folderError||folder?.error} <button className="btn sm ghost" disabled={folderLoading||busy!==null} onClick={()=>setFolderRefresh(value=>value+1)}>Retry location</button></p>}
+        {(folderError||folder?.error)&&<p className="download-error" role="alert">{folderError||folder?.error} <button {...smallGhostButtonProps} disabled={folderLoading||busy!==null} onClick={()=>setFolderRefresh(value=>value+1)}>Retry location</button></p>}
       </section>}
       <div className="download-list" aria-busy={loading}>
       {loading&&!itemCount&&<output className="shelf-empty" data-block>Loading downloads…</output>}

@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
 import { bridge } from "../../bridge";
@@ -168,7 +169,7 @@ export function NativePreferenceRetry({
       scopeId={scopeId}
       disabled={disabled}
       invoke={read}
-      className="btn sm ghost"
+      {...smallGhostButtonProps}
     >
       Retry
     </PreferenceAction>

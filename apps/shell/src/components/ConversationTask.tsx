@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { PageTarget, Run, Task, VaultItem } from "@aux/contracts";
@@ -60,15 +61,15 @@ export function ConversationTask({ taskId, live, disabled, page, context, linked
     finally { pending.current = false; setBusy(false); }
   };
   return <section className="conversation-task-card" aria-label="Saved task">
-    <div className="conversation-task-heading"><strong>{task?.title ?? "Saved task"}</strong><button className="btn sm" onClick={details}>Details</button></div>
+    <div className="conversation-task-heading"><strong>{task?.title ?? "Saved task"}</strong><button {...smallButtonProps} onClick={details}>Details</button></div>
     {task ? task.objective !== task.title && <p className="conversation-task-objective">{task.objective}</p> : !error && <output className="hint" data-block>Loading task…</output>}
-    {error && <p className="field-error" role="alert">{error} <button className="btn sm" disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh task</button></p>}
+    {error && <p className="field-error" role="alert">{error} <button {...smallButtonProps} disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh task</button></p>}
     {live ? <p className="hint">Working in this conversation. Browser context stays fixed until this run stops.</p> : task?.state === "archived" ? <p className="hint">Restore this task in Details before running it.</p> : <>
       {unsaved && <p className="hint">You have unsaved task edits. Open Details to save or discard them before running.</p>}
       <div className="conversation-task-actions">
         <BrowserContextPicker value={context} linkedPageId={linkedPageId} onChange={onContext} disabled={busy || disabled} />
         <button className="btn" disabled={busy || disabled || !task || unsaved || missingContext} onClick={() => void start()}>{busy ? "Starting…" : needsSetup ? "Set up model" : "Run task"}</button>
-        {task && <button className="btn sm ghost" disabled={busy || disabled} onClick={() => { useStore.getState().setOverlay("tasks"); }}>Make a routine</button>}
+        {task && <button {...smallGhostButtonProps} disabled={busy || disabled} onClick={() => { useStore.getState().setOverlay("tasks"); }}>Make a routine</button>}
       </div>
       {missingContext && <p className="hint">Choose an available tab or New browser tab to continue.</p>}
       {task && <TaskSiteGrant taskId={taskId} workspaceId={task.workspaceId} page={page} />}
@@ -92,14 +93,14 @@ function TaskSiteGrant({ taskId, workspaceId, page }: { taskId: string; workspac
     <p className="hint">Trusted fill uses the agent vault. Models receive an opaque reference, not the secret. Grant this origin for this task after unlocking the vault.</p>
     {error && <p className="field-error" role="alert">{error}</p>}
     <div className="row">
-      {matches.map(item => <button key={item.itemId} className="btn sm" disabled={busy} onClick={() => {
+      {matches.map(item => <button key={item.itemId} {...smallButtonProps} disabled={busy} onClick={() => {
         setBusy(true); setError("");
         void call("vault.grant", { itemId: item.itemId, origin, taskId, workspaceId, ttlMs: 30 * 60_000 })
           .then(() => useStore.getState().toast(`Granted ${item.label} for ${origin}.`))
           .catch(reason => setError(errorMessage(reason)))
           .finally(() => setBusy(false));
       }}>Grant {item.label} for this task</button>)}
-      <button className="btn sm ghost" onClick={openVault}>{matches.length ? "Manage vault" : "Open vault"}</button>
+      <button {...smallGhostButtonProps} onClick={openVault}>{matches.length ? "Manage vault" : "Open vault"}</button>
     </div>
   </div>;
 }

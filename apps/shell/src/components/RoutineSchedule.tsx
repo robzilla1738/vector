@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { useState } from "react";
 import type { RoutineTrigger } from "@aux/contracts";
 
@@ -224,10 +225,10 @@ export function RoutineSchedule({
               <input type="time" required value={time} onChange={(event) => setTime(event.target.value)} />
             </label>
             <div className="routine-day-presets">
-              <button className="btn sm ghost" type="button" onClick={() => setDays([1, 2, 3, 4, 5])}>
+              <button {...smallGhostButtonProps} type="button" onClick={() => setDays([1, 2, 3, 4, 5])}>
                 Weekdays
               </button>
-              <button className="btn sm ghost" type="button" onClick={() => setDays([0, 1, 2, 3, 4, 5, 6])}>
+              <button {...smallGhostButtonProps} type="button" onClick={() => setDays([0, 1, 2, 3, 4, 5, 6])}>
                 Every day
               </button>
             </div>

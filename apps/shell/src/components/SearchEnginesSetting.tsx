@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { useSettingsSaveOwner } from "../settings/sections/use-settings-save-owner";
 import { useScopedCommandControls } from "../scoped-command-controls";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -96,7 +97,7 @@ export function SearchEnginesSetting({
                     save(value.filter((item) => item.keyword !== engine.keyword)),
                   )
                 }
-                className="btn sm ghost"
+                {...smallGhostButtonProps}
                 disabled={busy}
                 aria-label={`Remove ${engine.keyword} engine`}
                 onClick={(event) => run("remove-keyword-search-engine", event)}
@@ -142,7 +143,7 @@ export function SearchEnginesSetting({
           />
           <button
             ref={(element) => publish("add", "add-keyword-search-engine", element, add)}
-            className="btn sm"
+            {...smallButtonProps}
             disabled={busy || !draft.keyword.trim() || !draft.name.trim() || !draft.template.trim()}
             onClick={(event) => run("add-keyword-search-engine", event)}
           >

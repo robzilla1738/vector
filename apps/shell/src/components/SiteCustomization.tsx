@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { SiteCss, ZapPickResult, ZapRule } from "@aux/contracts";
@@ -239,7 +240,7 @@ export function SiteCustomization() {
                   <p>Rules apply to this website in your current Profile.</p>
                 </div>
                 <button
-                  className="btn sm"
+                  {...smallButtonProps}
                   disabled={
                     !origin ||
                     !pageId ||
@@ -266,7 +267,7 @@ export function SiteCustomization() {
                         </small>
                       </span>
                       <button
-                        className="btn sm"
+                        {...smallButtonProps}
                         disabled={busy}
                         aria-label={`Remove ${rule.selector}`}
                         onClick={() => void removeRule(rule.ruleId)}

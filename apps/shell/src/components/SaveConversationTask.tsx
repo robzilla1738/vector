@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -17,7 +18,7 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const [error, setError] = useState("");
-  if (!open) return <button className="btn sm ghost" onClick={() => setOpen(true)}>Save as task</button>;
+  if (!open) return <button {...smallGhostButtonProps} onClick={() => setOpen(true)}>Save as task</button>;
   return <form className="save-conversation-task" onSubmit={event => {
     event.preventDefault(); if (pending.current) return; pending.current = true; setBusy(true); setError("");
     void call("tasks.promote", { chatId, expectedRunId: runId, workspaceId: space, title, objective,
@@ -33,6 +34,6 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
     <label>Space<select value={space} disabled={busy} required onChange={event => setSpace(event.target.value)}><option value="" disabled>Choose a Space</option>{spaces.map(entry => { const [id, workspaceId, name] = entry.split("\u0001"); return <option key={id} value={workspaceId}>{name}</option>; })}</select></label></details>
     {!space && <p className="hint">Choose a Space in Task details to keep this work organized.</p>}
     {error && <p className="field-error" role="alert">{error}</p>}
-    <div className="row"><button type="button" className="btn sm" disabled={busy} onClick={() => setOpen(false)}>Cancel</button><button className="btn sm" disabled={busy || !space || !title.trim() || !objective.trim() || !success.trim()}>{busy ? "Saving…" : "Save task"}</button></div>
+    <div className="row"><button type="button" {...smallButtonProps} disabled={busy} onClick={() => setOpen(false)}>Cancel</button><button {...smallButtonProps} disabled={busy || !space || !title.trim() || !objective.trim() || !success.trim()}>{busy ? "Saving…" : "Save task"}</button></div>
   </form>;
 }

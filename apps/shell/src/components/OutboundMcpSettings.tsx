@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./OutboundMcpSettings.css";
 import { useEffect, useState } from "react";
@@ -479,7 +480,12 @@ export function OutboundMcpSettings() {
                   Aux supports self-contained Node bundles with static arguments and bundled files. Python,
                   UV, binary servers, host settings and environment values are not supported yet.
                 </p>
-                <button className="btn sm" type="button" disabled={busy} onClick={() => void inspectBundle()}>
+                <button
+                  {...smallButtonProps}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void inspectBundle()}
+                >
                   Choose and inspect bundle…
                 </button>
                 {bundle && (
@@ -578,7 +584,7 @@ export function OutboundMcpSettings() {
                     <div className="row">
                       {!oauthStatus?.connected && (
                         <button
-                          className="btn sm"
+                          {...smallButtonProps}
                           disabled={busy || pendingOAuth?.serverId === selectedServer.serverId}
                           onClick={() =>
                             void action(async () => {
@@ -615,7 +621,7 @@ export function OutboundMcpSettings() {
                       )}
                       {(oauthStatus?.connected || oauthStatus?.expiresAt !== undefined) && (
                         <button
-                          className="btn sm ghost"
+                          {...smallGhostButtonProps}
                           disabled={busy}
                           onClick={() =>
                             void action(async () => {
@@ -649,7 +655,7 @@ export function OutboundMcpSettings() {
                           </div>
                         </div>
                         <button
-                          className="btn sm"
+                          {...smallButtonProps}
                           disabled={busy}
                           onClick={() =>
                             void action(async () => {
@@ -669,7 +675,7 @@ export function OutboundMcpSettings() {
                         >
                           Open reviewed authorization page
                         </button>
-                        <button className="btn sm ghost" onClick={() => setAuthorizationReview(null)}>
+                        <button {...smallGhostButtonProps} onClick={() => setAuthorizationReview(null)}>
                           Cancel authorization review
                         </button>
                       </fieldset>
@@ -704,7 +710,7 @@ export function OutboundMcpSettings() {
               )}
               {selectedServer.state === "approved" && (
                 <button
-                  className="btn sm ghost"
+                  {...smallGhostButtonProps}
                   disabled={busy}
                   onClick={() =>
                     void action(async () => {
@@ -723,7 +729,7 @@ export function OutboundMcpSettings() {
               )}
               {selectedServer.state !== "revoked" && (
                 <button
-                  className="btn sm ghost"
+                  {...smallGhostButtonProps}
                   disabled={busy}
                   onClick={() =>
                     void action(async () => {
@@ -839,7 +845,7 @@ export function OutboundMcpSettings() {
                         />
                       </label>
                       <button
-                        className="btn sm"
+                        {...smallButtonProps}
                         disabled={busy || !toolName || !scope || !validTokenLimit}
                         onClick={reviewGrant}
                       >
@@ -918,7 +924,7 @@ export function OutboundMcpSettings() {
                           >
                             Approve tool grant
                           </button>
-                          <button className="btn sm ghost" onClick={() => setGrantReview(null)}>
+                          <button {...smallGhostButtonProps} onClick={() => setGrantReview(null)}>
                             Cancel
                           </button>
                         </div>
@@ -946,7 +952,7 @@ export function OutboundMcpSettings() {
                     {!grant.revokedAt && !grant.consumedAt && selectedServer.state === "approved" && (
                       <div className="mcp-grant-actions">
                         <button
-                          className="btn sm ghost"
+                          {...smallGhostButtonProps}
                           disabled={busy}
                           onClick={() => {
                             setTestGrantId(testGrantId === grant.grantId ? "" : grant.grantId);
@@ -957,7 +963,7 @@ export function OutboundMcpSettings() {
                           Call tool…
                         </button>
                         <button
-                          className="btn sm ghost"
+                          {...smallGhostButtonProps}
                           disabled={busy}
                           onClick={() =>
                             void action(async () => {
@@ -987,7 +993,7 @@ export function OutboundMcpSettings() {
                           This call uses the grant shown above. A one-call grant is consumed.
                         </p>
                         <button
-                          className="btn sm"
+                          {...smallButtonProps}
                           disabled={busy || Boolean(grant.revokedAt || grant.consumedAt)}
                           onClick={() =>
                             void action(async () => {

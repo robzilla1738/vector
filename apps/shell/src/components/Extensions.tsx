@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { useStore as useBoundStore } from "zustand";
@@ -105,7 +106,7 @@ export function Extensions() {
               <div className="extension-actions">
                 <button
                   type="button"
-                  className="btn sm ghost"
+                  {...smallGhostButtonProps}
                   disabled={busy}
                   data-command-id="set-extension-enabled"
                   onClick={() =>
@@ -118,7 +119,7 @@ export function Extensions() {
                 </button>
                 <button
                   type="button"
-                  className="btn sm ghost"
+                  {...smallGhostButtonProps}
                   disabled={busy || !extension.enabled}
                   data-command-id="reload-extension"
                   onClick={() => runCommand("reload-extension", { payload: { extensionId: extension.key } })}
@@ -127,7 +128,7 @@ export function Extensions() {
                 </button>
                 <button
                   type="button"
-                  className="btn sm ghost"
+                  {...smallGhostButtonProps}
                   disabled={busy}
                   data-command-id="update-extension"
                   onClick={() =>
@@ -140,7 +141,7 @@ export function Extensions() {
                 </button>
                 <button
                   type="button"
-                  className="btn sm ghost"
+                  {...smallGhostButtonProps}
                   disabled={busy}
                   onClick={() => setRemoveTarget(extension)}
                 >

@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useState } from "react";
 import { bridge } from "../bridge";
@@ -52,7 +53,7 @@ export function VaultOfferBanner() {
       </>}
     </div>
     <div className="row">
-      <button className="btn sm ghost" disabled={busy} onClick={() => void act(false)}>Not now</button>
+      <button {...smallGhostButtonProps} disabled={busy} onClick={() => void act(false)}>Not now</button>
       <button className="btn sm primary" disabled={busy || (offer.locked && passphrase.length < 8)} onClick={() => void act(true)}>{offer.locked ? "Unlock & save" : offer.kind === "update" ? "Update" : "Save"}</button>
     </div>
   </dialog>;

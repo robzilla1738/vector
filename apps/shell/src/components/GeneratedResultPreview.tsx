@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { GenerateResultParamsSchema, type GeneratedResult, type GeneratedResultSummary } from "@aux/contracts";
@@ -46,12 +47,12 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
   }
   return <ViewerFrame label="Generated result preview" title={result?.filename??"Generated result"} onClose={onClose} closeLabel="Close result preview"
     metadata={result&&<>v{result.revision} · {result.kind.toUpperCase()} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB · {new Date(result.createdAt).toLocaleString()}</>}
-    toolbar={result&&<><button className="btn sm ghost" disabled={busy||contextDisabled||result.revision>=20} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Revise"}</button><button className="btn sm ghost" disabled={busy} onClick={()=>void exportFile()}>Export file…</button></>}>
+    toolbar={result&&<><button {...smallGhostButtonProps} disabled={busy||contextDisabled||result.revision>=20} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Revise"}</button><button {...smallGhostButtonProps} disabled={busy} onClick={()=>void exportFile()}>Export file…</button></>}>
     {error&&<p role="alert" className="field-error">{error}</p>}
     {!result?<output data-block className="hint">Loading generated result…</output>:<>
       <p className="hint">Generated from conversation turn {result.sourceRunId}. SHA-256 {result.sha256.slice(0,16)}…</p>
       {versions.length>1&&<nav className="row" aria-label="Result versions">{versions.map(version=><button className="btn sm ghost" key={version.artifactId} disabled={version.artifactId===artifactId} onClick={()=>onVersionSaved?.(version.artifactId)}>v{version.revision}</button>)}</nav>}
-      {editing?<><label className="field">Revise structured source<textarea aria-label="Structured result source" className="result-source-editor" value={draft} maxLength={500_000} disabled={busy} onChange={event=>setDraft(event.target.value)}/></label><button className="btn sm" disabled={busy||contextDisabled} onClick={()=>void revise()}>{busy?"Saving…":"Save new version"}</button></>:<div className="saved-result-content">
+      {editing?<><label className="field">Revise structured source<textarea aria-label="Structured result source" className="result-source-editor" value={draft} maxLength={500_000} disabled={busy} onChange={event=>setDraft(event.target.value)}/></label><button {...smallButtonProps} disabled={busy||contextDisabled} onClick={()=>void revise()}>{busy?"Saving…":"Save new version"}</button></>:<div className="saved-result-content">
         <h3>{result.preview.title}</h3>
         {image?<img src={image} alt={result.preview.title} style={{maxWidth:"100%",height:"auto"}}/>:result.kind==="chart"?<output className="hint">Loading chart image…</output>:null}
         <ul>{result.preview.lines.map((line,index)=><li key={index}>{line}</li>)}</ul>

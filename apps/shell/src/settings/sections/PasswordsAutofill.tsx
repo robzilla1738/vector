@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../../ui/button-props";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { AutofillProfile } from "@aux/contracts";
 import { AutofillSetting } from "../../components/AutofillSetting";
@@ -111,7 +112,7 @@ export function PasswordsAutofillSettings({
           Object.values(legacy ?? {}).some((value) => typeof value === "string" && value.trim()) && (
             <button
               ref={(element) => publish("import", "import-prior-personal-info", element, importLegacy)}
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               data-command-id="import-prior-personal-info"
               disabled={native.busy || !native.owner.current()}
               onClick={(event) => run("import-prior-personal-info", event)}

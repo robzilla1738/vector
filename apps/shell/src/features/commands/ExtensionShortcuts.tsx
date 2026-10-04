@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../../ui/button-props";
 import { useEffect, useState } from "react";
 import {
   acceleratorFor,
@@ -107,7 +108,7 @@ export function ExtensionShortcuts({
               <output className="hint">Press keys… Esc cancels</output>
             ) : (
               <button
-                className="btn sm ghost"
+                {...smallGhostButtonProps}
                 disabled={busy || !!recording}
                 aria-label={`Change ${command.description || command.name} extension shortcut`}
                 onClick={() => {

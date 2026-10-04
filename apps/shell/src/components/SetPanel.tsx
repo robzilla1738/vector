@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { SetMember } from "@aux/contracts";
@@ -39,7 +40,7 @@ export function SetPanel({ setId }: { setId: string }) {
         </span>
         <span className="run-time" title="Members done">{counts.completed}/{total} done</span>
         <span className="sp" />
-        <button className="btn sm" onClick={() => { void refreshResults(set.setId).then(() => setMode("table")).catch(errToast); }}>
+        <button {...smallButtonProps} onClick={() => { void refreshResults(set.setId).then(() => setMode("table")).catch(errToast); }}>
           {shellIconTable} Results
         </button>
       </div>

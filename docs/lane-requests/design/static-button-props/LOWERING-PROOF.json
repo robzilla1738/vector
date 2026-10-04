@@ -1,0 +1,875 @@
+{
+  "esbuildVersion": "0.28.2",
+  "target": "chrome154",
+  "jsxImportSource": "@aux/react-constructors",
+  "checks": [
+    {
+      "path": "apps/shell/src/agent/RunAttentionFeed.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/agent/RunNoticeControls.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/AnswerMarkdown.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ArchivedTabs.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextTray.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/BrowserProfiles.tsx",
+      "sites": 6,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/BrowsingMemory.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/CalendarConnections.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/CalendarSourceChoiceDialog.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/CalendarTaskGrants.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ChatSessions.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ClearBrowsingData.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ClearHistory.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/CommandSurface.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ContentMemory.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationDrafts.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationHistory.tsx",
+      "sites": 6,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImages.tsx",
+      "sites": 8,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationTask.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/DefaultBrowserSetting.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/DeferredSurface.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Dictation.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/DocumentSnapshot.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Downloads.tsx",
+      "sites": 16,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Extensions.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgentOversight.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgents.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/FilterListManager.tsx",
+      "sites": 6,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/FindBar.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Goals.tsx",
+      "sites": 7,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Hooks.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ImageViewer.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.tsx",
+      "sites": 6,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/InlineAssist.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Inspector.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "sites": 19,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/LinkPeek.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/LittleWindow.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemoryExclusions.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemoryItems.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemoryPasteImport.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemoryRecoveryNotice.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MemorySettings.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/MigrationImport.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ObservationPanel.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/OpenBookmarkFolder.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "sites": 12,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "sites": 16,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/PageZoom.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/PaneBoundary.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/PasswordTransferSetting.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/PluginsPanel.tsx",
+      "sites": 7,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/QuickAsk.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/QuickAskSetting.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RailHistory.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ReaderView.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RecentWork.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RecentlyClosed.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ResultCard.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ResultsTable.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ReviewedConnectors.tsx",
+      "sites": 7,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RoutineSchedule.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "sites": 25,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RunControls.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RunImages.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/RunPanel.tsx",
+      "sites": 8,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SaveConversationTask.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SavedResultPreview.tsx",
+      "sites": 6,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SearchEngineSetting.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SearchEnginesSetting.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SessionRecovery.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SetPanel.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/ShortcutsSetting.tsx",
+      "sites": 7,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SiteControls.tsx",
+      "sites": 6,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SiteCustomization.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SitePermissions.tsx",
+      "sites": 7,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SkillMetadata.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SkillReplayPanel.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/SpaceMemoryEditor.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/StartPage.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/StructuredResult.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/TaskHistory.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/TaskReceiptView.tsx",
+      "sites": 15,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/TaskResources.tsx",
+      "sites": 8,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/VaultOfferBanner.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "sites": 10,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/WebsiteSizes.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/components/WorkbookPreview.tsx",
+      "sites": 6,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/commands/ExtensionShortcuts.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/demonstration/RecorderControls.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/download-naming/Settings.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/extensions/ExtensionShortcuts.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/MorningReview.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/NightSettings.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/features/trust/SiteAgentAccess.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/onboarding/OnboardingFlow.tsx",
+      "sites": 7,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/onboarding/SetupReview.tsx",
+      "sites": 6,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/AboutAux.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Appearance.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/ArchivedChats.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "sites": 12,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackupSettings.tsx",
+      "sites": 5,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CookieControls.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CrashReporting.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DiagnosticsStorage.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DownloadFolder.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/General.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Languages.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Models.tsx",
+      "sites": 7,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PasswordsAutofill.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RecoveryPackage.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/RestoreBackupControls.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "sites": 8,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SpaceMemory.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Startup.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/UsageBudgets.tsx",
+      "sites": 3,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "sites": 8,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/use-native-preference.tsx",
+      "sites": 1,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/transcript/RunTranscriptDetails.tsx",
+      "sites": 4,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    },
+    {
+      "path": "apps/shell/src/transcript/TextProposal.tsx",
+      "sites": 2,
+      "wholeFileInverse": true,
+      "installedNative154LoweringInverse": true,
+      "byteExactLoweringInverse": true
+    }
+  ]
+}

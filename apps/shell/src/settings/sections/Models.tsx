@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
 import { MODEL_PROVIDER_NAMES, type ModelConnectionStatus, type ModelProvider } from "@aux/contracts";
@@ -112,7 +113,7 @@ function ModelRoleField({
           command="save-model-role"
           scopeId={roleScope}
           invoke={() => save(false)}
-          className="btn sm"
+          {...smallButtonProps}
           disabled={
             busy ||
             disabled ||
@@ -129,7 +130,7 @@ function ModelRoleField({
             command="use-automatic-model-role"
             scopeId={roleScope}
             invoke={() => save(true)}
-            className="btn sm ghost"
+            {...smallGhostButtonProps}
             disabled={busy || disabled}
           >
             Automatic
@@ -615,7 +616,7 @@ export function ModelsSettings({
               }}
             />
             <button
-              className="btn sm"
+              {...smallButtonProps}
               disabled={
                 probing ||
                 savingKey ||
@@ -633,7 +634,7 @@ export function ModelsSettings({
               command="discover-provider-models"
               scopeId={scopeId}
               invoke={discoverModels}
-              className="btn sm"
+              {...smallButtonProps}
               disabled={
                 probing ||
                 savingKey ||
@@ -709,7 +710,7 @@ export function ModelsSettings({
             }}
           />
           <button
-            className="btn sm"
+            {...smallButtonProps}
             disabled={savingKey || probing || switchingProvider || !key.trim() || key === KEY_MASK}
             ref={keyButtonRef}
             data-command-id="save-provider-model-key"
@@ -761,7 +762,7 @@ export function ModelsSettings({
             ))}
           </datalist>
           <button
-            className="btn sm"
+            {...smallButtonProps}
             disabled={
               probing ||
               savingKey ||
@@ -779,7 +780,7 @@ export function ModelsSettings({
             command="probe-model-connection"
             scopeId={scopeId}
             invoke={runProbe}
-            className="btn sm"
+            {...smallButtonProps}
             disabled={
               probing ||
               savingKey ||

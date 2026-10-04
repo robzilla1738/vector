@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { constructOperationChain } from "../../components/owned-operation-construction";
 import {
@@ -202,7 +203,7 @@ export function DiagnosticsStorage({
             <PreferenceAction
               command="reveal-runtime-data-directory"
               scopeId={scopeId}
-              className="btn sm"
+              {...smallButtonProps}
               disabled={!current() || busy("reveal")}
               invoke={() => {
                 if (privateMode || kind === "private" || loaded?.owner !== owner || !dataDir)
@@ -259,7 +260,7 @@ export function DiagnosticsStorage({
           <PreferenceAction
             command="export-support-report"
             scopeId={scopeId}
-            className="btn sm"
+            {...smallButtonProps}
             disabled={!current() || busy("report")}
             invoke={() =>
               run(

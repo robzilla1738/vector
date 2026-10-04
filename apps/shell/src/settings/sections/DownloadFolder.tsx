@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
@@ -45,7 +46,7 @@ export function DownloadFolderSetting({ active }: { active: boolean }) {
         <div className="row">
           <span className="hint mono selectable grow">{folder.path}</span>
           <PreferenceAction
-            className="btn sm"
+            {...smallButtonProps}
             command="choose-download-folder"
             scopeId={scopeId}
             disabled={busy}
@@ -55,7 +56,7 @@ export function DownloadFolderSetting({ active }: { active: boolean }) {
           </PreferenceAction>
           {(folder.custom || folder.error) && (
             <PreferenceAction
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               command="reset-download-folder"
               scopeId={scopeId}
               disabled={busy}

@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { bridge } from "../bridge";
 import { moveListFocus } from "../keyboard-list";
@@ -139,18 +140,18 @@ export function ConversationHistory() {
       <input ref={search} disabled={saving} onKeyDown={event=>{if(event.nativeEvent.isComposing)return;if(event.key==="ArrowDown"){event.preventDefault();firstConversation.current?.focus();}else if(event.key==="Enter" && !loading && rows[0]){event.preventDefault();useStore.getState().openConversation(rows[0].latestRun.runId);}}} aria-label="Search conversations" placeholder="Search chats…" maxLength={500} value={query} onChange={event => setQuery(event.target.value)}/>
       </label>
       {space?.workspaceId && <div className="history-space-filter" role="group" aria-label="Conversation Space filter">
-        <button className="btn sm ghost" disabled={saving} aria-pressed={!currentSpaceOnly} onClick={() => setCurrentSpaceOnly(false)}>All Spaces</button>
-        <button className="btn sm ghost" disabled={saving} aria-pressed={currentSpaceOnly} title={space.name} onClick={() => setCurrentSpaceOnly(true)}>{space.name}</button>
+        <button {...smallGhostButtonProps} disabled={saving} aria-pressed={!currentSpaceOnly} onClick={() => setCurrentSpaceOnly(false)}>All Spaces</button>
+        <button {...smallGhostButtonProps} disabled={saving} aria-pressed={currentSpaceOnly} title={space.name} onClick={() => setCurrentSpaceOnly(true)}>{space.name}</button>
       </div>}
       <div className="history-view-tools"><Tabs<"grid" | "list"> label="Chat layout" value={viewMode} onChange={setViewMode} panelId="conversation-layout-panel" className="history-segment"
         items={[{ value: "grid", label: shellIconGrid, ariaLabel: "Grid view" }, { value: "list", label: shellIconResult, ariaLabel: "List view" }]} /></div>
       </div>
       {(archived || workspaceId) && <p className="hint history-scope-note">{archived ? "Archived chats stay available until you delete them." : "Searching this Space. Unsent drafts are available in All Spaces."}</p>}
       {!archived && !workspaceId && <ConversationDrafts query={query} exclude={rows.map(row => row.chatId)} />}
-      {actionError && <p className="field-error" role="alert">{actionError} <button className="btn sm ghost" onClick={() => setActionError("")}>Dismiss</button></p>}
+      {actionError && <p className="field-error" role="alert">{actionError} <button {...smallGhostButtonProps} onClick={() => setActionError("")}>Dismiss</button></p>}
       <div id="conversation-layout-panel" role="tabpanel" aria-labelledby={`conversation-layout-panel-${viewMode}`} className={`history-items ${viewMode}`}>
       {rows.map((item, index) => <div className="history-conversation-wrap" data-chat-id={item.chatId} key={item.chatId}>
-        {renaming === item.chatId ? <form className="history-rename" onSubmit={event => { event.preventDefault(); if (title.trim()) void mutate("rename", item); }}><input autoFocus aria-label="Conversation title" maxLength={160} value={title} onChange={event => setTitle(event.target.value)}/><button className="btn sm" disabled={saving || !title.trim()}>Save</button><button type="button" className="btn sm ghost" onClick={() => setRenaming(null)}>Cancel</button></form> : <>
+        {renaming === item.chatId ? <form className="history-rename" onSubmit={event => { event.preventDefault(); if (title.trim()) void mutate("rename", item); }}><input autoFocus aria-label="Conversation title" maxLength={160} value={title} onChange={event => setTitle(event.target.value)}/><button {...smallButtonProps} disabled={saving || !title.trim()}>Save</button><button type="button" {...smallGhostButtonProps} onClick={() => setRenaming(null)}>Cancel</button></form> : <>
           <button ref={index === 0 ? firstConversation : undefined} disabled={saving} className="history-conversation" onClick={() => useStore.getState().openConversation(item.latestRun.runId)}><strong>{item.title}</strong><span>{drafts[draftKey(item.chatId)]?.trim() ? `Draft · ${drafts[draftKey(item.chatId)]}` : item.taskId ? "Saved task" : item.latestRun.statusMessage ?? item.latestRun.status.replaceAll("_", " ")}</span><time>{new Date(item.updatedAt).toLocaleString()} · {item.turnCount} {item.turnCount === 1 ? "turn" : "turns"}</time></button>
           {viewMode === "grid" && <div className="history-card-preview home-excerpt" inert><AnswerMarkdown text={drafts[draftKey(item.chatId)]?.trim() || (typeof item.latestRun.result?.answer === "string" ? item.latestRun.result.answer : item.latestRun.statusMessage || item.latestRun.goal)} /></div>}
           <button disabled={saving} className="icon-btn history-actions" aria-label={`Conversation actions for ${item.title}`} aria-haspopup="menu" aria-expanded={menu === item.chatId} onClick={event => { menuAnchor.current = event.currentTarget; setMenu(value => value === item.chatId ? null : item.chatId); setDeleting(null); }}>{shellIconMore}</button>
@@ -166,7 +167,7 @@ export function ConversationHistory() {
       </div>
       {loading && (rows.length ? <output data-block className="hint">Loading conversations…</output> : <SkeletonRows label="Loading conversations…" rows={5} tall />)}
       {!loading && !error && !rows.length && <p className="hint">{query.trim() ? "No conversations match your search." : archived ? "No archived conversations." : workspaceId ? "No saved conversations in this Space yet." : "Your conversations will appear here."}</p>}
-      {error && <p role="alert">{error} <button className="btn sm" onClick={() => void load(retryAppend.current,retryRefresh.current)}>Try again</button></p>}
+      {error && <p role="alert">{error} <button {...smallButtonProps} onClick={() => void load(retryAppend.current,retryRefresh.current)}>Try again</button></p>}
       {more && !error && <button className="btn" disabled={loading} onClick={() => void load(true)}>Load more conversations</button>}
     </div>
   </section>;

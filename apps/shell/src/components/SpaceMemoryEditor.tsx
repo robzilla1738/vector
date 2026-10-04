@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
 import { BrowsingMemory } from "./BrowsingMemory";
@@ -105,8 +106,8 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
     <textarea aria-label="Space memory" value={content} maxLength={16_000} disabled={disabled || busy}
       placeholder="Project context, preferences, and decisions worth keeping…" onChange={event => edit(event.target.value)} />
     <div className="space-memory-editor-actions"><span className="hint">{changed ? "Unsaved notes" : memory.content ? "Saved notes" : "No saved notes"} · {content.length.toLocaleString()}/16,000</span><span className="sp" />
-      {content && <MemoryControl onError={controlError} command="clear-space-memory-draft" scopeId={memory.workspaceId} className="btn sm ghost" disabled={disabled || busy} action={() => { assertDraft(); edit(""); }}>Clear notes</MemoryControl>}
-      {draft && <MemoryControl onError={controlError} command="discard-space-memory-draft" scopeId={memory.workspaceId} className="btn sm ghost" disabled={disabled || busy} action={() => { assertDraft(); useMemoryDrafts.getState().write(memory.workspaceId, null); setConflict(null); setError(""); }}>Discard draft</MemoryControl>}
+      {content && <MemoryControl onError={controlError} command="clear-space-memory-draft" scopeId={memory.workspaceId} {...smallGhostButtonProps} disabled={disabled || busy} action={() => { assertDraft(); edit(""); }}>Clear notes</MemoryControl>}
+      {draft && <MemoryControl onError={controlError} command="discard-space-memory-draft" scopeId={memory.workspaceId} {...smallGhostButtonProps} disabled={disabled || busy} action={() => { assertDraft(); useMemoryDrafts.getState().write(memory.workspaceId, null); setConflict(null); setError(""); }}>Discard draft</MemoryControl>}
       <MemoryControl onError={controlError} command="save-space-memory" scopeId={memory.workspaceId} disabled={disabled || busy || !changed} action={() => save()}>{busy ? "Saving…" : "Save notes"}</MemoryControl>
     </div>
     {!content && memory.content && <p className="hint">Save to remove these notes from future context. Earlier task records retain their original snapshots.</p>}

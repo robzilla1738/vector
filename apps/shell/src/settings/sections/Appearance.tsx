@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { useState } from "react";
 import type { ShortcutOverrides } from "@aux/contracts";
 import { LayoutChoice } from "../../components/LayoutChoice";
@@ -157,7 +158,7 @@ export function AppearanceSettings({
         hint="Restore the native glass material, clear sidebar tint and 95% content opacity."
       >
         <button
-          className="btn sm"
+          {...smallButtonProps}
           onClick={() =>
             void set({
               sidebarAppearance: "translucent",
@@ -195,7 +196,7 @@ export function AppearanceSettings({
         <DefaultPageZoomSetting active={active} />
       </SettingsField>
       <SettingsField label="Keyboard shortcuts" hint="Change browser and app shortcuts. Collisions are explained before saving.">
-        <button className="btn sm ghost" aria-expanded={showShortcuts} onClick={() => setShowShortcuts(value => !value)}>
+        <button {...smallGhostButtonProps} aria-expanded={showShortcuts} onClick={() => setShowShortcuts(value => !value)}>
           {showShortcuts ? "Hide shortcuts" : "Manage shortcuts"}
         </button>
         {showShortcuts && <ShortcutsSetting

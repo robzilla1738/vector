@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Goal } from "@aux/contracts";
@@ -85,10 +86,10 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
     <section className="field goals-panel" aria-label="Goals">
       <div className="row">
         <h4 className="grow">Goals</h4>
-        <button className="btn sm" onClick={() => void act(async () => {})} disabled={busy}>
+        <button {...smallButtonProps} onClick={() => void act(async () => {})} disabled={busy}>
           Refresh
         </button>
-        <button className="btn sm" onClick={() => setShowForm((value) => !value)} disabled={unfinishedHere}>
+        <button {...smallButtonProps} onClick={() => setShowForm((value) => !value)} disabled={unfinishedHere}>
           {showForm ? "Close" : "New Goal"}
         </button>
       </div>
@@ -204,7 +205,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
           <div className="row">
             {goal.status === "draft" && (
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 disabled={busy || !modelConfigured || !activePageId}
                 onClick={() =>
                   void act(() => call("goals.start", { goalId: goal.goalId, pageIds: [activePageId!] }))
@@ -215,7 +216,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
             )}
             {goal.status === "active" && (
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 disabled={busy}
                 onClick={() => void act(() => call("goals.pause", { goalId: goal.goalId }))}
               >
@@ -224,7 +225,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
             )}
             {(goal.status === "paused" || goal.status === "blocked") && (
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 disabled={busy}
                 onClick={() => void act(() => call("goals.resume", { goalId: goal.goalId }))}
               >
@@ -233,7 +234,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
             )}
           {(cancellable.has(goal.status) || goal.status === "draft") && (
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 disabled={busy}
                 onClick={() => void act(() => call("goals.cancel", { goalId: goal.goalId }))}
               >
@@ -241,7 +242,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
               </button>
             )}
             {goal.runId && (
-              <button className="btn sm" onClick={() => openRun(goal.runId!)}>
+              <button {...smallButtonProps} onClick={() => openRun(goal.runId!)}>
                 Open run
               </button>
             )}

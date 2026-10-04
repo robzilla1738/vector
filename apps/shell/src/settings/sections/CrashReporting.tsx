@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import { bridge, inNativeHost } from "../../bridge";
@@ -52,9 +53,9 @@ export function CrashReportingSetting({ active }: { active: boolean }) {
     </div>
     {confirming && <div className="row" role="group" aria-label="Confirm crash reports">
       <span>Crash reports can contain diagnostic details. Allow future uploads to this build’s configured destination?</span>
-      <button className="btn sm" disabled={busy} onClick={() => void save(true)}>Allow uploads</button>
-      <button className="btn sm ghost" disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>
+      <button {...smallButtonProps} disabled={busy} onClick={() => void save(true)}>Allow uploads</button>
+      <button {...smallGhostButtonProps} disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>
     </div>}
-    {error && <span role="alert" className="field-error">{error} <button className="btn sm ghost" onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
+    {error && <span role="alert" className="field-error">{error} <button {...smallGhostButtonProps} onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
   </div>;
 }

@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { ModelDataDisclosure } from "./ModelDataDisclosure";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
@@ -287,7 +288,7 @@ export function OnboardingFlow({
           <span className="eyebrow">
             AUX · SETUP {index + 1} OF {ONBOARDING_STEPS.length}
           </span>
-          <button className="btn sm ghost" disabled={busy} onClick={later}>
+          <button {...smallGhostButtonProps} disabled={busy} onClick={later}>
             Finish later
           </button>
         </header>
@@ -295,7 +296,7 @@ export function OnboardingFlow({
           {ONBOARDING_STEPS.map((item, position) => (
             <button
               key={item}
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               disabled={busy || !connected}
               aria-current={step === item ? "step" : undefined}
               aria-label={`${position + 1}. ${item}${state.skipped.includes(item) ? ", skipped" : ""}`}
@@ -571,7 +572,7 @@ export function OnboardingFlow({
                     />
                   </label>
                   <button
-                    className="btn sm"
+                    {...smallButtonProps}
                     disabled={busy || !pageUrl.trim() || !activeSpace}
                     onClick={() =>
                       void work(async () => {
@@ -608,7 +609,7 @@ export function OnboardingFlow({
                   </label>
                   {page && availableOnboardingPage(page) && (
                     <button
-                      className="btn sm ghost"
+                      {...smallGhostButtonProps}
                       disabled={busy}
                       onClick={() =>
                         void work(async () => {
@@ -718,7 +719,7 @@ export function OnboardingFlow({
               )}
               {first?.status === "pending" && (
                 <button
-                  className="btn sm"
+                  {...smallButtonProps}
                   disabled={busy}
                   onClick={() =>
                     void work(async () => {
@@ -736,7 +737,7 @@ export function OnboardingFlow({
           <div role="alert">
             <p>{error}</p>
             <button
-              className="btn sm"
+              {...smallButtonProps}
               disabled={busy}
               onClick={() =>
                 void work(async () => {
@@ -752,7 +753,7 @@ export function OnboardingFlow({
           <p role="alert">
             Recovery readiness is unavailable. New chat starts are blocked until it can be checked.{" "}
             <button
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               disabled={busy || !connected}
               onClick={() => void checkRecovery()}
             >

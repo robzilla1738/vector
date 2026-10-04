@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { constructAwaitedOperation } from "./owned-operation-construction";
 import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
@@ -123,16 +124,16 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
           description={<><span className="memory-match-source">{page.url}</span><span>{new Date(page.lastVisitedAt).toLocaleDateString()}{memorySourceExcluded(memory,page.url)?" · Site excluded":""}</span></>}
           select={record=>{current(record);opener.current=document.activeElement as HTMLElement;setSelectedId(record.memoryId);}}
           open={record=>{current(record);openSource(record.url);}} forget={record=>{current(record);return change("workspaces.browsingMemory.forget",{memoryId:record.memoryId});}} />)}</div>
-        {selected && <DetailPane title={selected.title} metadata="Page reference · This Space" actions={<button ref={visitSelectedAttach} className="btn sm" onClick={visitSelectedRun}>Open page</button>} closeRef={closeAttach} onClose={closeRun}>
+        {selected && <DetailPane title={selected.title} metadata="Page reference · This Space" actions={<button ref={visitSelectedAttach} {...smallButtonProps} onClick={visitSelectedRun}>Open page</button>} closeRef={closeAttach} onClose={closeRun}>
           <div className="memory-note-metadata"><span className="meta-k">Source</span><span className="meta-v selectable">{selected.url}</span><span className="meta-k">Last visited</span><span className="meta-v">{new Date(selected.lastVisitedAt).toLocaleString()}</span><span className="meta-k">Use</span><span className="meta-v">{memorySourceExcluded(memory, selected.url) ? "Site excluded" : !saved.policy.enabled || memory.enabled === false ? "Paused" : "Available in this Space"}</span></div>
           <p className="hint">Only this page’s title and address are remembered. No page contents or forms were captured.</p>
         </DetailPane>}
         {!!saved.pages.length && !visiblePages.length && <p className="hint">No pages match “{query}”.</p>}
         {!saved.pages.length && <p className="hint">No remembered pages. When enabled, spend a few seconds browsing a tab to remember it.</p>}
-        {saved.pages.length > 0 && <div className="row">{confirmClear ? <><span className="hint">Forget all {saved.pages.length} saved page references?</span><button className="btn sm" disabled={busy} ref={confirmAttach} onClick={confirmRun}>Forget all</button><button className="btn sm ghost" disabled={busy} ref={cancelAttach} onClick={cancelRun}>Cancel</button></> : <button className="btn sm ghost" disabled={busy} ref={prepareAttach} onClick={prepareRun}>Forget all remembered pages…</button>}</div>}
+        {saved.pages.length > 0 && <div className="row">{confirmClear ? <><span className="hint">Forget all {saved.pages.length} saved page references?</span><button {...smallButtonProps} disabled={busy} ref={confirmAttach} onClick={confirmRun}>Forget all</button><button {...smallGhostButtonProps} disabled={busy} ref={cancelAttach} onClick={cancelRun}>Cancel</button></> : <button {...smallGhostButtonProps} disabled={busy} ref={prepareAttach} onClick={prepareRun}>Forget all remembered pages…</button>}</div>}
         <p className="hint">Revisiting a forgotten page can remember it again. Exclude its site to prevent this. Earlier replies retain the context they used.</p>
       </details>
     </> : !error && <output className="hint" data-block>Loading browsing memory…</output>}
-    {error && <p className="field-error" role="alert">{error} <button className="btn sm ghost" disabled={busy} ref={retryAttach} onClick={retryRun}>Retry</button></p>}
+    {error && <p className="field-error" role="alert">{error} <button {...smallGhostButtonProps} disabled={busy} ref={retryAttach} onClick={retryRun}>Retry</button></p>}
   </section>;
 }

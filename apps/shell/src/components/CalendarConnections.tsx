@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { useEffect, useRef, useState } from "react";
 import type { CalendarConnection, CalendarEvent } from "@aux/contracts";
 import { bridge } from "../bridge";
@@ -103,12 +104,12 @@ export function CalendarConnections() {
     <div className="drawer-section">Google Calendar</div>
     <p className="hint">Connect a Google account for read-only event access. Aux keeps each account separate and stores its authorization in secure desktop storage. Browser cookies are never used.</p>
     {!list?.available && <output className="hint" data-block>{list?.reason ?? "Checking Calendar availability…"}</output>}
-    <div className="row"><button className="btn sm" disabled={busy || !list?.available} onClick={() => void connect()}>Connect Google Calendar</button><button className="btn sm" disabled={busy} onClick={() => void refresh().catch(reason => setError(String(reason)))}>Refresh accounts</button></div>
+    <div className="row"><button {...smallButtonProps} disabled={busy || !list?.available} onClick={() => void connect()}>Connect Google Calendar</button><button {...smallButtonProps} disabled={busy} onClick={() => void refresh().catch(reason => setError(String(reason)))}>Refresh accounts</button></div>
     {!!list?.connections.length && <><label className="field">Calendar account<select aria-label="Calendar account" value={selected} onChange={event => select(event.target.value)}>{list.connections.map(item => <option key={item.connectionId} value={item.connectionId}>{item.label} · {item.accountKey}{item.state === "needs_reauth" ? " · reconnect required" : ""}</option>)}</select></label>
       {connection && <><p className="hint">Source: {connection.accountKey} · {connection.state === "active" ? "Read-only calendar access" : "Reconnect required"}</p>
         <p className="hint">Granted scope: Google Calendar read-only. Aux cannot edit or send invitations.</p>
-        <div className="row"><button className="btn sm" disabled={busy || connection.state !== "active"} onClick={() => void read(connection)}>Show next 7 days</button><button className="btn sm" disabled={busy} onClick={() => void disconnect(connection)}>Disconnect account</button></div>
-        {page?.connectionId === connection.connectionId && <div className="field"><strong>Upcoming events</strong>{page.value.events.length ? page.value.events.map(event => <div className="field" key={`${event.source.connectionId}:${event.eventId}`}><strong>{event.title}</strong><span className="hint">{new Date(event.start).toLocaleString()} · {event.source.accountKey}</span></div>) : <p className="hint">No events in this range.</p>}{page.value.nextPageToken && <button className="btn sm" disabled={busy} onClick={() => void read(connection, page.value.nextPageToken)}>Load more</button>}</div>}</>}
+        <div className="row"><button {...smallButtonProps} disabled={busy || connection.state !== "active"} onClick={() => void read(connection)}>Show next 7 days</button><button {...smallButtonProps} disabled={busy} onClick={() => void disconnect(connection)}>Disconnect account</button></div>
+        {page?.connectionId === connection.connectionId && <div className="field"><strong>Upcoming events</strong>{page.value.events.length ? page.value.events.map(event => <div className="field" key={`${event.source.connectionId}:${event.eventId}`}><strong>{event.title}</strong><span className="hint">{new Date(event.start).toLocaleString()} · {event.source.accountKey}</span></div>) : <p className="hint">No events in this range.</p>}{page.value.nextPageToken && <button {...smallButtonProps} disabled={busy} onClick={() => void read(connection, page.value.nextPageToken)}>Load more</button>}</div>}</>}
     </>}
     {message && <output className="hint" data-block>{message}</output>}
     {error && <p className="hint err" role="alert">{error}</p>}

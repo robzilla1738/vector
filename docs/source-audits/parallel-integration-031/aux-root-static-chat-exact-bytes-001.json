@@ -1,0 +1,25 @@
+{
+  "nativeTarget": "chrome154",
+  "metrics": {
+    "startupJS": 501058,
+    "startupCSS": 179481,
+    "totalJS": 1840983
+  },
+  "limits": {
+    "startupJS": 501760,
+    "startupCSS": 184320,
+    "totalJS": 1843200
+  },
+  "passAllExactBytes": true,
+  "startupManifestKeys": [
+    "_App-CWGCn7AR.js",
+    "_Cl_0thB_.js",
+    "index.html"
+  ],
+  "startupJSFiles": [
+    "assets/App-CWGCn7AR.js",
+    "assets/Cl_0thB_.js",
+    "assets/index-CGwfriks.js"
+  ],
+  "manifestSha256": "db753c91b057ade6027f473c3753b73cc83b602dc9fa1f3c699659097fbce0a4"
+}

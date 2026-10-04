@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   CaptureHotkeySchema, SelectionCaptureSettingsSchema, readSelectionCaptureSettings, renderSelectionTemplate,
@@ -28,7 +29,7 @@ function Hotkey({ label, value, disabled, active, onChange, current, scopeId }: 
   const requireCurrent = () => { if (!active || disabled || !current()) throw new Error("Choose the current Selection & Capture shortcut."); };
   return <div className="row wrap">
     <kbd>{value ? bindingLabel(value, bridge.platform) : "Off"}</kbd>
-    <PreferenceAction command="record-selection-capture-shortcut" scopeId={scopeId} className="btn sm" disabled={disabled} aria-label={`Record ${label}`} aria-pressed={recording}
+    <PreferenceAction command="record-selection-capture-shortcut" scopeId={scopeId} {...smallButtonProps} disabled={disabled} aria-label={`Record ${label}`} aria-pressed={recording}
       invoke={() => { requireCurrent(); setError(""); setRecording(true); }} onBlur={() => setRecording(false)}
       onKeyDown={event => {
         if (!recording || !active || disabled || !current()) return;
@@ -40,7 +41,7 @@ function Hotkey({ label, value, disabled, active, onChange, current, scopeId }: 
         if (!parsed.success) { setError("Use Command, Control, or Option with a letter, number, Space, or function key."); return; }
         onChange(parsed.data); setRecording(false); setError("");
       }}>{recording ? "Press shortcut · Esc cancels" : "Record shortcut"}</PreferenceAction>
-    {value && <PreferenceAction command="disable-selection-capture-shortcut" scopeId={scopeId} className="btn sm ghost" disabled={disabled} invoke={() => { requireCurrent(); onChange(null); }}>Turn off</PreferenceAction>}
+    {value && <PreferenceAction command="disable-selection-capture-shortcut" scopeId={scopeId} {...smallGhostButtonProps} disabled={disabled} invoke={() => { requireCurrent(); onChange(null); }}>Turn off</PreferenceAction>}
     {error && <span role="alert">{error}</span>}
   </div>;
 }
@@ -55,10 +56,10 @@ function ActionRow({action,index,count,disabled,scopeId,publish,run,toggle,chang
           <div className="row wrap">
             <label><input type="checkbox" checked={action.enabled} disabled={disabled} ref={element => publish(`enabled:${action.id}`, "toggle-selection-action", element, () => toggle(action.id))} onChange={event => run("toggle-selection-action", event)}/> Enabled</label>
             <input aria-label={`Action ${index + 1} name`} maxLength={60} value={action.name} disabled={disabled} onChange={event => change(action.id, { name: event.target.value })}/>
-            <PreferenceAction command="move-selection-action-up" scopeId={scopeId} className="btn sm ghost" aria-label={`Move ${action.name || "action"} up`} disabled={disabled || index === 0} invoke={() => move(action.id, -1)}>↑</PreferenceAction>
-            <PreferenceAction command="move-selection-action-down" scopeId={scopeId} className="btn sm ghost" aria-label={`Move ${action.name || "action"} down`} disabled={disabled || index === count - 1} invoke={() => move(action.id, 1)}>↓</PreferenceAction>
-            <PreferenceAction command="preview-selection-action" scopeId={scopeId} className="btn sm ghost" disabled={disabled} invoke={() => preview(action.id)}>Preview {action.name || "action"}</PreferenceAction>
-            <PreferenceAction command="remove-selection-action" scopeId={scopeId} className="btn sm ghost" aria-label={`Remove ${action.name || "action"}`} disabled={disabled} invoke={() => remove(action.id)}>Remove</PreferenceAction>
+            <PreferenceAction command="move-selection-action-up" scopeId={scopeId} {...smallGhostButtonProps} aria-label={`Move ${action.name || "action"} up`} disabled={disabled || index === 0} invoke={() => move(action.id, -1)}>↑</PreferenceAction>
+            <PreferenceAction command="move-selection-action-down" scopeId={scopeId} {...smallGhostButtonProps} aria-label={`Move ${action.name || "action"} down`} disabled={disabled || index === count - 1} invoke={() => move(action.id, 1)}>↓</PreferenceAction>
+            <PreferenceAction command="preview-selection-action" scopeId={scopeId} {...smallGhostButtonProps} disabled={disabled} invoke={() => preview(action.id)}>Preview {action.name || "action"}</PreferenceAction>
+            <PreferenceAction command="remove-selection-action" scopeId={scopeId} {...smallGhostButtonProps} aria-label={`Remove ${action.name || "action"}`} disabled={disabled} invoke={() => remove(action.id)}>Remove</PreferenceAction>
           </div>
           <textarea aria-label={`Action ${index + 1} template`} maxLength={2000} rows={3} value={action.template} disabled={disabled} onChange={event => change(action.id, { template: event.target.value })}/>
         </li>;
@@ -147,8 +148,8 @@ export function SelectionCaptureSettings({ active, settings, onSave, nativeStatu
       <ol className="plain-list">
         {draft.actions.map((action,index)=><ActionRow key={action.id} action={action} index={index} count={draft.actions.length} disabled={busy || unavailable} scopeId={scopeId} publish={publish} run={run} toggle={toggleAction} change={updateAction} move={moveAction} preview={previewAction} remove={removeAction}/>)}
       </ol>
-      <button ref={element => { addButton.current = element; publish("add", "add-selection-action", element, () => update({ actions: [...draftRef.current.actions, { id: crypto.randomUUID(), name: "New action", enabled: true, template: "Explain this selection.\n\n{text}" }] })); }} className="btn sm" disabled={busy || unavailable || draft.actions.length >= 12} data-command-id="add-selection-action" onClick={event => run("add-selection-action", event)}>Add selection action</button>
-      {selectedPreview && <section aria-label="Selection action preview"><strong>Local preview · example content</strong><pre style={{ whiteSpace: "pre-wrap" }}>{preview}</pre><PreferenceAction command="close-selection-action-preview" scopeId={scopeId} className="btn sm ghost" invoke={() => { if (!current()) throw new Error("Choose the current Selection & Capture preview."); setPreviewId(null); }}>Close preview</PreferenceAction></section>}
+      <button ref={element => { addButton.current = element; publish("add", "add-selection-action", element, () => update({ actions: [...draftRef.current.actions, { id: crypto.randomUUID(), name: "New action", enabled: true, template: "Explain this selection.\n\n{text}" }] })); }} {...smallButtonProps} disabled={busy || unavailable || draft.actions.length >= 12} data-command-id="add-selection-action" onClick={event => run("add-selection-action", event)}>Add selection action</button>
+      {selectedPreview && <section aria-label="Selection action preview"><strong>Local preview · example content</strong><pre style={{ whiteSpace: "pre-wrap" }}>{preview}</pre><PreferenceAction command="close-selection-action-preview" scopeId={scopeId} {...smallGhostButtonProps} invoke={() => { if (!current()) throw new Error("Choose the current Selection & Capture preview."); setPreviewId(null); }}>Close preview</PreferenceAction></section>}
     </SettingsField>
     <SettingsField label="Selection double-tap shortcut" hint="Press the same shortcut twice to request the selection menu. The native handler must ignore held keys; no selection is captured by this settings page.">
       <Hotkey label="selection double-tap shortcut" value={draft.selectionDoubleTap} disabled={busy || unavailable} active={active} current={current} scopeId={scopeId} onChange={selectionDoubleTap => update({ selectionDoubleTap })}/>

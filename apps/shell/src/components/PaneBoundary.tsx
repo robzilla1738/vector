@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { Component, type ReactNode } from "react";
 
 /**
@@ -15,7 +16,7 @@ export class PaneBoundary extends Component<{ label: string; resetKey?: unknown;
     if (!this.state.error) return this.props.children;
     return <div className="pane-failure" role="alert">
       <p><b>{this.props.label} couldn’t be shown.</b> Your tabs and other work are unaffected.</p>
-      <button className="btn sm" onClick={() => this.setState({ error: null })}>Try again</button>
+      <button {...smallButtonProps} onClick={() => this.setState({ error: null })}>Try again</button>
     </div>;
   }
 }

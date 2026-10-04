@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { memo, useMemo, useState } from "react";
 import type { CompactObservation } from "@aux/contracts";
 import { shellIconCopy, shellIconRight } from "./icons";
@@ -61,7 +62,7 @@ const ObsSection = memo(function ObsSection({ name, lines, startOpen }: { name: 
       {open && (
         <ul className={`obs-lines ${isRefs ? "refs" : ""} ${isHeadings ? "headings" : ""}`}>
           {lines.slice(0, limit).map((l, i) => (isRefs ? <RefLine key={i} line={l} /> : <li key={i} className="obs-text">{l.replace(/^-\s*/, "")}</li>))}
-          {lines.length > limit && <li className="obs-more"><button className="btn sm ghost" onClick={() => setLimit(value => value + 80)}>Show {Math.min(80, lines.length - limit)} more in {name}</button></li>}
+          {lines.length > limit && <li className="obs-more"><button {...smallGhostButtonProps} onClick={() => setLimit(value => value + 80)}>Show {Math.min(80, lines.length - limit)} more in {name}</button></li>}
         </ul>
       )}
     </section>

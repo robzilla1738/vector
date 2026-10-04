@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../../ui/button-props";
 import { AUX_FEATURES, type AuxFeature } from "@aux/contracts";
 import { featureStage } from "../../use-feature";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
@@ -70,7 +71,7 @@ export function AboutAuxSetting({ active }: { active: boolean }) {
   if (!available) return <span className="hint">Available in the Aux desktop app.</span>;
   if (error) return <div role="alert" className="field-error">
     <span>Could not read the installed build.</span>{" "}
-    <PreferenceAction command="retry-installed-build" scopeId={scopeId} invoke={retry} className="btn sm ghost">Retry</PreferenceAction>
+    <PreferenceAction command="retry-installed-build" scopeId={scopeId} invoke={retry} {...smallGhostButtonProps}>Retry</PreferenceAction>
     <details open={expandedError === error}>
       <summary ref={errorRef} data-command-id="toggle-installed-build-error-details" onClick={event => { event.preventDefault(); errorInput(event); }}>Error details</summary>
       <pre className="hint mono" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 180, overflow: "auto", userSelect: "text" }}>{error.text}</pre>

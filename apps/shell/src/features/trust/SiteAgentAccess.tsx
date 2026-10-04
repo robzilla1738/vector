@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { Effect, MethodResult, StandingGrant } from "@aux/contracts";
@@ -94,7 +95,7 @@ export function SiteAgentAccess({
         </div>
         {showRemove && rule && (
           <button
-            className="btn sm"
+            {...smallButtonProps}
             disabled={busy}
             data-command-id="delete-site-agent-rule"
             onClick={() =>
@@ -145,7 +146,7 @@ export function SiteAgentAccess({
               {grant.lifetime === "session" ? " · this session" : ""}
             </span>
             <button
-              className="btn sm"
+              {...smallButtonProps}
               disabled={busy}
               data-command-id="revoke-site-agent-grant"
               aria-label={`Revoke ${grant.category ?? grant.action} on ${origin}`}

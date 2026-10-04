@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import type { CompactObservation } from "@aux/contracts";
@@ -42,9 +43,9 @@ export function Inspector() {
     <Dialog label="Observation" onClose={close} className="aux-observation-dialog" initialFocusRef={headingRef}>
         <DetailPane className="observation-detail" title="What the agent sees" headingRef={headingRef} onClose={close}
           metadata={historical ? "Recorded snapshot · may differ from the live page" : "Current page observation"}
-          actions={!historical && activePageId ? <button className="btn sm ghost" onClick={() => setRetry(value => value + 1)}>Refresh</button> : undefined}>
+          actions={!historical && activePageId ? <button {...smallGhostButtonProps} onClick={() => setRetry(value => value + 1)}>Refresh</button> : undefined}>
           {!activePageId && !historical && <EmptyState title="No active page" description="Open a page to inspect its available content." />}
-          {err && <div role="alert"><p className="hint err">{err}</p><button className="btn sm" onClick={() => setRetry(value => value + 1)}>Retry observation</button></div>}
+          {err && <div role="alert"><p className="hint err">{err}</p><button {...smallButtonProps} onClick={() => setRetry(value => value + 1)}>Retry observation</button></div>}
           {!obs && !err && (activePageId || historical) && <output className="drawer-loading" aria-live="polite" data-block><span className="spin" aria-hidden="true" /> Observing {page?.title || page?.url || activePageId}…</output>}
           {obs && <><ObservationPanel key={`${obs.pageId}:${obs.revision}`} obs={obs} />
             <details className="observation-raw"><summary>Raw observation</summary><pre className="obs-raw selectable">{obs.text}</pre></details></>}

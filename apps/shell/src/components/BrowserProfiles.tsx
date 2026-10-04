@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { ActionMenu, Badge, ListRow } from "../ui";
@@ -56,7 +57,7 @@ export function BrowserProfiles() {
   };
   const profileRow=(profile:BrowserProfile)=><div className="browser-profile-item" key={profile.id}>
     <ListRow title={profile.name} description={profile.current?"Current Profile":profile.archived?"Archived · data kept on this Mac":"Separate sign-ins and browsing data"} leading={<span className="browser-profile-avatar" aria-hidden="true">{profile.name.slice(0,1).toLocaleUpperCase()}</span>} selected={profile.current} disabled={busy||profile.current||profile.archived} onOpen={()=>openProfile(profile)} trailing={<>
-      {profile.current ? <Badge label="Current"/> : !profile.archived && <button className="btn sm" disabled={busy} onClick={()=>openProfile(profile)}>Open</button>}
+      {profile.current ? <Badge label="Current"/> : !profile.archived && <button {...smallButtonProps} disabled={busy} onClick={()=>openProfile(profile)}>Open</button>}
       <ActionMenu label={`Actions for ${profile.name} Profile`} actions={[
         {label:"Rename",disabled:busy,onSelect:()=>{setEditing(profile.id);setName(profile.name);}},
         ...(!profile.current && profile.id!=="default" ? [
@@ -72,7 +73,7 @@ export function BrowserProfiles() {
   return <div className="browser-profiles">
     <p className="hint">Profiles keep website sign-ins, tabs, history, chats, memory and connections separate. Spaces organize work inside a profile and share its sign-ins.</p>
     <p className="hint">Model connections and agent work belong to this Profile. Set up each Profile’s model connection in Settings › Models.</p>
-    {profiles.find(profile=>profile.current)?.spaces?.length ? <section aria-label="Spaces in this Profile"><h3>Spaces in this Profile</h3><ul>{profiles.find(profile=>profile.current)?.spaces?.map(space=><li key={space.id}><button className="btn sm ghost" data-space={space.color} disabled={busy} onClick={()=>void action(async()=>{const current=profiles.find(profile=>profile.current);if(!current||!await commandResult("focus-profile-space",HostMethods.focusBrowserProfileSpace.result,{profileId:current.id,spaceId:space.id}))throw new Error("This Space could not be focused.");})}>{space.name}</button></li>)}</ul></section>:null}
+    {profiles.find(profile=>profile.current)?.spaces?.length ? <section aria-label="Spaces in this Profile"><h3>Spaces in this Profile</h3><ul>{profiles.find(profile=>profile.current)?.spaces?.map(space=><li key={space.id}><button {...smallGhostButtonProps} data-space={space.color} disabled={busy} onClick={()=>void action(async()=>{const current=profiles.find(profile=>profile.current);if(!current||!await commandResult("focus-profile-space",HostMethods.focusBrowserProfileSpace.result,{profileId:current.id,spaceId:space.id}))throw new Error("This Space could not be focused.");})}>{space.name}</button></li>)}</ul></section>:null}
     {loading&&<output className="hint" data-block>Loading profiles…</output>}
     {profiles.filter(profile=>!profile.archived||profile.current).map(profileRow)}
     {editing!==null?<form className="browser-profile-editor" onSubmit={event=>{event.preventDefault();void action(async(valid)=>{
@@ -90,15 +91,15 @@ export function BrowserProfiles() {
       }else{const items=await commandResult("rename-browser-profile",HostMethods.renameBrowserProfile.result,{profileId:editing,name});if(!valid())return;setProfiles(items);setEditing(null);setName("");}
     });}}>
       <input className="field-input" aria-label="Profile name" placeholder="Work, Personal…" autoFocus maxLength={60} disabled={busy} value={name} onChange={event=>setName(event.target.value)}/>
-      <button className="btn sm" disabled={busy||!name.trim()}>{busy?(editing==="new"?"Creating…":"Saving…"):(editing==="new"?"Create and open":"Save")}</button>
-      <button className="btn sm ghost" type="button" disabled={busy} onClick={()=>setEditing(null)}>Cancel</button>
-    </form>:<button className="btn sm" disabled={busy||loading} onClick={()=>{setEditing("new");setName("");}}>New profile</button>}
+      <button {...smallButtonProps} disabled={busy||!name.trim()}>{busy?(editing==="new"?"Creating…":"Saving…"):(editing==="new"?"Create and open":"Save")}</button>
+      <button {...smallGhostButtonProps} type="button" disabled={busy} onClick={()=>setEditing(null)}>Cancel</button>
+    </form>:<button {...smallButtonProps} disabled={busy||loading} onClick={()=>{setEditing("new");setName("");}}>New profile</button>}
     {profiles.some(profile=>profile.archived&&!profile.current)&&<details className="browser-profile-archive">
       <summary>Archived profiles</summary>
       <p className="hint">Archiving hides a profile from this list. Browsing data stays on this Mac, and open windows keep working.</p>
       {profiles.filter(profile=>profile.archived&&!profile.current).map(profileRow)}
     </details>}
-    {error&&<div role="alert"><p className="hint err">{error}</p><button className="btn sm ghost" disabled={busy} onClick={()=>void action(async(valid)=>{const items=await commandResult("refresh-browser-profiles",HostMethods.browserProfiles.result);if(valid()){setProfiles(items);setRefresh(value=>value+1);}})}>Refresh profiles</button></div>}
+    {error&&<div role="alert"><p className="hint err">{error}</p><button {...smallGhostButtonProps} disabled={busy} onClick={()=>void action(async(valid)=>{const items=await commandResult("refresh-browser-profiles",HostMethods.browserProfiles.result);if(valid()){setProfiles(items);setRefresh(value=>value+1);}})}>Refresh profiles</button></div>}
     {message&&<output className="hint" data-block>{message}</output>}
   </div>;
 }

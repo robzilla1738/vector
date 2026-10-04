@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { useRef, useState } from "react";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
@@ -136,7 +137,7 @@ export function StartupSetting({ active }: { active: boolean }) {
             <PreferenceAction
               command="remove-startup-page"
               scopeId={scopeId}
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               aria-label={`Remove startup page ${url}`}
               disabled={!editable}
               invoke={() => {
@@ -179,7 +180,7 @@ export function StartupSetting({ active }: { active: boolean }) {
             }}
           />
           <button
-            className="btn sm"
+            {...smallButtonProps}
             type="submit"
             data-command-id="add-startup-page"
             disabled={!editable || !input.trim()}

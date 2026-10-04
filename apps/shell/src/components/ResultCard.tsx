@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { useMemo } from "react";
 import type { ConversationArtifact } from "@aux/contracts";
 import { csvPreview } from "../csv-preview";
@@ -27,6 +28,6 @@ export function ResultCard({result, revision, compact = false, onOpen}: {result:
   return <article className="result-card">
     <header><span aria-hidden="true">{shellIconResult}</span><button onClick={onOpen} title={result.filename}>{result.filename}</button><span className="result-card-version">v{revision ?? result.revision ?? 1}</span></header>
     <ResultExcerpt result={result}/>
-    <footer><span>{kind} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB</span><button className="btn sm ghost" onClick={onOpen} aria-label={`Open ${result.filename}`}>Open {shellIconOpen}</button></footer>
+    <footer><span>{kind} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB</span><button {...smallGhostButtonProps} onClick={onOpen} aria-label={`Open ${result.filename}`}>Open {shellIconOpen}</button></footer>
   </article>;
 }

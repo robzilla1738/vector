@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./PageZoom.css";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -38,11 +39,11 @@ export function PageZoom({ pageId, documentEpoch }: { pageId: string; documentEp
   }
   return <section className="site-controls-group" aria-label="Page zoom">
     <div><div><strong>Page zoom</strong><span>{bridge.privateMode ? "Remembered for this private session" : "Remembered for this website"}</span></div>
-      <button className="btn sm" aria-label="Zoom out" disabled={busy || percentage === null || percentage <= 25} onClick={() => void change("out")}>−</button>
+      <button {...smallButtonProps} aria-label="Zoom out" disabled={busy || percentage === null || percentage <= 25} onClick={() => void change("out")}>−</button>
       <output className="page-zoom-value" aria-live="polite">{percentage === null ? "…" : `${percentage}%`}</output>
-      <button className="btn sm" aria-label="Zoom in" disabled={busy || percentage === null || percentage >= 500} onClick={() => void change("in")}>+</button>
-      <button className="btn sm" disabled={busy || percentage === 100} onClick={() => void change("reset")}>Reset</button>
+      <button {...smallButtonProps} aria-label="Zoom in" disabled={busy || percentage === null || percentage >= 500} onClick={() => void change("in")}>+</button>
+      <button {...smallButtonProps} disabled={busy || percentage === 100} onClick={() => void change("reset")}>Reset</button>
     </div>
-    {error && <p className="site-controls-error" role="alert">{error} <button className="btn sm" disabled={busy} onClick={()=>void read()}>Refresh zoom</button></p>}
+    {error && <p className="site-controls-error" role="alert">{error} <button {...smallButtonProps} disabled={busy} onClick={()=>void read()}>Refresh zoom</button></p>}
   </section>;
 }

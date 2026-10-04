@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HostMethodResult } from "@aux/contracts";
@@ -47,7 +48,7 @@ function CommandShortcut({ command, refresh }: { command: ExtensionCommand; refr
       </label>
       <button
         type="submit"
-        className="btn sm"
+        {...smallButtonProps}
         disabled={busy || shortcut.trim() === command.shortcut}
         data-command-id="set-extension-command-shortcut"
       >

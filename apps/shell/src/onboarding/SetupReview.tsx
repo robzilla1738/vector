@@ -1,3 +1,4 @@
+import { smallGhostButtonProps } from "../ui/button-props";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ImportJobStatusSchema,
@@ -183,11 +184,11 @@ export function SetupReview({
           </>
         )}
         <div className="row">
-          <button className="btn sm ghost" disabled={!connected} onClick={() => onVisit("import")}>
+          <button {...smallGhostButtonProps} disabled={!connected} onClick={() => onVisit("import")}>
             Review browser import
           </button>
           <button
-            className="btn sm ghost"
+            {...smallGhostButtonProps}
             disabled={!connected || checking}
             onClick={() => void read(++generation.current)}
           >
@@ -212,7 +213,7 @@ export function SetupReview({
           The task opens a separate temporary page with the same URL. Cookies, saved passwords and account
           access are not copied. A sign-in page may therefore need a separate sign-in.
         </p>
-        <button className="btn sm ghost" disabled={!connected} onClick={() => onVisit("model")}>
+        <button {...smallGhostButtonProps} disabled={!connected} onClick={() => onVisit("model")}>
           Review model setup
         </button>
       </div>
@@ -239,11 +240,11 @@ export function SetupReview({
                 : "Recovery readiness is unavailable. Check again before starting a chat."}
         </p>
         <div className="row">
-          <button className="btn sm ghost" disabled={!connected} onClick={() => onVisit("welcome")}>
+          <button {...smallGhostButtonProps} disabled={!connected} onClick={() => onVisit("welcome")}>
             Review recovery options
           </button>
           {recovery === "unavailable" && (
-            <button className="btn sm ghost" disabled={!connected} onClick={onCheckRecovery}>
+            <button {...smallGhostButtonProps} disabled={!connected} onClick={onCheckRecovery}>
               Check recovery readiness
             </button>
           )}
@@ -251,7 +252,7 @@ export function SetupReview({
       </div>
       <p>
         Setup does not import credentials, enable Memory or grant service/folder access.{" "}
-        <button className="btn sm ghost" disabled={!connected} onClick={() => onVisit("permissions")}>
+        <button {...smallGhostButtonProps} disabled={!connected} onClick={() => onVisit("permissions")}>
           Review permissions
         </button>
       </p>

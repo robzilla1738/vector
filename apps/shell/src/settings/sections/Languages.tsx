@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { useRef, useState } from "react";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
@@ -119,7 +120,7 @@ export function LanguagesSetting({ active }: { active: boolean }) {
             <PreferenceAction
               command="move-site-language-up"
               scopeId={scopeId}
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               aria-label={`Move ${code} up`}
               disabled={!editable || index === 0}
               invoke={() => {
@@ -136,7 +137,7 @@ export function LanguagesSetting({ active }: { active: boolean }) {
             <PreferenceAction
               command="move-site-language-down"
               scopeId={scopeId}
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               aria-label={`Move ${code} down`}
               disabled={!editable || index === value.selected.length - 1}
               invoke={() => {
@@ -154,7 +155,7 @@ export function LanguagesSetting({ active }: { active: boolean }) {
             <PreferenceAction
               command="remove-site-language"
               scopeId={scopeId}
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               aria-label={`Remove ${code}`}
               disabled={!editable || value.selected.length === 1}
               invoke={() => save(value.selected.filter((item) => item !== code))}
@@ -194,7 +195,7 @@ export function LanguagesSetting({ active }: { active: boolean }) {
             ))}
           </datalist>
           <button
-            className="btn sm"
+            {...smallButtonProps}
             type="submit"
             data-command-id="add-site-language"
             disabled={!editable || !input.trim()}

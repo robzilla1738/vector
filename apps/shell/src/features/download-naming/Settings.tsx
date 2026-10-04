@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useState } from "react";
 import { DEFAULT_DOWNLOAD_NAMING, DownloadNamingSettingsSchema, type DownloadNamingSettings } from "@aux/contracts";
@@ -100,7 +101,7 @@ export function DownloadNamingSettings() {
       ))}
       {error && <p role="alert">{error}</p>}
       <button
-        className="btn sm"
+        {...smallButtonProps}
         data-command-id="set-download-naming"
         disabled={busy}
         onClick={() => void save()}

@@ -1,3 +1,4 @@
+import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Hook, HookInvocation, OutboundMcpGrant, OutboundMcpServer, WorkspaceFolder } from "@aux/contracts";
@@ -98,7 +99,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
     <section className="field hooks-panel" aria-label="Hooks">
       <div className="row">
         <h4 className="grow">Hooks</h4>
-        <button className="btn sm" disabled={busy} onClick={() => void act(async () => {})}>
+        <button {...smallButtonProps} disabled={busy} onClick={() => void act(async () => {})}>
           Refresh
         </button>
       </div>
@@ -159,7 +160,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
         <p className="hint">The exact command runs without network access inside this folder and Aux's sandbox. Archive the folder or revoke the Hook to stop future runs.</p>
       </>}
       <button
-        className="btn sm"
+        {...smallButtonProps}
         disabled={busy || handlerType === "mcp_tool" && (!chosen || !argumentsValue || argumentsText.length > 64_000)
           || handlerType === "command" && (!command.trim() || !workdir)}
         onClick={() =>
@@ -227,7 +228,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
           <div className="row">
             {selected.trust === "untrusted" && (
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 disabled={busy}
                 onClick={() =>
                   void act(() =>
@@ -243,7 +244,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
             )}
             {selected.trust !== "revoked" && (
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 disabled={busy}
                 onClick={() => void act(() => call("hooks.revoke", { hookId: selected.hookId }))}
               >
@@ -252,7 +253,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
             )}
             {selected.trust === "approved" && (
               <button
-                className="btn sm"
+                {...smallButtonProps}
                 disabled={busy}
                 onClick={() => void act(() => call("hooks.test", { hookId: selected.hookId }))}
               >

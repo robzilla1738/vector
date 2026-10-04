@@ -1,3 +1,4 @@
+import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./ReviewedConnectors.css";
 import { useEffect, useState } from "react";
@@ -219,7 +220,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
               </select>
             </label>
             <button
-              className="btn sm ghost"
+              {...smallGhostButtonProps}
               disabled={busy || loading}
               onClick={() => void refresh().catch((reason) => setError(errorText(reason)))}
             >
@@ -263,7 +264,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                       </p>
                       {task && access.length === 0 && entry.state === "active" && (
                         <button
-                          className="btn sm"
+                          {...smallButtonProps}
                           disabled={busy}
                           onClick={() =>
                             setReview({
@@ -286,7 +287,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                               Granted to {task?.title} · revision {item.taskRevision}
                             </span>
                             <button
-                              className="btn sm ghost"
+                              {...smallGhostButtonProps}
                               disabled={busy}
                               onClick={() =>
                                 setReview({
@@ -303,7 +304,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                             </button>
                           </div>
                         ))}
-                      <button className="btn sm ghost" onClick={() => onManage("calendar")}>
+                      <button {...smallGhostButtonProps} onClick={() => onManage("calendar")}>
                         Manage Calendar accounts
                       </button>
                     </>
@@ -326,7 +327,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                               </span>
                             </div>
                           ))}
-                      <button className="btn sm ghost" onClick={() => onManage("mcp")}>
+                      <button {...smallGhostButtonProps} onClick={() => onManage("mcp")}>
                         Review server and tool grants
                       </button>
                     </>
@@ -365,10 +366,10 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
               )}
             </p>
             <div className="row">
-              <button className="btn sm" disabled={busy} onClick={() => void submit()}>
+              <button {...smallButtonProps} disabled={busy} onClick={() => void submit()}>
                 {review.kind === "grant" ? "Grant account" : "Revoke grant"}
               </button>
-              <button className="btn sm ghost" disabled={busy} onClick={() => setReview(null)}>
+              <button {...smallGhostButtonProps} disabled={busy} onClick={() => setReview(null)}>
                 Cancel
               </button>
             </div>
