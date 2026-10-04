@@ -1,0 +1,42 @@
+[
+  {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/layout_constants.cc",
+    "sha256": "354a0a83efda3d2782c00285b900940ddc0e185393efd90807e8a0d2b2f1b6f8",
+    "role": "S06.layout; TOOLBAR_BUTTON insets, desktop toolbar geometry contextual"
+  },
+  {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/06-chrome-tokens.css",
+    "sha256": "63f1e5ab377f6ea234144f8234e65eda5114055f225e4cab9cea49b03d4c36bf",
+    "role": "S06.colors; supplied resolved color roles unchanged"
+  },
+  {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/top-chrome/toolbar_bundle_0x512e.txt",
+    "sha256": "4d596da4ef502f48be6f4d84cb41f27f5b9869cfb38de94d7a9902cb3aa4dd36",
+    "role": "S06.webui; actual top-chrome control anatomy contextual"
+  },
+  {
+    "path": "/private/tmp/aux-browser-runtime-design-next-owner-reserve/apps/shell/src/tokens.css",
+    "sha256": "c0036220218afbe4bd7ff1fe395cf842504b849e6df2e7dd668c5a056a251c1f",
+    "role": "Aux --hit32, Geist stack, fs-xs/font size/line-height"
+  },
+  {
+    "path": "/private/tmp/aux-browser-runtime-design-next-owner-reserve/apps/shell/src/ui-font-size.ts",
+    "sha256": "cc4f477fdc716ed720b8e55030fac21941bd388cc08f72c6919256b1e8083deb",
+    "role": "Actual supported12/13/14px and14default"
+  },
+  {
+    "path": "/private/tmp/aux-browser-runtime-design-next-owner-reserve/apps/shell/src/styles/reset.css",
+    "sha256": "2c867b5accbf06c9c122b1e852fc6499f17a7a4ec8b94bc603465d72955c90e3",
+    "role": "Actual inherited normal line-height and globalbox sizing"
+  },
+  {
+    "path": "/private/tmp/aux-browser-runtime-design-next-owner-reserve/apps/shell/src/components/ImageSnapshot.tsx",
+    "sha256": "69cf22a887de0409441acf989ae995cb150d980aab33bb92093ec067bb42dc3c",
+    "role": "Original registered summary/current owner/fullsource metadata"
+  },
+  {
+    "path": "/private/tmp/aux-browser-runtime-design-next-owner-reserve/apps/shell/src/components/ImagePreview.commands.test.tsx",
+    "sha256": "e4945c90420c4e262a12f63ab10ad748f844d4f0475c3404bd8ad881d6ea01c0",
+    "role": "Original remapped zoom/disclosure/read-ABA assertions unchanged"
+  }
+]

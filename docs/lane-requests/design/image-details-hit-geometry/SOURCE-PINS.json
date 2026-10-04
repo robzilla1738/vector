@@ -1,0 +1,20 @@
+{
+  "baseSource": "5a3f6640201c3fd4bb163511cfb1ce55c6c8c6ba",
+  "negativeDiagnostic": false,
+  "files": [
+    {
+      "path": "apps/shell/src/components/ImageViewer.css",
+      "before": "ceb0ef0a2297f26b6c59e786c042068e81c8e0eb03c8ac58ecba4e668bf595f8",
+      "after": "2c6cd359c064d787e7490f39dd4a1b9f39d44af031b3953a4bb0944d0d5128e3"
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.disclosure-geometry.test.tsx",
+      "before": null,
+      "after": "9e6a8de3f86b54e7bc44103e0dcab65102fe982bc752dc6f8772d45bd6843969"
+    }
+  ],
+  "patchSha256": "6e052d29d4e2ca046675a5aefbdb019c57e51cb53596bebf6ca2f7a9b8747850",
+  "replay": "forward/reverse/forward exact",
+  "excludedPagePrerequisite": "19067e524e9d3fbe4ba05141e6817d53bdb37f54aa2f61ccfbea3d11994f6057",
+  "productionScope": "one summary min-height property; no JavaScript production change"
+}

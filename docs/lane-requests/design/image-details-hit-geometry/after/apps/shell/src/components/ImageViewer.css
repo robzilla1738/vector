@@ -1,0 +1,11 @@
+@layer components {
+.image-viewer { min-width:0; }
+.image-viewer-tools { display:flex; align-items:center; gap:4px; flex-wrap:wrap; padding:4px 0 8px; }
+.image-viewer-tools output { min-width:40px; text-align:center; font-size:var(--fs-xs); color:var(--ink-2); }
+.image-viewer-canvas { width:100%; max-height:55vh; overflow:auto; overscroll-behavior:contain; border:1px solid var(--line); border-radius:var(--r-md); background:var(--bg-1); }
+.image-viewer-canvas img { display:block; margin:0; max-width:none; max-height:none; height:auto; }
+.image-viewer-canvas.fit img { max-width:100%; max-height:50vh; width:auto; height:auto; object-fit:contain; margin:auto; }
+.image-viewer-canvas:focus-visible { outline:2px solid var(--focus-line); outline-offset:2px; }
+.image-viewer-metadata { margin-top:12px; color:var(--ink-2); font-size:var(--fs-xs); overflow-wrap:anywhere; }
+.image-viewer-metadata summary { cursor:pointer; padding:6px 0; min-height:var(--hit); }
+}
