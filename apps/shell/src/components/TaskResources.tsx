@@ -1,6 +1,7 @@
 import { staticRowProps, staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
-import {memo,useState} from "react";
+import {memo,useRef,useState} from "react";
+import {availableForFocus} from "../ui/focus";
 import type {Task} from "@aux/contracts";
 import {useStore, errToast} from "../store";
 import {resourceWebUrl} from "../task-resource-url";
@@ -11,12 +12,13 @@ const ResourceRow = memo(function ResourceRow({task, resource, archived, editing
   setEditing(value: string | null): void; setLabel(value: string): void;
   update(resources: Resource[]): Promise<boolean>;
 }) {
+  const rename = useRef<HTMLButtonElement>(null);
   const page = useStore(state => resource.kind === "page" ? state.pages.find(item => item.pageId === resource.locator
     && item.viewStatus !== "detached" && !item.ownedByRuntime) : undefined);
   const href = resource.kind === "url" ? resourceWebUrl(resource.locator) : null;
   return <article className="task-resource" aria-label={resource.label}>
     {editing === resource.resourceId ? <form {...staticRowProps} onSubmit={event => { event.preventDefault(); void update(task.resources.map(item => item.resourceId === resource.resourceId ? {...item, label:label.trim()} : item)).then(ok => {if(ok) setEditing(null);}); }}>
-      <input aria-label="Resource label" value={label} onChange={event => setLabel(event.target.value)} maxLength={200}/><button {...smallButtonProps} disabled={!label.trim()}>Save label</button><button {...smallButtonProps} type="button" onClick={() => setEditing(null)}>Cancel</button>
+      <input aria-label="Resource label" value={label} onChange={event => setLabel(event.target.value)} maxLength={200}/><button {...smallButtonProps} disabled={!label.trim()}>Save label</button><button {...smallButtonProps} type="button" onClick={event => { const ownedFocus = event.currentTarget.form?.contains(document.activeElement); setEditing(null); if (ownedFocus && rename.current && availableForFocus(rename.current)) rename.current.focus(); }}>Cancel</button>
     </form> : <strong>{resource.label}</strong>}
     <span {...staticHintProps}>{resource.kind === "page" ? page ? "Browser tab" : "Tab unavailable" : resource.kind} · {page?.url ?? resource.locator} · {(resource.access ?? (resource.kind === "repository" ? "write" : "reference")).replaceAll("_", " ")}</span>
     <div {...staticRowProps}>
@@ -26,7 +28,7 @@ const ResourceRow = memo(function ResourceRow({task, resource, archived, editing
         const existing = state.pages.find(item => item.url === href && !item.ownedByRuntime && item.viewStatus !== "detached");
         void (existing ? state.activate(existing.pageId) : state.newTab(href)).catch(errToast);
       }}>Open URL</button>}
-      <button {...smallButtonProps} disabled={archived} onClick={() => {setEditing(resource.resourceId); setLabel(resource.label);}}>Rename</button>
+      <button ref={rename} {...smallButtonProps} disabled={archived} onClick={() => {setEditing(resource.resourceId); setLabel(resource.label);}}>Rename</button>
       <label {...staticHintProps}>Access<select aria-label={`${resource.label} access`} disabled={archived} value={resource.access ?? (resource.kind === "repository" ? "write" : "reference")} onChange={event => void update(task.resources.map(item => item.resourceId === resource.resourceId ? {...item, access: event.target.value as Resource["access"]} : item))}>
         <option value="reference">Reference only</option><option value="read">Read</option><option value="write">Write in Aux</option>
       </select></label>

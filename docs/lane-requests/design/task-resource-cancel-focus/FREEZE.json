@@ -1,0 +1,18 @@
+{
+  "owned": [
+    {
+      "path": "apps/shell/src/components/TaskResources.tsx",
+      "before": "bb5e731ed7945d5f3a54dd65bda20559c29798ea27aa0f404e404d9e20ded130",
+      "after": "f4905fc8356a909c265013433f8f10b636ae154cc16fca598e45047459710b69"
+    },
+    {
+      "path": "apps/shell/src/components/TaskResources.focus.test.tsx",
+      "before": null,
+      "after": "e6976def2666c25cc71d18618d3633063a32e277e1e933845ca600797384f47b"
+    }
+  ],
+  "patch": "232d3dc9c38475bfbef676fe9533641f55ae98c10e162e3f168ee6027bb53704",
+  "pins": "bba9ebab03951d0cacf8b8465bf160eae2dbc6e698c2b4f7f953a1deba6ae693",
+  "replay": "F/R/F PASS",
+  "native": "pending"
+}

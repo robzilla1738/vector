@@ -1,0 +1,30 @@
+{
+  "base": "e106a9269802dbd219cba8d50140ef6f6aa281c3",
+  "owned": [
+    {
+      "path": "apps/shell/src/components/TaskResources.tsx",
+      "before": "bb5e731ed7945d5f3a54dd65bda20559c29798ea27aa0f404e404d9e20ded130",
+      "after": "f4905fc8356a909c265013433f8f10b636ae154cc16fca598e45047459710b69"
+    },
+    {
+      "path": "apps/shell/src/components/TaskResources.focus.test.tsx",
+      "before": null,
+      "after": "e6976def2666c25cc71d18618d3633063a32e277e1e933845ca600797384f47b"
+    }
+  ],
+  "unchangedPrerequisites": [
+    {
+      "path": "apps/shell/src/ui/focus.ts",
+      "sha256": "222929301e855ce632390feeb1593de68336ee78e6cfd582c0c129837a0b2e2c"
+    },
+    {
+      "path": "apps/shell/src/styles/workspace.css",
+      "sha256": "f936260e8fdcfde9e12045626baa591b0555e67061f313d2ef1ca2d81c7fabc2"
+    },
+    {
+      "path": "packages/contracts/src/tasks.ts",
+      "sha256": "892396fa7f014acb19a6d92fb47fb3310197bb789ef6d5ffa0848a60d2cc3861"
+    }
+  ],
+  "policy": "Original form contains current focus; original connected available Rename receives focus synchronously before editor removal. No newer external/dialog focus transfer."
+}

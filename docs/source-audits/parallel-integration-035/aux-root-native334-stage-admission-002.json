@@ -1,0 +1,11 @@
+{
+  "status": "CORRECTED334_STAGE002_ONLY_ADMISSION_PASS",
+  "actualOriginalFailureAnd16RawVerified": true,
+  "actualGeneratedPhysical3Unchanged": true,
+  "originalOwnerAbsent": true,
+  "exactTwoLiteralReaderAndAttemptCorrection": true,
+  "actual14Pins": 14,
+  "launcherSha256": "ffc293c3df791f911431bc2948dd293afbacf5390236182d79b3f5779c2e6280",
+  "outerSha256": "18405ece47d1842e5900ea223d13220cd7753bbc301bbc7d79df453e8e2938b0",
+  "scope": "stage only no GN/build/App"
+}
