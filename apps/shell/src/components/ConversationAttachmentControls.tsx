@@ -1,7 +1,6 @@
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes } from "react";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
-import { executeCommand } from "../commands";
+import { guardCommandCompletion } from "../command-completion";
 import { errToast } from "../store";
 
 type AttachmentCommand = "preview-conversation-document" | "toggle-conversation-document" | "remove-conversation-document" | "preview-conversation-result" | "toggle-conversation-result";
@@ -19,11 +18,8 @@ export function useConversationAttachmentOwner(current: () => boolean, records: 
 }
 function useAttachmentControl<T extends HTMLButtonElement | HTMLInputElement>(command: AttachmentCommand, current: () => boolean, invoke: (element: T,event?: Event) => unknown) {
   const scope = useId();
-  const [ref] = usePreferenceCommand<T>(command,scope,(element,event) => current() ? invoke(element,event) : guardCommandCompletion(Promise.reject(new Error("Choose the original conversation attachment.")),current));
-  const run = (event: { nativeEvent: Event }) => {
-    const completion = executeCommand(command,{payload:{scopeId:scope},nativeInputEvent:event.nativeEvent});
-    void completion.catch(reason => reportCommandCompletionFailure(completion,reason,error => { if (current()) errToast(error); }));
-  };
+  const [ref, run] = usePreferenceCommand<T>(command,scope,(element,event) => current() ? invoke(element,event) : guardCommandCompletion(Promise.reject(new Error("Choose the original conversation attachment.")),current), error => { if (current()) errToast(error); });
+
   return [ref,run] as const;
 }
 export function ConversationAttachmentAction({command,current,invoke,...props}: Omit<ButtonHTMLAttributes<HTMLButtonElement>,"onClick"> & {command: AttachmentCommand; current(): boolean; invoke(): unknown}) {

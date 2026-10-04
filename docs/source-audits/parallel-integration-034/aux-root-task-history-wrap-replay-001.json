@@ -1,0 +1,7 @@
+{
+  "leaves": 2,
+  "patch": "dbf741191c7d754eb100bc897aaa6cfaa34e2813d8cc7c341726d38eebf27219",
+  "exactForwardReverseForward": true,
+  "actualSourceUtility": true,
+  "previousAuditRefusedBeforeMutation": "Path string converted to Path; follow-on test selected absent new file and returned1/no tests, retained001; not a behavior falsifier"
+}

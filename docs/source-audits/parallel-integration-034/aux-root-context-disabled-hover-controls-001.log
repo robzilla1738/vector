@@ -1,0 +1,12 @@
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:44877) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/ConversationContextMenu.disabled-capture.test.tsx (1 test) 58ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  15:57:52
+   Duration  2.88s (transform 843ms, setup 0ms, collect 2.46s, tests 58ms, environment 188ms, prepare 35ms)
+

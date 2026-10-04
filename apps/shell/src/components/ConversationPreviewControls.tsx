@@ -1,8 +1,7 @@
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type RefObject } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
-import { executeCommand } from "../commands";
-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
+import { guardCommandCompletion } from "../command-completion";
 import { errToast } from "../store";
 
 export function previewPageIdentity(page: PageTarget | undefined) {
@@ -26,13 +25,10 @@ export function ConversationPreviewAction({ command, current, invoke, controlRef
   current(): boolean; invoke(): unknown; controlRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const scopeId = useId();
-  const [ref] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
+  const [ref, run] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
     if (!current()) return guardCommandCompletion(Promise.reject(new Error("Choose the current conversation preview page.")), current);
     return invoke();
-  });
+  }, original => { if (current()) errToast(original); });
   const originalRef = useCallback((node: HTMLButtonElement | null) => { ref(node); if (controlRef) controlRef.current = node; }, [ref, controlRef]);
-  return <button {...props} type="button" ref={originalRef} data-command-id={command} onClick={event => {
-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
-    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, original => { if (current()) errToast(original); }));
-  }}/>;
+  return <button {...props} type="button" ref={originalRef} data-command-id={command} onClick={run}/>;
 }

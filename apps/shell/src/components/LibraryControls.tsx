@@ -1,8 +1,7 @@
 import { useCallback, useId, useLayoutEffect, useMemo, type ButtonHTMLAttributes } from "react";
 import { bridge } from "../bridge";
-import { usePreferenceCommand } from "../settings/sections/preference-command";
-import { executeCommand } from "../commands";
-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
+import { usePreferenceCommand, dispatchScopedControlInput } from "../settings/sections/preference-command";
+import { guardCommandCompletion } from "../command-completion";
 export class LibraryReadOwner {
   active = true;
   constructor(
@@ -55,13 +54,8 @@ export function useLibraryControl<E extends HTMLElement>(
       ? invoke(event)
       : guardCommandCompletion(Promise.reject(new Error("Choose the original Library view.")), current),
   );
-  const run = (event: { nativeEvent: Event }) => {
-    const completion = executeCommand(command, {
-      payload: { scopeId: scope },
-      nativeInputEvent: event.nativeEvent,
-    });
-    void completion.catch((reason) => reportCommandCompletionFailure(completion, reason, () => {}));
-  };
+  const run = (event: { nativeEvent: Event }) =>
+    dispatchScopedControlInput(command, scope, event.nativeEvent);
   return [ref, run] as const;
 }
 export function LibraryButton({

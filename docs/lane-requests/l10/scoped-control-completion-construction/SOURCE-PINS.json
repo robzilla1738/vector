@@ -1,0 +1,76 @@
+{
+  "files": [
+    {
+      "path": "apps/shell/src/settings/sections/preference-command.tsx",
+      "beforeSha256": "888f0f4434d10269f2acd15f13fc2be3ce8a4898abb499fe20c34e6dcb59ad1b",
+      "afterSha256": "1b3d965b91f6b4892b8f954bae4a56fd4888e4546be6e29f6d9c19e22a65bc87"
+    },
+    {
+      "path": "apps/shell/src/components/LibraryControls.tsx",
+      "beforeSha256": "3ae442d72735fe2f1fb8c9e5af2f2806d63374734c6ad5870d3710d2ca6f8310",
+      "afterSha256": "c40378821554fe942d905f7e1d0948040bd8b4726bed0bc80a7c59559003553d"
+    },
+    {
+      "path": "apps/shell/src/components/StructuredResultControls.tsx",
+      "beforeSha256": "e349437d4d01f7e1e78fb95ba38a933f4fe81c92b6f4b4ed8a22b673d53a320d",
+      "afterSha256": "4fe2e2d39e26095871a6f5c7baa04a57fc98eff2ca340955d5b580637d74e9a6"
+    },
+    {
+      "path": "apps/shell/src/components/DocumentSnapshotControls.tsx",
+      "beforeSha256": "68655cdccaceea60412acfb23488c2da9b64aa75ddd8e672fcfefe6b9ea01178",
+      "afterSha256": "fe724425b89c200d17135cb45049c3d6a611f828aa866d34d12d3342120978f6"
+    },
+    {
+      "path": "apps/shell/src/components/ResultPreviewControls.tsx",
+      "beforeSha256": "1cbae6cd5c32079ec5f8a89c312231dada4d7814e3237e8a21a61ab83e174679",
+      "afterSha256": "5ea184e21cc2db21bb4f1339fcd0b41de78ff9d16292fa08287fc1949268b97c"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationViewControls.tsx",
+      "beforeSha256": "e089a3b0f992c7712b2685b8f7d4a29dd6298080ae700777550cb5cd91d6cda7",
+      "afterSha256": "45426e4bad70e59130dc0809f8fa56119db1a9054f703e8475827a645c1eb008"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationRecoveryControls.tsx",
+      "beforeSha256": "df1bf4d68b6b7f09654912a25be9b78ce213e5804cff62ccb9eddbefe44320b3",
+      "afterSha256": "4c2ac03be3cb3de32550164a82d8ce1545608e27e45c318ecc90bf915c4b69da"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationQueuedControls.tsx",
+      "beforeSha256": "5d48b99425ab7d20f93338fe45c743d194771ea0241a26e444019ebaceb3c8f4",
+      "afterSha256": "effcc1f2122b40ade56fdc6e4f40b08bf6a09209ac569cffd9871df072efc17a"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationAttachmentControls.tsx",
+      "beforeSha256": "b521ad0a03e10a9b0352ebeace26e2f091d510251f3c1015d8e1f6c592dca91e",
+      "afterSha256": "65fa91ef8ef90966a238a9f42463f32deed192ff0a20c6ee0c8950480c7ff785"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationSourceControls.tsx",
+      "beforeSha256": "65d8af1445c08af9aaf479287a1fbbb982c447fe87e2db715bd281bcf379ba46",
+      "afterSha256": "8c9b548dca28cdd014a9abaf25dcad50a46d129c11a928c80c3b9b1072244562"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationPreviewControls.tsx",
+      "beforeSha256": "7137b20499ef631396921717b3ab29759f8871213264c97a6c016d2e6ee74ae8",
+      "afterSha256": "aed8e5b99289b945eaa7c9a9999e8c3671b75ffd612e84007cee19b429ae0bda"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/preference-command.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "65c08a3361ede5c841355f7be2d23a127d09e3112e1a9309a9f101629c95da6e"
+    }
+  ],
+  "patchSha256": "3cec5cf595be03a8126c413c806c2c3f90116d0dec2272911c9a5bfbcf90b55a",
+  "forwardReverseForward": true,
+  "exactResultBytes": true,
+  "registrationCallbackAuditSha256": "0d492b7f9a87ee26ab35c59bcd19fdb73f2d09b60b210adb5f75af510b69f3ea",
+  "checks": {
+    "cohort": 183,
+    "files": 13,
+    "types": true,
+    "lint": true
+  },
+  "nativeExecuted": false,
+  "budgetAccepted": false
+}

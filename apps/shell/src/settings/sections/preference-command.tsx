@@ -2,11 +2,23 @@ import { useCallback, useLayoutEffect, useRef, type ButtonHTMLAttributes, type S
 import { executeCommand } from "../../commands";
 import { reportCommandCompletionFailure } from "../../command-completion";
 import { registerScopedControl } from "../../scoped-control-commands";
+const ignoreFailure = () => {};
+/** Original mounted input dispatch; preserve its exact completion reporting guard. */
+export function dispatchScopedControlInput(
+  command: string,
+  scopeId: string,
+  nativeInputEvent: Event,
+  report: (reason: unknown) => void = ignoreFailure,
+): void {
+  const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent });
+  void completion.catch((reason) => reportCommandCompletionFailure(completion, reason, report));
+}
 /** Original input/form ownership; each surface retains its actual native policy. */
 export function usePreferenceCommand<E extends HTMLElement>(
   command: string,
   scopeId: string,
   invoke: (original: E, originalEvent?: Event) => unknown,
+  report: (reason: unknown) => void = ignoreFailure,
 ) {
   const element = useRef<E>(null);
   useLayoutEffect(() => {
@@ -21,8 +33,7 @@ export function usePreferenceCommand<E extends HTMLElement>(
     element.current = node;
   }, []);
   const run = (event: SyntheticEvent<E>) => {
-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
-    void completion.catch((reason) => reportCommandCompletionFailure(completion, reason, () => {}));
+    dispatchScopedControlInput(command, scopeId, event.nativeEvent, report);
   };
   return [controlRef, run] as const;
 }

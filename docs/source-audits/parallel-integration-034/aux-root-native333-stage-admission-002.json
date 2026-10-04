@@ -1,0 +1,10 @@
+{
+  "status": "STAGE_ONLY_CORRECTED_READER_ADMISSION_PASS",
+  "launcher": "f4ae1dc172c2481972f58602d9d6dc1ca4306876ac9a79e08cc89ea178eb0a46",
+  "controller": "b6bebf0327e2c9bea392b067d08663ce9b8533ec76fcf2fa99268effa30abbdf",
+  "actualPins": 14,
+  "originalRefusalActual7Pins": 7,
+  "originalGeneratedPhysicalUnchanged": true,
+  "genuineNaturalClosureRawTerminalJoined": true,
+  "scope": "stage only, original524/full18/cache/seals/authority unchanged"
+}

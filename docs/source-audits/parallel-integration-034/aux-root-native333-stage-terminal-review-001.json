@@ -1,0 +1,20 @@
+{
+  "status": "ACTUAL_STAGE_TERMINAL_AND_GN_ADMISSION_PASS",
+  "rawArtifacts": 27,
+  "actualNative": 733,
+  "actualPackets": 333,
+  "actualAssets": 174,
+  "actualChildren": 3,
+  "freshAbsentPids": 10,
+  "freshAbsentGroups": 4,
+  "actualPhysical0444Seals": 3,
+  "watcherNaturalFinishedNoIncident": true,
+  "launcher": "6b5cd5702f87967e9e3697d5b57c2ce8a0695dc1d866e8ae0e2891cc8da28d5f",
+  "outer": "3df65ff4d8490afa5185501b15812e0fc888a06baf71daee93bf7d05bb4c3951",
+  "scope": "genuine GN only; no compile or App admission",
+  "stageProof": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/prep-proof.json",
+    "sha256": "7f56b930ec8086589b0fd320276a734b74a5fb8892a0e8a436316e061f9371c4"
+  },
+  "closureSha256": "d7ca6ebb4a901e6e4908db06f1669e40a145b7df654fe5cfd2f72530c33d088c"
+}

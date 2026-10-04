@@ -1,0 +1,61 @@
+{
+  "rows": [
+    {
+      "path": "apps/shell/src/components/ConversationAttachmentControls.tsx",
+      "originalRegistrationAndAdmissionCalls": 2,
+      "exactNormalizedCallbacks": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationPreviewControls.tsx",
+      "originalRegistrationAndAdmissionCalls": 2,
+      "exactNormalizedCallbacks": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationQueuedControls.tsx",
+      "originalRegistrationAndAdmissionCalls": 2,
+      "exactNormalizedCallbacks": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationRecoveryControls.tsx",
+      "originalRegistrationAndAdmissionCalls": 1,
+      "exactNormalizedCallbacks": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationSourceControls.tsx",
+      "originalRegistrationAndAdmissionCalls": 2,
+      "exactNormalizedCallbacks": true
+    },
+    {
+      "path": "apps/shell/src/components/ConversationViewControls.tsx",
+      "originalRegistrationAndAdmissionCalls": 1,
+      "exactNormalizedCallbacks": true
+    },
+    {
+      "path": "apps/shell/src/components/DocumentSnapshotControls.tsx",
+      "originalRegistrationAndAdmissionCalls": 1,
+      "exactNormalizedCallbacks": true
+    },
+    {
+      "path": "apps/shell/src/components/LibraryControls.tsx",
+      "originalRegistrationAndAdmissionCalls": 2,
+      "exactNormalizedCallbacks": true
+    },
+    {
+      "path": "apps/shell/src/components/ResultPreviewControls.tsx",
+      "originalRegistrationAndAdmissionCalls": 2,
+      "exactNormalizedCallbacks": true
+    },
+    {
+      "path": "apps/shell/src/components/StructuredResultControls.tsx",
+      "originalRegistrationAndAdmissionCalls": 1,
+      "exactNormalizedCallbacks": true
+    },
+    {
+      "path": "apps/shell/src/settings/sections/preference-command.tsx",
+      "originalRegistrationAndAdmissionCalls": 2,
+      "exactNormalizedCallbacks": true
+    }
+  ],
+  "originalRegistrationAndAdmissionCallbacksUnchanged": true,
+  "noNativeExecuted": true
+}

@@ -1,0 +1,12 @@
+{
+  "status": "STAGE_ONLY_ADMISSION_PASS",
+  "launcherSHA256": "642c5c75d04ee400e82b079ab542d46a1adeaf1706697338214b493011342f1a",
+  "controllerSHA256": "e059ac6e4505e568fe6a49fa55409672cf7d69051cdeebb22b182e5b044d841b",
+  "actual14Pins": 14,
+  "exactInspectedOriginalControllerDiff": true,
+  "currentNative733Generated3Runtime92HelperVerified": true,
+  "original524FailureRetained": true,
+  "actualOriginalRows": [],
+  "initialReadOnlyAuditCorrection": "empty generated drift is original map{} rather than[]; initial assertion refused before proof/mutation",
+  "scope": "stage only; no GN/build/App"
+}

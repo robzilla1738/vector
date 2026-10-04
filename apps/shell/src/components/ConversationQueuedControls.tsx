@@ -1,8 +1,6 @@
 import { useCallback, useId, useLayoutEffect, useMemo, useRef } from "react";
 import type { RunMessage } from "@aux/contracts";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
-import { executeCommand } from "../commands";
-import { reportCommandCompletionFailure } from "../command-completion";
 import { errToast } from "../store";
 
 export function ConversationQueuedControls({ message, current, disabled, onCancel }: {
@@ -29,12 +27,9 @@ function QueuedAction({ edit, message, current, disabled, onCancel }: {
 }) {
   const scopeId = useId();
   const command = edit ? "edit-conversation-queued-message" : "remove-conversation-queued-message";
-  const [controlRef] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
+  const [controlRef, run] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
     if (!current()) throw new Error("Choose the current queued conversation message.");
     return onCancel(message, edit, current);
-  });
-  return <button type="button" ref={controlRef} disabled={disabled} data-command-id={command} onClick={event => {
-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
-    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, errToast));
-  }}>{edit ? "Edit" : "Remove"}</button>;
+  }, errToast);
+  return <button type="button" ref={controlRef} disabled={disabled} data-command-id={command} onClick={run}>{edit ? "Edit" : "Remove"}</button>;
 }

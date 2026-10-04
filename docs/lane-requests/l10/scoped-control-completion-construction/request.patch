@@ -1,0 +1,470 @@
+diff --git a/apps/shell/src/components/ConversationAttachmentControls.tsx b/apps/shell/src/components/ConversationAttachmentControls.tsx
+index 996a278..bc72e9b 100644
+--- a/apps/shell/src/components/ConversationAttachmentControls.tsx
++++ b/apps/shell/src/components/ConversationAttachmentControls.tsx
+@@ -1,7 +1,6 @@
+ import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes } from "react";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
+-import { executeCommand } from "../commands";
++import { guardCommandCompletion } from "../command-completion";
+ import { errToast } from "../store";
+ 
+ type AttachmentCommand = "preview-conversation-document" | "toggle-conversation-document" | "remove-conversation-document" | "preview-conversation-result" | "toggle-conversation-result";
+@@ -19,11 +18,8 @@ export function useConversationAttachmentOwner(current: () => boolean, records:
+ }
+ function useAttachmentControl<T extends HTMLButtonElement | HTMLInputElement>(command: AttachmentCommand, current: () => boolean, invoke: (element: T,event?: Event) => unknown) {
+   const scope = useId();
+-  const [ref] = usePreferenceCommand<T>(command,scope,(element,event) => current() ? invoke(element,event) : guardCommandCompletion(Promise.reject(new Error("Choose the original conversation attachment.")),current));
+-  const run = (event: { nativeEvent: Event }) => {
+-    const completion = executeCommand(command,{payload:{scopeId:scope},nativeInputEvent:event.nativeEvent});
+-    void completion.catch(reason => reportCommandCompletionFailure(completion,reason,error => { if (current()) errToast(error); }));
+-  };
++  const [ref, run] = usePreferenceCommand<T>(command,scope,(element,event) => current() ? invoke(element,event) : guardCommandCompletion(Promise.reject(new Error("Choose the original conversation attachment.")),current), error => { if (current()) errToast(error); });
++
+   return [ref,run] as const;
+ }
+ export function ConversationAttachmentAction({command,current,invoke,...props}: Omit<ButtonHTMLAttributes<HTMLButtonElement>,"onClick"> & {command: AttachmentCommand; current(): boolean; invoke(): unknown}) {
+diff --git a/apps/shell/src/components/ConversationPreviewControls.tsx b/apps/shell/src/components/ConversationPreviewControls.tsx
+index 993f32e..0dde6d0 100644
+--- a/apps/shell/src/components/ConversationPreviewControls.tsx
++++ b/apps/shell/src/components/ConversationPreviewControls.tsx
+@@ -1,8 +1,7 @@
+ import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type RefObject } from "react";
+ import type { PageTarget } from "@aux/contracts";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { executeCommand } from "../commands";
+-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
++import { guardCommandCompletion } from "../command-completion";
+ import { errToast } from "../store";
+ 
+ export function previewPageIdentity(page: PageTarget | undefined) {
+@@ -26,13 +25,10 @@ export function ConversationPreviewAction({ command, current, invoke, controlRef
+   current(): boolean; invoke(): unknown; controlRef?: RefObject<HTMLButtonElement | null>;
+ }) {
+   const scopeId = useId();
+-  const [ref] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
++  const [ref, run] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
+     if (!current()) return guardCommandCompletion(Promise.reject(new Error("Choose the current conversation preview page.")), current);
+     return invoke();
+-  });
++  }, original => { if (current()) errToast(original); });
+   const originalRef = useCallback((node: HTMLButtonElement | null) => { ref(node); if (controlRef) controlRef.current = node; }, [ref, controlRef]);
+-  return <button {...props} type="button" ref={originalRef} data-command-id={command} onClick={event => {
+-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
+-    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, original => { if (current()) errToast(original); }));
+-  }}/>;
++  return <button {...props} type="button" ref={originalRef} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/ConversationQueuedControls.tsx b/apps/shell/src/components/ConversationQueuedControls.tsx
+index 633d62f..239b34b 100644
+--- a/apps/shell/src/components/ConversationQueuedControls.tsx
++++ b/apps/shell/src/components/ConversationQueuedControls.tsx
+@@ -1,8 +1,6 @@
+ import { useCallback, useId, useLayoutEffect, useMemo, useRef } from "react";
+ import type { RunMessage } from "@aux/contracts";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { executeCommand } from "../commands";
+-import { reportCommandCompletionFailure } from "../command-completion";
+ import { errToast } from "../store";
+ 
+ export function ConversationQueuedControls({ message, current, disabled, onCancel }: {
+@@ -29,12 +27,9 @@ function QueuedAction({ edit, message, current, disabled, onCancel }: {
+ }) {
+   const scopeId = useId();
+   const command = edit ? "edit-conversation-queued-message" : "remove-conversation-queued-message";
+-  const [controlRef] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
++  const [controlRef, run] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
+     if (!current()) throw new Error("Choose the current queued conversation message.");
+     return onCancel(message, edit, current);
+-  });
+-  return <button type="button" ref={controlRef} disabled={disabled} data-command-id={command} onClick={event => {
+-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
+-    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, errToast));
+-  }}>{edit ? "Edit" : "Remove"}</button>;
++  }, errToast);
++  return <button type="button" ref={controlRef} disabled={disabled} data-command-id={command} onClick={run}>{edit ? "Edit" : "Remove"}</button>;
+ }
+diff --git a/apps/shell/src/components/ConversationRecoveryControls.tsx b/apps/shell/src/components/ConversationRecoveryControls.tsx
+index 8fd80cd..0db8879 100644
+--- a/apps/shell/src/components/ConversationRecoveryControls.tsx
++++ b/apps/shell/src/components/ConversationRecoveryControls.tsx
+@@ -1,7 +1,5 @@
+ import { useId, type ButtonHTMLAttributes } from "react";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { executeCommand } from "../commands";
+-import { reportCommandCompletionFailure } from "../command-completion";
+ import { errToast } from "../store";
+ 
+ export function ConversationRecoveryAction({ command, current, invoke, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
+@@ -9,12 +7,9 @@ export function ConversationRecoveryAction({ command, current, invoke, ...props
+   current(): boolean; invoke(): unknown;
+ }) {
+   const scopeId = useId();
+-  const [controlRef] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
++  const [controlRef, run] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
+     if (!current()) throw new Error("Choose the current conversation recovery control.");
+     return invoke();
+-  });
+-  return <button {...props} type="button" className="btn sm" ref={controlRef} data-command-id={command} onClick={event => {
+-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
+-    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, errToast));
+-  }}/>;
++  }, errToast);
++  return <button {...props} type="button" className="btn sm" ref={controlRef} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/ConversationSourceControls.tsx b/apps/shell/src/components/ConversationSourceControls.tsx
+index 65b0c66..27de94c 100644
+--- a/apps/shell/src/components/ConversationSourceControls.tsx
++++ b/apps/shell/src/components/ConversationSourceControls.tsx
+@@ -1,8 +1,7 @@
+-import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type RefObject, type ReactNode, type SyntheticEvent } from "react";
++import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type RefObject, type ReactNode } from "react";
+ import type { ConversationSource } from "@aux/contracts";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { executeCommand } from "../commands";
+-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
++import { guardCommandCompletion } from "../command-completion";
+ import { errToast } from "../store";
+ import { SourceRow } from "./SourceRow";
+ 
+@@ -22,14 +21,11 @@ export function useConversationSourcesOwner(current: () => boolean, sources: Con
+ }
+ function useSourceControl(command: SourceCommand, current: () => boolean, invoke: (element: HTMLElement, event?: Event) => unknown) {
+   const scopeId = useId();
+-  const [ref] = usePreferenceCommand<HTMLElement>(command, scopeId, (element, event) => {
++  const [ref, run] = usePreferenceCommand<HTMLElement>(command, scopeId, (element, event) => {
+     if (!current()) return guardCommandCompletion(Promise.reject(new Error("Choose the original recorded conversation source.")), current);
+     return invoke(element, event);
+-  });
+-  const run = (event: SyntheticEvent<HTMLElement>) => {
+-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
+-    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, error => { if (current()) errToast(error); }));
+-  };
++  }, error => { if (current()) errToast(error); });
++
+   return [ref, run] as const;
+ }
+ export function ConversationSourceAction({ command, current, invoke, controlRef, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
+diff --git a/apps/shell/src/components/ConversationViewControls.tsx b/apps/shell/src/components/ConversationViewControls.tsx
+index 697a57d..e5b2e80 100644
+--- a/apps/shell/src/components/ConversationViewControls.tsx
++++ b/apps/shell/src/components/ConversationViewControls.tsx
+@@ -1,7 +1,5 @@
+ import { useId, type ButtonHTMLAttributes } from "react";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { executeCommand } from "../commands";
+-import { reportCommandCompletionFailure } from "../command-completion";
+ import { errToast } from "../store";
+ 
+ export function ConversationViewAction({ command, current, invoke, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
+@@ -9,12 +7,9 @@ export function ConversationViewAction({ command, current, invoke, ...props }: O
+   current(): boolean; invoke(): unknown;
+ }) {
+   const scopeId = useId();
+-  const [controlRef] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
++  const [controlRef, run] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
+     if (!current()) throw new Error("Choose the current conversation view control.");
+     return invoke();
+-  });
+-  return <button {...props} type="button" ref={controlRef} data-command-id={command} onClick={event => {
+-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
+-    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, errToast));
+-  }}/>;
++  }, errToast);
++  return <button {...props} type="button" ref={controlRef} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/DocumentSnapshotControls.tsx b/apps/shell/src/components/DocumentSnapshotControls.tsx
+index 174e8ac..d4cdc83 100644
+--- a/apps/shell/src/components/DocumentSnapshotControls.tsx
++++ b/apps/shell/src/components/DocumentSnapshotControls.tsx
+@@ -1,7 +1,6 @@
+ import { useId, type ButtonHTMLAttributes } from "react";
+-import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { executeCommand } from "../commands";
+-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
++import { usePreferenceCommand, dispatchScopedControlInput } from "../settings/sections/preference-command";
++import { guardCommandCompletion } from "../command-completion";
+ import { errToast } from "../store";
+ type DocumentCommand = "retry-conversation-document-read" | "toggle-conversation-document-text" | "toggle-conversation-document-details" | "close-conversation-document-preview";
+ export function DocumentSnapshotControl({command,current,invoke,summary,...props}:Omit<ButtonHTMLAttributes<HTMLButtonElement>,"onClick"> & {command:DocumentCommand;current():boolean;invoke():unknown;summary?:boolean}) {
+@@ -11,6 +10,6 @@ export function DocumentSnapshotControl({command,current,invoke,summary,...props
+     if(summary){const details=element.parentElement;if(!(details instanceof HTMLDetailsElement)||details.firstElementChild!==element)throw new Error("Choose the original snapshot disclosure.");event?.preventDefault();details.open=!details.open;return;}
+     return invoke();
+   });
+-  const run=(event:{nativeEvent:Event})=>{if(summary)event.nativeEvent.preventDefault();const completion=executeCommand(command,{payload:{scopeId:scope},nativeInputEvent:event.nativeEvent});void completion.catch(reason=>reportCommandCompletionFailure(completion,reason,error=>{if(current())errToast(error);}));};
++  const run=(event:{nativeEvent:Event})=>{if(summary)event.nativeEvent.preventDefault();dispatchScopedControlInput(command,scope,event.nativeEvent,error=>{if(current())errToast(error);});};
+   return summary ? <summary ref={ref} data-command-id={command} onClick={run}>{props.children}</summary> : <button {...props} ref={ref} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/LibraryControls.tsx b/apps/shell/src/components/LibraryControls.tsx
+index ef02864..d708ef3 100644
+--- a/apps/shell/src/components/LibraryControls.tsx
++++ b/apps/shell/src/components/LibraryControls.tsx
+@@ -1,8 +1,7 @@
+ import { useCallback, useId, useLayoutEffect, useMemo, type ButtonHTMLAttributes } from "react";
+ import { bridge } from "../bridge";
+-import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { executeCommand } from "../commands";
+-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
++import { usePreferenceCommand, dispatchScopedControlInput } from "../settings/sections/preference-command";
++import { guardCommandCompletion } from "../command-completion";
+ export class LibraryReadOwner {
+   active = true;
+   constructor(
+@@ -55,13 +54,8 @@ export function useLibraryControl<E extends HTMLElement>(
+       ? invoke(event)
+       : guardCommandCompletion(Promise.reject(new Error("Choose the original Library view.")), current),
+   );
+-  const run = (event: { nativeEvent: Event }) => {
+-    const completion = executeCommand(command, {
+-      payload: { scopeId: scope },
+-      nativeInputEvent: event.nativeEvent,
+-    });
+-    void completion.catch((reason) => reportCommandCompletionFailure(completion, reason, () => {}));
+-  };
++  const run = (event: { nativeEvent: Event }) =>
++    dispatchScopedControlInput(command, scope, event.nativeEvent);
+   return [ref, run] as const;
+ }
+ export function LibraryButton({
+diff --git a/apps/shell/src/components/ResultPreviewControls.tsx b/apps/shell/src/components/ResultPreviewControls.tsx
+index 9d744e6..a7f3464 100644
+--- a/apps/shell/src/components/ResultPreviewControls.tsx
++++ b/apps/shell/src/components/ResultPreviewControls.tsx
+@@ -1,14 +1,14 @@
+ import { useCallback, useId, type ButtonHTMLAttributes } from "react";
+ import { useScopedCommandControls } from "../scoped-command-controls";
+-import { executeCommand } from "../commands";
+-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
++import { dispatchScopedControlInput } from "../settings/sections/preference-command";
++import { guardCommandCompletion } from "../command-completion";
+ import { errToast } from "../store";
+ export type ResultCommand = "close-generated-result-preview" | "toggle-generated-result-source" | "export-generated-result" | "select-generated-result-version" | "save-generated-result-version" | "close-saved-result-preview" | "toggle-saved-result-source" | "copy-saved-result" | "toggle-saved-result-export" | "export-saved-result" | "export-saved-result-excel" | "retry-saved-result-read" | "discard-saved-result-edits" | "save-saved-result-version" | "attach-saved-result-copy";
+ export function useResultPreviewCommand(command:ResultCommand,current:()=>boolean,invoke:(element:HTMLButtonElement,event?:Event)=>unknown,report=true){
+   const scope=useId();
+   const [publish]=useScopedCommandControls(scope,()=>current);
+   const ref=useCallback((element:HTMLButtonElement|null)=>publish(command,command,element,()=>current()&&element?invoke(element):guardCommandCompletion(Promise.reject(new Error("Choose the original result preview.")),current)),[publish,command,current,invoke]);
+-  const run=(event:{nativeEvent:Event})=>{const completion=executeCommand(command,{payload:{scopeId:scope},nativeInputEvent:event.nativeEvent});void completion.catch(reason=>reportCommandCompletionFailure(completion,reason,error=>{if(report&&current())errToast(error);}));};
++  const run=(event:{nativeEvent:Event})=>dispatchScopedControlInput(command,scope,event.nativeEvent,error=>{if(report&&current())errToast(error);});
+   return [ref,run] as const;
+ }
+ export function ResultPreviewControl({command,current,invoke,report=true,...props}:Omit<ButtonHTMLAttributes<HTMLButtonElement>,"onClick"> & {command:ResultCommand;current():boolean;invoke():unknown;report?:boolean}) {
+diff --git a/apps/shell/src/components/StructuredResultControls.tsx b/apps/shell/src/components/StructuredResultControls.tsx
+index e60e4f8..bd43937 100644
+--- a/apps/shell/src/components/StructuredResultControls.tsx
++++ b/apps/shell/src/components/StructuredResultControls.tsx
+@@ -1,7 +1,6 @@
+ import { useId, type ButtonHTMLAttributes, type HTMLAttributes } from "react";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
+-import { executeCommand } from "../commands";
++import { guardCommandCompletion } from "../command-completion";
+ import { errToast } from "../store";
+ type StructuredCommand =
+   "toggle-saved-result-format" | "select-saved-result-row" | "close-saved-result-row-details";
+@@ -11,25 +10,21 @@ function useStructuredControl<E extends HTMLElement>(
+   invoke: (event?: Event) => unknown,
+ ) {
+   const scope = useId();
+-  const [ref] = usePreferenceCommand<E>(command, scope, (_element, event) =>
+-    current()
+-      ? invoke(event)
+-      : guardCommandCompletion(
+-          Promise.reject(new Error("Choose the original saved result source.")),
+-          current,
+-        ),
++  const [ref, run] = usePreferenceCommand<E>(
++    command,
++    scope,
++    (_element, event) =>
++      current()
++        ? invoke(event)
++        : guardCommandCompletion(
++            Promise.reject(new Error("Choose the original saved result source.")),
++            current,
++          ),
++    (error) => {
++      if (current()) errToast(error);
++    },
+   );
+-  const run = (event: { nativeEvent: Event }) => {
+-    const completion = executeCommand(command, {
+-      payload: { scopeId: scope },
+-      nativeInputEvent: event.nativeEvent,
+-    });
+-    void completion.catch((reason) =>
+-      reportCommandCompletionFailure(completion, reason, (error) => {
+-        if (current()) errToast(error);
+-      }),
+-    );
+-  };
++
+   return [ref, run] as const;
+ }
+ export function StructuredResultControl({
+diff --git a/apps/shell/src/settings/sections/preference-command.test.tsx b/apps/shell/src/settings/sections/preference-command.test.tsx
+new file mode 100644
+index 0000000..5888bca
+--- /dev/null
++++ b/apps/shell/src/settings/sections/preference-command.test.tsx
+@@ -0,0 +1,122 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { usePreferenceCommand } from "./preference-command";
++import { guardCommandCompletion } from "../../command-completion";
++import { executeCommand } from "../../commands";
++import { useStore } from "../../store";
++const id = "retry-saved-result-read",
++  scope = "original-mounted-preference";
++const initial = useStore.getState();
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
++function Control({
++  invoke,
++  report,
++}: {
++  invoke(original: HTMLButtonElement, event?: Event): unknown;
++  report?: (reason: unknown) => void;
++}) {
++  const [ref, run] = usePreferenceCommand<HTMLButtonElement>(id, scope, invoke, report);
++  return (
++    <button ref={ref} data-command-id={id} onClick={run}>
++      Original control
++    </button>
++  );
++}
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
++    { width: 100 },
++  ] as unknown as DOMRectList);
++  useStore.setState({ ...initial, toasts: [] }, true);
++  host = document.createElement("div");
++  document.body.append(host);
++  root = createRoot(host);
++});
++afterEach(async () => {
++  await act(async () => root.unmount());
++  host.remove();
++  useStore.setState(initial, true);
++  vi.restoreAllMocks();
++  vi.unstubAllGlobals();
++});
++const button = () => host.querySelector<HTMLButtonElement>("button")!;
++it("actual native input and mounted original button reach unchanged callback", async () => {
++  const seen: unknown[] = [];
++  const report = vi.fn();
++  await act(async () =>
++    root.render(
++      <Control
++        invoke={(original, event) => {
++          seen.push(original, event);
++          return "Original ACK";
++        }}
++        report={report}
++      />,
++    ),
++  );
++  const event = new MouseEvent("click", { bubbles: true, cancelable: true });
++  await act(async () => button().dispatchEvent(event));
++  expect(seen).toEqual([button(), event]);
++  expect(report).not.toHaveBeenCalled();
++});
++it("default original reporter stays silent for exact primitive rejection", async () => {
++  await act(async () => root.render(<Control invoke={() => Promise.reject("Original rejection")} />));
++  await act(async () => button().click());
++  expect(useStore.getState().toasts).toEqual([]);
++  button().focus();
++  await expect(executeCommand(id)).rejects.toBe("Original rejection");
++});
++it("opt-in reporter receives exact original rejection once", async () => {
++  const reason = { fixture: "Original reason" },
++    report = vi.fn();
++  await act(async () => root.render(<Control invoke={() => Promise.reject(reason)} report={report} />));
++  await act(async () => button().click());
++  expect(report).toHaveBeenCalledExactlyOnceWith(reason);
++});
++it("guarded original completion retains identity/result and rejects retired reporting", async () => {
++  let resolve!: (value: unknown) => void;
++  const native = new Promise((yes) => {
++    resolve = yes;
++  });
++  let current = true;
++  const original = guardCommandCompletion(native, () => current),
++    report = vi.fn();
++  await act(async () => root.render(<Control invoke={() => original} report={report} />));
++  button().focus();
++  const completion = executeCommand(id);
++  expect(completion).toBe(original);
++  const ack = { original: true };
++  await act(async () => resolve(ack));
++  await expect(completion).resolves.toBe(ack);
++  expect(report).not.toHaveBeenCalled();
++  let reject!: (reason: unknown) => void;
++  const failure = guardCommandCompletion(
++    new Promise((_, fail) => {
++      reject = fail;
++    }),
++    () => current,
++  );
++  await act(async () => root.render(<Control invoke={() => failure} report={report} />));
++  await act(async () => button().click());
++  current = false;
++  const reason = new Error("Retained native failure");
++  await act(async () => reject(reason));
++  await expect(failure).rejects.toBe(reason);
++  expect(report).not.toHaveBeenCalled();
++});
++it("new committed callback and mounted ref stay exact while retired control is refused", async () => {
++  const old = vi.fn(),
++    fresh = vi.fn();
++  await act(async () => root.render(<Control invoke={old} />));
++  const original = button();
++  await act(async () => root.render(<Control invoke={fresh} />));
++  await act(async () => button().click());
++  expect(old).not.toHaveBeenCalled();
++  expect(fresh).toHaveBeenCalledExactlyOnceWith(original, expect.any(MouseEvent));
++  await act(async () => root.render(null));
++  original.focus();
++  await expect(executeCommand(id, { payload: { scopeId: scope } })).rejects.toThrow();
++  expect(fresh).toHaveBeenCalledTimes(1);
++});
+diff --git a/apps/shell/src/settings/sections/preference-command.tsx b/apps/shell/src/settings/sections/preference-command.tsx
+index bd6059f..5abea2e 100644
+--- a/apps/shell/src/settings/sections/preference-command.tsx
++++ b/apps/shell/src/settings/sections/preference-command.tsx
+@@ -2,11 +2,23 @@ import { useCallback, useLayoutEffect, useRef, type ButtonHTMLAttributes, type S
+ import { executeCommand } from "../../commands";
+ import { reportCommandCompletionFailure } from "../../command-completion";
+ import { registerScopedControl } from "../../scoped-control-commands";
++const ignoreFailure = () => {};
++/** Original mounted input dispatch; preserve its exact completion reporting guard. */
++export function dispatchScopedControlInput(
++  command: string,
++  scopeId: string,
++  nativeInputEvent: Event,
++  report: (reason: unknown) => void = ignoreFailure,
++): void {
++  const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent });
++  void completion.catch((reason) => reportCommandCompletionFailure(completion, reason, report));
++}
+ /** Original input/form ownership; each surface retains its actual native policy. */
+ export function usePreferenceCommand<E extends HTMLElement>(
+   command: string,
+   scopeId: string,
+   invoke: (original: E, originalEvent?: Event) => unknown,
++  report: (reason: unknown) => void = ignoreFailure,
+ ) {
+   const element = useRef<E>(null);
+   useLayoutEffect(() => {
+@@ -21,8 +33,7 @@ export function usePreferenceCommand<E extends HTMLElement>(
+     element.current = node;
+   }, []);
+   const run = (event: SyntheticEvent<E>) => {
+-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
+-    void completion.catch((reason) => reportCommandCompletionFailure(completion, reason, () => {}));
++    dispatchScopedControlInput(command, scopeId, event.nativeEvent, report);
+   };
+   return [controlRef, run] as const;
+ }

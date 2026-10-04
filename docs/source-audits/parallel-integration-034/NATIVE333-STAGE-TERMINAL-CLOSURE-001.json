@@ -1,0 +1,262 @@
+{
+  "producer": "native333-original-stage002-natural-terminal-closure",
+  "stageProof": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/prep-proof.json",
+    "sha256": "7f56b930ec8086589b0fd320276a734b74a5fb8892a0e8a436316e061f9371c4"
+  },
+  "outerTerminal": {
+    "path": "/private/tmp/aux-builder-native333-preparation-001/native333-stage-original-launch-retry-002/original-terminal.json",
+    "sha256": "87d686243b89b9839fb68d64b2833e32aff05f858301a50c1d651248519e9904"
+  },
+  "rawArtifacts": {
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/shell-verify.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/generated-mode-receipt.json": {
+      "sha256": "e4c61cea928529833b2d9fa0d06e76c7292016ea8d2159c873a78751a64cf466",
+      "bytes": 2564
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/watch.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/shell-install.stdout.log": {
+      "sha256": "b31a5bafe2b4e44000de85d7c295ca96b6e3803bd3be6bd0a1ea68dd17ab7652",
+      "bytes": 124
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/before-aux_host_methods.h": {
+      "sha256": "d0f5744ea82e7dc4407c9f2ba9fec4ac4411b5f600d277ca0c1f79d3641d0022",
+      "bytes": 5398
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/watch-arm": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/bindings.stderr.log": {
+      "sha256": "faeaa94bcf7012d86f91ca647580449f56a263fb7eaf572c54789764f60a9b8f",
+      "bytes": 9
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/watch-config.json": {
+      "sha256": "9a0a9e9b11de0c9761696cbb86850ddb5f7a15408231d6b5873785ce06f2e3fa",
+      "bytes": 780
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/before-aux_host_methods.cc": {
+      "sha256": "c07f31c753cf5ba6b9121b700b85d887182f074a588a656faa318f89038e34fb",
+      "bytes": 205594
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/shell-verify.stdout.log": {
+      "sha256": "774193cdf82c51015a17f6e8e8c44c482e232f32f6f95a541fa67fe2d246b449",
+      "bytes": 100
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/shell-install.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/watch-done": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/watch.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/prestage-generated.json": {
+      "sha256": "c04a344b63af195f2e4c3dd254c0d7bcc105e4c6fab5e4307c5cd662c566b281",
+      "bytes": 381
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/watch-ready": {
+      "sha256": "2855b0c5b292409c4e8ac6a8b16ce119f50fb270f8346c5833088227d20a449c",
+      "bytes": 844
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/bindings.stdout.log": {
+      "sha256": "10b4aa9063640c4f07c1d871a2a0a5fbf3db8d08f31270e61a3e5d6fab957f00",
+      "bytes": 88
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/prep-proof.json": {
+      "sha256": "7f56b930ec8086589b0fd320276a734b74a5fb8892a0e8a436316e061f9371c4",
+      "bytes": 2066524
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/before-aux_feature_stages.ts": {
+      "sha256": "e94aca1186033dea2ee1a5a7a6ea43dbab88f5a8743c655b7d33e35ae1735af7",
+      "bytes": 18335
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/children.json": {
+      "sha256": "1caf8f3f984c1aba8bcce22927e5e3ba0801fe7e8ff799817f9c438fe5657b9b",
+      "bytes": 3195
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/expected/aux_host_methods.cc": {
+      "sha256": "c07f31c753cf5ba6b9121b700b85d887182f074a588a656faa318f89038e34fb",
+      "bytes": 205594
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/expected/aux_feature_stages.ts": {
+      "sha256": "e94aca1186033dea2ee1a5a7a6ea43dbab88f5a8743c655b7d33e35ae1735af7",
+      "bytes": 18335
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/expected/aux_host_methods.h": {
+      "sha256": "bf4d25576be4c324a9d1f280a9ea96905439b4f6abd56a1f122dc798dbf2b87f",
+      "bytes": 5398
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/watch/events.jsonl": {
+      "sha256": "c1d1821b0e6e00ce2b6bf7c57abab33d4e632b62aa4a6e215ee82703c8adf40d",
+      "bytes": 2882
+    },
+    "/private/tmp/aux-builder-native333-preparation-001/native333-stage-original-launch-retry-002/stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-builder-native333-preparation-001/native333-stage-original-launch-retry-002/stdout.log": {
+      "sha256": "bfc8ececbc6e49c4056dd59341f1c0c74cdebe2d3829888fd223189be1fa6907",
+      "bytes": 235
+    },
+    "/private/tmp/aux-builder-native333-preparation-001/native333-stage-original-launch-retry-002/original-terminal.json": {
+      "sha256": "87d686243b89b9839fb68d64b2833e32aff05f858301a50c1d651248519e9904",
+      "bytes": 1295
+    },
+    "/private/tmp/aux-builder-native333-preparation-001/native333-stage-original-launch-retry-002/original-launch.json": {
+      "sha256": "32379c79b223c97c3722538d3b25beef42e716be060f4a06eab0df7cfcb3ae3e",
+      "bytes": 1153
+    }
+  },
+  "actualChildren": [
+    {
+      "pid": 45741,
+      "pgid": 45741,
+      "argv": [
+        "node",
+        "chromium/stage-shell.mjs",
+        "verify"
+      ],
+      "stdout": "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/shell-verify.stdout.log",
+      "stderr": "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/shell-verify.stderr.log",
+      "deadlineSeconds": 900,
+      "originalStartRows": {
+        "45741": "45741 45650 45741 Sun Oct  4 16:01:06 2026     node"
+      },
+      "observedOriginalRows": {
+        "45741": "45741 45650 45741 Sun Oct  4 16:01:06 2026     node"
+      },
+      "exitCode": 0,
+      "originalGroupEmpty": true,
+      "stdoutSha256": "774193cdf82c51015a17f6e8e8c44c482e232f32f6f95a541fa67fe2d246b449",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "pid": 45756,
+      "pgid": 45756,
+      "argv": [
+        "node",
+        "chromium/stage-shell.mjs",
+        "install"
+      ],
+      "stdout": "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/shell-install.stdout.log",
+      "stderr": "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/shell-install.stderr.log",
+      "deadlineSeconds": 900,
+      "originalStartRows": {
+        "45756": "45756 45650 45756 Sun Oct  4 16:01:07 2026     node"
+      },
+      "observedOriginalRows": {
+        "45756": "45756 45650 45756 Sun Oct  4 16:01:07 2026     node"
+      },
+      "exitCode": 0,
+      "originalGroupEmpty": true,
+      "stdoutSha256": "b31a5bafe2b4e44000de85d7c295ca96b6e3803bd3be6bd0a1ea68dd17ab7652",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "pid": 45785,
+      "pgid": 45785,
+      "argv": [
+        "node",
+        "chromium/stage-host-bindings.mjs"
+      ],
+      "stdout": "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/bindings.stdout.log",
+      "stderr": "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-stage-preflight-retry-002/bindings.stderr.log",
+      "deadlineSeconds": 900,
+      "originalStartRows": {
+        "45785": "45785 45650 45785 Sun Oct  4 16:01:08 2026     node"
+      },
+      "observedOriginalRows": {
+        "45785": "45785 45650 45785 Sun Oct  4 16:01:08 2026     node",
+        "45793": "45793 45785 45785 Sun Oct  4 16:01:08 2026     node",
+        "45796": "45796 45793 45785 Sun Oct  4 16:01:08 2026     (node)",
+        "45811": "45811 45796 45785 Sun Oct  4 16:01:09 2026     (node)",
+        "45931": "45931 45785 45785 Sun Oct  4 16:01:14 2026     git",
+        "45935": "45935 45785 45785 Sun Oct  4 16:01:14 2026     git"
+      },
+      "exitCode": 0,
+      "originalGroupEmpty": true,
+      "stdoutSha256": "10b4aa9063640c4f07c1d871a2a0a5fbf3db8d08f31270e61a3e5d6fab957f00",
+      "stderrSha256": "faeaa94bcf7012d86f91ca647580449f56a263fb7eaf572c54789764f60a9b8f"
+    }
+  ],
+  "originalPids": [
+    45648,
+    45650,
+    45741,
+    45756,
+    45785,
+    45793,
+    45796,
+    45811,
+    45931,
+    45935
+  ],
+  "originalGroups": [
+    45648,
+    45741,
+    45756,
+    45785
+  ],
+  "actualRemainingRows": [],
+  "processSnapshot": {
+    "path": "/private/tmp/aux-builder-native333-preparation-001/native333-stage002-original-terminal-ps.stdout",
+    "sha256": "125587287c9d7ed993567970c2382bf514b0296f752f19323ef36f79bb9ce9f7"
+  },
+  "actualPhysicalGeneratedSeals": [
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/generated/aux_host_methods.h",
+      "actual": {
+        "device": 16777233,
+        "inode": 69380583,
+        "uid": 502,
+        "mode": 292,
+        "bytes": 5398,
+        "mtimeNs": 1791147674863732801,
+        "sha256": "bf4d25576be4c324a9d1f280a9ea96905439b4f6abd56a1f122dc798dbf2b87f"
+      }
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/generated/aux_host_methods.cc",
+      "actual": {
+        "device": 16777233,
+        "inode": 69380584,
+        "uid": 502,
+        "mode": 292,
+        "bytes": 205594,
+        "mtimeNs": 1791124096848567011,
+        "sha256": "c07f31c753cf5ba6b9121b700b85d887182f074a588a656faa318f89038e34fb"
+      }
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux_host/aux_feature_stages.ts",
+      "actual": {
+        "device": 16777233,
+        "inode": 69380585,
+        "uid": 502,
+        "mode": 292,
+        "bytes": 18335,
+        "mtimeNs": 1791124096852346072,
+        "sha256": "e94aca1186033dea2ee1a5a7a6ea43dbab88f5a8743c655b7d33e35ae1735af7"
+      }
+    }
+  ],
+  "slotAbsent": true,
+  "watcherNaturalDoneWithoutIncident": true,
+  "originalFailureRetained": {
+    "path": "/private/tmp/aux-builder-native333-preparation-001/NATIVE333-STAGE001-PREFLIGHT-REFUSAL-CLOSURE-001.json",
+    "sha256": "a62ea2f1bdd6386ac738e22de60aca81798871d7755a08b906c76e2fd0195c67"
+  },
+  "mixedPairNotLaunchable": true,
+  "appExecuted": false
+}

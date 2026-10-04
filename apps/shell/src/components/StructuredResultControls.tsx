@@ -1,7 +1,6 @@
 import { useId, type ButtonHTMLAttributes, type HTMLAttributes } from "react";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
-import { executeCommand } from "../commands";
+import { guardCommandCompletion } from "../command-completion";
 import { errToast } from "../store";
 type StructuredCommand =
   "toggle-saved-result-format" | "select-saved-result-row" | "close-saved-result-row-details";
@@ -11,25 +10,21 @@ function useStructuredControl<E extends HTMLElement>(
   invoke: (event?: Event) => unknown,
 ) {
   const scope = useId();
-  const [ref] = usePreferenceCommand<E>(command, scope, (_element, event) =>
-    current()
-      ? invoke(event)
-      : guardCommandCompletion(
-          Promise.reject(new Error("Choose the original saved result source.")),
-          current,
-        ),
+  const [ref, run] = usePreferenceCommand<E>(
+    command,
+    scope,
+    (_element, event) =>
+      current()
+        ? invoke(event)
+        : guardCommandCompletion(
+            Promise.reject(new Error("Choose the original saved result source.")),
+            current,
+          ),
+    (error) => {
+      if (current()) errToast(error);
+    },
   );
-  const run = (event: { nativeEvent: Event }) => {
-    const completion = executeCommand(command, {
-      payload: { scopeId: scope },
-      nativeInputEvent: event.nativeEvent,
-    });
-    void completion.catch((reason) =>
-      reportCommandCompletionFailure(completion, reason, (error) => {
-        if (current()) errToast(error);
-      }),
-    );
-  };
+
   return [ref, run] as const;
 }
 export function StructuredResultControl({

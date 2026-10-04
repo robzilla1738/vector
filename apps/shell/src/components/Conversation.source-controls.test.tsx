@@ -139,3 +139,15 @@ it("original modifier citation keeps background navigation arguments and exact r
 it("all five source actions are normal scoped and remappable", () => {
   for (const id of ["toggle-conversation-sources", "select-conversation-source", "open-conversation-recorded-source", "choose-conversation-source-profile", "cancel-conversation-source-profile"]) expect(COMMANDS.find(row => row.id === id)).toMatchObject({ windows: ["normal"], palette: false, bindings: [], intercept: true });
 });
+
+it("retired original Sources pointer prevents browser disclosure default without stale presentation", async () => {
+  await render(); const summary = disclosure(), details = list();
+  expect(summary.dataset.commandId).toBe("toggle-conversation-sources"); expect(details.open).toBe(false);
+  const pointer = new MouseEvent("click", { bubbles: true, cancelable: true });
+  await act(async () => { bridge.windowId = "foreign"; summary.dispatchEvent(pointer); });
+  expect(details.open).toBe(false); expect(pointer.defaultPrevented).toBe(true);
+  bridge.windowId = windowId;
+  await act(async () => summary.click());
+  expect(details.open).toBe(false); expect(useStore.getState().toasts).toEqual([]);
+  expect(useStore.getState().conversationDrafts["chat:a"]).toBe("Keep A draft");
+});

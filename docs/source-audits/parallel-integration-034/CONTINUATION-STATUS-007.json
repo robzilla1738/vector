@@ -1,0 +1,51 @@
+{
+  "completedSourceDeliverables": [
+    "Original shared scoped dispatch preserves native event/completion identity and caller reporting",
+    "Refused Sources pointer cancels browser disclosure default",
+    "Full task error text wraps without truncation",
+    "Disabled Capture hover preserves unavailable-state affordance",
+    "Library/Extensions/composer cohort now passes combined whole source gates"
+  ],
+  "rootChecks": {
+    "workspace": true,
+    "wholeUnit": "natural PASS640files4054tests",
+    "types": true,
+    "lint": "natural PASS unchanged390 ceiling",
+    "ratchetFormat": true,
+    "actualMountedSourceAndHelper": "natural PASS26controls",
+    "registrationAdmission": "independent TypeScript AST exact original callback argument equivalence"
+  },
+  "exactBundle": {
+    "startupJS": 503068,
+    "startupCSS": 179481,
+    "totalJS": 1850313,
+    "limits": {
+      "startupJS": 501760,
+      "startupCSS": 184320,
+      "totalJS": 1843200
+    },
+    "manifestSha256": "cfe27bb60bceeb1032f5bc1eee11bbef34dc2f2f62c61124c74707d3b3404559",
+    "buildTarget": "chrome154 packaged",
+    "sourceStage": "95489 + TaskHistory wrap + Context disabled-hover + shared completion12 + Source summary2",
+    "passed": false
+  },
+  "measurementCorrection": "First001 Vite was chrome150 preview; retained and labeled. Explicit packaged154002 naturally passed compilation and measured identical bytes/manifest; acceptance remains blocked.",
+  "native": {
+    "native333Stage": "actual natural PASS root733native333packets174assets27raw3zerochildren/seals/owner audit",
+    "native333GN": "actual natural PASS root34raw10children/eightflags/VersionAction/seals/owner audit",
+    "full18": "exact actual-stage/GN-bound admission issued; sole builder runs original cached build",
+    "nativeSafety": "previous332 failed; required524 not yet passed",
+    "appJourneys": "not admitted"
+  },
+  "sourcePreview": {
+    "nestedContextGeometryAndFocus": "observed fitted at720/800 with correct nested Escape return",
+    "settingsToNewChat": "reproduced P2 focus problem; designer implements regression/root-cause fix",
+    "qualification": "mock source preview only; no native/F21 acceptance"
+  },
+  "remaining": [
+    "Strict bundle limits and focus fix",
+    "NativeSafety and matching native/runtime/helper admission",
+    "All native/legacy/Stock journeys;20-trial AC performance;F21 contactsheets and owner signoff;WaveQ final gates mergeorder localmain"
+  ],
+  "promoted": false
+}

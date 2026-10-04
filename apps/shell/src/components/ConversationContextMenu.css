@@ -3,7 +3,7 @@
 .home-tools-trigger > button { width:var(--hit); height:var(--hit); padding:0; justify-content:center; }
 .home-tools-menu .capture-triggers { display:grid; gap:var(--space-1); }
 .home-tools-menu .capture-triggers > button { justify-content:flex-start; width:100%; min-height:36px; padding:var(--space-2); text-align:left; background:transparent; box-shadow:none; border:0; }
-.home-tools-menu .capture-triggers > button:hover { background:var(--bg-hover); }
+.home-tools-menu .capture-triggers > button:not(:disabled):hover { background:var(--bg-hover); }
 .home-tools-context { padding:var(--space-2) 0; margin:var(--space-2) 0; border-block:var(--hairline) solid var(--line); }
 .home-tools-menu .conversation-browser-context { width:100%; justify-items:stretch; margin:0; }
 .home-tools-menu .conversation-browser-context-controls { flex-wrap:wrap; justify-content:flex-start; }

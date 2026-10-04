@@ -1,0 +1,27 @@
+{
+  "baseline": "9759bdda1980288b2350ef40baff7aebb0299113",
+  "files": [
+    {
+      "path": "apps/shell/src/components/ConversationSourceControls.tsx",
+      "beforeSha256": "8c9b548dca28cdd014a9abaf25dcad50a46d129c11a928c80c3b9b1072244562",
+      "afterSha256": "a0a5d5ff97a8b44ed8a6e765daea111191c95e5c8f901bbe1a9f277aefb78137"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.source-controls.test.tsx",
+      "beforeSha256": "a2d72a6d447962b3a68193644557e02401e6186a21c949689d11715e912b5a6b",
+      "afterSha256": "f3cc49a7867112f17729e4b4ada4cd28601e9e8494346621b2c7689574ffd2b6"
+    }
+  ],
+  "patchSha256": "7c56830caa2b8781e5388ed232af8394774007d386a0b4550aa2ad7705bba508",
+  "replay": "exact forward/reverse/forward PASS",
+  "controls": {
+    "originalSource": 20,
+    "newStalePointer": 1,
+    "originalCalendar": 2,
+    "total": 23,
+    "types": "PASS",
+    "scopedLint": "PASS"
+  },
+  "nativeExecution": false,
+  "bundleMeasured": false
+}

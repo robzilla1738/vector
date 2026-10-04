@@ -2,6 +2,9 @@
   .task-content {
     container: task-content / inline-size;
   }
+  .task-history [role="alert"] > p {
+    overflow-wrap: anywhere;
+  }
   .task-content .drawer-head {
     gap: var(--space-3);
   }

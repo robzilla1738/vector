@@ -1,8 +1,7 @@
-import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type RefObject, type ReactNode, type SyntheticEvent } from "react";
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type RefObject, type ReactNode } from "react";
 import type { ConversationSource } from "@aux/contracts";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
-import { executeCommand } from "../commands";
-import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
+import { guardCommandCompletion } from "../command-completion";
 import { errToast } from "../store";
 import { SourceRow } from "./SourceRow";
 
@@ -22,14 +21,11 @@ export function useConversationSourcesOwner(current: () => boolean, sources: Con
 }
 function useSourceControl(command: SourceCommand, current: () => boolean, invoke: (element: HTMLElement, event?: Event) => unknown) {
   const scopeId = useId();
-  const [ref] = usePreferenceCommand<HTMLElement>(command, scopeId, (element, event) => {
+  const [ref, run] = usePreferenceCommand<HTMLElement>(command, scopeId, (element, event) => {
     if (!current()) return guardCommandCompletion(Promise.reject(new Error("Choose the original recorded conversation source.")), current);
     return invoke(element, event);
-  });
-  const run = (event: SyntheticEvent<HTMLElement>) => {
-    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
-    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, error => { if (current()) errToast(error); }));
-  };
+  }, error => { if (current()) errToast(error); });
+
   return [ref, run] as const;
 }
 export function ConversationSourceAction({ command, current, invoke, controlRef, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
@@ -51,5 +47,5 @@ export function ConversationSourcesSummary({ current, children }: { current(): b
     if (!(details instanceof HTMLDetailsElement) || details.firstElementChild !== summary) throw new Error("Choose the original Sources disclosure.");
     event?.preventDefault(); details.open = !details.open;
   });
-  return <summary ref={ref} data-command-id="toggle-conversation-sources" onClick={run}>{children}</summary>;
+  return <summary ref={ref} data-command-id="toggle-conversation-sources" onClick={event => { event.preventDefault(); run(event); }}>{children}</summary>;
 }

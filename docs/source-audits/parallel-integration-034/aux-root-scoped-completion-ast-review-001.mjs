@@ -1,0 +1,8 @@
+import ts from '/private/tmp/aux-root-sidebar-selection-next/node_modules/typescript/lib/typescript.js';
+import fs from 'node:fs'; import crypto from 'node:crypto';
+const root='/private/tmp/aux-root-sidebar-selection-next',packet=root+'/docs/lane-requests/l10/scoped-control-completion-construction';
+const pins=JSON.parse(fs.readFileSync(packet+'/SOURCE-PINS.json','utf8'));
+const printer=ts.createPrinter({removeComments:true}), names=new Set(['usePreferenceCommand','registerScopedControl','useScopedCommandControls','guardCommandCompletion']);
+function calls(path){const source=ts.createSourceFile(path,fs.readFileSync(path,'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);const out=[];function visit(n){if(ts.isCallExpression(n)&&names.has(n.expression.getText(source))){const name=n.expression.getText(source),args=name==='usePreferenceCommand'?Array.from(n.arguments).slice(0,3):n.arguments;out.push({name,args:Array.from(args).map(x=>printer.printNode(ts.EmitHint.Unspecified,x,source))});}ts.forEachChild(n,visit);}visit(source);return out;}
+const rows=[];for(const row of pins.files){if(row.beforeSha256===null||row.path.endsWith('.test.tsx'))continue;const b=calls(packet+'/before/'+row.path),a=calls(packet+'/after/'+row.path);if(JSON.stringify(b)!==JSON.stringify(a))throw Error(row.path+' registration/admission changed');rows.push({path:row.path,actualCalls:b.length,normalizedCallbackArgumentsEqual:true});}
+const proof={status:'ROOT_INDEPENDENT_TYPESCRIPT_AST_REGISTRATION_ADMISSION_PASS',rows,originalFirstThreePreferenceArgumentsAndAllOtherAdmissionCallsExact:true};fs.writeFileSync('/tmp/aux-root-scoped-completion-ast-review-001.json',JSON.stringify(proof,null,2)+'\n');console.log(JSON.stringify(proof));

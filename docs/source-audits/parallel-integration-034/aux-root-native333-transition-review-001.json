@@ -1,0 +1,11 @@
+{
+  "status": "TRANSITION_SOURCE_REVIEW_PASS",
+  "transitionSha256": "781f2c312b027afdfb65c76dd886b9c7d570c3378004d008260a6f44747e17f9",
+  "wholeMaps": 733,
+  "actualDelta": 3,
+  "exactForwardReverseForward": true,
+  "unchanged71OrderedDeclarations": true,
+  "sourceCaseClosureSha256": "e2ba1587cfb7f7f2cbac780c287d8a0dade02e7669061b39d56d4df8886c2e55",
+  "required524": true,
+  "StableWritten": false
+}
