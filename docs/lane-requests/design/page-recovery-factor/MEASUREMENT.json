@@ -1,0 +1,14 @@
+{
+  "nativeTarget": "chrome154",
+  "nativeFlag": "AUX_CHROMIUM_SHELL_BUILD=1",
+  "strictCSP": true,
+  "maps": false,
+  "startupBytes": 501553,
+  "strictStartupLimit": 501760,
+  "root011BeforeStartupBytes": 503232,
+  "savedStartupBytes": 1679,
+  "totalJsBytes": 1840160,
+  "moduleInputs": "402 source afead + accepted exact feature literals; owned compiled contracts differ from held root JS only commands.js",
+  "budgetResult": "PASS source-only",
+  "manifestSha256": "3f07f0e53be8589a7e79c0630e0ae2febbc8930c24360ae2e305f685529ad479"
+}

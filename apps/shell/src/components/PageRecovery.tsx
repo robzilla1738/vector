@@ -1,4 +1,4 @@
-import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
@@ -140,58 +140,11 @@ export function PageRecovery({ page }: { page: PageTarget }) {
         <p>{description.detail}</p>
         <p className="navigation-error-address selectable">{error?.url ?? page.url}</p>
         <div className="empty-actions">
-          <button
-            ref={(element) => publish("retry", "retry-page-recovery", element, retry)}
-            data-command-id="retry-page-recovery"
-            className="btn primary"
-            disabled={busy !== null}
-            onClick={(event) => run("retry-page-recovery", event)}
-          >
-            {busy === "reload" ? "Trying…" : crashed ? "Reload" : "Try again"}
-          </button>
-          <button
-            ref={(element) => publish("address", "edit-page-recovery-address", element, editAddress)}
-            data-command-id="edit-page-recovery-address"
-            className="btn"
-            onClick={(event) => run("edit-page-recovery-address", event)}
-          >
-            Edit address
-          </button>
-          {page.canGoBack && (
-            <button
-              ref={(element) => publish("back", "back-page-recovery", element, back)}
-              data-command-id="back-page-recovery"
-              className="btn"
-              disabled={busy !== null}
-              onClick={(event) => run("back-page-recovery", event)}
-            >
-              {busy === "back" ? "Going back…" : "Go back"}
-            </button>
-          )}
-          {httpFallback && (
-            <button
-              ref={(element) => publish("http", "continue-page-over-http", element, () => proceed(true))}
-              data-command-id="continue-page-over-http"
-              className="btn"
-              disabled={busy !== null}
-              onClick={(event) => run("continue-page-over-http", event)}
-            >
-              {busy === "proceed" ? "Continuing…" : "Continue over HTTP"}
-            </button>
-          )}
-          {insecure && (
-            <button
-              ref={(element) =>
-                publish("certificate", "proceed-page-certificate", element, () => proceed(false))
-              }
-              data-command-id="proceed-page-certificate"
-              className="btn ghost"
-              disabled={busy !== null}
-              onClick={(event) => run("proceed-page-certificate", event)}
-            >
-              {busy === "proceed" ? "Proceeding…" : "Proceed anyway (unsafe)"}
-            </button>
-          )}
+          <RecoveryButton control={[publish, run, "retry", "retry-page-recovery", retry]} className="btn primary" disabled={busy !== null}>{busy === "reload" ? "Trying…" : crashed ? "Reload" : "Try again"}</RecoveryButton>
+          <RecoveryButton control={[publish, run, "address", "edit-page-recovery-address", editAddress]}>Edit address</RecoveryButton>
+          {page.canGoBack && <RecoveryButton control={[publish, run, "back", "back-page-recovery", back]} disabled={busy !== null}>{busy === "back" ? "Going back…" : "Go back"}</RecoveryButton>}
+          {httpFallback && <RecoveryButton control={[publish, run, "http", "continue-page-over-http", () => proceed(true)]} disabled={busy !== null}>{busy === "proceed" ? "Continuing…" : "Continue over HTTP"}</RecoveryButton>}
+          {insecure && <RecoveryButton control={[publish, run, "certificate", "proceed-page-certificate", () => proceed(false)]} className="btn ghost" disabled={busy !== null}>{busy === "proceed" ? "Proceeding…" : "Proceed anyway (unsafe)"}</RecoveryButton>}
         </div>
         {actionError && <p role="alert">{actionError}</p>}
         {error && !crashed && (
@@ -217,4 +170,11 @@ export function PageRecovery({ page }: { page: PageTarget }) {
       </div>
     </div>
   );
+}
+
+function RecoveryButton({ control: [publish, run, key, command, invoke], children, className = "btn", disabled }: {
+  control: [...ReturnType<typeof useScopedCommandControls>, string, string, () => unknown];
+  children: ReactNode; className?: string; disabled?: boolean;
+}) {
+  return <button ref={element => publish(key, command, element, invoke)} data-command-id={command} className={className} disabled={disabled} onClick={event => run(command, event)}>{children}</button>;
 }
