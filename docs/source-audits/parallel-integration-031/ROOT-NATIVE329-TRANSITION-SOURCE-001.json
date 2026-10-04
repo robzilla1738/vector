@@ -1,0 +1,15 @@
+{
+  "sourceOnly": true,
+  "actual326Before733MapEqualsRetainedExport": true,
+  "actual329Final733MapEqualsReviewedExport": true,
+  "original5ChangedLeafPins": true,
+  "exactForwardReverseForward": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-native329-transition-replay-_3wwske8",
+  "actualDeclarationSources": 12,
+  "retainedNewDeclarations": 71,
+  "beforeAfterOrderedDeclarationsEqual": true,
+  "requiredCases": 524,
+  "actualBinaryEnumerationPending": true,
+  "executionAdmission": false,
+  "original326TerminalPending": true
+}
