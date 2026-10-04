@@ -1,0 +1,30 @@
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:59681) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:59685) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:59684) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:59683) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:59682) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:59686) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:59687) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| tests/unit/command-registry.test.ts (3 tests) 102ms
+ ✓ |unit| apps/shell/src/components/Conversation.controls.test.tsx (13 tests) 301ms
+ ✓ |unit| apps/shell/src/components/Composer.integration.test.tsx (10 tests) 341ms
+ ✓ |unit| apps/shell/src/components/Conversation.queued-controls.test.tsx (11 tests) 372ms
+ ✓ |unit| apps/shell/src/components/Conversation.live-controls.test.tsx (12 tests) 382ms
+ ✓ |unit| apps/shell/src/components/Conversation.view-controls.test.tsx (14 tests) 510ms
+ ✓ |unit| apps/shell/src/components/Conversation.recovery-controls.test.tsx (16 tests) 594ms
+
+ Test Files  7 passed (7)
+      Tests  79 passed (79)
+   Start at  13:04:20
+   Duration  3.98s (transform 1.32s, setup 0ms, collect 18.41s, tests 2.60s, environment 2.72s, prepare 419ms)
+

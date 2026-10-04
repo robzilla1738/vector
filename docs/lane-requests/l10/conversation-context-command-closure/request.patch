@@ -1,0 +1,268 @@
+diff --git a/apps/shell/src/components/Conversation.context-controls.test.tsx b/apps/shell/src/components/Conversation.context-controls.test.tsx
+new file mode 100644
+index 000000000..6cc309220
+--- /dev/null
++++ b/apps/shell/src/components/Conversation.context-controls.test.tsx
+@@ -0,0 +1,125 @@
++// @vitest-environment jsdom
++import { act, useCallback, useRef } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { COMMANDS } from "@aux/contracts";
++import { bridge } from "../bridge";
++import { useStore } from "../store";
++import { executeCommand, dispatchShortcut } from "../commands";
++import { makePage } from "../mock/fixtures";
++import { Conversation } from "./Conversation";
++import { useConversationContextControls } from "./ConversationContextControls";
++import { Popover } from "../ui/popover";
++
++const initial = useStore.getState(), windowId = bridge.windowId;
++const scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
++  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
++  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { callback(0); return 1; }); vi.stubGlobal("cancelAnimationFrame", () => {});
++  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
++  const page = makePage(0, { url: "http://127.0.0.1:3210/context", title: "Original selected context" });
++  useStore.setState({ ...initial, runs: [], steps: {}, pages: [page], activePageId: page.pageId, connected: true, toasts: [], pendingTurns: [], prompt: null, conversationDrafts: { "chat:a": "Keep A draft", "chat:b": "Keep B draft" }, conversationContexts: { "chat:a": page.pageId }, conversationBrowserSources: {} }, true);
++  vi.spyOn(bridge, "onEvent").mockImplementation(() => () => {});
++  vi.spyOn(bridge, "invoke").mockImplementation(async method => {
++    if (method === "runs.list" || method === "runs.messages.list") return [];
++    if (method === "conversations.get") return { title: "Original chat", archived: false };
++    if (method === "conversations.artifacts.get") return { artifacts: [] };
++    if (method === "conversations.images.get") return { images: [] };
++    if (method === "conversations.attachments.get") return { attachments: [] };
++    if (method === "conversations.sources.get") return { sources: [] };
++    if (method === "runs.context.get") return { entries: [], historyEnabled: true };
++    return { workspace: null, memory: null };
++  });
++  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
++});
++afterEach(async () => {
++  await act(async () => root.unmount()); host.remove(); useStore.setState(initial, true); bridge.windowId = windowId;
++  vi.restoreAllMocks(); vi.unstubAllGlobals();
++  if (scroll) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", scroll);
++  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
++});
++const add = () => host.querySelector<HTMLButtonElement>('[aria-label="Add context"]')!;
++const summary = () => host.querySelector<HTMLButtonElement>(".home-context-summary")!;
++const panel = (label = "Add context") => document.querySelector<HTMLDialogElement>(`dialog[aria-label="${label}"]`);
++async function render(chat = "a") { await act(async () => root.render(<Conversation chatId={chat} embedded/>)); }
++async function command(control = add()) { await act(async () => { control.focus(); await executeCommand("toggle-conversation-context"); }); }
++async function cancel(label = "Add context") { await act(async () => panel(label)!.dispatchEvent(new Event("cancel", { cancelable: true }))); }
++function key(node: Element, value: string) { return node.dispatchEvent(new KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true })); }
++it("registered Add toggles the original portal and preserves the exact composer, context and draft", async () => {
++  await render(); const input = host.querySelector<HTMLTextAreaElement>("textarea")!, context = useStore.getState().conversationContexts;
++  await act(async () => { add().focus(); add().click(); }); expect(panel()).not.toBeNull(); expect(add().getAttribute("aria-expanded")).toBe("true");
++  await cancel(); expect(panel()).toBeNull(); expect(document.activeElement).toBe(add());
++  expect(host.querySelector("textarea")).toBe(input); expect(input.value).toBe("Keep A draft"); expect(useStore.getState().conversationContexts).toBe(context);
++  expect(vi.mocked(bridge.invoke).mock.calls.some(([method]) => method === "runs.start" || method === "runs.context.set")).toBe(false);
++});
++it("context summary invokes the retained original activation without a synthetic click or lookup", async () => {
++  await render(); const actualClick = vi.fn(); add().addEventListener("click", actualClick); const lookup = vi.spyOn(host.querySelector(".conversation")!, "querySelector");
++  await act(async () => { summary().focus(); summary().click(); });
++  expect(panel()).not.toBeNull(); expect(actualClick).not.toHaveBeenCalled(); expect(lookup.mock.calls.some(([selector]) => String(selector).includes("home-tools-trigger"))).toBe(false);
++  await cancel(); expect(document.activeElement).toBe(add()); expect(useStore.getState().conversationDrafts["chat:a"]).toBe("Keep A draft");
++});
++it("focused remapped summary opens choices while disconnected without changing current context", async () => {
++  useStore.setState({ connected: false, settings: { shortcutOverrides: { "toggle-conversation-context": [{ key: "j", command: true, alt: true }] } } });
++  await render(); await act(async () => { summary().focus(); expect(dispatchShortcut({ key: "j", meta: true, alt: true, shift: false })).toBe(true); });
++  expect(panel()).not.toBeNull(); expect(panel()!.querySelector('[aria-label="Browser context"]')).not.toBeNull();
++  await cancel(); expect(useStore.getState().conversationDrafts["chat:a"]).toBe("Keep A draft"); expect(useStore.getState().conversationContexts["chat:a"]).toBe("page-1");
++});
++it("original nested browser-tab Popover Escape/cancel keeps outer choices and restores each actual opener", async () => {
++  await render(); await command(); const nested = panel()!.querySelector<HTMLButtonElement>('[aria-label="Add browser tabs"]')!;
++  await act(async () => { nested.focus(); nested.click(); }); expect(panel("Add browser tabs")).not.toBeNull();
++  await act(async () => key(panel("Add browser tabs")!.querySelector("input")!, "Escape"));
++  expect(panel("Add browser tabs")).toBeNull(); expect(panel()).not.toBeNull(); expect(document.activeElement).toBe(nested);
++  await act(async () => nested.click()); await cancel("Add browser tabs"); expect(panel()).not.toBeNull(); expect(document.activeElement).toBe(nested);
++  await act(async () => key(nested, "Escape")); expect(panel()).toBeNull(); expect(document.activeElement).toBe(add());
++});
++it("original backdrop click closes choices and returns to Add, without changing draft", async () => {
++  await render(); await command(summary());
++  await act(async () => panel()!.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 100, clientY: 100 })));
++  expect(panel()).toBeNull(); expect(document.activeElement).toBe(add()); expect(useStore.getState().conversationDrafts["chat:a"]).toBe("Keep A draft");
++});
++it("both controls remain actual focused owners and ambiguous/unfocused dispatch cannot choose one", async () => {
++  await render(); await expect(executeCommand("toggle-conversation-context")).rejects.toThrow("focused");
++  await command(add()); expect(panel()).not.toBeNull(); await cancel();
++  await command(summary()); expect(panel()).not.toBeNull(); await cancel();
++  expect(vi.mocked(bridge.invoke).mock.calls.some(([method]) => method === "runs.start")).toBe(false);
++});
++it("summary refuses a hidden or disabled original Add target without fabricating another opener", async () => {
++  await render(); add().disabled = true; await expect((async () => { summary().focus(); return executeCommand("toggle-conversation-context"); })()).rejects.toThrow("original conversation context"); expect(panel()).toBeNull();
++  add().disabled = false; add().closest<HTMLElement>(".home-tools-trigger")!.hidden = true;
++  await expect(executeCommand("toggle-conversation-context")).rejects.toThrow("original conversation context"); expect(panel()).toBeNull();
++});
++it("observed foreign-window ABA permanently refuses old controls but does not retire a newer chat owner", async () => {
++  await render(); const old = add(); await act(async () => old.focus()); bridge.windowId = "foreign";
++  await expect(executeCommand("toggle-conversation-context")).rejects.toThrow(); bridge.windowId = windowId;
++  await expect(executeCommand("toggle-conversation-context")).rejects.toThrow(); expect(panel()).toBeNull();
++  await render("b"); await command(); expect(panel()).not.toBeNull(); await cancel(); expect(useStore.getState().conversationDrafts["chat:b"]).toBe("Keep B draft");
++});
++function OptionalOpener({ mounted }: { mounted: boolean }) {
++  const current = useCallback(() => true, []), controls = useConversationContextControls(current);
++  return <>{mounted && <Popover label="Owned optional context" trigger="Original" triggerControl={controls.triggerControl} onTrigger={controls.onTrigger}>{() => <input aria-label="Owned field"/>}</Popover>}
++    <button ref={controls.summaryRef} onClick={controls.onSummary}>Summary</button></>;
++}
++it("an absent or removed actual Add target cannot be replaced by an inferred control", async () => {
++  await act(async () => root.render(<OptionalOpener mounted/>)); const original = host.querySelector<HTMLButtonElement>('[aria-label="Owned optional context"]')!;
++  await act(async () => root.render(<OptionalOpener mounted={false}/>)); expect(original.isConnected).toBe(false);
++  await act(async () => host.querySelector("button")!.focus()); await expect(executeCommand("toggle-conversation-context")).rejects.toThrow("original conversation context"); expect(panel("Owned optional context")).toBeNull();
++});
++it("unopted original Popover retains toggle, initial focus, disabled-close and cancellation behavior", async () => {
++  function Default({ disabled = false }) { const field = useRef<HTMLInputElement>(null); return <Popover label="Unopted original" trigger="Open" initialFocusRef={field} disabled={disabled}>{() => <><button>First</button><input ref={field} aria-label="Preferred field"/></>}</Popover>; }
++  await act(async () => root.render(<Default/>)); const trigger = host.querySelector("button")!;
++  await act(async () => { trigger.focus(); trigger.click(); }); expect(document.activeElement).toBe(panel("Unopted original")!.querySelector("input"));
++  await cancel("Unopted original"); expect(document.activeElement).toBe(trigger); expect(panel("Unopted original")).toBeNull();
++  await act(async () => trigger.click()); await act(async () => root.render(<Default disabled/>)); expect(panel("Unopted original")).toBeNull(); expect(trigger.disabled).toBe(true);
++});
++it("opt-in Popover receives the genuine original click event and invokes its same internal activation", async () => {
++  let activate!: () => void; const events: Event[] = [], native: Event[] = [];
++  await act(async () => root.render(<Popover label="Owned event" trigger="Open" triggerControl={(_, toggle) => { activate = toggle; }} onTrigger={event => { events.push(event.nativeEvent); activate(); }}>{() => <input/>}</Popover>));
++  const trigger = host.querySelector("button")!; trigger.addEventListener("click", event => native.push(event));
++  await act(async () => trigger.click()); expect(events).toEqual(native); expect(panel("Owned event")).not.toBeNull(); await cancel("Owned event");
++});
++it("the context row is normal scoped and remappable", () => {
++  expect(COMMANDS.find(row => row.id === "toggle-conversation-context")).toMatchObject({ windows: ["normal"], palette: false, bindings: [], intercept: true });
++});
+diff --git a/apps/shell/src/components/Conversation.tsx b/apps/shell/src/components/Conversation.tsx
+index b1dc81591..da7a2262e 100644
+--- a/apps/shell/src/components/Conversation.tsx
++++ b/apps/shell/src/components/Conversation.tsx
+@@ -1,3 +1,4 @@
++import { useConversationContextControls } from "./ConversationContextControls";
+ import { ConversationViewAction } from "./ConversationViewControls";
+ import { ConversationRecoveryAction } from "./ConversationRecoveryControls";
+ import { ConversationQueuedControls } from "./ConversationQueuedControls";
+@@ -152,6 +153,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+   const layout = useStore(s => s.layout);
+   const connected = useStore(s => s.connected);
+   const conversationCurrent = useConversationOwner(id, connected);
++  const contextControls = useConversationContextControls(conversationCurrent);
+   const [historyLoading, setHistoryLoading] = useState(false);
+   const [historyError, setHistoryError] = useState("");
+   const [earlier, setEarlier] = useState<ReturnType<typeof cursor> | null>(null);
+@@ -780,7 +782,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+       }}/>;
+   const composerModes = live && <div className="conversation-live-actions" role="group" aria-label="Send while Aux is working">{(answering ? ["answer", "steer", "queue"] as const : ["steer", "queue"] as const).map(mode => <ConversationLiveAction key={mode} command={mode === "answer" ? "select-conversation-answer" : mode === "steer" ? "select-conversation-steer" : "select-conversation-queue"} current={liveControlCurrent} className={effectiveLiveMode === mode ? "selected" : ""} aria-pressed={effectiveLiveMode === mode} invoke={() => setLiveSendMode(mode)}>{mode === "answer" ? "Answer question" : mode === "steer" ? "Steer now" : "Queue next"}</ConversationLiveAction>)}</div>;
+   const browserContextControls = <BrowserContextTray key={id ?? "new"} primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/>;
+-  const composerFooter = !taskBound && !answering && <div className="new-chat-options">{entryControls}<span className="home-tools-trigger"><Popover label="Add context" trigger={<>{shellIconPlusSm}{!home && <span>Add context</span>}</>}>
++  const composerFooter = !taskBound && !answering && <div className="new-chat-options">{entryControls}<span className="home-tools-trigger"><Popover label="Add context" triggerControl={contextControls.triggerControl} onTrigger={contextControls.onTrigger} trigger={<>{shellIconPlusSm}{!home && <span>Add context</span>}</>}>
+     {close => <div className="home-tools-menu"><header>Add to your question</header><div ref={setContextTools} onClick={event => { if ((event.target as HTMLElement).closest('button')) close(); }}/><div className="home-tools-context">{browserContextControls}</div>{home && dictation}{home && <HomeEntryAction className="context-choice" command="open-home-conversation" current={conversationCurrent} invoke={() => { close(); useStore.getState().openConversationDraft(id ?? null); }}>{shellIconOpen}<span>Open full conversation</span></HomeEntryAction>}</div>}
+   </Popover></span></div>;
+ 
+@@ -852,7 +854,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+       {queued.length > 0 && <section className="composer-queue" aria-label="Queued follow-ups"><header>Up next <span className="count nums">{queued.length}</span></header><ol>{queued.map(message => <li key={message.messageId} data-message-id={message.messageId}><p>{message.text}</p><div className="queued-message-state"><span role={message.status === "needs_attention" ? "alert" : undefined}>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><ConversationQueuedControls message={message} current={conversationCurrent} disabled={archived || queueBusy?.owner === conversationCurrent} onCancel={cancelQueued}/></>}</div></li>)}</ol></section>}
+       <ComposerFrame notices={<>{last && <RunControls runId={last.runId}/>}{answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{suspension?.request.instruction}</p></div>}{last?.status === "needs_input" && !answering && suspension?.kind !== "handoff" && <div className="composer-question" role="status"><strong>{suspension ? "Decision needed" : suspensionLoaded ? "Current request unavailable" : "Loading current request"}</strong><p>{suspension ? "Review the approval prompt before Aux continues." : suspensionLoaded ? "Refresh the request before continuing." : "Checking the durable request…"}</p>{suspensionLoaded && !suspension && <ConversationLiveAction command="reload-conversation-request" current={liveControlCurrent} className="btn sm" invoke={() => setSuspensionRefresh(value => value + 1)}>Retry loading request</ConversationLiveAction>}</div>}</>}>
+       <div className="composer-context">
+-      {(selectedContext && selectedContext.url !== "about:blank" || browserSources.length > 0) && <button type="button" className="home-context-summary" onClick={() => conversationRoot.current?.querySelector<HTMLButtonElement>('.home-tools-trigger > button')?.click()}>{shellIconGlobe}<span>{selectedContext?.title || selectedContext?.url || "Selected browser context"}{browserSources.length ? ` · ${browserSources.length} saved ${browserSources.length === 1 ? "source" : "sources"}` : ""}</span></button>}
++      {(selectedContext && selectedContext.url !== "about:blank" || browserSources.length > 0) && <button type="button" className="home-context-summary" ref={contextControls.summaryRef} data-command-id="toggle-conversation-context" onClick={contextControls.onSummary}>{shellIconGlobe}<span>{selectedContext?.title || selectedContext?.url || "Selected browser context"}{browserSources.length ? ` · ${browserSources.length} saved ${browserSources.length === 1 ? "source" : "sources"}` : ""}</span></button>}
+       <AttachmentTray items={attachmentItems} disabled={contextLocked} busy={attachmentSaving}/>
+       {id && turns.length > 0 && <ConversationContext key={id} chatId={id} revision={`${turns.length}:${last?.status}`} disabled={contextLocked || archived} onBusy={setHistorySaving}/>}
+       {imageTray}
+diff --git a/apps/shell/src/components/ConversationContextControls.tsx b/apps/shell/src/components/ConversationContextControls.tsx
+new file mode 100644
+index 000000000..34d29e5b3
+--- /dev/null
++++ b/apps/shell/src/components/ConversationContextControls.tsx
+@@ -0,0 +1,27 @@
++import { useCallback, useId, useLayoutEffect, useRef } from "react";
++import { usePreferenceCommand } from "../settings/sections/preference-command";
++
++/** Both visible controls retain the original Popover opener; no page authority is inferred. */
++export function useConversationContextControls(current: () => boolean) {
++  const triggerScope = useId(), summaryScope = useId();
++  const target = useRef<{ node: HTMLButtonElement; activate(): void } | null>(null);
++  const committed = useRef<{ active: boolean; target: typeof target.current } | null>(null);
++  useLayoutEffect(() => {
++    const original = { active: true, target: target.current }; committed.current = original;
++    return () => { original.active = false; };
++  });
++  const toggle = () => {
++    const original = committed.current, opener = original?.target;
++    if (!current() || !original?.active || !opener || target.current !== opener || !opener.node.isConnected || opener.node.disabled || opener.node.getAttribute("aria-disabled") === "true" || opener.node.closest('[hidden], [inert], [aria-hidden="true"]') || !opener.node.getClientRects().length)
++      throw new Error("Choose the original conversation context control.");
++    opener.activate();
++  };
++  const [triggerRef, onTrigger] = usePreferenceCommand<HTMLButtonElement>("toggle-conversation-context", triggerScope, toggle);
++  const [summaryRef, onSummary] = usePreferenceCommand<HTMLButtonElement>("toggle-conversation-context", summaryScope, toggle);
++  const triggerControl = useCallback((node: HTMLButtonElement | null, activate: () => void) => {
++    triggerRef(node);
++    const previous = target.current;
++    target.current = node ? previous?.node === node && previous.activate === activate ? previous : { node, activate } : null;
++  }, [triggerRef]);
++  return { triggerControl, onTrigger, summaryRef, onSummary };
++}
+diff --git a/apps/shell/src/ui/popover.tsx b/apps/shell/src/ui/popover.tsx
+index acd80ba79..7d607ab54 100644
+--- a/apps/shell/src/ui/popover.tsx
++++ b/apps/shell/src/ui/popover.tsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
++import { useCallback, useEffect, useId, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from "react";
+ import { createPortal } from "react-dom";
+ import { positionAnchoredPopover } from "../position-context-menu";
+ import { requestStageReport } from "../stage-obstruction";
+@@ -13,6 +13,8 @@ export function Popover({
+   className = "",
+   children,
+   initialFocusRef,
++  triggerControl,
++  onTrigger,
+ }: {
+   label: string;
+   trigger: ReactNode;
+@@ -20,12 +22,19 @@ export function Popover({
+   className?: string;
+   children(close: () => void): ReactNode;
+   initialFocusRef?: RefObject<HTMLElement | null>;
++  triggerControl?: (node: HTMLButtonElement | null, activate: () => void) => void;
++  onTrigger?: (event: MouseEvent<HTMLButtonElement>) => void;
+ }) {
+   const [open, setOpen] = useState(false);
+   const button = useRef<HTMLButtonElement>(null);
+   const panel = useRef<HTMLDialogElement>(null);
+   const id = useId();
+   const close = () => setOpen(false);
++  const activate = useCallback(() => setOpen(value => !value), []);
++  const setButton = useCallback((node: HTMLButtonElement | null) => {
++    button.current = node;
++    triggerControl?.(node, activate);
++  }, [triggerControl, activate]);
+   useNativeDialog(open && !disabled, panel, button, initialFocusRef);
+   useEffect(() => {
+     if (disabled) setOpen(false);
+@@ -53,7 +62,7 @@ export function Popover({
+   return (
+     <>
+       <button
+-        ref={button}
++        ref={setButton}
+         type="button"
+         className={`anchored-trigger ${className}`}
+         disabled={disabled}
+@@ -61,7 +70,7 @@ export function Popover({
+         aria-haspopup="dialog"
+         aria-expanded={open}
+         aria-controls={open ? id : undefined}
+-        onClick={() => setOpen((value) => !value)}
++        onClick={event => onTrigger ? onTrigger(event) : activate()}
+       >
+         {trigger}
+       </button>
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index 95c4d448b..e422f5eaf 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -128,6 +128,7 @@ export const COMMANDS = [
+   S("continue-conversation-in-rail", "Continue conversation in side panel", browserContextControl),
+   S("toggle-conversation-browser-preview", "Toggle conversation browser preview", browserContextControl),
+   S("jump-conversation-to-latest", "Jump to latest conversation message", browserContextControl),
++  S("toggle-conversation-context", "Toggle conversation context choices", browserContextControl),
+   ...G(pageRecoveryControl, "-page-recovery", [
+     ["retry", "", "Retry this page"],
+     ["edit", "-address", "Edit failing page address"],

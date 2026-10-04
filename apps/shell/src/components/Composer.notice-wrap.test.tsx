@@ -11,11 +11,13 @@ import { bridge } from "../bridge";
 import { useStore } from "../store";
 import { makeRun } from "../mock/fixtures";
 const initial = useStore.getState();
+const originalScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
 const instruction = `Review this original URL before answering:\nhttps://aux-owned.invalid/${"UnbrokenQuestion".repeat(40)}`;
 const error = `This queued reply needs attention: ${"OriginalNativeDeliveryDiagnostic".repeat(30)}`;
 let host: HTMLDivElement, root: ReturnType<typeof createRoot>, style: HTMLStyleElement;
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -28,7 +30,7 @@ beforeEach(() => {
     return 1;
   });
   vi.stubGlobal("cancelAnimationFrame", () => {});
-  HTMLElement.prototype.scrollIntoView = vi.fn();
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -49,6 +51,8 @@ afterEach(async () => {
   useStore.setState(initial, true);
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  if (originalScroll) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", originalScroll);
+  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
 function source() {
   const run = makeRun({
@@ -139,6 +143,8 @@ it("retains exact queued cancellation and editing while preserving the separate 
   await act(async () => root.render(<Conversation chatId="notice-chat" embedded />));
   const button = (label: string) =>
     [...host.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === label)!;
+  expect(button("Queue next").getAttribute("data-command-id")).toBe("select-conversation-queue");
+  expect(button("Edit").getAttribute("data-command-id")).toBe("edit-conversation-queued-message");
   await act(async () => button("Queue next").click());
   expect(host.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("Kept separate follow-up");
   button("Edit").focus();

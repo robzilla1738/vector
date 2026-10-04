@@ -1,0 +1,5 @@
+Register original Add context and context summary through toggle-conversation-context. The summary invokes the retained actual Popover activation instead of a synthetic click/query. Generic Popover gains only optional original trigger ref/activation and event callbacks; default close, positioning, portal and focus behavior remain.
+
+Shared requests: ui/popover.tsx opt-in seam and exactly one normal scoped command row; root owns composition. New local hook retains actual Add node/activation, mounted committed target and existing Conversation owner. Missing/disabled/hidden/detached Add cannot be inferred from summary. Original disconnected availability, draft/context identity, native event, original nested dialog focus/Escape/cancel/backdrop remain.
+
+48 real mounted cases pass (12 new and 36 original). Removing only original opener disabled/hidden/visibility admission produces genuine registered-summary RED. Initial type failure from nonexistent test method was corrected to actual runs.context.set; original log retained. Final shell types pass; lint has original Conversation warnings and no errors. No renderer/native/qualification claim.

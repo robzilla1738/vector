@@ -1,0 +1,31 @@
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:67741) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:67737) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:67744) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:67740) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:67739) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:67742) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:67738) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Conversation.controls.test.tsx (13 tests) 408ms
+ ✓ |unit| apps/shell/src/components/Conversation.queued-controls.test.tsx (11 tests) 576ms
+ ✓ |unit| apps/shell/src/components/Conversation.live-controls.test.tsx (12 tests) 610ms
+ ✓ |unit| apps/shell/src/components/Conversation.view-controls.test.tsx (14 tests) 679ms
+ ✓ |unit| apps/shell/src/components/Composer.integration.test.tsx (10 tests) 666ms
+ ✓ |unit| apps/shell/src/components/Conversation.recovery-controls.test.tsx (16 tests) 968ms
+ ✓ |unit| apps/shell/src/components/Conversation.context-controls.test.tsx (12 tests) 1487ms
+   ✓ original nested browser-tab Popover Escape/cancel keeps outer choices and restores each actual opener  933ms
+
+ Test Files  7 passed (7)
+      Tests  88 passed (88)
+   Start at  13:19:31
+   Duration  8.21s (transform 1.96s, setup 0ms, collect 39.27s, tests 5.39s, environment 5.00s, prepare 633ms)
+

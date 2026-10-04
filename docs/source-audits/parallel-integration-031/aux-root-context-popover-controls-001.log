@@ -1,0 +1,20 @@
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:68606) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:68605) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:68604) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/ui/popover.test.tsx (1 test) 39ms
+ ✓ |unit| apps/shell/src/ui/popover-lifecycle.test.tsx (4 tests) 270ms
+ ✓ |unit| apps/shell/src/ui/native-dialog.parent-focus.test.tsx (2 tests) 1613ms
+   ✓ returns nested composer focus past a nonmodal education dialog without stealing newer focus  729ms
+   ✓ uses actual modal acquisition order when retained dialogs are arranged in reverse DOM order  883ms
+
+ Test Files  3 passed (3)
+      Tests  7 passed (7)
+   Start at  13:20:08
+   Duration  3.01s (transform 370ms, setup 0ms, collect 2.85s, tests 1.92s, environment 755ms, prepare 150ms)
+
