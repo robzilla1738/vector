@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { expect, it, vi } from "vitest";
+import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { TaskReceiptSchema } from "@aux/contracts";
 import { TaskReceiptView } from "./TaskReceiptView";
+beforeEach(()=>{vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{}] as unknown as DOMRectList);});
+afterEach(()=>vi.restoreAllMocks());
 
 it("shows prior form state and flags failed writes as uncertain", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);

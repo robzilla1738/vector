@@ -1,0 +1,727 @@
+--- a/apps/shell/src/settings/sections/PasswordsAutofill.tsx
++++ b/apps/shell/src/settings/sections/PasswordsAutofill.tsx
+@@ -1,11 +1,14 @@
+-import { useEffect, useState } from "react";
++import { useCallback, useLayoutEffect, useRef, useState } from "react";
+ import type { AutofillProfile } from "@aux/contracts";
+ import { AutofillSetting } from "../../components/AutofillSetting";
+ import { PasswordTransferSetting } from "../../components/PasswordTransferSetting";
+ import { bridge, inNativeHost } from "../../bridge";
+-import { errToast } from "../../store";
+ import { SettingsField, SettingsSection } from "../primitives";
+-
++import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
++import { useScopedCommandControls } from "../../scoped-command-controls";
++const availableNow = () => inNativeHost;
++const read = async () => ({ profile: await bridge.autofillProfile() });
++type Write = { profile: AutofillProfile; legacy?: string };
+ export function PasswordsAutofillSettings({
+   active,
+   settings,
+@@ -15,52 +18,117 @@
+   settings: Record<string, unknown>;
+   onSave: (patch: Record<string, unknown>) => Promise<boolean>;
+ }) {
+-  const [nativeAutofill, setNativeAutofill] = useState<AutofillProfile | null>(null);
+-  const [loading, setLoading] = useState(inNativeHost);
+-  const [error, setError] = useState("");
+-  const [attempt, setAttempt] = useState(0);
+-
+-  useEffect(() => {
+-    if (!active || !inNativeHost) return;
+-    let live = true;
+-    setLoading(true);
+-    void bridge.autofillProfile()
+-      .then(profile => { if (live) setNativeAutofill(profile); })
+-      .catch(reason => { if (live) setError(reason instanceof Error ? reason.message : String(reason)); })
+-      .finally(() => { if (live) setLoading(false); });
+-    return () => { live = false; };
+-  }, [active, attempt]);
+-
++  const legacy = settings.autofill as AutofillProfile | undefined;
++  const legacySnapshot = JSON.stringify(legacy ?? {});
++  const originalLegacy = useRef(legacySnapshot);
++  useLayoutEffect(() => {
++    originalLegacy.current = legacySnapshot;
++  }, [legacySnapshot]);
++  const [importing, setImporting] = useState<string | null>(null);
++  const write = useCallback(
++    async (input: Write, current: () => boolean) => {
++      const ack = await bridge.setAutofillProfile(input.profile);
++      if (!ack)
++        throw new Error(
++          input.legacy === undefined
++            ? "Chromium could not save personal info. Try again."
++            : "Chromium could not import personal info.",
++        );
++      if (input.legacy !== undefined && current() && originalLegacy.current === input.legacy)
++        await onSave({ autofill: {} });
++      return { ack: undefined, value: { profile: Object.keys(input.profile).length ? input.profile : null } };
++    },
++    [onSave],
++  );
++  const native = useNativePreference({
++    active,
++    available: inNativeHost,
++    availableNow,
++    read,
++    write,
++    refusal: "Choose the current personal info preference.",
++  });
++  const blocked = inNativeHost && !native.owner.current();
++  const loading = inNativeHost && !blocked && !native.value && !native.error;
++  const error = inNativeHost && !native.value ? native.error : "";
++  const [publish, run] = useScopedCommandControls(native.scopeId, () => {
++    const value = native.value;
++    return value && native.owner.owns(value)
++      ? () => native.owner.owns(value) && originalLegacy.current === legacySnapshot
++      : undefined;
++  });
++  function importLegacy() {
++    const value = native.value;
++    if (
++      !value ||
++      !native.owner.owns(value) ||
++      native.busy ||
++      !legacy ||
++      originalLegacy.current !== legacySnapshot
++    )
++      throw new Error("Choose the original personal info import.");
++    setImporting(legacySnapshot);
++    return native.perform({ profile: legacy, legacy: legacySnapshot }, value);
++  }
+   return (
+     <SettingsSection name="Passwords & Autofill" hidden={!active}>
+       <SettingsField
+         label="Personal info"
+         hint="Fill contact and address fields on a form with the context menu or command palette. Passwords and payment details are never stored here."
+       >
+-        {loading ? <output className="hint">Loading Chromium personal info…</output> :
+-          error ? <div><p className="field-error" role="alert">{error}</p><button className="btn sm ghost" onClick={() => {
+-            setLoading(true);
+-            setError("");
+-            setAttempt(value => value + 1);
+-          }}>Retry</button></div> :
++        {blocked ? (
++          <output className="hint">Personal info is available in your regular Aux window.</output>
++        ) : loading ? (
++          <output className="hint">Loading Chromium personal info…</output>
++        ) : error ? (
++          <div>
++            <p className="field-error" role="alert">
++              {error}
++            </p>
++            <NativePreferenceRetry
++              command="retry-personal-info"
++              scopeId={native.scopeId}
++              disabled={native.busy || !native.owner.current()}
++              read={native.refresh}
++            />
++          </div>
++        ) : (
+           <AutofillSetting
+-            value={inNativeHost ? nativeAutofill ?? undefined : settings.autofill as AutofillProfile | undefined}
+-            onSave={async autofill => {
+-              if (!inNativeHost) return onSave({ autofill });
+-              if (!await bridge.setAutofillProfile(autofill)) throw new Error("Chromium could not save personal info. Try again.");
+-              setNativeAutofill(Object.keys(autofill).length ? autofill : null);
++            active={active && (!inNativeHost || (!!native.value && native.owner.current()))}
++            value={inNativeHost ? (native.value?.profile ?? undefined) : legacy}
++            onSave={async (profile) => {
++              if (!inNativeHost) return onSave({ autofill: profile });
++              const value = native.value;
++              if (!value) throw new Error("Choose the current personal info preference.");
++              setImporting(null);
++              return native.perform({ profile }, value);
+             }}
+-          />}
+-        {inNativeHost && !loading && !error && !nativeAutofill &&
+-          Object.values(settings.autofill ?? {}).some(value => typeof value === "string" && value.trim()) &&
+-          <button className="btn sm ghost" onClick={() => void (async () => {
+-            const legacy = settings.autofill as AutofillProfile;
+-            if (!await bridge.setAutofillProfile(legacy)) throw new Error("Chromium could not import personal info.");
+-            setNativeAutofill(legacy);
+-            await onSave({ autofill: {} });
+-          })().catch(errToast)}>Import prior Aux personal info into Chromium</button>}
++          />
++        )}
++        {inNativeHost &&
++          native.value &&
++          !native.value.profile &&
++          Object.values(legacy ?? {}).some((value) => typeof value === "string" && value.trim()) && (
++            <button
++              ref={(element) => publish("import", "import-prior-personal-info", element, importLegacy)}
++              className="btn sm ghost"
++              data-command-id="import-prior-personal-info"
++              disabled={native.busy || !native.owner.current()}
++              onClick={(event) => run("import-prior-personal-info", event)}
++            >
++              Import prior Aux personal info into Chromium
++            </button>
++          )}
++        {importing === legacySnapshot && native.value && native.error && (
++          <p className="field-error" role="alert">
++            {native.error}
++          </p>
++        )}
+       </SettingsField>
+-      <SettingsField label="Saved passwords" hint="Manage passwords in Chromium’s Profile store. Passkeys stay managed by Chromium.">
++      <SettingsField
++        label="Saved passwords"
++        hint="Manage passwords in Chromium’s Profile store. Passkeys stay managed by Chromium."
++      >
+         <PasswordTransferSetting />
+       </SettingsField>
+     </SettingsSection>
+--- a/apps/shell/src/components/AutofillSetting.tsx
++++ b/apps/shell/src/components/AutofillSetting.tsx
+@@ -1,5 +1,8 @@
+-import { useState } from "react";
++import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+ import type { AutofillProfile } from "@aux/contracts";
++import { bridge } from "../bridge";
++import { guardCommandCompletion } from "../command-completion";
++import { useScopedCommandControls } from "../scoped-command-controls";
+ const FIELDS: { key: keyof AutofillProfile; label: string; auto?: string }[] = [
+   { key: "name", label: "Name", auto: "name" },
+   { key: "email", label: "Email", auto: "email" },
+@@ -11,46 +14,197 @@
+   { key: "postal", label: "ZIP or postal code", auto: "postal-code" },
+   { key: "country", label: "Country", auto: "country-name" },
+ ];
+-
+-/**
+- * One personal-info card offered to page forms on explicit request (context
+- * menu or command palette). Passwords and payment are intentionally absent —
+- * credentials are the vault's job, not form data.
+- */
+-export function AutofillSetting({ value, onSave }: { value: AutofillProfile | undefined; onSave: (next: AutofillProfile) => Promise<unknown> }) {
+-  const [editing, setEditing] = useState(false);
+-  const [draft, setDraft] = useState<AutofillProfile>({});
+-  const [busy, setBusy] = useState(false);
+-  const [error, setError] = useState("");
+-  const profile = value ?? {};
+-  const filled = FIELDS.filter(field => profile[field.key]?.trim());
+-  const start = () => { setDraft({ ...profile }); setError(""); setEditing(true); };
+-  const save = async () => {
+-    setBusy(true); setError("");
+-    try {
+-      const clean = {} as AutofillProfile;
+-      for (const field of FIELDS) { const value = draft[field.key]?.trim(); if (value) clean[field.key] = value; }
+-      await onSave(clean);
+-      setEditing(false);
+-    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+-    finally { setBusy(false); }
+-  };
+-  return <div className="autofill-setting">
+-    {!editing && <div className="row">
+-      {filled.length
+-        ? <span className="hint">{filled.length} detail{filled.length === 1 ? "" : "s"} saved — {filled.slice(0, 3).map(field => field.label.toLowerCase()).join(", ")}{filled.length > 3 ? "…" : ""}</span>
+-        : <span className="hint">No personal info saved. Forms fill only when you choose Fill personal info.</span>}
+-      <button className="btn sm" onClick={start}>{filled.length ? "Edit" : "Add personal info"}</button>
+-    </div>}
+-    {editing && <form className="autofill-editor" onSubmit={event => { event.preventDefault(); void save(); }}>
+-      {FIELDS.map(field => <label className="autofill-field" key={field.key}><span>{field.label}</span>
+-        <input className="field-input" autoComplete={field.auto} disabled={busy} value={draft[field.key] ?? ""} onChange={event => setDraft(current => ({ ...current, [field.key]: event.target.value }))} />
+-      </label>)}
+-      <div className="row">
+-        <button className="btn sm" type="submit" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
+-        <button className="btn sm ghost" type="button" disabled={busy} onClick={() => setEditing(false)}>Cancel</button>
+-      </div>
+-      {error && <p className="hint err">{error}</p>}
+-    </form>}
+-  </div>;
++type Owner = { active: boolean; pending: boolean; identity: object };
++/** Contact/address data only; original explicit form filling excludes credentials/payment. */
++export function AutofillSetting({
++  value,
++  onSave,
++  active = true,
++}: {
++  value: AutofillProfile | undefined;
++  onSave: (next: AutofillProfile) => Promise<unknown>;
++  active?: boolean;
++}) {
++  const windowId = bridge.windowId,
++    privateMode = bridge.privateMode,
++    kind = bridge.windowKind;
++  const snapshot = JSON.stringify(value ?? {});
++  const identity = useMemo(
++    () => ({ snapshot, windowId, privateMode, kind, active }),
++    [snapshot, windowId, privateMode, kind, active],
++  );
++  const owner = useRef<Owner>({ active: false, pending: false, identity });
++  useLayoutEffect(() => {
++    const original = { active: true, pending: false, identity };
++    owner.current = original;
++    return () => {
++      original.active = false;
++    };
++  }, [identity]);
++  const current = useCallback(
++    (original: Owner) =>
++      original.active &&
++      owner.current === original &&
++      original.identity === identity &&
++      active &&
++      !privateMode &&
++      kind === "normal" &&
++      !bridge.privateMode &&
++      bridge.windowId === windowId &&
++      bridge.windowKind === kind,
++    [identity, active, privateMode, kind, windowId],
++  );
++  const [editing, setEditing] = useState<{ owner: Owner; draft: AutofillProfile } | null>(null);
++  const [failure, setFailure] = useState<{ owner: Owner; message: string } | null>(null);
++  const [pending, setPending] = useState<Owner | null>(null);
++  const draft = editing?.owner.active && editing.owner.identity === identity ? editing.draft : null;
++  const draftRef = useRef(draft);
++  useLayoutEffect(() => {
++    draftRef.current = draft;
++  }, [draft]);
++  const busy = pending?.active && pending.identity === identity;
++  const error = failure?.owner.active && failure.owner.identity === identity ? failure.message : "";
++  const scopeId = useId();
++  const [publish, run] = useScopedCommandControls(scopeId, () => {
++    const original = owner.current;
++    return current(original) ? () => current(original) : undefined;
++  });
++  function requireOwner() {
++    const original = owner.current;
++    if (!current(original) || original.pending) throw new Error("Choose the current personal info control.");
++    return original;
++  }
++  function start() {
++    const original = requireOwner();
++    const next = { ...value };
++    draftRef.current = next;
++    setEditing({ owner: original, draft: next });
++    setFailure(null);
++  }
++  function cancel() {
++    requireOwner();
++    draftRef.current = null;
++    setEditing(null);
++    setFailure(null);
++  }
++  function change(key: keyof AutofillProfile, text: string) {
++    const original = requireOwner();
++    if (!draftRef.current) return;
++    const next = { ...draftRef.current, [key]: text };
++    draftRef.current = next;
++    setEditing({ owner: original, draft: next });
++  }
++  function save() {
++    const original = requireOwner(),
++      savedDraft = draftRef.current;
++    if (!savedDraft) throw new Error("Edit the current personal info first.");
++    original.pending = true;
++    setPending(original);
++    setFailure(null);
++    const delivering = () => current(original) && draftRef.current === savedDraft;
++    const completion = (async () => {
++      try {
++        const clean = {} as AutofillProfile;
++        for (const field of FIELDS) {
++          const text = savedDraft[field.key]?.trim();
++          if (text) clean[field.key] = text;
++        }
++        const ack = await onSave(clean);
++        if (delivering()) {
++          if (ack === false)
++            setFailure({ owner: original, message: "Personal info wasn’t saved. Try again." });
++          else {
++            draftRef.current = null;
++            setEditing(null);
++          }
++        }
++        return ack;
++      } catch (reason) {
++        if (delivering())
++          setFailure({ owner: original, message: reason instanceof Error ? reason.message : String(reason) });
++        throw reason;
++      } finally {
++        original.pending = false;
++        setPending((previous) => (previous === original ? null : previous));
++      }
++    })();
++    return guardCommandCompletion(completion, delivering);
++  }
++  const filled = FIELDS.filter((field) => value?.[field.key]?.trim());
++  const disabled = !active || privateMode || kind !== "normal";
++  return (
++    <div className="autofill-setting">
++      {!draft && (
++        <div className="row">
++          {filled.length ? (
++            <span className="hint">
++              {filled.length} detail{filled.length === 1 ? "" : "s"} saved —{" "}
++              {filled
++                .slice(0, 3)
++                .map((field) => field.label.toLowerCase())
++                .join(", ")}
++              {filled.length > 3 ? "…" : ""}
++            </span>
++          ) : (
++            <span className="hint">
++              No personal info saved. Forms fill only when you choose Fill personal info.
++            </span>
++          )}
++          <button
++            ref={(element) => publish("edit", "edit-personal-info", element, start)}
++            className="btn sm"
++            disabled={disabled}
++            data-command-id="edit-personal-info"
++            onClick={(event) => run("edit-personal-info", event)}
++          >
++            {filled.length ? "Edit" : "Add personal info"}
++          </button>
++        </div>
++      )}
++      {draft && (
++        <form
++          ref={(element) => publish("save", "save-personal-info", element, save)}
++          className="autofill-editor"
++          data-command-id="save-personal-info"
++          onSubmit={(event) => {
++            event.preventDefault();
++            run("save-personal-info", event);
++          }}
++        >
++          {FIELDS.map((field) => (
++            <label className="autofill-field" key={field.key}>
++              <span>{field.label}</span>
++              <input
++                className="field-input"
++                autoComplete={field.auto}
++                disabled={busy || disabled}
++                value={draft[field.key] ?? ""}
++                onChange={(event) => change(field.key, event.target.value)}
++              />
++            </label>
++          ))}
++          <div className="row">
++            <button className="btn sm" type="submit" disabled={busy || disabled}>
++              {busy ? "Saving…" : "Save"}
++            </button>
++            <button
++              ref={(element) => publish("cancel", "cancel-personal-info", element, cancel)}
++              className="btn sm ghost"
++              type="button"
++              data-command-id="cancel-personal-info"
++              disabled={busy || disabled}
++              onClick={(event) => run("cancel-personal-info", event)}
++            >
++              Cancel
++            </button>
++          </div>
++          {error && (
++            <p className="field-error" role="alert">
++              {error}
++            </p>
++          )}
++        </form>
++      )}
++    </div>
++  );
+ }
+diff --git a/apps/shell/src/components/AutofillSetting.controls.test.tsx b/apps/shell/src/components/AutofillSetting.controls.test.tsx
+new file mode 100644
+--- /dev/null
++++ b/apps/shell/src/components/AutofillSetting.controls.test.tsx
+@@ -0,0 +1,260 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { AutofillSetting } from "./AutofillSetting";
++import { PasswordsAutofillSettings } from "../settings/sections/PasswordsAutofill";
++import { invokeScopedControl } from "../scoped-control-commands";
++const native = vi.hoisted(() => ({
++  windowId: "main",
++  windowKind: "normal",
++  privateMode: false,
++  autofillProfile: vi.fn(),
++  setAutofillProfile: vi.fn(),
++}));
++const errors = vi.hoisted(() => vi.fn());
++vi.mock("../bridge", () => ({ inNativeHost: true, bridge: native }));
++vi.mock("../commands", () => ({
++  executeCommand: (id: string, invocation: any) => {
++    try {
++      return Promise.resolve(invokeScopedControl(id, invocation));
++    } catch (reason) {
++      return Promise.reject(reason);
++    }
++  },
++}));
++vi.mock("../store", () => ({
++  errToast: errors,
++  toast: vi.fn(),
++  useStore: Object.assign(() => ({}), { getState: () => ({}) }),
++}));
++vi.mock("./PasswordTransferSetting", () => ({ PasswordTransferSetting: () => null }));
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
++const save = vi.fn();
++let profile: any, active: boolean;
++async function render(parent = false) {
++  await act(async () =>
++    root.render(
++      parent ? (
++        <PasswordsAutofillSettings active={active} settings={{ autofill: profile }} onSave={save} />
++      ) : (
++        <AutofillSetting active={active} value={profile} onSave={save} />
++      ),
++    ),
++  );
++}
++const button = (name: string) =>
++  [...host.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent?.trim() === name)!;
++async function click(name: string) {
++  await act(async () => button(name).click());
++}
++async function edit(text: string) {
++  const input = host.querySelector<HTMLInputElement>('input[autocomplete="name"]')!;
++  await act(async () => {
++    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, text);
++    input.dispatchEvent(new Event("input", { bubbles: true }));
++  });
++}
++async function submit() {
++  await act(async () =>
++    host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
++  );
++}
++const held = <T,>() => {
++  let resolve!: (v: T) => void, reject!: (e: unknown) => void;
++  const promise = new Promise<T>((a, b) => {
++    resolve = a;
++    reject = b;
++  });
++  return { promise, resolve, reject };
++};
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 36 }] as any);
++  native.windowId = "main";
++  native.windowKind = "normal";
++  native.privateMode = false;
++  native.autofillProfile.mockReset().mockResolvedValue(null);
++  native.setAutofillProfile.mockReset().mockResolvedValue(true);
++  save.mockReset().mockResolvedValue(true);
++  errors.mockReset();
++  profile = undefined;
++  active = true;
++  host = document.createElement("div");
++  document.body.append(host);
++  root = createRoot(host);
++});
++afterEach(async () => {
++  await act(async () => root.unmount());
++  host.remove();
++  vi.restoreAllMocks();
++  vi.unstubAllGlobals();
++});
++it("registers focused Edit/Cancel and actual form submission, keeping original trimming and fields", async () => {
++  await render();
++  button("Add personal info").focus();
++  await act(async () => invokeScopedControl("edit-personal-info"));
++  expect(host.querySelectorAll("input")).toHaveLength(9);
++  await edit("  Ada  ");
++  await submit();
++  expect(save).toHaveBeenCalledWith({ name: "Ada" });
++  expect(host.querySelector("form")).toBeNull();
++  await click("Add personal info");
++  button("Cancel").focus();
++  await act(async () => invokeScopedControl("cancel-personal-info"));
++  expect(host.querySelector("form")).toBeNull();
++  expect(save).toHaveBeenCalledTimes(1);
++});
++it("preserves a false save ACK, original draft and active full rejection", async () => {
++  await render();
++  await click("Add personal info");
++  await edit("Ada");
++  save.mockResolvedValueOnce(false);
++  await submit();
++  expect(host.textContent).toContain("wasn’t saved");
++  expect(host.querySelector<HTMLInputElement>('input[autocomplete="name"]')!.value).toBe("Ada");
++  const reason = new Error("complete native diagnostic <unsafe>");
++  save.mockRejectedValueOnce(reason);
++  await submit();
++  expect(host.querySelector('[role="alert"]')!.textContent).toBe(reason.message);
++  expect(errors).toHaveBeenCalledWith(reason);
++  expect(host.querySelector("unsafe")).toBeNull();
++});
++it("reserves same-tick saves and returns the original result after window/private ABA retirement", async () => {
++  await render();
++  await click("Add personal info");
++  await edit("Ada");
++  const pending = held<boolean>();
++  save.mockReturnValueOnce(pending.promise);
++  button("Save").focus();
++  let completion: any;
++  await act(async () => {
++    completion = invokeScopedControl("save-personal-info");
++    expect(() => invokeScopedControl("save-personal-info")).toThrow("current");
++  });
++  native.privateMode = true;
++  await render();
++  native.privateMode = false;
++  await render();
++  await click("Add personal info");
++  await edit("New draft");
++  await act(async () => pending.resolve(true));
++  expect(await completion).toBe(true);
++  expect(host.querySelector<HTMLInputElement>('input[autocomplete="name"]')!.value).toBe("New draft");
++  expect(errors).not.toHaveBeenCalled();
++});
++it("retains original rejection without publishing stale diagnostics after changed-value retirement", async () => {
++  await render();
++  await click("Add personal info");
++  const pending = held<boolean>();
++  save.mockReturnValueOnce(pending.promise);
++  button("Save").focus();
++  let completion: any;
++  await act(async () => {
++    completion = invokeScopedControl("save-personal-info");
++  });
++  const reason = new Error("old private text");
++  const observed = completion.catch((e: unknown) => e);
++  profile = { name: "New value" };
++  await render();
++  await act(async () => pending.reject(reason));
++  expect(await observed).toBe(reason);
++  expect(host.textContent).not.toContain(reason.message);
++  expect(errors).not.toHaveBeenCalled();
++});
++it("recovers actual synchronous initial native transport throw through original Retry", async () => {
++  native.autofillProfile.mockImplementationOnce(() => {
++    throw new Error("transport unavailable <full>");
++  });
++  await render(true);
++  expect(host.querySelector('[role="alert"]')!.textContent).toBe("transport unavailable <full>");
++  expect(button("Retry").dataset.commandId).toBe("retry-personal-info");
++  await click("Retry");
++  expect(native.autofillProfile).toHaveBeenCalledTimes(2);
++  expect(button("Add personal info")).toBeTruthy();
++});
++it("keeps a native setter false ACK and original editable personal info", async () => {
++  await render(true);
++  await click("Add personal info");
++  await edit("Ada");
++  native.setAutofillProfile.mockResolvedValueOnce(false);
++  await submit();
++  expect(native.setAutofillProfile).toHaveBeenCalledWith({ name: "Ada" });
++  expect(host.textContent).toContain("Chromium could not save personal info. Try again.");
++  expect(host.querySelector<HTMLInputElement>('input[autocomplete="name"]')!.value).toBe("Ada");
++  expect(save).not.toHaveBeenCalled();
++});
++it("retires held native read on committed window A-B-A and never delivers original protected info", async () => {
++  const old = held<any>();
++  native.autofillProfile.mockReturnValueOnce(old.promise).mockResolvedValue({ name: "New" });
++  await render(true);
++  native.windowId = "other";
++  await render(true);
++  native.windowId = "main";
++  await render(true);
++  await act(async () => old.resolve({ name: "Old private" }));
++  await click("Edit");
++  expect(host.querySelector<HTMLInputElement>('input[autocomplete="name"]')!.value).toBe("New");
++});
++it("imports only original prior Aux data on native ACK and does not clear settings after retirement", async () => {
++  profile = { name: "Legacy" };
++  await render(true);
++  const pending = held<boolean>();
++  native.setAutofillProfile.mockReturnValueOnce(pending.promise);
++  await click("Import prior Aux personal info into Chromium");
++  expect(native.setAutofillProfile).toHaveBeenCalledWith(profile);
++  active = false;
++  await render(true);
++  active = true;
++  await render(true);
++  await act(async () => pending.resolve(true));
++  expect(save).not.toHaveBeenCalled();
++  expect(errors).not.toHaveBeenCalled();
++});
++
++it("refuses Private initial reads and original foreign focus before any edit effect", async () => {
++  native.privateMode = true;
++  await render(true);
++  expect(native.autofillProfile).not.toHaveBeenCalled();
++  expect(host.textContent).toContain("regular Aux window");
++  native.privateMode = false;
++  await render();
++  const foreign = document.createElement("button");
++  host.append(foreign);
++  foreign.focus();
++  expect(() => invokeScopedControl("edit-personal-info")).toThrow("focused");
++  expect(host.querySelector("form")).toBeNull();
++  expect(save).not.toHaveBeenCalled();
++});
++it("preserves active import false refusal and only clears prior data after exact native success", async () => {
++  profile = { name: "Legacy" };
++  await render(true);
++  native.setAutofillProfile.mockResolvedValueOnce(false);
++  await click("Import prior Aux personal info into Chromium");
++  expect(host.textContent).toContain("Chromium could not import personal info.");
++  expect(save).not.toHaveBeenCalled();
++  await click("Import prior Aux personal info into Chromium");
++  expect(save).toHaveBeenCalledWith({ autofill: {} });
++  expect(button("Edit")).toBeTruthy();
++});
++
++it("retains original rejected import identity without stale error after changed prior-data props", async () => {
++  profile = { name: "Old" };
++  await render(true);
++  const pending = held<boolean>();
++  native.setAutofillProfile.mockReturnValueOnce(pending.promise);
++  button("Import prior Aux personal info into Chromium").focus();
++  let completion: any;
++  await act(async () => {
++    completion = invokeScopedControl("import-prior-personal-info");
++  });
++  const reason = new Error("original old profile diagnostic");
++  const observed = completion.catch((e: unknown) => e);
++  profile = { name: "New" };
++  await render(true);
++  await act(async () => pending.reject(reason));
++  expect(await observed).toBe(reason);
++  expect(host.textContent).not.toContain(reason.message);
++  expect(errors).not.toHaveBeenCalled();
++  expect(save).not.toHaveBeenCalled();
++});
+diff --git a/tests/tools/personal-info-command-registration.test.mjs b/tests/tools/personal-info-command-registration.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/tests/tools/personal-info-command-registration.test.mjs
+@@ -0,0 +1,15 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { createRequire } from 'node:module';
++import { runInNewContext } from 'node:vm';
++const require=createRequire(import.meta.url),{transform}=createRequire(require.resolve('vite'))('esbuild');
++const base=new URL('../../docs/lane-requests/design/personal-info-controls/',import.meta.url);
++const ids=['retry-personal-info','import-prior-personal-info','edit-personal-info','save-personal-info','cancel-personal-info'];
++async function commands(kind){const source=readFileSync(new URL(kind+'/packages/contracts/src/commands.ts',base),'utf8');const{code}=await transform(source,{loader:'ts',format:'cjs',target:'chrome154'});const module={exports:{}};runInNewContext(code,{module,exports:module.exports});return JSON.parse(JSON.stringify(module.exports.COMMANDS))}
++test('five actual metadata rows preserve all original definitions and normal focused scoped dispatch',async()=>{
++ const before=await commands('shared-original'),after=await commands('shared-result');assert.deepEqual(after.filter(row=>!ids.includes(row.id)),before);
++ for(const id of ids){const rows=after.filter(row=>row.id===id);assert.equal(rows.length,1);assert.deepEqual(rows[0].windows,['normal']);assert.equal(rows[0].handler,'shell');assert.equal(rows[0].focusShell,true);assert.equal(rows[0].palette,false);assert.equal(rows[0].dispatch,"scoped");assert.deepEqual(rows[0].bindings,[])}
++ const source=readFileSync(new URL('shared-result/apps/shell/src/commands.ts',base),'utf8');
++ assert.match(source,/Object\.fromEntries\(SCOPED_COMMANDS\.map\(\(\{ id \}\) => \[id, .*invokeScopedControl\(id, context\)\]/);
++});
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -52,6 +52,12 @@
+ const diagnosticsControl = { ...memoryControl, windows: ["normal", "private"] } as const;
+ const runPanelControl = { ...runControl, palette: false } as const;
+ export const COMMANDS = [
++  S("retry-personal-info", "Retry personal info", memoryControl),
++  S("import-prior-personal-info", "Import prior personal info", memoryControl),
++  S("edit-personal-info", "Edit personal info", memoryControl),
++  S("save-personal-info", "Save personal info", memoryControl),
++  S("cancel-personal-info", "Cancel personal info", memoryControl),
++
+   S("export-task-receipt", "Export saved task receipt", searchEngineControl),
+   S("toggle-task-receipt-captured-text", "Include captured receipt text", searchEngineControl),
+   S("save-task-receipt-artifact", "Save preserved task artifact", searchEngineControl),

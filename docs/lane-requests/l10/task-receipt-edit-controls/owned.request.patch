@@ -1,0 +1,819 @@
+diff --git a/apps/shell/src/components/TaskReceiptEdit.commands.test.tsx b/apps/shell/src/components/TaskReceiptEdit.commands.test.tsx
+new file mode 100644
+index 000000000..ae43805a1
+--- /dev/null
++++ b/apps/shell/src/components/TaskReceiptEdit.commands.test.tsx
+@@ -0,0 +1,393 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { beforeEach, afterEach, expect, it, vi } from "vitest";
++import { TaskReceiptSchema, COMMANDS } from "@aux/contracts";
++const hostState = vi.hoisted(() => ({
++  windowId: "one",
++  privateMode: false,
++  kind: "normal",
++  read: vi.fn(),
++  saveFile: vi.fn(),
++  saveArtifact: vi.fn(),
++  pick: vi.fn(),
++  submit: vi.fn(),
++  changed: vi.fn(),
++}));
++vi.mock("../bridge", async (original) => ({
++  ...(await original<typeof import("../bridge")>()),
++  bridge: {
++    ...(await original<typeof import("../bridge")>()).bridge,
++    get windowId() {
++      return hostState.windowId;
++    },
++    get privateMode() {
++      return hostState.privateMode;
++    },
++    get windowKind() {
++      return hostState.kind;
++    },
++    pickEvidenceDocument: hostState.pick,
++    saveFile: hostState.saveFile,
++    saveStoredArtifact: hostState.saveArtifact,
++  },
++}));
++vi.mock("../store", async (original) => ({
++  ...(await original<typeof import("../store")>()),
++  call: hostState.read,
++}));
++import { TaskReceiptView } from "./TaskReceiptView";
++import { executeCommand, dispatchShortcut } from "../commands";
++import { useStore } from "../store";
++const initial = useStore.getState();
++const sample = (revision = 1) =>
++  TaskReceiptSchema.parse({
++    taskId: "original-task",
++    taskRevision: revision,
++    currentTaskRevision: revision,
++    objective: "Original objective",
++    generatedAt: 1,
++    status: "accepted",
++    criteria: [
++      {
++        criterion: { criterionId: "criterion", description: "Original criterion", verification: "manual" },
++        status: "accepted",
++        evidence: [
++          {
++            stale: false,
++            record: {
++              evidenceId: "original-evidence",
++              taskId: "original-task",
++              taskRevision: revision,
++              criterionId: "criterion",
++              kind: "document_snapshot",
++              actor: "desktop_user",
++              summary: "Original source",
++              recordedAt: 1,
++              observedAt: 1,
++              runSequence: 0,
++              source: {
++                filename: "synthetic.txt",
++                sha256: "a".repeat(64),
++                byteLength: 17,
++                cloudArtifacts: [
++                  {
++                    artifactId: "original-artifact",
++                    label: "Original export",
++                    sha256: "b".repeat(64),
++                    bytes: 10,
++                  },
++                ],
++              },
++              snapshot: { title: "synthetic.txt", text: "Original captured text" },
++            },
++          },
++        ],
++      },
++    ],
++    unresolvedActions: [],
++    runs: [],
++    modelCalls: 0,
++    knownCostUsd: 0,
++    costComplete: true,
++  });
++function held<T>() {
++  let resolve!: (v: T) => void, reject!: (r: unknown) => void;
++  const promise = new Promise<T>((a, b) => {
++    resolve = a;
++    reject = b;
++  });
++  return { promise, resolve, reject };
++}
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>, receipt: ReturnType<typeof sample>;
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  hostState.windowId = "one";
++  hostState.privateMode = false;
++  hostState.kind = "normal";
++  receipt = sample();
++  hostState.pick.mockReset().mockResolvedValue({ filename: "owned.txt", content: "owned content" });
++  hostState.submit.mockReset().mockResolvedValue(true);
++  hostState.changed.mockReset().mockResolvedValue(undefined);
++  hostState.read.mockReset().mockResolvedValue(receipt);
++  hostState.saveFile.mockReset().mockResolvedValue("/synthetic/receipt.md");
++  hostState.saveArtifact.mockReset().mockResolvedValue("/synthetic/artifact.bin");
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
++  host = document.createElement("div");
++  document.body.append(host);
++  root = createRoot(host);
++  useStore.setState(initial, true);
++});
++afterEach(async () => {
++  await act(async () => root.unmount());
++  host.remove();
++  useStore.setState(initial, true);
++  vi.restoreAllMocks();
++  vi.unstubAllGlobals();
++});
++const render = async (value = receipt) => {
++  await act(async () =>
++    root.render(
++      <TaskReceiptView
++        receipt={value}
++        pageId="original-page"
++        submit={hostState.submit}
++        onChanged={hostState.changed}
++      />,
++    ),
++  );
++};
++const control = (id: string) => host.querySelector<HTMLElement>(`[data-command-id="${id}"]`)!;
++async function input(selector: string, value: string) {
++  const element = host.querySelector<HTMLTextAreaElement>(selector)!;
++  await act(async () => {
++    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(element, value);
++    element.dispatchEvent(new Event("input", { bubbles: true }));
++  });
++}
++async function run(id: string) {
++  control(id).focus();
++  let completion!: Promise<unknown>;
++  await act(async () => {
++    completion = executeCommand(id);
++  });
++  return completion;
++}
++it("uses registered focused note/capture/review commands with original criterion and evidence", async () => {
++  await render();
++  await input('textarea[aria-label="Evidence or review note"]', "Original review");
++  await act(async () => control("add-task-receipt-note").click());
++  expect(hostState.submit).toHaveBeenLastCalledWith("tasks.recordEvidence", {
++    taskId: "original-task",
++    expectedRevision: 1,
++    criterionId: "criterion",
++    summary: "Original review",
++  });
++  await act(async () => control("select-task-receipt-evidence").click());
++  await run("accept-task-receipt-criterion");
++  expect(hostState.submit).toHaveBeenLastCalledWith("tasks.reviewCriterion", {
++    taskId: "original-task",
++    expectedRevision: 1,
++    criterionId: "criterion",
++    evidenceIds: ["original-evidence"],
++    note: "Original review",
++    outcome: "accepted",
++  });
++  await run("capture-task-receipt-page");
++  expect(hostState.submit).toHaveBeenLastCalledWith("tasks.captureEvidence", {
++    taskId: "original-task",
++    expectedRevision: 1,
++    criterionId: "criterion",
++    pageId: "original-page",
++  });
++});
++it("preserves owned chooser ACK, local preview and explicit document confirmation", async () => {
++  await render();
++  expect(await run("import-task-receipt-document")).toEqual({
++    filename: "owned.txt",
++    content: "owned content",
++  });
++  expect(hostState.submit).not.toHaveBeenCalled();
++  expect(host.textContent).toContain("Importing does not send the text to a model");
++  expect(await run("save-task-receipt-document")).toBe(true);
++  expect(hostState.submit).toHaveBeenCalledWith("tasks.importDocumentEvidence", {
++    taskId: "original-task",
++    expectedRevision: 1,
++    criterionId: "criterion",
++    filename: "owned.txt",
++    content: "owned content",
++  });
++  expect(host.querySelector('[aria-label="Document preview"]')).toBeNull();
++});
++it("retires held chooser through window ABA without reviving original preview", async () => {
++  const old = held<{ filename: string; content: string }>();
++  hostState.pick.mockReturnValueOnce(old.promise);
++  await render();
++  control("import-task-receipt-document").focus();
++  let completion!: Promise<unknown>;
++  await act(async () => {
++    completion = executeCommand("import-task-receipt-document");
++  });
++  hostState.windowId = "two";
++  await render();
++  hostState.windowId = "one";
++  await render();
++  await act(async () => old.resolve({ filename: "retired.txt", content: "old" }));
++  expect(await completion).toEqual({ filename: "retired.txt", content: "old" });
++  expect(host.textContent).not.toContain("retired.txt");
++  expect(hostState.submit).not.toHaveBeenCalled();
++});
++it("does not let old import finally clear a fresh owner operation", async () => {
++  const old = held<{ filename: string; content: string }>(),
++    fresh = held<{ filename: string; content: string }>();
++  hostState.pick.mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise);
++  await render();
++  let a!: Promise<unknown>, b!: Promise<unknown>;
++  control("import-task-receipt-document").focus();
++  await act(async () => {
++    a = executeCommand("import-task-receipt-document");
++  });
++  await render(sample(2));
++  control("import-task-receipt-document").focus();
++  await act(async () => {
++    b = executeCommand("import-task-receipt-document");
++  });
++  await act(async () => old.resolve({ filename: "old", content: "old" }));
++  await a;
++  expect(control("import-task-receipt-document").matches(":disabled")).toBe(true);
++  await act(async () => fresh.resolve({ filename: "fresh", content: "fresh" }));
++  await b;
++  expect(host.textContent).toContain("fresh");
++});
++it("preserves original rejected import object while retiring local error delivery", async () => {
++  const pending = held<never>(),
++    reason = new Error("old chooser failure");
++  hostState.pick.mockReturnValueOnce(pending.promise);
++  await render();
++  control("import-task-receipt-document").focus();
++  let completion!: Promise<unknown>;
++  await act(async () => {
++    completion = executeCommand("import-task-receipt-document");
++  });
++  const rejected = completion.catch((error) => error);
++  hostState.privateMode = true;
++  await render();
++  hostState.privateMode = false;
++  await render();
++  await act(async () => pending.reject(reason));
++  expect(await rejected).toBe(reason);
++  expect(host.textContent).not.toContain(reason.message);
++});
++it("does not grant historical/active evidence review or import authority", async () => {
++  receipt = { ...receipt, runs: [{ runId: "run", status: "running" } as never] };
++  await render();
++  expect(control("import-task-receipt-document").matches(":disabled")).toBe(true);
++  expect(control("verify-task-receipt-criterion").matches(":disabled")).toBe(true);
++  expect(hostState.submit).not.toHaveBeenCalled();
++});
++it("keeps remappable command rows closed to actual scoped owners", async () => {
++  await render();
++  for (const id of [
++    "add-task-receipt-note",
++    "import-task-receipt-document",
++    "review-task-receipt-run-undo",
++    "accept-task-receipt-action",
++    "reject-task-receipt-operation",
++  ]) {
++    expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
++      palette: false,
++      bindings: [],
++      handler: "shell",
++    });
++  }
++  document.body.focus();
++  await expect(executeCommand("capture-task-receipt-page")).rejects.toThrow();
++  expect(hostState.submit).not.toHaveBeenCalled();
++});
++it("requires selected saved evidence and reason for original action and operation reconciliation", async () => {
++  receipt = TaskReceiptSchema.parse({
++    ...receipt,
++    unresolvedActions: [{ intentId: "intent", runId: "run", pageId: "original-page", status: "uncertain" }],
++    unresolvedOperations: [
++      {
++        invocationId: "operation",
++        operation: "write-file",
++        effectClass: "write",
++        status: "uncertain",
++        effectOutcome: "unknown",
++        startedAt: 1,
++      },
++    ],
++  });
++  await render();
++  expect(control("accept-task-receipt-action").matches(":disabled")).toBe(true);
++  for (const [selectId, noteLabel, id, method, key] of [
++    [
++      "select-task-receipt-action-evidence",
++      "Reconciliation reason",
++      "reject-task-receipt-action",
++      "tasks.reconcileAction",
++      "intentId",
++    ],
++    [
++      "select-task-receipt-operation-evidence",
++      "Operation reconciliation reason",
++      "accept-task-receipt-operation",
++      "tasks.reconcileOperation",
++      "invocationId",
++    ],
++  ] as const) {
++    const select = control(selectId) as HTMLSelectElement;
++    await act(async () => {
++      select.value = "original-evidence";
++      select.dispatchEvent(new Event("change", { bubbles: true }));
++    });
++    await input(`textarea[aria-label="${noteLabel}"]`, "Independent record checked");
++    await run(id);
++    expect(hostState.submit).toHaveBeenLastCalledWith(method, {
++      taskId: "original-task",
++      expectedRevision: 1,
++      [key]: key === "intentId" ? "intent" : "operation",
++      evidenceId: "original-evidence",
++      outcome: id.startsWith("reject") ? "not_applied" : "applied",
++      note: "Independent record checked",
++    });
++  }
++});
++it("keeps genuine undo ACK if optional receipt refresh fails", async () => {
++  receipt = TaskReceiptSchema.parse({
++    ...receipt,
++    undoReviews: [{ runId: "run", token: "a".repeat(64), eligibleStepIds: ["step"] }],
++  });
++  hostState.read.mockImplementation(async (method: string) =>
++    method === "tasks.receipt" ? receipt : { restored: 1, skipped: [] },
++  );
++  hostState.changed.mockRejectedValue(new Error("readback failed"));
++  await render();
++  await run("review-task-receipt-run-undo");
++  await act(async () => control("select-task-receipt-undo-change").click());
++  const result = await run("undo-task-receipt-selected-changes");
++  expect(result).toEqual({ restored: 1, skipped: [] });
++  expect(host.textContent).toContain("Browser changes were undone, but the receipt could not be refreshed.");
++});
++it("does not revive review token on same-scope receipt replacement", async () => {
++  receipt = TaskReceiptSchema.parse({
++    ...receipt,
++    undoReviews: [{ runId: "run", token: "a".repeat(64), eligibleStepIds: ["step"] }],
++  });
++  hostState.read.mockResolvedValue(receipt);
++  await render();
++  await run("review-task-receipt-run-undo");
++  expect(control("select-task-receipt-undo-change")).not.toBeNull();
++  await render({ ...receipt, generatedAt: 2 });
++  expect(host.querySelector('[aria-label="Review selected browser undo"]')).toBeNull();
++  expect(hostState.submit).not.toHaveBeenCalled();
++});
++
++it("remaps current evidence selection without recursive DOM click", async () => {
++  await render();
++  const input = control("select-task-receipt-evidence") as HTMLInputElement;
++  input.focus();
++  const clicks = vi.fn();
++  input.addEventListener("click", clicks);
++  useStore.setState({
++    settings: {
++      ...useStore.getState().settings,
++      shortcutOverrides: { "select-task-receipt-evidence": [{ key: "e", meta: true }] },
++    },
++  });
++  await act(async () => {
++    expect(
++      dispatchShortcut({
++        commandId: "select-task-receipt-evidence",
++        key: "e",
++        meta: true,
++        alt: false,
++        shift: false,
++      }),
++    ).toBe(true);
++  });
++  expect(input.checked).toBe(true);
++  expect(clicks).not.toHaveBeenCalled();
++  expect(hostState.submit).not.toHaveBeenCalled();
++});
+diff --git a/apps/shell/src/components/TaskReceiptRunUndo.test.tsx b/apps/shell/src/components/TaskReceiptRunUndo.test.tsx
+index 2acc9c81e..8751bec53 100644
+--- a/apps/shell/src/components/TaskReceiptRunUndo.test.tsx
++++ b/apps/shell/src/components/TaskReceiptRunUndo.test.tsx
+@@ -10,6 +10,7 @@ vi.mock("../store", async original => ({ ...await original<typeof import("../sto
+ 
+ it("reviews and selects exact local effects before run undo", async () => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  const geometry=vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+   const token = "a".repeat(64);
+   const receipt = TaskReceiptSchema.parse({ taskId: "task-1", taskRevision: 1, objective: "Edit form",
+     generatedAt: 1, status: "needs_review", criteria: [], unresolvedActions: [], runs: [],
+@@ -42,5 +43,5 @@ it("reviews and selects exact local effects before run undo", async () => {
+       expectedStepIds: ["first", "second"], selectedStepIds: ["second"],
+     });
+     expect(changed).toHaveBeenCalledOnce();
+-  } finally { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
++  } finally { await act(async () => root.unmount()); host.remove(); geometry.mockRestore(); vi.unstubAllGlobals(); }
+ });
+diff --git a/apps/shell/src/components/TaskReceiptView.test.tsx b/apps/shell/src/components/TaskReceiptView.test.tsx
+index e9d0f30d0..695ad7d89 100644
+--- a/apps/shell/src/components/TaskReceiptView.test.tsx
++++ b/apps/shell/src/components/TaskReceiptView.test.tsx
+@@ -1,9 +1,11 @@
+ // @vitest-environment jsdom
+ import { act } from "react";
+ import { createRoot } from "react-dom/client";
+-import { expect, it, vi } from "vitest";
++import { beforeEach, afterEach, expect, it, vi } from "vitest";
+ import { TaskReceiptSchema } from "@aux/contracts";
+ import { TaskReceiptView } from "./TaskReceiptView";
++beforeEach(()=>{vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{}] as unknown as DOMRectList);});
++afterEach(()=>vi.restoreAllMocks());
+ 
+ it("shows prior form state and flags failed writes as uncertain", async () => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+diff --git a/apps/shell/src/components/TaskReceiptView.tsx b/apps/shell/src/components/TaskReceiptView.tsx
+index d94ea7286..8f86ddd2a 100644
+--- a/apps/shell/src/components/TaskReceiptView.tsx
++++ b/apps/shell/src/components/TaskReceiptView.tsx
+@@ -1,5 +1,5 @@
+ import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
+-import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
++import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes } from "react";
+ import { PreferenceAction, usePreferenceCommand } from "../settings/sections/preference-command";
+ import { guardCommandCompletion } from "../command-completion";
+ import { bridge } from "../bridge";
+@@ -9,44 +9,71 @@ import type { TaskReceipt, MethodName, RpcArgs } from "@aux/contracts";
+ 
+ const STATUS = { in_progress: "In progress", uncertain: "Outcome uncertain", accepted: "Accepted by you", not_met: "Criteria not met", needs_review: "Needs review" };
+ 
+-export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly = false }: {
+-  receipt: TaskReceipt; pageId: string | null;
+-  readOnly?: boolean;
++type ReceiptProps = {
++  receipt: TaskReceipt; pageId: string | null; readOnly?: boolean;
+   submit?: <M extends MethodName>(method: M, ...params: RpcArgs<M>) => Promise<boolean>;
+   onChanged?: () => Promise<void>;
+-}) {
++};
++export function TaskReceiptView(props:ReceiptProps) {
++  return <ReceiptSession key={JSON.stringify([props.receipt.taskId,props.receipt.taskRevision,props.receipt.currentTaskRevision,props.pageId,!!props.readOnly,!!props.submit,!!props.onChanged,bridge.windowId,bridge.privateMode,bridge.windowKind])} {...props}/>;
++}
++function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:ReceiptProps) {
+   const readOwner = useReceiptReadOwner(receipt, readOnly);
+   const [artifactError,setArtifactError] = useState<{owner:ReceiptReadOwner;message:string}|null>(null);
+   const editable = !readOnly && !!submit;
+   const historical = receipt.currentTaskRevision !== undefined && receipt.currentTaskRevision !== receipt.taskRevision;
+-  const [document, setDocument] = useState<{ criterionId: string; filename: string; content: string } | null>(null);
+-  const [importing, setImporting] = useState(false);
+-  const [importError, setImportError] = useState("");
+-  async function pickDocument(criterionId: string) {
+-    setImporting(true); setImportError("");
++  const [document, setDocument] = useState<{ criterionId: string; filename: string; content: string; owner:ReceiptReadOwner } | null>(null);
++  const [importSlot,setImportSlot] = useState<{owner:ReceiptReadOwner;token:object}|null>(null);
++  const importSlotRef=useRef(importSlot);
++  useLayoutEffect(()=>{importSlotRef.current=importSlot;},[importSlot]);
++  const importing=importSlot?.owner===readOwner;
++  const visibleDocument=document?.owner===readOwner?document:null;
++  const [importStatus, setImportStatus] = useState<{owner:ReceiptReadOwner;message:string}|null>(null);
++  const importError=importStatus?.owner===readOwner?importStatus.message:"";
++  const setImportError=(message:string)=>setImportStatus({owner:readOwner,message});
++  function beginImport() {
++    if(!readOwner.current()||importSlotRef.current?.owner===readOwner)throw new Error("Choose this receipt’s current document action.");
++    const slot={owner:readOwner,token:{}};importSlotRef.current=slot;setImportSlot(slot);return slot;
++  }
++  function finishImport(slot:{owner:ReceiptReadOwner;token:object}) {
++    if(importSlotRef.current!==slot)return;importSlotRef.current=null;if(readOwner.current())setImportSlot(null);
++  }
++  async function pickDocument(criterionId:string,current:()=>boolean) {
++    const slot=beginImport();setImportError("");
+     try {
+-      const picked = await bridge.pickEvidenceDocument();
+-      if (picked) setDocument({ ...picked, criterionId });
+-    } catch (error) { setImportError((error instanceof Error ? error.message : String(error)).replace(/^Error invoking remote method [^:]+: Error: /, "")); }
+-    finally { setImporting(false); }
++      const picked=await bridge.pickEvidenceDocument();
++      if(current()&&picked)setDocument({...picked,criterionId,owner:readOwner});
++      return picked;
++    } catch(reason) {if(current())setImportError((reason instanceof Error?reason.message:String(reason)).replace(/^Error invoking remote method [^:]+: Error: /,""));throw reason;}
++    finally {finishImport(slot);}
+   }
+-  async function saveDocument() {
+-    if (!document || importing || !submit || !editable) return;
+-    setImporting(true);
++  async function saveDocument(current:()=>boolean) {
++    const original=visibleDocument,producer=submit;
++    if(!original||!producer||!editable||!current())throw new Error("Choose the original document preview.");
++    const slot=beginImport();
+     try {
+-      if (await submit("tasks.importDocumentEvidence", { taskId: receipt.taskId, expectedRevision: receipt.taskRevision,
+-        criterionId: document.criterionId, filename: document.filename, content: document.content })) setDocument(null);
+-    } finally { setImporting(false); }
++      const result=await producer("tasks.importDocumentEvidence",{taskId:receipt.taskId,expectedRevision:receipt.taskRevision,criterionId:original.criterionId,filename:original.filename,content:original.content});
++      if(current()&&result)setDocument(null);return result;
++    } catch(reason) {if(current())setImportError(reason instanceof Error?reason.message:String(reason));throw reason;}
++    finally {finishImport(slot);}
+   }
+-  const [undoBusy, setUndoBusy] = useState(false);
+-  const [undoMessage, setUndoMessage] = useState("");
+-  const [undoDraft, setUndoDraft] = useState<{ runId: string; token: string;
++  const [undoSlot,setUndoSlot] = useState<{owner:ReceiptReadOwner}|null>(null);
++  const undoSlotRef=useRef(undoSlot);
++  const undoBusy=undoSlot?.owner===readOwner;
++  function beginUndo(){if(undoSlotRef.current?.owner===readOwner)throw new Error("Wait for the original undo action.");const slot={owner:readOwner};undoSlotRef.current=slot;setUndoSlot(slot);return slot;}
++  function finishUndo(slot:{owner:ReceiptReadOwner}){if(undoSlotRef.current!==slot)return;undoSlotRef.current=null;if(readOwner.current())setUndoSlot(null);}
++  const [undoStatus, setUndoStatus] = useState<{owner:ReceiptReadOwner;message:string}|null>(null);
++  const undoMessage=undoStatus?.owner===readOwner?undoStatus.message:"";
++  const setUndoMessage=(message:string)=>setUndoStatus({owner:readOwner,message});
++  const [undoDraft, setUndoDraft] = useState<{ owner:ReceiptReadOwner; runId: string; token: string;
+     expectedStepIds: string[]; selectedStepIds: string[]; items: { stepId: string; label: string }[] } | null>(null);
+-  async function reviewRunUndo(runId: string) {
+-    if (undoBusy) return;
+-    setUndoBusy(true); setUndoMessage("");
++  async function reviewRunUndo(runId: string,current:()=>boolean) {
++    if (undoBusy||!current())throw new Error("Choose this receipt’s current undo review.");
++    const slot=beginUndo(); setUndoMessage("");
+     try {
+       const fresh = await call("tasks.receipt", { taskId: receipt.taskId });
++      if(!current())return fresh;
++      if(fresh.taskId!==receipt.taskId)throw new Error("This task changed. Reload its receipt before undoing.");
+       if (fresh.taskRevision !== receipt.taskRevision) throw new Error("This task changed. Reload its receipt before undoing.");
+       const review = fresh.undoReviews.find(item => item.runId === runId);
+       if (!review?.eligibleStepIds.length) throw new Error("No browser changes are available to undo in this run.");
+@@ -57,25 +84,29 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
+         ...fresh.downloadChanges.filter(item => item.runId === runId).map(item => [item.stepId, `Move unchanged download ${item.filename ?? ""} to Trash`] as const),
+         ...fresh.historyChanges.filter(item => item.runId === runId).map(item => [item.stepId, `Remove history visit ${item.title ?? item.url ?? ""}`] as const),
+       ]);
+-      setUndoDraft({ runId, token: review.token, expectedStepIds: review.eligibleStepIds,
++      setUndoDraft({ owner:readOwner, runId, token: review.token, expectedStepIds: review.eligibleStepIds,
+         selectedStepIds: [], items: review.eligibleStepIds.map(stepId => ({ stepId, label: labels.get(stepId) ?? `Browser change ${stepId}` })) });
+-    } catch (error) { setUndoMessage(error instanceof Error ? error.message : String(error)); }
+-    finally { setUndoBusy(false); }
++      return fresh;
++    } catch (error) { if(current())setUndoMessage(error instanceof Error ? error.message : String(error)); throw error; }
++    finally { finishUndo(slot); }
+   }
+-  async function undoRun() {
+-    if (undoBusy || !onChanged || !undoDraft?.selectedStepIds.length) return;
+-    setUndoBusy(true); setUndoMessage("");
++  async function undoRun(current:()=>boolean) {
++    if (undoBusy || !onChanged || !undoDraft?.selectedStepIds.length||undoDraft.owner!==readOwner||!current())throw new Error("Choose the original selected undo review.");
++    const slot=beginUndo(); setUndoMessage("");
+     try {
+       const result = await call("tasks.undoRunBrowserChanges", { taskId: receipt.taskId,
+         expectedRevision: receipt.taskRevision, runId: undoDraft.runId, reviewToken: undoDraft.token,
+         expectedStepIds: undoDraft.expectedStepIds, selectedStepIds: undoDraft.selectedStepIds });
+-      await onChanged();
++      if(!current())return result;
++      try {await onChanged();} catch(reason) {if(current())setUndoMessage("Browser changes were undone, but the receipt could not be refreshed.");return result;}
++      if(!current())return result;
+       setUndoDraft(null);
+       setUndoMessage(`${result.restored} browser ${result.restored === 1 ? "change" : "changes"} undone` +
+         (result.skipped.length ? `; ${result.skipped.length} skipped: ${result.skipped.map(item =>
+           `${item.stepId}: ${item.reason}`).join("; ")}` : "."));
+-    } catch (error) { setUndoDraft(null); setUndoMessage(error instanceof Error ? error.message : String(error)); }
+-    finally { setUndoBusy(false); }
++      return result;
++    } catch (error) { if(current()){setUndoDraft(null);setUndoMessage(error instanceof Error ? error.message : String(error));}throw error; }
++    finally { finishUndo(slot); }
+   }
+   const [notes, setNotes] = useState<Record<string, string>>({});
+   const [selected, setSelected] = useState<Record<string, string[]>>({});
+@@ -83,6 +114,13 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
+   const [actionNotes, setActionNotes] = useState<Record<string, string>>({});
+   const [operationEvidence,setOperationEvidence]=useState<Record<string,string>>({});
+   const [operationNotes,setOperationNotes]=useState<Record<string,string>>({});
++  const stateRef=useRef({notes,selected,actionEvidence,actionNotes,operationEvidence,operationNotes,document,undoDraft});
++  useLayoutEffect(()=>{stateRef.current={notes,selected,actionEvidence,actionNotes,operationEvidence,operationNotes,document,undoDraft};},[notes,selected,actionEvidence,actionNotes,operationEvidence,operationNotes,document,undoDraft]);
++  const originalDraft=(field:keyof typeof stateRef.current,value:unknown)=>()=>stateRef.current[field]===value;
++  function submitOwned<M extends MethodName>(method:M,...params:RpcArgs<M>) {
++    const producer=submit;if(!editable||!producer||!readOwner.current())throw new Error("Choose this receipt’s original review.");
++    return producer(method,...params);
++  }
+   const active = receipt.runs.some(run => ["queued", "planning", "running", "paused", "needs_input"].includes(run.status));
+   const base = { taskId: receipt.taskId, expectedRevision: receipt.taskRevision };
+   const usableEvidence = receipt.criteria.flatMap(item => item.evidence.filter(evidence => !evidence.stale));
+@@ -111,8 +149,7 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
+         {verification && <p className="hint">Local check · {verification.method} · {verification.status.replaceAll("_", " ")} · {verification.localMatch ? "matched saved evidence" : "no local match"} · {verification.reason} This is not acceptance.</p>}
+         {!evidence.length && <p>No evidence recorded.</p>}
+         {evidence.map(({ record, stale, reason }) => <div key={record.evidenceId}>
+-          <label className="row" style={{ alignItems: "flex-start" }}>{editable && <input type="checkbox" style={{ width: 16, height: 16, flexShrink: 0 }} aria-label={`Use evidence ${record.evidenceId}`} disabled={stale}
+-            checked={chosen.includes(record.evidenceId)} onChange={event => setSelected(previous => ({ ...previous, [criterion.criterionId]: event.target.checked ? [...chosen, record.evidenceId] : chosen.filter(id => id !== record.evidenceId) }))} />}
++          <label className="row" style={{ alignItems: "flex-start" }}>{editable && <ReceiptChoice owner={readOwner} command="select-task-receipt-evidence" style={{width:16,height:16,flexShrink:0}} aria-label={`Use evidence ${record.evidenceId}`} disabled={stale} checked={chosen.includes(record.evidenceId)} invoke={checked=>setSelected(previous=>({...previous,[criterion.criterionId]:checked?[...chosen,record.evidenceId]:chosen.filter(id=>id!==record.evidenceId)}))}/>}
+             <span>{record.summary}</span></label>
+           <span className="hint">{record.kind === "command_snapshot" ? "Saved local command result selected by you" : record.kind === "document_snapshot" ? "Document selected by you" : record.actor === "runtime" ? "Captured by Aux" : record.actor === "desktop_user" ? "Your note" : "Client-submitted claim"} · {new Date(record.observedAt).toLocaleString()}{stale ? ` · Stale: ${reason}` : ""}</span>
+           {record.source.url && <p>{record.source.url}</p>}
+@@ -126,23 +163,23 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
+         {editable && <>
+         <textarea aria-label="Evidence or review note" rows={3} placeholder="Describe the evidence you checked and what it establishes." value={note} onChange={event => setNotes(previous => ({ ...previous, [criterion.criterionId]: event.target.value }))} maxLength={4000} />
+         <div className="row">
+-          <button className="btn sm" disabled={!note.trim()} onClick={() => void submit?.("tasks.recordEvidence", { ...base, criterionId: criterion.criterionId, summary: note })}>Add note</button>
+-          <button className="btn sm" disabled={!pageId} onClick={() => void submit?.("tasks.captureEvidence", { ...base, criterionId: criterion.criterionId, pageId: pageId as string })}>Capture current page</button>
+-          <button className="btn sm" disabled={active || importing || !!document} onClick={() => void pickDocument(criterion.criterionId)}>Import document</button>
++          <ReceiptEditAction command="add-task-receipt-note" owner={readOwner} valid={originalDraft("notes",notes)} className="btn sm" disabled={!note.trim()} invoke={()=>submitOwned("tasks.recordEvidence",{...base,criterionId:criterion.criterionId,summary:note})}>Add note</ReceiptEditAction>
++          <ReceiptEditAction command="capture-task-receipt-page" owner={readOwner} className="btn sm" disabled={!pageId} invoke={()=>submitOwned("tasks.captureEvidence",{...base,criterionId:criterion.criterionId,pageId:pageId as string})}>Capture current page</ReceiptEditAction>
++          <ReceiptEditAction command="import-task-receipt-document" owner={readOwner} className="btn sm" disabled={active || importing || !!visibleDocument} invoke={current=>pickDocument(criterion.criterionId,current)}>Import document</ReceiptEditAction>
+         </div>
+-        {document?.criterionId === criterion.criterionId && <section className="document-preview field" aria-label="Document preview">
+-          <strong>{document.filename}</strong>
+-          <span className="hint">{new TextEncoder().encode(document.content).length.toLocaleString()} bytes of saved text · Up to 512 KB</span>
+-          <DocumentExtractionNote filename={document.filename} />
+-          <DocumentContent filename={document.filename} content={document.content} />
++        {visibleDocument?.criterionId === criterion.criterionId && <section className="document-preview field" aria-label="Document preview">
++          <strong>{visibleDocument.filename}</strong>
++          <span className="hint">{new TextEncoder().encode(visibleDocument.content).length.toLocaleString()} bytes of saved text · Up to 512 KB</span>
++          <DocumentExtractionNote filename={visibleDocument.filename} />
++          <DocumentContent filename={visibleDocument.filename} content={visibleDocument.content} />
+           <span className="hint">Save a local copy as evidence for this criterion. Importing does not send the text to a model. The original file will not be monitored.</span>
+-          <div className="row"><button className="btn sm" disabled={importing || active} onClick={() => void saveDocument()}>Save document evidence</button>
+-            <button className="btn sm" disabled={importing} onClick={() => setDocument(null)}>Cancel import</button></div>
++          <div className="row"><ReceiptEditAction command="save-task-receipt-document" owner={readOwner} valid={originalDraft("document",document)} className="btn sm" disabled={importing||active} invoke={saveDocument}>Save document evidence</ReceiptEditAction>
++            <ReceiptEditAction command="cancel-task-receipt-document" owner={readOwner} className="btn sm" disabled={importing} invoke={()=>setDocument(null)}>Cancel import</ReceiptEditAction></div>
+         </section>}
+         <div className="row">
+-          <button className="btn sm" disabled={!chosen.length || !note.trim() || active} onClick={() => void submit?.("tasks.reviewCriterion", { ...base, criterionId: criterion.criterionId, evidenceIds: chosen, note, outcome: "accepted" })}>Accept criterion</button>
+-          <button className="btn sm" disabled={!chosen.length || !note.trim() || active} onClick={() => void submit?.("tasks.reviewCriterion", { ...base, criterionId: criterion.criterionId, evidenceIds: chosen, note, outcome: "rejected" })}>Mark not met</button>
+-          <button className="btn sm" disabled={active} onClick={() => void submit?.("tasks.verifyCriterion", { ...base, criterionId: criterion.criterionId })}>Run local check</button>
++          <ReceiptEditAction command="accept-task-receipt-criterion" owner={readOwner} valid={()=>originalDraft("notes",notes)()&&originalDraft("selected",selected)()} className="btn sm" disabled={!chosen.length||!note.trim()||active} invoke={()=>submitOwned("tasks.reviewCriterion",{...base,criterionId:criterion.criterionId,evidenceIds:chosen,note,outcome:"accepted"})}>Accept criterion</ReceiptEditAction>
++          <ReceiptEditAction command="reject-task-receipt-criterion" owner={readOwner} valid={()=>originalDraft("notes",notes)()&&originalDraft("selected",selected)()} className="btn sm" disabled={!chosen.length||!note.trim()||active} invoke={()=>submitOwned("tasks.reviewCriterion",{...base,criterionId:criterion.criterionId,evidenceIds:chosen,note,outcome:"rejected"})}>Mark not met</ReceiptEditAction>
++          <ReceiptEditAction command="verify-task-receipt-criterion" owner={readOwner} className="btn sm" disabled={active} invoke={()=>submitOwned("tasks.verifyCriterion",{...base,criterionId:criterion.criterionId})}>Run local check</ReceiptEditAction>
+         </div>
+         <span className="hint">A local check compares saved evidence. It never records acceptance.</span>
+         </>}
+@@ -163,8 +200,7 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
+           {change.undoneAt && <span className="hint"> · Undone {new Date(change.undoneAt).toLocaleString()}</span>}
+         </span>
+         {editable && !historical && !active && change.status === "ok" && !change.undoneAt && change.before && change.after &&
+-          <button className="btn sm" disabled={pageId !== change.pageId} title={pageId !== change.pageId ? "Open the original page to undo this edit" : undefined}
+-            onClick={() => void submit?.("tasks.undoBrowserChange", { ...base, runId: change.runId, stepId: change.stepId })}>Undo form edit</button>}
++          <ReceiptEditAction command="undo-task-receipt-form" owner={readOwner} className="btn sm" disabled={pageId!==change.pageId} title={pageId!==change.pageId?"Open the original page to undo this edit":undefined} invoke={()=>submitOwned("tasks.undoBrowserChange",{...base,runId:change.runId,stepId:change.stepId})}>Undo form edit</ReceiptEditAction>}
+       </div>)}
+     </section>}
+     {!!receipt.tabChanges.length && <section className="field" aria-label="Tab changes">
+@@ -194,8 +230,7 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
+           <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+         </span>
+         {editable && !historical && !active && change.status === "ok" && !change.undoneAt &&
+-          <button className="btn sm" onClick={() => void submit?.("tasks.undoBookmarkChange",
+-            { ...base, runId: change.runId, stepId: change.stepId })}>Undo bookmark</button>}
++          <ReceiptEditAction command="undo-task-receipt-bookmark" owner={readOwner} className="btn sm" invoke={()=>submitOwned("tasks.undoBookmarkChange",{...base,runId:change.runId,stepId:change.stepId})}>Undo bookmark</ReceiptEditAction>}
+       </div>)}
+     </section>}
+     {!!receipt.downloadChanges.length && <section className="field" aria-label="Download changes">
+@@ -210,8 +245,7 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
+           <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+         </span>
+         {editable && !historical && !active && change.cleanupAvailable && !change.undoneAt &&
+-          <button className="btn sm" onClick={() => void submit?.("tasks.undoDownloadChange",
+-            { ...base, runId: change.runId, stepId: change.stepId })}>Move download to Trash</button>}
++          <ReceiptEditAction command="undo-task-receipt-download" owner={readOwner} className="btn sm" invoke={()=>submitOwned("tasks.undoDownloadChange",{...base,runId:change.runId,stepId:change.stepId})}>Move download to Trash</ReceiptEditAction>}
+       </div>)}
+     </section>}
+     {!!receipt.historyChanges.length && <section className="field" aria-label="History changes">
+@@ -226,8 +260,7 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
+           <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+         </span>
+         {editable && !historical && !active && !change.undoneAt &&
+-          <button className="btn sm" onClick={() => void submit?.("tasks.undoHistoryChange",
+-            { ...base, runId: change.runId, stepId: change.stepId })}>Remove history visit</button>}
++          <ReceiptEditAction command="undo-task-receipt-history" owner={readOwner} className="btn sm" invoke={()=>submitOwned("tasks.undoHistoryChange",{...base,runId:change.runId,stepId:change.stepId})}>Remove history visit</ReceiptEditAction>}
+       </div>)}
+     </section>}
+     {!!receipt.remoteActions.length && <section className="field" aria-label="Consequential page actions">
+@@ -243,17 +276,14 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
+     {editable && onChanged && !historical && !active && !!runUndoIds.length && <section className="field" aria-label="Undo run changes">
+       <h4>Undo a run’s browser changes</h4>
+       <p className="hint">Restores matching form fields, removes unchanged bookmarks and history visits, moves unchanged managed downloads to recoverable Trash, and closes unused background tabs. Changed items are skipped. Removed visits, closed tabs, and remote effects cannot be reconstructed.</p>
+-      {runUndoIds.map(runId => <button className="btn sm" key={runId} disabled={undoBusy}
+-        onClick={() => void reviewRunUndo(runId)}>Review browser changes in run {runId}</button>)}
+-      {undoDraft && <div className="field" role="group" aria-label="Review selected browser undo">
++      {runUndoIds.map(runId => <ReceiptEditAction command="review-task-receipt-run-undo" owner={readOwner} className="btn sm" key={runId} disabled={undoBusy} invoke={current=>reviewRunUndo(runId,current)}>Review browser changes in run {runId}</ReceiptEditAction>)}
++      {undoDraft?.owner===readOwner && <div className="field" role="group" aria-label="Review selected browser undo">
+         <strong>Select browser changes to undo in run {undoDraft.runId}</strong>
+         <p className="hint">Only selected local changes will be attempted. A changed receipt cancels the request before any undo. Each selected item is checked against live state; changed items are skipped. Remote effects remain irreversible.</p>
+-        {undoDraft.items.map(item => <label className="row" key={item.stepId}><input type="checkbox"
+-          checked={undoDraft.selectedStepIds.includes(item.stepId)} onChange={event => setUndoDraft(current => current && ({ ...current,
+-            selectedStepIds: event.target.checked ? [...current.selectedStepIds, item.stepId] : current.selectedStepIds.filter(id => id !== item.stepId) }))} />
++        {undoDraft.items.map(item => <label className="row" key={item.stepId}><ReceiptChoice owner={readOwner} command="select-task-receipt-undo-change" aria-label={item.label} disabled={undoBusy} checked={undoDraft.selectedStepIds.includes(item.stepId)} invoke={checked=>setUndoDraft(current=>current&&({...current,selectedStepIds:checked?[...current.selectedStepIds,item.stepId]:current.selectedStepIds.filter(id=>id!==item.stepId)}))}/>
+           <span>{item.label}</span></label>)}
+-        <div className="row"><button className="btn sm danger" disabled={undoBusy || !undoDraft.selectedStepIds.length} onClick={() => void undoRun()}>Undo selected browser changes</button>
+-          <button className="btn sm" disabled={undoBusy} onClick={() => setUndoDraft(null)}>Cancel</button></div>
++        <div className="row"><ReceiptEditAction command="undo-task-receipt-selected-changes" owner={readOwner} valid={originalDraft("undoDraft",undoDraft)} className="btn sm danger" disabled={undoBusy||!undoDraft.selectedStepIds.length} invoke={undoRun}>Undo selected browser changes</ReceiptEditAction>
++          <ReceiptEditAction command="cancel-task-receipt-run-undo" owner={readOwner} className="btn sm" disabled={undoBusy} invoke={()=>setUndoDraft(null)}>Cancel</ReceiptEditAction></div>
+       </div>}
+       {undoMessage && <output data-block>{undoMessage}</output>}
+     </section>}
+@@ -262,14 +292,13 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
+       <p>Action {action.intentId} · {action.status}</p>
+       <span className="hint">Check independent records before deciding whether this action happened. Recording a decision does not dispatch another action.</span>
+       {editable && <>
+-      <select aria-label="Reconciliation evidence" value={actionEvidence[action.intentId] ?? ""} onChange={event => setActionEvidence(previous => ({ ...previous, [action.intentId]: event.target.value }))}>
++      <ReceiptSelection owner={readOwner} command="select-task-receipt-action-evidence" aria-label="Reconciliation evidence" value={actionEvidence[action.intentId]??""} invoke={value=>setActionEvidence(previous=>({...previous,[action.intentId]:value}))}>
+         <option value="">Select evidence</option>{usableEvidence.map(item => <option key={item.record.evidenceId} value={item.record.evidenceId}>{item.record.summary}</option>)}
+-      </select>
++      </ReceiptSelection>
+       <textarea aria-label="Reconciliation reason" rows={3} value={actionNotes[action.intentId] ?? ""} onChange={event => setActionNotes(previous => ({ ...previous, [action.intentId]: event.target.value }))} />
+-      <div className="row">{(["applied", "not_applied"] as const).map(outcome => <button className="btn sm" key={outcome} disabled={active || !actionEvidence[action.intentId] || !actionNotes[action.intentId]?.trim()}
+-        onClick={() => void submit?.("tasks.reconcileAction", { ...base, intentId: action.intentId, evidenceId: actionEvidence[action.intentId] as string, outcome, note: actionNotes[action.intentId] as string })}>
++      <div className="row">{(["applied", "not_applied"] as const).map(outcome => <ReceiptEditAction command={outcome==="applied"?"accept-task-receipt-action":"reject-task-receipt-action"} owner={readOwner} valid={()=>originalDraft("actionEvidence",actionEvidence)()&&originalDraft("actionNotes",actionNotes)()} className="btn sm" key={outcome} disabled={active||!actionEvidence[action.intentId]||!actionNotes[action.intentId]?.trim()} invoke={()=>submitOwned("tasks.reconcileAction",{...base,intentId:action.intentId,evidenceId:actionEvidence[action.intentId] as string,outcome,note:actionNotes[action.intentId] as string})}>
+         {outcome === "applied" ? "Record as applied" : "Record as not applied"}
+-      </button>)}</div>
++      </ReceiptEditAction>)}</div>
+       </>}
+     </section>)}
+     {receipt.unresolvedOperations.length>0&&<h4>Uncertain operations</h4>}
+@@ -277,10 +306,10 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
+       <p><strong>{operation.operation}</strong> · {operation.effectClass} · {operation.status}</p>
+       <span className="hint">Aux cannot prove whether this operation took effect. Check the project checkout or service records before continuing; this decision never repeats the operation.</span>
+       {operation.error&&<p className="hint">Last error: {operation.error}</p>}
+-      {editable&&<><select aria-label="Operation reconciliation evidence" value={operationEvidence[operation.invocationId]??''} onChange={event=>setOperationEvidence(previous=>({...previous,[operation.invocationId]:event.target.value}))}>
+-        <option value="">Select evidence</option>{usableEvidence.map(item=><option key={item.record.evidenceId} value={item.record.evidenceId}>{item.record.summary}</option>)}</select>
++      {editable&&<><ReceiptSelection owner={readOwner} command="select-task-receipt-operation-evidence" aria-label="Operation reconciliation evidence" value={operationEvidence[operation.invocationId]??""} invoke={value=>setOperationEvidence(previous=>({...previous,[operation.invocationId]:value}))}>
++        <option value="">Select evidence</option>{usableEvidence.map(item=><option key={item.record.evidenceId} value={item.record.evidenceId}>{item.record.summary}</option>)}</ReceiptSelection>
+       <textarea aria-label="Operation reconciliation reason" rows={3} value={operationNotes[operation.invocationId]??''} onChange={event=>setOperationNotes(previous=>({...previous,[operation.invocationId]:event.target.value}))}/>
+-      <div className="row">{(['applied','not_applied'] as const).map(outcome=><button className="btn sm" key={outcome} disabled={active||!operationEvidence[operation.invocationId]||!operationNotes[operation.invocationId]?.trim()} onClick={()=>void submit?.('tasks.reconcileOperation',{...base,invocationId:operation.invocationId,evidenceId:operationEvidence[operation.invocationId] as string,outcome,note:operationNotes[operation.invocationId] as string})}>{outcome==='applied'?'Record as applied':'Record as not applied'}</button>)}</div></>}
++      <div className="row">{(['applied','not_applied'] as const).map(outcome=><ReceiptEditAction command={outcome==="applied"?"accept-task-receipt-operation":"reject-task-receipt-operation"} owner={readOwner} valid={()=>originalDraft("operationEvidence",operationEvidence)()&&originalDraft("operationNotes",operationNotes)()} className="btn sm" key={outcome} disabled={active||!operationEvidence[operation.invocationId]||!operationNotes[operation.invocationId]?.trim()} invoke={()=>submitOwned("tasks.reconcileOperation",{...base,invocationId:operation.invocationId,evidenceId:operationEvidence[operation.invocationId] as string,outcome,note:operationNotes[operation.invocationId] as string})}>{outcome==='applied'?'Record as applied':'Record as not applied'}</ReceiptEditAction>)}</div></>}
+     </section>)}
+   </div>;
+ }
+@@ -589,3 +618,79 @@ function ReceiptDisclosure({
+     </details>
+   );
+ }
++
++function ReceiptEditAction({
++  owner,
++  valid = () => true,
++  invoke,
++  ...props
++}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
++  owner: ReceiptReadOwner;
++  command: string;
++  valid?: () => boolean;
++  invoke(current: () => boolean): unknown;
++}) {
++  const scopeId = useId();
++  const work = () => {
++    const current = () => owner.current() && valid();
++    if (!current()) throw new Error("Choose this receipt’s original action.");
++    let result: Promise<unknown>;
++    try {
++      result = Promise.resolve(invoke(current));
++    } catch (reason) {
++      result = Promise.reject(reason);
++    }
++    return guardCommandCompletion(result, current);
++  };
++  return <PreferenceAction {...props} scopeId={scopeId} invoke={work} />;
++}
++function ReceiptChoice({
++  owner,
++  command,
++  invoke,
++  ...props
++}: Omit<InputHTMLAttributes<HTMLInputElement>, "onChange" | "type"> & {
++  owner: ReceiptReadOwner;
++  command: string;
++  invoke(checked: boolean): unknown;
++}) {
++  const scopeId = useId();
++  const [ref, run] = usePreferenceCommand<HTMLInputElement>(
++    command,
++    scopeId,
++    useCallback(
++      (original, event) => {
++        if (!owner.current()) throw new Error("Choose this receipt’s original choice.");
++        return invoke(event ? original.checked : !original.checked);
++      },
++      [owner, invoke],
++    ),
++  );
++  return <input {...props} type="checkbox" ref={ref} data-command-id={command} onChange={run} />;
++}
++function ReceiptSelection({
++  owner,
++  command,
++  invoke,
++  ...props
++}: Omit<SelectHTMLAttributes<HTMLSelectElement>, "onChange"> & {
++  owner: ReceiptReadOwner;
++  command: string;
++  invoke(value: string): unknown;
++}) {
++  const scopeId = useId();
++  const [ref, run] = usePreferenceCommand<HTMLSelectElement>(
++    command,
++    scopeId,
++    useCallback(
++      (original) => {
++        if (!owner.current()) throw new Error("Choose this receipt’s original evidence.");
++        if (![...original.options].some((option) => option.value === original.value && !option.disabled))
++          throw new Error("Choose displayed evidence.");
++        return invoke(original.value);
++      },
++      [owner, invoke],
++    ),
++  );
++  return <select {...props} ref={ref} data-command-id={command} onChange={run} />;
++}

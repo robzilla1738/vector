@@ -1,0 +1,395 @@
+// @vitest-environment jsdom
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { TaskReceiptSchema, COMMANDS } from "@aux/contracts";
+const hostState = vi.hoisted(() => ({
+  windowId: "one",
+  privateMode: false,
+  kind: "normal",
+  read: vi.fn(),
+  saveFile: vi.fn(),
+  saveArtifact: vi.fn(),
+}));
+vi.mock("../bridge", async (original) => ({
+  ...(await original<typeof import("../bridge")>()),
+  bridge: {
+    ...(await original<typeof import("../bridge")>()).bridge,
+    get windowId() {
+      return hostState.windowId;
+    },
+    get privateMode() {
+      return hostState.privateMode;
+    },
+    get windowKind() {
+      return hostState.kind;
+    },
+    saveFile: hostState.saveFile,
+    saveStoredArtifact: hostState.saveArtifact,
+  },
+}));
+vi.mock("../store", async (original) => ({
+  ...(await original<typeof import("../store")>()),
+  call: hostState.read,
+}));
+import { TaskReceiptView } from "./TaskReceiptView";
+import { executeCommand, dispatchShortcut } from "../commands";
+import { useStore } from "../store";
+import { reportCommandCompletionFailure } from "../command-completion";
+import { usePreferenceCommand } from "../settings/sections/preference-command";
+const initial = useStore.getState();
+const sample = (revision = 1) =>
+  TaskReceiptSchema.parse({
+    taskId: "original-task",
+    taskRevision: revision,
+    currentTaskRevision: 3,
+    objective: "Original objective",
+    generatedAt: 1,
+    status: "accepted",
+    criteria: [
+      {
+        criterion: { criterionId: "criterion", description: "Original criterion", verification: "manual" },
+        status: "accepted",
+        evidence: [
+          {
+            stale: false,
+            record: {
+              evidenceId: "original-evidence",
+              taskId: "original-task",
+              taskRevision: revision,
+              criterionId: "criterion",
+              kind: "document_snapshot",
+              actor: "desktop_user",
+              summary: "Original source",
+              recordedAt: 1,
+              observedAt: 1,
+              runSequence: 0,
+              source: {
+                filename: "synthetic.txt",
+                sha256: "a".repeat(64),
+                byteLength: 17,
+                cloudArtifacts: [
+                  {
+                    artifactId: "original-artifact",
+                    label: "Original export",
+                    sha256: "b".repeat(64),
+                    bytes: 10,
+                  },
+                ],
+              },
+              snapshot: { title: "synthetic.txt", text: "Original captured text" },
+            },
+          },
+        ],
+      },
+    ],
+    unresolvedActions: [],
+    runs: [],
+    modelCalls: 0,
+    knownCostUsd: 0,
+    costComplete: true,
+  });
+function held<T>() {
+  let resolve!: (v: T) => void, reject!: (r: unknown) => void;
+  const promise = new Promise<T>((a, b) => {
+    resolve = a;
+    reject = b;
+  });
+  return { promise, resolve, reject };
+}
+let host: HTMLDivElement, root: ReturnType<typeof createRoot>, receipt: ReturnType<typeof sample>;
+beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  hostState.windowId = "one";
+  hostState.privateMode = false;
+  hostState.kind = "normal";
+  receipt = sample();
+  hostState.read.mockReset().mockResolvedValue(receipt);
+  hostState.saveFile.mockReset().mockResolvedValue("/synthetic/receipt.md");
+  hostState.saveArtifact.mockReset().mockResolvedValue("/synthetic/artifact.bin");
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  useStore.setState(initial, true);
+});
+afterEach(async () => {
+  await act(async () => root.unmount());
+  host.remove();
+  useStore.setState(initial, true);
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+const render = async (value = receipt) => {
+  await act(async () => root.render(<TaskReceiptView receipt={value} pageId={null} readOnly />));
+};
+const control = (id: string) => host.querySelector<HTMLElement>(`[data-command-id="${id}"]`)!;
+it("registers original read-only actions while preserving evidence provenance", async () => {
+  await render();
+  for (const id of [
+    "export-task-receipt",
+    "toggle-task-receipt-captured-text",
+    "save-task-receipt-artifact",
+    "toggle-task-receipt-fingerprint",
+    "toggle-task-receipt-snapshot",
+  ])
+    expect(COMMANDS.find((row) => row.id === id)).toMatchObject({
+      palette: false,
+      bindings: [],
+      handler: "shell",
+    });
+  expect(host.textContent).toContain(
+    "SHA-256 identifies these saved bytes; it does not verify the document’s claims.",
+  );
+  expect(host.querySelector("textarea")).toBeNull();
+  expect(host.textContent).not.toContain("Accept criterion");
+  await act(async () => control("toggle-task-receipt-fingerprint").click());
+  expect(host.querySelector("details")!.open).toBe(true);
+  await act(async () => control("toggle-task-receipt-snapshot").click());
+  expect(control("toggle-task-receipt-snapshot").closest("details")!.open).toBe(true);
+});
+it("real captured-text checkbox and focused remap share command without synthetic click", async () => {
+  await render();
+  const input = control("toggle-task-receipt-captured-text") as HTMLInputElement;
+  await act(async () => input.click());
+  expect(input.checked).toBe(true);
+  const clicks = vi.fn();
+  input.addEventListener("click", clicks);
+  input.focus();
+  useStore.setState({
+    settings: {
+      ...useStore.getState().settings,
+      shortcutOverrides: { "toggle-task-receipt-captured-text": [{ key: "i", meta: true }] },
+    },
+  });
+  await act(async () => {
+    expect(
+      dispatchShortcut({
+        commandId: "toggle-task-receipt-captured-text",
+        key: "i",
+        meta: true,
+        alt: false,
+        shift: false,
+      }),
+    ).toBe(true);
+  });
+  expect(input.checked).toBe(false);
+  expect(clicks).not.toHaveBeenCalled();
+});
+it("explicit snapshot inclusion exports original fresh saved revision and exact chooser ACK", async () => {
+  await render();
+  await act(async () => control("toggle-task-receipt-captured-text").click());
+  control("export-task-receipt").focus();
+  await act(async () => {
+    expect(await executeCommand("export-task-receipt")).toBe("/synthetic/receipt.md");
+  });
+  expect(hostState.read).toHaveBeenCalledWith("tasks.receipt", { taskId: "original-task", revision: 1 });
+  expect(hostState.saveFile).toHaveBeenCalledWith(
+    "aux-receipt-original-task-r1.md",
+    expect.stringContaining("Original captured text"),
+  );
+  expect(host.textContent).toContain("Receipt exported.");
+});
+it("default export omits captured text", async () => {
+  await render();
+  await act(async () => control("export-task-receipt").click());
+  expect(hostState.saveFile.mock.calls[0]![1]).not.toContain("Original captured text");
+});
+it("current foreign same-revision receipt refuses before chooser", async () => {
+  await render();
+  hostState.read.mockResolvedValueOnce({ ...receipt, taskId: "foreign-task" });
+  control("export-task-receipt").focus();
+  await act(async () => {
+    await expect(executeCommand("export-task-receipt")).rejects.toThrow("This task changed");
+  });
+  expect(hostState.saveFile).not.toHaveBeenCalled();
+});
+it.each(["receipt", "window", "Private"])(
+  "held original export error retires across %s ABA and preserves exact reason",
+  async (mode) => {
+    await render();
+    const hold = held<string | null>();
+    hostState.saveFile.mockReturnValueOnce(hold.promise);
+    control("export-task-receipt").focus();
+    let completion!: Promise<unknown>;
+    await act(async () => {
+      completion = executeCommand("export-task-receipt");
+    });
+    const observed = completion.catch((reason) => reason);
+    if (mode === "receipt") await render(sample(2));
+    else {
+      if (mode === "window") hostState.windowId = "two";
+      else hostState.privateMode = true;
+      await render();
+    }
+    hostState.windowId = "one";
+    hostState.privateMode = false;
+    await render();
+    const reason = new Error("original export rejection");
+    await act(async () => {
+      hold.reject(reason);
+      expect(await observed).toBe(reason);
+    });
+    expect(host.textContent).not.toContain(reason.message);
+    const report = vi.fn();
+    reportCommandCompletionFailure(completion, reason, report);
+    expect(report).not.toHaveBeenCalled();
+  },
+);
+it("old fulfilled chooser ACK remains exact without clearing a new original export’s pending UI", async () => {
+  await render();
+  const a = held<string | null>(),
+    b = held<string | null>();
+  hostState.saveFile.mockReturnValueOnce(a.promise);
+  control("export-task-receipt").focus();
+  let old!: Promise<unknown>, fresh!: Promise<unknown>;
+  await act(async () => {
+    old = executeCommand("export-task-receipt");
+  });
+  await render(sample(2));
+  hostState.read.mockResolvedValueOnce(sample(2));
+  hostState.saveFile.mockReturnValueOnce(b.promise);
+  control("export-task-receipt").focus();
+  await act(async () => {
+    fresh = executeCommand("export-task-receipt");
+  });
+  await act(async () => {
+    a.resolve("/synthetic/old.md");
+    expect(await old).toBe("/synthetic/old.md");
+  });
+  expect(control("export-task-receipt").matches(":disabled")).toBe(true);
+  expect(host.textContent).not.toContain("Receipt exported.");
+  await act(async () => {
+    b.resolve("/synthetic/new.md");
+    expect(await fresh).toBe("/synthetic/new.md");
+  });
+  expect(control("export-task-receipt").matches(":disabled")).toBe(false);
+});
+it("receipt retired during initial read never starts a file chooser", async () => {
+  await render();
+  const a = held<ReturnType<typeof sample>>();
+  hostState.read.mockReturnValueOnce(a.promise);
+  control("export-task-receipt").focus();
+  let completion!: Promise<unknown>;
+  await act(async () => {
+    completion = executeCommand("export-task-receipt");
+  });
+  const observed = completion.catch((reason) => reason);
+  await render(sample(2));
+  await act(async () => {
+    a.resolve(receipt);
+    expect(await observed).toBeInstanceOf(Error);
+  });
+  expect(hostState.saveFile).not.toHaveBeenCalled();
+});
+it("artifact Save preserves exact original native arguments and ACK", async () => {
+  await render();
+  control("save-task-receipt-artifact").focus();
+  await act(async () => {
+    expect(await executeCommand("save-task-receipt-artifact")).toBe("/synthetic/artifact.bin");
+  });
+  expect(hostState.saveArtifact).toHaveBeenCalledWith("original-artifact", "Original export");
+});
+it("held artifact error after source retirement retains rejection without old visible diagnostic", async () => {
+  await render();
+  const a = held<string | null>();
+  hostState.saveArtifact.mockReturnValueOnce(a.promise);
+  control("save-task-receipt-artifact").focus();
+  let completion!: Promise<unknown>;
+  await act(async () => {
+    completion = executeCommand("save-task-receipt-artifact");
+  });
+  const observed = completion.catch((reason) => reason);
+  await render(sample(2));
+  const reason = { message: "retired artifact" };
+  await act(async () => {
+    a.reject(reason);
+    expect(await observed).toBe(reason);
+  });
+  expect(host.textContent).not.toContain("[object Object]");
+});
+it("in-place changed original artifact hash refuses before native save", async () => {
+  await render();
+  receipt.criteria[0]!.evidence[0]!.record.source.cloudArtifacts![0]!.sha256 = "c".repeat(64);
+  control("save-task-receipt-artifact").focus();
+  await expect(executeCommand("save-task-receipt-artifact")).rejects.toThrow("original artifact");
+  expect(hostState.saveArtifact).not.toHaveBeenCalled();
+});
+it("focused artifact shortcut calls exactly original producer; foreign/hidden owner refuses", async () => {
+  await render();
+  control("save-task-receipt-artifact").focus();
+  useStore.setState({
+    settings: {
+      ...useStore.getState().settings,
+      shortcutOverrides: { "save-task-receipt-artifact": [{ key: "s", meta: true }] },
+    },
+  });
+  await act(async () => {
+    expect(
+      dispatchShortcut({
+        commandId: "save-task-receipt-artifact",
+        key: "s",
+        meta: true,
+        alt: false,
+        shift: false,
+      }),
+    ).toBe(true);
+  });
+  expect(hostState.saveArtifact).toHaveBeenCalledOnce();
+  host.hidden = true;
+  await expect(executeCommand("save-task-receipt-artifact")).rejects.toThrow();
+  expect(hostState.saveArtifact).toHaveBeenCalledOnce();
+});
+it("real original Save rejection cannot publish into a replacement receipt", async () => {
+  await render();
+  const a = held<string | null>();
+  hostState.saveArtifact.mockReturnValueOnce(a.promise);
+  const save = [...host.querySelectorAll("button")].find(
+    (button) => button.textContent === "Save Original export…",
+  )!;
+  await act(async () => save.click());
+  await render(sample(2));
+  await act(async () => a.reject(new Error("retired original artifact diagnostic")));
+  expect(host.textContent).not.toContain("retired original artifact diagnostic");
+});
+
+it("current artifact rejection remains identical and its diagnostic belongs only to original receipt", async () => {
+  await render();
+  const reason = new Error("actual original artifact error");
+  hostState.saveArtifact.mockRejectedValueOnce(reason);
+  control("save-task-receipt-artifact").focus();
+  await act(async () => {
+    expect(await executeCommand("save-task-receipt-artifact").catch((error) => error)).toBe(reason);
+  });
+  expect(host.textContent).toContain(reason.message);
+  await render(sample(2));
+  expect(host.textContent).not.toContain(reason.message);
+});
+function PreferenceEventProbe({
+  capture,
+}: {
+  capture: (element: HTMLInputElement, event?: Event) => unknown;
+}) {
+  const [ref, run] = usePreferenceCommand<HTMLInputElement>(
+    "toggle-task-receipt-captured-text",
+    "event-probe",
+    capture,
+  );
+  return <input ref={ref} type="checkbox" aria-label="Original checkbox probe" onChange={run} />;
+}
+it("shared preference seam forwards exact original Event and leaves focused shortcut event absent", async () => {
+  const capture = vi.fn();
+  await act(async () => root.render(<PreferenceEventProbe capture={capture} />));
+  const input = host.querySelector("input")!;
+  let original!: Event;
+  input.addEventListener("click", (event) => {
+    original = event;
+  });
+  await act(async () => input.click());
+  expect(capture).toHaveBeenLastCalledWith(input, original);
+  input.focus();
+  await act(async () => {
+    await executeCommand("toggle-task-receipt-captured-text");
+  });
+  expect(capture).toHaveBeenLastCalledWith(input, undefined);
+});

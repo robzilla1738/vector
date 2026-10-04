@@ -1,0 +1,68 @@
+diff --git a/apps/shell/src/commands.ts b/apps/shell/src/commands.ts
+index bc54abb4e..23668a416 100644
+--- a/apps/shell/src/commands.ts
++++ b/apps/shell/src/commands.ts
+@@ -96,6 +96,29 @@ function bookmarkAll(st: StoreState) {
+ }
+ export const COMMAND_ACTIONS = {
+   ...scopedControls(
++    "select-task-receipt-evidence",
++    "add-task-receipt-note",
++    "capture-task-receipt-page",
++    "import-task-receipt-document",
++    "save-task-receipt-document",
++    "cancel-task-receipt-document",
++    "accept-task-receipt-criterion",
++    "reject-task-receipt-criterion",
++    "verify-task-receipt-criterion",
++    "undo-task-receipt-form",
++    "undo-task-receipt-bookmark",
++    "undo-task-receipt-download",
++    "undo-task-receipt-history",
++    "review-task-receipt-run-undo",
++    "select-task-receipt-undo-change",
++    "undo-task-receipt-selected-changes",
++    "cancel-task-receipt-run-undo",
++    "select-task-receipt-action-evidence",
++    "select-task-receipt-operation-evidence",
++    "accept-task-receipt-action",
++    "reject-task-receipt-action",
++    "accept-task-receipt-operation",
++    "reject-task-receipt-operation",
+     "export-task-receipt",
+     "toggle-task-receipt-captured-text",
+     "save-task-receipt-artifact",
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index d60964722..aca21e551 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -49,6 +49,29 @@ const archiveBatchControl = { section: "Tabs", handler: "shell", feature: "archi
+ const diagnosticsControl = { ...memoryControl, windows: ["normal", "private"] } as const;
+ const runPanelControl = { ...runControl, palette: false } as const;
+ export const COMMANDS = [
++  C("select-task-receipt-evidence", "Select task receipt evidence", searchEngineControl),
++  C("add-task-receipt-note", "Add task receipt note", searchEngineControl),
++  C("capture-task-receipt-page", "Capture task receipt page", searchEngineControl),
++  C("import-task-receipt-document", "Import task receipt document", searchEngineControl),
++  C("save-task-receipt-document", "Save task receipt document", searchEngineControl),
++  C("cancel-task-receipt-document", "Cancel task receipt document", searchEngineControl),
++  C("accept-task-receipt-criterion", "Accept task receipt criterion", searchEngineControl),
++  C("reject-task-receipt-criterion", "Reject task receipt criterion", searchEngineControl),
++  C("verify-task-receipt-criterion", "Verify task receipt criterion", searchEngineControl),
++  C("undo-task-receipt-form", "Undo task receipt form", searchEngineControl),
++  C("undo-task-receipt-bookmark", "Undo task receipt bookmark", searchEngineControl),
++  C("undo-task-receipt-download", "Undo task receipt download", searchEngineControl),
++  C("undo-task-receipt-history", "Undo task receipt history", searchEngineControl),
++  C("review-task-receipt-run-undo", "Review task receipt run undo", searchEngineControl),
++  C("select-task-receipt-undo-change", "Select task receipt undo change", searchEngineControl),
++  C("undo-task-receipt-selected-changes", "Undo task receipt selected changes", searchEngineControl),
++  C("cancel-task-receipt-run-undo", "Cancel task receipt run undo", searchEngineControl),
++  C("select-task-receipt-action-evidence", "Select task receipt action evidence", searchEngineControl),
++  C("select-task-receipt-operation-evidence", "Select task receipt operation evidence", searchEngineControl),
++  C("accept-task-receipt-action", "Accept task receipt action", searchEngineControl),
++  C("reject-task-receipt-action", "Reject task receipt action", searchEngineControl),
++  C("accept-task-receipt-operation", "Accept task receipt operation", searchEngineControl),
++  C("reject-task-receipt-operation", "Reject task receipt operation", searchEngineControl),
+   C("export-task-receipt", "Export saved task receipt", searchEngineControl),
+   C("toggle-task-receipt-captured-text", "Include captured receipt text", searchEngineControl),
+   C("save-task-receipt-artifact", "Save preserved task artifact", searchEngineControl),

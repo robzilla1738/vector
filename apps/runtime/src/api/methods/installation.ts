@@ -10,6 +10,7 @@ import {
   runtimeRestoreStatus,
   setBackupRetention,
   stageRuntimeRestore,
+  stageListedRuntimeRestore,
 } from "../../services/runtime-backup.js";
 import { exportRecoveryPackage, inspectRecoveryPackage, stageRecoveryPackage } from "../../services/recovery-package.js";
 
@@ -48,6 +49,12 @@ async function h_installation_stageRestore(ctx: MethodCtx): Promise<unknown> {
     throw new AuxError("permission_denied", "Runtime restore requires an explicit action in Aux.");
   return stageRuntimeRestore(s.settings.all().dataDir, params.path, s.repo.columnCipher);
 }
+async function h_installation_stageListedRestore(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, s } = ctx;
+  if (client.external || client.codeMode)
+    throw new AuxError("permission_denied", "Restore the reviewed managed backup from Aux settings.");
+  return stageListedRuntimeRestore(s.settings.all().dataDir, params.name, params.expectedSha256, s.repo.columnCipher);
+}
 async function h_installation_cancelRestore(ctx: MethodCtx): Promise<unknown> {
   const { client, s } = ctx;
   if (client.external)
@@ -85,6 +92,7 @@ export const installationMethods: Partial<Record<MethodName, MethodHandler>> = {
   "installation.backupRetention": h_installation_backupRetention,
   "installation.setBackupRetention": h_installation_setBackupRetention,
   "installation.stageRestore": h_installation_stageRestore,
+  "installation.stageListedRestore": h_installation_stageListedRestore,
   "installation.cancelRestore": h_installation_cancelRestore,
   "installation.restoreStatus": h_installation_restoreStatus,
   "installation.exportRecovery": h_installation_exportRecovery,

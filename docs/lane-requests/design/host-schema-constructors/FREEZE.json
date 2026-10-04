@@ -1,0 +1,40 @@
+{
+  "files": [
+    {
+      "path": "packages/contracts/src/browser-host-methods.ts",
+      "beforeSha256": "300130cd7156a99285ed0cd8543edc78e676d572ef543ef1ce9f13750488e57c",
+      "afterSha256": "3c921e8ac2c5334acbb810624a17f48db30f15efa28601a9feac07d696163b79"
+    },
+    {
+      "path": "tests/tools/host-schema-constructors.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "6a2a573e1ef3b333c2a7c4e2580c4ef5824008e549e827f215b7fafaa5d4c2dd"
+    }
+  ],
+  "patchSha256": "af54e53dd2eeffc85e7f507a3e18f89b128bde8bdd5873594962fa432aba6e25",
+  "status": "source-only REQUEST ONLY; no whole-root budget/native acceptance",
+  "replay": "exact F/R/F PASS",
+  "controls": "4 actual installed Zod/esbuild/parser cases PASS; isolated full contracts noEmit types PASS; lint0",
+  "constructionCounts": {
+    "freshObjectStrict": 90,
+    "tupleAlias": 111
+  },
+  "apis": [
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/zod@4.5.4/node_modules/zod/v4/classic/schemas.js",
+      "sha256": "5f05c8227d5ab4579552303f6f3204f8bc57e1341226007dc5fcc8479b055a8a"
+    },
+    {
+      "path": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/zod@4.5.4/node_modules/zod/package.json",
+      "sha256": "5a1983857f982cc7d69336f32053ac7e38780de313d9e18ca3f7b9b7f2f94298"
+    }
+  ],
+  "diagnostic": {
+    "target": "chrome154",
+    "tool": "actual installed esbuild via Vite",
+    "originalMinifiedModuleBytes": 17826,
+    "resultMinifiedModuleBytes": 15760,
+    "savedModuleBytes": 2066,
+    "wholeRootBudgetMeasured": false
+  }
+}

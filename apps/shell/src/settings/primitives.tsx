@@ -40,6 +40,7 @@ export function SettingsField({
   children: ReactNode;
 }) {
   const id = useId();
+  const supportingText = hint ?? description;
   return (
     <div
       className={`field ui-setting${compact ? " compact" : ""}`}
@@ -50,15 +51,15 @@ export function SettingsField({
       tabIndex={-1}
       role="group"
       aria-labelledby={`${id}-label`}
-      aria-describedby={hint ? `${id}-hint` : undefined}
+      aria-describedby={supportingText ? `${id}-hint` : undefined}
     >
       <span id={`${id}-label`} className="setting-label">
         {label}
       </span>
       <div className="ui-setting-control">{children}</div>
-      {hint && (
+      {supportingText && (
         <span id={`${id}-hint`} className="hint">
-          {hint}
+          {supportingText}
         </span>
       )}
     </div>

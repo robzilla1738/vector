@@ -3,7 +3,7 @@ import { basename, sep } from "node:path";
 
 // Only schema construction/derivation: parse, metadata/registry and callbacks are excluded.
 const methods = new Set(
-  "string number boolean bigint undefined null unknown any never date literal enum object strictObject looseObject array tuple record union discriminatedUnion intersection lazy custom preprocess instanceof function optional nullable nullish default catch readonly brand strict passthrough strip partial required extend safeExtend merge pick omit and or pipe transform refine superRefine min max length int finite positive negative nonnegative nonpositive multipleOf safe url email uuid regex trim toLowerCase toUpperCase startsWith endsWith includes".split(
+  "string number boolean bigint undefined null unknown any never date literal enum object strictObject looseObject array tuple record partialRecord union discriminatedUnion intersection lazy custom preprocess instanceof function optional nonoptional nullable nullish default catch readonly brand strict passthrough strip partial required extend safeExtend merge pick omit and or pipe transform refine superRefine min max length int finite positive negative nonnegative nonpositive multipleOf safe url email uuid regex trim toLowerCase toUpperCase startsWith endsWith includes".split(
     " ",
   ),
 );
@@ -34,6 +34,13 @@ export function annotateContractSchemaFactories(code, filename = "contracts.js")
     )
       return false;
     const receiver = node.expression.expression;
+    // These admitted constructors have no parameter object/getter effects.
+    if (
+      node.expression.name.text === "partialRecord" &&
+      (node.arguments.length !== 2 || !node.arguments.every(schema))
+    )
+      return false;
+    if (node.expression.name.text === "nonoptional" && node.arguments.length) return false;
     return (ts.isIdentifier(receiver) && namespaces.has(receiver.text)) || schema(receiver);
   }
   function annotate(node) {

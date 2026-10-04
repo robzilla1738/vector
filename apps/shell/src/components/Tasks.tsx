@@ -1,6 +1,6 @@
 import "./Tasks.css";
 import { Tabs, WorkRow } from "../ui";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Run, Task, TaskReceipt } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
@@ -64,6 +64,86 @@ export function Tasks() {
   const [taskQuery, setTaskQuery] = useState("");
   const [newParentTaskId, setNewParentTaskId] = useState<string | null>(null);
 
+  // Original receipt callback owner, independent of incidental busy renders.
+  const windowId = bridge.windowId, privateMode = bridge.privateMode, kind = bridge.windowKind;
+  const receiptTaskId = selected?.task.taskId, receiptRevision = selected?.task.revision;
+  const receiptOwner = useMemo(() => {
+    const generatedAt = receipt?.generatedAt;
+    let live = false;
+    return {
+      activate: () => {
+        live = true;
+      },
+      retire: () => {
+        live = false;
+      },
+      current: () =>
+        live &&
+        receipt?.taskId === receiptTaskId && receipt?.taskRevision === receiptRevision && receipt?.generatedAt === generatedAt &&
+        bridge.windowId === windowId &&
+        bridge.privateMode === privateMode &&
+        bridge.windowKind === kind &&
+        useStore
+          .getState()
+          .layout.spaces.some(
+            (space) => space.id === layout.activeSpaceId && space.workspaceId === workspaceId,
+          ) &&
+        useStore.getState().layout.activeSpaceId === layout.activeSpaceId,
+    };
+  }, [
+    receiptTaskId,
+    receiptRevision,
+    receipt,
+    workspaceId,
+    layout.activeSpaceId,
+    windowId,
+    privateMode,
+    kind,
+  ]);
+  const receiptPending = useRef<{ owner: typeof receiptOwner; token: object } | null>(null);
+  useLayoutEffect(() => {
+    receiptOwner.activate();
+    return () => {
+      receiptOwner.retire();
+      if (receiptPending.current?.owner === receiptOwner) {
+        receiptPending.current = null;
+        setBusy(false);
+      }
+    };
+  }, [receiptOwner]);
+  async function receiptSubmit<M extends import("@aux/contracts").MethodName>(
+    method: M,
+    ...params: import("@aux/contracts").RpcArgs<M>
+  ) {
+    const owner = receiptOwner,
+      original = receipt;
+    if (!original || !owner.current() || receiptPending.current?.owner === owner)
+      throw new Error("Choose this task’s current receipt action.");
+    const slot = { owner, token: {} };
+    receiptPending.current = slot;
+    setBusy(true);
+    setError("");
+    try {
+      await call(method, ...params);
+      if (owner.current()) {
+        try {
+          await refresh(original.taskId, true, owner.current);
+        } catch (reason) {
+          if (owner.current())
+            setError("The receipt action completed, but the receipt could not be refreshed.");
+        }
+      }
+      return true;
+    } catch (reason) {
+      if (owner.current()) setError(reason instanceof Error ? reason.message : String(reason));
+      throw reason;
+    } finally {
+      if (receiptPending.current === slot) {
+        receiptPending.current = null;
+        if (owner.current()) setBusy(false);
+      }
+    }
+  }
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     closeButton.current?.focus();
@@ -190,12 +270,15 @@ export function Tasks() {
       });
     }
   }
-  async function refresh(taskId: string, restoreDraft = true) {
+  async function refresh(taskId: string, restoreDraft = true, current: () => boolean = () => true) {
+    if (!current()) throw new Error("Choose the original task receipt.");
     const [details, receipt, tasks] = await Promise.all([
       call("tasks.get", { taskId }),
       call("tasks.receipt", { taskId }),
       call("tasks.list", { workspaceId, includeArchived: true }),
     ]);
+    if (!current()) return;
+    if (details.task.taskId !== taskId || receipt.taskId !== taskId || receipt.taskRevision !== details.task.revision) throw new Error("This task changed while refreshing its receipt.");
     edit(details, restoreDraft);
     setReceipt(receipt);
     setTasks(tasks);
@@ -778,13 +861,8 @@ export function Tasks() {
                       key={`${receipt.taskId}:${receipt.taskRevision}`}
                       receipt={receipt}
                       pageId={attached ? activePageId : null}
-                      onChanged={() => refresh(receipt.taskId)}
-                      submit={(method, ...params) =>
-                        action(async () => {
-                          await call(method, ...params);
-                          await refresh(receipt.taskId);
-                        })
-                      }
+                      onChanged={() => refresh(receipt.taskId, true, receiptOwner.current)}
+                      submit={receiptSubmit}
                     />
                   )}
                   {!dirty && !conflict && <Routines workspaceId={workspaceId} task={selected.task} />}

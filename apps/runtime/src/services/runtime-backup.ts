@@ -1,6 +1,6 @@
 import {createHash,randomUUID} from 'node:crypto';
-import {createReadStream,existsSync} from 'node:fs';
-import {chmod,copyFile,lstat,mkdir,readFile,readdir,realpath,rename,rm,stat,writeFile} from 'node:fs/promises';
+import {constants,createReadStream,existsSync,openSync,closeSync,writeFileSync,fsyncSync,fstatSync,lstatSync,renameSync,unlinkSync} from 'node:fs';
+import {chmod,copyFile,lstat,mkdir,open,readFile,readdir,realpath,rename,rm,stat,writeFile} from 'node:fs/promises';
 import {DatabaseSync} from 'node:sqlite';
 import {dirname,isAbsolute,join,relative,resolve,sep} from 'node:path';
 import {SCHEMA_VERSION} from '../store/db.js';
@@ -88,7 +88,23 @@ function authenticateProtectedCopy(db:DatabaseSync,cipher?:SqliteColumnCipher){
 async function digest(path:string){return new Promise<string>((ok,fail)=>{const hash=createHash('sha256'),stream=createReadStream(path);stream.on('data',chunk=>hash.update(chunk));stream.on('error',fail);stream.on('end',()=>ok(hash.digest('hex')));});}
 function validateDatabase(path:string){const db=new DatabaseSync(path,{readOnly:true});try{const version=(db.prepare('PRAGMA user_version').get() as {user_version:number}).user_version;if(version<1||version>SCHEMA_VERSION)throw new Error(`This backup uses unsupported database schema ${version}.`);if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE name='aux_meta'").get()||(db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as {value:string}|undefined)?.value!=='aux')throw new Error('The selected file is not an Aux database.');const check=db.prepare('PRAGMA quick_check').get() as {'quick_check':string};if(check['quick_check']!=='ok')throw new Error('The selected backup failed SQLite integrity checking.');for(const table of ['kv','pages','runs','tasks','artifacts'])if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table))throw new Error(`The selected file is missing the ${table} table.`);if(db.prepare("SELECT 1 FROM sqlite_schema WHERE (type IN ('trigger','view') OR upper(coalesce(sql,'')) LIKE '%VIRTUAL TABLE%') AND name NOT LIKE 'history_fts%' LIMIT 1").get())throw new Error('The selected backup contains unsupported executable database schema.');return version;}finally{db.close();}}
 function safeRelative(value:unknown){if(typeof value!=='string'||!value||value.length>1024||isAbsolute(value))throw new Error('The backup contains an invalid artifact path.');const normalized=value.replaceAll('\\','/');if(normalized.split('/').some(part=>!part||part==='.'||part==='..'))throw new Error('The backup contains an unsafe artifact path.');return normalized;}
-async function readManifest(root:string):Promise<BackupManifest>{const path=join(root,'manifest.json'),info=await lstat(path);if(info.isSymbolicLink()||!info.isFile()||info.size>10*1024*1024)throw new Error('The backup manifest is invalid.');const value=JSON.parse(await import('node:fs/promises').then(fs=>fs.readFile(path,'utf8'))) as Partial<BackupManifest>;if(value.formatVersion!==1||typeof value.createdAt!=='number'||typeof value.schemaVersion!=='number'||!value.database||typeof value.database.bytes!=='number'||typeof value.database.sha256!=='string'||!Array.isArray(value.artifacts)||value.artifacts.length>MAX_ARTIFACTS||typeof value.missingArtifacts!=='number')throw new Error('This is not a supported Aux runtime backup.');const ids=new Set<string>(),paths=new Set<string>();for(const item of value.artifacts){if(!item||typeof item.artifactId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(item.artifactId)||typeof item.bytes!=='number'||item.bytes<0||typeof item.sha256!=='string'||!/^[a-f0-9]{64}$/.test(item.sha256))throw new Error('The backup manifest contains an invalid artifact.');const rel=safeRelative(item.relativePath);if(ids.has(item.artifactId)||paths.has(rel))throw new Error('The backup manifest repeats an artifact.');ids.add(item.artifactId);paths.add(rel);}return value as BackupManifest;}
+async function readBoundedManifest(handle:Awaited<ReturnType<typeof open>>,size:number){
+  if(!Number.isSafeInteger(size)||size<0||size>10*1024*1024)throw new Error('The backup manifest is invalid.');
+  const buffer=Buffer.alloc(size+1);let offset=0;
+  while(offset<buffer.length){const result=await handle.read(buffer,offset,buffer.length-offset,offset);if(!result.bytesRead)break;offset+=result.bytesRead;}
+  if(offset!==size)throw new Error('The backup manifest changed while reading.');
+  return buffer.subarray(0,offset);
+}
+async function readManifest(root:string):Promise<BackupManifest>{
+  const path=join(root,'manifest.json'),handle=await open(path,constants.O_RDONLY|constants.O_NOFOLLOW);
+  try{
+    const before=await handle.stat();if(!before.isFile())throw new Error('The backup manifest is invalid.');
+    const bytes=await readBoundedManifest(handle,before.size),[after,named]=await Promise.all([handle.stat(),lstat(path)]);
+    for(const value of [after,named])if(!value.isFile()||value.isSymbolicLink()||value.dev!==before.dev||value.ino!==before.ino||value.size!==before.size||value.mtimeMs!==before.mtimeMs||value.ctimeMs!==before.ctimeMs)throw new Error('The backup manifest changed while reading.');
+    return parseManifest(bytes.toString('utf8'));
+  }finally{await handle.close();}
+}
+function parseManifest(text:string):BackupManifest{const value=JSON.parse(text) as Partial<BackupManifest>;if(value.formatVersion!==1||typeof value.createdAt!=='number'||typeof value.schemaVersion!=='number'||!value.database||typeof value.database.bytes!=='number'||typeof value.database.sha256!=='string'||!Array.isArray(value.artifacts)||value.artifacts.length>MAX_ARTIFACTS||typeof value.missingArtifacts!=='number')throw new Error('This is not a supported Aux runtime backup.');const ids=new Set<string>(),paths=new Set<string>();for(const item of value.artifacts){if(!item||typeof item.artifactId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(item.artifactId)||typeof item.bytes!=='number'||item.bytes<0||typeof item.sha256!=='string'||!/^[a-f0-9]{64}$/.test(item.sha256))throw new Error('The backup manifest contains an invalid artifact.');const rel=safeRelative(item.relativePath);if(ids.has(item.artifactId)||paths.has(rel))throw new Error('The backup manifest repeats an artifact.');ids.add(item.artifactId);paths.add(rel);}return value as BackupManifest;}
 
 export async function createRuntimeBackup(repo:Repo,dataDir:string,opts:{maxBackupBytes?:number;interrupt?:()=>void;expectedRecoveryGeneration?:ManagedRecoveryGeneration;requireCompleteArtifacts?:boolean}={}){
   const maxBytes=opts.maxBackupBytes??MAX_BACKUP_BYTES,keep=backupRetention(repo).keep;
@@ -122,10 +138,86 @@ export async function attemptFreshManagedBackup(repo:Repo,dataDir:string,generat
   }
 }
 
+/** Exact managed inventory admission; never accepts a caller-selected path. */
+export async function stageListedRuntimeRestore(dataDir:string,name:string,expectedSha256:string,cipher?:SqliteColumnCipher){
+  if(!/^aux-runtime-[A-Za-z0-9._-]{1,160}$/.test(name)||!/^[a-f0-9]{64}$/.test(expectedSha256))
+    throw new Error('Choose the original managed backup.');
+  const generation=ensureManagedRecoveryGeneration(dataDir);
+  const item=(await listRuntimeBackups(dataDir)).find(value=>value.name===name&&value.sha256===expectedSha256&&value.restorable);
+  if(!item)throw new Error('This backup changed or is no longer available. Refresh the list.');
+  const canonicalRoot=await realpath(item.path);
+  const paths=[item.path,join(item.path,'manifest.json'),join(item.path,'state.sqlite')];
+  const handles:Awaited<ReturnType<typeof open>>[]=[];
+  let primary:unknown,failed=false;
+  let admitted:Awaited<ReturnType<typeof stageRuntimeRestoreSource>>&{source:{path:string;name:string;sha256:string}}|undefined;
+  try{
+    for(const [index,path] of paths.entries())handles.push(await open(path,constants.O_RDONLY|constants.O_NOFOLLOW|(index===0?constants.O_DIRECTORY:0)));
+    const identities=await Promise.all(handles.map(handle=>handle.stat()));
+    if(!identities[0]!.isDirectory()||!identities[1]!.isFile()||identities[1]!.size>10*1024*1024||!identities[2]!.isFile()||identities[2]!.size>MAX_BACKUP_BYTES)throw new Error('The reviewed backup file inventory is invalid.');
+    const originalManifest=await readBoundedManifest(handles[1]!,identities[1]!.size);
+    const manifestHash=createHash('sha256').update(originalManifest).digest('hex');
+    const current=async()=>{
+      assertManagedRecoveryGeneration(dataDir,generation);
+      for(const [index,path] of paths.entries()){
+        const [named,retained]=await Promise.all([lstat(path),handles[index]!.stat()]),original=identities[index]!;
+        for(const value of [named,retained])if(value.isSymbolicLink()||value.dev!==original.dev||value.ino!==original.ino||value.mode!==original.mode||value.uid!==original.uid||value.size!==original.size||value.mtimeMs!==original.mtimeMs||value.ctimeMs!==original.ctimeMs)
+          throw new Error('The reviewed backup changed before staging. Refresh the list.');
+      }
+      if(await realpath(item.path)!==canonicalRoot||createHash('sha256').update(await readBoundedManifest(handles[1]!,identities[1]!.size)).digest('hex')!==manifestHash||await digest(paths[2]!)!==expectedSha256)
+        throw new Error('The reviewed backup changed before staging. Refresh the list.');
+      assertManagedRecoveryGeneration(dataDir,generation);
+    };
+    await current();
+    const manifest=parseManifest(originalManifest.toString('utf8'));
+    if(manifest.database.sha256!==expectedSha256)throw new Error('The reviewed backup changed before staging. Refresh the list.');
+    const artifacts=await Promise.all(manifest.artifacts.map(async artifact=>{
+      const path=join(item.path,'artifacts',safeRelative(artifact.relativePath));
+      const info=await lstat(path),resolved=await realpath(path),rel=relative(join(canonicalRoot,'artifacts'),resolved);
+      if(info.isSymbolicLink()||!info.isFile()||rel==='..'||rel.startsWith(`..${sep}`))throw new Error('A reviewed backup artifact is unavailable.');
+      return {path,resolved,info};
+    }));
+    const finalCurrent=async()=>{
+      await current();
+      for(const artifact of artifacts){
+        const info=await lstat(artifact.path);
+        if(info.isSymbolicLink()||!info.isFile()||await realpath(artifact.path)!==artifact.resolved||info.dev!==artifact.info.dev||info.ino!==artifact.info.ino||info.size!==artifact.info.size||info.mtimeMs!==artifact.info.mtimeMs||info.ctimeMs!==artifact.info.ctimeMs||info.mode!==artifact.info.mode||info.uid!==artifact.info.uid)
+          throw new Error('A reviewed backup artifact changed before staging.');
+      }
+      await current();
+    };
+    const result=await stageRuntimeRestoreSource(dataDir,item.path,cipher,{expectedSha256,current,finalCurrent,manifest});
+    admitted={...result,source:{path:item.path,name:item.name,sha256:manifest.database.sha256}};
+  }catch(error){primary=error;failed=true;}
+  const cleanup=await Promise.allSettled(handles.map(handle=>handle.close()));
+  const failures=cleanup.filter((result):result is PromiseRejectedResult=>result.status==='rejected').map(result=>result.reason);
+  if(failures.length)throw new AggregateError(failed?[primary,...failures]:failures,'The original restore request and source-handle cleanup did not settle.');
+  if(failed)throw primary;
+  return admitted!;
+}
+
 export async function stageRuntimeRestore(dataDir:string,sourcePath:string,cipher?:SqliteColumnCipher){
+  return stageRuntimeRestoreSource(dataDir,sourcePath,cipher);
+}
+function commitManagedRestoreDescriptor(dataDir:string,path:string,text:string,generation:ManagedRecoveryGeneration){
+  const temporary=`${path}.${randomUUID()}.tmp`;let descriptor:number|undefined,identity:ReturnType<typeof fstatSync>|undefined,renamed=false,primary:unknown,failed=false;
+  try{
+    descriptor=openSync(temporary,'wx',0o600);identity=fstatSync(descriptor);
+    writeFileSync(descriptor,text,{encoding:'utf8'});fsyncSync(descriptor);closeSync(descriptor);descriptor=undefined;
+    assertManagedRecoveryGeneration(dataDir,generation);
+    renameSync(temporary,path);renamed=true;
+    assertManagedRecoveryGeneration(dataDir,generation);
+  }catch(error){primary=error;failed=true;}
+  const cleanup:unknown[]=[];
+  if(descriptor!==undefined)try{closeSync(descriptor);}catch(error){cleanup.push(error);}
+  if(failed&&identity){const original=renamed?path:temporary;try{const now=lstatSync(original);if(now.dev!==identity.dev||now.ino!==identity.ino||!now.isFile()||now.isSymbolicLink())throw new Error('The original pending restore descriptor changed; cleanup is retained.');unlinkSync(original);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')cleanup.push(error);}}
+  if(cleanup.length)throw new AggregateError([primary,...cleanup],'The original restore publication and descriptor cleanup did not settle.');
+  if(failed)throw primary;
+}
+async function stageRuntimeRestoreSource(dataDir:string,sourcePath:string,cipher?:SqliteColumnCipher,managed?:{expectedSha256:string;current():Promise<void>;finalCurrent():Promise<void>;manifest:BackupManifest}){
+  await managed?.current();
   const root=await realpath(sourcePath),rootInfo=await lstat(root);
   if(rootInfo.isSymbolicLink()||!rootInfo.isDirectory())throw new Error('Choose an Aux runtime backup folder.');
-  const manifest=await readManifest(root),sourceDatabase=await realpath(join(root,'state.sqlite'));
+  const manifest=managed?.manifest??await readManifest(root),sourceDatabase=await realpath(join(root,'state.sqlite'));
   ensureManagedRecoveryGeneration(dataDir);
   assertManagedRecoveryGeneration(dataDir,manifest.recoveryGeneration,true);
   const databaseRel=relative(root,sourceDatabase);
@@ -133,6 +225,8 @@ export async function stageRuntimeRestore(dataDir:string,sourcePath:string,ciphe
   const databaseInfo=await lstat(sourceDatabase);
   if(databaseInfo.isSymbolicLink()||!databaseInfo.isFile()||databaseInfo.size!==manifest.database.bytes||await digest(sourceDatabase)!==manifest.database.sha256)
     throw new Error('The backup database failed its integrity check.');
+  if(managed&&manifest.database.sha256!==managed.expectedSha256)throw new Error('The reviewed backup changed before staging. Refresh the list.');
+  await managed?.current();
   const schemaVersion=validateDatabase(sourceDatabase);
   if(schemaVersion!==manifest.schemaVersion)throw new Error('The backup schema does not match its manifest.');
 
@@ -141,8 +235,12 @@ export async function stageRuntimeRestore(dataDir:string,sourcePath:string,ciphe
   const temporaryDatabase=`${pendingDatabase}.${randomUUID()}.tmp`;
   const temporaryArtifacts=`${pendingArtifacts}.${randomUUID()}.tmp`;
   await mkdir(temporaryArtifacts,{recursive:true,mode:0o700});
+  const published:{path:string;dev:number;ino:number}[]=[];
   try{
+    await managed?.current();
     await copyFile(sourceDatabase,temporaryDatabase);
+    if(managed&&await digest(temporaryDatabase)!==managed.expectedSha256)throw new Error('The reviewed database changed while copying.');
+    await managed?.current();
     await chmod(temporaryDatabase,0o600);
     const staged=new DatabaseSync(temporaryDatabase);
     let omittedArtifacts:Set<string>;
@@ -207,6 +305,7 @@ export async function stageRuntimeRestore(dataDir:string,sourcePath:string,ciphe
       await mkdir(dirname(target),{recursive:true,mode:0o700});
       if(minimized)await writeFile(target,minimized,{mode:0o600});else await copyFile(source,target);
       await chmod(target,0o600);
+      if(managed&&await digest(target)!==stagedDigest)throw new Error('A reviewed backup artifact changed while copying.');
       const stagedItem:ManifestArtifact={artifactId:item.artifactId,relativePath:targetRel,bytes,sha256:await digest(target)};
       stagedArtifacts.push(stagedItem);
     }
@@ -221,17 +320,32 @@ export async function stageRuntimeRestore(dataDir:string,sourcePath:string,ciphe
         if(!included.has(row.artifact_id))missing.run(join(dataDir,'artifacts','missing',row.artifact_id),row.artifact_id);
       prepared.exec('VACUUM');
     }finally{prepared.close();}
-    const stagedInfo=await stat(temporaryDatabase),sha256=await digest(temporaryDatabase);
+    const stagedInfo=await stat(temporaryDatabase),sha256=await digest(temporaryDatabase),artifactInfo=managed?await stat(temporaryArtifacts):undefined;
+    await managed?.finalCurrent();
     await rm(pendingArtifacts,{recursive:true,force:true});
     await rename(temporaryArtifacts,pendingArtifacts);
+    if(managed){published.push({path:pendingArtifacts,dev:artifactInfo!.dev,ino:artifactInfo!.ino});await managed.finalCurrent();}
     await rename(temporaryDatabase,pendingDatabase);
+    if(managed)published.push({path:pendingDatabase,dev:stagedInfo.dev,ino:stagedInfo.ino});
     const recoveryGeneration=assertManagedRecoveryGeneration(dataDir,manifest.recoveryGeneration,true);
-    await writeFile(join(dataDir,'pending-runtime-restore.json'),JSON.stringify({version:2,createdAt:Date.now(),schemaVersion,
-      bytes:stagedInfo.size,sha256,artifactFiles:stagedArtifacts,
-      recoveryGeneration},null,2)+'\n',{encoding:'utf8',mode:0o600});
+    const descriptor=JSON.stringify({version:2,createdAt:Date.now(),schemaVersion,
+      bytes:stagedInfo.size,sha256,artifactFiles:stagedArtifacts,recoveryGeneration},null,2)+'\n';
+    if(managed){
+      await managed.finalCurrent();
+      for(const original of published){const now=lstatSync(original.path);if(now.dev!==original.dev||now.ino!==original.ino||now.isSymbolicLink())throw new Error('The original staged restore files changed before publication.');}
+      commitManagedRestoreDescriptor(dataDir,join(dataDir,'pending-runtime-restore.json'),descriptor,recoveryGeneration);
+    }else await writeFile(join(dataDir,'pending-runtime-restore.json'),descriptor,{encoding:'utf8',mode:0o600});
     return{staged:true as const,schemaVersion,bytes:stagedInfo.size+artifactBytes,sha256,
       artifactFiles:stagedArtifacts.length,missingArtifacts:manifest.missingArtifacts};
-  }catch(error){await Promise.all([rm(temporaryDatabase,{force:true}),rm(temporaryArtifacts,{recursive:true,force:true})]);throw error;}
+  }catch(error){
+    const cleanup=await Promise.allSettled([rm(temporaryDatabase,{force:true}),rm(temporaryArtifacts,{recursive:true,force:true})]);
+    const failures=cleanup.filter((value):value is PromiseRejectedResult=>value.status==='rejected').map(value=>value.reason);
+    if(published.length||failures.length){
+      const retained=new AggregateError([error,...failures],`${error instanceof Error?error.message:'Restore failed.'} Original published staged files remain cleanup debt.`);
+      Object.assign(retained,{cleanupDebt:published});throw retained;
+    }
+    throw error;
+  }
 }
 
 export async function cancelRuntimeRestore(dataDir:string){await Promise.all([rm(join(dataDir,'pending-runtime-restore.sqlite'),{force:true}),rm(join(dataDir,'pending-runtime-restore-artifacts'),{recursive:true,force:true}),rm(join(dataDir,'pending-runtime-restore-space-memory'),{recursive:true,force:true}),rm(join(dataDir,'pending-runtime-restore.json'),{force:true})]);return{cancelled:true as const};}

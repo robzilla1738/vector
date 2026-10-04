@@ -1,18 +1,38 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const { startupPreferences } = vi.hoisted(() => {
   let current = { mode: "continue", urls: [] as string[], managed: false };
-  return { startupPreferences: vi.fn(async (next?: { mode: string; urls: string[] }) => {
-    if (next) current = { ...next, managed: false };
-    return current;
-  }) };
+  return {
+    startupPreferences: vi.fn(async (next?: { mode: string; urls: string[] }) => {
+      if (next) current = { ...next, managed: false };
+      return current;
+    }),
+  };
 });
-vi.mock("../../bridge", () => ({ bridge: { privateMode: false, startupPreferences }, inMock: true, inNativeHost: false }));
+vi.mock("../../bridge", async (original) => ({
+  ...(await original<typeof import("../../bridge")>()),
+  bridge: {
+    ...(await original<typeof import("../../bridge")>()).bridge,
+    privateMode: false,
+    windowId: "original",
+    windowKind: "normal",
+    startupPreferences,
+  },
+  inMock: true,
+  inNativeHost: false,
+}));
 
 import { ordinaryWebUrl, StartupSetting } from "./Startup";
+
+beforeEach(() => {
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
+    { width: 10, height: 10 } as DOMRect,
+  ] as unknown as DOMRectList);
+});
+afterEach(() => vi.restoreAllMocks());
 
 it("accepts ordinary startup URLs and rejects unsafe schemes and credentials", () => {
   expect(ordinaryWebUrl("example.com")).toBe("https://example.com/");
@@ -24,6 +44,7 @@ it("accepts ordinary startup URLs and rejects unsafe schemes and credentials", (
 it("reads and updates Chromium's startup mode", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
+  document.body.append(container);
   const root = createRoot(container);
   try {
     await act(async () => root.render(<StartupSetting active />));
@@ -38,6 +59,7 @@ it("reads and updates Chromium's startup mode", async () => {
     expect(select.value).toBe("new-tab");
   } finally {
     await act(async () => root.unmount());
+    container.remove();
     vi.unstubAllGlobals();
   }
 });

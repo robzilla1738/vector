@@ -1174,6 +1174,7 @@ export const MethodSchemas = {
   "installation.setBackupRetention": z
     .object({ keep: z.union([z.literal(3), z.literal(5), z.literal(10), z.literal(20)]) })
     .strict(),
+  "installation.stageListedRestore": z.object({ name: z.string().min(1).max(200), expectedSha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   "installation.stageRestore": z.object({ path: z.string().min(1).max(4096) }).strict(),
   "installation.cancelRestore": z.object({}).strict(),
   "installation.restoreStatus": z.object({}).strict(),
@@ -1877,6 +1878,15 @@ export const ResultSchemas = {
   "installation.deleteBackup": z.object({ deleted: z.literal(true) }),
   "installation.backupRetention": z.object({ keep: z.number().int().positive() }),
   "installation.setBackupRetention": z.object({ keep: z.number().int().positive() }),
+  "installation.stageListedRestore": z.object({
+    source: z.object({ path: z.string(), name: z.string(), sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+    staged: z.literal(true),
+    schemaVersion: z.number().int().positive(),
+    bytes: z.number().int().nonnegative(),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    artifactFiles: z.number().int().nonnegative(),
+    missingArtifacts: z.number().int().nonnegative(),
+  }).strict(),
   "installation.stageRestore": z.object({
     staged: z.literal(true),
     schemaVersion: z.number().int().positive(),

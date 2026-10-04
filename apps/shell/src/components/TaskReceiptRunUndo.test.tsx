@@ -6,10 +6,11 @@ import { TaskReceiptSchema } from "@aux/contracts";
 import { TaskReceiptView } from "./TaskReceiptView";
 
 const mock = vi.hoisted(() => ({ call: vi.fn() }));
-vi.mock("../store", () => ({ call: mock.call }));
+vi.mock("../store", async original => ({ ...await original<typeof import("../store")>(), call: mock.call }));
 
 it("reviews and selects exact local effects before run undo", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const geometry=vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
   const token = "a".repeat(64);
   const receipt = TaskReceiptSchema.parse({ taskId: "task-1", taskRevision: 1, objective: "Edit form",
     generatedAt: 1, status: "needs_review", criteria: [], unresolvedActions: [], runs: [],
@@ -42,5 +43,5 @@ it("reviews and selects exact local effects before run undo", async () => {
       expectedStepIds: ["first", "second"], selectedStepIds: ["second"],
     });
     expect(changed).toHaveBeenCalledOnce();
-  } finally { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
+  } finally { await act(async () => root.unmount()); host.remove(); geometry.mockRestore(); vi.unstubAllGlobals(); }
 });

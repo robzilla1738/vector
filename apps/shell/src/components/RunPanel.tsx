@@ -1,9 +1,11 @@
+import { RunPanelAction, RunPanelDisclosure } from "./RunPanelAction";
+import { bridge } from "../bridge";
 import { RunControls } from "./RunControls";
 import type { ConversationSource } from "@aux/contracts";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { CompactObservation, Run } from "@aux/contracts";
-import { decodeBase64Json, isLive, useStore, call, errToast } from "../store";
+import type { CompactObservation, Run, StepRecord } from "@aux/contracts";
+import { decodeBase64Json, isLive, useStore, call } from "../store";
 import { hostOf } from "../workspace";
 import { ObservationPanel } from "./ObservationPanel";
 import { StepTimeline, fmtMs } from "./StepTimeline";
@@ -121,11 +123,9 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
     return parts.join("\n");
   }, [run, result, plainAnswer, showSummary]);
   useEffect(()=>{if(!copied)return;const timer=window.setTimeout(()=>setCopied(false),1200);return()=>window.clearTimeout(timer);},[copied]);
-  const copy = () => {
-    void navigator.clipboard.writeText(conversation && reply ? reply : text).then(() => {
-      setCopied(true);
-    }).catch(errToast);
-  };
+  const copy = (current: () => boolean) => navigator.clipboard.writeText(conversation && reply ? reply : text).then(() => {
+    if (current()) setCopied(true);
+  });
   // Streamed text is plain until the run settles; markdown parses once, at the end.
   if (isLive(run) && !run.error) return stream ? <section className="answer" aria-live="polite" aria-busy="true"><p className="answer-text answer-stream">{stream}</p></section> : null;
   if (conversation) {
@@ -133,7 +133,7 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
     return (
       <section className="answer">
         {reply && <AnswerMarkdown text={reply} sources={sources} onOpenLink={onCitationOpen ? (url,background)=>onCitationOpen(url,background,run.runId) : undefined}/>}
-        {(reply || retry) && <span className="answer-tools">{reply && <button className="icon-btn xs answer-copy" title={copied ? "Copied" : "Copy"} aria-label={copied ? "Copied" : "Copy answer"} onClick={copy}>{copied ? shellIconCheck : shellIconCopy}</button>}{retry}</span>}
+        {(reply || retry) && <span className="answer-tools">{reply && <RunPanelAction command="copy-run-answer" run={run} className="icon-btn xs answer-copy" title={copied ? "Copied" : "Copy"} aria-label={copied ? "Copied" : "Copy answer"} invoke={copy}>{copied ? shellIconCheck : shellIconCopy}</RunPanelAction>}{retry}</span>}
         {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
       </section>
     );
@@ -142,14 +142,14 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
   return (
     <section className="answer">
       {text && (
-        <button className="icon-btn xs answer-copy" title={copied ? "Copied" : "Copy"} aria-label={copied ? "Copied" : "Copy answer"} onClick={copy}>
+        <RunPanelAction command="copy-run-answer" run={run} className="icon-btn xs answer-copy" title={copied ? "Copied" : "Copy"} aria-label={copied ? "Copied" : "Copy answer"} invoke={copy}>
           {copied ? shellIconCheck : shellIconCopy}
-        </button>
+        </RunPanelAction>
       )}
       {showSummary && <AnswerMarkdown text={run.statusMessage!}/>}
       {plainAnswer !== null && <AnswerMarkdown text={plainAnswer} />}
       {plainAnswer === null && result && Object.keys(result).length > 0 && (
-        <details className="answer-details" open={!run.statusMessage}><summary>Result details</summary><ResultFields result={result} labeled /></details>
+        <RunPanelDisclosure command="toggle-run-result-details" run={run} className="answer-details" open={!run.statusMessage} summary="Result details"><ResultFields result={result} labeled /></RunPanelDisclosure>
       )}
       {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
     </section>
@@ -192,8 +192,8 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
     return () => { ++observationRequest.current; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId]);
-  const inspectRef = useRef<(artifactId: string) => Promise<void>>(async () => {});
-  const onInspect = useCallback((artifactId: string) => void inspectRef.current(artifactId), []);
+  const inspectRef = useRef<(artifactId: string,current:()=>boolean) => Promise<unknown>>(async () => {});
+  const onInspect = useCallback((artifactId: string,_step:StepRecord,current:()=>boolean) => inspectRef.current(artifactId,current), []);
 
   if (!run) return <div className="rail-empty">This run is no longer available.</div>;
 
@@ -217,18 +217,20 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
   const openModelSettings = () => useStore.setState({ overlay: "settings", settingsCategory: "Models", railOpen: true });
 
   const observationArtifact = [...(steps ?? [])].reverse().map(step=>(step.inputs as {obsArtifactId?:string}|undefined)?.obsArtifactId).find(Boolean);
-  const inspect = async (artifactId: string) => {
+  const inspect = async (artifactId: string, current: () => boolean = () => true) => {
     const version=++observationRequest.current;setInspectedArtifact(artifactId);setShowObs(true);setObsLoading(true);setObsError("");
     try {
       const res = await call("artifacts.read", { artifactId });
-      if(version!==observationRequest.current)return;
+      if(version!==observationRequest.current || !current())return res;
       const o = decodeBase64Json<CompactObservation>(res.dataBase64);
       if(!o || typeof o.text!=="string" || !Array.isArray(o.refs))throw new Error("The saved page snapshot could not be read.");
       useStore.setState((s) => ({ observations: { ...s.observations, [runId]: o } }));
       setShowObs(true);
+      return res;
     } catch (e) {
-      if(version===observationRequest.current)setObsError(e instanceof Error ? e.message : String(e));
-    } finally { if(version===observationRequest.current)setObsLoading(false); }
+      if(version===observationRequest.current && current())setObsError(e instanceof Error ? e.message : String(e));
+      throw e;
+    } finally { if(version===observationRequest.current && current())setObsLoading(false); }
   };
   inspectRef.current = inspect;
 
@@ -242,23 +244,23 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
         {(!conversation || !["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
           && <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>}
         {page && page.url !== "about:blank" && page.pageId !== activePageId && (
-          <button className="run-host" onClick={() => void activate(page.pageId).catch(errToast)} title={page.url}>
+          <RunPanelAction command="activate-run-page" run={run} className="run-host" invoke={() => activate(page.pageId)} title={page.url}>
             {hostOf(page.url)}
             {run.pageIds.length > 1 ? ` +${run.pageIds.length - 1}` : ""}
-          </button>
+          </RunPanelAction>
         )}
         <span className="sp" />
         <span className="run-acts">
           {!live && (run.config?.taskId
-            ? <button className="icon-btn sm" title="Open saved task" aria-label="Open saved task" onClick={() => void openSavedTask(run.config!.taskId!).catch(errToast)}>{shellIconLayersSm}</button>
+            ? <RunPanelAction command="open-run-task" run={run} className="icon-btn sm" title="Open saved task" aria-label="Open saved task" invoke={() => openSavedTask(run.config!.taskId!)}>{shellIconLayersSm}</RunPanelAction>
             : !conversation && !run.failure
-                ? <button className="icon-btn sm" title="Run again" aria-label="Run again" onClick={() => void startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{shellIconReload}</button>
+                ? <RunPanelAction command="repeat-run" run={run} className="icon-btn sm" title="Run again" aria-label="Run again" invoke={() => startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{shellIconReload}</RunPanelAction>
                 : null)}
         </span>
       </div>}
       {!live && latestConversationTurn && !run.config?.taskId && !retryAvailable && retryPage && (!run.failure || run.failure.retryable) && <section className="run-failure" role="status">
         <div className="run-failure-copy"><strong>The original tab is unavailable</strong><p>Retry using {retryPage.title || retryPage.url}. The saved request and context stay the same; the browser page changes.</p></div>
-        <button className="btn sm" disabled={readOnly || retrying} onClick={() => void retryRun(run.runId, retryPage.pageId)}>{retrying ? "Retrying…" : "Retry in selected tab"}</button>
+        <RunPanelAction command="retry-run-selected-tab" run={run} className="btn sm" disabled={readOnly || retrying} invoke={() => retryRun(run.runId, retryPage.pageId)}>{retrying ? "Retrying…" : "Retry in selected tab"}</RunPanelAction>
       </section>}
       {!live && latestConversationTurn && !run.config?.taskId && multiTabBlocked && <section className="run-failure" role="status">
         <div className="run-failure-copy"><strong>Original tabs are missing</strong><p>This turn used {run.pageIds.length} tabs. Restore those tabs before retrying. Aux will not retry a subset.</p></div>
@@ -267,15 +269,14 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
 
       {live && run.statusMessage && !asksMe && !conversation && <p className="run-msg">{run.statusMessage}</p>}
 
-      <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !retryAvailable || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{shellIconReload}</button> : null} />
+      <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <RunPanelAction command="retry-run-turn" run={run} className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !retryAvailable || retrying || multiTabBlocked} invoke={() => retryRun(run.runId)}>{shellIconReload}</RunPanelAction> : null} />
       <RunTranscriptDetails savedAnswerIds={savedAnswerIds} run={run} question={question} readOnly={readOnly} answerInComposer={questionInComposer} />
 
-      {(calls != null || stats || !conversation) && <details className="run-provenance">
-        <summary>Run details</summary>
+      {(calls != null || stats || !conversation) && <RunPanelDisclosure command="toggle-run-details" run={run} className="run-provenance" summary="Run details">
         <div><Elapsed run={run}/>{calls != null && <span>{calls} {calls === 1 ? "model call" : "model calls"}</span>}</div>
         {stats && <><p>{[stats.providers.join(", "), stats.modelIds.join(", ")].filter(Boolean).join(" · ")}</p>
         <div><span>{stats.destinations.length ? `Destination ${stats.destinations.join(", ")}` : "Provider destination was not recorded"}</span><span>{stats.inputTokens.toLocaleString()} input · {stats.outputTokens.toLocaleString()} output tokens</span><span>{stats.costComplete ? `${fmtCost(stats.costUsd, false) || "$0.00"} recorded cost` : `${fmtCost(stats.costUsd, true) || "$0 known"} · provider cost incomplete`}</span></div></>}
-      </details>}
+      </RunPanelDisclosure>}
 
       {run.failure && (
         <section className="run-failure" role="status">
@@ -285,43 +286,43 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
             <p>{run.failure.message}</p>
           </div>
           {latestConversationTurn && !run.config?.taskId && ["retry", "permission_settings"].includes(run.failure.action) && retryAvailable && (
-            <button className="btn sm" disabled={readOnly || retrying} onClick={() => void retryRun(run.runId)}>{shellIconReload}{retrying ? "Retrying…" : "Retry turn"}</button>
+            <RunPanelAction command="retry-run-turn" run={run} className="btn sm" disabled={readOnly || retrying} invoke={() => retryRun(run.runId)}>{shellIconReload}{retrying ? "Retrying…" : "Retry turn"}</RunPanelAction>
           )}
-          {run.failure.action === "edit_request" && latestConversationTurn && <button className="btn sm" disabled={readOnly} onClick={() => {
-            if (run.config?.taskId) { void openSavedTask(run.config.taskId).catch(errToast); return; }
+          {run.failure.action === "edit_request" && latestConversationTurn && <RunPanelAction command="revise-run-request" run={run} className="btn sm" disabled={readOnly} invoke={(current) => {
+            if (run.config?.taskId) { return openSavedTask(run.config.taskId); }
             const chatId = run.config?.chatId ?? run.runId;
             const state = useStore.getState();
             if (!state.conversationDrafts[`chat:${chatId}`]?.trim()) state.setConversationDraft(chatId, run.goal);
             state.openConversation(run.runId);
-            requestAnimationFrame(() => composerRef?.current?.focus());
-          }}>{run.config?.taskId ? "Edit task" : "Revise request"}</button>}
-          {run.failure.action === "permission_settings" && <button className="btn sm" onClick={() => { useStore.setState({ settingsCategory: "Agent permissions" }); useStore.getState().setOverlay("settings"); }}>{shellIconLock}Review permissions</button>}
-          {run.failure.action === "permission_settings" && run.config?.taskId && <button className="btn sm" onClick={() => void openSavedTask(run.config!.taskId!).catch(errToast)}>Open task</button>}
-          {/vault|credential grant|opaque reference|Unlock the agent vault/i.test(run.failure.message) && <button className="btn sm" onClick={() => { useStore.setState({ settingsCategory: "Vault" }); useStore.getState().setOverlay("settings"); }}>{shellIconLock}Open vault</button>}
+            requestAnimationFrame(() => { if (current()) composerRef?.current?.focus(); });
+          }}>{run.config?.taskId ? "Edit task" : "Revise request"}</RunPanelAction>}
+          {run.failure.action === "permission_settings" && <RunPanelAction command="review-run-permissions" run={run} className="btn sm" invoke={() => { useStore.setState({ settingsCategory: "Agent permissions" }); useStore.getState().setOverlay("settings"); }}>{shellIconLock}Review permissions</RunPanelAction>}
+          {run.failure.action === "permission_settings" && run.config?.taskId && <RunPanelAction command="open-run-task" run={run} className="btn sm" invoke={() => openSavedTask(run.config!.taskId!)}>Open task</RunPanelAction>}
+          {/vault|credential grant|opaque reference|Unlock the agent vault/i.test(run.failure.message) && <RunPanelAction command="open-run-vault" run={run} className="btn sm" invoke={() => { useStore.setState({ settingsCategory: "Vault" }); useStore.getState().setOverlay("settings"); }}>{shellIconLock}Open vault</RunPanelAction>}
           {run.failure.action === "model_settings" && (
-            <button className="btn sm" onClick={openModelSettings}>{shellIconGearSm}Model settings</button>
+            <RunPanelAction command="open-run-model-settings" run={run} className="btn sm" invoke={openModelSettings}>{shellIconGearSm}Model settings</RunPanelAction>
           )}
         </section>
       )}
 
       {(!conversation || (steps?.length ?? 0) > 0) && <section className="run-section">
-        <button className="run-section-head toggle" aria-expanded={showSteps} onClick={() => setShowSteps((v) => !v)}>
+        <RunPanelAction command="toggle-run-steps" run={run} className="run-section-head toggle" aria-expanded={showSteps} invoke={() => setShowSteps((v) => !v)}>
           <span className={`chev ${showSteps ? "open" : ""}`}>{shellIconRight}</span>
           <span>{conversation ? "Work history" : "Steps"}</span>
           <span className="count nums">{steps?.length ?? 0}</span>
           {steps && steps.length > 0 && <span className="sum nums">{fmtMs(steps.reduce((a, s) => a + (s.outcome?.durationMs ?? 0), 0))}</span>}
-        </button>
-        {showSteps && (!!steps?.length || live) && <StepTimeline compact steps={steps ?? []} live={live && !humanHolds && run.status !== "paused"} onInspect={onInspect} />}
+        </RunPanelAction>
+        {showSteps && (!!steps?.length || live) && <StepTimeline run={run} windowId={bridge.windowId} privateMode={bridge.privateMode} windowKind={bridge.windowKind} compact steps={steps ?? []} live={live && !humanHolds && run.status !== "paused"} onInspect={onInspect} />}
       </section>}
 
       {(obs || observationArtifact) && (!conversation || showSteps) && (
         <section className="run-section">
-          <button className="run-section-head toggle" aria-expanded={showObs} onClick={() => { if(!showObs && !obs && observationArtifact)void inspect(observationArtifact);else setShowObs(value=>!value); }}>
+          <RunPanelAction command="toggle-run-page" run={run} className="run-section-head toggle" aria-expanded={showObs} invoke={(current) => { if(!showObs && !obs && observationArtifact)return inspect(observationArtifact, current);else setShowObs(value=>!value); }}>
             <span className={`chev ${showObs ? "open" : ""}`}>{shellIconRight}</span>
             <span>Page</span>
             {obs && <span className="count nums">{obs.refs.length}</span>}
-          </button>
-          {showObs && (obsLoading ? <output className="hint" data-block>Loading saved page…</output> : obsError ? <p className="field-error" role="alert">{obsError} {(inspectedArtifact || observationArtifact) && <button className="btn sm" onClick={()=>void inspect((inspectedArtifact || observationArtifact)!)}>Retry</button>}</p> : obs ? <ObservationPanel compact obs={obs} /> : null)}
+          </RunPanelAction>
+          {showObs && (obsLoading ? <output className="hint" data-block>Loading saved page…</output> : obsError ? <p className="field-error" role="alert">{obsError} {(inspectedArtifact || observationArtifact) && <RunPanelAction command="retry-run-page-observation" run={run} className="btn sm" invoke={(current)=>inspect((inspectedArtifact || observationArtifact)!, current)}>Retry</RunPanelAction>}</p> : obs ? <ObservationPanel compact obs={obs} /> : null)}
         </section>
       )}
     </div>

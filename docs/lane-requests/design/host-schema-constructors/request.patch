@@ -1,0 +1,609 @@
+--- a/packages/contracts/src/browser-host-methods.ts
++++ b/packages/contracts/src/browser-host-methods.ts
+@@ -24,276 +24,278 @@
+ 
+ const shell = <A extends z.ZodType, R extends z.ZodType>(feature: AuxFeature | "core", args: A, result: R) =>
+   method("browser", feature, "aux-webui", args, result);
+-const noArgs = z.tuple([]);
++const strictObject = <Shape extends z.ZodRawShape>(shape: Shape) => z.object(shape).strict();
++const tuple = z.tuple;
++const noArgs = tuple([]);
+ const bool = z.boolean();
+ const str = z.string();
+ const number = z.number();
+ const nullableString = str.nullable();
+ const noResult = z.union([z.undefined(), z.null()]);
+-const token = z.object({ contentHash: str, manifestSha256: str }).strict();
+-const migrationProgress = z.object({ status: z.literal("importing"), folders: number, bookmarks: number, tabs: number }).strict();
+-const migrationReview = z.object({
++const token = strictObject({ contentHash: str, manifestSha256: str });
++const migrationProgress = strictObject({ status: z.literal("importing"), folders: number, bookmarks: number, tabs: number });
++const migrationReview = strictObject({
+   status: z.enum(["ready", "interrupted", "applied"]), contentHash: str, manifestSha256: str,
+   tabs: number, bookmarks: number, bookmarkFolders: number, spaces: number, vaultPending: bool,
+-  omitted: z.object({ unsafeTabs: number, unsafeBookmarks: number, missingArtifacts: number,
+-    vaultMetadata: number, layoutMissing: bool }).strict(),
++  omitted: strictObject({ unsafeTabs: number, unsafeBookmarks: number, missingArtifacts: number,
++    vaultMetadata: number, layoutMissing: bool }),
+   progress: migrationProgress.optional(),
+-}).strict();
+-const filterSource = z.object({
++});
++const filterSource = strictObject({
+   id: str, name: str, url: str, enabled: bool, kind: z.enum(["hosts", "cookie_banner"]),
+-  meta: z.object({ fetchedAt: number, etag: str.optional(), hosts: number,
+-    selectors: number.optional(), sha256: str, error: str.optional() }).strict().optional(),
+-}).strict();
+-const filterStatus = z.object({
++  meta: strictObject({ fetchedAt: number, etag: str.optional(), hosts: number,
++    selectors: number.optional(), sha256: str, error: str.optional() }).optional(),
++});
++const filterStatus = strictObject({
+   sources: z.array(filterSource), hosts: number, cookieSelectors: number, builtinHosts: number,
+   backend: z.enum(["electron_web_request", "subresource_filter", "declarative_net_request", "preview"]),
+   cosmeticBackend: z.enum(["document_start_stylesheet", "unavailable"]).optional(),
+-}).strict();
+-const extension = z.object({
++});
++const extension = strictObject({
+   key: str, id: str.optional(), name: str, version: str, permissions: z.array(str),
+   enabled: bool, loaded: bool, managed: bool,
+   source: z.enum(["managed", "environment", "store"]), error: str.optional(),
+-}).strict();
++});
+ const routeFallbackReason = z.enum(["profile-unavailable", "space-unavailable"]);
+-const routedOpen = z.object({ pageId: str, profileId: str, spaceId: str.optional(), ruleId: str.optional(), fallbackReason: routeFallbackReason.optional() }).strict();
+-const routePrompt = z.object({ id: str, url: z.string().url().max(8192), expiresAt: number.int().nonnegative() }).strict();
+-const browserProfile = z.object({ id: str, name: str, current: bool, archived: bool.optional(),
++const routedOpen = strictObject({ pageId: str, profileId: str, spaceId: str.optional(), ruleId: str.optional(), fallbackReason: routeFallbackReason.optional() });
++const routePrompt = strictObject({ id: str, url: z.string().url().max(8192), expiresAt: number.int().nonnegative() });
++const browserProfile = strictObject({ id: str, name: str, current: bool, archived: bool.optional(),
+   color: SpaceColorSchema.optional(), icon: str.max(32).optional(),
+-  spaces: z.array(z.object({ id: str, name: str, color: SpaceColorSchema }).strict()).max(200).optional(),
+-}).strict();
+-const extensionAction = z.object({ id: str, name: str, iconPng: str, badgeText: str, badgeColor: str,
+-  enabled: bool, pinned: bool, hasPopup: bool }).strict();
+-const extensionCommand = z.object({ extensionId: str, name: str, description: str, shortcut: str }).strict();
+-const screenRect = z.object({ x: number, y: number, width: number.positive(), height: number.positive() }).strict();
+-const autocompleteMatch = z.object({ id: str, type: z.enum(["history", "bookmark", "search", "typed"]),
+-  title: str, url: str, description: str.optional() }).strict();
+-const httpAuthRequest = z.object({ id: str, origin: str, proxy: bool, realm: str, retry: bool }).strict();
+-const downloadFolderResult = z.object({ path: str, custom: bool, error: str.optional() }).strict();
++  spaces: z.array(strictObject({ id: str, name: str, color: SpaceColorSchema })).max(200).optional(),
++});
++const extensionAction = strictObject({ id: str, name: str, iconPng: str, badgeText: str, badgeColor: str,
++  enabled: bool, pinned: bool, hasPopup: bool });
++const extensionCommand = strictObject({ extensionId: str, name: str, description: str, shortcut: str });
++const screenRect = strictObject({ x: number, y: number, width: number.positive(), height: number.positive() });
++const autocompleteMatch = strictObject({ id: str, type: z.enum(["history", "bookmark", "search", "typed"]),
++  title: str, url: str, description: str.optional() });
++const httpAuthRequest = strictObject({ id: str, origin: str, proxy: bool, realm: str, retry: bool });
++const downloadFolderResult = strictObject({ path: str, custom: bool, error: str.optional() });
+ const startupMode = z.enum(["new-tab", "continue", "pages", "continue-and-pages"]);
+-const startupPreferences = z.object({ mode: startupMode, urls: z.array(str).max(20) }).strict();
++const startupPreferences = strictObject({ mode: startupMode, urls: z.array(str).max(20) });
+ export type HostReaderNode = string | { tag: string; href?: string; sourceId?: string; children: HostReaderNode[] };
+ const readerNode: z.ZodType<HostReaderNode> = z.lazy(() => z.union([str,
+-  z.object({ tag: str, href: str.optional(), sourceId: str.optional(),
+-    children: z.array(readerNode) }).strict()]));
+-const stats = z.object({ p50: number, p95: number, max: number }).strict();
+-const healthSummary = z.object({
++  strictObject({ tag: str, href: str.optional(), sourceId: str.optional(),
++    children: z.array(readerNode) })]));
++const stats = strictObject({ p50: number, p95: number, max: number });
++const healthSummary = strictObject({
+   recordingSince: number.optional(), latestAt: number.optional(), samples: number, sessions: number,
+   observedMinutes: number, spanDays: number, sevenDaySpan: bool, startupMs: number.optional(),
+   cpuPercent: stats, memoryMb: stats, eventLoopLagMs: stats,
+   maxWindows: number, maxPages: number, maxSuspendedPages: number,
+   swallowed: z.record(str, number).optional(),
+   pageCrashes: number, pageUnresponsive: number, suspensionFailures: number,
+-}).strict();
+-const runtimeBackup = z.object({ path: str, bytes: number, sha256: str,
+-  artifactFiles: number, missingArtifacts: number }).strict();
++});
++const runtimeBackup = strictObject({ path: str, bytes: number, sha256: str,
++  artifactFiles: number, missingArtifacts: number });
+ const stagedRestore = runtimeBackup.extend({ staged: z.literal(true), schemaVersion: number });
+ /** Methods handled by the native WebUI, without authenticated-runtime entries. */
+ export const BrowserHostMethods = {
+   capabilities: shell("core", noArgs, HostCapabilitiesSchema),
+   appearanceSnapshot: shell("core", noArgs, NativeAppearanceSnapshotSchema),
+-  defaultBrowser: shell("core", noArgs, z.object({ isDefault: bool }).strict()),
+-  setDefaultBrowser: shell("core", noArgs, z.object({ isDefault: bool }).strict()),
++  defaultBrowser: shell("core", noArgs, strictObject({ isDefault: bool })),
++  setDefaultBrowser: shell("core", noArgs, strictObject({ isDefault: bool })),
+   tabCommand: {
+-    ...shell("core", z.tuple([TabCommandSchema, number.optional()]), TabCommandAckSchema),
++    ...shell("core", tuple([TabCommandSchema, number.optional()]), TabCommandAckSchema),
+     // The bootstrap supplies a command ID before forwarding to Mojo.
+-    wireArgs: z.tuple([str.min(8).max(128), TabCommandSchema, number.optional()]),
++    wireArgs: tuple([str.min(8).max(128), TabCommandSchema, number.optional()]),
+   },
+-  bindTabSpace: shell("spaces", z.tuple([str, str]), z.object({ spaceId: str, workspaceId: str }).strict()),
+-  migrateTabSpaces: shell("spaces", z.tuple([z.array(z.object({ pageId: str, spaceId: str }).strict())]), z.object({ migrated: number }).strict()),
++  bindTabSpace: shell("spaces", tuple([str, str]), strictObject({ spaceId: str, workspaceId: str })),
++  migrateTabSpaces: shell("spaces", tuple([z.array(strictObject({ pageId: str, spaceId: str }))]), strictObject({ migrated: number })),
+   tabsSnapshot: shell("core", noArgs, TabCatalogSnapshotSchema),
+   organizationSnapshot: shell("spaces", noArgs, OrganizationSnapshotSchema),
+-  organizationCommit: shell("spaces", z.tuple([OrganizationCommitSchema]), OrganizationSnapshotSchema),
++  organizationCommit: shell("spaces", tuple([OrganizationCommitSchema]), OrganizationSnapshotSchema),
+   migrationReview: shell("browserImport", noArgs, migrationReview),
+-  migrationBegin: shell("browserImport", z.tuple([token.extend({ confirmed: z.literal(true) })]), z.union([migrationReview, migrationProgress])),
+-  migrationBatch: shell("browserImport", z.tuple([token.extend({ section: z.enum(["folders", "bookmarks", "tabs"]), offset: number })]), migrationProgress),
+-  migrationFinish: shell("browserImport", z.tuple([token]), migrationReview),
+-  migrationRollback: shell("browserImport", z.tuple([token.extend({ confirmed: z.literal(true) })]), migrationReview),
+-  tabsSince: shell("core", z.tuple([number]), z.discriminatedUnion("kind", [
+-    z.object({ kind: z.literal("patches"), patches: z.array(TabPatchSchema) }).strict(),
+-    z.object({ kind: z.literal("snapshot"), snapshot: TabCatalogSnapshotSchema }).strict(),
++  migrationBegin: shell("browserImport", tuple([token.extend({ confirmed: z.literal(true) })]), z.union([migrationReview, migrationProgress])),
++  migrationBatch: shell("browserImport", tuple([token.extend({ section: z.enum(["folders", "bookmarks", "tabs"]), offset: number })]), migrationProgress),
++  migrationFinish: shell("browserImport", tuple([token]), migrationReview),
++  migrationRollback: shell("browserImport", tuple([token.extend({ confirmed: z.literal(true) })]), migrationReview),
++  tabsSince: shell("core", tuple([number]), z.discriminatedUnion("kind", [
++    strictObject({ kind: z.literal("patches"), patches: z.array(TabPatchSchema) }),
++    strictObject({ kind: z.literal("snapshot"), snapshot: TabCatalogSnapshotSchema }),
+   ])),
+-  surfaceContentId: shell("core", z.tuple([str]), nullableString),
+-  resolveSearch: shell("searchEngines", z.tuple([str]), str),
++  surfaceContentId: shell("core", tuple([str]), nullableString),
++  resolveSearch: shell("searchEngines", tuple([str]), str),
+   focusShell: shell("core", noArgs, noResult),
+   /** Browser picks fixed copy. No goal, page, question, or result text crosses this boundary. */
+-  showRunAttention: shell("core", z.tuple([z.object({
++  showRunAttention: shell("core", tuple([strictObject({
+     kind: z.enum(["completed", "question", "handoff"]),
+     runId: str.min(1).max(128), identity: str.min(1).max(128), windowId: str.min(1).max(128),
+-  }).strict()]), z.object({ queued: bool }).strict()),
+-  createResultPreview: shell("activeHtml", z.tuple([str]), str),
+-  releaseResultPreview: shell("activeHtml", z.tuple([str]), bool),
+-  savePagePdf: shell("reports", z.tuple([str]), nullableString),
+-  printPage: shell("core", z.tuple([str]), bool),
+-  devTools: shell("core", z.tuple([str, z.enum(["toggle", "inspect"]).optional()]), bool),
+-  hardReload: shell("core", z.tuple([str]), bool),
++  })]), strictObject({ queued: bool })),
++  createResultPreview: shell("activeHtml", tuple([str]), str),
++  releaseResultPreview: shell("activeHtml", tuple([str]), bool),
++  savePagePdf: shell("reports", tuple([str]), nullableString),
++  printPage: shell("core", tuple([str]), bool),
++  devTools: shell("core", tuple([str, z.enum(["toggle", "inspect"]).optional()]), bool),
++  hardReload: shell("core", tuple([str]), bool),
+   closeWindow: shell("core", noArgs, bool),
+   openFile: shell("core", noArgs, nullableString),
+-  dictationStatus: shell("dictation", noArgs, z.object({ available: bool, language: str.optional(), reason: str.optional() }).strict()),
+-  startDictation: shell("dictation", z.tuple([str]), bool),
+-  stopDictation: shell("dictation", z.tuple([str]), bool),
+-  cancelDictation: shell("dictation", z.tuple([str]), noResult),
++  dictationStatus: shell("dictation", noArgs, strictObject({ available: bool, language: str.optional(), reason: str.optional() })),
++  startDictation: shell("dictation", tuple([str]), bool),
++  stopDictation: shell("dictation", tuple([str]), bool),
++  cancelDictation: shell("dictation", tuple([str]), noResult),
+   dataDir: shell("core", noArgs, str),
+-  siteInfo: shell("sitePermissions", z.tuple([str]), z.object({
++  siteInfo: shell("sitePermissions", tuple([str]), strictObject({
+     pageId: str, url: str, origin: str, title: str,
+     security: z.enum(["secure", "local", "insecure"]), cookieCount: number,
+     permissions: z.record(str, z.enum(["allow", "deny"])), trackersAllowed: bool, blockedCount: number,
+-  }).strict()),
+-  siteZoom: shell("pageZoom", z.tuple([str.optional()]), z.array(z.object({ origin: str, percentage: number }).strict())),
+-  privatePageZoom: shell("core", z.tuple([str, z.object({
++  })),
++  siteZoom: shell("pageZoom", tuple([str.optional()]), z.array(strictObject({ origin: str, percentage: number }))),
++  privatePageZoom: shell("core", tuple([str, strictObject({
+     level: number.optional(), delta: number.optional(), reset: bool.optional(),
+     direction: z.enum(["in", "out"]).optional(),
+-  }).strict()]), z.object({ level: number }).strict()),
+-  privacy: shell("contentBlocking", noArgs, z.object({ trackerBlock: bool, blocked: number,
+-    allowedHosts: z.array(str).optional(), httpsUpgrade: bool.optional() }).strict()),
+-  setTrackerBlock: shell("contentBlocking", z.tuple([bool]), z.object({ trackerBlock: bool, blocked: number,
+-    allowedHosts: z.array(str).optional() }).strict()),
+-  setSiteTrackers: shell("contentBlocking", z.tuple([str, bool]), z.object({ hostname: str, allowed: bool }).strict()),
+-  removeAllowedHost: shell("contentBlocking", z.tuple([str]), z.array(str)),
++  })]), strictObject({ level: number })),
++  privacy: shell("contentBlocking", noArgs, strictObject({ trackerBlock: bool, blocked: number,
++    allowedHosts: z.array(str).optional(), httpsUpgrade: bool.optional() })),
++  setTrackerBlock: shell("contentBlocking", tuple([bool]), strictObject({ trackerBlock: bool, blocked: number,
++    allowedHosts: z.array(str).optional() })),
++  setSiteTrackers: shell("contentBlocking", tuple([str, bool]), strictObject({ hostname: str, allowed: bool })),
++  removeAllowedHost: shell("contentBlocking", tuple([str]), z.array(str)),
+   filterLists: shell("contentBlocking", noArgs, filterStatus),
+   updateFilters: shell("contentBlocking", noArgs, filterStatus),
+-  addFilterSource: shell("contentBlocking", z.tuple([str, str, z.enum(["hosts", "cookie_banner"]).optional()]), z.array(filterSource)),
+-  removeFilterSource: shell("contentBlocking", z.tuple([str]), z.array(filterSource)),
+-  setFilterSourceEnabled: shell("contentBlocking", z.tuple([str, bool]), z.array(filterSource)),
+-  setAppearance: shell("core", z.tuple([z.enum(["system", "dark", "light"]), bool.optional(), bool.optional(),
++  addFilterSource: shell("contentBlocking", tuple([str, str, z.enum(["hosts", "cookie_banner"]).optional()]), z.array(filterSource)),
++  removeFilterSource: shell("contentBlocking", tuple([str]), z.array(filterSource)),
++  setFilterSourceEnabled: shell("contentBlocking", tuple([str, bool]), z.array(filterSource)),
++  setAppearance: shell("core", tuple([z.enum(["system", "dark", "light"]), bool.optional(), bool.optional(),
+     z.enum(["liquid-glass", "titlebar", "sidebar", "under-window"]).optional()]), bool),
+-  dispatchCommand: shell("core", z.tuple([z.enum(["new-window", "new-private-window"])]), bool),
+-  setShortcuts: shell("core", z.tuple([z.array(z.object({
++  dispatchCommand: shell("core", tuple([z.enum(["new-window", "new-private-window"])]), bool),
++  setShortcuts: shell("core", tuple([z.array(strictObject({
+     commandId: str.max(64), key: str.min(1).max(32), meta: bool, ctrl: bool,
+     shift: bool, alt: bool, focusShell: bool.optional(),
+-  }).strict()).max(512)]), bool),
++  })).max(512)]), bool),
+   windowControlsVisible: shell("minimalUi", WindowControlsVisibleSchema, bool),
+   extensions: shell("extensions", noArgs, z.array(extension)),
+-  installStoreExtension: shell("extensions", z.tuple([str]), extension),
+-  checkStoreExtensionUpdate: shell("extensions", z.tuple([str]), extension),
+-  reloadExtension: shell("extensions", z.tuple([str]), extension),
+-  showExtensionAction: shell("extensions", z.tuple([str, screenRect.optional()]), bool),
++  installStoreExtension: shell("extensions", tuple([str]), extension),
++  checkStoreExtensionUpdate: shell("extensions", tuple([str]), extension),
++  reloadExtension: shell("extensions", tuple([str]), extension),
++  showExtensionAction: shell("extensions", tuple([str, screenRect.optional()]), bool),
+   extensionActions: shell("extensions", noArgs, z.array(extensionAction)),
+-  extensionSidePanel: shell("extensions", z.tuple([z.enum(["describe", "close"])]), z.object({ extensionId: str, windowId: str, pageId: str.nullable(), contentId: str.nullable(), title: str, open: bool }).strict().nullable()),
+-  pinExtensionAction: shell("extensions", z.tuple([str, bool]), bool),
++  extensionSidePanel: shell("extensions", tuple([z.enum(["describe", "close"])]), strictObject({ extensionId: str, windowId: str, pageId: str.nullable(), contentId: str.nullable(), title: str, open: bool }).nullable()),
++  pinExtensionAction: shell("extensions", tuple([str, bool]), bool),
+   extensionCommands: shell("extensions", noArgs, z.array(extensionCommand)),
+-  setExtensionCommandShortcut: shell("extensions", z.tuple([str, str, str]), bool),
+-  setExtensionEnabled: shell("extensions", z.tuple([str, bool]), extension),
+-  removeExtension: shell("extensions", z.tuple([str]), bool),
++  setExtensionCommandShortcut: shell("extensions", tuple([str, str, str]), bool),
++  setExtensionEnabled: shell("extensions", tuple([str, bool]), extension),
++  removeExtension: shell("extensions", tuple([str]), bool),
+   installUnpackedExtension: shell("extensions", noArgs, extension.nullable()),
+-  updateUnpackedExtension: shell("extensions", z.tuple([str]), extension.nullable()),
++  updateUnpackedExtension: shell("extensions", tuple([str]), extension.nullable()),
+   // Profiles
+   browserProfiles: shell("profiles", noArgs, z.array(browserProfile)),
+-  createBrowserProfile: shell("profiles", z.tuple([str]), browserProfile),
+-  renameBrowserProfile: shell("profiles", z.tuple([str, str]), z.array(browserProfile)),
+-  archiveBrowserProfile: shell("profiles", z.tuple([str, bool]), z.array(browserProfile)),
+-  deleteBrowserProfile: shell("profiles", z.tuple([str]), z.array(browserProfile)),
+-  openBrowserProfile: shell("profiles", z.tuple([str]), bool),
+-  openBrowserProfileUrl: shell("profiles", z.tuple([str, str]), bool),
+-  setBrowserProfileAppearance: shell("profiles", z.tuple([str, z.object({ color: SpaceColorSchema, icon: str.min(1).max(32) }).strict()]), bool),
+-  focusBrowserProfileSpace: shell("profiles", z.tuple([str, nullableString]), bool),
+-  moveTabToProfile: shell("profiles", z.tuple([str, str]), bool),
++  createBrowserProfile: shell("profiles", tuple([str]), browserProfile),
++  renameBrowserProfile: shell("profiles", tuple([str, str]), z.array(browserProfile)),
++  archiveBrowserProfile: shell("profiles", tuple([str, bool]), z.array(browserProfile)),
++  deleteBrowserProfile: shell("profiles", tuple([str]), z.array(browserProfile)),
++  openBrowserProfile: shell("profiles", tuple([str]), bool),
++  openBrowserProfileUrl: shell("profiles", tuple([str, str]), bool),
++  setBrowserProfileAppearance: shell("profiles", tuple([str, strictObject({ color: SpaceColorSchema, icon: str.min(1).max(32) })]), bool),
++  focusBrowserProfileSpace: shell("profiles", tuple([str, nullableString]), bool),
++  moveTabToProfile: shell("profiles", tuple([str, str]), bool),
+   linkRoutes: shell("linkRouting", noArgs, LinkRoutesSchema),
+-  setLinkRoutes: shell("linkRouting", z.tuple([number.int().nonnegative(), LinkRoutesSchema]), LinkRoutesSchema),
+-  testLinkRoute: shell("linkRouting", z.tuple([z.string().url().max(8192), LinkRouteSourceSchema]),
+-    z.object({ destination: LinkRouteDestinationSchema, ruleId: str.optional(), fallback: bool, fallbackReason: routeFallbackReason.optional() }).strict()),
+-  resolveRoutePrompt: shell("linkRouting", z.tuple([str, LinkRouteDestinationSchema, bool]), bool),
++  setLinkRoutes: shell("linkRouting", tuple([number.int().nonnegative(), LinkRoutesSchema]), LinkRoutesSchema),
++  testLinkRoute: shell("linkRouting", tuple([z.string().url().max(8192), LinkRouteSourceSchema]),
++    strictObject({ destination: LinkRouteDestinationSchema, ruleId: str.optional(), fallback: bool, fallbackReason: routeFallbackReason.optional() })),
++  resolveRoutePrompt: shell("linkRouting", tuple([str, LinkRouteDestinationSchema, bool]), bool),
+   routedOpens: shell("linkRouting", noArgs, z.array(routedOpen).max(128)),
+   routePrompts: shell("linkRouting", noArgs, z.array(routePrompt).max(128)),
+   // Credential vault
+   autofillProfile: shell("core", noArgs, AutofillProfileSchema.nullable()),
+-  setAutofillProfile: shell("core", z.tuple([AutofillProfileSchema]), bool),
+-  autofill: shell("core", z.tuple([str]), number),
+-  vaultFill: shell("core", z.tuple([str]), bool),
+-  vaultSave: shell("core", z.tuple([str, str, str.optional()]), z.object({ ok: bool, updated: bool }).strict()),
+-  vaultDismiss: shell("core", z.tuple([str, str, str.optional()]), bool),
+-  passwordExport: shell("core", z.tuple([str]), z.object({ path: str, exported: number, skipped: number }).strict().nullable()),
+-  passwordImport: shell("core", z.tuple([str]), z.object({ added: number, skipped: number }).strict().nullable()),
++  setAutofillProfile: shell("core", tuple([AutofillProfileSchema]), bool),
++  autofill: shell("core", tuple([str]), number),
++  vaultFill: shell("core", tuple([str]), bool),
++  vaultSave: shell("core", tuple([str, str, str.optional()]), strictObject({ ok: bool, updated: bool })),
++  vaultDismiss: shell("core", tuple([str, str, str.optional()]), bool),
++  passwordExport: shell("core", tuple([str]), strictObject({ path: str, exported: number, skipped: number }).nullable()),
++  passwordImport: shell("core", tuple([str]), strictObject({ added: number, skipped: number }).nullable()),
+   // Quick Ask
+-  quickAskShortcut: shell("quickAsk", z.tuple([bool.optional()]),
+-    z.object({ enabled: bool, registered: bool, error: str }).strict()),
+-  quickAsk: shell("quickAsk", z.tuple([z.enum(["open", "expand", "dismiss", "status"])]), bool),
+-  showTabWindow: shell("windowSync", z.tuple([str]), bool),
+-  littleWindow: shell("littleWindow", z.tuple([z.enum(["open", "promote", "close"]),
+-    z.object({ url: z.string().url().max(8192).optional(), spaceId: str.optional() }).strict()]), bool),
+-  externalLinkTarget: shell("littleWindow", z.tuple([z.enum(["little", "main"]).optional()]), z.enum(["little", "main"])),
+-  javascriptAppleEvents: shell("appleScript", z.tuple([bool.optional()]), z.object({ enabled: bool, managed: bool }).strict()),
++  quickAskShortcut: shell("quickAsk", tuple([bool.optional()]),
++    strictObject({ enabled: bool, registered: bool, error: str })),
++  quickAsk: shell("quickAsk", tuple([z.enum(["open", "expand", "dismiss", "status"])]), bool),
++  showTabWindow: shell("windowSync", tuple([str]), bool),
++  littleWindow: shell("littleWindow", tuple([z.enum(["open", "promote", "close"]),
++    strictObject({ url: z.string().url().max(8192).optional(), spaceId: str.optional() })]), bool),
++  externalLinkTarget: shell("littleWindow", tuple([z.enum(["little", "main"]).optional()]), z.enum(["little", "main"])),
++  javascriptAppleEvents: shell("appleScript", tuple([bool.optional()]), strictObject({ enabled: bool, managed: bool })),
+   // Downloads and tab audio
+   downloadFolder: shell("core", noArgs, downloadFolderResult),
+-  chooseDownloadFolder: shell("core", z.tuple([bool.optional()]), downloadFolderResult),
+-  spellCheck: shell("core", z.tuple([bool.optional()]), z.object({ enabled: bool, managed: bool }).strict()),
+-  startupPreferences: shell("core", z.tuple([startupPreferences.optional()]), startupPreferences.extend({ managed: bool }).strict()),
+-  languagePreferences: shell("core", z.tuple([z.array(str).min(1).max(20).optional()]),
+-    z.object({ selected: z.array(str), effective: z.array(str), forced: z.array(str), managed: bool }).strict()),
+-  automaticPictureInPicture: shell("core", z.tuple([z.enum(["ask", "allow", "block"]).optional()]),
+-    z.object({ mode: z.enum(["ask", "allow", "block"]), managed: bool }).strict()),
+-  keepRuntimeInBackground: shell("core", z.tuple([bool.optional()]),
+-    z.object({ enabled: bool, available: bool, managed: bool }).strict()),
+-  defaultPageZoom: shell("core", z.tuple([z.number().int().min(50).max(200).optional()]),
+-    z.object({ percentage: z.number().int(), managed: bool }).strict()),
++  chooseDownloadFolder: shell("core", tuple([bool.optional()]), downloadFolderResult),
++  spellCheck: shell("core", tuple([bool.optional()]), strictObject({ enabled: bool, managed: bool })),
++  startupPreferences: shell("core", tuple([startupPreferences.optional()]), startupPreferences.extend({ managed: bool }).strict()),
++  languagePreferences: shell("core", tuple([z.array(str).min(1).max(20).optional()]),
++    strictObject({ selected: z.array(str), effective: z.array(str), forced: z.array(str), managed: bool })),
++  automaticPictureInPicture: shell("core", tuple([z.enum(["ask", "allow", "block"]).optional()]),
++    strictObject({ mode: z.enum(["ask", "allow", "block"]), managed: bool })),
++  keepRuntimeInBackground: shell("core", tuple([bool.optional()]),
++    strictObject({ enabled: bool, available: bool, managed: bool })),
++  defaultPageZoom: shell("core", tuple([z.number().int().min(50).max(200).optional()]),
++    strictObject({ percentage: z.number().int(), managed: bool })),
+   downloadsSnapshot: shell("core", noArgs, z.array(DownloadSchema)),
+-  controlDownload: shell("core", z.tuple([str, z.enum(["pause", "resume", "cancel"])]), noResult),
+-  retryDownload: shell("core", z.tuple([str]), noResult),
+-  tabAudio: shell("core", noArgs, z.record(str, z.object({ muted: bool, audible: bool, video: bool, pip: bool }).strict())),
+-  pictureInPicture: shell("pictureInPicture", z.tuple([str, PictureInPictureOperationSchema]), PictureInPictureResultSchema),
+-  setStageVisible: shell("core", z.tuple([z.array(str.min(1).max(256)).max(4)
++  controlDownload: shell("core", tuple([str, z.enum(["pause", "resume", "cancel"])]), noResult),
++  retryDownload: shell("core", tuple([str]), noResult),
++  tabAudio: shell("core", noArgs, z.record(str, strictObject({ muted: bool, audible: bool, video: bool, pip: bool }))),
++  pictureInPicture: shell("pictureInPicture", tuple([str, PictureInPictureOperationSchema]), PictureInPictureResultSchema),
++  setStageVisible: shell("core", tuple([z.array(str.min(1).max(256)).max(4)
+     .refine(ids => new Set(ids).size === ids.length, "Stage pages must be unique")]), bool),
+-  tabsUnsavedWork: shell("core", z.tuple([z.array(z.object({ pageId: str, url: str }).strict())]),
++  tabsUnsavedWork: shell("core", tuple([z.array(strictObject({ pageId: str, url: str }))]),
+     z.record(str, z.enum(["clean", "dirty", "unknown"]))),
+-  archiveTab: shell("autoArchive", z.tuple([str.min(1).max(128), z.string().url().max(8192), str.min(1).max(200), number.nonnegative()]), z.object({ archived: bool, reason: str.optional() }).strict()),
+-  tabSleep: shell("tabLifecycle", z.tuple([str, z.string().url().max(8192)]),
+-    z.object({ slept: bool, reason: str.optional(), estimatedSavedBytes: z.number().int().nonnegative().optional() }).strict()),
++  archiveTab: shell("autoArchive", tuple([str.min(1).max(128), z.string().url().max(8192), str.min(1).max(200), number.nonnegative()]), strictObject({ archived: bool, reason: str.optional() })),
++  tabSleep: shell("tabLifecycle", tuple([str, z.string().url().max(8192)]),
++    strictObject({ slept: bool, reason: str.optional(), estimatedSavedBytes: z.number().int().nonnegative().optional() })),
+   // Page surfaces and menus
+-  preview: shell("core", z.tuple([str]), nullableString),
+-  contextMenu: shell("core", z.tuple([z.union([str, z.null()])]), bool),
+-  navigationMenu: shell("core", z.tuple([str, z.enum(["back", "forward"])]), bool),
+-  autocomplete: shell("commandBar", z.tuple([str]), z.array(autocompleteMatch)),
+-  readArticle: shell("reader", z.tuple([str]), z.object({ title: str, byline: str, site: str,
+-    url: str, minutes: number, content: readerNode }).strict()),
++  preview: shell("core", tuple([str]), nullableString),
++  contextMenu: shell("core", tuple([z.union([str, z.null()])]), bool),
++  navigationMenu: shell("core", tuple([str, z.enum(["back", "forward"])]), bool),
++  autocomplete: shell("commandBar", tuple([str]), z.array(autocompleteMatch)),
++  readArticle: shell("reader", tuple([str]), strictObject({ title: str, byline: str, site: str,
++    url: str, minutes: number, content: readerNode })),
+   // Files and system services
+-  openExternal: shell("core", z.tuple([str]), z.unknown()),
+-  revealPath: shell("core", z.tuple([str]), bool),
+-  openPath: shell("core", z.tuple([str]), str),
+-  saveFile: shell("core", z.tuple([str, str]), nullableString),
+-  saveWorkbook: shell("documentArtifacts", z.tuple([str, z.enum(["snapshot", "csv"]).optional()]), nullableString),
+-  saveStoredArtifact: shell("documentArtifacts", z.tuple([str, str]), nullableString),
++  openExternal: shell("core", tuple([str]), z.unknown()),
++  revealPath: shell("core", tuple([str]), bool),
++  openPath: shell("core", tuple([str]), str),
++  saveFile: shell("core", tuple([str, str]), nullableString),
++  saveWorkbook: shell("documentArtifacts", tuple([str, z.enum(["snapshot", "csv"]).optional()]), nullableString),
++  saveStoredArtifact: shell("documentArtifacts", tuple([str, str]), nullableString),
+   openPluginDirectory: shell("skills", noArgs, nullableString),
+-  pickEvidenceImage: shell("conversation", noArgs, z.object({ filename: str, dataUrl: str }).strict().nullable()),
+-  pickEvidenceDocument: shell("conversation", noArgs, z.object({ filename: str, content: str }).strict().nullable()),
++  pickEvidenceImage: shell("conversation", noArgs, strictObject({ filename: str, dataUrl: str }).nullable()),
++  pickEvidenceDocument: shell("conversation", noArgs, strictObject({ filename: str, content: str }).nullable()),
+   // External agents
+-  agentConfig: shell("inboundAgents", z.tuple([AgentConnectionCreateParams]), z.object({
+-    command: str, args: z.array(str), env: z.record(str, str), connection: AgentConnectionSchema }).strict()),
++  agentConfig: shell("inboundAgents", tuple([AgentConnectionCreateParams]), strictObject({
++    command: str, args: z.array(str), env: z.record(str, str), connection: AgentConnectionSchema })),
+   agentConnections: shell("inboundAgents", noArgs, z.array(AgentConnectionSchema)),
+-  agentClients: shell("inboundAgents", noArgs, z.array(z.object({
+-    client: AgentClientSchema, installed: bool, version: str.optional(), error: str.optional() }).strict())),
+-  revokeAgentConnection: shell("inboundAgents", z.tuple([str]), AgentConnectionSchema),
++  agentClients: shell("inboundAgents", noArgs, z.array(strictObject({
++    client: AgentClientSchema, installed: bool, version: str.optional(), error: str.optional() }))),
++  revokeAgentConnection: shell("inboundAgents", tuple([str]), AgentConnectionSchema),
+   // Diagnostics, backup and restore
+   exportDiagnostics: shell("core", noArgs, nullableString),
+   exportRuntimeBackup: shell("electronMigration", noArgs, runtimeBackup.nullable()),
+-  exportMigrationLayout: shell("electronMigration", z.tuple([str]), z.object({ path: str }).strict().nullable()),
++  exportMigrationLayout: shell("electronMigration", tuple([str]), strictObject({ path: str }).nullable()),
+   stageRuntimeRestore: shell("electronMigration", noArgs, stagedRestore.nullable()),
+-  cancelRuntimeRestore: shell("electronMigration", noArgs, z.object({ cancelled: z.literal(true) }).strict()),
+-  runtimeRestoreStatus: shell("electronMigration", noArgs, z.object({
++  cancelRuntimeRestore: shell("electronMigration", noArgs, strictObject({ cancelled: z.literal(true) })),
++  runtimeRestoreStatus: shell("electronMigration", noArgs, strictObject({
+     pending: bool, lastAppliedAt: number.optional(),
+-    managedRecovery: z.object({ generation: number.int().nonnegative(), freshBackupIssued: bool }).strict(),
+-  }).strict()),
++    managedRecovery: strictObject({ generation: number.int().nonnegative(), freshBackupIssued: bool }),
++  })),
+   healthSummary: shell("core", noArgs, healthSummary),
+   clearHealth: shell("core", noArgs, healthSummary),
+   // HTTP auth and site controls
+   httpAuthRequests: shell("core", noArgs, z.array(httpAuthRequest)),
+-  respondHttpAuth: shell("core", z.tuple([str, z.object({ username: str, password: str }).strict().nullable()]), bool),
+-  clearSiteData: shell("sitePermissions", z.tuple([str]), bool),
+-  siteDataCount: shell("sitePermissions", z.tuple([str]), z.object({ domain: str, cookies: number.int().nonnegative() }).strict()),
+-  browsingDataPreview: shell("sitePermissions", z.tuple([number.int().nonnegative(), number.int().nonnegative()]),
+-    z.object({ cookies: number.int().nonnegative(), cacheBytes: number.int().nonnegative(), cacheEstimate: bool }).strict()),
+-  clearBrowsingData: shell("sitePermissions", z.tuple([number.int().nonnegative(), number.int().nonnegative(),
+-    z.object({ cookies: bool, cache: bool }).strict()]), bool),
++  respondHttpAuth: shell("core", tuple([str, strictObject({ username: str, password: str }).nullable()]), bool),
++  clearSiteData: shell("sitePermissions", tuple([str]), bool),
++  siteDataCount: shell("sitePermissions", tuple([str]), strictObject({ domain: str, cookies: number.int().nonnegative() })),
++  browsingDataPreview: shell("sitePermissions", tuple([number.int().nonnegative(), number.int().nonnegative()]),
++    strictObject({ cookies: number.int().nonnegative(), cacheBytes: number.int().nonnegative(), cacheEstimate: bool })),
++  clearBrowsingData: shell("sitePermissions", tuple([number.int().nonnegative(), number.int().nonnegative(),
++    strictObject({ cookies: bool, cache: bool })]), bool),
+   sitePermissions: shell("sitePermissions", noArgs, z.record(str, z.record(str, z.enum(["allow", "deny"])))),
+-  clearSitePermission: shell("sitePermissions", z.tuple([str, str.optional()]), bool),
+-  cookieControls: shell("sitePermissions", noArgs, z.object({ blockThirdParty: bool, managed: bool }).strict()),
+-  setCookieControls: shell("sitePermissions", z.tuple([bool]), bool),
+-  crashReporting: shell("core", noArgs, z.object({ available: bool, decided: bool, consent: bool }).strict()),
+-  setCrashReporting: shell("core", z.tuple([bool]), bool),
+-  httpsUpgrade: shell("httpsFirst", noArgs, z.object({ enabled: bool, available: bool, managed: bool }).strict()),
+-  setHttpsUpgrade: shell("httpsFirst", z.tuple([bool]), bool),
+-  proceedInsecure: shell("core", z.tuple([str, str]), bool),
+-  useHttp: shell("core", z.tuple([str, str]), bool),
+-  translatePage: shell("aiTranslate", z.tuple([str]), z.object({ lang: str, count: number, truncated: bool }).strict()),
+-  showOriginal: shell("aiTranslate", z.tuple([str]), number),
++  clearSitePermission: shell("sitePermissions", tuple([str, str.optional()]), bool),
++  cookieControls: shell("sitePermissions", noArgs, strictObject({ blockThirdParty: bool, managed: bool })),
++  setCookieControls: shell("sitePermissions", tuple([bool]), bool),
++  crashReporting: shell("core", noArgs, strictObject({ available: bool, decided: bool, consent: bool })),
++  setCrashReporting: shell("core", tuple([bool]), bool),
++  httpsUpgrade: shell("httpsFirst", noArgs, strictObject({ enabled: bool, available: bool, managed: bool })),
++  setHttpsUpgrade: shell("httpsFirst", tuple([bool]), bool),
++  proceedInsecure: shell("core", tuple([str, str]), bool),
++  useHttp: shell("core", tuple([str, str]), bool),
++  translatePage: shell("aiTranslate", tuple([str]), strictObject({ lang: str, count: number, truncated: bool })),
++  showOriginal: shell("aiTranslate", tuple([str]), number),
+ 
+ } as const;
+ 
+@@ -308,40 +310,40 @@
+ /** Events published by the native browser to an authorized Aux WebUI. */
+ export const HostEvents = {
+   onEvent: event("core", EventSchema),
+-  onRunAttentionActivated: event("core", z.object({ runId: str.min(1).max(128), identity: str.min(1).max(128), windowId: str.min(1).max(128) }).strict()),
++  onRunAttentionActivated: event("core", strictObject({ runId: str.min(1).max(128), identity: str.min(1).max(128), windowId: str.min(1).max(128) })),
+   onTabsPatch: event("core", TabPatchSchema),
+-  onDictation: event("dictation", z.object({ sessionId: str,
++  onDictation: event("dictation", strictObject({ sessionId: str,
+     type: z.enum(["recording", "finishing", "transcript", "final", "error"]),
+-    text: str.optional(), message: str.optional() }).strict()),
++    text: str.optional(), message: str.optional() })),
+   onSidebarEdge: event("floatingSidebar", bool),
+   onToolbarEdge: event("autoHideToolbar", bool),
+   onOrganizationChanged: event("spaces", number),
+-  onShortcut: event("commandRegistry", z.object({ key: str, meta: bool, shift: bool,
+-    alt: bool, ctrl: bool.optional(), commandId: str.optional(), websitePassThrough: bool.optional() }).strict()),
+-  onSiteZoomChanged: event("pageZoom", z.object({}).strict()),
+-  onRuntimeStatus: event("core", z.object({ connected: bool, detail: str.optional() }).strict()),
+-  onLoading: event("core", z.object({ pageId: str, loading: bool }).strict()),
+-  onAudio: event("core", z.object({ pageId: str, muted: bool, audible: bool,
+-    removed: bool.optional(), video: bool.optional(), pip: bool.optional() }).strict()),
++  onShortcut: event("commandRegistry", strictObject({ key: str, meta: bool, shift: bool,
++    alt: bool, ctrl: bool.optional(), commandId: str.optional(), websitePassThrough: bool.optional() })),
++  onSiteZoomChanged: event("pageZoom", strictObject({})),
++  onRuntimeStatus: event("core", strictObject({ connected: bool, detail: str.optional() })),
++  onLoading: event("core", strictObject({ pageId: str, loading: bool })),
++  onAudio: event("core", strictObject({ pageId: str, muted: bool, audible: bool,
++    removed: bool.optional(), video: bool.optional(), pip: bool.optional() })),
+   onPictureInPicture: event("pictureInPicture", PictureInPictureResultSchema.extend({ pageId: str })),
+   onExtensionActionsChanged: event("extensions", z.array(extensionAction)),
+-  onSidePanel: event("extensions", z.object({ extensionId: str, windowId: str, pageId: str.nullable(), contentId: str.nullable(), title: str, open: bool }).strict()),
+-  onFocusSpace: event("profiles", z.object({ spaceId: str.nullable(), windowId: str }).strict()),
++  onSidePanel: event("extensions", strictObject({ extensionId: str, windowId: str, pageId: str.nullable(), contentId: str.nullable(), title: str, open: bool })),
++  onFocusSpace: event("profiles", strictObject({ spaceId: str.nullable(), windowId: str })),
+   onRoutedOpen: event("linkRouting", routedOpen),
+   onRoutePrompt: event("linkRouting", routePrompt),
+-  onLinkStatus: event("core", z.object({ pageId: str, text: str }).strict()),
++  onLinkStatus: event("core", strictObject({ pageId: str, text: str })),
+   onDownload: event("core", DownloadSchema),
+-  onTabsPlacement: event("core", z.object({ pageId: str, windowId: str,
+-    placement: TabPlacementSchema }).strict()),
++  onTabsPlacement: event("core", strictObject({ pageId: str, windowId: str,
++    placement: TabPlacementSchema })),
+   onPageAction: event("extensions", PageQuickActionSchema),
+-  onVaultOffer: event("core", z.object({ pageId: str, username: str, origin: str,
++  onVaultOffer: event("core", strictObject({ pageId: str, username: str, origin: str,
+     kind: z.enum(["save", "update"]), itemId: str.optional(), offerId: str.optional(),
+-    locked: bool.optional() }).strict()),
++    locked: bool.optional() })),
+   onQuickAskState: event("quickAsk", bool),
+-  onHttpAuthChanged: event("core", z.object({}).strict()),
+-  onTranslationChanged: event("aiTranslate", z.object({ pageId: str, lang: nullableString.optional(),
++  onHttpAuthChanged: event("core", strictObject({})),
++  onTranslationChanged: event("aiTranslate", strictObject({ pageId: str, lang: nullableString.optional(),
+     count: number.optional(), truncated: bool.optional(), pending: bool.optional(),
+-    error: str.optional() }).strict()),
++    error: str.optional() })),
+ } as const;
+ 
+ export type HostEventId = keyof typeof HostEvents;
+diff --git a/tests/tools/host-schema-constructors.test.mjs b/tests/tools/host-schema-constructors.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/tests/tools/host-schema-constructors.test.mjs
+@@ -0,0 +1,80 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { runInNewContext } from 'node:vm';
++import { createRequire } from 'node:module';
++const root = new URL('../../', import.meta.url);
++const require = createRequire(import.meta.url);
++const {transform}=createRequire(require.resolve('vite'))('esbuild');
++const contractsRequire=createRequire(new URL('packages/contracts/dist/browser-host-methods.js',root));
++const {z}=createRequire(new URL('packages/contracts/package.json',root))('zod');
++async function tables(relative, trace) {
++  const {code}=await transform(readFileSync(new URL(relative,root),'utf8'),{loader:'ts',format:'cjs',target:'chrome154'});
++  const module={exports:{}};
++  const read = trace ? name => {
++    const exports = contractsRequire(name);
++    if(name !== 'zod') return exports;
++    return {...exports,z:{...exports.z,
++      object(...args){trace.push(['object',Object.keys(args[0])]);const schema=exports.z.object(...args);const strict=schema.strict;schema.strict=function(...args){trace.push(['strict']);return strict.apply(this,args)};return schema},
++      tuple(...args){trace.push(['tuple',args[0].map(item=>item._zod.def.type)]);return exports.z.tuple(...args)},
++    }};
++  } : contractsRequire;
++  runInNewContext(code,{module,exports:module.exports,require:read});return module.exports;
++}
++const beforePath='docs/lane-requests/design/host-schema-constructors/original/packages/contracts/src/browser-host-methods.ts';
++function schemaDescription(schema) {
++  try{return {json:z.toJSONSchema(schema)}}catch(error){return {unsupported:error.message}}
++}
++test('every actual method/event stays ordered with identical policy and installed Zod schema',async()=>{
++  const before=await tables(beforePath),after=await tables('packages/contracts/src/browser-host-methods.ts');
++  assert.deepEqual(Object.keys(after),Object.keys(before));
++  for (const table of ['BrowserHostMethods','HostEvents']) {
++    assert.deepEqual(Object.keys(after[table]),Object.keys(before[table]));
++    for (const id of Object.keys(before[table])) {
++      const a=before[table][id],b=after[table][id];assert.deepEqual(Object.keys(b),Object.keys(a));
++      for(const key of Object.keys(a)) {
++        if(a[key]?._zod){assert.deepEqual(schemaDescription(b[key]),schemaDescription(a[key]),id+'.'+key)}
++        else assert.equal(b[key],a[key],id+'.'+key);
++      }
++    }
++  }
++});
++test('real strict validation, optional tuple arity, fresh schema identity and metadata remain intact',async()=>{
++  const {BrowserHostMethods:a}=await tables(beforePath),{BrowserHostMethods:b}=await tables('packages/contracts/src/browser-host-methods.ts');
++  for(const table of [a,b]){
++    assert.equal(table.capabilities.args.safeParse([]).success,true);
++    assert.equal(table.capabilities.args.safeParse(['foreign']).success,false);
++    const profile={id:'p',name:'Profile',current:true};
++    assert.deepEqual(table.browserProfiles.result.parse([profile]),[profile]);
++    assert.equal(table.browserProfiles.result.safeParse([{...profile,unknown:true}]).success,false);
++    assert.equal(table.browserProfiles.result.safeParse([{...profile,current:'true'}]).success,false);
++    assert.equal(table.showOriginal.args.safeParse(['page']).success,true);
++    assert.equal(table.showOriginal.args.safeParse([]).success,false);
++    assert.notEqual(table.removeFilterSource.args,table.setFilterSourceEnabled.args);
++    const isolated=table.removeFilterSource.args.describe('original consumer metadata');
++    assert.equal(isolated.description,'original consumer metadata');assert.equal(table.removeFilterSource.args.description,undefined);
++  }
++});
++test('closed source factoring retains all original argument expressions and factory order',()=>{
++  const before=readFileSync(new URL(beforePath,root),'utf8');let after=readFileSync(new URL('packages/contracts/src/browser-host-methods.ts',root),'utf8');
++  after=after.replace('const strictObject = <Shape extends z.ZodRawShape>(shape: Shape) => z.object(shape).strict();\nconst tuple = z.tuple;\n','');
++  // Installed parser identifies each original exact object call; reverse only its callee and suffix.
++  const ts=require('typescript');const ast=ts.createSourceFile('before.ts',before,ts.ScriptTarget.Latest,true);const calls=[];
++  function visit(node){if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==='strict'&&node.arguments.length===0){const object=node.expression.expression;if(ts.isCallExpression(object)&&ts.isPropertyAccessExpression(object.expression)&&object.expression.expression.getText(ast)==='z'&&object.expression.name.text==='object'&&object.arguments.length===1){calls.push(object.arguments[0].getText(ast));}}ts.forEachChild(node,visit);}visit(ast);
++  assert.equal(calls.length,90);assert.equal((after.match(/\btuple\(/g)||[]).length,111);
++  after=after.replace(/\btuple\(/g,'z.tuple(');
++  // Nested argument text transforms too; use parser to undo all generated calls without guessing parentheses.
++  const result=ts.createSourceFile('after.ts',after,ts.ScriptTarget.Latest,true),edits=[];
++  function undo(node){if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==='strictObject'){edits.push([node.expression.getStart(result),node.expression.end,'z.object']);edits.push([node.end,node.end,'.strict()']);}ts.forEachChild(node,undo);}undo(result);
++  for(const [start,end,text]of edits.sort((a,b)=>b[0]-a[0]))after=after.slice(0,start)+text+after.slice(end);
++  assert.equal(after,before);
++});
++
++test('actual installed factory invocation order and every original shared-schema relationship stay identical',async()=>{
++  const left=[],right=[];
++  const a=await tables(beforePath,left),b=await tables('packages/contracts/src/browser-host-methods.ts',right);
++  assert.deepEqual(JSON.parse(JSON.stringify(right)),JSON.parse(JSON.stringify(left)));
++  const schemas=table=>Object.values(table.BrowserHostMethods).flatMap(method=>[method.args,method.result]);
++  const x=schemas(a),y=schemas(b);
++  for(let i=0;i<x.length;i++)for(let j=0;j<x.length;j++)assert.equal(y[i]===y[j],x[i]===x[j]);
++});

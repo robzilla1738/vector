@@ -1,13 +1,12 @@
-import { Suspense, lazy, useState, type ComponentProps, type ComponentType } from "react";
-import type { Conversation as ConversationPane } from "./Conversation";
-import { deferSurface } from "./DeferredSurface";
+import { Suspense, lazy, useState, type ComponentType } from "react";
+import { deferNamedSurface } from "./DeferredSurface";
 
 /** The conversation path (markdown, run panels, timelines) stays out of the startup chunk. */
-export const Conversation = deferSurface<NonNullable<ComponentProps<typeof ConversationPane>>>(async () => { const module = await import("./Conversation"); return {default:module.Conversation}; }, "This conversation", true);
+export const Conversation = deferNamedSurface(() => import("./Conversation"), "Conversation", "This conversation", true);
 
 /** The scripted mock page only exists in the browser preview build. */
 export const MockPage = import.meta.env.MODE === "mock"
-  ? deferSurface(async () => { const module = await import("./MockPage"); return {default:module.MockPage}; }, "Preview page", true, true)
+  ? deferNamedSurface(() => import("./MockPage"), "MockPage", "Preview page", true, true)
   : null;
 
 let Markdown: ComponentType<{ text: string }> | undefined;

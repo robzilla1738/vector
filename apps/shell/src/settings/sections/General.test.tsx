@@ -54,3 +54,13 @@ it("keeps General fields indexed and opens an editor after extraction", async ()
     vi.unstubAllGlobals();
   }
 });
+
+it.each([{ active: false, searching: false, subview: null }, { active: true, searching: true, subview: null }, { active: true, searching: false, subview: "Task data backup" }])("keeps diagnostics indexed without admitting live actions: %j", async (state) => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div"), root = createRoot(container);
+  try {
+    await act(async () => root.render(<GeneralSettings {...state} settings={{}} onSave={vi.fn(async () => true)} onOpenEditor={vi.fn()} editorViews={{current:new Map()}} refreshVersion={0} onIndexChange={vi.fn()} />));
+    expect(collectSettingsFields(container).map(field => field.label)).toEqual(expect.arrayContaining(["Browser health", "Support report"]));
+    expect(container.querySelector<HTMLButtonElement>('[data-command-id="export-support-report"]')!.disabled).toBe(true);
+  } finally { await act(async () => root.unmount()); vi.unstubAllGlobals(); }
+});

@@ -7,6 +7,18 @@ import { OnboardingFlow } from "./OnboardingFlow";
 import OnboardingHost from "./OnboardingHost";
 import { requestOnboardingReplay } from "./replay";
 
+vi.mock("../commands", async () => {
+  const { invokeScopedControl } = await import("../scoped-control-commands");
+  return {
+    executeCommand: (command: string, invocation: any) => {
+      try {
+        return Promise.resolve(invokeScopedControl(command, invocation));
+      } catch (reason) {
+        return Promise.reject(reason);
+      }
+    },
+  };
+});
 const rpc = vi.hoisted(() => vi.fn());
 const openConversation = vi.hoisted(() => vi.fn());
 const openPage = vi.hoisted(() => vi.fn());
@@ -84,6 +96,7 @@ async function choosePage() {
 }
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 36 }] as any);
   rpc.mockReset();
   close.mockReset();
   openConversation.mockReset();
@@ -132,6 +145,7 @@ afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 it("Cmd+Enter saves Finish later and restore focus without starting work", async () => {
@@ -394,12 +408,15 @@ it("lets disconnected setup close without mutating saved progress or reopening o
   expect(rpc).not.toHaveBeenCalled();
 });
 
-it.each(["quick-ask", "little"])("never reads setup or replays it in a %s utility window", async (windowKind) => {
-  native.windowKind = windowKind;
-  await act(async () => root.render(<OnboardingHost />));
-  await act(async () => requestOnboardingReplay());
-  expect(rpc).not.toHaveBeenCalled();
-});
+it.each(["quick-ask", "little"])(
+  "never reads setup or replays it in a %s utility window",
+  async (windowKind) => {
+    native.windowKind = windowKind;
+    await act(async () => root.render(<OnboardingHost />));
+    await act(async () => requestOnboardingReplay());
+    expect(rpc).not.toHaveBeenCalled();
+  },
+);
 
 it("requires recovery readiness and rechecks the selected window before first-chat dispatch", async () => {
   const previous = rpc.getMockImplementation()!;
@@ -445,4 +462,90 @@ it("offers only idle owner pages in this window for explicit review", async () =
     [...node.options].some((option) => option.value === source.pageId),
   )!;
   expect([...select.options].map((option) => option.value)).toEqual(["", source.pageId]);
+});
+
+it("keeps permission essentials visible and all original policy details available without any grant", async () => {
+  await render(initial("permissions"));
+  const fieldset = document.querySelector('[aria-label="Setup choices"]')!;
+  const summary = [...fieldset.querySelectorAll("summary")].find(
+    (item) => item.textContent === "How permissions and browsing work",
+  )!;
+  const details = summary.closest("details")!;
+  expect(summary.getAttribute("data-command-id")).toBe("toggle-setup-permission-details");
+  expect(details.open).toBe(false);
+  expect(details.classList.contains("onboarding-details")).toBe(true);
+  expect(
+    [...fieldset.querySelectorAll(":scope > p")].map((item) => item.textContent?.replace(/\s+/g, " ").trim()),
+  ).toEqual([
+    "Starting a chat gives Aux the question and sources you select. It does not connect accounts or grant access to folders.",
+    "Setup does not enable Memory, broaden grants, connect services or import credentials automatically.",
+  ]);
+  expect(details.querySelectorAll("li")).toHaveLength(5);
+  const policy = details.textContent?.replace(/\s+/g, " ");
+  for (const text of [
+    "source, recipient and action",
+    "separate, temporary browsing session",
+    "cookies or saved passwords",
+    "send, change or delete",
+    "cannot undo an action",
+    "pasted assistant notes",
+  ])
+    expect(policy).toContain(text);
+  const calls = rpc.mock.calls.length;
+  summary.focus();
+  await act(async () => summary.click());
+  expect(details.open).toBe(true);
+  expect(document.activeElement).toBe(summary);
+  await act(async () => summary.click());
+  expect(details.open).toBe(false);
+  expect(rpc.mock.calls).toHaveLength(calls);
+  expect(current.step).toBe("permissions");
+  expect(current.disclosureVersion).toBe(1);
+  expect(openPage).not.toHaveBeenCalled();
+  expect(openConversation).not.toHaveBeenCalled();
+});
+
+it("keeps import confirmation, exclusions, keychain and retry disclosures with concise progress copy", async () => {
+  await render(initial("import"));
+  const importer = document.querySelector(".import-setting")!;
+  expect(importer.querySelectorAll(":scope > p")).toHaveLength(2);
+  expect(importer.textContent?.replace(/\s+/g, " ")).toContain("Nothing is imported until you confirm.");
+  expect(importer.textContent?.replace(/\s+/g, " ")).toContain(
+    "Passwords, cookies, extensions and agent permissions are not imported here.",
+  );
+  for (const text of ["Folders and retries", "Keychain and macOS access"]) {
+    const summary = [...importer.querySelectorAll("summary")].find((item) => item.textContent === text)!;
+    expect(summary.closest("details")!.open).toBe(false);
+    await act(async () => summary.click());
+    expect(summary.closest("details")!.open).toBe(true);
+  }
+  expect(importer.textContent?.replace(/\s+/g, " ")).toContain("does not ask for browser Keychain passwords");
+  expect(importer.textContent?.replace(/\s+/g, " ")).toContain(
+    "Reading Safari data may require Full Disk Access",
+  );
+  expect(importer.textContent?.replace(/\s+/g, " ")).toContain(
+    "Matching bookmark URLs and history visits are skipped on retry",
+  );
+  expect(document.body.textContent?.replace(/\s+/g, " ")).toContain(
+    "Imports continue if you leave. Check progress here before retrying.",
+  );
+  expect(rpc.mock.calls.some(([method]) => method === "import.preview" || method === "import.run")).toBe(
+    false,
+  );
+});
+
+it("remaps permission details only through its original focused setup control", async () => {
+  await render(initial("permissions"));
+  const { invokeScopedControl } = await import("../scoped-control-commands");
+  const summary = document.querySelector<HTMLElement>('[data-command-id="toggle-setup-permission-details"]')!;
+  const details = summary.closest("details")!;
+  button("Continue").focus();
+  expect(() => invokeScopedControl("toggle-setup-permission-details")).toThrow();
+  summary.focus();
+  await act(async () => invokeScopedControl("toggle-setup-permission-details"));
+  expect(details.open).toBe(true);
+  native.privateMode = true;
+  expect(() => invokeScopedControl("toggle-setup-permission-details")).toThrow("current setup");
+  expect(details.open).toBe(true);
+  expect(rpc.mock.calls.some(([method]) => /grant|permission|chat|page/.test(method))).toBe(false);
 });

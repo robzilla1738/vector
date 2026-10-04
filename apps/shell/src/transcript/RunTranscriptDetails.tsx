@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { ObservationSchema, type Run, type RunTranscriptItem, type RunTranscriptProjection, type Suspension } from "@aux/contracts";
+import { bridge } from "../bridge";
 import { call, useStore } from "../store";
+import { RunPanelAction, RunPanelDisclosure } from "../components/RunPanelAction";
+import { shellIconClose } from "../components/icons";
 import { ViewerFrame } from "../components/ViewerFrame";
 import { SuspensionPanel } from "../composer/SuspensionPanel";
 import { TextProposal } from "./TextProposal";
@@ -41,9 +44,11 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
   const [loading, setLoading] = useState(false);
   const [openingSource, setOpeningSource] = useState(false);
   const previewRequest = useRef(0);
+  const windowId = bridge.windowId, privateMode = bridge.privateMode, windowKind = bridge.windowKind;
 
   useEffect(() => {
     let active = true;
+    const current = () => active && bridge.windowId === windowId && bridge.privateMode === privateMode && bridge.windowKind === windowKind;
     ++previewRequest.current;
     setProjection(null);
     setSuspension(null);
@@ -53,14 +58,14 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
     setPreview(null);
     setError("");
     void call("runs.get", { runId: run.runId }).then((response) => {
-      if (active && response.run.runId === run.runId && response.run.status === run.status) {
+      if (current() && response.run.runId === run.runId && response.run.status === run.status) {
         if (response.transcript?.runId === run.runId) setProjection(response.transcript);
         setSuspension(response.suspension?.runId === run.runId ? response.suspension : null);
         setHydrated(true);
       }
-    }).catch(() => { if (active) setLoadError("The current request could not be loaded."); });
+    }).catch(() => { if (current()) setLoadError("The current request could not be loaded."); });
     return () => { active = false; ++previewRequest.current; };
-  }, [run.runId, run.status, run.statusMessage, refresh]);
+  }, [run.runId, run.status, run.statusMessage, refresh, windowId, privateMode, windowKind]);
 
   const artifacts = projection?.items.filter((item): item is ArtifactItem => item.kind === "artifact") ?? [];
   const proposals = projection?.items.filter((item): item is Extract<RunTranscriptItem, { kind: "text-proposal" }> => item.kind === "text-proposal") ?? [];
@@ -75,13 +80,13 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
   // RunPanel already owns the actionable failure card when a typed failure exists.
   const recovery = run.failure || run.error ? undefined : projection?.items.find((item) => item.kind === "recovery");
 
-  async function open(artifact: ArtifactItem, citation?: CitationItem) {
-    if (!artifacts.some((item) => item.artifactId === artifact.artifactId)) return;
+  async function open(artifact: ArtifactItem, citation?: CitationItem, current = () => true) {
+    if (!current() || !artifacts.some((item) => item.artifactId === artifact.artifactId)) return;
     const request = ++previewRequest.current;
     setSelected(artifact); setPreview(null); setError(""); setLoading(true);
     try {
       const response = await call("artifacts.read", { artifactId: artifact.artifactId });
-      if (request !== previewRequest.current) return;
+      if (!current() || request !== previewRequest.current) return;
       if (response.artifact.runId !== run.runId || response.artifact.artifactId !== artifact.artifactId
         || response.artifact.status !== "complete" || response.artifact.mediaType !== artifact.mediaType
         || response.artifact.size !== artifact.size)
@@ -123,21 +128,21 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
         throw new Error("A safe inline preview is unavailable for this file type or size.");
       }
     } catch (reason) {
-      if (request === previewRequest.current) setError(reason instanceof Error ? reason.message : String(reason));
+      if (current() && request === previewRequest.current) setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
-      if (request === previewRequest.current) setLoading(false);
+      if (current() && request === previewRequest.current) setLoading(false);
     }
   }
 
-  async function openSource() {
+  async function openSource(current = () => true) {
     const source = preview?.source;
-    if (!source || !selected || !run.pageIds.includes(source.pageId) || openingSource) return;
+    if (!current() || !source || !selected || !run.pageIds.includes(source.pageId) || openingSource) return;
     const request = previewRequest.current;
     setOpeningSource(true);
     setError("");
     try {
       const pages = await call("pages.list", {});
-      if (request !== previewRequest.current) return;
+      if (!current() || request !== previewRequest.current) return;
       const page = pages.find((item) => item.pageId === source.pageId);
       if (!page || page.url !== source.url || page.documentEpoch !== source.documentEpoch
         || page.ownedByRuntime || (page.viewStatus !== "visible" && page.viewStatus !== "hidden")
@@ -145,39 +150,42 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
         throw new Error("The cited page changed or is unavailable. The saved snapshot is still available above.");
       await useStore.getState().activate(source.pageId);
     } catch (reason) {
-      if (request === previewRequest.current) setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { if (request === previewRequest.current) setOpeningSource(false); }
+      if (current() && request === previewRequest.current) setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { if (current() && request === previewRequest.current) setOpeningSource(false); }
   }
+
+  const closeArtifact = () => { ++previewRequest.current; setSelected(null); setPreview(null); setError(""); };
 
   if (!citations.length && !listedArtifacts.length && !proposals.length && !tools.length && !recovery && !waiting && !errorItem && run.status !== "needs_input") return null;
   return <section className="run-section transcript-details" aria-label="Run evidence and recovery">
     {waiting && waiting.state !== "needs_input" && <WaitingItem item={waiting} />}
     {run.status === "needs_input" && <SuspensionPanel run={run} suspension={suspension} hydrated={hydrated} question={question} readOnly={readOnly} answerInComposer={answerInComposer} />}
-    {run.status === "needs_input" && loadError && <p role="alert">{loadError} <button className="btn sm" onClick={() => setRefresh((value) => value + 1)}>Retry loading</button></p>}
+    {run.status === "needs_input" && loadError && <p role="alert">{loadError} <RunPanelAction command="retry-run-evidence" run={run} className="btn sm" invoke={() => setRefresh((value) => value + 1)}>Retry loading</RunPanelAction></p>}
     {proposals.map((item, index) => <TextProposal key={`${run.runId}-${index}`} run={run} proposal={item} readOnly={readOnly} />)}
     <ToolFold tools={tools} summary={toolSummary} />
-    {citations.length > 0 && <details className="transcript-citations"><summary>Verified evidence · {citations.length}</summary>
+    {citations.length > 0 && <RunPanelDisclosure command="toggle-run-citations" run={run} className="transcript-citations" summary={<>Verified evidence · {citations.length}</>}>
       <ul>{citations.map((item, index) => item.kind === "citation" && <li key={`${item.observationId}-${index}`}>
         <blockquote>{item.quote}</blockquote>
         {item.artifactId && artifacts.some((artifact) => artifact.artifactId === item.artifactId) &&
-          <button className="btn sm ghost" onClick={() => void open(artifacts.find((artifact) => artifact.artifactId === item.artifactId)!, item)}>Inspect cited snapshot</button>}
+          <RunPanelAction command="inspect-run-citation" run={run} className="btn sm ghost" invoke={current => open(artifacts.find((artifact) => artifact.artifactId === item.artifactId)!, item, current)}>Inspect cited snapshot</RunPanelAction>}
       </li>)}</ul>
-    </details>}
-    {listedArtifacts.length > 0 && <details className="transcript-artifacts"><summary>Saved artifacts · {listedArtifacts.length}</summary>
-      <ul>{listedArtifacts.map((item) => <li key={item.artifactId}><button className="btn sm ghost" onClick={() => void open(item)}>
+    </RunPanelDisclosure>}
+    {listedArtifacts.length > 0 && <RunPanelDisclosure command="toggle-run-artifacts" run={run} className="transcript-artifacts" summary={<>Saved artifacts · {listedArtifacts.length}</>}>
+      <ul>{listedArtifacts.map((item) => <li key={item.artifactId}><RunPanelAction command="inspect-run-artifact" run={run} className="btn sm ghost" invoke={current => open(item, undefined, current)}>
         {item.mediaType} · {Math.max(1, Math.ceil(item.size / 1024))} KB
-      </button></li>)}</ul>
-    </details>}
-    {errorItem && (run.failure || run.error ? <details className="transcript-error-details"><summary>Error details</summary><ErrorItem item={errorItem} /></details> : <ErrorItem item={errorItem} />)}
+      </RunPanelAction></li>)}</ul>
+    </RunPanelDisclosure>}
+    {errorItem && (run.failure || run.error ? <RunPanelDisclosure command="toggle-run-evidence-error" run={run} className="transcript-error-details" summary="Error details"><ErrorItem item={errorItem} /></RunPanelDisclosure> : <ErrorItem item={errorItem} />)}
     {recovery?.kind === "recovery" && recovery.state !== "needs_input" && !errorItem && <output className="run-failure"><strong>{recovery.state.replaceAll("_", " ")}</strong> {recovery.description} {RECOVERY_GUIDANCE[recovery.action]}</output>}
-    {selected && <ViewerFrame label="Saved run artifact" title={selected.mediaType} closeLabel="Close artifact" onClose={() => { ++previewRequest.current; setSelected(null); setPreview(null); setError(""); }}
+    {selected && <ViewerFrame label="Saved run artifact" title={selected.mediaType} closeLabel="Close artifact" onClose={closeArtifact}
+      closeControl={<RunPanelAction command="close-run-artifact" run={run} className="icon-btn xs" aria-label="Close artifact" invoke={closeArtifact}>{shellIconClose}</RunPanelAction>}
       metadata={`${Math.max(1, Math.ceil(selected.size / 1024))} KB · ${selected.artifactId}`}>
       {loading ? <output data-block>Loading artifact…</output> : preview?.image ? <img src={preview.image} alt="Saved run artifact" style={{ maxWidth: "100%" }} />
         : preview?.html !== undefined ? <IsolatedArtifactHtml key={selected.artifactId} html={preview.html} />
           : preview?.text !== undefined ? <pre>{preview.text}</pre> : null}
-      {preview?.source && <button className="btn sm" disabled={openingSource} onClick={() => void openSource()}>
+      {preview?.source && <RunPanelAction command="open-run-cited-page" run={run} className="btn sm" disabled={openingSource} invoke={current => openSource(current)}>
         {openingSource ? "Checking cited page…" : "Open cited page"}
-      </button>}
+      </RunPanelAction>}
       {error && <p role="alert">{error}</p>}
     </ViewerFrame>}
   </section>;

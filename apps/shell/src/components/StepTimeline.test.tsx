@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { StepRecord } from "@aux/contracts";
+import type { StepRecord, Run } from "@aux/contracts";
+import { useStore } from "../store";
+const run = {runId:"run-1",status:"completed",pageIds:[],goal:"Fixture"} as unknown as Run;
 import { StepTimeline, fmtMs, isOpenablePath, nestSteps, opLabel, receiptKind, receiptLabel, redactedInputs, stepSummary } from "./StepTimeline";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -10,7 +12,9 @@ import { StepTimeline, fmtMs, isOpenablePath, nestSteps, opLabel, receiptKind, r
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 
-function render(ui: React.ReactElement) {
+function render(ui: React.ReactElement<{steps:StepRecord[]}>) {
+  useStore.setState({runs:[run],steps:{[run.runId]:ui.props.steps}});
+  vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:10,height:10}] as unknown as DOMRectList);
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -23,6 +27,7 @@ afterEach(() => {
   host?.remove();
   root = null;
   host = null;
+  vi.restoreAllMocks();
 });
 
 const step = (id: string, op: string, outcome?: Partial<NonNullable<StepRecord["outcome"]>>, inputs?: Record<string, unknown>): StepRecord => ({
@@ -37,7 +42,7 @@ const step = (id: string, op: string, outcome?: Partial<NonNullable<StepRecord["
 describe("StepTimeline", () => {
   it("renders one row per step with outcome, human op label, and tabular duration", () => {
     const el = render(
-      <StepTimeline
+      <StepTimeline run={run} windowId="main" privateMode={false} windowKind="normal"
         live={false}
         steps={[
           step("s1", "navigate", { durationMs: 812, detail: "github.com/pull/3" }),
@@ -65,7 +70,7 @@ describe("StepTimeline", () => {
   });
 
   it("marks the in-progress step while live and shows a thinking row after a finished step", () => {
-    const el = render(<StepTimeline live steps={[step("s1", "navigate", { durationMs: 300 })]} />);
+    const el = render(<StepTimeline run={run} windowId="main" privateMode={false} windowKind="normal" live steps={[step("s1", "navigate", { durationMs: 300 })]} />);
     const current = el.querySelectorAll("li[aria-current=step]");
     expect(current).toHaveLength(1);
     expect(current[0]!.textContent).toContain("Thinking");
@@ -73,17 +78,17 @@ describe("StepTimeline", () => {
   });
 
   it("shows an observing placeholder when a live run has no steps yet, and nothing when idle", () => {
-    const live = render(<StepTimeline live steps={[]} />);
+    const live = render(<StepTimeline run={run} windowId="main" privateMode={false} windowKind="normal" live steps={[]} />);
     expect(live.textContent).toContain("Observing");
     act(() => root!.unmount());
     host?.remove();
-    const idle = render(<StepTimeline live={false} steps={[]} />);
+    const idle = render(<StepTimeline run={run} windowId="main" privateMode={false} windowKind="normal" live={false} steps={[]} />);
     expect(idle.querySelectorAll("li")).toHaveLength(0);
   });
 
   it("surfaces outcome receipts so effect state is inspectable", () => {
     const el = render(
-      <StepTimeline
+      <StepTimeline run={run} windowId="main" privateMode={false} windowKind="normal"
         live={false}
         steps={[
           step("s1", "click", { durationMs: 10, receipt: { observed: "tab", remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false } }),
@@ -106,7 +111,7 @@ describe("StepTimeline", () => {
 
   it("turns url and absolute-path artifacts into chips, keeping secrets out of the card", () => {
     const el = render(
-      <StepTimeline
+      <StepTimeline run={run} windowId="main" privateMode={false} windowKind="normal"
         live={false}
         steps={[
           step("s1", "navigate", { durationMs: 10, detail: "example.com" }, { url: "https://example.com/x" }),
@@ -132,7 +137,7 @@ describe("StepTimeline", () => {
     expect(stepSummary(secret)).not.toContain("s3cret");
     expect(redactedInputs(secret).value).toBe("[redacted]");
     expect(nestSteps([step("s1", "fill", { durationMs: 10 }, { target: "r1" }), secret]).map(group => [group.step.op, group.children.map(child => child.op)])).toEqual([["fill", ["fillCredential"]]]);
-    const el = render(<StepTimeline live={false} steps={[step("s1", "fill", { durationMs: 10 }, { target: "r1" }), secret]} />);
+    const el = render(<StepTimeline run={run} windowId="main" privateMode={false} windowKind="normal" live={false} steps={[step("s1", "fill", { durationMs: 10 }, { target: "r1" }), secret]} />);
     expect(el.querySelector(".tl-nest")?.textContent).toContain("Fill credential");
     expect(el.textContent).toContain("cref_abc");
     expect(el.textContent).not.toContain("s3cret-value");
@@ -141,7 +146,7 @@ describe("StepTimeline", () => {
   it("offers an inspect button only for steps that carry an observation artifact", () => {
     const seen: string[] = [];
     const el = render(
-      <StepTimeline
+      <StepTimeline run={run} windowId="main" privateMode={false} windowKind="normal"
         live={false}
         onInspect={(id) => seen.push(id)}
         steps={[step("s1", "click", { durationMs: 10 }, { target: "r1", obsArtifactId: "art-1" }), step("s2", "scroll", { durationMs: 10 })]}
@@ -194,7 +199,7 @@ describe("timeline helpers", () => {
 });
 
 it("keeps uncertain outcomes visible while disclosing recorded identity and observation",()=>{
-  const el=render(<StepTimeline live={false} steps={[step("receipt","click",{receipt:{observed:"Dispatch sent; confirmation unavailable",remoteConfirmed:false,uncertain:true,dispatchedBeforeTakeover:false,identity:{pageId:"page-2",documentEpoch:7,generation:3,target:"r4"}}})]}/>);
+  const el=render(<StepTimeline run={run} windowId="main" privateMode={false} windowKind="normal" live={false} steps={[step("receipt","click",{receipt:{observed:"Dispatch sent; confirmation unavailable",remoteConfirmed:false,uncertain:true,dispatchedBeforeTakeover:false,identity:{pageId:"page-2",documentEpoch:7,generation:3,target:"r4"}}})]}/>);
   expect(el.textContent).toContain("Uncertain");
   expect(el.textContent).not.toContain("page-2");
   act(()=>el.querySelector<HTMLButtonElement>(".tl-summary")!.click());

@@ -1,49 +1,76 @@
-import { useEffect, useRef, useState } from "react";
+import { usePreferenceCommand } from "./preference-command";
 import { bridge, inMock, inNativeHost } from "../../bridge";
-
+import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
 type Preference = Awaited<ReturnType<typeof bridge.automaticPictureInPicture>>;
-
+const read = () => bridge.automaticPictureInPicture();
+const write = (mode: Preference["mode"]) =>
+  bridge.automaticPictureInPicture(mode).then((value) => ({ ack: value, value }));
+const MODES = ["ask", "block", "allow"] as const;
 export function PictureInPictureSetting({ active }: { active: boolean }) {
-  const [value, setValue] = useState<Preference | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [retry, setRetry] = useState(0);
-  const request = useRef(0);
   const available = inNativeHost || inMock;
-
-  useEffect(() => {
-    if (!active || !available || bridge.privateMode) return;
-    const token = ++request.current;
-    setError("");
-    void bridge.automaticPictureInPicture()
-      .then(result => { if (token === request.current) setValue(result); })
-      .catch(reason => { if (token === request.current) setError(String(reason)); });
-    return () => { ++request.current; };
-  }, [active, available, retry]);
-
-  async function save(mode: Preference["mode"]) {
-    if (busy || value?.managed) return;
-    const token = ++request.current;
-    setBusy(true);
-    setError("");
-    try {
-      const result = await bridge.automaticPictureInPicture(mode);
-      if (token === request.current) setValue(result);
-    } catch (reason) {
-      if (token === request.current) setError(reason instanceof Error ? reason.message : String(reason));
-    } finally { setBusy(false); }
-  }
-
-  if (bridge.privateMode) return <span className="hint">Automatic picture in picture follows the regular Profile and cannot be changed in Private mode.</span>;
+  const { owner, scopeId, value, busy, error, perform, refresh } = useNativePreference({
+    active,
+    available,
+    read,
+    write,
+    formatReadError: String,
+  });
+  const [controlRef, run] = usePreferenceCommand<HTMLSelectElement>("set-auto-picture-in-picture", scopeId, (original) => {
+      if (!value || !owner.owns(value) || value.managed || busy)
+        return Promise.reject(new Error("Choose the current unmanaged picture in picture control."));
+      const mode = original.value;
+      if (!MODES.some((candidate) => candidate === mode))
+        return Promise.reject(new Error("Choose an available picture in picture mode."));
+      return perform(mode as Preference["mode"], value);
+  });
+  if (bridge.privateMode)
+    return (
+      <span className="hint">
+        Automatic picture in picture follows the regular Profile and cannot be changed in Private mode.
+      </span>
+    );
   if (!available) return <span className="hint">Available in the Aux desktop app.</span>;
-  if (!value) return <span className="hint">{error || "Reading picture-in-picture setting…"} {error && <button className="btn sm ghost" onClick={() => setRetry(current => current + 1)}>Retry</button>}</span>;
-  return <div className="row">
-    <select aria-label="Automatic picture in picture" value={value.mode} disabled={busy || value.managed} onChange={event => void save(event.target.value as Preference["mode"])}>
-      <option value="ask">Ask each site</option>
-      <option value="block">Block automatic picture in picture</option>
-      <option value="allow">Allow on all sites</option>
-    </select>
-    {value.managed && <span className="hint">Managed by your organization</span>}
-    {error && <span role="alert" className="field-error">{error} <button className="btn sm ghost" onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
-  </div>;
+  if (!active || bridge.windowKind !== "normal") return null;
+  if (!value)
+    return (
+      <span className="hint">
+        {error || "Reading picture-in-picture setting…"}{" "}
+        {error && (
+          <NativePreferenceRetry
+            command="retry-auto-picture-in-picture"
+            scopeId={scopeId}
+            disabled={busy}
+            read={refresh}
+          />
+        )}
+      </span>
+    );
+  return (
+    <div className="row">
+      <select
+        ref={controlRef}
+        data-command-id="set-auto-picture-in-picture"
+        aria-label="Automatic picture in picture"
+        value={value.mode}
+        disabled={busy || value.managed}
+        onChange={run}
+      >
+        <option value="ask">Ask each site</option>
+        <option value="block">Block automatic picture in picture</option>
+        <option value="allow">Allow on all sites</option>
+      </select>
+      {value.managed && <span className="hint">Managed by your organization</span>}
+      {error && (
+        <span role="alert" className="field-error">
+          {error}{" "}
+          <NativePreferenceRetry
+            command="retry-auto-picture-in-picture"
+            scopeId={scopeId}
+            disabled={busy}
+            read={refresh}
+          />
+        </span>
+      )}
+    </div>
+  );
 }

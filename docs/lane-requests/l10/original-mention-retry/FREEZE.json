@@ -1,0 +1,48 @@
+{
+  "beforeCommit": "c6b873f4",
+  "sourceCommit": "10d2ce61a569edfdec15bdda74ba91fc1e2b1bae",
+  "files": [
+    {
+      "path": "tests/host/lib/retry-original-mention.mjs",
+      "beforeSha256": null,
+      "afterSha256": "025d3d45a7a56b3fd7947f165fabda3e2fdf9b80f7b8517aec01af0e27f9ac83",
+      "beforeSize": null,
+      "afterSize": 4408
+    },
+    {
+      "path": "tests/host/lib/retry-original-mention.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "58d7e77fb0a2aa653e07cfa33a749bc037ae7a03c9099796e210cfa215b2fafa",
+      "beforeSize": null,
+      "afterSize": 5166
+    },
+    {
+      "path": "tests/host/journeys/first-chat.mjs",
+      "beforeSha256": "e6f02e0efce4ceba63df9fbb7dba34b6766ac63df1e9d175e7a428533d825cf9",
+      "afterSha256": "b0f8332017d1aa1ea5e4a161fa0493abaa794234f02ba51526eaa251ab377743",
+      "beforeSize": 13384,
+      "afterSize": 13971
+    }
+  ],
+  "patches": [
+    {
+      "path": "owned.request.patch",
+      "sha256": "0eb903b06b0405644daf4747edf37e1508e915ae1d7a6427f4b4efa03a89e39a",
+      "files": [
+        "tests/host/lib/retry-original-mention.mjs",
+        "tests/host/lib/retry-original-mention.test.mjs"
+      ]
+    },
+    {
+      "path": "journey.request.patch",
+      "sha256": "47651c7984a718c791807041098d99b8ae10b0f4bc1a3aab5fe8e5fed0d5b9d6",
+      "files": [
+        "tests/host/journeys/first-chat.mjs"
+      ]
+    }
+  ],
+  "replay": "PASS independent three-leaf forward/reverse/forward",
+  "controls": "8 Node controls PASS",
+  "journeyMetadata": "Original declaration byte-exact; 150s overall and existing 30s waits retained; registry/runner untouched",
+  "nativeQualification": false
+}

@@ -1,7 +1,6 @@
 import type { Props } from "./svg-props";
-import { baseSvgProps, roundJoinedStrokeProps } from "./svg-props";
-import { icon } from "./render";
+import { icon, svg, svgPath } from "./render";
 
-export const Lock = (props: Props) => (<svg {...baseSvgProps} {...props}><path d="M4.75 11.75C4.75 10.6454 5.64543 9.75 6.75 9.75H17.25C18.3546 9.75 19.25 10.6454 19.25 11.75V19.25C19.25 20.3546 18.3546 21.25 17.25 21.25H6.75C5.64543 21.25 4.75 20.3546 4.75 19.25V11.75Z" {...roundJoinedStrokeProps}/><path d="M16.25 9.75V7.25C16.25 4.90279 14.3472 3 12 3C9.65279 3 7.75 4.90279 7.75 7.25V9.75" {...roundJoinedStrokeProps}/><path d="M12 14V17" {...roundJoinedStrokeProps}/></svg>);
+export const Lock = (props: Props) => (svg(props, svgPath("M4.75 11.75C4.75 10.6454 5.64543 9.75 6.75 9.75H17.25C18.3546 9.75 19.25 10.6454 19.25 11.75V19.25C19.25 20.3546 18.3546 21.25 17.25 21.25H6.75C5.64543 21.25 4.75 20.3546 4.75 19.25V11.75Z"), svgPath("M16.25 9.75V7.25C16.25 4.90279 14.3472 3 12 3C9.65279 3 7.75 4.90279 7.75 7.25V9.75"), svgPath("M12 14V17")));
 
 export const shellIconLock = /* @__PURE__ */ icon(Lock, "sm");

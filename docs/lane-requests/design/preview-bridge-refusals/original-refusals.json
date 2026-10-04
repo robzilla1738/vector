@@ -1,0 +1,182 @@
+[
+  {
+    "method": "capabilities",
+    "message": "Aux capabilities require the native browser."
+  },
+  {
+    "method": "createBrowserProfile",
+    "message": "Profiles require the native browser."
+  },
+  {
+    "method": "renameBrowserProfile",
+    "message": "Profiles require the native browser."
+  },
+  {
+    "method": "archiveBrowserProfile",
+    "message": "Profiles require the native browser."
+  },
+  {
+    "method": "deleteBrowserProfile",
+    "message": "Profiles require the native browser."
+  },
+  {
+    "method": "invoke",
+    "message": "Aux bridge unavailable \u2014 running outside the native host"
+  },
+  {
+    "method": "retryDownload",
+    "message": "Download retry requires Aux desktop"
+  },
+  {
+    "method": "bindTabSpace",
+    "message": "Space binding requires Aux desktop"
+  },
+  {
+    "method": "organizationCommit",
+    "message": "Organization storage requires Aux desktop"
+  },
+  {
+    "method": "migrationReview",
+    "message": "Chromium Profile migration requires Aux Chromium"
+  },
+  {
+    "method": "migrationBegin",
+    "message": "Chromium Profile migration requires Aux Chromium"
+  },
+  {
+    "method": "migrationBatch",
+    "message": "Chromium Profile migration requires Aux Chromium"
+  },
+  {
+    "method": "migrationFinish",
+    "message": "Chromium Profile migration requires Aux Chromium"
+  },
+  {
+    "method": "migrationRollback",
+    "message": "Chromium Profile migration requires Aux Chromium"
+  },
+  {
+    "method": "downloadFolder",
+    "message": "Download folders require Aux desktop"
+  },
+  {
+    "method": "chooseDownloadFolder",
+    "message": "Download folders require Aux desktop"
+  },
+  {
+    "method": "spellCheck",
+    "message": "Spell check requires Aux desktop"
+  },
+  {
+    "method": "startupPreferences",
+    "message": "Startup preferences require Aux desktop"
+  },
+  {
+    "method": "languagePreferences",
+    "message": "Language preferences require Aux desktop"
+  },
+  {
+    "method": "automaticPictureInPicture",
+    "message": "Picture-in-picture settings require Aux desktop"
+  },
+  {
+    "method": "keepRuntimeInBackground",
+    "message": "Background runtime settings require Aux desktop"
+  },
+  {
+    "method": "defaultPageZoom",
+    "message": "Default page zoom requires Aux desktop"
+  },
+  {
+    "method": "controlDownload",
+    "message": "Download control requires Aux desktop"
+  },
+  {
+    "method": "resolveSearch",
+    "message": "Profile search requires the native browser."
+  },
+  {
+    "method": "createResultPreview",
+    "message": "Interactive previews require Aux desktop."
+  },
+  {
+    "method": "saveStoredArtifact",
+    "message": "Artifact export requires Aux desktop"
+  },
+  {
+    "method": "savePagePdf",
+    "message": "PDF export requires the desktop browser"
+  },
+  {
+    "method": "readArticle",
+    "message": "Reader view requires Aux desktop"
+  },
+  {
+    "method": "agentConfig",
+    "message": "Agent connection setup requires the Aux desktop app"
+  },
+  {
+    "method": "revokeAgentConnection",
+    "message": "Agent connection setup requires the Aux desktop app"
+  },
+  {
+    "method": "installStoreExtension",
+    "message": "Store installation requires Aux Browser"
+  },
+  {
+    "method": "checkStoreExtensionUpdate",
+    "message": "Store updates require Aux Browser"
+  },
+  {
+    "method": "reloadExtension",
+    "message": "Extension reload requires Aux Browser"
+  },
+  {
+    "method": "installUnpackedExtension",
+    "message": "Extension installation requires Aux desktop"
+  },
+  {
+    "method": "updateUnpackedExtension",
+    "message": "Extension updates require Aux desktop"
+  },
+  {
+    "method": "setExtensionEnabled",
+    "message": "Extension management requires Aux desktop"
+  },
+  {
+    "method": "siteInfo",
+    "message": "Site controls require Aux desktop"
+  },
+  {
+    "method": "privatePageZoom",
+    "message": "Private page zoom requires Aux desktop"
+  },
+  {
+    "method": "setSiteTrackers",
+    "message": "Site controls require Aux desktop"
+  },
+  {
+    "method": "removeAllowedHost",
+    "message": "Site controls require Aux desktop"
+  },
+  {
+    "method": "updateFilters",
+    "message": "Filter updates require Aux desktop"
+  },
+  {
+    "method": "addFilterSource",
+    "message": "Filter lists require Aux desktop"
+  },
+  {
+    "method": "removeFilterSource",
+    "message": "Filter lists require Aux desktop"
+  },
+  {
+    "method": "setFilterSourceEnabled",
+    "message": "Filter lists require Aux desktop"
+  },
+  {
+    "method": "translatePage",
+    "message": "Translation requires Aux desktop"
+  }
+]

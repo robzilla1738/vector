@@ -1,5 +1,5 @@
 import { ModelDataDisclosure } from "./ModelDataDisclosure";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   DEFAULT_BROWSER_COOLDOWN_MS,
   ONBOARDING_DISCLOSURE_VERSION,
@@ -23,6 +23,7 @@ import { SPACE_COLORS, type SpaceColor } from "../workspace";
 import "./onboarding.css";
 import { PastedMemorySetup } from "./PastedMemorySetup";
 import { SetupReview } from "./SetupReview";
+import { usePreferenceCommand } from "../settings/sections/preference-command";
 
 const TITLES = {
   welcome: "Welcome to Aux",
@@ -88,6 +89,26 @@ export function OnboardingFlow({
   const [showMemoryImport, setShowMemoryImport] = useState(false);
   const step = state.step,
     index = ONBOARDING_STEPS.indexOf(step);
+  const permissionScope = useId();
+  const permissionWindow = bridge.windowId;
+  const [permissionDetails, setPermissionDetails] = useState<OnboardingState | null>(null);
+  const togglePermissionDetails = useCallback(() => {
+    if (
+      !connected ||
+      step !== "permissions" ||
+      bridge.privateMode ||
+      bridge.windowKind !== "normal" ||
+      bridge.windowId !== permissionWindow
+    ) {
+      throw new Error("Choose the current setup permission details.");
+    }
+    setPermissionDetails((value) => (value === state ? null : state));
+  }, [connected, step, permissionWindow, state]);
+  const [permissionRef, permissionInput] = usePreferenceCommand<HTMLElement>(
+    "toggle-setup-permission-details",
+    permissionScope,
+    togglePermissionDetails,
+  );
   const page = pages.find((item) => item.pageId === pageId);
   const pageReviewed =
     !!page &&
@@ -314,7 +335,7 @@ export function OnboardingFlow({
               </button>
               {recovery && (
                 <fieldset disabled={restoreStatus !== "ready"}>
-                  <RecoveryPackage pending={restorePending} onStaged={() => setRestoreStatus("pending")} />
+                  <RecoveryPackage active={connected && restoreStatus === "ready"} refreshVersion={0} pending={restorePending} onStaged={() => setRestoreStatus("pending")} />
                 </fieldset>
               )}
             </>
@@ -323,7 +344,7 @@ export function OnboardingFlow({
             <>
               <ImportDataSetting />
               <p className="hint">
-                Imports keep running if you leave this step. Check progress here before retrying.
+                Imports continue if you leave. Check progress here before retrying.
               </p>
             </>
           )}
@@ -451,6 +472,12 @@ export function OnboardingFlow({
                 Starting a chat gives Aux the question and sources you select. It does not connect accounts or
                 grant access to folders.
               </p>
+              <details className="onboarding-details" open={permissionDetails === state}>
+                <summary
+                  ref={permissionRef}
+                  data-command-id="toggle-setup-permission-details"
+                  onClick={(event) => { event.preventDefault(); permissionInput(event); }}
+                >How permissions and browsing work</summary>
               <ul>
                 <li>
                   Review the source, recipient and action when Aux asks for approval. Never approve a request
@@ -473,6 +500,7 @@ export function OnboardingFlow({
                   existing Memory controls before using them.
                 </li>
               </ul>
+              </details>
               <p>
                 Setup does not enable Memory, broaden grants, connect services or import credentials
                 automatically.

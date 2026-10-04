@@ -1,3 +1,4 @@
+import { retryOriginalReadMention } from '../lib/retry-original-mention.mjs';
 import { savedSourceUpdate } from '../lib/saved-source-update.mjs';
 import { savedSourceRecovery } from '../lib/saved-source-recovery.mjs';
 import { captureFailedTurnDetailsAppearance } from "../lib/failed-turn-details-appearance.mjs";
@@ -143,7 +144,12 @@ export async function run(t) {
     t.assert.ok(decisions.filter(row => row.phase === 'context').every(row => row.observations.every(item => item.pageId === page.pageId)), 'Optional attachment must not read the runtime-owned tool page');
     t.assert.equal(t.model.errors.length, 0);
     await captureHomeJourneyState(t, 'first-chat-optional-explicit-context', 'first-chat-optional-explicit-context');
-    return { ax: await t.ax.dump(), rpc: { details, pages: await t.rpc('pages.list'), decisions } };
+    phase = 'context-retry'; contextTurns = 0;
+    const retried = await retryOriginalReadMention(t, details.run);
+    t.assert.ok(decisions.filter(row => row.phase === 'context-retry').length > 0, 'Retry must make a genuine model request');
+    t.assert.ok(decisions.filter(row => row.phase === 'context-retry').every(row => row.observations.every(item => item.pageId === page.pageId)), 'Explicit retry must never observe the runtime-owned tool page');
+    t.assert.equal(t.model.errors.length, 0);
+    return { ax: await t.ax.dump(), rpc: { details, pages: await t.rpc('pages.list'), retried, decisions } };
   });
   await t.step('remove closed explicit context and send the preserved draft without a page', { kind: 'ui', features: ['electronMigration'] }, async () => {
     await newChat(t);

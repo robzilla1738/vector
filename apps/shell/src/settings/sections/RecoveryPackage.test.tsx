@@ -11,17 +11,18 @@ const { call } = vi.hoisted(() => ({ call: vi.fn(async (method: string) => metho
       spaceMemory: [{ workspaceId: "space", files: ["claims.json.enc"] }], pageMemoryCount: 1,
       excluded: ["Keychain credentials and connector tokens"] } }
   : { staged: true, artifactFiles: 1, spaceCount: 1, pageMemoryCount: 1 }) }));
-vi.mock("../../store", () => ({ call }));
-vi.mock("../../bridge", () => ({ inNativeHost: true, bridge: { openFile: async () => "/tmp/review.auxrec",
-  revealPath: async () => true } }));
+vi.mock("../../store", async original => ({ ...(await original<typeof import("../../store")>()), call }));
+vi.mock("../../bridge", async original => ({ ...(await original<typeof import("../../bridge")>()), inNativeHost: true, bridge: { ...(await original<typeof import("../../bridge")>()).bridge, openFile: async () => "/tmp/review.auxrec", revealPath: async () => true } }));
 
 it("requires an authenticated review before staging and clears the phrase afterward", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div"), root = createRoot(container), onStaged = vi.fn();
+  document.body.append(container);
+  const geometry=vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:10,height:10}] as unknown as DOMRectList);
   const button = (label: string) => [...container.querySelectorAll("button")]
     .find(item => item.textContent?.includes(label)) as HTMLButtonElement;
   try {
-    await act(async () => root.render(<RecoveryPackage pending={false} onStaged={onStaged} />));
+    await act(async () => root.render(<RecoveryPackage active={true} refreshVersion={0} pending={false} onStaged={onStaged} />));
     expect(container.textContent).toContain("Copies and phrases kept outside Aux cannot be revoked");
     expect(button("Stage reviewed recovery")).toBeUndefined();
     await act(async () => button("Choose package").click());
@@ -39,5 +40,5 @@ it("requires an authenticated review before staging and clears the phrase afterw
       reviewToken: "00000000-0000-4000-8000-000000000001" });
     expect(onStaged).toHaveBeenCalledOnce();
     expect(phrase.value).toBe("");
-  } finally { await act(async () => root.unmount()); vi.unstubAllGlobals(); }
+  } finally { await act(async () => root.unmount()); container.remove();geometry.mockRestore(); vi.unstubAllGlobals(); }
 });

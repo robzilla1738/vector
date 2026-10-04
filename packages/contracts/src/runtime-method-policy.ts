@@ -78,6 +78,7 @@ export const RuntimeMethodPolicy = {
   "installation.deleteBackup": { feature: "core", auth: "handler-guarded" },
   "installation.backupRetention": { feature: "core", auth: "handler-guarded" },
   "installation.setBackupRetention": { feature: "core", auth: "handler-guarded" },
+  "installation.stageListedRestore": { feature: "core", auth: "handler-guarded" },
   "installation.stageRestore": { feature: "core", auth: "handler-guarded" },
   "installation.cancelRestore": { feature: "core", auth: "handler-guarded" },
   "installation.restoreStatus": { feature: "core", auth: "handler-guarded" },

@@ -1,8 +1,9 @@
-import { memo, useEffect, useState, type ReactNode } from "react";
-import type { ActionReceipt, StepRecord } from "@aux/contracts";
+import { memo, useEffect, useMemo, useState, type ReactNode } from "react";
+import type { ActionReceipt, StepRecord, Run } from "@aux/contracts";
 import { backgroundLink, browserLinkUrl, openBrowserLink } from "../browser-links";
 import { bridge } from "../bridge";
-import { errToast } from "../store";
+import { RunPanelAction, useRunPanelCommand } from "./RunPanelAction";
+import { errToast, useStore } from "../store";
 import { shellIconCheck, shellIconClose, shellIconObs, shellIconRight } from "./icons";
 
 export type StepState = "ok" | "failed" | "skipped" | "running";
@@ -144,52 +145,21 @@ export function nestSteps(steps: StepRecord[]): { step: StepRecord; children: St
   return out;
 }
 
-function Chip({ chip }: { chip: StepChip }) {
-  if (chip.kind === "url") {
-    const href = browserLinkUrl(chip.value);
-    if (href) {
-      return (
-        <a
-          className="tl-chip"
-          href={href}
-          title={chip.value}
-          onClick={event => {
-            event.preventDefault();
-            void openBrowserLink(href, backgroundLink(event)).catch(errToast);
-          }}
-          onAuxClick={event => {
-            if (event.button === 1) {
-              event.preventDefault();
-              void openBrowserLink(href, true).catch(errToast);
-            }
-          }}
-        >
-          {chip.value.replace(/^https?:\/\//, "")}
-        </a>
-      );
-    }
-  }
-  if (chip.kind === "path" && isOpenablePath(chip.value)) {
-    return (
-      <button
-        type="button"
-        className="tl-chip"
-        title={chip.value}
-        onClick={() => {
-          void bridge.openPath(chip.value).then(error => {
-            if (error) errToast(new Error(error));
-          });
-        }}
-      >
-        {chip.value}
-      </button>
-    );
-  }
+function ownsStep(run:Run,step:StepRecord){return step.runId===run.runId&&useStore.getState().steps[run.runId]?.includes(step)===true;}
+function UrlChip({chip,href,run,step}:{chip:StepChip;href:string;run:Run;step:StepRecord}){
+  const valid=()=>ownsStep(run,step)&&stepChips(step).some(value=>value.kind===chip.kind&&value.value===chip.value);
+  const [element,dispatch]=useRunPanelCommand<HTMLAnchorElement>("open-run-step-url",run,(_current,event)=>openBrowserLink(href,event instanceof MouseEvent?backgroundLink(event):false),step,valid);
+  return <a className="tl-chip" ref={element} href={href} title={chip.value} data-command-id="open-run-step-url" onClick={event=>{event.preventDefault();dispatch(event);}} onAuxClick={event=>{if(event.button===1){event.preventDefault();dispatch(event);}}}>{chip.value.replace(/^https?:\/\//,"")}</a>;
+}
+function Chip({chip,run,step}:{chip:StepChip;run:Run;step:StepRecord}){
+  if(chip.kind==="url"){const href=browserLinkUrl(chip.value);if(href)return <UrlChip chip={chip} href={href} run={run} step={step}/>;}
+  if(chip.kind==="path"&&isOpenablePath(chip.value))return <RunPanelAction command="open-run-step-path" run={run} identity={step} valid={()=>ownsStep(run,step)&&stepChips(step).some(value=>value.kind===chip.kind&&value.value===chip.value)} type="button" className="tl-chip" title={chip.value} invoke={current=>bridge.openPath(chip.value).then(error=>{if(error&&current())errToast(new Error(error));return error;})}>{chip.value}</RunPanelAction>;
   return <code className="tl-chip" title={chip.value}>{chip.value}</code>;
 }
 
 const StepCard = memo(function StepCard({
   s,
+  run,
   live,
   current,
   nested,
@@ -197,10 +167,12 @@ const StepCard = memo(function StepCard({
   children,
 }: {
   s: StepRecord;
+  run: Run;
+  windowScope: object;
   live: boolean;
   current: boolean;
   nested?: boolean;
-  onInspect?: (artifactId: string, step: StepRecord) => void;
+  onInspect?: (artifactId: string, step: StepRecord,current:()=>boolean) => unknown;
   children?: ReactNode;
 }) {
   const state = stepState(s);
@@ -225,46 +197,55 @@ const StepCard = memo(function StepCard({
         {state === "ok" ? shellIconCheck : state === "failed" ? shellIconClose : state === "skipped" ? <span className="tl-skip" /> : <span className="live-dot" />}
       </span>
       <div className="tl-body">
-        <button className="tl-summary" type="button" aria-expanded={open} disabled={!hasBody} onClick={() => hasBody && setOpen(v => !v)}>
+        <RunPanelAction command="toggle-run-step" run={run} identity={s} valid={()=>ownsStep(run,s)} className="tl-summary" type="button" aria-expanded={open} disabled={!hasBody} invoke={() => hasBody && setOpen(v => !v)}>
           <span className="tl-op">{opLabel(s.op)}</span>
           <span className="tl-detail" title={stepSummary(s)}>{stepSummary(s)}</span>
           <span className={`tl-status ${state}`}>{statusLabel(state)}</span>
           {hasBody && <span className={`tl-disclosure ${open ? "open" : ""}`} aria-hidden="true">{shellIconRight}</span>}
 
-        </button>
+        </RunPanelAction>
         {receipt && <span className="tl-receipt" data-testid="tl-receipt" data-receipt={kind}>{receipt}</span>}
         {open && (
           <div className="tl-expand">
             {s.outcome && <div className="tl-evidence-summary"><span className="tl-ms nums">{fmtMs(s.outcome.durationMs)}</span>{s.outcome.receipt?.observed && <span>{s.outcome.receipt.observed}</span>}</div>}
             {s.outcome?.error?.code && <code className="tl-code">{s.outcome.error.code}</code>}
             {s.outcome?.receipt?.identity && <div className="tl-identity"><span className="meta-k">Page</span><span className="meta-v">{s.outcome.receipt.identity.pageId}</span><span className="meta-k">Document</span><span className="meta-v">{s.outcome.receipt.identity.documentEpoch}</span>{s.outcome.receipt.identity.generation !== undefined && <><span className="meta-k">Generation</span><span className="meta-v">{s.outcome.receipt.identity.generation}</span></>}{s.outcome.receipt.identity.target && <><span className="meta-k">Target</span><span className="meta-v">{s.outcome.receipt.identity.target}</span></>}</div>}
-            {chips.length > 0 && <div className="tl-chips">{chips.map(chip => <Chip key={`${chip.kind}:${chip.value}`} chip={chip} />)}</div>}
+            {chips.length > 0 && <div className="tl-chips">{chips.map(chip => <Chip key={`${chip.kind}:${chip.value}`} chip={chip} run={run} step={s} />)}</div>}
             {detailKeys.length > 0 && <pre className="tl-json">{JSON.stringify(redacted, null, 2)}</pre>}
           </div>
         )}
         {children}
       </div>
       {obsId && onInspect && (
-        <button className="icon-btn xs tl-obs" title="Show what the agent saw before this step" aria-label="Inspect observation" onClick={() => onInspect(obsId, s)}>
+        <RunPanelAction command="inspect-run-step" run={run} identity={s} valid={()=>ownsStep(run,s)&&inputsOf(s).obsArtifactId===obsId} className="icon-btn xs tl-obs" title="Show what the agent saw before this step" aria-label="Inspect observation" invoke={current=>onInspect(obsId,s,current)}>
           {shellIconObs}
-        </button>
+        </RunPanelAction>
       )}
     </li>
   );
 });
 
 export const StepTimeline = memo(function StepTimeline({
+  run,
+  windowId,
+  privateMode,
+  windowKind,
   steps,
   live,
   onInspect,
   compact,
 }: {
+  run: Run;
+  windowId: string;
+  privateMode: boolean;
+  windowKind: typeof bridge.windowKind;
   steps: StepRecord[];
   /** the run is still going — the last unfinished step is marked current */
   live: boolean;
-  onInspect?: (artifactId: string, step: StepRecord) => void;
+  onInspect?: (artifactId: string, step: StepRecord,current:()=>boolean) => unknown;
   compact?: boolean;
 }) {
+  const windowScope=useMemo(()=>({windowId,privateMode,windowKind}),[windowId,privateMode,windowKind]);
   if (steps.length === 0) {
     return (
       <ol className={`timeline ${compact ? "compact" : ""}`} aria-label="Steps">
@@ -288,6 +269,8 @@ export const StepTimeline = memo(function StepTimeline({
         <StepCard
           key={step.stepId}
           s={step}
+          run={run}
+          windowScope={windowScope}
           live={live}
           current={live && step.stepId === lastId && stepState(step) === "running"}
           onInspect={onInspect}
@@ -298,6 +281,8 @@ export const StepTimeline = memo(function StepTimeline({
                 <StepCard
                   key={child.stepId}
                   s={child}
+                  run={run}
+                  windowScope={windowScope}
                   live={live}
                   nested
                   current={live && child.stepId === lastId && stepState(child) === "running"}

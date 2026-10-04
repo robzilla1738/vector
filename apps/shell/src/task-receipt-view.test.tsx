@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
-import {afterEach,expect,it,vi} from 'vitest';
+import {beforeEach,afterEach,expect,it,vi} from 'vitest';
 import {TaskReceiptSchema} from '@aux/contracts';
 import {bridge} from './bridge';
 import {TaskReceiptView} from './components/TaskReceiptView';
 (globalThis as {IS_REACT_ACT_ENVIRONMENT?:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
-const host=document.createElement('div');const root=createRoot(host);
+const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+beforeEach(()=>{vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{}] as unknown as DOMRectList);});
 afterEach(async()=>{await act(async()=>root.render(null));vi.restoreAllMocks();});
 it('refuses to export a revision that changed while the receipt was open',async()=>{
  const receipt=TaskReceiptSchema.parse({taskId:'task-1',taskRevision:1,objective:'Review',generatedAt:0,status:'needs_review',criteria:[],unresolvedActions:[],runs:[],modelCalls:0,knownCostUsd:0,costComplete:true});

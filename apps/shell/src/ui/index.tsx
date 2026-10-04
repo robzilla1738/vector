@@ -66,8 +66,8 @@ export function SettingsGroup({ title, children }: { title: string; children: Re
   return <section className="ui-settings-group" aria-label={title}><h4>{title}</h4><div>{children}</div></section>;
 }
 
-export function Switch(props: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "role">) {
-  return <input {...props} type="checkbox" role="switch" className={`ui-switch ${props.className ?? ""}`} />;
+export function Switch({controlRef,...props}: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "role"> & {controlRef?:(node:HTMLInputElement|null)=>void}) {
+  return <input {...props} ref={controlRef} type="checkbox" role="switch" className={`ui-switch ${props.className ?? ""}`} />;
 }
 export function Checkbox({controlRef,...props}: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {controlRef?:(node:HTMLInputElement|null)=>void}) {
   return <input {...props} ref={controlRef} type="checkbox" className={`ui-checkbox ${props.className ?? ""}`} />;

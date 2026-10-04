@@ -72,3 +72,9 @@ export function preloadWhenIdle(surfaces: readonly { preload(): void }[]) {
   if (typeof requestIdleCallback === "function") { const id = requestIdleCallback(run, { timeout: 3000 }); return () => cancelIdleCallback(id); }
   const timer = setTimeout(run, 1500); return () => clearTimeout(timer);
 }
+
+/** Preserve the original deferred boundary while sharing its named-module adapter. */
+type NamedSurfaceProps<T> = T extends ComponentType<infer Props> ? NonNullable<Props> extends object ? NonNullable<Props> : never : never;
+export function deferNamedSurface<Module, Name extends keyof Module>(load: () => Promise<Module>, name: Name, label: string, pane = false, quiet = false, onClose?: () => void): DeferredSurface<NamedSurfaceProps<Module[Name]>> {
+  return deferSurface(async () => ({ default: (await load())[name] as ComponentType<NamedSurfaceProps<Module[Name]>> }), label, pane, quiet, onClose);
+}

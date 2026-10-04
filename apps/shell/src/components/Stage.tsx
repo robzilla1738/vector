@@ -4,80 +4,28 @@ import { useSyncExternalStore } from "react";
 import { movedSelection, observeMovedSelection } from "../features/window-sync/moved-selection";
 import { isHomeAddress, nativePageId } from "../chrome";
 import { PaneBoundary } from "./PaneBoundary";
-import { deferSurface } from "./DeferredSurface";
-import { navigationFailure } from "../navigation-failure";
-import { forwardRef, lazy, memo, Suspense, useEffect, useRef, useState, useCallback, type RefObject } from "react";
-import type { PageTarget } from "@aux/contracts";
+import { deferNamedSurface } from "./DeferredSurface";
+import { PageRecovery } from "./PageRecovery";
+import { forwardRef, lazy, memo, Suspense, useEffect, useRef, useCallback, type RefObject } from "react";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
 
 import { Conversation } from "./surfaces";
-import { shellIconAlert, shellIconChrome, shellIconGlobe } from "./icons";
+import { shellIconChrome } from "./icons";
 import { AgentOverlay } from "../agent/AgentOverlay";
 import { visibleSplitGroup } from "../features/surfaces/split-actions";
 import { useSurfaceState } from "../features/surfaces/drag-state";
 import { useFeature } from "../use-feature";
 import { isLocal, ownPages } from "../tab-window-transfer";
 
-const StartPage = deferSurface(async () => { const module = await import("./StartPage"); return { default: module.StartPage }; }, "New tab", true);
-const TranslationBar = deferSurface(async () => { const module = await import("./TranslationBar"); return { default: module.TranslationBar }; }, "Translation", true, true);
+const StartPage = deferNamedSurface(() => import("./StartPage"), "StartPage", "New tab", true);
+const TranslationBar = deferNamedSurface(() => import("./TranslationBar"), "TranslationBar", "Translation", true, true);
 
 const PageSurface = lazy(async () => { const module = await import("./PageSurface"); return { default: module.PageSurface }; });
 const SplitStage = lazy(async () => { const module = await import("./SplitStage"); return { default: module.SplitStage }; });
 
-const Overview = deferSurface(async () => { const module = await import("./Overview"); return {default:module.Overview}; }, "Tab overview", true);
-const ResultsTable = deferSurface(async () => { const module = await import("./ResultsTable"); return {default:module.ResultsTable}; }, "Results", true);
-
-export function PageRecovery({ page }: { page: PageTarget }) {
-  const [busy, setBusy] = useState<"reload" | "back" | "proceed" | null>(null);
-  const pending = useRef(false);
-  const [actionError, setActionError] = useState("");
-  const error = page.navigationError;
-  const crashed = page.viewStatus === "crashed";
-  const httpFallback = !crashed && !!error?.upgradedFrom;
-  const failure = crashed ? {title:"This tab crashed",detail:"Reload to try again. Unsaved changes on this page may be lost."} : httpFallback ? {title:"This site doesn't support secure connections",detail:"Aux tried to load it over encrypted HTTPS but the site didn't respond securely. You can continue over unencrypted HTTP — information you send won't be private on this site."} : navigationFailure(error!);
-  const insecure = !crashed && !httpFallback && !!error && /ERR_CERT_/.test(error.message);
-  const recover = async (action: "reload" | "back") => {
-    if (pending.current) return;
-    pending.current = true;
-    setBusy(action); setActionError("");
-    try { await call(action === "reload" ? "pages.reload" : "pages.back", { pageId: page.pageId }); }
-    catch (reason) {
-      const detail = reason instanceof Error ? reason.message : String(reason);
-      setActionError(`${action === "reload" ? "Couldn’t reload this tab" : "Couldn’t go back"}. ${detail}`);
-    }
-    finally { pending.current = false; setBusy(null); }
-  };
-  const proceed = async () => {
-    if (pending.current || !error) return;
-    pending.current = true;
-    setBusy("proceed"); setActionError("");
-    try {
-      if (error.upgradedFrom) {
-        if (!await bridge.useHttp(page.pageId, error.upgradedFrom)) throw new Error("The HTTP fallback was not accepted.");
-      }
-      else {
-        if (!await bridge.proceedInsecure(page.pageId, error.url)) throw new Error("The certificate exception was not accepted.");
-      }
-    } catch (reason) {
-      setActionError(`Couldn’t proceed. ${reason instanceof Error ? reason.message : String(reason)}`);
-    } finally { pending.current = false; setBusy(null); }
-  };
-  return <div className="stage-message"><div className="empty-state navigation-error" role="status">
-    <span className={`empty-ico ${crashed ? "err" : ""}`}>{crashed ? shellIconAlert : shellIconGlobe}</span><h2>{failure.title}</h2>
-    <p>{failure.detail}</p>
-    <p className="navigation-error-address selectable">{error?.url ?? page.url}</p>
-    <div className="empty-actions">
-      <button className="btn primary" disabled={busy !== null} onClick={() => void recover("reload")}>{busy === "reload" ? "Trying…" : crashed ? "Reload" : "Try again"}</button>
-      <button className="btn" onClick={() => useStore.getState().focusCommandBar()}>Edit address</button>
-      {page.canGoBack && <button className="btn" disabled={busy !== null} onClick={() => void recover("back")}>{busy === "back" ? "Going back…" : "Go back"}</button>}
-      {httpFallback && <button className="btn" disabled={busy !== null} onClick={() => void proceed()}>{busy === "proceed" ? "Continuing…" : "Continue over HTTP"}</button>}
-      {insecure && <button className="btn ghost" disabled={busy !== null} onClick={() => void proceed()}>{busy === "proceed" ? "Proceeding…" : "Proceed anyway (unsafe)"}</button>}
-    </div>
-    {actionError && <p role="alert">{actionError}</p>}
-    {error && !crashed && <details className="navigation-error-details"><summary>Connection details</summary><p className="selectable">{error.message} ({error.code})</p></details>}
-  </div></div>;
-}
+const Overview = deferNamedSurface(() => import("./Overview"), "Overview", "Tab overview", true);
+const ResultsTable = deferNamedSurface(() => import("./ResultsTable"), "ResultsTable", "Results", true);
 
 /** Shared viewport for native pages and browser-owned surfaces. */
 export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<HTMLTextAreaElement | null>; scrollRef?: RefObject<HTMLDivElement | null> }>(function Stage({ composerRef, scrollRef }, ref) {

@@ -97,3 +97,61 @@ test("mapping joins exact original UTF-16 factory columns across newline and non
   for(const target of ["z.string", ".min"]){const original=originalLines[1].indexOf(target),generated=generatedLines[1].indexOf(target);assert.ok(rows.some(row=>row.generatedLine===1&&row.generatedColumn===generated&&row.source===0&&row.line===1&&row.column===original));}
   assert.equal(strip(result.code),code);
 });
+
+test("actual partialRecord/nonoptional constructors preserve missing/foreign/undefined validation and schema identity", () => {
+  const code =
+    'import {z} from "zod";const KeySchema=z.enum(["a","b"]);const ValueSchema=z.number().int().positive();const Used=z.partialRecord(KeySchema,ValueSchema);const Required=z.unknown().nonoptional();';
+  const after = annotateContractSchemaFactories(code);
+  assert.equal(strip(after.code), code);
+  const evaluate = (text) =>
+    Function(
+      "z",
+      text.replace('import {z} from "zod";', "") + "return {Used,Required,KeySchema,ValueSchema};",
+    )(z);
+  const a = evaluate(code),
+    b = evaluate(after.code);
+  for (const value of [{}, { a: 1 }, { b: 2 }, { a: 0 }, { a: 1.5 }, { foreign: 1 }, { a: undefined }]) {
+    const before = a.Used.safeParse(value),
+      after = b.Used.safeParse(value);
+    assert.deepEqual(
+      after.success ? after.data : after.error.issues,
+      before.success ? before.data : before.error.issues,
+    );
+  }
+  for (const value of [undefined, null, false, { a: 1 }])
+    assert.equal(b.Required.safeParse(value).success, a.Required.safeParse(value).success);
+  assert.equal(b.Used.keyType, b.KeySchema);
+  assert.equal(b.Used.valueType, b.ValueSchema);
+  assert.equal(after.code.includes("/* @__PURE__ */z.partialRecord"), true);
+  assert.equal(after.code.includes("/* @__PURE__ */z.unknown().nonoptional"), true);
+});
+
+test("added constructors refuse dynamic/getter parameters, foreign namespaces, callbacks and registry/metadata effects", () => {
+  for (const expression of [
+    "z.partialRecord(KeySchema,produce())",
+    "z.partialRecord(KeySchema,ValueSchema,parameters)",
+    "z.unknown().nonoptional(parameters)",
+    "other.partialRecord(KeySchema,ValueSchema)",
+    'z.partialRecord(KeySchema,ValueSchema).meta({id:"kept"})',
+    "z.partialRecord(KeySchema,ValueSchema).register(registry)",
+  ]) {
+    const source =
+      'import {z} from "zod";const KeySchema=z.enum(["a"]);const ValueSchema=z.string();const Used=' +
+      expression +
+      ";";
+    const result = annotateContractSchemaFactories(source);
+    assert.equal(result.code.includes("const Used=/* @__PURE__ */"), false);
+    assert.equal(strip(result.code), source);
+  }
+  const source =
+    'import {z} from "zod";const callback=()=>z.unknown().nonoptional();const Used=z.object({value:produce()});';
+  const result = annotateContractSchemaFactories(source);
+  assert.equal(result.code.includes("()=>/* @__PURE__ */"), false);
+  let calls = 0;
+  const produce = () => {
+    calls++;
+    return z.unknown().nonoptional();
+  };
+  Function("z", "produce", result.code.replace('import {z} from "zod";', ""))(z, produce);
+  assert.equal(calls, 1);
+});

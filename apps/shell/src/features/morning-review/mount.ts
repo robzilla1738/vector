@@ -44,8 +44,9 @@ export const mount: FeatureMount = {
     "configure-night-shift": async (_context, invocation) => {
       if (!invocation.payload || !("nightShift" in invocation.payload)) throw new Error("Review night shift settings before saving.");
       const nightShift = invocation.payload.nightShift;
-      await call("settings.set", { nightShift });
+      const acknowledgement = await call("settings.set", { nightShift });
       useStore.setState(state => ({ settings: { ...state.settings, nightShift } }));
+      return acknowledgement;
     },
   },
 };

@@ -4,7 +4,11 @@ import { createRoot } from "react-dom/client";
 import type { PageTarget } from "@aux/contracts";
 import { expect, it, vi } from "vitest";
 import { bridge } from "./bridge";
-import { PageRecovery } from "./components/Stage";
+import { PageRecovery } from "./components/PageRecovery";
+
+let originalPage: PageTarget;
+vi.mock("./store", () => ({ call: vi.fn(), errToast: vi.fn(), useStore: { getState: () => ({ mode: "focus", pages: [originalPage], activePageId: originalPage.pageId }) } }));
+vi.mock("./commands", async () => { const { invokeScopedControl } = await import("./scoped-control-commands"); return { executeCommand: (id: string, invocation: any) => { try { return Promise.resolve(invokeScopedControl(id, invocation)); } catch (reason) { return Promise.reject(reason); } } }; });
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -14,10 +18,13 @@ it.each([
 ] as const)("shows a rejected $method response", async ({ label, error, method, args, detail }) => {
   const rejected = vi.spyOn(bridge, method).mockResolvedValue(false);
   const host = document.createElement("div");
+  document.body.append(host);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 36 }] as any);
   const root = createRoot(host);
   const page = { pageId: "site", url: error.url, backend: "aux", viewStatus: "visible", canGoBack: false, navigationError: error } as PageTarget;
+  originalPage = { ...page, windowId: bridge.windowId, documentEpoch: 1, targetId: "target", sessionId: "session", ownedByRuntime: false };
   try {
-    await act(async () => root.render(<PageRecovery page={page} />));
+    await act(async () => root.render(<PageRecovery page={originalPage} />));
     const proceed = Array.from(host.querySelectorAll("button")).find(button => button.textContent === label);
     expect(proceed).toBeDefined();
     await act(async () => proceed!.click());
@@ -26,6 +33,7 @@ it.each([
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(detail);
   } finally {
     await act(async () => root.unmount());
+    host.remove();
     vi.restoreAllMocks();
   }
 });

@@ -24,6 +24,13 @@
 .search-engine-choices button[aria-pressed="true"] { color: var(--ink-0); background: var(--bg-active); box-shadow: var(--line-inset); }
 .search-engine-custom .row input { flex: 1; min-width: 0; }
 .search-engine-custom label { font-size: var(--fs-xs); color: var(--ink-1); }
+.search-engines-setting, .engine-add { min-width: 0; }
+.engine-list { display: grid; gap: var(--space-2); min-width: 0; list-style: none; padding: 0; margin: 0 0 var(--space-3); }
+.engine-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-3); min-width: 0; }
+.engine-row > :is(.engine-kw, .engine-name, .engine-url) { grid-column: 1; min-width: 0; overflow-wrap: anywhere; }
+.engine-row > .btn { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+.engine-add input { max-width: 100%; }
+.engine-add .grow { flex-basis: 100%; }
 .settings-advanced { margin-top: var(--space-5); }
 .settings-advanced > summary { padding: var(--space-3-5) var(--space-3); color: var(--ink-2); font-size: var(--fs-sm); cursor: pointer; }
 .settings-advanced[open] > summary { color: var(--ink-0); }

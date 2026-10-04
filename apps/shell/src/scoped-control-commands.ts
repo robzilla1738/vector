@@ -1,6 +1,6 @@
-const owners = new Set<{ element: HTMLElement; command: string; value: string; invoke(): unknown }>();
+const owners = new Set<{ element: HTMLElement; command: string; value: string; invoke(originalEvent?: Event): unknown }>();
 /** Only the original mounted scoped control can call its captured callback. */
-export function registerScopedControl(element: HTMLElement, command: string, value: string, invoke: () => unknown): () => void {
+export function registerScopedControl(element: HTMLElement, command: string, value: string, invoke: (originalEvent?: Event) => unknown): () => void {
   const owner = { element, command, value, invoke }; owners.add(owner);
   return () => { owners.delete(owner); };
 }
@@ -16,5 +16,5 @@ export function invokeScopedControl(command: string, { payload, nativeInputEvent
   const matches = nativeInputEvent ? (target instanceof Node ? visible.filter(owner => owner.element.contains(target)) : [])
     : visible.filter(owner => owner.element.contains(document.activeElement));
   if (matches.length !== 1) throw new Error(nativeInputEvent ? "The original controls changed. Choose its current control." : "Choose the original focused control.");
-  return matches[0]!.invoke();
+  return matches[0]!.invoke(nativeInputEvent);
 }

@@ -4,9 +4,10 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { RunControls } from "./RunControls";
 import { bridge } from "../bridge";
+import { invokeScopedControl } from "../scoped-control-commands";
 import { invokeRunControlCommand, type RunControlCommand } from "../run-control-commands";
 vi.mock("../commands", () => ({ executeCommand: (id: RunControlCommand, context: Parameters<typeof invokeRunControlCommand>[1]) => {
-  try { return Promise.resolve(invokeRunControlCommand(id, context)); } catch (error) { return Promise.reject(error); }
+  try { return Promise.resolve(id === ("toggle-run-takeover-checkpoint" as string) ? invokeScopedControl(id, context) : invokeRunControlCommand(id, context)); } catch (error) { return Promise.reject(error); }
 } }));
 
 const mock = vi.hoisted(() => ({
@@ -18,6 +19,7 @@ const mock = vi.hoisted(() => ({
 }));
 vi.mock("../store", () => ({
   call: mock.call,
+  errToast: vi.fn(),
   isLive: (run: { status: string }) => ["queued", "planning", "running", "paused", "needs_input"].includes(run.status),
   useStore: Object.assign((selector: (state: typeof mock.state) => unknown) => selector(mock.state),
     { getState: () => mock.state }),
@@ -44,6 +46,13 @@ it("shows an inspectable takeover checkpoint and returns only the held page", as
     expect(host.textContent).toContain("Aux is paused while you use this page.");
     expect(host.textContent).toContain("1 action may have taken effect and need review.");
     expect(host.querySelector("details")?.textContent).toContain("1 uncertain action requires review");
+    const summary = host.querySelector<HTMLElement>("summary")!;
+    expect(summary.dataset.commandId).toBe("toggle-run-takeover-checkpoint");
+    await act(async () => summary.click());
+    expect(host.querySelector("details")!.open).toBe(true);
+    summary.focus();
+    await act(async () => invokeScopedControl("toggle-run-takeover-checkpoint"));
+    expect(host.querySelector("details")!.open).toBe(false);
     const returnButton = [...host.querySelectorAll("button")].find(button => button.textContent?.includes("Return and resume"));
     expect(returnButton).toBeTruthy();
     await act(async () => returnButton!.click());

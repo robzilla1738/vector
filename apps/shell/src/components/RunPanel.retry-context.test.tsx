@@ -11,6 +11,7 @@ let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
 const retry = vi.fn().mockResolvedValue(undefined);
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{width:10,height:10}] as unknown as DOMRectList);
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   retry.mockClear();
   useStore.setState({ pages: [makePage(0, { pageId: "selected", title: "Selected website" })],
@@ -18,7 +19,7 @@ beforeEach(() => {
     steps: { original: [] }, retryRun: retry });
 });
 afterEach(async () => {
-  await act(async () => root.unmount()); host.remove(); useStore.setState(initial, true); vi.unstubAllGlobals();
+  await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks(); useStore.setState(initial, true); vi.unstubAllGlobals();
 });
 it("retries a page-free turn without offering to attach a subsequently selected website", async () => {
   await act(async () => root.render(<RunPanel runId="original" conversation latest retryPageId="selected" controlsInComposer />));

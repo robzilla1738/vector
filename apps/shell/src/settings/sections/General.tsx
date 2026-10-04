@@ -1,8 +1,8 @@
 import { useEffect, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { SettingsRow as Field, SettingsGroup, Switch } from "../../ui";
-import { bridge, emptyBrowserHealthSummary, type BrowserHealthSummary } from "../../bridge";
-import { call, errToast, useStore } from "../../store";
+import { bridge } from "../../bridge";
+import { useStore } from "../../store";
 import { shellIconRight } from "../../components/icons";
 import { SearchEngineSetting } from "../../components/SearchEngineSetting";
 import { SearchEnginesSetting, type EngineRow } from "../../components/SearchEnginesSetting";
@@ -22,6 +22,9 @@ import { memorySaverCyclesChanged, memorySaverCyclesKey, memorySaverSummary, rea
 import { TaskAttentionSettings } from "../../agent/TaskAttentionSettings";
 import { RecoveryPackage } from "./RecoveryPackage";
 import { requestOnboardingReplay } from "../../onboarding/replay";
+import { RestoreBackupControls } from "./RestoreBackupControls";
+import { BackupSettings } from "./BackupSettings";
+import { DiagnosticsStorage } from "./DiagnosticsStorage";
 import { SetupProgress } from "../../onboarding/SetupProgress";
 
 export function GeneralSettings({
@@ -46,31 +49,9 @@ export function GeneralSettings({
   onIndexChange: Dispatch<SetStateAction<number>>;
 }) {
   const connected = useStore(state => state.connected);
-  const [dataDir, setDataDir] = useState("");
-  const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
-  const [diagnosticsMessage, setDiagnosticsMessage] = useState("");
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupMessage, setBackupMessage] = useState("");
-  const [restoreStatus, setRestoreStatus] = useState<{ pending: boolean; lastAppliedAt?: number }>({
-    pending: false,
-  });
-  const [backups, setBackups] = useState<
-    {
-      path: string;
-      name: string;
-      sha256: string;
-      createdAt: number;
-      bytes: number;
-      schemaVersion: number;
-      artifactFiles: number;
-      missingArtifacts: number;
-      restorable: boolean;
-    }[]
-  >([]);
-  const [deleteBackupName, setDeleteBackupName] = useState<string | null>(null);
-  const [backupKeep, setBackupKeep] = useState<3 | 5 | 10 | 20>(10);
-  const [health, setHealth] = useState<BrowserHealthSummary>(() => emptyBrowserHealthSummary());
-  const [healthBusy, setHealthBusy] = useState(false);
+  const [backupOperation, setBackupOperation] = useState<object | null>(null);
   const tabLifecycleEnabled = useFeature("tabLifecycle");
   const [memoryCycles, setMemoryCycles] = useState(readMemorySaverCycles);
   const memorySummary = memorySaverSummary(memoryCycles);
@@ -88,47 +69,6 @@ export function GeneralSettings({
     };
   }, []);
 
-  useEffect(() => {
-    if (searching || !active) return;
-    let live = true;
-    void bridge
-      .dataDir()
-      .then((value) => {
-        if (live) setDataDir(value);
-      })
-      .catch((error) => {
-        if (live) errToast(error);
-      });
-    void bridge
-      .runtimeRestoreStatus()
-      .then((value) => {
-        if (live) setRestoreStatus(value);
-      })
-      .catch(() => {});
-    void call("installation.listBackups", {})
-      .then((value) => {
-        if (live) setBackups(value);
-      })
-      .catch(() => {});
-    void call("installation.backupRetention", {})
-      .then((value) => {
-        if (live) setBackupKeep(value.keep as 3 | 5 | 10 | 20);
-      })
-      .catch(() => {});
-    void bridge
-      .healthSummary()
-      .then((value) => {
-        if (live) setHealth(value);
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [active, searching, refreshVersion]);
-
-  useEffect(() => {
-    onIndexChange((value) => value + 1);
-  }, [dataDir, health, onIndexChange]);
 
   return (
     <>
@@ -263,91 +203,7 @@ export function GeneralSettings({
             </button>
           </IndexedField>
 
-          <details className="settings-advanced">
-            <summary>Diagnostics & storage</summary>
-            {dataDir && (
-              <IndexedField label="Data directory">
-                <div className="row">
-                  <span className="hint mono selectable grow">{dataDir}</span>
-                  <button
-                    className="btn sm"
-                    onClick={() =>
-                      void bridge
-                        .revealPath(dataDir)
-                        .then((ok) => {
-                          if (!ok)
-                            throw new Error(
-                              "The data directory is unavailable. Try again after the runtime starts.",
-                            );
-                        })
-                        .catch(errToast)
-                    }
-                  >
-                    Reveal
-                  </button>
-                </div>
-              </IndexedField>
-            )}
-
-            <IndexedField
-              label="Browser health"
-              hint={
-                health.samples
-                  ? `${health.sevenDaySpan ? "Seven-day span recorded" : `${health.spanDays.toFixed(1)} of 7 days recorded`} · ${Math.round(health.observedMinutes / 60)} hours while Aux was open · ${health.sessions} sessions · browser process memory p95 ${Math.round(health.memoryMb.p95)} MB · CPU p95 ${health.cpuPercent.p95.toFixed(1)}% · UI scheduling delay p95 ${Math.round(health.eventLoopLagMs.p95)} ms · since last Clear: ${health.pageCrashes} page crashes, ${health.pageUnresponsive} page hangs · up to ${health.maxPages} tabs. Samples and counts stay on this device and contain no URLs or page content.`
-                  : "Aux records local browser process CPU and memory, UI scheduling delay, window and tab counts, and page crashes and hangs while open. It never records URLs or page content."
-              }
-            >
-              <div className="row">
-                <span className="hint grow">
-                  {health.samples
-                    ? `${health.samples.toLocaleString()} private samples${health.startupMs != null ? ` · typical startup ${health.startupMs} ms` : ""}`
-                    : "Recording begins during this session."}
-                </span>
-                <button
-                  className="btn sm ghost danger"
-                  disabled={healthBusy || !health.samples}
-                  onClick={() => {
-                    setHealthBusy(true);
-                    void bridge
-                      .clearHealth()
-                      .then(setHealth)
-                      .catch(errToast)
-                      .finally(() => setHealthBusy(false));
-                  }}
-                >
-                  {healthBusy ? "Clearing…" : "Clear"}
-                </button>
-              </div>
-            </IndexedField>
-
-            <IndexedField
-              label="Support report"
-              hint="Exports the browser build, available host method count, aggregate browser health, nonsecret modes, and known limits. It excludes credentials, URLs, browsing history, task text, account identity, local paths, and content."
-            >
-              <div className="row">
-                <button
-                  className="btn sm"
-                  disabled={diagnosticsBusy}
-                  onClick={() => {
-                    setDiagnosticsBusy(true);
-                    setDiagnosticsMessage("");
-                    void bridge
-                      .exportDiagnostics()
-                      .then((path) =>
-                        setDiagnosticsMessage(path ? "Support report saved." : "Export cancelled."),
-                      )
-                      .catch((error) =>
-                        setDiagnosticsMessage(error instanceof Error ? error.message : String(error)),
-                      )
-                      .finally(() => setDiagnosticsBusy(false));
-                  }}
-                >
-                  {diagnosticsBusy ? "Preparing…" : "Export support report…"}
-                </button>
-                {diagnosticsMessage && <output className="hint">{diagnosticsMessage}</output>}
-              </div>
-            </IndexedField>
-          </details>
+          <DiagnosticsStorage active={active && !searching && !subview} refreshVersion={refreshVersion} onIndexChange={onIndexChange} />
         </SettingsGroup>
       </section>
       <section
@@ -381,76 +237,17 @@ export function GeneralSettings({
           label="Task data backup"
           hint="Backs up chats, tasks, Spaces, saved evidence, browsing records and preferences. New portable backups omit protected articles, selected-article answers, reports, and site grants. After Forget, older Aux-managed backups cannot be restored; create a fresh backup. Copies exported outside Aux remain under your control and cannot be revoked. Sign-ins, credentials, extensions, downloads, project files and cloud resources are not included. Chromium Cookies, Login Data, Web Data and other credential stores are never copied. Backups contain private content; keep them somewhere secure. Oldest complete backups are deleted after a new backup. Incomplete folders without a manifest are skipped. A process kill during backup leaves an incomplete folder that Aux ignores."
         >
-          <div className="row">
-            <button
-              className="btn sm"
-              disabled={backupBusy}
-              onClick={() => {
-                setBackupBusy(true);
-                setBackupMessage("");
-                void bridge
-                  .exportRuntimeBackup()
-                  .then((result) => {
-                    setBackupMessage(
-                      result
-                        ? `Backup saved · ${result.artifactFiles} artifact files${result.missingArtifacts ? ` · ${result.missingArtifacts} unavailable` : ""} · ${result.bytes} bytes`
-                        : "Backup cancelled.",
-                    );
-                    return call("installation.listBackups", {});
-                  })
-                  .then((value) => {
-                    if (Array.isArray(value)) setBackups(value as typeof backups);
-                  })
-                  .catch((error) => setBackupMessage(error instanceof Error ? error.message : String(error)))
-                  .finally(() => setBackupBusy(false));
-              }}
-            >
-              {backupBusy ? "Preparing…" : "Create backup…"}
-            </button>
-            <button
-              className="btn sm"
-              disabled={backupBusy || restoreStatus.pending}
-              onClick={() => {
-                setBackupBusy(true);
-                setBackupMessage("");
-                void bridge
-                  .stageRuntimeRestore()
-                  .then((result) => {
-                    if (result) {
-                      setRestoreStatus((current) => ({ ...current, pending: true }));
-                      setBackupMessage(
-                        `Restore staged with ${result.artifactFiles} artifact files${result.missingArtifacts ? `; ${result.missingArtifacts} were unavailable when the backup was created` : ""}. Quit Aux normally and reopen it to apply.`,
-                      );
-                    } else setBackupMessage("Restore cancelled.");
-                  })
-                  .catch((error) => setBackupMessage(error instanceof Error ? error.message : String(error)))
-                  .finally(() => setBackupBusy(false));
-              }}
-            >
-              Restore backup…
-            </button>
-            {restoreStatus.pending && (
-              <button
-                className="btn sm"
-                disabled={backupBusy}
-                onClick={() => {
-                  setBackupBusy(true);
-                  void bridge
-                    .cancelRuntimeRestore()
-                    .then(() => {
-                      setRestoreStatus((current) => ({ ...current, pending: false }));
-                      setBackupMessage("Pending restore cancelled.");
-                    })
-                    .catch((error) =>
-                      setBackupMessage(error instanceof Error ? error.message : String(error)),
-                    )
-                    .finally(() => setBackupBusy(false));
-                }}
-              >
-                Cancel pending restore
-              </button>
-            )}
-          </div>
+          <RestoreBackupControls active={active && !searching && subview === "Task data backup"} refreshVersion={refreshVersion} externalBusy={backupBusy || backupOperation !== null}
+            onOperation={(token, pending) => setBackupOperation(current => pending ? token : current === token ? null : current)}>
+            {restore => <>
+              <BackupSettings active={active && !searching && subview === "Task data backup"} refreshVersion={refreshVersion} externalBusy={backupBusy || backupOperation !== null} restorePending={restore.status.pending}
+                onOperation={(token, pending) => setBackupOperation(current => pending ? token : current === token ? null : current)}
+                attended={() => restore.actions} restore={(item, busy) => restore.listed(item, busy)} />
+              {restore.statusView}
+              <RecoveryPackage active={active && !searching && subview === "Task data backup"} refreshVersion={refreshVersion} pending={restore.status.pending} onStaged={restore.staged} />
+            </>}
+          </RestoreBackupControls>
+
           {!(
             typeof window !== "undefined" &&
             Boolean((window as Window & { auxHostProof?: unknown }).auxHostProof)
@@ -458,7 +255,7 @@ export function GeneralSettings({
             <div className="row">
               <button
                 className="btn sm ghost"
-                disabled={backupBusy}
+                disabled={backupBusy || backupOperation !== null}
                 onClick={() => {
                   setBackupBusy(true);
                   setBackupMessage("");
@@ -481,123 +278,7 @@ export function GeneralSettings({
           )}
           {typeof window !== "undefined" &&
             Boolean((window as Window & { auxHostProof?: unknown }).auxHostProof) && <MigrationImport />}
-          <label>
-            Keep complete backups
-            <select
-              aria-label="Backup retention"
-              value={backupKeep}
-              disabled={backupBusy}
-              onChange={(event) => {
-                const keep = Number(event.target.value) as 3 | 5 | 10 | 20;
-                setBackupBusy(true);
-                void call("installation.setBackupRetention", { keep })
-                  .then((value) => setBackupKeep(value.keep as 3 | 5 | 10 | 20))
-                  .catch((error) => setBackupMessage(error instanceof Error ? error.message : String(error)))
-                  .finally(() => setBackupBusy(false));
-              }}
-            >
-              {([3, 5, 10, 20] as const).map((keep) => (
-                <option key={keep} value={keep}>
-                  Keep {keep}
-                </option>
-              ))}
-            </select>
-          </label>
-          {backups.length > 0 && (
-            <details>
-              <summary>
-                {backups.length} local backup{backups.length === 1 ? "" : "s"}
-              </summary>
-              {backups.map((item) => (
-                <div className="hint" key={item.path}>
-                  {new Date(item.createdAt).toLocaleString()} · schema {item.schemaVersion} ·{" "}
-                  {item.artifactFiles} artifacts
-                  {item.missingArtifacts ? ` · ${item.missingArtifacts} unavailable` : ""}
-                  {!item.restorable ? " · Older than current Forget generation — restore refused. Copied files and phrases cannot be revoked." : ""}
-                  <button
-                    className="btn sm"
-                    disabled={backupBusy || restoreStatus.pending || !item.restorable}
-                    onClick={() => {
-                      setBackupBusy(true);
-                      setBackupMessage("");
-                      void call("installation.stageRestore", { path: item.path })
-                        .then((result) => {
-                          setRestoreStatus((current) => ({ ...current, pending: true }));
-                          setBackupMessage(
-                            `Restore staged from ${item.name}. Quit Aux normally and reopen it to apply.`,
-                          );
-                          return result;
-                        })
-                        .catch((error) =>
-                          setBackupMessage(error instanceof Error ? error.message : String(error)),
-                        )
-                        .finally(() => setBackupBusy(false));
-                    }}
-                  >
-                    Restore this backup
-                  </button>
-                  {deleteBackupName === item.name ? (
-                    <>
-                      <span>Delete this local backup?</span>
-                      <button
-                        className="btn sm"
-                        disabled={backupBusy || restoreStatus.pending}
-                        onClick={() => {
-                          setBackupBusy(true);
-                          setBackupMessage("");
-                          void call("installation.deleteBackup", {
-                            name: item.name,
-                            expectedSha256: item.sha256,
-                          })
-                            .then(() => call("installation.listBackups", {}))
-                            .then((value) => {
-                              setBackups(value);
-                              setDeleteBackupName(null);
-                              setBackupMessage("Local backup deleted.");
-                            })
-                            .catch((error) =>
-                              setBackupMessage(error instanceof Error ? error.message : String(error)),
-                            )
-                            .finally(() => setBackupBusy(false));
-                        }}
-                      >
-                        Delete backup
-                      </button>
-                      <button
-                        className="btn sm ghost"
-                        disabled={backupBusy}
-                        onClick={() => setDeleteBackupName(null)}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      className="btn sm ghost"
-                      disabled={backupBusy || restoreStatus.pending}
-                      onClick={() => setDeleteBackupName(item.name)}
-                    >
-                      Delete…
-                    </button>
-                  )}
-                </div>
-              ))}
-            </details>
-          )}
-          {restoreStatus.pending && (
-            <output className="hint">
-              A restore is staged for the next launch. Changes made before quitting will be replaced.
-            </output>
-          )}
-          {restoreStatus.lastAppliedAt && (
-            <span className="hint">
-              Last restored {new Date(restoreStatus.lastAppliedAt).toLocaleString()}. Aux kept a private
-              recovery snapshot of the prior runtime database.
-            </span>
-          )}
           {backupMessage && <output className="hint">{backupMessage}</output>}
-          <RecoveryPackage pending={restoreStatus.pending}
-            onStaged={() => setRestoreStatus(current => ({ ...current, pending: true }))} />
         </Field>
       </section>
     </>

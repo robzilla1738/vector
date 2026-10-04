@@ -1,7 +1,6 @@
 import type { Props } from "./svg-props";
-import { baseSvgProps, roundJoinedStrokeProps } from "./svg-props";
-import { icon } from "./render";
+import { icon, svg, svgPath } from "./render";
 
-export const ArrowUp = (props: Props) => (<svg {...baseSvgProps} {...props}><path d="M12 20.25V4.5" {...roundJoinedStrokeProps}/><path d="M5.75 10L12 3.75L18.25 10" {...roundJoinedStrokeProps}/></svg>);
+export const ArrowUp = (props: Props) => (svg(props, svgPath("M12 20.25V4.5"), svgPath("M5.75 10L12 3.75L18.25 10")));
 
 export const shellIconSend = /* @__PURE__ */ icon(ArrowUp);

@@ -1,0 +1,244 @@
+--- a/apps/shell/src/bridge.ts
++++ b/apps/shell/src/bridge.ts
+@@ -75,6 +75,9 @@
+ 
+ const noop = () => () => {};
+ const nativeRequired = async (): Promise<never> => { throw new Error("This action requires the Aux native browser."); };
++/** Each preview refusal retains its own async callable and fresh Error. */
++const unavailable = (message: string) => async (): Promise<never> => { throw new Error(message); };
++
+ const stub: AuxBridge = {
+   appearanceSnapshot: nativeRequired,
+   archiveTab: nativeRequired,
+@@ -106,7 +109,7 @@
+   onFocusSpace: noop,
+   onRoutedOpen: noop,
+   onRoutePrompt: noop,
+-  capabilities:async()=>{throw new Error("Aux capabilities require the native browser.");},
++  capabilities: unavailable("Aux capabilities require the native browser."),
+   browserProfiles:async()=>[],
+   openBrowserProfileUrl:async()=>false,
+   defaultBrowser:async()=>({isDefault:false}),
+@@ -121,10 +124,10 @@
+   onVaultOffer:noop,
+   onLinkStatus:noop,
+   setDefaultBrowser:async()=>({isDefault:false}),
+-  createBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
+-  renameBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
+-  archiveBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
+-  deleteBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
++  createBrowserProfile: unavailable("Profiles require the native browser."),
++  renameBrowserProfile: unavailable("Profiles require the native browser."),
++  archiveBrowserProfile: unavailable("Profiles require the native browser."),
++  deleteBrowserProfile: unavailable("Profiles require the native browser."),
+   openBrowserProfile:async()=>false,
+   quickAskShortcut: async enabled => ({enabled:!!enabled,registered:!!enabled,error:""}),
+   windowKind: "normal",
+@@ -134,9 +137,7 @@
+   windowId: "main",
+   platform: "darwin",
+   setShortcutOverrides: async () => ({}),
+-  invoke: async () => {
+-    throw new Error("Aux bridge unavailable — running outside the native host");
+-  },
++  invoke: unavailable("Aux bridge unavailable — running outside the native host"),
+   onEvent: noop,
+   onRunAttentionActivated: noop,
+   onRuntimeStatus: noop,
+@@ -146,44 +147,44 @@
+   onPageAction: noop,
+   onDownload: noop,
+   onLoading: noop,
+-  retryDownload: async()=>{throw new Error("Download retry requires Aux desktop");},
++  retryDownload: unavailable("Download retry requires Aux desktop"),
+   tabAudio:async()=>({}),
+   tabsUnsavedWork:async()=>({}),
+   tabSleep:async()=>({slept:false,reason:"Sleeping tabs requires Aux desktop"}),
+   tabCommand:async()=>({commandId:"",status:"rejected",catalogVersion:0,error:{code:"no_bridge",message:"Tab commands require Aux desktop"}}),
+-  bindTabSpace:async()=>{throw new Error("Space binding requires Aux desktop");},
++  bindTabSpace: unavailable("Space binding requires Aux desktop"),
+   migrateTabSpaces:async()=>({migrated:0}),
+   tabsSnapshot:async()=>({version:0,tabs:[],windows:[]}),
+   organizationSnapshot:async()=>({revision:0,layout:null}),
+-  organizationCommit:async()=>{throw new Error("Organization storage requires Aux desktop");},
+-  migrationReview:async()=>{throw new Error("Chromium Profile migration requires Aux Chromium");},
+-  migrationBegin:async()=>{throw new Error("Chromium Profile migration requires Aux Chromium");},
+-  migrationBatch:async()=>{throw new Error("Chromium Profile migration requires Aux Chromium");},
+-  migrationFinish:async()=>{throw new Error("Chromium Profile migration requires Aux Chromium");},
+-  migrationRollback:async()=>{throw new Error("Chromium Profile migration requires Aux Chromium");},
++  organizationCommit: unavailable("Organization storage requires Aux desktop"),
++  migrationReview: unavailable("Chromium Profile migration requires Aux Chromium"),
++  migrationBegin: unavailable("Chromium Profile migration requires Aux Chromium"),
++  migrationBatch: unavailable("Chromium Profile migration requires Aux Chromium"),
++  migrationFinish: unavailable("Chromium Profile migration requires Aux Chromium"),
++  migrationRollback: unavailable("Chromium Profile migration requires Aux Chromium"),
+   onOrganizationChanged:noop,
+   tabsSince:async()=>({kind:"snapshot",snapshot:{version:0,tabs:[],windows:[]}}),
+   onTabsPatch:noop,
+   onTabsPlacement:noop,
+   onAudio:noop,
+-  downloadFolder: async()=>{throw new Error("Download folders require Aux desktop");},
+-  chooseDownloadFolder: async()=>{throw new Error("Download folders require Aux desktop");},
+-  spellCheck: async()=>{throw new Error("Spell check requires Aux desktop");},
+-  startupPreferences: async()=>{throw new Error("Startup preferences require Aux desktop");},
+-  languagePreferences: async()=>{throw new Error("Language preferences require Aux desktop");},
+-  automaticPictureInPicture: async()=>{throw new Error("Picture-in-picture settings require Aux desktop");},
+-  keepRuntimeInBackground: async()=>{throw new Error("Background runtime settings require Aux desktop");},
+-  defaultPageZoom: async()=>{throw new Error("Default page zoom requires Aux desktop");},
++  downloadFolder: unavailable("Download folders require Aux desktop"),
++  chooseDownloadFolder: unavailable("Download folders require Aux desktop"),
++  spellCheck: unavailable("Spell check requires Aux desktop"),
++  startupPreferences: unavailable("Startup preferences require Aux desktop"),
++  languagePreferences: unavailable("Language preferences require Aux desktop"),
++  automaticPictureInPicture: unavailable("Picture-in-picture settings require Aux desktop"),
++  keepRuntimeInBackground: unavailable("Background runtime settings require Aux desktop"),
++  defaultPageZoom: unavailable("Default page zoom requires Aux desktop"),
+   downloadsSnapshot: async () => [],
+-  controlDownload: async () => { throw new Error("Download control requires Aux desktop"); },
++  controlDownload: unavailable("Download control requires Aux desktop"),
+   surfaceContentId: async () => null,
+   autocomplete: async () => [],
+-  resolveSearch: async () => { throw new Error("Profile search requires the native browser."); },
++  resolveSearch: unavailable("Profile search requires the native browser."),
+   overlay: async () => true,
+   focusShell: async () => null,
+   showRunAttention: async () => ({ queued: false }),
+   preview: async () => null,
+-  createResultPreview: async () => { throw new Error("Interactive previews require Aux desktop."); },
++  createResultPreview: unavailable("Interactive previews require Aux desktop."),
+   releaseResultPreview: async () => true,
+   contextMenu: async () => true,
+   openExternal: async (url) => window.open(url, "_blank"),
+@@ -191,11 +192,11 @@
+   openPath: async () => "",
+   saveFile: async () => null,
+   saveWorkbook: async () => null,
+-  saveStoredArtifact:async()=>{throw new Error('Artifact export requires Aux desktop');},
+-  savePagePdf: async () => { throw new Error("PDF export requires the desktop browser"); },
++  saveStoredArtifact: unavailable('Artifact export requires Aux desktop'),
++  savePagePdf: unavailable("PDF export requires the desktop browser"),
+   printPage: async () => true,
+   devTools: async () => true,
+-  readArticle:async()=>{throw new Error("Reader view requires Aux desktop");},
++  readArticle: unavailable("Reader view requires Aux desktop"),
+   navigationMenu: async()=>false,
+   hardReload: async () => true,
+   closeWindow: async () => true,
+@@ -204,23 +205,23 @@
+   openPluginDirectory: async () => null,
+   pickEvidenceImage: async () => null,
+   pickEvidenceDocument: async () => null,
+-  agentConfig: async () => { throw new Error("Agent connection setup requires the Aux desktop app"); },
++  agentConfig: unavailable("Agent connection setup requires the Aux desktop app"),
+   agentConnections:async()=>[],
+   agentClients:async()=>[],
+-  revokeAgentConnection: async()=>{throw new Error("Agent connection setup requires the Aux desktop app");},
++  revokeAgentConnection: unavailable("Agent connection setup requires the Aux desktop app"),
+   dictationStatus:async()=>({available:false,reason:"Dictation requires the Aux macOS app."}),
+   startDictation:async()=>false,
+   stopDictation:async()=>false,
+   cancelDictation:async()=>null,
+   onDictation:()=>()=>{},
+   extensions:async()=>[],
+-  installStoreExtension:async()=>{throw new Error("Store installation requires Aux Browser");},
+-  checkStoreExtensionUpdate:async()=>{throw new Error("Store updates require Aux Browser");},
+-  reloadExtension:async()=>{throw new Error("Extension reload requires Aux Browser");},
++  installStoreExtension: unavailable("Store installation requires Aux Browser"),
++  checkStoreExtensionUpdate: unavailable("Store updates require Aux Browser"),
++  reloadExtension: unavailable("Extension reload requires Aux Browser"),
+   showExtensionAction:async()=>false,
+-  installUnpackedExtension:async()=>{throw new Error("Extension installation requires Aux desktop");},
+-  updateUnpackedExtension:async()=>{throw new Error("Extension updates require Aux desktop");},
+-  setExtensionEnabled:async()=>{throw new Error("Extension management requires Aux desktop");},
++  installUnpackedExtension: unavailable("Extension installation requires Aux desktop"),
++  updateUnpackedExtension: unavailable("Extension updates require Aux desktop"),
++  setExtensionEnabled: unavailable("Extension management requires Aux desktop"),
+   removeExtension:async()=>false,
+   dataDir: async () => "",
+   exportDiagnostics:async()=>null,
+@@ -238,9 +239,9 @@
+   siteDataCount: async () => ({ domain: "", cookies: 0 }),
+   browsingDataPreview: async () => ({ cookies: 0, cacheBytes: 0, cacheEstimate: false }),
+   clearBrowsingData: async () => false,
+-  siteInfo: async () => { throw new Error("Site controls require Aux desktop"); },
++  siteInfo: unavailable("Site controls require Aux desktop"),
+   siteZoom: async () => [],
+-  privatePageZoom: async () => { throw new Error("Private page zoom requires Aux desktop"); },
++  privatePageZoom: unavailable("Private page zoom requires Aux desktop"),
+   onSiteZoomChanged: noop,
+   sitePermissions: async () => ({}),
+   clearSitePermission: async () => true,
+@@ -252,16 +253,16 @@
+   setTrackerBlock: async () => ({ trackerBlock: true, blocked: 0 }),
+   httpsUpgrade: async () => ({ enabled: false, available: false, managed: false }),
+   setHttpsUpgrade: async () => true,
+-  setSiteTrackers: async () => { throw new Error("Site controls require Aux desktop"); },
+-  removeAllowedHost: async () => { throw new Error("Site controls require Aux desktop"); },
++  setSiteTrackers: unavailable("Site controls require Aux desktop"),
++  removeAllowedHost: unavailable("Site controls require Aux desktop"),
+   filterLists: async () => ({ sources: [], hosts: 0, cookieSelectors: 0, builtinHosts: 0, backend: "preview" }),
+-  updateFilters: async () => { throw new Error("Filter updates require Aux desktop"); },
+-  addFilterSource: async () => { throw new Error("Filter lists require Aux desktop"); },
+-  removeFilterSource: async () => { throw new Error("Filter lists require Aux desktop"); },
+-  setFilterSourceEnabled: async () => { throw new Error("Filter lists require Aux desktop"); },
++  updateFilters: unavailable("Filter updates require Aux desktop"),
++  addFilterSource: unavailable("Filter lists require Aux desktop"),
++  removeFilterSource: unavailable("Filter lists require Aux desktop"),
++  setFilterSourceEnabled: unavailable("Filter lists require Aux desktop"),
+   proceedInsecure: async () => true,
+   useHttp: async () => true,
+-  translatePage: async () => { throw new Error("Translation requires Aux desktop"); },
++  translatePage: unavailable("Translation requires Aux desktop"),
+   showOriginal: async () => 0,
+   onTranslationChanged: () => () => {},
+   setAppearance: async () => true,
+diff --git a/tests/tools/preview-bridge-refusals.test.mjs b/tests/tools/preview-bridge-refusals.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/tests/tools/preview-bridge-refusals.test.mjs
+@@ -0,0 +1,45 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { runInNewContext } from 'node:vm';
++import { createRequire } from 'node:module';
++const require = createRequire(import.meta.url);
++const { transform } = createRequire(require.resolve('vite'))('esbuild');
++const root = new URL('../../', import.meta.url);
++const records = JSON.parse(readFileSync(new URL('docs/lane-requests/design/preview-bridge-refusals/original-refusals.json', root)));
++async function load(window = {}, location = {protocol:'http:',hostname:'localhost'}) {
++  const source = readFileSync(new URL('apps/shell/src/bridge.ts', root),'utf8');
++  const { code } = await transform(source, { loader:'ts',format:'cjs',target:'chrome154' });
++  const module = {exports:{}};
++  runInNewContext(code,{module,exports:module.exports,window,location,console});
++  return module.exports;
++}
++test('all original preview refusals stay asynchronous, distinct, exact and fresh per invocation',async()=>{
++  const {bridge,inNativeHost,inMock}=await load();
++  assert.equal(inNativeHost,false);assert.equal(inMock,false);
++  assert.equal(records.length,45);
++  assert.equal(new Set(records.map(row=>bridge[row.method])).size,45);
++  for (const row of records) {
++    let result; assert.doesNotThrow(()=>{result=bridge[row.method]({foreign:'ignored'});});
++    const first=await result.then(()=>assert.fail('refusal fulfilled'),error=>error);
++    const second=await bridge[row.method]().then(()=>assert.fail('refusal fulfilled'),error=>error);
++    assert.equal(first.message,row.message);assert.equal(first.name,'Error');assert.equal(second.message,row.message);
++    assert.notEqual(first,second);
++  }
++});
++test('native bridge identity, ACK, original rejection and mode policy remain untouched',async()=>{
++  const rejection=new Error('original native refusal');const ack={registered:true};
++  const native={quickAskShortcut:async()=>ack,invoke:async()=>{throw rejection;}};
++  const exports=await load({aux:native,auxHostProof:{host:'chromium-fork'}},{protocol:'chrome:',hostname:'aux'});
++  assert.equal(exports.bridge,native);assert.equal(exports.inNativeHost,true);
++  assert.equal(await exports.bridge.quickAskShortcut(),ack);
++  await assert.rejects(exports.bridge.invoke(),error=>error===rejection);
++  assert.equal((await load({aux:native,auxHostProof:{host:'chromium-fork'}})).inNativeHost,false);
++  assert.equal((await load({__auxMock:true})).inMock,true);
++});
++test('preview successes and mutable return values retain their original behavior',async()=>{
++  const {bridge}=await load();assert.equal(await bridge.defaultPageZoom().catch(e=>e.message),'Default page zoom requires Aux desktop');
++  assert.equal(await bridge.overlay(),true);assert.equal(await bridge.privatePageZoom().catch(e=>e.message),'Private page zoom requires Aux desktop');
++  const a=await bridge.downloadsSnapshot();const b=await bridge.downloadsSnapshot();assert.notEqual(a,b);assert.deepEqual(Array.from(a),[]);
++  assert.equal(await bridge.createBrowserProfile().catch(e=>e.message),'Profiles require the native browser.');
++});
