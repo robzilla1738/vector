@@ -1,0 +1,46 @@
+{
+  "producer": "aux-native321-required453-assertion-request",
+  "version": 1,
+  "controller": {
+    "path": "/private/tmp/aux-builder-native321-preparation-001/assert-native321-required453-001-REQUEST-ONLY.py",
+    "sha256": "a6e4692342471130e4cde9b057cef3becfc647964c3824616f444fd49cfa9f89"
+  },
+  "base": {
+    "path": "/private/tmp/aux-builder-native321-preparation-001/assert-native321-required453-001-TEMPLATE-ONLY.py",
+    "sha256": "3dd2df978b29077ad063d580f2161a4d5a35f837a1b4a05cdd44854bf0a4f898"
+  },
+  "delta": {
+    "path": "/private/tmp/aux-builder-native321-preparation-001/assert-native321-required453-001-REQUEST-ONLY.py.diff",
+    "sha256": "a9019eaef445a9c75fc4452b4d10274904b43cb3814aebbccc955aac10c6b2c7"
+  },
+  "proposal": {
+    "path": "/private/tmp/aux-builder-native321-preparation-001/native321-required453-assertion-proposal-002-REQUEST-ONLY.json",
+    "sha256": "4e66a1aa9dde504da338a1ead06f97b9eb89d65e018c9f733c96b6c06fc7e2a0"
+  },
+  "coverage": {
+    "path": "/private/tmp/aux-builder-native321-preparation-001/native321-required453-source-closure-003-ENUMERATED.json",
+    "sha256": "aadb4db40e908609b3b91600eafc660be299a7fd998744d17cbb68de35da843e"
+  },
+  "actualEnumeration": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native321-source-001/release/test-artifacts/builder-native321-55de268d-native-enumeration-001/enumeration.json",
+    "sha256": "7ce10c95025d25ac41e4f951087bcb847659e06a9e2755a0c622b5cf853b294e"
+  },
+  "enumerationClosure": {
+    "path": "/private/tmp/aux-builder-native321-preparation-001/NATIVE321-ENUMERATION-NATURAL-TERMINAL-CLOSURE-001.json",
+    "sha256": "54905de6b910ff124cf05c75ae3a594f02f37cd6261025a4a1562e354738300f"
+  },
+  "actualPair": {
+    "path": "/private/tmp/aux-builder-native321-preparation-001/NATIVE321-ACTUAL-RUNTIME-HELPER-PAIR-002.json",
+    "sha256": "8290bae9c79febc24af484b6a9009195e96711adbdb3b6bdac500a257fcd6eb1"
+  },
+  "pairAudit": {
+    "path": "/tmp/aux-root-native321-actual-pair-review-001.json",
+    "sha256": "036fcb0bf3f8265ab4c6816469e3a1f2120cc0d1bcffae945c45c65871c49df0"
+  },
+  "helperIndependentAudit": {
+    "path": "/tmp/aux-root-native321-helper-independent-audit-001.json",
+    "sha256": "c193e6fd4065c00dc57385287ea88b6b96347c986ee266b6796e636bda390938"
+  },
+  "scope": "Serial original16 batches/453 requiredcases/retry0/jobs1/defaulttimeouts; no App/helper execution/compile/restage/qualification",
+  "executionApproved": false
+}
