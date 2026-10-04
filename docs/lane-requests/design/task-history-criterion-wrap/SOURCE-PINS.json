@@ -1,0 +1,61 @@
+{
+  "base": "750621ce558ecb0b3360f7984628f1a0a8f66617",
+  "owned": [
+    {
+      "path": "apps/shell/src/components/Tasks.css",
+      "before": "8c5f8afd48a0e2ab77c0d7fdca2f61ca7e9d45cda69886b1c84a9158d8d7511d",
+      "after": "c64817ce2d8f5b7c3e6556c847f6fdaa534cdec94eb9bf8d1f5ceb5302ed726c"
+    },
+    {
+      "path": "apps/shell/src/components/TaskHistory.criterion-wrap.test.tsx",
+      "before": null,
+      "after": "b6093391c0a12b91fe72b36972eb1aea4488cb603afb9ee7d1474405054fbd67"
+    }
+  ],
+  "patchSha256": "d1e16bec4a1ac0779d8e5a946315e0913574ff314b2f1c4c98fa6c7ec9e54745",
+  "forwardReverseForward": "PASS",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-task-criterion-wrap-replay-jk8bimzd",
+  "source06": {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/extension/assets_globals-D6PBr-GP.css",
+    "sha256": "2c2b198d715f3894d41c96b88ef9a32a4f61404891baf954d7e4e5a33d976e79",
+    "exactUtility": ".wrap-anywhere{overflow-wrap:anywhere}"
+  },
+  "producer": {
+    "TaskHistory": "e52cbd18e21f61fa63b6cba69b19d576197682a0d493c99f3fb54de67f611553",
+    "TaskReceiptView": "d31eb053913570cf050d26d99e3b17d102252cacb38a346ecd979ea2ee1442cd"
+  },
+  "evidence": {
+    "originalMounted": "1 RED at computed wrapping, full934 text matched",
+    "resultMounted": "14 PASS /3files",
+    "shellTypes": "PASS",
+    "scopedLint": "PASS",
+    "sourceBrowserBefore": {
+      "viewport": 1420,
+      "documentWidth": 6547,
+      "sectionWidth": 360,
+      "sectionScroll": 6017,
+      "labelLength": 934,
+      "wrap": "normal",
+      "geistLoaded": true
+    },
+    "sourceBrowserAfter": {
+      "viewport": 1420,
+      "documentWidth": 1420,
+      "sectionWidth": 360,
+      "sectionScroll": 360,
+      "labelLength": 934,
+      "wrap": "anywhere",
+      "geistLoaded": true
+    },
+    "sourceBrowserNarrow": {
+      "viewport": 720,
+      "documentWidth": 720,
+      "sectionWidth": 360,
+      "sectionScroll": 360,
+      "labelLength": 934,
+      "wrap": "anywhere",
+      "geistLoaded": true
+    }
+  },
+  "nativeF21": "pending; no native execution or qualification"
+}

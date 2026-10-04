@@ -1,0 +1,36 @@
+{
+  "kind": "source preview only",
+  "rootCommit": "750621ce558ecb0b3360f7984628f1a0a8f66617",
+  "producer": "actual TaskHistory -> TaskReceiptView read-only parsed fixture",
+  "files": [
+    {
+      "path": "components/TaskHistory.tsx",
+      "sha256": "e52cbd18e21f61fa63b6cba69b19d576197682a0d493c99f3fb54de67f611553"
+    },
+    {
+      "path": "components/TaskReceiptView.tsx",
+      "sha256": "d31eb053913570cf050d26d99e3b17d102252cacb38a346ecd979ea2ee1442cd"
+    },
+    {
+      "path": "components/Tasks.css",
+      "sha256": "8c5f8afd48a0e2ab77c0d7fdca2f61ca7e9d45cda69886b1c84a9158d8d7511d"
+    },
+    {
+      "path": "styles/workspace.css",
+      "sha256": "f936260e8fdcfde9e12045626baa591b0555e67061f313d2ef1ca2d81c7fabc2"
+    },
+    {
+      "path": "ui/class-props.ts",
+      "sha256": "b5c0ae32e8d9d191a30c555d88a1639c2d389a9dbd3fdad2016d0c2e2be46be9"
+    },
+    {
+      "path": "ui/button-props.ts",
+      "sha256": "23a580bbc95060ab70d78845b52f3b41fcc701205f058620d9ea56aac209398e"
+    },
+    {
+      "path": "task-receipt-preview.tsx",
+      "sha256": "045f75f193e5cb06cc93ca9ffc072d1a5821046da8ae22ccfa59a796a3b4dd9b"
+    }
+  ],
+  "initialFixtureRefusal": "Schema correctly refused >1000-character criterion; original page console ZodError retained in source browser transcript. Corrected fixture is bounded <1000."
+}

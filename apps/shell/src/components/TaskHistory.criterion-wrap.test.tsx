@@ -1,0 +1,46 @@
+// @vitest-environment jsdom
+import {readFileSync} from "node:fs";
+import {act} from "react";
+import {createRoot} from "react-dom/client";
+import {expect,it,vi} from "vitest";
+import {TaskSchema,TaskReceiptSchema} from "@aux/contracts";
+import {bridge} from "../bridge";
+import {useStore} from "../store";
+import {TaskHistory} from "./TaskHistory";
+
+it("keeps the full saved criterion readable and preserves original Back focus without evidence mutation",async()=>{
+ vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);
+ const initial=useStore.getState(),windowId=bridge.windowId,kind=bridge.windowKind,privateMode=bridge.privateMode;
+ const scroll=Object.getOwnPropertyDescriptor(HTMLElement.prototype,"scrollIntoView");
+ HTMLElement.prototype.scrollIntoView=vi.fn();
+ vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+ bridge.windowId="criterion-original";bridge.windowKind="normal";bridge.privateMode=false;
+ const description="https://criterion.fixture.invalid/"+"criterion".repeat(100);
+ const task=TaskSchema.parse({taskId:"saved",revision:1,workspaceId:"workspace",title:"Original saved task",objective:"Original objective",criteria:[{criterionId:"one",description,verification:"manual"}],resources:[],state:"open",createdAt:1,updatedAt:1});
+ const receipt=TaskReceiptSchema.parse({taskId:task.taskId,taskRevision:task.revision,objective:task.objective,generatedAt:1,status:"needs_review",criteria:[{criterion:task.criteria[0],status:"unverified",evidence:[]}],unresolvedActions:[],runs:[],modelCalls:0,knownCostUsd:0,costComplete:true});
+ const invoke=vi.spyOn(bridge,"invoke").mockImplementation(async method=>{
+  if(method==="tasks.get")return{task,revisions:[task],runs:[],children:[]} as never;
+  if(method==="tasks.receipt")return receipt as never;
+  throw new Error("Unexpected receipt mutation");
+ });
+ const host=document.createElement("div"),style=document.createElement("style"),opener=document.createElement("button");
+ host.className="task-content";opener.textContent="Original task opener";
+ document.body.append(opener,host);document.head.append(style);
+ style.textContent=readFileSync("apps/shell/src/components/Tasks.css","utf8").match(/\.task-history\s*>\s*\.field\s*>\s*section\[aria-label\]\s*>\s*strong\s*\{[^}]+\}/)?.[0]??"";
+ const root=createRoot(host),close=vi.fn(()=>opener.focus());
+ try {
+  await act(async()=>root.render(<TaskHistory taskId={task.taskId} onClose={close}/>));
+  const criterion=[...host.querySelectorAll<HTMLElement>('section[aria-label]')].find(node=>node.getAttribute("aria-label")===description)!,text=criterion.querySelector("strong")!;
+  expect(text.textContent).toBe(description);expect(text.textContent!.length).toBe(934);expect(criterion.getAttribute("aria-label")).toBe(description);
+  expect(getComputedStyle(text).overflowWrap).toBe("anywhere");
+  expect(text.querySelector("script")).toBeNull();expect(criterion.textContent).toContain("unverified");expect(criterion.textContent).toContain("No evidence recorded.");
+  expect(host.querySelector('[data-command-id="accept-task-receipt-criterion"]')).toBeNull();expect(invoke.mock.calls.map(([method])=>method).sort()).toEqual(["tasks.get","tasks.receipt"]);
+  const back=host.querySelector<HTMLButtonElement>('[data-command-id="close-task-history"]')!;back.focus();expect(document.activeElement).toBe(back);
+  await act(async()=>back.click());expect(close).toHaveBeenCalledOnce();expect(document.activeElement).toBe(opener);expect(text.textContent).toBe(description);
+  expect(invoke).toHaveBeenCalledTimes(2);
+ } finally {
+  await act(async()=>root.unmount());host.remove();style.remove();opener.remove();bridge.windowId=windowId;bridge.windowKind=kind;bridge.privateMode=privateMode;useStore.setState(initial,true);
+  if(scroll)Object.defineProperty(HTMLElement.prototype,"scrollIntoView",scroll);else Reflect.deleteProperty(HTMLElement.prototype,"scrollIntoView");
+  vi.restoreAllMocks();vi.unstubAllGlobals();
+ }
+});

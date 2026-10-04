@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "actualRootCommands": 532,
+  "actualRootScoped": 340,
+  "originalOrderedValuesKeysDescriptorsAndAliases": "exact",
+  "added": [
+    "open-task-resource",
+    "rename-task-resource",
+    "save-task-resource-label",
+    "cancel-task-resource-label",
+    "set-task-resource-access",
+    "remove-task-resource-reference",
+    "attach-task-resource-page",
+    "add-task-resource-url"
+  ]
+}

@@ -1,0 +1,16 @@
+
+> aux-browser@0.1.0 test
+> vitest run --project unit --run apps/shell/src/components/Tasks.resource-integration.test.tsx
+
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:98587) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Tasks.resource-integration.test.tsx (2 tests) 72ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  18:00:08
+   Duration  2.82s (transform 696ms, setup 0ms, collect 1.99s, tests 72ms, environment 413ms, prepare 80ms)
+

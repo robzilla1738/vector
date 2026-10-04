@@ -5,6 +5,9 @@
   .task-history-definition :is(h3, strong) {
     overflow-wrap: anywhere;
   }
+  .task-history > .field > section[aria-label] > strong {
+    overflow-wrap: anywhere;
+  }
   .task-history [role="alert"] > p {
     overflow-wrap: anywhere;
   }

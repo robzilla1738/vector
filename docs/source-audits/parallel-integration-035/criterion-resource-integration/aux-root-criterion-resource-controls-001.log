@@ -1,0 +1,25 @@
+
+> aux-browser@0.1.0 test
+> vitest run --project unit --run apps/shell/src/components/TaskHistory.criterion-wrap.test.tsx apps/shell/src/components/TaskHistory.saved-label-wrap.test.tsx apps/shell/src/components/TaskHistory.commands.test.tsx apps/shell/src/components/Tasks.resource-integration.test.tsx
+
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:1926) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1927) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1924) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1925) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/TaskHistory.criterion-wrap.test.tsx (1 test) 64ms
+ ✓ |unit| apps/shell/src/components/TaskHistory.saved-label-wrap.test.tsx (1 test) 73ms
+ ✓ |unit| apps/shell/src/components/Tasks.resource-integration.test.tsx (2 tests) 90ms
+ ✓ |unit| apps/shell/src/components/TaskHistory.commands.test.tsx (12 tests) 127ms
+
+ Test Files  4 passed (4)
+      Tests  16 passed (16)
+   Start at  18:05:16
+   Duration  2.68s (transform 805ms, setup 0ms, collect 7.75s, tests 353ms, environment 1.52s, prepare 275ms)
+
