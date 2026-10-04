@@ -50,9 +50,13 @@ export async function captureOutboundMcpAppearance(t, { choose, grants, servers,
     assert.equal(grant.serverId, server.serverId); assert.equal(grants().length, originalGrants.length + 1);
     await text(appearanceToolName);
     await owned(() => ax.focus(shell('Revoke tool', 'AXButton')));
-    const focused = await owned(() => ax.query(shell('Revoke tool', 'AXButton')));
-    assert.equal(focused.length, 1); assert.equal(focused[0].focused, true);
+    const requireFocus = async () => {
+      const focused = await owned(() => ax.query(shell('Revoke tool', 'AXButton')));
+      assert.equal(focused.length, 1); assert.equal(focused[0].focused, true);
+    };
+    await requireFocus();
     await capture('outbound-narrow-long-tool-revoke-focused', 'outbound-narrow-long-tool-active-revoke-focused');
+    await requireFocus();
     await owned(() => ax.hover(shell('Call tool…', 'AXButton')));
     await capture('outbound-narrow-long-tool-call-hovered', 'outbound-narrow-long-tool-active-call-hovered');
   } catch (error) { primary = error; }

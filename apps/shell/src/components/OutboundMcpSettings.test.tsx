@@ -210,34 +210,61 @@ it("inspects a bundle before registration and submits its reviewed file fingerpr
   expect(container.textContent).toContain("Approve this server source");
 });
 
-it("contains a full long tool and Space name in the actual original grant row without altering actions", async () => {
-  const toolName="tool_"+"x".repeat(180),spaceName="Research_"+"y".repeat(80);
-  const approved=OutboundMcpServerSchema.parse({...server(),state:"approved"});
-  const grant=OutboundMcpGrantSchema.parse({grantId:"22222222-2222-4222-8222-222222222222",serverId,toolName,scope:{kind:"workspace",workspaceId:"workspace-1"},mode:"standing",outputTokenLimit:1024,createdAt:1});
-  rpc.mockImplementation(async(method:string)=> {
-    if(method==="workspaces.list")return [{workspaceId:"workspace-1",name:spaceName}];
-    if(method==="tasks.list" || method==="mcp.tools.list")return [];
-    if(method==="mcp.servers.list")return [approved];
-    if(method==="mcp.oauth.status")return {connected:true};
-    if(method==="mcp.grants.list")return [grant];
+it("contains full long tool and Space names in the original grant row without altering actions", async () => {
+  const toolName = "tool_" + "x".repeat(180),
+    spaceName = "Research_" + "y".repeat(80);
+  const approved = OutboundMcpServerSchema.parse({ ...server(), state: "approved" });
+  const grant = OutboundMcpGrantSchema.parse({
+    grantId: "22222222-2222-4222-8222-222222222222",
+    serverId,
+    toolName,
+    scope: { kind: "workspace", workspaceId: "workspace-1" },
+    mode: "standing",
+    outputTokenLimit: 1024,
+    createdAt: 1,
+  });
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "workspaces.list") return [{ workspaceId: "workspace-1", name: spaceName }];
+    if (method === "tasks.list" || method === "mcp.tools.list") return [];
+    if (method === "mcp.servers.list") return [approved];
+    if (method === "mcp.oauth.status") return { connected: true };
+    if (method === "mcp.grants.list") return [grant];
     throw new Error(`Unexpected long-label read ${method}`);
   });
-  await act(async()=>root.render(<OutboundMcpSettings />));
-  await flush();await flush();
-  const row=container.querySelector<HTMLElement>(".mcp-grant-row")!;
+  await act(async () => root.render(<OutboundMcpSettings />));
+  await flush();
+  await flush();
+  const row = container.querySelector<HTMLElement>(".mcp-grant-row")!;
   expect(row.querySelector("strong")?.textContent).toBe(toolName);
   expect(row.querySelector(".hint")?.textContent).toContain(spaceName);
-  const require=createRequire(import.meta.url),postcss=createRequire(require.resolve("vite"))("postcss");
-  const css=readFileSync(new URL("./OutboundMcpSettings.css",new URL(import.meta.url)),"utf8"),sheet=postcss.parse(css);
-  let originalRule="";
-  sheet.walkRules((rule:{selector:string;toString():string})=>{if(rule.selector===".outbound-mcp .mcp-grant-row > div")originalRule=rule.toString();});
-  const style=document.createElement("style");style.textContent=originalRule;document.head.append(style);
+  const require = createRequire(import.meta.url),
+    postcss = createRequire(require.resolve("vite"))("postcss");
+  const css = readFileSync(new URL("./OutboundMcpSettings.css", new URL(import.meta.url)), "utf8"),
+    sheet = postcss.parse(css);
+  let originalRule = "";
+  sheet.walkRules((rule: { selector: string; toString(): string }) => {
+    if (rule.selector === ".outbound-mcp .mcp-grant-row > div") originalRule = rule.toString();
+  });
+  const style = document.createElement("style");
+  style.textContent = originalRule;
+  document.head.append(style);
   try {
-    const text=row.firstElementChild as HTMLElement,computed=getComputedStyle(text);
-    expect(computed.maxWidth).toBe("100%");expect(computed.overflowWrap).toBe("anywhere");expect(computed.display).toBe("grid");
-    const actions=[...row.querySelectorAll("button")];expect(actions.map(action=>action.textContent?.trim())).toEqual(["Call tool…","Revoke tool"]);
-    expect(actions.every(action=>!action.disabled)).toBe(true);
-    actions[0]!.focus();expect(document.activeElement).toBe(actions[0]);
-    expect(rpc.mock.calls.some(([method])=>["mcp.grants.create","mcp.tools.call","mcp.grants.revoke"].includes(method))).toBe(false);
-  } finally {style.remove();}
+    const text = row.firstElementChild as HTMLElement,
+      computed = getComputedStyle(text);
+    expect(computed.maxWidth).toBe("100%");
+    expect(computed.overflowWrap).toBe("anywhere");
+    expect(computed.display).toBe("grid");
+    const actions = [...row.querySelectorAll("button")];
+    expect(actions.map((action) => action.textContent?.trim())).toEqual(["Call tool…", "Revoke tool"]);
+    expect(actions.every((action) => !action.disabled)).toBe(true);
+    actions[0]!.focus();
+    expect(document.activeElement).toBe(actions[0]);
+    expect(
+      rpc.mock.calls.some(([method]) =>
+        ["mcp.grants.create", "mcp.tools.call", "mcp.grants.revoke"].includes(method),
+      ),
+    ).toBe(false);
+  } finally {
+    style.remove();
+  }
 });

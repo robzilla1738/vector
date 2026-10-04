@@ -1,0 +1,30 @@
+{
+  "beforeCommit": "e3d5d1db",
+  "patchSha256": "cd871ce79bbe8498c8059d56bb08f7b5d0395e553f0f66f366ee7366aa83f229",
+  "rows": [
+    {
+      "path": "apps/runtime/src/services/pages/opener.ts",
+      "beforeSha256": "4607dc6beaf8201caa17ab2915d8810151c2409a03c912a8c7deb270a1076c72",
+      "afterSha256": "cea50d876e9c2c9de8f9d3f04a02e9ebd6c407454b6dd9984f4c4a8f60b03e91"
+    },
+    {
+      "path": "apps/runtime/src/services/pages/navigation.ts",
+      "beforeSha256": "30cd2a3ab3ec3631c31f6ef0b69aa446c8ef500a2feb38f7f81984f8f4bb7451",
+      "afterSha256": "807bfd62f6f241dae468d4aff64aa40bb2a2b52b44b9c8b57c584081e8b7ed8c"
+    },
+    {
+      "path": "tests/unit/native-person-opener.test.ts",
+      "beforeSha256": "70014db2c82b84b437e392f205eb7b11d958c3e04b990ba4bb872178fef278f1",
+      "afterSha256": "28588489e911c23c4de97bb9d743c56a7517663150e294623f90da7daeecd047"
+    }
+  ],
+  "replay": "forward/reverse/forward exact",
+  "sourceControls": {
+    "ownRuntimeRebuilt": true,
+    "passed": 30,
+    "newTotal": 13,
+    "originalPerson": 13,
+    "originalProtected": 4
+  },
+  "qualification": "source-only; no native execution"
+}

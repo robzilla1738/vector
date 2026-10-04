@@ -79,3 +79,10 @@ test('appearance fixture adds only the fixed long tool; original functional prod
   const restored = variant.replace('const longTool = { name: "tool_" + "x".repeat(180), description: "Owned long-name appearance fixture; no external effects", inputSchema: { type: "object", properties: { name: { type: "string" } } } };\n    ', '').replace('}, longTool] }', '}] }');
   assert.equal(restored, original);
 });
+
+test('capture-time focus loss refuses the focused label while retiring the original grant', async () => {
+  const { t, args, grants } = fixture();
+  t.capture = async name => { if (name.endsWith('revoke-focused')) t.ax.query = async () => [{ focused: false }]; };
+  await assert.rejects(captureOutboundMcpAppearance(t, args));
+  assert.equal(grants[1].revokedAt, 2);
+});

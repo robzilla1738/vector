@@ -1,0 +1,96 @@
+{
+  "type": "source-only-next-native-capture-request",
+  "inspectedRootCommit": "633df4b8aa5b5960f4947fbd57570474f0dee5db",
+  "currentRootDirtyOnboardingApplied": true,
+  "sourcePins": {
+    "tests/host/run-journey.mjs": "8d6aeb032f5d73524c4aaea5759f136e343615b0918e5b1b186ebffe260bf807",
+    "tests/host/lib/home-capture.mjs": "6fd157b411ea8c9ae5a974f07fe1be93b8d6caea0c90289267422a7a584a6a51",
+    "tests/host/lib/appearance-provenance.mjs": "13d293ec2fe2585771f2384d5b17351ef8ceeef430462499ee4a601a587a57b1",
+    "tests/host/lib/evidence.mjs": "8193ba7db5aaf613d063dc03c541cada756779011749f7e830510e43bddd47c1",
+    "tests/host/native-window.swift": "73338487fccbc093dd44b002e7981406e86d11960393eb509a90a6e322a04da9",
+    "tests/host/journeys/legacy-outbound.mjs": "926b47e42543551c796924bd09f07caef956267951c1d671cd2e3c166970ebac",
+    "tests/host/lib/outbound-mcp-appearance.mjs": "6a1a4cc6831a5682b10ec8b4340e08a4c2f027a278d3fb9d3a5c767c0308bad5",
+    "tests/host/fixtures/outbound-mcp-appearance-server.mjs": "4a21410e35c3a48b0c4c44a0d5ed377d4940cf328044e2365b69c18958d3239d",
+    "tests/host/lib/setup-appearance.mjs": "3d01e53a2451fe853ea104b056e9fd0e0e673f1899b4bf1bc3fc724ed2b6f54f",
+    "tests/host/appearance-journeys/setup-appearance.mjs": "a91a31b0fc82ce0aaed83d89aa0f00d8daf216d3de0ff763aa595a5b860574bd",
+    "tests/host/journeys/legacy-https.mjs": "3f1f4217215dd5e3361ecb3ed7801d45d19ddf6d5fffae33dec444db581a4fa9",
+    "tests/host/journeys/index.mjs": "c553ab7ce26ef646e3109723b3c01d931be1aba5742355e28093365af13e6f6f",
+    "tests/host/lib/fixture.mjs": "58346db6a2bc984c2a30ae4630d68f0763acc54c7182bf3aff669e77ac6999b0",
+    "apps/shell/src/components/PageRecovery.tsx": "f0bc4366d26a8414ac807acaecbc6c7d46b807bf65a4689e7196c60bc849d8db",
+    "apps/shell/src/components/OutboundMcpSettings.css": "e997ddb5878e437c3c4074937c49b2bb4f795e56989313f953454cc02d0e47f3",
+    "apps/shell/src/components/OutboundMcpSettings.tsx": "0abc66496130a36c3d9c2d6eaf86d4fe22b03729a8b342e56043f354b12f88cf",
+    "apps/shell/src/onboarding/OnboardingFlow.tsx": "26609a2a5658253bb1b3df3f5c0f5f0240af1abc614ab48a88bdaba4c2510319",
+    "apps/shell/src/onboarding/onboarding.css": "fadce62b7f3c0f9fecf5a526bd69f7f8d5f991ceb5577b1202eb51e62f6c603b"
+  },
+  "pendingExactFocusSuccessor": {
+    "commit": "2a36e6fb",
+    "manifestSha256": "98e9d877c21eb44a16e639f4f4a5dfcd6b284a0daa70760dd2d507ddfc918714"
+  },
+  "acceptedNativeCells": 0,
+  "functionalRegistryChanges": false,
+  "groups": [
+    {
+      "journey": "outbound-mcp",
+      "requires": [
+        "externally-approved-original-pair",
+        "--appearance",
+        "--narrow",
+        "actual-original-normal-layer0-window-width720-900",
+        "all-original-greet-consent-call-revoke-assertions"
+      ],
+      "states": [
+        "outbound-narrow-long-tool-ungranted-review",
+        "outbound-narrow-long-tool-active-revoke-focused",
+        "outbound-narrow-long-tool-active-call-hovered"
+      ],
+      "status": "source-prepared-pending-focus-successor-integration-and-native-pair",
+      "originalToolLength": 185,
+      "cleanup": "exact newly minted grant revoked through original UI; existing greet unchanged; retained revoked artifacts distinct from process cleanup debt"
+    },
+    {
+      "journey": "setup-appearance",
+      "requires": [
+        "externally-approved-original-pair",
+        "--appearance",
+        "exact closed outside-registry retention",
+        "original normal layer0 window",
+        "no model/import/grant dispatch"
+      ],
+      "states": [
+        "setup-welcome-unreviewed",
+        "setup-welcome-tips-expanded",
+        "setup-welcome-tips-collapsed",
+        "setup-model-data-unreviewed",
+        "setup-permissions-ungranted",
+        "setup-permissions-details-expanded-ungranted",
+        "setup-permissions-details-collapsed-ungranted"
+      ],
+      "status": "source-prepared-normal-and-narrow-repeat",
+      "cleanup": "saved original setup welcome and unchanged settings/pages/runs; original App/helper/channel retirement"
+    },
+    {
+      "journey": null,
+      "surface": "PageRecovery",
+      "status": "pending-genuine-native-error-capture-adapter",
+      "existing49DoesNotProve": [
+        "actual same-page native navigationError/interstitial",
+        "registered Connection details collapse/expand/current focus",
+        "original false-ACK refusal",
+        "certificate/HTTP policy admission"
+      ],
+      "candidateOriginalProducer": "existing fixture tls:true creates actual loopback self-signed certificate; future exact outside-registry paired adapter can observe original cert error without --ignore-certificate-errors/SPKI trust or unsafe Proceed",
+      "remainingScope": "new helper/test and closed runner adapter request; original page/navigation/window identity and pages.close cleanup; no current dispatch"
+    },
+    {
+      "journey": null,
+      "surface": "Onboarding dynamic diagnostic",
+      "status": "pending-genuine-safe-backend-error-producer",
+      "existingSetupDoesNotProve": [
+        "runtime actual failure populating error alert",
+        "full unbroken path/URL alert under actual native720-900 geometry",
+        "Reload setup progress recovery from original real rejection"
+      ],
+      "sourceEvidence": "23 actual component controls and scoped source-derived wrap rule; no injected failure or disconnected label substitutes for real producer"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "beforeCommit": "07626917",
+  "patchSha256": "def68dc02d718a60d2e34ea4971e85ed40bfdc5cf1b3bcc588a2befaff1aa0c1",
+  "rows": [
+    {
+      "path": "apps/runtime/src/services/pages/opener.ts",
+      "beforeSha256": "cea50d876e9c2c9de8f9d3f04a02e9ebd6c407454b6dd9984f4c4a8f60b03e91",
+      "afterSha256": "62ad9a8add2cf2dd74554fe513b085d77215e14458517d0bff2cc4ce37d9e242"
+    },
+    {
+      "path": "apps/runtime/src/services/pages/registry.ts",
+      "beforeSha256": "f1b66354efd9cacbe35ea6cb73c52e128c37779b3b888f5ac4e871d74f7eaf18",
+      "afterSha256": "1626f8a8939adef7d9b162bc1e746a7e38449564b3094f975ae26d662024f75d"
+    },
+    {
+      "path": "tests/unit/native-person-opener.test.ts",
+      "beforeSha256": "81730c537c0ced470b5ae0e4853c758c88a4561f4a0651427b93e02281d8331a",
+      "afterSha256": "7fa986ed46895c39753c0db23cc06b0c4fe761cf5c8892e5ed1d8a36770ea6d0"
+    }
+  ],
+  "replay": "forward/reverse/forward exact",
+  "checks": {
+    "ownRuntimeRebuilt": true,
+    "controlsPassed": 79,
+    "files": 7,
+    "openerControls": 18,
+    "existingFourAffectedFilesAssertions": "unchanged, all pass",
+    "qualification": "source only, no native execution"
+  }
+}

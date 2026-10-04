@@ -161,6 +161,11 @@ export class PageRegistry {
   async attachVisible(pageId: string): Promise<void> {
     const lp = this.live.get(pageId);
     if (!lp || lp.driver || lp.target.backend !== "aux" || this.controlledTransitions.has(pageId)) return;
+    if (this.deps.native.available() && typeof this.deps.native.personReadContext === "function"
+      && !lp.target.ownedByRuntime && !lp.target.agentIsolation) {
+      await this.prepareReadPage(pageId);
+      return;
+    }
     const pending = this.driverAttaches.get(pageId);
     if (pending) return pending;
     const work = (async () => {

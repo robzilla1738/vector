@@ -1,0 +1,49 @@
+{
+  "baselineProduct": "a6a7ba09247a8b1ce73a47bc540ba966ab7ef36c",
+  "baseline": "actual saved following working source; current root runtime unchanged per parent",
+  "patchSha256": "eaed43104abf4712ab42e2ae7fd452f039b5a623a0cfb4e90755087c32772eee",
+  "rows": [
+    {
+      "path": "apps/runtime/src/services/pages/opener.ts",
+      "beforeSha256": "04187f7e2812e99d1db13227e3ad8e2d85a97879c01447617e7697c8db56e0ac",
+      "afterSha256": "4607dc6beaf8201caa17ab2915d8810151c2409a03c912a8c7deb270a1076c72",
+      "beforeBytes": 17590,
+      "afterBytes": 20670,
+      "new": false
+    },
+    {
+      "path": "apps/runtime/src/services/pages/registry.ts",
+      "beforeSha256": "9c6603c0b772174e25b2e4684c5b6f6f6dec3690ad10c046fd48f3af80db87c5",
+      "afterSha256": "f1b66354efd9cacbe35ea6cb73c52e128c37779b3b888f5ac4e871d74f7eaf18",
+      "beforeBytes": 27443,
+      "afterBytes": 27603,
+      "new": false
+    },
+    {
+      "path": "apps/runtime/src/services/pages/navigation.ts",
+      "beforeSha256": "03bb7d70918d206eb58e3667b842e2d944f51925d20334e83316d6c2bbcf148b",
+      "afterSha256": "30cd2a3ab3ec3631c31f6ef0b69aa446c8ef500a2feb38f7f81984f8f4bb7451",
+      "beforeBytes": 10803,
+      "afterBytes": 13089,
+      "new": false
+    },
+    {
+      "path": "tests/unit/native-person-opener.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "70014db2c82b84b437e392f205eb7b11d958c3e04b990ba4bb872178fef278f1",
+      "beforeBytes": 0,
+      "afterBytes": 10826,
+      "new": true
+    }
+  ],
+  "replay": "forward/reverse/forward byte-exact",
+  "controls": {
+    "rebuiltOwnRuntime": true,
+    "finalPassed": 26,
+    "newOpenerControls": 9,
+    "originalNativePersonControls": 13,
+    "originalProtectedOpenerControls": 4,
+    "originalInverse": "one genuine positive control fails original source at disconnected backend gate",
+    "scope": "source-only, synthetic native transport ACK and actual runtime publisher/context implementation; not native assertion or canary qualification"
+  }
+}

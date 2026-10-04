@@ -1,0 +1,23 @@
+{
+  "baseCommit": "45f4c3f4c81f0759363cc5f5094a6e430ee540e7",
+  "patchSha256": "f4bdc586ddf18581a6b81ff70208dfca19f741528b9db6a9e39ebf68b35b3f77",
+  "files": [
+    {
+      "path": "tests/host/lib/outbound-mcp-appearance.mjs",
+      "beforeSha256": "04791aac4a95a517796cdbbd98b1bd5c7938f4dacf0fe2f356c6028052152b72",
+      "afterSha256": "6a1a4cc6831a5682b10ec8b4340e08a4c2f027a278d3fb9d3a5c767c0308bad5"
+    },
+    {
+      "path": "tests/host/outbound-mcp-appearance.test.mjs",
+      "beforeSha256": "472ee3b2dbba17ff213a732e4a6c11f07b2decf8380be42df397ddb1ea4547fd",
+      "afterSha256": "939f67e68ab17ccf532f41bd6335e7a2c6c8b1c4c756bd8de66c3fcdebbbcbb3"
+    }
+  ],
+  "controls": {
+    "sourceCases": 7,
+    "lintWarnings": 0,
+    "forwardReverseForward": true
+  },
+  "nativeExecuted": false,
+  "acceptedF21Cells": 0
+}
