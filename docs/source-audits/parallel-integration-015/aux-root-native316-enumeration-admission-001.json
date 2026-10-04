@@ -1,0 +1,20 @@
+{
+  "producer": "aux-root-native316-enumeration-admission",
+  "passed": true,
+  "launcher": "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/enumerate-native316-required449-launch-001.json",
+  "launcherSha256": "ad4e618a79cd0ef73ca3cab06bceccd74bed46c0a955648ce35d425973bd73a6",
+  "actualPinsChecked": {
+    "/opt/homebrew/Cellar/node/26.7.0/bin/node": "1ef99ea25fe70c9b67e7efe768ef8ee22148d3cabc703db6131b57aeb617d040",
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/scripts/native-slot.mjs": "01e3d8e5b6d65bf5668a765032746c1b5b175cbae2b103dad83576bc19edeb86",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/enumerate-native316-required449-001-REQUEST-ONLY.py": "2af1ffdc233fcd3a2a941f82679035dcd04c9a38dd325b7408e0331fbff0523c",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/NATIVE316-ENUMERATION-CONTROLLER-REQUEST-001.json": "8e90e15e227b27dc94b4635c4fe2598e1a5d617ac40471d19bdd7d8f128628f6",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/native316-retained-required-source-closure-002-REQUEST-ONLY.json": "b37d52d9146ab7de26c3914800279bfe665ff97e1fa8a394b576008507207a72",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-runtime-helper-target27-001/pair-proof.json": "2f19b718c74f6075731585e0802c9685d1901b9cf74ac11f3faaa511adf4f93a",
+    "/tmp/aux-root-native316-runtime-helper-terminal-audit-001.json": "e1d2c2f0a68370cb05adbccf7daf9558358906e9c954ca7b633252dc72e32c9d"
+  },
+  "originalRequiredTargetsAnd449SelectionUnchanged": true,
+  "actualSourceAndGeneratedEdgesChecked": true,
+  "scope": "Original16 binary gtest list only; required449 source selection resolves actualcompiledpresence; noassertions/App/helperexecution/compile/restage",
+  "utc": "2026-10-04T05:06:36.528161+00:00"
+}
