@@ -1,0 +1,33 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+ ✓ |unit| tests/unit/listed-backup-restore.test.ts (12 tests) 934ms
+ ✓ |unit| tests/unit/runtime-restore.test.ts (12 tests) 1241ms
+(node:38498) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38502) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/settings/sections/RestoreBackupControls.test.tsx (15 tests) 131ms
+ ✓ |unit| apps/shell/src/settings/sections/BackupSettings.test.tsx (16 tests) 143ms
+ ✓ |unit| apps/shell/src/components/RunControls.test.tsx (5 tests) 31ms
+(node:38530) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/settings/sections/RecoveryPackage.controls.test.tsx (14 tests) 75ms
+(node:38535) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/RunControls.reveal.test.tsx (3 tests) 41ms
+(node:38537) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/settings/sections/General.test.tsx (4 tests) 69ms
+(node:38550) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| tests/unit/command-registry.test.ts (3 tests) 58ms
+(node:38552) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/settings/sections/RecoveryPackage.test.tsx (1 test) 28ms
+
+ Test Files  10 passed (10)
+      Tests  85 passed (85)
+   Start at  20:38:16
+   Duration  16.46s (transform 4.88s, setup 0ms, collect 21.76s, tests 2.75s, environment 6.55s, prepare 597ms)
+
