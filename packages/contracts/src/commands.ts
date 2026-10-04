@@ -172,6 +172,9 @@ export const COMMANDS = [
   S("discard-saved-result-edits", "Discard saved result edits", browserContextControl),
   S("save-saved-result-version", "Save saved result version", browserContextControl),
   S("attach-saved-result-copy", "Attach saved result copy", browserContextControl),
+  S("toggle-saved-result-format", "Toggle saved result format", browserContextControl),
+  S("select-saved-result-row", "Select saved result row", browserContextControl),
+  S("close-saved-result-row-details", "Close saved result row details", browserContextControl),
   ...G(pageRecoveryControl, "-page-recovery", [
     ["retry", "", "Retry this page"],
     ["edit", "-address", "Edit failing page address"],

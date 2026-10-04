@@ -1,0 +1,27 @@
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+(node:29265) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29261) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29262) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29263) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29264) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/DocumentSnapshot.commands.test.tsx (13 tests) 87ms
+ ✓ |unit| apps/shell/src/components/GeneratedResultPreview.commands.test.tsx (17 tests) 157ms
+ ✓ |unit| apps/shell/src/components/StructuredResult.commands.test.tsx (10 tests) 149ms
+ ✓ |unit| apps/shell/src/components/ResultViewer.test.tsx (6 tests) 117ms
+ ✓ |unit| apps/shell/src/components/SavedResultPreview.commands.test.tsx (18 tests) 2178ms
+   ✓ focused remapped original menu opener and Excel item keep actual workbook ACK  518ms
+   ✓ held export rejection retains reason without presenting to new result  789ms
+   ✓ original source conflict/context-disabled gates save/attach while export remains usable  682ms
+
+ Test Files  5 passed (5)
+      Tests  64 passed (64)
+   Start at  15:23:37
+   Duration  5.08s (transform 955ms, setup 0ms, collect 11.32s, tests 2.69s, environment 1.46s, prepare 266ms)
+
