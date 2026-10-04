@@ -104,3 +104,20 @@ test('optional Ready consumer receives immutable genuine scope before input', as
   f.options.onReady = async value => { assert.ok(Object.isFrozen(value.ready.shellSink)); assert.ok(Object.isFrozen(value.receipt)); assert.equal(value.ready.windowId, 7); readyCalls++; };
   const report = await collectGuestPresentations(f.options); assert.equal(readyCalls, 20); assert.ok(report.writer.sourceSha256);
 });
+
+test('raw tab p50 is reported alongside unchanged stricter max gate', async () => {
+  const f = fixture(); let trial = 0;
+  f.options.transport = syntheticTransport({ invoke: async method => JSON.stringify(method === 'completeGuestPresentation' ? measured(trial, trial <= 10 ? 10000 : 20000) : ready(++trial)) });
+  const report = await collectGuestPresentations(f.options); assert.equal(report.p50Ms, 10); assert.equal(report.gatedMs, 20); assert.equal(report.budgetMs, 50);
+});
+test('nested duplicate drawn field refuses without replacing original raw evidence', () => {
+  const raw = JSON.stringify(measured()).replace('"width":100', '"width":99,"width":100');
+  assert.throws(() => validateGuestPresentationPair(JSON.stringify(ready()), raw, 'tab-switch'), /Duplicate/);
+});
+test('unrounded split-drop150.001ms and divider16.701ms remain failures', async () => {
+  for (const [metric, elapsed, kind] of [['split-drop', 150001, 'left-up'], ['divider-frame', 16701, 'left-drag']]) {
+    const f = fixture({ metric }); let trial = 0;
+    f.options.transport = syntheticTransport({ invoke: async method => { const row = method === 'completeGuestPresentation' ? measured(trial, elapsed) : ready(++trial); row.metric = metric; if (row.measured) { row.originalInputKind = kind; for (const key of Object.keys(row)) if (key.endsWith('Us') && key !== 'elapsedUs') row[key] = String(BigInt(row[key]) + BigInt(trial * 900000)); } return JSON.stringify(row); } });
+    await assert.rejects(collectGuestPresentations(f.options), error => { assert.equal(error.report.samplesMs.length, 20); assert.equal(error.report.gatedMs, elapsed / 1000); return true; });
+  }
+});

@@ -1,0 +1,26 @@
+{
+  "sourceOnly": true,
+  "files": [
+    {
+      "path": "tests/host/lib/native-command-collector.mjs",
+      "beforeSha256": null,
+      "afterSha256": "7f7bc439dd2a7e1859f0634b7ea95f81dc4425fec1d23abc2bc130ca1bd18837"
+    },
+    {
+      "path": "tests/host/lib/native-command-collector.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "a5e43f76f5e73486b30f1d5f34fcd58ac3cc9a96fdf39aec3dcbdfe7c0f66a4e"
+    }
+  ],
+  "patchSha256": "32d82f975ec1b25abcf543ad1cbd062fc07eb6033393b5bfc7d9fb9f526965fe",
+  "replay": "new-only forward/reverse/forward exact",
+  "controls": 35,
+  "newCollectorControls": 9,
+  "nativeExecuted": false,
+  "nativeQualificationProven": false,
+  "dependencies": [
+    "89953df32f1d2ca9474656ee74c97658c71512a7 native0347 actual observed mode",
+    "71180b9d protocol plus42fcb787 original-byte successor (retain root7de875 stronger .0 test)",
+    "b5af8ca7 stopped Profile/dataset plus833b326d original-close wait"
+  ]
+}

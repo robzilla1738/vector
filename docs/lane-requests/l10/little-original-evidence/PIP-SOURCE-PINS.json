@@ -1,0 +1,9 @@
+{
+  "readOnly": true,
+  "files": {
+    "tests/host/journeys/pip.mjs": "67a395861c342ff84b4767f755010d3ab9b4095f58decf1cfc567f222422f0e8",
+    "tests/host/lib/pip-capture.mjs": "71329675c853bd3a5895b2b77f54282cba0f967e5ce0ca9f36ffa2e581421c55",
+    "chrome/browser/ui/aux/native_private_fixture_methods.h": "32041328b45021666642f3567ab1c8e8ace899fb80b83da308227cc15d5d4414"
+  },
+  "timingQualificationProven": false
+}

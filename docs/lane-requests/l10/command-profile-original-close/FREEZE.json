@@ -1,0 +1,20 @@
+{
+  "sourceOnly": true,
+  "baseline": "b5af8ca7 original saved result bytes",
+  "files": [
+    {
+      "path": "tests/host/lib/app.mjs",
+      "beforeSha256": "6def10075ab28e7d3592418325bb48c14461ed0357896929d2d7efe9b22fe0c7",
+      "afterSha256": "3836df4a695647f908d31bcbd61b690eb293ac9408dd9bd853975ec469efc69b"
+    },
+    {
+      "path": "tests/host/stopped-command-profile.test.mjs",
+      "beforeSha256": "2597917c76fa20fa33bdd32d54b2073c431f78316cff5c201a62e21f20c7f575",
+      "afterSha256": "14731029b4c7728a0b682bdd7f6fd05f9c9ec5709cdaf7d728de1bf1e7fbe420"
+    }
+  ],
+  "patchSha256": "23f4164ccdfb354f05e0e435df6f0ac41e395428e15629610f4ee5c0916c118d",
+  "replay": "forward/reverse/forward exact",
+  "controls": 32,
+  "nativeExecuted": false
+}

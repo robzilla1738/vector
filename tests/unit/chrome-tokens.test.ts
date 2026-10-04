@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import ts from "typescript";
 import { readCssGraph } from "./read-css-graph.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -283,8 +284,20 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     expect(conversation).not.toContain('aria-label="Context sections"');
     expect(images).toContain('className="capture-triggers"');
     expect(images).toContain('className="conversation-capture-rest"');
-    expect(images).toContain(">Image</button>");
-    expect(images).toContain(">Capture</button>");
+    const imageSource = ts.createSourceFile("ConversationImages.tsx", images, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const imageControls = new Map<string, string>();
+    function visit(node: ts.Node) {
+      if (ts.isJsxElement(node) && node.openingElement.tagName.getText(imageSource) === "ConversationImageAction") {
+        const command = node.openingElement.attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && attribute.name.getText(imageSource) === "command");
+        if (command && ts.isJsxAttribute(command) && command.initializer && ts.isStringLiteral(command.initializer)) {
+          imageControls.set(command.initializer.text, node.children.filter(ts.isJsxText).map(child => child.text.trim()).join(""));
+        }
+      }
+      ts.forEachChild(node, visit);
+    }
+    visit(imageSource);
+    expect(imageControls.get("choose-conversation-image")).toBe("Image");
+    expect(imageControls.get("capture-conversation-page")).toBe("Capture");
     expect(conversationCss).toContain(".conversation .capture-triggers { display:none; }");
     expect(styles).toContain(".conversation .run-msg { display: none; }");
     // Run status (Pause/Stop/state badge) and Work history stay visible in chat panels;

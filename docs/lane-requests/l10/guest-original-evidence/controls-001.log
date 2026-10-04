@@ -1,0 +1,38 @@
+✔ original nested .0 bytes remain exact while actual scalar decodes (0.779625ms)
+✔ duplicate nested guest scope and escaped equivalent keys refuse (0.626584ms)
+✔ duplicate original wrapper key refuses even when final parsed value matches (0.1355ms)
+✔ original size/depth/field-name and malformed JSON bounds refuse (1.915125ms)
+node:internal/modules/package_json_reader:301
+  throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+        ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'pngjs' imported from /private/tmp/aux-browser-runtime-l10-guest-original-evidence/tests/host/lib/appearance-provenance.mjs
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+    at packageResolve (node:internal/modules/esm/resolve:784:25)
+    at moduleResolve (node:internal/modules/esm/resolve:873:18)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:708:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:728:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:766:56)
+    at #resolve (node:internal/modules/esm/loader:690:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:610:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:277:33) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v26.7.0
+✖ tests/tools/native-guest-performance.test.mjs (271.140375ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 276.183083
+
+✖ failing tests:
+
+test at tests/tools/native-guest-performance.test.mjs:1:1
+✖ tests/tools/native-guest-performance.test.mjs (271.140375ms)
+  'test failed'

@@ -1,3 +1,4 @@
+import { extractOriginalGuestFixtureRecord } from './guest-original-record.mjs';
 import { decodeNativeCommandReady, decodeNativeCommandPresentation, extractNativeCommandFixtureRecord } from './native-command-presentation.mjs';
 import assert from 'node:assert/strict';
 import { StringDecoder } from 'node:string_decoder';
@@ -6,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname } from 'node:path';
+const guestOperations = new Set(['prepareLittleWindowPresentation', 'completeLittleWindowPresentation', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation']);
 const operations = new Set(['commandPresentationSnapshot', 'prepareCdpStopMeasurement', 'prepareCdpTakeoverMeasurement', 'completeCdpRetirementMeasurement', 'prepareLittleWindowPresentation', 'completeLittleWindowPresentation', 'prepareOrganizationAutoArchiveWork', 'prepareOrganizationLiveFolderWork', 'completeOrganizationWork', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation', 'sampleShellMemory', 'sampleProcessMemory', 'sampleStockProcessMemory', 'prepareStockWarmWindow', 'completeStockWarmWindow', 'prepareAuxWarmWindow', 'completeAuxWarmWindow', 'prepareSubagentMemoryWorkload']);
 const prefix = 'AUX_NATIVE_FIXTURE_REPLY_V1 ';
 const refusalPrefix = 'AUX_NATIVE_FIXTURE_REFUSAL_V1 ';
@@ -109,7 +111,7 @@ export function createPerformanceMailbox({ userDataDir, pid, generation }) {
           }
           if (!text.startsWith(prefix)) continue;
           assert.ok(++count <= 4000, 'Private reply count exhausted'); const raw = JSON.parse(text.slice(prefix.length));
-          const recordRaw = raw.operation === 'commandPresentationSnapshot' ? extractNativeCommandFixtureRecord(text) : JSON.stringify(raw.record);
+          const recordRaw = raw.operation === 'commandPresentationSnapshot' ? extractNativeCommandFixtureRecord(text) : guestOperations.has(raw.operation) ? extractOriginalGuestFixtureRecord(text) : JSON.stringify(raw.record);
           assert.deepEqual(Object.keys(raw).sort(), ['producer', 'version', 'pid', 'windowId', 'sequence', 'operation', 'record'].sort());
           assert.equal(raw.producer, 'aux-native-fixture-reply'); assert.equal(raw.version, 1); assert.equal(raw.pid, pid);
           assert.ok(Number.isInteger(raw.windowId) && raw.windowId > 0 && operations.has(raw.operation));

@@ -1,0 +1,21 @@
+{
+  "sourceOnly": true,
+  "rootOwnedCorrection": true,
+  "files": [
+    {
+      "path": "tests/host/lib/app.mjs",
+      "beforeSha256": "3836df4a695647f908d31bcbd61b690eb293ac9408dd9bd853975ec469efc69b",
+      "afterSha256": "49242d520f76ac1ab80c352f69bfa577ccb51567894ef56fba0ec0f82aa90aaf"
+    },
+    {
+      "path": "tests/host/stopped-command-profile.test.mjs",
+      "beforeSha256": "14731029b4c7728a0b682bdd7f6fd05f9c9ec5709cdaf7d728de1bf1e7fbe420",
+      "afterSha256": "0678a95bc65a11dca328b011346218bca782c4147d456ca3dd2dffe20eb77bbc"
+    }
+  ],
+  "patchSha256": "53048ceedccff2c3247ac73bff8e79a994469c29575e84ca973fc0b8f295d0de",
+  "genuineOriginalQuitEpochRegressionFailedBeforeCorrection": true,
+  "originalAndNewAppDatasetCollectorControlsPassedAfterCorrection": true,
+  "deadlinesAndOriginalCleanupUnchanged": true,
+  "nativeExecuted": false
+}

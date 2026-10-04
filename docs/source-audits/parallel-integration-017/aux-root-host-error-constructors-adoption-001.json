@@ -1,0 +1,81 @@
+{
+  "packet": {
+    "status": "source-only-request",
+    "baseRoot": "/tmp/aux-browser-runtime-following-batch",
+    "baseCommit": "0a73f7b63fa3b821341c07f04423c2d262d42cd8",
+    "heldRootDeltaSha256": "0489731bce4aefe70af0ace261ccab5bd527a38fbdbdf54c830a6aa916e92286",
+    "patchSha256": "6d8e80d0d1fd7455dc12268191f07abb264a059087d5239be5b7394d3b2745dc",
+    "leaves": [
+      {
+        "path": "packages/contracts/src/browser-host-methods.ts",
+        "beforeSha256": "3c921e8ac2c5334acbb810624a17f48db30f15efa28601a9feac07d696163b79",
+        "resultSha256": "8ddb5fcb6bd8c10d35f3129ded975d180f4171a8b172b2ff96328932601b0e49"
+      },
+      {
+        "path": "packages/contracts/src/errors.ts",
+        "beforeSha256": "f18997539e5a0b21e019003ea1565c14368bf10fb6fe8f02b012f01fad51308d",
+        "resultSha256": "4ad234be515c222f3f82f0c11b452a6c39952b0004f44db209fbef63af07e34e"
+      },
+      {
+        "path": "tests/tools/host-feature-constructors.test.mjs",
+        "beforeSha256": null,
+        "resultSha256": "0df81efe5c5779595cf86563a5d5022387bfe49f5c55299a31bd4a1c568b9a62"
+      },
+      {
+        "path": "tests/tools/error-registry-constructors.test.mjs",
+        "beforeSha256": null,
+        "resultSha256": "3fef84be0b182d8f4c0952c4c643dcbbc3b6fdb7dbe389991e50b1d76dd97b46"
+      }
+    ],
+    "replay": {
+      "forward": true,
+      "reverse": true,
+      "forwardAgain": true
+    },
+    "controlsPassed": 7,
+    "hostProtocol": {
+      "methods": 224,
+      "events": 26,
+      "digestPrefix": "5a32635d3dbe",
+      "unchanged": true
+    },
+    "publicTypes": {
+      "errorsDtsByteExact": true,
+      "hostInputResultEventTypesEqual": true,
+      "hostDtsUnionEnumEmissionOrderMayDiffer": true
+    },
+    "bytes": {
+      "before": {
+        "startup": 502235,
+        "css": 179368,
+        "total": 1846143,
+        "files": [
+          "assets/App-DMetEOe1.js",
+          "assets/feature-stage-reconciliation-Dar2pFf1.js",
+          "assets/index-DLDQNY8v.js"
+        ]
+      },
+      "after": {
+        "startup": 500445,
+        "css": 179368,
+        "total": 1843098
+      },
+      "strictLimits": {
+        "startup": 501760,
+        "total": 1843200,
+        "css": 184320
+      },
+      "margin": {
+        "startup": 1315,
+        "total": 102,
+        "css": 4952
+      }
+    },
+    "nativeQualification": false,
+    "visualAcceptance": false
+  },
+  "root": "/private/tmp/aux-browser-runtime-following-batch",
+  "actualForwardReverseForward": true,
+  "rootGatesPending": true,
+  "nativeQualification": false
+}

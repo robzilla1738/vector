@@ -1,0 +1,85 @@
+✔ original nested .0 bytes remain exact while actual scalar decodes (0.85475ms)
+✔ duplicate nested guest scope and escaped equivalent keys refuse (0.719166ms)
+✔ duplicate original wrapper key refuses even when final parsed value matches (0.141958ms)
+✔ original size/depth/field-name and malformed JSON bounds refuse (2.162375ms)
+✔ real guest mailbox returns exact nested .0 original substring (304.344209ms)
+✔ real original guest transport refuses nested duplicate (62.337166ms)
+✔ real original guest transport refuses wrapper duplicate (52.832375ms)
+✔ fixed command crosses original writer and fragmented same-child READY is retained separately from completion (303.692ms)
+✔ preparation refusal rejects READY waiter and retains original final refusal (58.4255ms)
+✔ original readiness refuses foreign-child (51.17275ms)
+✔ original readiness refuses duplicate (52.677ms)
+✔ original readiness refuses disposed (52.759583ms)
+✔ unrequested readiness cannot arm or survive into another transaction (2.086667ms)
+✔ measured final must match original READY and native timing independently (53.163833ms)
+✔ measured final refuses without-ready (52.929875ms)
+✔ measured final refuses changed-mode (52.917916ms)
+✔ measured final refuses software-frame (52.414334ms)
+✔ later transaction refuses a repeated native sample even with new mailbox sequence (103.189625ms)
+✔ exact original transport refuses duplicate-record (53.597334ms)
+✔ exact original transport refuses duplicate-wrapper (50.701667ms)
+✔ transport preserves actual nested Chromium doubles without JSON round trip (50.984333ms)
+✔ decoder accepts exact same-clock native pair without requiring root/child token equality (1.228833ms)
+✔ bad actual pair refuses {"submittedUs":"200000"} (0.439792ms)
+✔ bad actual pair refuses {"requestNonce":"ffffffffffffffffffffffffffffffff"} (0.294833ms)
+✔ bad actual pair refuses {"feedbackFlags":0} (0.155916ms)
+✔ bad actual pair refuses {"elapsedUs":"1001"} (0.159792ms)
+✔ bad actual pair refuses {"status":"refused","reason":"no_native_input"} (0.4995ms)
+✔ bad actual pair refuses {"drawn":[]} (0.115375ms)
+✔ 20 trials invoke genuine private Prepare before input and Complete afterward (13.450042ms)
+✔ malformed Ready refuses before real input; original raw retained (0.975791ms)
+✔ 19 trials refuse, budget overrun retains all raw intervals (12.203792ms)
+✔ strict sample sequence refuses even with a new nonce (1.616125ms)
+✔ divider p95 uses nearest rank; max remains raw diagnostic (21.244875ms)
+✔ scope-less honest native refusal retains reason and never becomes measurement (0.761166ms)
+✔ original native transport refusal is retained without inventing Ready scope (0.729666ms)
+✔ original native receipt is required before real input and remains byte-for-byte with hash (11.356125ms)
+✔ optional Ready consumer receives immutable genuine scope before input (10.899541ms)
+✔ raw tab p50 is reported alongside unchanged stricter max gate (10.470375ms)
+✔ nested duplicate drawn field refuses without replacing original raw evidence (0.175708ms)
+✖ unrounded split-drop150.001ms and divider16.701ms remain failures (1.543709ms)
+✔ fixed operation file is private and fragmented genuine receipt resolves exact record (311.34825ms)
+✔ fixed memory operation crosses the real dirfd writer without a caller process selector (65.348792ms)
+✔ foreign receipt fails closed {"pid":99} (52.25125ms)
+✔ foreign receipt fails closed {"sequence":"2"} (51.162667ms)
+✔ foreign receipt fails closed {"operation":"completeGuestPresentation"} (50.723625ms)
+✔ foreign receipt fails closed {"record":{"windowId":8}} (51.0885ms)
+✔ foreign receipt fails closed {"callerTheme":"dark"} (53.206541ms)
+✔ foreign stderr generation and concurrent transaction refuse (52.689125ms)
+✔ unknown operation carries no arbitrary selectors and writes no mailbox (1.798833ms)
+✔ symlink and unsafe existing request file refuse without modifying target (50.239709ms)
+✔ dispose rejects waiting call and forbids revival (53.026583ms)
+✔ scope-less direct-child refusal preserves original diagnostic and poisons transport (50.746667ms)
+✔ owned relaunch removes only the old private control file before native observer starts (151.165833ms)
+✔ relaunch refuses an unsafe prior control file without touching its target (51.584125ms)
+ℹ tests 54
+ℹ suites 0
+ℹ pass 53
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1094.927875
+
+✖ failing tests:
+
+test at tests/tools/native-guest-performance.test.mjs:117:1
+✖ unrounded split-drop150.001ms and divider16.701ms remain failures (1.543709ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 20
+  
+      at Object.<anonymous> (file:///private/tmp/aux-browser-runtime-l10-guest-original-evidence/tests/tools/native-guest-performance.test.mjs:121:82)
+      at expectedException (node:assert:547:17)
+      at expectsError (node:assert:672:21)
+      at strict.rejects (node:assert:738:3)
+      at async TestContext.<anonymous> (file:///private/tmp/aux-browser-runtime-l10-guest-original-evidence/tests/tools/native-guest-performance.test.mjs:121:5)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 20,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

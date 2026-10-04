@@ -1,0 +1,121 @@
+--- a/tests/host/lib/app.mjs
++++ b/tests/host/lib/app.mjs
+@@ -184,7 +184,7 @@
+     } else if (env.AUX_IMPORT_SOURCE_HOME !== undefined) throw new Error('Unowned import source environment');
+   }
+   let child;
+-  let directCloseReceipt, stoppedProfileEpoch = 0, successfulQuitGeneration;
++  let directCloseReceipt, directClosedPromise, stoppedCommandDeadline, stoppedProfileEpoch = 0, successfulQuitGeneration;
+   const commandProfileIdentity = randomBytes(16).toString('hex');
+   let externalPid;
+   let externalGeneration;
+@@ -332,10 +332,11 @@
+     child = spawn(join(bundle, 'Contents/MacOS/Aux'), args, { env: { ...env, AUX_NATIVE_SLOT_TOKEN: slot.token }, stdio: ['ignore', 'ignore', 'pipe'] });
+     const originalChild = child, originalGeneration = generation;
+     directCloseReceipt = undefined;
+-    child.once('close', (code, signal) => {
+-      if (child === originalChild && generation === originalGeneration)
+-        directCloseReceipt = Object.freeze({ child: originalChild, pid: originalChild.pid, generation: originalGeneration, code, signal });
+-    });
++    directClosedPromise = new Promise(resolveClose => child.once('close', (code, signal) => {
++      const receipt = Object.freeze({ child: originalChild, pid: originalChild.pid, generation: originalGeneration, code, signal });
++      if (child === originalChild && generation === originalGeneration) directCloseReceipt = receipt;
++      resolveClose(receipt);
++    }));
+     child.once('error', error => { spawnError = error; });
+     if (privatePair) {
+       const originalPid = child.pid ?? null, originalGeneration = generation;
+@@ -372,7 +373,7 @@
+     }
+   }
+   async function start({ externalUrl, auxUrl, background = false } = {}) {
+-    ++stoppedProfileEpoch; successfulQuitGeneration = undefined;
++    ++stoppedProfileEpoch; successfulQuitGeneration = undefined; stoppedCommandDeadline = undefined;
+     if (privatePair) throw new Error('Private observation cannot use ordinary runtime startup');
+     if (startupAttachment) throw new Error("Attached startup cannot use another launcher");
+     if (running()) throw new Error('Journey Aux is already running');
+@@ -437,6 +438,7 @@
+     }
+   }
+   async function quit() {
++    stoppedCommandDeadline ??= Date.now() + 10000;
+     if (appearanceReservation) appearanceReservation.active = false;
+     try { const result = await quitOwned(); successfulQuitGeneration = generation; return result; }
+     catch (error) { launchQuarantine?.retire(); throw error; }
+@@ -495,6 +497,24 @@
+     slot?.release(); slot = undefined;
+   }
+   const api = {
++    async waitForStoppedCommandProfile() {
++      if (arguments.length) throw new Error('Stopped command Profile wait accepts no selectors');
++      if (directCloseReceipt) return api.claimStoppedCommandProfile();
++      if (!child || !directClosedPromise || successfulQuitGeneration !== generation ||
++          !Number.isFinite(stoppedCommandDeadline) || Date.now() >= stoppedCommandDeadline)
++        throw new Error('Original stopped command Profile close/reap unavailable');
++      const originalChild = child, originalGeneration = generation, originalEpoch = stoppedProfileEpoch, originalClosed = directClosedPromise;
++      let timer;
++      try {
++        await Promise.race([originalClosed, new Promise((_, reject) => {
++          timer = setTimeout(() => reject(new Error('Original command Profile close/reap deadline expired')), stoppedCommandDeadline - Date.now());
++        })]);
++        if (child !== originalChild || generation !== originalGeneration || stoppedProfileEpoch !== originalEpoch ||
++            directClosedPromise !== originalClosed || Date.now() >= stoppedCommandDeadline)
++          throw new Error('Original stopped command Profile retired during close/reap wait');
++        return api.claimStoppedCommandProfile();
++      } finally { clearTimeout(timer); }
++    },
+     claimStoppedCommandProfile() {
+       if (arguments.length || suppliedRoot !== undefined || privatePair || appearanceArtifact || startupAttachment ||
+           activeProfile !== 'Default' || profiles.length !== 1 || profiles[0] !== 'Default' ||
+@@ -532,7 +552,7 @@
+         assertLive: privateOwner.assertLive, closed: privateOwner.closed });
+     },
+     async attachStartup(owner) {
+-      ++stoppedProfileEpoch; successfulQuitGeneration = undefined;
++      ++stoppedProfileEpoch; successfulQuitGeneration = undefined; stoppedCommandDeadline = undefined;
+       if (privatePair) throw new Error('Private observation cannot borrow another startup owner');
+       if (startupAttachment || child || externalPid || launchUncertain)
+         throw new Error('App already has an original launch owner');
+--- a/tests/host/stopped-command-profile.test.mjs
++++ b/tests/host/stopped-command-profile.test.mjs
+@@ -10,7 +10,7 @@
+ import { modelFixtureEnvironment } from './lib/model-fixture-environment.mjs';
+ import { importSourceEnvironment } from './lib/import-source-home.mjs';
+ function fixture({ supplied = false, holdClose = false } = {}) {
+-  const root = '/private/tmp/aux-native-journey-Controlled', state = { rootInode: 1, spawns: 0, slotHook() {} };
++  const root = '/private/tmp/aux-native-journey-Controlled', state = { rootInode: 1, now: Date.now(), spawns: 0, slotHook() {} };
+   const descriptor = { port: 1234, token: 'controlled', pid: 555, instanceId: 'controlled-instance', startedAt: 1, version: { schema: 2 } };
+   const directory = filename => ({ dev: 1, ino: filename === root ? state.rootInode : 2, uid: 100, mode: 0o40700, isSymbolicLink: () => false, isDirectory: () => true });
+   let child;
+@@ -31,7 +31,7 @@
+     './performance-mailbox.mjs': { preparePerformanceMailbox() {} }, './ax.mjs': {}, './launch-services-appearance-owner.mjs': {}, './appearance-stream.mjs': {}, './packaged-runtime-pair-artifact.mjs': {}, './private-window-stream.mjs': {}, './private-observation-owner.mjs': {},
+   };
+   const exports = {}, source = ts.transpileModule(readFileSync(new URL('./lib/app.mjs', import.meta.url), 'utf8').replaceAll('import.meta.dirname', "'/controlled'"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+-  vm.runInNewContext(source, { exports, Buffer, URL, structuredClone, AbortSignal, process: { platform: 'darwin', getuid: () => 100, env: {} },
++  vm.runInNewContext(source, { exports, Buffer, URL, structuredClone, AbortSignal, Date: class extends Date { static now() { return state.now; } }, setTimeout, clearTimeout, process: { platform: 'darwin', getuid: () => 100, env: {} },
+     require(name) { assert.ok(imports[name], name); return imports[name]; },
+     async fetch(url) { return { ok: true, status: 200, json: async () => ({ service: 'aux-runtime', ready: true, nonce: new URL(url).searchParams.get('nonce'), pid: descriptor.pid, instanceId: descriptor.instanceId, startedAt: descriptor.startedAt, schema: 2 }) }; } });
+   const app = exports.createJourneyApp({ appPath: '/controlled/Aux.app', launch: { args: ['--aux-native-performance-observer'] }, ...(supplied ? { profileRoot: root } : {}) });
+@@ -56,3 +56,22 @@
+   f.state.slotHook = () => { throw new Error('controlled original slot refusal'); };
+   await assert.rejects(f.app.start(), /slot refusal/); assert.equal(f.state.spawns, 1); assert.throws(() => f.read(lease), /retired/);
+ });
++
++test('actual original delayed close resolves retained wait without another child lookup', async () => {
++  const f = fixture({ holdClose: true }); await f.app.start(); await f.app.quit();
++  const waiting = f.app.waitForStoppedCommandProfile(); f.close();
++  const lease = await waiting; assert.equal(f.read(lease).originalChild.closed, true);
++});
++
++test('original close wait refuses expired first-quit deadline without refreshing on repeated quit', async () => {
++  const f = fixture({ holdClose: true }); await f.app.start(); await f.app.quit();
++  f.state.now += 10000; await f.app.quit();
++  await assert.rejects(f.app.waitForStoppedCommandProfile(), /unavailable/);
++});
++test('failed restart retires pending original close waiter without adopting late close', async () => {
++  const f = fixture({ holdClose: true }); await f.app.start(); await f.app.quit();
++  const waiting = f.app.waitForStoppedCommandProfile();
++  f.state.slotHook = () => { throw new Error('original restart refusal'); };
++  await assert.rejects(f.app.start(), /restart refusal/); f.close();
++  await assert.rejects(waiting, /retired/);
++});

@@ -1,0 +1,21 @@
+✔ whole Arm upperbound includes external creation and never claims earliest presentation (1.354875ms)
+✔ bad Little proof refuses {"earliestPresentationProven":true} (0.558792ms)
+✔ bad Little proof refuses {"armedUs":"1100000"} (0.23375ms)
+✔ bad Little proof refuses {"guestCommittedUs":"900000"} (0.168792ms)
+✔ bad Little proof refuses {"submittedUs":"1400000"} (0.433292ms)
+✔ bad Little proof refuses {"elapsedUs":"100000"} (0.171667ms)
+✔ bad Little proof refuses {"feedbackFlags":0} (0.130917ms)
+✔ bad Little proof refuses {"drawn":[]} (0.123958ms)
+✔ bad Little proof refuses {"status":"refused","measured":false,"reason":"foreign_target"} (0.105041ms)
+✔ borrowed source window or foreign target root token refuses (0.310334ms)
+✔ 20 genuine-channel-shaped samples preserve Arm/external/Complete/cleanup order and raw upperbounds (16.814ms)
+✔ one 600.001ms outlier refuses even when p95 passes and retains all originals (13.315083ms)
+✔ Little original bytes retain actual nested .0 through full collector (13.758708ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.2225

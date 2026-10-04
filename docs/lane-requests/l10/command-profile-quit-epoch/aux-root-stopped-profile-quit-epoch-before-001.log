@@ -1,0 +1,32 @@
+✔ original generated stopped/reaped child mints opaque Profile lease with exact generation (51.286167ms)
+✔ process exit without original close/reap refuses even after quit (21.268542ms)
+✔ supplied path cannot acquire generated Profile authority (15.477709ms)
+✔ failed restart retires old lease before new slot/spawn and replacement tree refuses (14.522458ms)
+✔ actual original delayed close resolves retained wait without another child lookup (14.484ms)
+✔ original close wait refuses expired first-quit deadline without refreshing on repeated quit (13.254291ms)
+✔ failed restart retires pending original close waiter without adopting late close (11.79575ms)
+✖ late original quit cannot resurrect stopped capability after failed restart (13.425833ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 7
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 317.546875
+
+✖ failing tests:
+
+test at tests/host/stopped-command-profile.test.mjs:79:1
+✖ late original quit cannot resurrect stopped capability after failed restart (13.425833ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at TestContext.<anonymous> (file:///private/tmp/aux-browser-runtime-following-batch/tests/host/stopped-command-profile.test.mjs:85:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /reaped/,
+    operator: 'throws',
+    diff: 'simple'
+  }

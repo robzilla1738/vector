@@ -29,7 +29,7 @@ import { useConversationScroll } from "../use-conversation-scroll";
 import { conversationPage } from "../conversation-page";
 import { browserSourcesKey, sourceRef, sourceStatus } from "../browser-context-sources";
 import { isScrimOverlay } from "../chrome";
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationArtifact, ConversationSource, Run, RunMessage, Suspension, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, HOME_DRAFT_CHAT_KEY, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
@@ -37,6 +37,7 @@ import { conversationMarkdown } from "../conversation-export";
 import { bridge, type BrowserProfile } from "../bridge";
 import { previewSplit } from "../workspace";
 import { useStore, call, decodeBase64Json, errToast, isLive, toast } from "../store";
+import { ConversationAction, ConversationDetails, useConversationOwner } from "./ConversationControls";
 import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory";
 import { browserLinkUrl as answerUrl } from "../browser-links";
 import { RunPanel } from "./RunPanel";
@@ -143,28 +144,32 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   const activePageId = useStore(s => s.activePageId);
   const layout = useStore(s => s.layout);
   const connected = useStore(s => s.connected);
+  const conversationCurrent = useConversationOwner(id, connected);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
   const [earlier, setEarlier] = useState<ReturnType<typeof cursor> | null>(null);
   const historyRequest = useRef(0);
+  const historyPending = useRef(false);
+  useLayoutEffect(() => { ++historyRequest.current; historyPending.current = false; }, [id, connected, conversationCurrent]);
   const loadTurns = async (before?: ReturnType<typeof cursor>) => {
-    if (!id || id === "history") return;
+    if (!id || id === "history" || !conversationCurrent() || historyPending.current) return;
+    historyPending.current = true;
     const version = ++historyRequest.current;
     setHistoryLoading(true); setHistoryError("");
     try {
       const found = await call("runs.list", { chatId: id, limit: 50, ...(before ? { before } : {}) });
-      if (version !== historyRequest.current) return;
+      if (version !== historyRequest.current || !conversationCurrent()) return;
       if (before) scrolling.preservePosition();
       mergeHistory(found);
       setEarlier(found.length === 50 ? cursor(found[found.length - 1]!) : null);
-    } catch (error) { if (version === historyRequest.current) setHistoryError(String(error)); }
-    finally { if (version === historyRequest.current) setHistoryLoading(false); }
+    } catch (error) { if (version === historyRequest.current && conversationCurrent()) setHistoryError(String(error)); }
+    finally { if (version === historyRequest.current && conversationCurrent()) { historyPending.current = false; setHistoryLoading(false); } }
   };
   useEffect(() => {
     setEarlier(null); setHistoryError(""); setHistoryLoading(false);
     void loadTurns();
     return () => { ++historyRequest.current; };
-  }, [id]);
+  }, [id, connected, conversationCurrent]);
   const [sending, setSending] = useState(false);
   const sendPending = useRef(false);
   const [exporting, setExporting] = useState(false);
@@ -432,8 +437,13 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     return () => { cancelled = true; };
   }, [boundTaskId]);
 
+  const contextRequest = useRef(0);
+  const contextRetryPending = useRef(false);
+  useLayoutEffect(() => { ++contextRequest.current; contextRetryPending.current = false; }, [id, turns.length, last?.status, connected, contextRefresh, attachmentSaving, conversationCurrent]);
   useEffect(() => {
     let cancelled = false;
+    const version = contextRequest.current;
+    const current = () => !cancelled && version === contextRequest.current && conversationCurrent();
     if (!connected || attachmentSaving) { setContextLoading(false); return; }
     setContextError(""); setContextLoading(!!id);
     if (!id) { setImages([]); setAttachments([]); setConversationSources([]); setWorkspaceContext({ workspace: null, memory: null }); return; }
@@ -442,11 +452,11 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       call("conversations.attachments.get", { chatId: id }),
       call("conversations.workspace.get", { chatId: id }),
       call("conversations.sources.get", { chatId: id }),
-    ]).then(([imageReferences, documents, workspace, sourceList]) => { if (!cancelled) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setWorkspaceContext(workspace); setConversationSources(sourceList.sources); } })
-      .catch(error => { if (!cancelled) setContextError(error instanceof Error ? error.message : String(error)); })
-      .finally(() => { if (!cancelled) setContextLoading(false); });
+    ]).then(([imageReferences, documents, workspace, sourceList]) => { if (current()) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setWorkspaceContext(workspace); setConversationSources(sourceList.sources); } })
+      .catch(error => { if (current()) setContextError(error instanceof Error ? error.message : String(error)); })
+      .finally(() => { if (current()) setContextLoading(false); });
     return () => { cancelled = true; };
-  }, [id, turns.length, last?.status, connected, contextRefresh, attachmentSaving]);
+  }, [id, turns.length, last?.status, connected, contextRefresh, attachmentSaving, conversationCurrent]);
   useEffect(() => bridge.onEvent(event => {
     if (event.type === "conversation.context.changed" && event.payload.chatId === id) { setConversationSources([]); setContextRefresh(value => value + 1);
       void call("conversations.artifacts.get",{chatId:id!}).then(value=>setGenerated(value.artifacts)).catch(()=>{}); }
@@ -734,8 +744,8 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     <div className="conversation-body"><div className="conversation-main">
     <div className="conversation-scroll" tabIndex={-1} ref={node => { scrolling.scrollRef.current = node; if (findReturnRef) findReturnRef.current = node; }}><div className="conversation-thread" data-find-surface="conversation" ref={scrolling.threadRef}>
       {historyLoading && <output data-block className="hint">Loading conversation…</output>}
-      {historyError && <div className="field-error"><p role="alert">Conversation history couldn’t be loaded. Your draft is kept.</p><button className="btn sm" onClick={() => void loadTurns(earlier ?? undefined)}>Try again</button><details><summary>Details</summary><p>{historyError}</p></details></div>}
-      {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
+      {historyError && <div className="field-error"><p role="alert">Conversation history couldn’t be loaded. Your draft is kept.</p><ConversationAction command="load-conversation-history" current={() => conversationCurrent() && !!historyError && !historyLoading} disabled={historyLoading} invoke={() => loadTurns(earlier ?? undefined)}>Try again</ConversationAction><ConversationDetails current={conversationCurrent} text={historyError} /></div>}
+      {earlier && !historyError && <ConversationAction command="load-conversation-history" current={() => conversationCurrent() && !!earlier && !historyError && !historyLoading} disabled={historyLoading} invoke={() => loadTurns(earlier)}>Load earlier messages</ConversationAction>}
       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
       {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel savedAnswerIds={generated.filter(item => item.runId === run.runId && item.automaticReport === true).map(item => item.artifactId)} runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last} questionInComposer={run === last && answering} controlsInComposer={run === last} composerRef={textareaRef} sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} onCitationOpen={openCitation}/><RunSources sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} profileNames={sourceProfileNames} onOpen={source => { setSourceDetail(source); setImagePreview(null); setDocumentPreview(null); useStore.setState({ resultPreview: null }); }}/>{generated.some(item=>item.runId===run.runId) && <div role="group" className="conversation-results" aria-label="Saved results">{generated.filter(item=>item.runId===run.runId).map(item=><ResultCard key={item.artifactId} compact={item.automaticReport === true} result={item} revision={item.revision ?? artifactVersions[item.artifactId]} onOpen={()=>{setSourceDetail(null);setImagePreview(null);setDocumentPreview(null);useStore.setState({resultPreview:item.artifactId});}}/>)}</div>}<RunImages runId={run.runId}/></article>)}
       {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><output className="hint">Starting…</output></article>)}
@@ -754,16 +764,16 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       {imageTray}
       </div>
       {!connected && <output className="hint" data-block>Connecting to Aux… You can keep writing.</output>}
-      {sendError && <div className="field-error"><p role="alert">{sendError} Your reply is kept.</p>{sendErrorDetails && <details><summary>Details</summary><p>{sendErrorDetails}</p></details>}</div>}
+      {sendError && <div className="field-error"><p role="alert">{sendError} Your reply is kept.</p>{sendErrorDetails && <ConversationDetails current={conversationCurrent} text={sendErrorDetails} />}</div>}
       {taskBound ? <>
       <ConversationTask key={boundTaskId} taskId={boundTaskId!} live={live} disabled={attachmentSaving || historySaving || contextLocked || historyLoading || !!historyError} page={selectedContext} context={contextPage} linkedPageId={linked?.pageId} onContext={setContextPage} onStarted={() => { if (activeChat.current === id) scrolling.jumpToLatest(); }} />
 
       {contextLoading && <output className="hint" data-block>Loading saved context…</output>}
-      {contextError && <div className="field-error"><p role="alert">Saved context couldn’t be loaded. Your draft is kept.</p><button type="button" className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button><details><summary>Details</summary><p>{contextError}</p></details></div>}
+      {contextError && <div className="field-error"><p role="alert">Saved context couldn’t be loaded. Your draft is kept.</p><ConversationAction command="reload-conversation-context" current={() => conversationCurrent() && !!contextError && !contextLoading && !contextRetryPending.current} disabled={contextLoading} invoke={() => { contextRetryPending.current = true; setContextRefresh(value => value + 1); }}>Retry</ConversationAction><ConversationDetails current={conversationCurrent} text={contextError} /></div>}
       {answering && <ComposerInput workspaceId={workspaceContext.workspace?.workspaceId} id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={20000} disabled={archived || sending || answerPending} placeholder="Answer Aux’s question…" sendDisabled={archived || !connected || sending || answerPending} onChange={setText} onSend={() => void send()} textareaRef={textareaRef} />}
       </> : <>
       {contextLoading && <output className="hint" data-block>Loading saved context…</output>}
-      {contextError && <div className="field-error"><p role="alert">Saved context couldn’t be loaded. Your draft is kept.</p><button type="button" className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button><details><summary>Details</summary><p>{contextError}</p></details></div>}
+      {contextError && <div className="field-error"><p role="alert">Saved context couldn’t be loaded. Your draft is kept.</p><ConversationAction command="reload-conversation-context" current={() => conversationCurrent() && !!contextError && !contextLoading && !contextRetryPending.current} disabled={contextLoading} invoke={() => { contextRetryPending.current = true; setContextRefresh(value => value + 1); }}>Retry</ConversationAction><ConversationDetails current={conversationCurrent} text={contextError} /></div>}
       {missingContext && !closedPage && <output className="field-error" data-block>The selected tab is unavailable. Choose another browser context before sending.</output>}
       {changedBrowserSources.length > 0 && !closedPage && <output className="field-error" data-block>A selected tab changed or closed. Update or remove it before sending.</output>}
 

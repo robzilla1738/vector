@@ -1,3 +1,4 @@
+import { decodeOriginalGuestRecord, extractOriginalGuestFixtureRecord } from './guest-original-record.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -11,7 +12,7 @@ const integer = value => Number.isInteger(value) && value > 0 && value <= 0xffff
 const decimal = value => typeof value === 'string' && /^[1-9][0-9]{0,19}$/.test(value) && BigInt(value) <= 18446744073709551615n;
 function decode(text) {
   assert.ok(typeof text === 'string' && Buffer.byteLength(text) <= 16384, 'Missing bounded original native reply');
-  const value = JSON.parse(text);
+  const value = decodeOriginalGuestRecord(text);
   assert.equal(value.producer, 'aux-native-guest-presentation'); assert.equal(value.version, 1);
   if (value.status === 'refused') {
     assert.equal(value.measured, false); assert.ok(typeof value.reason === 'string' && value.reason.length > 0 && value.reason.length <= 128);
@@ -120,7 +121,7 @@ export async function collectGuestPresentations({ transport, ax, candidate, read
       const wrapper = JSON.parse(receipt.raw.slice('AUX_NATIVE_FIXTURE_REPLY_V1 '.length));
       assert.equal(wrapper.producer, 'aux-native-fixture-reply'); assert.equal(wrapper.version, 1);
       assert.equal(wrapper.pid, pins.targetPid); assert.equal(wrapper.sequence, receipt.sequence); assert.equal(wrapper.operation, method);
-      assert.equal(JSON.stringify(wrapper.record), recordRaw);
+      assert.equal(extractOriginalGuestFixtureRecord(receipt.raw), recordRaw);
       return { ...receipt, sha256: createHash('sha256').update(receipt.raw).digest('hex') };
     };
     for (let trial = 0; trial < trials; trial++) {
@@ -156,6 +157,7 @@ export async function collectGuestPresentations({ transport, ax, candidate, read
     report.after = await verify(); report.maxMs = Math.max(...report.samplesMs);
     report.budgetMs = metric === 'split-drop' ? 150 : metric === 'divider-frame' ? 16.7 : metric === 'little-window' ? 600 : 50;
     const sorted = [...report.samplesMs].sort((a, b) => a - b);
+    report.p50Ms = sorted[Math.ceil(sorted.length * 0.5) - 1];
     report.p95Ms = sorted[Math.ceil(sorted.length * 0.95) - 1];
     report.gatedMs = metric === 'divider-frame' ? report.p95Ms : report.maxMs;
     assert.ok(report.gatedMs <= report.budgetMs, `Raw ${metric} interval exceeds ${report.budgetMs}ms`);

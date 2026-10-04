@@ -1,0 +1,176 @@
+--- /dev/null
++++ b/tests/host/lib/native-command-collector.mjs
+@@ -0,0 +1,121 @@
++import assert from 'node:assert/strict';
++import { execFileSync } from 'node:child_process';
++import { createJourneyApp } from './app.mjs';
++import { createRpc } from './rpc.mjs';
++import { createAxClient } from './ax.mjs';
++import { readPackagedRuntimePairBytes } from './packaged-runtime-pair-artifact.mjs';
++import { prepareCommandHistoryDataset, readCommandHistoryDataset } from './command-history-dataset.mjs';
++import { readNativeWindowCompilerExecutable } from './native-window-compiler-artifact.mjs';
++import { decodeWarmWindowHelperIdentity } from './native-warm-helper-identity.mjs';
++import { decodeNativeCommandPresentation, extractNativeCommandFixtureRecord } from './native-command-presentation.mjs';
++import { rawPercentile } from './native-key-performance.mjs';
++const modes = Object.freeze([{ mode: 'new-tab', shortcut: 'command+t', prefix: 'auxperf0000', key: '0' }, { mode: 'edit', shortcut: 'command+l', prefix: 'auxperf0000', key: '0' }, { mode: 'command', shortcut: 'command+k', prefix: 'setting', key: 's' }]);
++const dialog = Object.freeze({ role: 'AXGroup', name: 'Command surface', scope: 'shell' });
++const field = Object.freeze({ role: 'AXComboBox', name: 'Address, search, and agent prompt', scope: 'shell', within: dialog, index: 0 });
++const retainedDebt = new Set();
++const ac = raw => { assert.equal(typeof raw, 'string'); assert.match(raw, /Now drawing from 'AC Power'/); return raw; };
++const failure = reason => ({ name: reason?.name ?? typeof reason, message: reason?.message ?? String(reason) });
++const actualPower = () => execFileSync('/usr/bin/pmset', ['-g', 'batt'], { encoding: 'utf8', timeout: 5000 });
++function child(app) {
++  const row = app.processObservation; assert.equal(row.launchKind, 'child'); assert.equal(row.exitStatusAvailable, false); assert.equal(row.spawnError, null);
++  assert.ok(Number.isSafeInteger(row.pid) && row.pid > 0 && Number.isSafeInteger(row.generation) && row.generation > 0);
++  assert.equal(row.pid, app.pid); assert.equal(row.exitCode, null); assert.equal(row.signal, null); return { pid: row.pid, generation: row.generation };
++}
++function finalReceipt(receipt, owner, ready) {
++  assert.equal(receipt.pid, owner.pid); assert.equal(receipt.generation, owner.generation); assert.equal(receipt.operation, 'commandPresentationSnapshot');
++  const original = extractNativeCommandFixtureRecord(receipt.raw); assert.equal(original, receipt.recordRaw);
++  const wrapper = JSON.parse(receipt.raw.slice('AUX_NATIVE_FIXTURE_REPLY_V1 '.length));
++  assert.deepEqual(Object.keys(wrapper).sort(), ['producer', 'version', 'pid', 'windowId', 'sequence', 'operation', 'record'].sort());
++  assert.equal(wrapper.producer, 'aux-native-fixture-reply'); assert.equal(wrapper.version, 1); assert.equal(wrapper.pid, owner.pid);
++  assert.equal(wrapper.sequence, receipt.sequence); assert.equal(wrapper.operation, receipt.operation);
++  assert.match(wrapper.sequence, /^[1-9][0-9]*$/); assert.ok(BigInt(wrapper.sequence) <= 4000n);
++  assert.equal(ready.pid, owner.pid); assert.equal(ready.generation, owner.generation); assert.equal(ready.sequence, wrapper.sequence);
++  assert.equal(receipt.commandReady.raw, ready.raw); const decoded = decodeNativeCommandPresentation(original, ready.raw);
++  assert.equal(wrapper.windowId, decoded.windowId); return decoded;
++}
++/** Actual caller, never automatic execution: canonical pair + fresh owned App only. */
++export async function collectNativeCommandPresentation({ pair, fixtureUrl, signal, trials = 20, readPower = actualPower }) {
++  assert.equal(retainedDebt.size, 0, 'Original command cohort cleanup debt remains');
++  assert.ok(Number.isSafeInteger(trials) && trials >= 20 && trials <= 100, '20–100 actual trials per mode required');
++  assert.equal(typeof signal?.throwIfAborted, 'function'); signal.throwIfAborted();
++  const artifact = readPackagedRuntimePairBytes(pair); assert.equal(artifact.productIdentity.dirty, false);
++  const url = new URL(fixtureUrl); assert.equal(url.protocol, 'http:'); assert.equal(url.hostname, '127.0.0.1'); assert.ok(url.port); assert.equal(url.pathname, '/'); assert.ok(!url.username && !url.password && !url.search && !url.hash);
++  const report = { schema: 'aux-native-command-cohort/v1', status: 'running', pair: structuredClone(artifact.artifact), productIdentity: structuredClone(artifact.productIdentity), native: structuredClone(artifact.native),
++    helperCompiler: { manifestRaw: pair.compilerArtifact.decoded.manifestRaw, auditRaw: pair.compilerArtifact.decoded.auditRaw }, trialsPerMode: trials, attempts: [],
++    firstFrameProven: false, ordinaryNavigationTimingProven: false, nativeQualificationProven: false, cleanupErrors: [] };
++  let app, ax, mailbox, primary, original, dataset;
++  const cleanupFailures = [], pendingCleanup = [];
++  const cleanup = async (operation, deadline) => {
++    const originalPromise = Promise.resolve().then(operation); pendingCleanup.push(originalPromise); originalPromise.catch(() => {});
++    let timer;
++    try { return await Promise.race([originalPromise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Original command cohort cleanup deadline expired')), Math.max(0, deadline - Date.now())); })]); }
++    finally { clearTimeout(timer); }
++  };
++  const verify = async () => {
++    pair.validate(); assert.deepEqual(child(app), original); readNativeWindowCompilerExecutable(pair.compilerArtifact, ax.helperSource); pair.compilerArtifact.matchOriginalClient(ax); assert.equal(ax.pid, original.pid);
++    const identity = await app.identity(); assert.deepEqual(identity.runtime, artifact.productIdentity);
++    for (const key of ['sourceCommit', 'buildId', 'manifestHash']) assert.equal(identity.native[key], artifact.native[key]);
++    return identity;
++  };
++  try {
++    report.powerBeforeBootstrap = ac(await readPower()); signal.throwIfAborted(); pair.validate();
++    app = createJourneyApp({ appPath: artifact.bundle, launch: { args: ['--aux-native-performance-observer'], devAcceptance: { features: ['commandBar', 'commandRegistry'], sourceCommit: artifact.native.sourceCommit } } });
++    await app.start(); signal.throwIfAborted();
++    const rpc = createRpc(() => app.descriptor());
++    report.nativeSeed = await rpc('pages.open', { url: url.origin + '/command-history/native-seed', activate: true });
++    assert.equal(report.nativeSeed.url, url.origin + '/command-history/native-seed'); assert.equal(report.nativeSeed.backend, 'aux'); assert.equal(report.nativeSeed.ownedByRuntime, false); assert.ok(!report.nativeSeed.agentIsolation);
++    report.nativeSeedClose = await rpc('pages.close', { pageId: report.nativeSeed.pageId });
++    assert.equal(report.nativeSeedClose.ok, true);
++    assert.ok(!(await rpc('pages.list')).some(page => page.pageId === report.nativeSeed.pageId), 'Original native seed page remains live');
++    await app.quit(); const stopped = await app.waitForStoppedCommandProfile(); signal.throwIfAborted();
++    dataset = prepareCommandHistoryDataset(stopped, fixtureUrl); report.historyBefore = readCommandHistoryDataset(dataset, stopped);
++    report.powerBeforeLaunch = ac(await readPower()); pair.validate(); signal.throwIfAborted();
++    await app.start(); original = child(app); report.originalChild = original;
++    ax = await createAxClient(original.pid, { compilerArtifact: pair.compilerArtifact }); mailbox = app.configurePerformanceMailbox(); report.writer = mailbox.writer;
++    report.identityBefore = await verify(); let lastSample = 0n, lastEnd = 0n;
++    for (const mode of modes) for (let index = 0; index < trials; index++) {
++      const attempt = { mode: mode.mode, trial: index + 1, status: 'pending' }; report.attempts.push(attempt);
++      signal.throwIfAborted(); await ax.key('escape', 'hid'); await ax.key(mode.shortcut, 'hid'); await ax.waitFor(dialog); await ax.waitFor(field, 'enabled');
++      await ax.key('command+a', 'hid'); await ax.type(mode.prefix, field);
++      const controls = await ax.query(field); assert.equal(controls.length, 1); assert.equal(controls[0].value, mode.prefix); assert.equal(controls[0].focused, true);
++      attempt.beforeIdentity = await verify(); attempt.powerBefore = ac(await readPower());
++      attempt.beforeInputProducer = await ax.request('warmWindowIdentity'); decodeWarmWindowHelperIdentity(attempt.beforeInputProducer, { targetPid: original.pid, helperPid: ax.helperPid, artifact: pair.compilerArtifact.artifact });
++      const completion = mailbox.invoke('commandPresentationSnapshot', 7000); completion.catch(() => {});
++      attempt.ready = await mailbox.waitForCommandPresentationReady(); assert.equal(attempt.ready.record.surfaceMode, mode.mode); signal.throwIfAborted();
++      // Exactly one real HID keystroke after genuine renderer readiness.
++      await ax.key(mode.key, 'hid'); const originalRaw = await completion; attempt.receipt = mailbox.lastReceipt; assert.equal(originalRaw, attempt.receipt.recordRaw);
++      const measured = finalReceipt(attempt.receipt, original, attempt.ready); assert.equal(measured.surfaceMode, mode.mode);
++      assert.ok(BigInt(measured.sampleSequence) > lastSample && BigInt(measured.nativeInputUs) > lastEnd); lastSample = BigInt(measured.sampleSequence); lastEnd = BigInt(measured.presentationUs);
++      attempt.afterInputProducer = await ax.request('warmWindowIdentity'); decodeWarmWindowHelperIdentity(attempt.afterInputProducer, { targetPid: original.pid, helperPid: ax.helperPid, artifact: pair.compilerArtifact.artifact });
++      assert.deepEqual(attempt.afterInputProducer, attempt.beforeInputProducer); attempt.afterIdentity = await verify(); attempt.powerAfter = ac(await readPower()); attempt.status = 'measured';
++    }
++    report.powerAfterCohort = ac(await readPower());
++  } catch (error) { primary = error; report.primaryFailure = failure(error); }
++  finally {
++    const cleanupDeadline = Date.now() + 10000;
++    try { if (ax) { const closed = await cleanup(() => ax.close(), cleanupDeadline); report.helperClose = closed; if (closed.primary) throw closed.primary; assert.equal(closed.reaped, true); assert.equal(closed.clean, true); } } catch (error) { cleanupFailures.push(error); }
++    try { if (app) { await cleanup(() => app.quit(), cleanupDeadline); const stopped = app.processObservation.pid ? await cleanup(() => app.waitForStoppedCommandProfile(), cleanupDeadline) : undefined; if (dataset) { assert.ok(stopped); report.historyAfter = readCommandHistoryDataset(dataset, stopped); } } } catch (error) { cleanupFailures.push(error); }
++    if (cleanupFailures.length) retainedDebt.add({ app, ax, primary, pendingCleanup, cleanupErrors: cleanupFailures });
++  }
++  if (!primary && !cleanupFailures.length) {
++    report.metrics = modes.map(({ mode }) => {
++      const values = report.attempts.filter(attempt => attempt.mode === mode).map(attempt => Number(decodeNativeCommandPresentation(attempt.receipt.recordRaw, attempt.ready.raw).elapsedUs) / 1000);
++      assert.equal(values.length, trials); const p95Ms = rawPercentile(values, 0.95); return { mode, trials, p95Ms, limitMs: 30, pass: p95Ms <= 30 };
++    });
++    report.status = report.metrics.every(metric => metric.pass) ? 'passed' : 'failed';
++  } else report.status = 'failed';
++  // Persist original wrapper and READY bytes; these parsed copies are independently reproducible.
++  for (const attempt of report.attempts) {
++    if (attempt.ready) delete attempt.ready.record;
++    if (attempt.receipt) { delete attempt.receipt.recordRaw; delete attempt.receipt.commandReady; }
++  }
++  if (Buffer.byteLength(JSON.stringify(report)) > 1024 * 1024) {
++    const error = new Error('Original command evidence exceeds unchanged 1MiB bound');
++    if (!primary) primary = error; else cleanupFailures.push(error);
++    report.status = 'failed';
++  }
++  report.cleanupErrors = cleanupFailures.map(failure);
++  if (primary && !report.primaryFailure) report.primaryFailure = failure(primary);
++  if (primary || cleanupFailures.length) { const error = new AggregateError([...(primary ? [primary] : []), ...cleanupFailures], 'Original command cohort failed', { cause: primary }); error.report = report; error.retainedOriginalOwners = cleanupFailures.length ? { app, ax, pendingCleanup } : undefined; throw error; }
++  return report;
++}
+--- /dev/null
++++ b/tests/host/lib/native-command-collector.test.mjs
+@@ -0,0 +1,49 @@
++// Controlled caller composition only: no native launch, input, or performance qualification.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import vm from 'node:vm';
++import { readFileSync } from 'node:fs';
++import ts from 'typescript';
++import * as protocol from './native-command-presentation.mjs';
++import * as warm from './native-warm-helper-identity.mjs';
++import { rawPercentile } from './native-key-performance.mjs';
++function fixture({ wrongMode = false, elapsed = 30000, helperError, abortAfterReady = false, helperDrift = false, duplicateRecord = false, seedCloseRefusal = false } = {}) {
++  const signal = new AbortController(), calls = [], product = { dirty: false, sourceCommit: 'source' }, native = { sourceCommit: 'source', buildId: 'build', manifestHash: 'manifest' };
++  const artifact = { bundle: '/controlled/Aux.app', artifact: {}, productIdentity: product, native };
++  let generation = 0, live = false, sample = 0, mode = 'new-tab', prefix = '', seedLive = true, pending, ready, receipt;
++  const identity = { runtime: product, native }, compilerArtifact = { decoded: { manifestRaw: 'original-manifest', auditRaw: 'original-audit' }, artifact: { binarySha256: '1'.repeat(64), sourceSha256: '2'.repeat(64), imageUuid: '3'.repeat(32) }, matchOriginalClient() {} };
++  const pair = { compilerArtifact, validate() {} };
++  const app = { async start() { calls.push('start'); generation++; live = true; }, async quit() { calls.push('quit'); live = false; }, async waitForStoppedCommandProfile() { calls.push('original-close'); return {}; }, pid: 700,
++    get processObservation() { return { pid: 700, generation, launchKind: 'child', exitStatusAvailable: !live, spawnError: null, exitCode: live ? null : 0, signal: null }; }, async identity() { return identity; }, descriptor() {}, configurePerformanceMailbox() { return mailbox; } };
++  const mailbox = { writer: { original: true }, invoke() { calls.push('arm'); sample++;
++    const scope = { producer: 'aux-native-command-presentation', version: 1, sampleSequence: String(sample), windowId: 2, widgetRoutingId: 3, rendererPid: 4, nativeDocumentGeneration: '5', frameSinkClientId: 6, frameSinkSinkId: 7, resultsSource: mode === 'command' ? 'registry' : 'history', surfaceMode: wrongMode ? 'edit' : mode };
++    ready = { pid: 700, generation, sequence: String(sample), raw: 'AUX_NATIVE_COMMAND_PRESENTATION_READY_V1 ' + JSON.stringify({ ...scope, status: 'ready' }), record: scope };
++    const input = sample * 1000000;
++    const measured = { ...scope, rendererMeasured: true, rendererFailure: 0, frameToken: 9, activated: true, submittedFrame: true, submissionFailure: -1, feedbackFlags: 4, nativeInputUs: String(input), nativeReceiptUs: String(input + 10), rendererInputUs: String(input), mutationUs: String(input + 1000), commitUs: String(input + 2000), submittedUs: String(input + 3000), receivedUs: String(input + 4000), embeddedUs: String(input + 5000), drawUs: String(input + 6000), presentationUs: String(input + elapsed), nativeInputSourcePid: 0, measured: true, elapsedMs: elapsed / 1000, status: 'measured' };
++    const rawRecord = JSON.stringify(measured);
++    receipt = { pid: 700, generation, operation: 'commandPresentationSnapshot', sequence: String(sample), recordRaw: rawRecord, commandReady: ready,
++      raw: 'AUX_NATIVE_FIXTURE_REPLY_V1 ' + JSON.stringify({ producer: 'aux-native-fixture-reply', version: 1, pid: 700, windowId: 2, sequence: String(sample), operation: 'commandPresentationSnapshot', record: measured }) };
++    if (duplicateRecord) receipt.raw = receipt.raw.replace('"record":{', '"record":{"windowId":2,');
++    return new Promise(resolve => { pending = () => resolve(rawRecord); });
++  }, async waitForCommandPresentationReady() { if (abortAfterReady) signal.abort(new Error('original abort')); return ready; }, get lastReceipt() { return receipt; } };
++  const ax = { pid: 700, helperPid: 701, helperSource: '/controlled/helper', async key(key, via) { calls.push(['key', key, via]); if (key === 'command+t') mode = 'new-tab'; if (key === 'command+l') mode = 'edit'; if (key === 'command+k') mode = 'command'; if (['0','s'].includes(key)) pending(); }, async waitFor() {}, async type(value) { prefix = value; }, async query() { return [{ value: prefix, focused: true }]; }, async request() { return { producer: 'aux-native-warm-window-identity', version: 1, targetPid: 700, helperPid: 701, targetProcessUuid: '4'.repeat(32), targetProcessStartMachTicks: '100', helperProcessUuid: (helperDrift && sample ? '6' : '3').repeat(32), helperProcessStartMachTicks: '200' }; }, async close() { calls.push('helper-close'); if (helperError) throw helperError; return { reaped: true, clean: true }; } };
++  const imports = { 'node:assert/strict': { default: assert }, 'node:child_process': {}, './app.mjs': { createJourneyApp: () => app }, './rpc.mjs': { createRpc: () => async method => { calls.push(method); if (method === 'pages.open') return { pageId: 'seed', url: 'http://127.0.0.1:1234/command-history/native-seed', backend: 'aux', ownedByRuntime: false }; if (method === 'pages.close') { if (seedCloseRefusal) return { ok: false }; seedLive = false; return { ok: true }; } if (method === 'pages.list') return seedLive ? [{ pageId: 'seed' }] : []; throw new Error(method); } }, './ax.mjs': { createAxClient: async () => ax }, './packaged-runtime-pair-artifact.mjs': { readPackagedRuntimePairBytes: () => artifact }, './command-history-dataset.mjs': { prepareCommandHistoryDataset() { calls.push('seed50000'); assert.equal(seedLive, false); return {}; }, readCommandHistoryDataset() { return { urlCount: 50000, visitCount: 50000, nativeQualificationProven: false }; } }, './native-window-compiler-artifact.mjs': { readNativeWindowCompilerExecutable() {} }, './native-warm-helper-identity.mjs': warm, './native-command-presentation.mjs': protocol, './native-key-performance.mjs': { rawPercentile } };
++  const exports = {}, source = ts.transpileModule(readFileSync(new URL('./native-command-collector.mjs', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
++  vm.runInNewContext(source, { exports, Buffer, URL, structuredClone, setTimeout, clearTimeout, require(name) { assert.ok(imports[name], name); return imports[name]; } });
++  return { calls, collect: options => exports.collectNativeCommandPresentation({ pair, fixtureUrl: 'http://127.0.0.1:1234/', signal: signal.signal, readPower: () => "Now drawing from 'AC Power'", ...options }) };
++}
++test('actual caller composes original seed close, 60 READY→single HID trials and original cleanup', async () => {
++  const f = fixture(), report = await f.collect(); assert.equal(report.status, 'passed'); assert.equal(report.attempts.length, 60);
++  assert.ok(f.calls.indexOf('pages.close') < f.calls.indexOf('seed50000')); assert.equal(f.calls.filter(c => Array.isArray(c) && ['0','s'].includes(c[1]) && c[2] === 'hid').length, 60);
++  assert.equal(report.nativeQualificationProven, false); assert.equal(report.firstFrameProven, false); assert.equal(report.ordinaryNavigationTimingProven, false);
++  for (const attempt of report.attempts) { assert.ok(attempt.receipt.raw); assert.ok(attempt.ready.raw); assert.equal(attempt.receipt.recordRaw, undefined); assert.equal(attempt.ready.record, undefined); protocol.decodeNativeCommandPresentation(protocol.extractNativeCommandFixtureRecord(attempt.receipt.raw), attempt.ready.raw); }
++});
++test('fewer than 20 refuses before any original owner creation', async () => { const f = fixture(); await assert.rejects(f.collect({ trials: 19 })); assert.equal(f.calls.length, 0); });
++test('wrong observed READY refuses before measured HID and still retires original owners', async () => { const f = fixture({ wrongMode: true }); await assert.rejects(f.collect()); assert.equal(f.calls.filter(c => Array.isArray(c) && ['0','s'].includes(c[1])).length, 0); assert.ok(f.calls.includes('helper-close')); });
++test('original global abort after READY prevents measured HID', async () => { const f = fixture({ abortAfterReady: true }); await assert.rejects(f.collect(), error => error.cause.message === 'original abort'); assert.equal(f.calls.filter(c => Array.isArray(c) && ['0','s'].includes(c[1])).length, 0); });
++test('unrounded fractional 30.004ms truthfully fails unchanged 30ms budget', async () => { const report = await fixture({ elapsed: 30004 }).collect(); assert.equal(report.status, 'failed'); assert.ok(report.metrics.every(row => row.p95Ms === 30.004 && !row.pass)); });
++test('original primary and helper cleanup rejection identity both retained', async () => { const reason = new Error('original helper cleanup'), f = fixture({ wrongMode: true, helperError: reason }); await assert.rejects(f.collect(), error => { assert.equal(error.errors[1], reason); assert.ok(error.retainedOriginalOwners.app); assert.ok(error.retainedOriginalOwners.pendingCleanup.length); return true; }); });
++
++test('original seed close refusal prevents dataset write and trial launch', async () => { const f = fixture({ seedCloseRefusal: true }); await assert.rejects(f.collect()); assert.ok(!f.calls.includes('seed50000')); assert.equal(f.calls.filter(c => c === 'start').length, 1); });
++test('duplicate inner original record refuses despite parsed mailbox copy', async () => { await assert.rejects(fixture({ duplicateRecord: true }).collect()); });
++test('original helper kernel UUID drift refuses trial evidence', async () => { await assert.rejects(fixture({ helperDrift: true }).collect()); });

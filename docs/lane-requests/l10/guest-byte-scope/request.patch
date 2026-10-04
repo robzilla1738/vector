@@ -1,0 +1,24 @@
+--- a/tests/host/lib/native-guest-performance.mjs
++++ b/tests/host/lib/native-guest-performance.mjs
+@@ -121,7 +121,8 @@
+       const wrapper = JSON.parse(receipt.raw.slice('AUX_NATIVE_FIXTURE_REPLY_V1 '.length));
+       assert.equal(wrapper.producer, 'aux-native-fixture-reply'); assert.equal(wrapper.version, 1);
+       assert.equal(wrapper.pid, pins.targetPid); assert.equal(wrapper.sequence, receipt.sequence); assert.equal(wrapper.operation, method);
+-      assert.equal(extractOriginalGuestFixtureRecord(receipt.raw), recordRaw);
++      if (metric === 'little-window') assert.equal(JSON.stringify(wrapper.record), recordRaw);
++      else assert.equal(extractOriginalGuestFixtureRecord(receipt.raw), recordRaw);
+       return { ...receipt, sha256: createHash('sha256').update(receipt.raw).digest('hex') };
+     };
+     for (let trial = 0; trial < trials; trial++) {
+--- a/tests/tools/native-little-performance.test.mjs
++++ b/tests/tools/native-little-performance.test.mjs
+@@ -49,3 +49,9 @@
+   const f = fixture(true);
+   await assert.rejects(collectGuestPresentations(f.options), error => error.report.samplesMs.length === 20 && error.report.p95Ms === 400 && error.report.maxMs === 600.001 && error.report.attempts.every(row => row.measuredRaw && row.measuredReceipt.raw));
+ });
++
++test('guest-only bytes successor preserves existing Little transport normalization', async () => {
++  const f = fixture(), invoke = f.options.transport.invoke;
++  f.options.transport.invoke = async function(method) { const text = await invoke.call(this, method); this.lastReceipt.raw = this.lastReceipt.raw.replace('"clientId":1', '"clientId":1.0'); assert.ok(this.lastReceipt.raw.includes('1.0')); return text; };
++  const report = await collectGuestPresentations(f.options); assert.equal(report.samplesMs.length, 20); assert.equal(report.status, 'measured');
++});

@@ -47,7 +47,6 @@
   .composer-footer .new-chat-attach { min-width:28px; min-height:28px; justify-content:center; }
   .composer-footer .conversation-browser-context-controls { justify-content:flex-start; }
   .composer-footer .browser-context-trigger { max-width:100%; }
-  .conversation-browser-context-controls > :not(.browser-context-trigger) { display:none; }
   .composer-send-actions .dictation-trigger { width:28px; height:28px; min-width:28px; padding:0; justify-content:center; font-size:0; gap:0; }
 }
 

@@ -1,3 +1,4 @@
+import { decodeOriginalGuestRecord } from './guest-original-record.mjs';
 import assert from 'node:assert/strict';
 const identity = ['metric', 'startKind', 'earliestPresentationProven', 'requestNonce', 'sampleSequence', 'windowId', 'widgetRoutingId', 'rendererPid', 'nativeDocumentGeneration', 'shellSink', 'displaySink', 'armedUs'];
 const integer = n => Number.isInteger(n) && n > 0 && n <= 0xffffffff;
@@ -7,7 +8,7 @@ const keys = (value, expected) => assert.deepEqual(Object.keys(value ?? {}).sort
 function sink(value) { keys(value, ['clientId', 'sinkId']); assert.ok(integer(value.clientId) && integer(value.sinkId)); }
 function decode(raw) {
   assert.ok(typeof raw === 'string' && Buffer.byteLength(raw) <= 16384, 'Missing bounded native original');
-  const value = JSON.parse(raw); assert.equal(value.producer, 'aux-native-little-presentation-upperbound'); assert.equal(value.version, 1);
+  const value = decodeOriginalGuestRecord(raw); assert.equal(value.producer, 'aux-native-little-presentation-upperbound'); assert.equal(value.version, 1);
   if (value.status === 'refused') {
     assert.equal(value.measured, false); assert.ok(typeof value.reason === 'string' && value.reason.length > 0 && value.reason.length <= 128);
     throw new Error(`Original native refusal: ${value.reason}`);

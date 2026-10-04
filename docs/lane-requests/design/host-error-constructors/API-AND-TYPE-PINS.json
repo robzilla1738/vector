@@ -1,0 +1,10 @@
+{
+  "apps/shell/vite.config.ts": "f288bae3e5b933dfd5374c3aa462f80916800e1f4ce5def8a5c9b874ded1ae7b",
+  "scripts/contract-schema-purity.mjs": "9394217d625d121a261870cb79d9cd5d8522be81b22d9e2aebdbe4aaa7a14277",
+  "scripts/budgets.json": "afbd0b50704141f9dc852bf1b274055258e7b42cd6e1fc4a0d89e05658488299",
+  "packages/contracts/dist/errors.d.ts": "fe0c24842ad8119dd0cec56a7cb46b4c1fb41f9dbc286b6770309c08caa5527b",
+  "packages/contracts/dist/browser-host-methods.d.ts": "31579526f42311e92608119db63c43ef835249cdcd70b33473aa31de002f43ef",
+  "packages/contracts/dist/browser-host-methods-original.d.ts": "d50ac17d5d0e4e5de2668b3225e9b3f5ca0124295aea2040344907c6b9396390",
+  "node_modules/vite/package.json": "e5ed0f85215f871fe22a48987dcd77fcfbe14064a53c0c9f7f48186a6b7e2cf0",
+  "node_modules/typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6"
+}

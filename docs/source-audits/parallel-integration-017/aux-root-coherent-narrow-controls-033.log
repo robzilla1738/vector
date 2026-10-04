@@ -1,0 +1,16 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+ ✓ |unit| tests/unit/chrome-tokens.test.ts (26 tests) 25ms
+(node:54988) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54987) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/BrowserContextTray.commands.test.tsx (3 tests) 44ms
+ ✓ |unit| apps/shell/src/components/BrowserContextTray.narrow-controls.test.tsx (3 tests) 73ms
+
+ Test Files  3 passed (3)
+      Tests  32 passed (32)
+   Start at  01:13:17
+   Duration  2.07s (transform 538ms, setup 0ms, collect 3.42s, tests 142ms, environment 423ms, prepare 120ms)
+

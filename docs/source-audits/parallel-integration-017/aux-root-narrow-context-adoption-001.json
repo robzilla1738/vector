@@ -1,0 +1,50 @@
+{
+  "freeze": {
+    "status": "source-only-request",
+    "baseCommit": "77fa85597a6f9a8110971d369ffd0e14dac656b2",
+    "patchSha256": "382fed1b15e970227864336e611dd46de089c66f4e2189dd2181cfd861f432cb",
+    "leaves": [
+      {
+        "path": "apps/shell/src/components/Conversation.css",
+        "beforeSha256": "1de4a79242932837c96cff061edbfecb8e94b04ab8c5ee5a0a88640ff7cee5a3",
+        "resultSha256": "c9992e5c91d04f2419a5d882543e1a18097bb90e37c6a1756caa79e2f893e72b"
+      },
+      {
+        "path": "apps/shell/src/components/BrowserContextTray.narrow-controls.test.tsx",
+        "beforeSha256": null,
+        "resultSha256": "2fe3a28a05285f69278f0bf7e87e1eee27af1e0f74223b193b75fab84236bbe3"
+      }
+    ],
+    "forwardReverseForward": true,
+    "controls": {
+      "resultPassed": 9,
+      "originalNewControlsFailed": 3,
+      "typesPassed": true,
+      "lintPassed": true
+    },
+    "reference": {
+      "decodedCSS": {
+        "path": "/Users/rcourson/AI Blueprints/06/assets/extension/assets_globals-D6PBr-GP.css",
+        "sha256": "2c2b198d715f3894d41c96b88ef9a32a4f61404891baf954d7e4e5a33d976e79",
+        "rules": {
+          ".flex-wrap{": ".flex-wrap{flex-wrap:wrap}",
+          ".min-w-0{": ".min-w-0{min-width:0}"
+        }
+      },
+      "upstreamFlexLayout": {
+        "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/ui/views/layout/flex_layout.cc",
+        "sha256": "2fc86daadeaf46dd10559b90d2d2c9b8dfbadfc21f8e127932fd4c14f37ba5d9"
+      }
+    },
+    "byteDelta": {
+      "sourceCSS": -92,
+      "productJS": 0,
+      "compiledCSS": "not rebuilt; removes one rule"
+    },
+    "nativeCapture": false,
+    "visualAcceptance": false
+  },
+  "actualForwardReverseForward": true,
+  "actualSourceReferencesPinned": true,
+  "nativeAcceptance": false
+}

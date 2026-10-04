@@ -1,0 +1,436 @@
+diff --git a/apps/shell/src/components/ConversationImageControl.tsx b/apps/shell/src/components/ConversationImageControl.tsx
+new file mode 100644
+index 000000000..6016e4783
+--- /dev/null
++++ b/apps/shell/src/components/ConversationImageControl.tsx
+@@ -0,0 +1,22 @@
++import { useId, type ButtonHTMLAttributes, type RefObject } from "react";
++import { usePreferenceCommand } from "../settings/sections/preference-command";
++export function ConversationImageAction({ command, current, invoke, originalRef, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
++  command: string; current(): boolean; invoke(original: HTMLButtonElement): unknown; originalRef?: RefObject<HTMLButtonElement | null>;
++}) {
++  const scope = useId();
++  const [publish, run] = usePreferenceCommand<HTMLButtonElement>(command, scope, original => {
++    if (!current()) throw new Error("Choose the current image control.");
++    return invoke(original);
++  });
++  return <button {...props} data-command-id={command} ref={original => { publish(original); if (originalRef) originalRef.current = original; }} onClick={run} />;
++}
++export function ConversationImageChoice({ id, checked, disabled, current, invoke }: {
++  id: string; checked: boolean; disabled: boolean; current(): boolean; invoke(included: boolean): unknown;
++}) {
++  const scope = useId();
++  const [publish, run] = usePreferenceCommand<HTMLInputElement>("toggle-conversation-image", scope, (original, event) => {
++    if (!current()) throw new Error("Choose the current image choice.");
++    return invoke(event?.type === "click" || event?.type === "change" ? original.checked : !original.checked);
++  });
++  return <input id={id} type="checkbox" checked={checked} disabled={disabled} ref={publish} data-command-id="toggle-conversation-image" onChange={run} />;
++}
+diff --git a/apps/shell/src/components/ConversationImages.commands.test.tsx b/apps/shell/src/components/ConversationImages.commands.test.tsx
+new file mode 100644
+index 000000000..29fbdbca5
+--- /dev/null
++++ b/apps/shell/src/components/ConversationImages.commands.test.tsx
+@@ -0,0 +1,139 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { ConversationImages } from "./ConversationImages";
++import { bridge } from "../bridge";
++import { executeCommand } from "../commands";
++import { COMMANDS } from "@aux/contracts";
++import { makePage } from "../mock/fixtures";
++import { useStore } from "../store";
++const initial = useStore.getState();
++const originalScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
++const image = (chatId: string) => ({
++  imageId: `image-${chatId}`,
++  artifactId: `artifact-${chatId}`,
++  chatId,
++  filename: `${chatId}.png`,
++  width: 16,
++  height: 16,
++  createdAt: 1,
++  included: true,
++  byteLength: 15,
++  mediaType: "image/png" as const,
++});
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
++  HTMLElement.prototype.scrollIntoView = vi.fn();
++  host = document.createElement("div");
++  document.body.append(host);
++  root = createRoot(host);
++});
++afterEach(async () => {
++  await act(async () => root.unmount());
++  host.remove();
++  useStore.setState(initial, true);
++  vi.restoreAllMocks();
++  vi.unstubAllGlobals();
++  if (originalScroll) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", originalScroll);
++  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
++});
++function button(name: string) {
++  return [...host.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === name)!;
++}
++
++function mount(extra: Partial<Parameters<typeof ConversationImages>[0]> = {}) {
++  return act(async () => root.render(<ConversationImages chatId="a" images={[]} disabled={false} ensureChatId={() => "a"} onChange={vi.fn()} onBusy={vi.fn()} onDocument={vi.fn()} {...extra} />));
++}
++it("routes original focused image picking and cancellation without granting page context", async () => {
++  const picker = vi.spyOn(bridge, "pickEvidenceImage").mockResolvedValue({ filename: "Original.png", dataUrl: "data:image/png;base64,AA==" });
++  const native = vi.spyOn(bridge, "invoke");
++  await mount(); button("Image").focus();
++  await act(async () => { await executeCommand("choose-conversation-image"); });
++  expect(picker).toHaveBeenCalledOnce();
++  expect(host.querySelector('.capture-editor img')?.getAttribute("alt")).toBe("Capture to review before attaching");
++  button("Cancel").focus();
++  await act(async () => { await executeCommand("cancel-conversation-image"); });
++  expect(host.querySelector(".capture-editor")).toBeNull();
++  expect(native).not.toHaveBeenCalled();
++});
++it("uses the original checkbox state for remapped inclusion and the original image ID for removal", async () => {
++  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ images: [] });
++  const changed = vi.fn();
++  await mount({ images: [image("a")], onChange: changed });
++  const choice = host.querySelector<HTMLInputElement>('input')!; choice.focus();
++  const key = new KeyboardEvent("keydown", { key: "i", bubbles: true }); choice.dispatchEvent(key);
++  await act(async () => { await executeCommand("toggle-conversation-image", { nativeInputEvent: key }); });
++  expect(invoke).toHaveBeenCalledWith("conversations.images.toggle", { chatId: "a", imageId: "image-a", included: false });
++  expect(changed).toHaveBeenCalledWith("a", []);
++  host.querySelector<HTMLButtonElement>('[aria-label="Remove a.png"]')!.focus();
++  await act(async () => { await executeCommand("remove-conversation-image"); });
++  expect(invoke).toHaveBeenLastCalledWith("conversations.images.remove", { chatId: "a", imageId: "image-a" });
++});
++it("opens and closes the exact read-only image preview through its own mounted controls", async () => {
++  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ image: image("a"), dataUrl: "data:image/png;base64,AA==" });
++  await mount({ images: [image("a")] }); button("Preview").focus();
++  await act(async () => { await executeCommand("preview-conversation-image"); });
++  expect(host.querySelector('img')?.getAttribute("alt")).toBe("a.png");
++  host.querySelector<HTMLButtonElement>('[aria-label="Close image preview"]')!.focus();
++  await act(async () => { await executeCommand("cancel-conversation-image"); });
++  expect(host.querySelector('.viewer-frame')).toBeNull();
++  expect(invoke).toHaveBeenCalledTimes(1);
++});
++it("keeps selection keyboard input and registered whole-image reset before actual attach ACK", async () => {
++  vi.stubGlobal("Image", class { naturalWidth = 16; naturalHeight = 16; src = ""; async decode() {} });
++  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage: vi.fn() } as never);
++  vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,AA==");
++  vi.spyOn(bridge, "pickEvidenceImage").mockResolvedValue({ filename: "Original.png", dataUrl: "data:image/png;base64,AA==" });
++  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ images: [image("a")] }), changed = vi.fn();
++  await mount({ onChange: changed }); await act(async () => button("Image").click());
++  await act(async () => host.querySelector('.capture-canvas')!.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })));
++  expect(host.querySelector('.capture-region')).toBeTruthy();
++  button("Use whole image").focus();
++  await act(async () => { await executeCommand("use-whole-conversation-image"); });
++  expect(host.querySelector('.capture-region')).toBeNull();
++  button("Attach image").focus();
++  await act(async () => { await executeCommand("attach-conversation-image"); });
++  expect(invoke).toHaveBeenCalledWith("conversations.images.add", { chatId: "a", filename: "Original.png", dataUrl: "data:image/png;base64,AA==", sourceUrl: undefined, sourcePage: undefined });
++  expect(changed).toHaveBeenCalledWith("a", [image("a")]);
++});
++it("refuses capture when original target ownership changes while the actual native reply is held", async () => {
++  const page = makePage(0, { pageId: "original", url: "https://loopback.invalid/owned", documentEpoch: 3 });
++  useStore.setState({ pages: [page] });
++  let complete!: (value: unknown) => void;
++  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(() => new Promise(done => { complete = done; }));
++  await mount({ page }); await act(async () => button("Capture").click());
++  expect(invoke).toHaveBeenCalledWith("pages.capture", { pageId: page.pageId, format: "dataUrl", fullPage: false, expectedDocumentEpoch: 3 });
++  useStore.setState({ pages: [{ ...page, targetId: "foreign-original-target" }] });
++  await act(async () => complete({ dataUrl: "data:image/png;base64,AA==" }));
++  expect(host.querySelector('.capture-editor')).toBeNull();
++  expect(host.querySelector('[role="alert"]')?.textContent).toContain("page changed during capture");
++});
++it("refuses foreign focus and native-window changes before invoking the original picker", async () => {
++  const picker = vi.spyOn(bridge, "pickEvidenceImage");
++  await mount();
++  const foreign = document.createElement("button"); document.body.append(foreign); foreign.focus();
++  await expect(executeCommand("choose-conversation-image")).rejects.toThrow("original focused"); foreign.remove();
++  button("Image").focus(); const originalWindow = bridge.windowId; bridge.windowId = "foreign";
++  await expect(executeCommand("choose-conversation-image")).rejects.toThrow("current image control");
++  bridge.windowId = originalWindow;
++  expect(picker).not.toHaveBeenCalled();
++});
++it("uses only closed normal-window scoped registry rows for all ten original actions", () => {
++  for (const id of ["choose-conversation-image", "capture-conversation-page", "select-conversation-image-region", "attach-conversation-image", "cancel-conversation-image", "use-whole-conversation-image", "toggle-conversation-image", "remove-conversation-image", "preview-conversation-image", "attach-conversation-document"]) {
++    expect(COMMANDS.find(command => command.id === id)).toMatchObject({ handler: "shell", dispatch: "scoped", windows: ["normal"], palette: false, intercept: true, bindings: [] });
++  }
++});
++
++it("retains the new same-chat image snapshot when a held original preview completes", async () => {
++  let complete!: (value: unknown) => void;
++  vi.spyOn(bridge, "invoke").mockImplementation(() => new Promise(done => { complete = done; }));
++  await mount({ images: [image("a")] }); await act(async () => button("Preview").click());
++  await mount({ images: [{ ...image("a"), filename: "Fresh snapshot.png" }] });
++  await act(async () => complete({ image: image("a"), dataUrl: "data:image/png;base64,AA==" }));
++  expect(host.querySelector('.viewer-frame')).toBeNull();
++  expect(host.textContent).toContain("Fresh snapshot.png");
++  expect(button("Preview").disabled).toBe(false);
++});
+diff --git a/apps/shell/src/components/ConversationImages.filename-wrap.test.tsx b/apps/shell/src/components/ConversationImages.filename-wrap.test.tsx
+index 24af7e1ce..ee8dd9a7f 100644
+--- a/apps/shell/src/components/ConversationImages.filename-wrap.test.tsx
++++ b/apps/shell/src/components/ConversationImages.filename-wrap.test.tsx
+@@ -26,6 +26,7 @@ const image = {
+ let host: HTMLDivElement, root: ReturnType<typeof createRoot>, style: HTMLStyleElement;
+ beforeEach(() => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
+   HTMLElement.prototype.scrollIntoView = vi.fn();
+   host = document.createElement("div");
+   document.body.append(host);
+diff --git a/apps/shell/src/components/ConversationImages.retirement.test.tsx b/apps/shell/src/components/ConversationImages.retirement.test.tsx
+index d35ae3e9c..272cf7ef1 100644
+--- a/apps/shell/src/components/ConversationImages.retirement.test.tsx
++++ b/apps/shell/src/components/ConversationImages.retirement.test.tsx
+@@ -22,6 +22,7 @@ const image = (chatId: string) => ({
+ });
+ beforeEach(() => {
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100 }] as unknown as DOMRectList);
+   HTMLElement.prototype.scrollIntoView = vi.fn();
+   host = document.createElement("div");
+   document.body.append(host);
+diff --git a/apps/shell/src/components/ConversationImages.tsx b/apps/shell/src/components/ConversationImages.tsx
+index 4b1f4b01c..f66805a6c 100644
+--- a/apps/shell/src/components/ConversationImages.tsx
++++ b/apps/shell/src/components/ConversationImages.tsx
+@@ -1,7 +1,8 @@
+ import { hostOf } from "../workspace";
++import { ConversationImageAction, ConversationImageChoice } from "./ConversationImageControl";
+ import { ImagePreview } from "./ImageSnapshot";
+ import { createPortal } from "react-dom";
+-import { useEffect, useLayoutEffect, useRef, useState } from "react";
++import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+ import type { ConversationImage, PageContextRef, PageTarget } from "@aux/contracts";
+ import { call, errToast, useStore } from "../store";
+ import { bridge } from "../bridge";
+@@ -9,7 +10,7 @@ import { shellIconClose } from "./icons";
+ 
+ type Rect = { x: number; y: number; width: number; height: number };
+ type Capture = { dataUrl: string; sourceUrl?: string; sourcePage?: PageContextRef; title: string; filename?: string };
+-type OperationOwner = { active: boolean; chatId: string | null | undefined; locked: boolean; release: (() => void) | null };
++type OperationOwner = { active: boolean; chatId: string | null | undefined; locked: boolean; release: (() => void) | null; windowId: string; privateMode: boolean; kind: typeof bridge.windowKind };
+ 
+ type Bounds = { left: number; top: number; width: number; height: number };
+ 
+@@ -57,6 +58,9 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
+   incomingFile?: File | null; onFileConsumed?(file: File): void;
+   ensureChatId(): string; onChange(chatId: string, images: ConversationImage[]): void; onBusy(busy: boolean): void; onDocument(): void;
+ }) {
++  const imageScope = useId();
++  const committedImages = useRef(images);
++  useLayoutEffect(() => { committedImages.current = images; }, [images]);
+   const [capture, setCapture] = useState<Capture | null>(null);
+   const [region, setRegion] = useState<Rect | null>(null);
+   const [preview, setPreview] = useState<{ image: ConversationImage; dataUrl: string } | null>(null);
+@@ -68,23 +72,24 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
+   const captureCanvas = useRef<HTMLDivElement>(null);
+   const lassoTrigger = useRef<HTMLButtonElement>(null);
+   useEffect(() => { review.current?.scrollIntoView({ block: "nearest" }); }, [capture, preview]);
++  const windowId = bridge.windowId, privateMode = bridge.privateMode, kind = bridge.windowKind;
+   const request = useRef(0);
+-  const operationOwner = useRef<OperationOwner>({ active: true, chatId, locked: false, release: null });
++  const operationOwner = useRef<OperationOwner>({ active: true, chatId, locked: false, release: null, windowId, privateMode, kind });
+   const start = useRef<{ x: number; y: number } | null>(null);
+   const currentChat = useRef(chatId);
+   currentChat.current = chatId;
+   useLayoutEffect(() => {
+     const previous = operationOwner.current;
+-    if (previous.chatId !== chatId) {
++    if (previous.chatId !== chatId || previous.windowId !== windowId || previous.privateMode !== privateMode || previous.kind !== kind) {
+       previous.active = false;
+       const release = previous.release; previous.release = null; release?.();
+-      operationOwner.current = { active: true, chatId, locked: false, release: null };
++      operationOwner.current = { active: true, chatId, locked: false, release: null, windowId, privateMode, kind };
+       setBusy(false);
+     }
+     setCapture(null); setRegion(null); setPreview(null); setError(""); setLasso(null);
+     if (useStore.getState().overlay === "capture") useStore.getState().setOverlay(null);
+     ++request.current;
+-  }, [chatId]);
++  }, [chatId, windowId, privateMode, kind]);
+   useLayoutEffect(() => () => {
+     const owner = operationOwner.current;
+     owner.active = false; const release = owner.release; owner.release = null; release?.();
+@@ -106,23 +111,24 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
+     window.addEventListener("resize", update);
+     return () => window.removeEventListener("resize", update);
+   }, [!!lasso]);
++  const operationCurrent = (owner: OperationOwner) => owner.active && operationOwner.current === owner && owner.windowId === bridge.windowId && owner.privateMode === bridge.privateMode && owner.kind === bridge.windowKind;
+   const perform = async (action: (version: number, owner: OperationOwner) => Promise<void>) => {
+     const owner = operationOwner.current;
+-    if (!owner.active || owner.locked) return;
++    if (!operationCurrent(owner) || owner.locked) return;
+     owner.locked = true; owner.release = () => onBusy(false);
+     setBusy(true); onBusy(true); setError("");
+     const version = ++request.current;
+     try { await action(version, owner); }
+-    catch (reason) { if (owner.active && request.current === version) setError(reason instanceof Error ? reason.message : String(reason)); }
++    catch (reason) { if (operationCurrent(owner) && request.current === version) setError(reason instanceof Error ? reason.message : String(reason)); }
+     finally {
+       owner.locked = false; const release = owner.release; owner.release = null; release?.();
+-      if (owner.active) setBusy(false);
++      if (operationCurrent(owner)) setBusy(false);
+     }
+   };
+   useEffect(() => {
+     if (!incomingFile) return;
+     const file = incomingFile;
+-    void perform(async version => {
++    void perform(async (version, owner) => {
+       try {
+         if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) throw new Error("Paste or drop a PNG, JPEG or WebP image.");
+         if (!file.size || file.size > 16 * 1024 * 1024) throw new Error("Choose an image up to 16 MB.");
+@@ -134,63 +140,75 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
+           reader.readAsDataURL(file);
+         });
+         const normalized = await cropImage(dataUrl, null);
+-        if (version !== request.current) return;
++        if (version !== request.current || !operationCurrent(owner)) return;
+         setPreview(null); setRegion(null);
+         const filename = `${(file.name || "Pasted image").replace(/\.[^.]+$/, "").slice(0, 180)}.png`;
+         setCapture({dataUrl:normalized, filename, title:filename});
+       } finally { onFileConsumed?.(file); }
+     });
+   }, [incomingFile]);
+-  const chooseImage = () => perform(async version => {
++  const chooseImage = () => perform(async (version, owner) => {
+     const picked = await bridge.pickEvidenceImage();
+-    if (!picked || version !== request.current) return;
++    if (!picked || version !== request.current || !operationCurrent(owner)) return;
+     setPreview(null); setRegion(null);
+     setCapture({ dataUrl: picked.dataUrl, title: picked.filename, filename: picked.filename });
+   });
+-  const takeCapture = (onPage = false) => perform(async version => {
+-    if (!page) return;
++  const pageCurrent = () => {
++    if (!page) return false;
++    const matches = useStore.getState().pages.filter(item => item.pageId === page.pageId);
++    const original = matches.length === 1 ? matches[0] : undefined;
++    return !!original && original.url === page.url && original.documentEpoch === page.documentEpoch && original.targetId === page.targetId && original.sessionId === page.sessionId && original.windowId === page.windowId;
++  };
++  const takeCapture = (onPage = false) => perform(async (version, owner) => {
++    if (!page || !pageCurrent()) throw new Error("The page changed during capture. Capture it again.");
+     const bounds = onPage ? stageBounds() : null;
+     if (onPage && !bounds) throw new Error("The page is not visible. Show the page and try again.");
+     const result = await call("pages.capture", { pageId: page.pageId, format: "dataUrl", fullPage: false, expectedDocumentEpoch: page.documentEpoch }) as { dataUrl: string };
+-    if (version !== request.current) return;
++    if (version !== request.current || !operationCurrent(owner)) return;
+     const current = useStore.getState().pages.find(item => item.pageId === page.pageId);
+-    if (!current || current.url !== page.url || current.documentEpoch !== page.documentEpoch) throw new Error("The page changed during capture. Capture it again.");
++    if (!current || !pageCurrent()) throw new Error("The page changed during capture. Capture it again.");
+     if (onPage) {
+       const state = useStore.getState();
+       if (state.mode !== "focus" || state.activePageId !== page.pageId || state.splitPageId) throw new Error("The visible page changed. Show it and try again.");
+       const size = await imageSize(result.dataUrl);
+-      if (version !== request.current) return;
++      if (version !== request.current || !operationCurrent(owner)) return;
+       const visible = useStore.getState();
+       const visiblePage = visible.pages.find(item => item.pageId === page.pageId);
+       if (visible.mode !== "focus" || visible.activePageId !== page.pageId || visible.splitPageId
+-        || visiblePage?.url !== page.url || visiblePage.documentEpoch !== page.documentEpoch)
++        || !visiblePage || !pageCurrent())
+         throw new Error("The visible page changed. Show it and try again.");
+       setLasso({ bounds: stageBounds() ?? bounds!, ...size });
+       visible.setOverlay("capture");
+     }
+     setPreview(null); setRegion(null); setCapture({ dataUrl: result.dataUrl, sourceUrl: page.url, sourcePage: { pageId: page.pageId, url: page.url, documentEpoch: page.documentEpoch, sessionId: page.sessionId, selectedAt: Date.now() }, title: page.title || "Page" });
+   });
++  const restoreCaptureFocus = () => { const owner = operationOwner.current, original = lassoTrigger.current; requestAnimationFrame(() => { if (operationCurrent(owner) && original?.isConnected && lassoTrigger.current === original) original.focus(); }); };
+   const saveCapture = () => perform(async (version, owner) => {
+     if (!capture) return;
+     const dataUrl = await cropImage(capture.dataUrl, region);
+-    if (version !== request.current) return;
++    if (version !== request.current || !operationCurrent(owner)) return;
+     const target = ensureChatId();
+-    if (!owner.active) return;
++    if (!operationCurrent(owner)) return;
+     // Creating a conversation changes the prop before the save finishes.
+     owner.chatId = target;
+     currentChat.current = target;
+-    const result = await call("conversations.images.add", { chatId: target, filename: capture.filename ? (region ? `${capture.filename.replace(/\.png$/i, "")} region.png` : capture.filename) : `${capture.title.slice(0, 100)}${region ? " region" : " capture"}.png`, dataUrl, sourceUrl: capture.sourceUrl, sourcePage: capture.sourcePage }).catch(error => { if (owner.active && request.current !== version && currentChat.current === target) errToast(error); throw error; });
+-    if (owner.active && currentChat.current === target) { onChange(target, result.images); setCapture(null); setRegion(null); setLasso(null); if (useStore.getState().overlay === "capture") { useStore.getState().setOverlay(null); requestAnimationFrame(() => lassoTrigger.current?.focus()); } }
++    const result = await call("conversations.images.add", { chatId: target, filename: capture.filename ? (region ? `${capture.filename.replace(/\.png$/i, "")} region.png` : capture.filename) : `${capture.title.slice(0, 100)}${region ? " region" : " capture"}.png`, dataUrl, sourceUrl: capture.sourceUrl, sourcePage: capture.sourcePage }).catch(error => { if (operationCurrent(owner) && request.current !== version && currentChat.current === target) errToast(error); throw error; });
++    if (operationCurrent(owner) && currentChat.current === target) { onChange(target, result.images); setCapture(null); setRegion(null); setLasso(null); if (useStore.getState().overlay === "capture") { useStore.getState().setOverlay(null); restoreCaptureFocus(); } }
+   });
+-  const cancelCapture = () => { setCapture(null); setRegion(null); setLasso(null); if (useStore.getState().overlay === "capture") { useStore.getState().setOverlay(null); requestAnimationFrame(() => lassoTrigger.current?.focus()); } };
+-  const change = (imageId: string, included?: boolean) => perform(async version => {
+-    if (!chatId) return;
++  const cancelCapture = () => { setCapture(null); setRegion(null); setLasso(null); if (useStore.getState().overlay === "capture") { useStore.getState().setOverlay(null); restoreCaptureFocus(); } };
++  const originalImage = (imageId: string) => { const matches = committedImages.current.filter(item => item.imageId === imageId); return matches.length === 1 ? matches[0] : undefined; };
++  const imageMatches = (original: ConversationImage | undefined, snapshot = JSON.stringify(original)) => !!original && JSON.stringify(originalImage(original.imageId)) === snapshot;
++  const change = (imageId: string, included?: boolean) => perform(async (version, owner) => {
++    const original = originalImage(imageId), snapshot = JSON.stringify(original);
++    if (!chatId || !original) throw new Error("Choose the current conversation image.");
+     const result = await call(included === undefined ? "conversations.images.remove" : "conversations.images.toggle", { chatId, imageId, ...(included === undefined ? {} : { included }) });
+-    if (version === request.current) { onChange(chatId, result.images); setPreview(null); }
++    if (version === request.current && operationCurrent(owner) && imageMatches(original, snapshot)) { onChange(chatId, result.images); setPreview(null); }
+   });
+-  const inspect = (imageId: string) => perform(async version => {
++  const inspect = (imageId: string) => perform(async (version, owner) => {
++    const original = originalImage(imageId), snapshot = JSON.stringify(original);
++    if (!chatId || !original) throw new Error("Choose the current conversation image.");
+     const result = await call("conversations.images.read", { chatId: chatId as string, imageId });
+-    if (version === request.current) { setPreview(result); setCapture(null); }
++    if (version === request.current && operationCurrent(owner) && imageMatches(original, snapshot)) { setPreview(result); setCapture(null); }
+   });
+   const canCapture = page && /^https?:\/\//.test(page.url) && !["crashed", "detached"].includes(page.viewStatus ?? "");
+   const onPage = canCapture && useStore.getState().mode === "focus" && useStore.getState().activePageId === page.pageId && !useStore.getState().splitPageId && page.backend !== "chrome";
+@@ -223,8 +241,11 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
+   }} onPointerUp={() => { start.current = null; }} onPointerCancel={() => { start.current = null; }}>
+     <img src={capture.dataUrl} alt="Capture to review before attaching" draggable={false}/>
+     {region && <span className="capture-region" style={{ left: `${region.x * 100}%`, top: `${region.y * 100}%`, width: `${region.width * 100}%`, height: `${region.height * 100}%` }}/>}</div>;
+-  const captureActions = <div className="capture-actions"><button className="btn sm ghost" disabled={busy} onClick={cancelCapture}>Cancel</button>{region && <button className="btn sm ghost" disabled={busy} onClick={() => setRegion(null)}>Use whole image</button>}<button className="btn sm" disabled={disabled || busy} onClick={() => void saveCapture()}>Attach {region ? "region" : "image"}</button></div>;
+-  const triggers = <div className="capture-triggers"><button className="btn sm" disabled={disabled || busy} onClick={onDocument}>Document</button><button className="btn sm" disabled={disabled || busy || images.length >= 4} onClick={() => void chooseImage()}>Image</button><button className="btn sm" disabled={disabled || busy || !canCapture || images.length >= 4} title={captureDisabledReason} onClick={() => void takeCapture()}>Capture</button><button ref={lassoTrigger} className="btn sm" disabled={disabled || busy || !onPage || images.length >= 4} title={onPage ? "Select directly on the visible page" : "Show this page by itself to select an area"} onClick={() => void takeCapture(true)}>Select area</button></div>;
++  const current = () => operationCurrent(operationOwner.current) && operationOwner.current.chatId === chatId && currentChat.current === chatId;
++  const imageCurrent = (item: ConversationImage) => current() && imageMatches(item);
++  const captureCurrent = () => current() && !!capture && !operationOwner.current.locked;
++  const captureActions = <div className="capture-actions"><ConversationImageAction command="cancel-conversation-image" className="btn sm ghost" disabled={busy} current={captureCurrent} invoke={cancelCapture}>Cancel</ConversationImageAction>{region && <ConversationImageAction command="use-whole-conversation-image" className="btn sm ghost" disabled={busy} current={captureCurrent} invoke={() => setRegion(null)}>Use whole image</ConversationImageAction>}<ConversationImageAction command="attach-conversation-image" className="btn sm" disabled={disabled || busy} current={captureCurrent} invoke={saveCapture}>Attach {region ? "region" : "image"}</ConversationImageAction></div>;
++  const triggers = <div className="capture-triggers"><ConversationImageAction command="attach-conversation-document" className="btn sm" disabled={disabled || busy} current={current} invoke={onDocument}>Document</ConversationImageAction><ConversationImageAction command="choose-conversation-image" className="btn sm" disabled={disabled || busy || images.length >= 4} current={current} invoke={chooseImage}>Image</ConversationImageAction><ConversationImageAction command="capture-conversation-page" className="btn sm" disabled={disabled || busy || !canCapture || images.length >= 4} title={captureDisabledReason} current={() => current() && !!canCapture && pageCurrent()} invoke={() => takeCapture()}>Capture</ConversationImageAction><ConversationImageAction command="select-conversation-image-region" originalRef={lassoTrigger} className="btn sm" disabled={disabled || busy || !onPage || images.length >= 4} title={onPage ? "Select directly on the visible page" : "Show this page by itself to select an area"} current={() => current() && !!onPage && pageCurrent() && useStore.getState().mode === "focus" && useStore.getState().activePageId === page?.pageId && !useStore.getState().splitPageId} invoke={() => takeCapture(true)}>Select area</ConversationImageAction></div>;
+   const showRest = (showAttachedImages && images.length > 0) || !!error || busy || !!capture || !!preview;
+   return <><section className="conversation-captures" aria-label="Image references">
+     {detachedTools ? toolsTarget && createPortal(triggers, toolsTarget) : triggers}
+@@ -232,14 +253,14 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
+     {images.length >= 4 && <p className="hint">Four images attached. Remove one to add another.</p>}
+     {error && <p className="field-error" role="alert">{error}</p>}
+     {busy && <output className="hint" data-block>Preparing image…</output>}
+-    {showAttachedImages && images.map(item => <div className="conversation-document" key={item.imageId}><label><input type="checkbox" checked={item.included} disabled={disabled || busy} onChange={event => void change(item.imageId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><button className="btn sm ghost" disabled={busy} onClick={() => void inspect(item.imageId)}>Preview</button><button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} onClick={() => void change(item.imageId)}>{shellIconClose}</button></div>)}
++    {showAttachedImages && images.map(item => <div className="conversation-document" key={item.imageId}><label htmlFor={`${imageScope}-${item.imageId}`}><ConversationImageChoice id={`${imageScope}-${item.imageId}`} checked={item.included} disabled={disabled || busy} current={() => imageCurrent(item)} invoke={included => change(item.imageId, included)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><ConversationImageAction command="preview-conversation-image" className="btn sm ghost" disabled={busy} current={() => imageCurrent(item)} invoke={() => inspect(item.imageId)}>Preview</ConversationImageAction><ConversationImageAction command="remove-conversation-image" className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} current={() => imageCurrent(item)} invoke={() => change(item.imageId)}>{shellIconClose}</ConversationImageAction></div>)}
+     {capture && !lasso && <div className="capture-editor" ref={review}>
+       <p className="hint">{capture.title} · {capture.sourceUrl ? hostOf(capture.sourceUrl) : "Local image"}</p>
+       <p className="hint">Drag to select a region. Editable fields are hidden in page captures. Keyboard: arrows move it; Shift + arrows resize it. Escape clears the selection.</p>
+       {selection}
+       {captureActions}
+     </div>}
+-    {preview && <div ref={review}><ImagePreview snapshot={preview} onClose={() => setPreview(null)} /></div>}
++    {preview && <div ref={review}><ImagePreview snapshot={preview} onClose={() => setPreview(null)} closeControl={<ConversationImageAction command="cancel-conversation-image" className="icon-btn xs" aria-label="Close image preview" current={current} invoke={() => setPreview(null)}>{shellIconClose}</ConversationImageAction>} /></div>}
+     </div>}
+   </section>{capture && lasso && overlay === "capture" && createPortal(<div className="page-lasso" role="dialog" aria-modal="true" aria-label="Select an area of the captured page">
+     <div className="page-lasso-image" style={{ left: lasso.bounds.left + (lasso.bounds.width - Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.width) / 2, top: lasso.bounds.top + (lasso.bounds.height - Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.height) / 2, width: Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.width, height: Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.height }}>{selection}</div>
+diff --git a/apps/shell/src/components/ImageSnapshot.tsx b/apps/shell/src/components/ImageSnapshot.tsx
+index 0cb9f8647..e7c954e5f 100644
+--- a/apps/shell/src/components/ImageSnapshot.tsx
++++ b/apps/shell/src/components/ImageSnapshot.tsx
+@@ -1,14 +1,14 @@
+-import { useEffect, useState } from "react";
++import { useEffect, useState, type ReactNode } from "react";
+ import type { ConversationImage } from "@aux/contracts";
+ import { call } from "../store";
+ import { ViewerFrame } from "./ViewerFrame";
+ import { ImageViewer } from "./ImageViewer";
+ 
+ export type SavedImageSnapshot = {image:ConversationImage;dataUrl:string};
+-export function ImagePreview({snapshot,onClose}:{snapshot:SavedImageSnapshot;onClose():void}) {
++export function ImagePreview({snapshot,onClose,closeControl}:{snapshot:SavedImageSnapshot;onClose():void;closeControl?:ReactNode}) {
+   const [failed,setFailed]=useState(false);
+   useEffect(()=>setFailed(false),[snapshot.dataUrl]);
+-  return <ViewerFrame label="Image snapshot" title={snapshot.image.filename} onClose={onClose} closeLabel="Close image preview" metadata={`${snapshot.image.width} × ${snapshot.image.height} · ${snapshot.image.included ? "Included in new replies" : "Excluded from new replies"}`}>
++  return <ViewerFrame label="Image snapshot" title={snapshot.image.filename} onClose={onClose} closeControl={closeControl} closeLabel="Close image preview" metadata={`${snapshot.image.width} × ${snapshot.image.height} · ${snapshot.image.included ? "Included in new replies" : "Excluded from new replies"}`}>
+     {failed ? <p role="alert">This saved image could not be displayed.</p> : <ImageViewer src={snapshot.dataUrl} alt={snapshot.image.filename} onError={()=>setFailed(true)}/>}
+     <details className="image-viewer-metadata"><summary>Image details</summary><p>Saved {new Date(snapshot.image.createdAt).toLocaleString()}</p>
+     {snapshot.image.sourcePage && <p>Captured from {snapshot.image.sourcePage.url} at {new Date(snapshot.image.sourcePage.selectedAt ?? snapshot.image.createdAt).toLocaleString()}. This image remains a snapshot if the tab changes.</p>}</details>

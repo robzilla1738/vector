@@ -33,28 +33,42 @@ export interface AuxErrorDefinition {
   publicMessage: string;
 }
 
+function errorDefinition<
+  const I extends number, const D extends AuxErrorDomain, const R extends boolean,
+  const P extends readonly string[], const O extends AuxErrorOrigin,
+  const U extends string, const M extends string, const S extends string,
+>(id: I, domain: D, retryable: R, payloadAllowlist: P, origin: O, userRecovery: U, modelGuidance: M, publicMessage: S) {
+  return { id: `AUX-E${id}` as const, domain, retryable, payloadAllowlist, origin, userRecovery, modelGuidance, publicMessage } as const;
+}
+
+const errorFor = <const D extends AuxErrorDomain, const O extends AuxErrorOrigin>(domain: D, origin: O) =>
+  <const I extends number, const R extends boolean, const P extends readonly string[], const U extends string, const M extends string, const S extends string>(
+    id: I, retryable: R, payloadAllowlist: P, userRecovery: U, modelGuidance: M, publicMessage: S,
+  ) => errorDefinition(id, domain, retryable, payloadAllowlist, origin, userRecovery, modelGuidance, publicMessage);
+const runtimeError = errorFor("runtime", "runtime"), browserError = errorFor("browser", "browser");
+
 /** Stable, exhaustive error catalog. Only allowlisted detail fields cross an emit boundary. */
 export const AUX_ERROR_REGISTRY = {
-  not_found: { id: "AUX-E1001", domain: "input", retryable: false, payloadAllowlist: ["id"], origin: "client", userRecovery: "Choose an existing item.", modelGuidance: "Re-list available items before continuing.", publicMessage: "The requested item was not found." },
-  invalid_params: { id: "AUX-E1002", domain: "input", retryable: false, payloadAllowlist: ["field"], origin: "client", userRecovery: "Check the request and try again.", modelGuidance: "Correct the input; do not repeat it unchanged.", publicMessage: "The request contains invalid input." },
-  target_detached: { id: "AUX-E2001", domain: "browser", retryable: true, payloadAllowlist: ["pageId"], origin: "browser", userRecovery: "Reopen or reselect the page.", modelGuidance: "Observe a live page before retrying.", publicMessage: "The page is no longer attached." },
-  ref_stale: { id: "AUX-E2002", domain: "browser", retryable: true, payloadAllowlist: ["pageId", "revision"], origin: "browser", userRecovery: "Refresh the page observation.", modelGuidance: "Re-observe and use a fresh element reference.", publicMessage: "The page reference is stale." },
-  target_ambiguous: { id: "AUX-E2003", domain: "browser", retryable: false, payloadAllowlist: ["matchCount"], origin: "browser", userRecovery: "Choose a more specific target.", modelGuidance: "Narrow the locator; do not guess.", publicMessage: "The target matches more than one element." },
-  backend_unavailable: { id: "AUX-E5001", domain: "runtime", retryable: true, payloadAllowlist: [], origin: "runtime", userRecovery: "Reconnect the browser backend.", modelGuidance: "Wait for the backend to return before retrying.", publicMessage: "The browser backend is unavailable." },
-  capability_unsupported: { id: "AUX-E2004", domain: "browser", retryable: false, payloadAllowlist: ["capability"], origin: "browser", userRecovery: "Use a supported page or browser capability.", modelGuidance: "Choose a different supported method.", publicMessage: "This browser capability is unsupported." },
-  feature_unavailable: { id: "AUX-E5002", domain: "runtime", retryable: false, payloadAllowlist: ["feature", "stage", "host"], origin: "runtime", userRecovery: "Enable the feature in a supported host.", modelGuidance: "Do not retry until the feature is enabled.", publicMessage: "This feature is unavailable." },
-  step_failed: { id: "AUX-E2005", domain: "browser", retryable: false, payloadAllowlist: ["stepId"], origin: "browser", userRecovery: "Review the page and action result.", modelGuidance: "Observe the page before deciding whether another action is safe.", publicMessage: "The browser action failed." },
-  condition_timeout: { id: "AUX-E2006", domain: "browser", retryable: true, payloadAllowlist: ["timeoutMs"], origin: "browser", userRecovery: "Wait or adjust the condition.", modelGuidance: "Check the current page and use a bounded wait.", publicMessage: "The page condition timed out." },
-  cancelled: { id: "AUX-E5003", domain: "runtime", retryable: false, payloadAllowlist: [], origin: "client", userRecovery: "Start a new action if needed.", modelGuidance: "Respect the cancellation.", publicMessage: "The action was cancelled." },
-  model_error: { id: "AUX-E3001", domain: "model", retryable: true, payloadAllowlist: ["status"], origin: "provider", userRecovery: "Check the model connection and retry.", modelGuidance: "Retry only after the provider is available.", publicMessage: "The model request failed." },
-  model_output_invalid: { id: "AUX-E3002", domain: "model", retryable: false, payloadAllowlist: [], origin: "provider", userRecovery: "Try a new request.", modelGuidance: "Produce a valid structured response.", publicMessage: "The model response was invalid." },
-  needs_input: { id: "AUX-E4001", domain: "authorization", retryable: false, payloadAllowlist: ["requestId", "suspensionKind"], origin: "runtime", userRecovery: "Answer the pending request in Aux.", modelGuidance: "Do not retry until the user responds.", publicMessage: "Your input is needed to continue." },
-  conflict: { id: "AUX-E5004", domain: "runtime", retryable: true, payloadAllowlist: ["revision"], origin: "runtime", userRecovery: "Refresh the current state.", modelGuidance: "Read current state before another write.", publicMessage: "The state changed before this action completed." },
-  permission_denied: { id: "AUX-E4002", domain: "authorization", retryable: false, payloadAllowlist: ["effect", "origin"], origin: "runtime", userRecovery: "Review the denied action and its permission.", modelGuidance: "Do not retry while denied; request authorization or use a permitted path.", publicMessage: "The action is not authorized." },
-  assertion_failed: { id: "AUX-E6001", domain: "operation", retryable: false, payloadAllowlist: ["assertion"], origin: "runtime", userRecovery: "Review the expected result.", modelGuidance: "Observe and report the unmet condition.", publicMessage: "The expected result was not observed." },
-  operation_not_found: { id: "AUX-E6002", domain: "operation", retryable: false, payloadAllowlist: ["operationId"], origin: "runtime", userRecovery: "Choose an available operation.", modelGuidance: "List operations and choose an existing one.", publicMessage: "The operation was not found." },
-  recovery_stale: { id: "AUX-E5005", domain: "runtime", retryable: false, payloadAllowlist: [], origin: "runtime", userRecovery: "Create a fresh recovery package. Copied files and phrases cannot be revoked.", modelGuidance: "Do not retry this restore. Say that copied files and phrases cannot be revoked and a new recovery package is required.", publicMessage: "This managed backup predates the current recovery generation and cannot be restored. Copied files and phrases cannot be revoked." },
-  internal: { id: "AUX-E5000", domain: "runtime", retryable: false, payloadAllowlist: [], origin: "runtime", userRecovery: "Try again or report this error.", modelGuidance: "Stop and report the runtime error.", publicMessage: "An internal error occurred." },
+  not_found: errorDefinition(1001, "input", false, ["id"], "client", "Choose an existing item.", "Re-list available items before continuing.", "The requested item was not found."),
+  invalid_params: errorDefinition(1002, "input", false, ["field"], "client", "Check the request and try again.", "Correct the input; do not repeat it unchanged.", "The request contains invalid input."),
+  target_detached: browserError(2001, true, ["pageId"], "Reopen or reselect the page.", "Observe a live page before retrying.", "The page is no longer attached."),
+  ref_stale: browserError(2002, true, ["pageId", "revision"], "Refresh the page observation.", "Re-observe and use a fresh element reference.", "The page reference is stale."),
+  target_ambiguous: browserError(2003, false, ["matchCount"], "Choose a more specific target.", "Narrow the locator; do not guess.", "The target matches more than one element."),
+  backend_unavailable: runtimeError(5001, true, [], "Reconnect the browser backend.", "Wait for the backend to return before retrying.", "The browser backend is unavailable."),
+  capability_unsupported: browserError(2004, false, ["capability"], "Use a supported page or browser capability.", "Choose a different supported method.", "This browser capability is unsupported."),
+  feature_unavailable: runtimeError(5002, false, ["feature", "stage", "host"], "Enable the feature in a supported host.", "Do not retry until the feature is enabled.", "This feature is unavailable."),
+  step_failed: browserError(2005, false, ["stepId"], "Review the page and action result.", "Observe the page before deciding whether another action is safe.", "The browser action failed."),
+  condition_timeout: browserError(2006, true, ["timeoutMs"], "Wait or adjust the condition.", "Check the current page and use a bounded wait.", "The page condition timed out."),
+  cancelled: errorDefinition(5003, "runtime", false, [], "client", "Start a new action if needed.", "Respect the cancellation.", "The action was cancelled."),
+  model_error: errorDefinition(3001, "model", true, ["status"], "provider", "Check the model connection and retry.", "Retry only after the provider is available.", "The model request failed."),
+  model_output_invalid: errorDefinition(3002, "model", false, [], "provider", "Try a new request.", "Produce a valid structured response.", "The model response was invalid."),
+  needs_input: errorDefinition(4001, "authorization", false, ["requestId", "suspensionKind"], "runtime", "Answer the pending request in Aux.", "Do not retry until the user responds.", "Your input is needed to continue."),
+  conflict: runtimeError(5004, true, ["revision"], "Refresh the current state.", "Read current state before another write.", "The state changed before this action completed."),
+  permission_denied: errorDefinition(4002, "authorization", false, ["effect", "origin"], "runtime", "Review the denied action and its permission.", "Do not retry while denied; request authorization or use a permitted path.", "The action is not authorized."),
+  assertion_failed: errorDefinition(6001, "operation", false, ["assertion"], "runtime", "Review the expected result.", "Observe and report the unmet condition.", "The expected result was not observed."),
+  operation_not_found: errorDefinition(6002, "operation", false, ["operationId"], "runtime", "Choose an available operation.", "List operations and choose an existing one.", "The operation was not found."),
+  recovery_stale: runtimeError(5005, false, [], "Create a fresh recovery package. Copied files and phrases cannot be revoked.", "Do not retry this restore. Say that copied files and phrases cannot be revoked and a new recovery package is required.", "This managed backup predates the current recovery generation and cannot be restored. Copied files and phrases cannot be revoked."),
+  internal: runtimeError(5000, false, [], "Try again or report this error.", "Stop and report the runtime error.", "An internal error occurred."),
 } as const satisfies Record<AuxErrorCode, AuxErrorDefinition>;
 
 export class AuxError extends Error {

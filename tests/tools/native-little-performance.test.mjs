@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { validateLittlePresentationPair } from '../host/lib/native-little-performance-protocol.mjs';
+import { extractOriginalGuestFixtureRecord } from '../host/lib/guest-original-record.mjs';
 import { collectGuestPresentations } from '../host/lib/native-guest-performance.mjs';
 const ready = (trial = 1) => ({ producer: 'aux-native-little-presentation-upperbound', version: 1, metric: 'little-window', startKind: 'native-arm-upperbound', earliestPresentationProven: false, requestNonce: trial.toString(16).padStart(32, '0'), sampleSequence: String(trial), windowId: 7, widgetRoutingId: 1, rendererPid: 42, nativeDocumentGeneration: '1', shellSink: { clientId: 1, sinkId: 2 }, displaySink: { clientId: 3, sinkId: 4 }, armedUs: String(trial * 1000000), status: 'ready', reason: 'ready', measured: false });
 const measured = (trial = 1, elapsed = 400000) => {
@@ -48,4 +49,10 @@ test('20 genuine-channel-shaped samples preserve Arm/external/Complete/cleanup o
 test('one 600.001ms outlier refuses even when p95 passes and retains all originals', async () => {
   const f = fixture(true);
   await assert.rejects(collectGuestPresentations(f.options), error => error.report.samplesMs.length === 20 && error.report.p95Ms === 400 && error.report.maxMs === 600.001 && error.report.attempts.every(row => row.measuredRaw && row.measuredReceipt.raw));
+});
+
+test('Little original bytes retain actual nested .0 through full collector', async () => {
+  const f = fixture(), invoke = f.options.transport.invoke;
+  f.options.transport.invoke = async function(method) { await invoke.call(this, method); this.lastReceipt.raw = this.lastReceipt.raw.replace('"clientId":1', '"clientId":1.0'); assert.ok(this.lastReceipt.raw.includes('1.0')); this.lastReceipt.recordRaw = extractOriginalGuestFixtureRecord(this.lastReceipt.raw); return this.lastReceipt.recordRaw; };
+  const report = await collectGuestPresentations(f.options); assert.equal(report.samplesMs.length, 20); assert.equal(report.status, 'measured');
 });

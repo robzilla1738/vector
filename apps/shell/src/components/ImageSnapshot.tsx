@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ConversationImage } from "@aux/contracts";
 import { call } from "../store";
 import { ViewerFrame } from "./ViewerFrame";
 import { ImageViewer } from "./ImageViewer";
 
 export type SavedImageSnapshot = {image:ConversationImage;dataUrl:string};
-export function ImagePreview({snapshot,onClose}:{snapshot:SavedImageSnapshot;onClose():void}) {
+export function ImagePreview({snapshot,onClose,closeControl}:{snapshot:SavedImageSnapshot;onClose():void;closeControl?:ReactNode}) {
   const [failed,setFailed]=useState(false);
   useEffect(()=>setFailed(false),[snapshot.dataUrl]);
-  return <ViewerFrame label="Image snapshot" title={snapshot.image.filename} onClose={onClose} closeLabel="Close image preview" metadata={`${snapshot.image.width} × ${snapshot.image.height} · ${snapshot.image.included ? "Included in new replies" : "Excluded from new replies"}`}>
+  return <ViewerFrame label="Image snapshot" title={snapshot.image.filename} onClose={onClose} closeControl={closeControl} closeLabel="Close image preview" metadata={`${snapshot.image.width} × ${snapshot.image.height} · ${snapshot.image.included ? "Included in new replies" : "Excluded from new replies"}`}>
     {failed ? <p role="alert">This saved image could not be displayed.</p> : <ImageViewer src={snapshot.dataUrl} alt={snapshot.image.filename} onError={()=>setFailed(true)}/>}
     <details className="image-viewer-metadata"><summary>Image details</summary><p>Saved {new Date(snapshot.image.createdAt).toLocaleString()}</p>
     {snapshot.image.sourcePage && <p>Captured from {snapshot.image.sourcePage.url} at {new Date(snapshot.image.sourcePage.selectedAt ?? snapshot.image.createdAt).toLocaleString()}. This image remains a snapshot if the tab changes.</p>}</details>

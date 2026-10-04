@@ -1,0 +1,79 @@
+✖ actual caller composes original seed close, 60 READY→single HID trials and original cleanup (31.182792ms)
+✔ fewer than 20 refuses before any original owner creation (9.083959ms)
+✖ wrong observed READY refuses before measured HID and still retires original owners (7.524708ms)
+✖ original global abort after READY prevents measured HID (6.035209ms)
+✖ unrounded fractional 30.004ms truthfully fails unchanged 30ms budget (5.136958ms)
+✖ original primary and helper cleanup rejection identity both retained (5.294333ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 1
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 210.049833
+
+✖ failing tests:
+
+test at tests/host/lib/native-command-collector.test.mjs:33:1
+✖ actual caller composes original seed close, 60 READY→single HID trials and original cleanup (31.182792ms)
+  TypeError: Cannot read properties of undefined (reading 'equal')
+      at Object.collectNativeCommandPresentation (evalmachine.<anonymous>:57:22)
+      at Object.collect (file:///private/tmp/aux-browser-runtime-l10-native-command-cohort/tests/host/lib/native-command-collector.test.mjs:31:47)
+      at TestContext.<anonymous> (file:///private/tmp/aux-browser-runtime-l10-native-command-cohort/tests/host/lib/native-command-collector.test.mjs:34:41)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.start (node:internal/test_runner/test:1257:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+
+test at tests/host/lib/native-command-collector.test.mjs:40:1
+✖ wrong observed READY refuses before measured HID and still retires original owners (7.524708ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(f.calls.includes('helper-close'))
+  
+      at TestContext.<anonymous> (file:///private/tmp/aux-browser-runtime-l10-native-command-cohort/tests/host/lib/native-command-collector.test.mjs:40:279)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/host/lib/native-command-collector.test.mjs:41:1
+✖ original global abort after READY prevents measured HID (6.035209ms)
+  TypeError: Cannot read properties of undefined (reading 'message')
+      at Object.<anonymous> (file:///private/tmp/aux-browser-runtime-l10-native-command-cohort/tests/host/lib/native-command-collector.test.mjs:41:180)
+      at expectedException (node:assert:547:17)
+      at expectsError (node:assert:672:21)
+      at strict.rejects (node:assert:738:3)
+      at async TestContext.<anonymous> (file:///private/tmp/aux-browser-runtime-l10-native-command-cohort/tests/host/lib/native-command-collector.test.mjs:41:125)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+
+test at tests/host/lib/native-command-collector.test.mjs:42:1
+✖ unrounded fractional 30.004ms truthfully fails unchanged 30ms budget (5.136958ms)
+  TypeError: Cannot read properties of undefined (reading 'equal')
+      at Object.collectNativeCommandPresentation (evalmachine.<anonymous>:57:22)
+      at Object.collect (file:///private/tmp/aux-browser-runtime-l10-native-command-cohort/tests/host/lib/native-command-collector.test.mjs:31:47)
+      at TestContext.<anonymous> (file:///private/tmp/aux-browser-runtime-l10-native-command-cohort/tests/host/lib/native-command-collector.test.mjs:42:141)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+
+test at tests/host/lib/native-command-collector.test.mjs:43:1
+✖ original primary and helper cleanup rejection identity both retained (5.294333ms)
+  TypeError: Cannot read properties of undefined (reading '1')
+      at Object.<anonymous> (file:///private/tmp/aux-browser-runtime-l10-native-command-cohort/tests/host/lib/native-command-collector.test.mjs:43:270)
+      at expectedException (node:assert:547:17)
+      at expectsError (node:assert:672:21)
+      at strict.rejects (node:assert:738:3)
+      at async TestContext.<anonymous> (file:///private/tmp/aux-browser-runtime-l10-native-command-cohort/tests/host/lib/native-command-collector.test.mjs:43:200)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)

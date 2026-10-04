@@ -1,0 +1,6 @@
+{
+  "packages/contracts/src/browser-host-methods.ts": "3c921e8ac2c5334acbb810624a17f48db30f15efa28601a9feac07d696163b79",
+  "packages/contracts/dist/browser-host-methods.js": "13310520914bb03930ad598ffdcb2ffaf60c4cba55be3d88cfba09aee4c3f542",
+  "packages/contracts/dist/commands.js": "a9a33d8e89a1eddeb3613a5df845e073dc23f4d7ff855eb25d569d1d0cf5d9da",
+  "apps/shell/vite.config.ts": "f288bae3e5b933dfd5374c3aa462f80916800e1f4ce5def8a5c9b874ded1ae7b"
+}

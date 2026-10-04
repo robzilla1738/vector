@@ -1,0 +1,12 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+(node:55208) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/BrowserContextTray.pending.test.tsx (3 tests) 77ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  01:13:40
+   Duration  2.79s (transform 638ms, setup 0ms, collect 2.24s, tests 77ms, environment 259ms, prepare 65ms)
+

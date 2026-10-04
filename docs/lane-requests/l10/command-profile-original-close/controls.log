@@ -1,0 +1,40 @@
+✔ actual fixed 50000 SQLite rows/counts/schema/hash readback retains original seeded row and App lineage (743.044916ms)
+✔ changed row/timestamp cannot retain original dataset proof (299.525583ms)
+✔ foreign initial rows refuse without deleting or replacing original database (11.624958ms)
+✔ unknown journal and symlink refuse without modifying either original entry (20.789458ms)
+✔ real transaction failure rolls back and retains original primary and owned Profile debt (11.489834ms)
+✔ retired/forged stopped lease and caller-selected URL/count reject before workload writes (8.364ms)
+✔ actual caller composes original seed close, 60 READY→single HID trials and original cleanup (56.345333ms)
+✔ fewer than 20 refuses before any original owner creation (12.188291ms)
+✔ wrong observed READY refuses before measured HID and still retires original owners (10.319ms)
+✔ original global abort after READY prevents measured HID (12.389625ms)
+✔ unrounded fractional 30.004ms truthfully fails unchanged 30ms budget (19.642792ms)
+✔ original primary and helper cleanup rejection identity both retained (9.554541ms)
+✔ fixed original private launch admits an observed native private window without runtime handshake (80.016334ms)
+✔ unbranded, selectable, retired and replaced-before-spawn admission refuses before effects (28.514542ms)
+✔ actual synchronous spawn failure releases acquired original slot and preserves failure (20.069459ms)
+✔ spawn without PID waits for original close; no browser PID signaling or helper fallback (14.83325ms)
+✔ close debt retains original slot and rejects cleanup without inventing success (15.859084ms)
+✔ actual paired App aborts before LS/helper spawn when persistent reservation refuses (15.276792ms)
+✔ actual paired App retires an awaited reservation on quit before any LS dispatch (14.130708ms)
+✔ exact original owner attaches through the existing peer/identity route; quit delegates only owner (83.268375ms)
+✔ foreign clone, unknown owner and replacement cannot attach (27.149375ms)
+✔ retired owner refuses attachment before peer or identity (31.430459ms)
+✔ owner closes during awaited peer validation; identity cannot escape as valid (15.686791ms)
+✔ fixture inode replacement during awaited peer validation refuses (16.494291ms)
+✔ attached owner cannot use ordinary launcher/restart/effect paths (15.065542ms)
+✔ original generated stopped/reaped child mints opaque Profile lease with exact generation (62.597208ms)
+✔ process exit without original close/reap refuses even after quit (33.628333ms)
+✔ supplied path cannot acquire generated Profile authority (16.635583ms)
+✔ failed restart retires old lease before new slot/spawn and replacement tree refuses (16.876625ms)
+✔ actual original delayed close resolves retained wait without another child lookup (18.523916ms)
+✔ original close wait refuses expired first-quit deadline without refreshing on repeated quit (19.595541ms)
+✔ failed restart retires pending original close waiter without adopting late close (14.100417ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1271.995

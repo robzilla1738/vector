@@ -1,0 +1,80 @@
+{
+  "base": "0a73f7b63fa3b821341c07f04423c2d262d42cd8",
+  "sourceOnly": true,
+  "nativeCaptured": false,
+  "wholeBudgetMeasured": false,
+  "owned": [
+    {
+      "path": "apps/shell/src/components/ConversationImages.tsx",
+      "beforeSha256": "88a6a10c1188868853868262336140abfdabcb98ae6ad377aaecb8fa8c597c7d",
+      "afterSha256": "027f8df06dfba788b0e6508025dd2bdbc7a7df3b67bd663fa2dde0d3e783eb26"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImageControl.tsx",
+      "beforeSha256": null,
+      "afterSha256": "667281c5b40e96959e0a71514b678f43f215c983c8821ff8c58fbe3f72b237d8"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImages.commands.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "5dcdfd9855b7ad3ea800caae6f83eab7f88f6bd353a6cd530872ae0407bfa98a"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImages.retirement.test.tsx",
+      "beforeSha256": "7dfedf43032d27ea6b26cae13b25c608986d64ddcabf7a806caf0c7af58f041e",
+      "afterSha256": "5ec18e9fda98963ae5a59bad3bcdec246e78540dd6a082fd1a769a96f254ea2c"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImages.filename-wrap.test.tsx",
+      "beforeSha256": "3fe10fd4bec4b9126fa084b480681864077def4213a329e6d3fa15b5280eac68",
+      "afterSha256": "73ecff148935e796d93c9353b52255fa307cc0df8b89a56335836e7c5f740194"
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.tsx",
+      "beforeSha256": "79f8f826c88762da3a4fdca37954a439baf7d0868a0c3f1633c415ade87788dc",
+      "afterSha256": "2d49ebabe6f48b193f3134cc65fdbfd2c3c1ab718784762084f7630e77fab9d8"
+    }
+  ],
+  "metadataRequest": [
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "97226363d14390148237d4b0f793532872de3320f857fc834e4dc8bf20f33fad",
+      "afterSha256": "6a140626df22ba2f56509b11a12aba57d8f9f9d47334342710a17093da22a623"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "apps/shell/src/settings/sections/preference-command.tsx",
+      "sha256": "888f0f4434d10269f2acd15f13fc2be3ce8a4898abb499fe20c34e6dcb59ad1b"
+    },
+    {
+      "path": "apps/shell/src/scoped-control-commands.ts",
+      "sha256": "1d734e4ca4b41ccc3e80fc502254e7bd7c559602e0b18c3c85e26c8d55ff6f66"
+    },
+    {
+      "path": "apps/shell/src/commands.ts",
+      "sha256": "27b3390209810be078b8b3fbd55ce19bb6faf26e5a83e4b2e5914820a224879c"
+    },
+    {
+      "path": "apps/shell/src/components/ViewerFrame.tsx",
+      "sha256": "3d85bd6d7ff9844a297707bf03e2350d60c527105d2e430bbdedc7aec036212e"
+    },
+    {
+      "path": "apps/shell/src/components/Composer.image-parent-feedback.test.tsx",
+      "sha256": "d08f4701a3270854efe89af4c796c07f28f26e4d3ac79088bec3702b008fae28"
+    },
+    {
+      "path": "apps/shell/src/components/Composer.context-lifecycle.test.tsx",
+      "sha256": "a90d2393d6648f07f3b70c0b6a6d52734f4358e856f64383d54744db63758f15"
+    }
+  ],
+  "request.patchSha256": "809439950383ccdecb0f2ae0fc30908e891705df6baa6416fe0fba13d204df53",
+  "metadata.request.patchSha256": "5b21df571f99380153c5e3cafc2cc5a2fe2f08bfa77d889ac201354c6ae75893",
+  "replay": "exact forward/reverse/forward PASS",
+  "controls": "27 PASS (original19 + new8)",
+  "types": "PASS",
+  "lint": {
+    "originalWarnings": 15,
+    "resultWarnings": 14
+  }
+}

@@ -1,0 +1,18 @@
+✔ actual fixed 50000 SQLite rows/counts/schema/hash readback retains original seeded row and App lineage (703.56025ms)
+✔ changed row/timestamp cannot retain original dataset proof (309.466708ms)
+✔ foreign initial rows refuse without deleting or replacing original database (30.790708ms)
+✔ unknown journal and symlink refuse without modifying either original entry (36.736084ms)
+✔ real transaction failure rolls back and retains original primary and owned Profile debt (33.669334ms)
+✔ retired/forged stopped lease and caller-selected URL/count reject before workload writes (27.706083ms)
+✔ original generated stopped/reaped child mints opaque Profile lease with exact generation (52.678083ms)
+✔ process exit without original close/reap refuses even after quit (21.798709ms)
+✔ supplied path cannot acquire generated Profile authority (18.739833ms)
+✔ failed restart retires old lease before new slot/spawn and replacement tree refuses (14.54675ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1304.443417

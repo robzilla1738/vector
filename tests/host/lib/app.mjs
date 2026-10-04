@@ -20,6 +20,12 @@ import { createPrivateObservationOwner } from './private-observation-owner.mjs';
 
 const privateApps = new WeakMap();
 const fileApps = new WeakMap();
+const stoppedCommandProfiles = new WeakMap();
+export function readStoppedCommandProfile(lease) {
+  const original = stoppedCommandProfiles.get(lease);
+  if (!original) throw new Error('Foreign stopped command Profile lease');
+  return structuredClone(original());
+}
 export function readLaunchServicesQuarantineOwner(app, pair) {
   if (fileApps.get(app) !== pair) throw new Error('Foreign LS quarantine App owner');
   return app.launchServicesQuarantineOwner; // Refusal publication survives artifact damage; clearing still validates it.
@@ -178,6 +184,8 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     } else if (env.AUX_IMPORT_SOURCE_HOME !== undefined) throw new Error('Unowned import source environment');
   }
   let child;
+  let directCloseReceipt, directClosedPromise, stoppedCommandDeadline, stoppedProfileEpoch = 0, successfulQuitGeneration;
+  const commandProfileIdentity = randomBytes(16).toString('hex');
   let externalPid;
   let externalGeneration;
   let launchUncertain = false;
@@ -322,6 +330,13 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   }
   function spawnDirect(args) {
     child = spawn(join(bundle, 'Contents/MacOS/Aux'), args, { env: { ...env, AUX_NATIVE_SLOT_TOKEN: slot.token }, stdio: ['ignore', 'ignore', 'pipe'] });
+    const originalChild = child, originalGeneration = generation;
+    directCloseReceipt = undefined;
+    directClosedPromise = new Promise(resolveClose => child.once('close', (code, signal) => {
+      const receipt = Object.freeze({ child: originalChild, pid: originalChild.pid, generation: originalGeneration, code, signal });
+      if (child === originalChild && generation === originalGeneration) directCloseReceipt = receipt;
+      resolveClose(receipt);
+    }));
     child.once('error', error => { spawnError = error; });
     if (privatePair) {
       const originalPid = child.pid ?? null, originalGeneration = generation;
@@ -358,6 +373,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
   }
   async function start({ externalUrl, auxUrl, background = false } = {}) {
+    ++stoppedProfileEpoch; successfulQuitGeneration = undefined; stoppedCommandDeadline = undefined;
     if (privatePair) throw new Error('Private observation cannot use ordinary runtime startup');
     if (startupAttachment) throw new Error("Attached startup cannot use another launcher");
     if (running()) throw new Error('Journey Aux is already running');
@@ -422,8 +438,15 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
   }
   async function quit() {
+    stoppedCommandDeadline ??= Date.now() + 10000;
+    const originalChild = child, originalGeneration = generation, originalEpoch = stoppedProfileEpoch;
     if (appearanceReservation) appearanceReservation.active = false;
-    try { return await quitOwned(); }
+    try {
+      const result = await quitOwned();
+      if (child === originalChild && generation === originalGeneration && stoppedProfileEpoch === originalEpoch)
+        successfulQuitGeneration = originalGeneration;
+      return result;
+    }
     catch (error) { launchQuarantine?.retire(); throw error; }
   }
   async function quitOwned() {
@@ -480,6 +503,51 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     slot?.release(); slot = undefined;
   }
   const api = {
+    async waitForStoppedCommandProfile() {
+      if (arguments.length) throw new Error('Stopped command Profile wait accepts no selectors');
+      if (directCloseReceipt) return api.claimStoppedCommandProfile();
+      if (!child || !directClosedPromise || successfulQuitGeneration !== generation ||
+          !Number.isFinite(stoppedCommandDeadline) || Date.now() >= stoppedCommandDeadline)
+        throw new Error('Original stopped command Profile close/reap unavailable');
+      const originalChild = child, originalGeneration = generation, originalEpoch = stoppedProfileEpoch, originalClosed = directClosedPromise;
+      let timer;
+      try {
+        await Promise.race([originalClosed, new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('Original command Profile close/reap deadline expired')), stoppedCommandDeadline - Date.now());
+        })]);
+        if (child !== originalChild || generation !== originalGeneration || stoppedProfileEpoch !== originalEpoch ||
+            directClosedPromise !== originalClosed || Date.now() >= stoppedCommandDeadline)
+          throw new Error('Original stopped command Profile retired during close/reap wait');
+        return api.claimStoppedCommandProfile();
+      } finally { clearTimeout(timer); }
+    },
+    claimStoppedCommandProfile() {
+      if (arguments.length || suppliedRoot !== undefined || privatePair || appearanceArtifact || startupAttachment ||
+          activeProfile !== 'Default' || profiles.length !== 1 || profiles[0] !== 'Default' ||
+          !launchArgs.includes('--aux-native-performance-observer') || externalPid || launchUncertain || slot || spawnError ||
+          generation <= 0 || successfulQuitGeneration !== generation || !child ||
+          !directCloseReceipt || directCloseReceipt.child !== child || directCloseReceipt.generation !== generation ||
+          !Number.isInteger(directCloseReceipt.pid) || directCloseReceipt.pid <= 0)
+        throw new Error('No original stopped and reaped command Profile');
+      const epoch = stoppedProfileEpoch, originalChild = child, originalClose = directCloseReceipt;
+      const verify = () => {
+        if (stoppedProfileEpoch !== epoch || generation !== originalClose.generation || child !== originalChild ||
+            directCloseReceipt !== originalClose || successfulQuitGeneration !== generation || slot ||
+            externalPid || launchUncertain || startupAttachment || spawnError)
+          throw new Error('Original stopped command Profile retired');
+        for (const [path, original] of [[profileRoot, rootInfo], [userDataDir, profileInfo]]) {
+          const actual = lstatSync(path);
+          if (!actual.isDirectory() || actual.isSymbolicLink() || actual.dev !== original.dev || actual.ino !== original.ino ||
+              actual.uid !== original.uid || (actual.mode & 0o777) !== 0o700)
+            throw new Error('Original stopped command Profile replaced');
+        }
+        return { fixtureId: commandProfileIdentity, userDataDir: realpathSync(userDataDir), profile: 'Default', generation,
+          originalChild: { pid: originalClose.pid, generation, code: originalClose.code, signal: originalClose.signal, closed: true },
+          root: { realpath: realpathSync(profileRoot), dev: rootInfo.dev, ino: rootInfo.ino, uid: rootInfo.uid, mode: rootInfo.mode & 0o777 },
+          directory: { dev: profileInfo.dev, ino: profileInfo.ino, uid: profileInfo.uid, mode: profileInfo.mode & 0o777 } };
+      };
+      verify(); const lease = Object.freeze({}); stoppedCommandProfiles.set(lease, verify); return lease;
+    },
     startPrivateObservation,
     get privateObservation() {
       if (!privatePair || !privateOwner) throw new Error('No original private observation owner');
@@ -490,6 +558,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
         assertLive: privateOwner.assertLive, closed: privateOwner.closed });
     },
     async attachStartup(owner) {
+      ++stoppedProfileEpoch; successfulQuitGeneration = undefined; stoppedCommandDeadline = undefined;
       if (privatePair) throw new Error('Private observation cannot borrow another startup owner');
       if (startupAttachment || child || externalPid || launchUncertain)
         throw new Error('App already has an original launch owner');
