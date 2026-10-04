@@ -208,6 +208,30 @@
       "sha256": "555338f8d7bdaa1dcdea6b272571d0099e090281e025defb329db244bd2e1cd2"
     },
     {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-native325-catalog-host-001.log",
+      "sha256": "94c5373c43e6e58b936f3bace7a00329e8ed14e4087cbd3e88d0b3ccdd6022ea"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-native325-catalog-runtime-001.log",
+      "sha256": "193a31a6c369279a30a409f851457250facc3d558a65f3ba7891558954bc5846"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-native325-final-format-002.log",
+      "sha256": "90f03bbd69b53a9f2b2207c26df5d08780f684f34bb66cfe1b44679db0d36909"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-native325-final-handoff-002.log",
+      "sha256": "c352b7cf0fc30a307c4e89a8a758adc0502010b7cd7c443256fa10a60dc92e86"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-native325-final-lint-002.log",
+      "sha256": "4ce45d5d75d11f3d4f2f6f164a91b01f69d1cdfe6f8342caaf8ca7fc814729f3"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-native325-final-workspace-build-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
       "path": "docs/source-audits/parallel-integration-028/capture-registry-preservation-proposal.json",
       "sha256": "7cdd44db579fc222b4edfa546d3330fde40c409b9a5eb5ac9f8d3202b6bb37bf"
     },
@@ -228,6 +252,14 @@
       "sha256": "3472c59424dc3968e0c672037d98c7baf07a31cbdf8bebfd68919dc7f8dd43b0"
     },
     {
+      "path": "docs/source-audits/parallel-integration-028/registry-types-successor/SOURCE-FREEZE.json",
+      "sha256": "3670100c37543558873bb948f6f5613c65d880f27ad5a3853baeee2fd46b6197"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/registry-types-successor/request.patch",
+      "sha256": "0e2511a99a930536c13e517154dc5c4e82e02af0b817e20e861c2a87c6577fae"
+    },
+    {
       "path": "docs/source-audits/parallel-integration-028/root-focus-dedup-copy-successor-pins.json",
       "sha256": "c262fef74d3e7b82f396444c9f9258f1ed1a5ddacf2cc44581dca5a5d285f923"
     },
@@ -242,6 +274,26 @@
     {
       "path": "docs/source-audits/parallel-integration-028/saved-execution-successor/SOURCE-FREEZE.json",
       "sha256": "75dd18535489805b0c206b90b66dfdd11d3c2c8ad4075e72cd1923a678a2a45d"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/saved-model-catalog-successor/ROOT-REVIEW.json",
+      "sha256": "7f53dbf9741e2d16f05d13f2cb4658a328f3adeb85365350f9dd586e1f18f71d"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/saved-model-catalog-successor/SOURCE-FREEZE.json",
+      "sha256": "598759cd222bf0f89182092042f4f5dacc918b949ef9788dd526b0a408f3abc5"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/settings-handoff-successor/ROOT-REVIEW.json",
+      "sha256": "0e07d55bcfc35f4329164b5488b38d6bcdf812a0c1fdbe0a485c8422a75a7df2"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/settings-handoff-successor/SOURCE-PINS.json",
+      "sha256": "b2b6c574dffa24ad5a3929fe3a259e75b82e4f25b83b43ec57d750247c5fa223"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/settings-handoff-successor/request.patch",
+      "sha256": "f436bb070743b64d92c59956e752ffbf9e6cc2c9ff487a9a7af69d0a761b783a"
     },
     {
       "path": "docs/source-audits/parallel-integration-028/source-preview-typography/FONT-FIXTURE-PINS.json",
@@ -262,5 +314,8 @@
   ],
   "sourcePreviewTypography": "pinned local fonts genuinely loaded in narrow light/dark; native/F21 pending",
   "savedCredentialExecutionRetentionIntegrated": true,
-  "originalNarrowImageReopenCallerIntegrated": true
+  "originalNarrowImageReopenCallerIntegrated": true,
+  "originalSavedCatalogMountCallerCorrected": true,
+  "narrowSettingsHandoffCallerIntegrated": true,
+  "postRegistryTypeCorrectionWorkspaceRebuilt": true
 }

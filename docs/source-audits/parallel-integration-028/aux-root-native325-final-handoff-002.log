@@ -1,0 +1,16 @@
+✔ original registered narrow Settings handoff preserves draft/ledger and captures separate forms without secure values (4.51925ms)
+✔ secure field value presence refuses without invoking getter or credential action (0.775583ms)
+✔ unavailable Services remains pending with genuine New chat focus capture (0.495ms)
+✔ unrelated service form on Models refuses before Services/Newchat (0.256084ms)
+✔ wrong focus or changed draft cannot be labeled as successful New chat handoff (0.95075ms)
+✔ duplicate mounted New chat controls refuse without choosing first (0.341583ms)
+✔ samePID process incarnation drift and replaced model ledger refuse original capture (0.690583ms)
+✔ original capture failure plus cleanup failure retain both identities (0.366875ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 61.153792

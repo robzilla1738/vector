@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {captureHomeState} from './home-capture.mjs';
 import {readUtilityAppearanceJson} from './utility-appearance-owner.mjs';
 const body=readFileSync(new URL('./model-saved-key-appearance.mjs',import.meta.url),'utf8').replace(/^import[^\n]+\n/gm,'').replace(/^export /gm,'');
-function fixture(){
+function fixture(helperBody=body){
   const state={opened:false,menu:false,focused:false,settings:{modelApiKey:'••••••••',modelCredentialSource:'saved',modelConfigured:true,modelConnections:[{provider:'openai-compatible',credentialSource:'saved'}],modelProvider:'openai-compatible',compatibleEndpoint:'http://127.0.0.1:12345/v1',plannerModel:'fixture-model'},reads:[],actions:[],captures:[]};
   const app={pid:123,processObservation:{pid:123,generation:1},observeAppearance:async()=>JSON.stringify({producer:'aux-native-appearance-snapshot',version:1,pid:123,windowId:12,windowKind:'normal',observedAtUnixMs:Date.now()})};const ax={pid:123,windows:async()=>[{id:12,layer:0,width:900,height:700}],query:async s=>{
     if(s.name==='Search settings')return state.opened?[{name:s.name}]:[];
@@ -15,17 +15,18 @@ function fixture(){
     if(s.name==='Remove saved key')return state.menu?[{enabled:true}]:[];
     return [{enabled:true}];
   },key:async key=>{state.actions.push(key);if(key==='command+,')state.opened=true;else if(state.menu)state.menu=false;else state.opened=false;},press:async s=>{state.actions.push(s.name);if(s.name==='Manage OpenAI-compatible')state.menu=true;},waitFor:async()=>{},focus:async()=>{state.focused=true;}};
-  const t={app,ax,signal:new AbortController().signal,appearanceEnabled:true,fixture:{url:'http://127.0.0.1:12345'},model:{endpoint:'http://127.0.0.1:12345/v1',model:'fixture-model',calls:[]},rpc:async method=>{state.reads.push(method);if(method==='settings.get')return structuredClone(state.settings);if(method==='workspace.get')return {spaces:[]};assert.ok(['pages.list','runs.list'].includes(method));return [];},capture:async(name,options)=>{state.captures.push({name,options});return {name,...options};}};
+  const t={app,ax,signal:new AbortController().signal,appearanceEnabled:true,fixture:{url:'http://127.0.0.1:12345',requests:[]},model:{endpoint:'http://127.0.0.1:12345/v1',model:'fixture-model',calls:[]},rpc:async method=>{state.reads.push(method);if(method==='settings.get')return structuredClone(state.settings);if(method==='workspace.get')return {spaces:[]};assert.ok(['pages.list','runs.list'].includes(method));return [];},capture:async(name,options)=>{state.captures.push({name,options});return {name,...options};}};
   const pair={},endpointLease={},endpoint={endpoint:t.model.endpoint,model:t.model.model,reservation:'c'.repeat(64),observations:[]};
   const owner={pid:123,generation:1,process:{pid:123,generation:1},owner:{guardian:{records:[{status:'SAVED-RETAINED'}]}}};
+  const press=ax.press;ax.press=async selector=>{await press(selector);if(selector.name==='Models'){endpoint.observations.push({method:'GET',path:'/v1/models',syntheticAuthorization:true});t.fixture.requests.push({method:'GET',path:'/v1/models'});}};
   t.credentialPair=pair;t.credentialEndpoint=endpointLease;
-  const {capture,requireMode}=new Function('assert','captureHomeState','readUtilityAppearanceJson','readDisposableCredentialApp','readDisposableModelCredentialEndpoint',body+'\nreturn {capture:captureModelSavedKeyAppearance,requireMode:requireModelSavedKeyAppearance};')
+  const {capture,requireMode}=new Function('assert','captureHomeState','readUtilityAppearanceJson','readDisposableCredentialApp','readDisposableModelCredentialEndpoint',helperBody+'\nreturn {capture:captureModelSavedKeyAppearance,requireMode:requireModelSavedKeyAppearance};')
    (assert,captureHomeState,readUtilityAppearanceJson,(a,p,l)=>{assert.equal(a,app);assert.equal(p,pair);assert.equal(l,endpointLease);return structuredClone(owner);},l=>{assert.equal(l,endpointLease);return structuredClone(endpoint);});
   return {t,state,owner,endpoint,capture:()=>capture(t),requireMode};
 }
-test('saved-state original source helper returns actual UI envelope without Save/removal/provider use',async()=>{
+test('saved-state original source helper returns actual UI envelope without Save/removal/probe/chat',async()=>{
  const f=fixture();const result=await f.capture();assert.equal(result.qualification,false);assert.equal(result.personSaveRemoveInvoked,false);assert.ok(result.ax.length);assert.equal(result.rpc.settings.modelCredentialSource,'saved');assert.equal(f.state.captures.length,2);
- assert.deepEqual(f.endpoint.observations,[]);assert.ok(!f.state.actions.includes('Save key')&&!f.state.actions.includes('Remove saved key'));assert.equal(f.state.opened,false);assert.equal(f.state.menu,false);assert.equal(f.state.focused,true);
+ assert.equal(result.catalogObservations.length,1);assert.equal(result.catalogObservations[0].syntheticAuthorization,true);assert.ok(!f.state.actions.includes('Save key')&&!f.state.actions.includes('Remove saved key'));assert.equal(f.state.opened,false);assert.equal(f.state.menu,false);assert.equal(f.state.focused,true);
 });
 test('missing original saved ACK or wrong mask/source refuses before Settings actions',async()=>{
  for(const fault of ['ack','mask','source']){const f=fixture();if(fault==='ack')f.owner.owner.guardian.records=[];if(fault==='mask')f.state.settings.modelApiKey=undefined;if(fault==='source')f.state.settings.modelCredentialSource='environment';await assert.rejects(f.capture());assert.deepEqual(f.state.actions,[]);}
@@ -48,4 +49,15 @@ test('actual fixed wrapper invokes its UI callback and returns the runner-requir
  f.t.step=async(name,options,callback)=>{assert.equal(options.kind,'ui');const result=await callback();assert.ok(result.ax||result.rpc,'Original UI runner gate');assert.equal(result.rpc.settings.modelCredentialSource,'saved');};
  await run(f.t);assert.deepEqual(order,['configure','capture']);
  f.t.appearanceEnabled=false;await assert.rejects(run(f.t));assert.deepEqual(order,['configure','capture']);
+});
+
+test('legitimate repeated automatic catalog GETs remain read-only; foreign auth/probe/chat and ledger replacement refuse',async()=>{
+ for(const fault of ['repeat','auth','chat','ledger']){const f=fixture();const press=f.t.ax.press;f.t.ax.press=async selector=>{await press(selector);if(selector.name==='Models'){if(fault==='repeat'){f.endpoint.observations.push({...f.endpoint.observations[0]});f.t.fixture.requests.push({method:'GET',path:'/v1/models'});}if(fault==='auth')f.endpoint.observations[0].syntheticAuthorization=false;if(fault==='chat')f.t.fixture.requests.push({method:'POST',path:'/v1/chat/completions'});if(fault==='ledger')f.t.fixture.requests=[...f.t.fixture.requests];}};
+ if(fault==='repeat'){const result=await f.capture();assert.equal(result.catalogObservations.length,2);assert.equal(result.personSaveRemoveInvoked,false);}else await assert.rejects(f.capture());}
+});
+
+test('actual original helper refuses its own Models-mounted catalog receipt; corrected original route remains accepted',async()=>{
+ const originalBody=readFileSync(new URL('../../../docs/lane-requests/l10/saved-model-catalog-receipt/owned/before/tests/host/lib/model-saved-key-appearance.mjs',import.meta.url),'utf8').replace(/^import[^\n]+\n/gm,'').replace(/^export /gm,'');
+ const original=fixture(originalBody);await assert.rejects(original.capture());assert.equal(original.endpoint.observations.length,1);assert.equal(original.state.captures.length,0);
+ const current=fixture();const result=await current.capture();assert.equal(result.catalogObservations.length,1);assert.equal(current.state.captures.length,2);
 });

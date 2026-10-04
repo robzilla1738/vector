@@ -20,13 +20,20 @@ export async function captureModelSavedKeyAppearance(t) {
   const pid=original.pid, processOwner=structuredClone(app.processObservation);
   assert.ok(Number.isInteger(pid)&&pid>0&&ax.pid===pid&&!t.signal.aborted);
   assert.ok(original.owner.guardian.records.some(row=>row.status==='SAVED-RETAINED'),'Actual original guardian saved receipt required');
-  assert.deepEqual(endpoint.observations,[],'Saved-state appearance cannot issue provider requests');
+  assert.deepEqual(endpoint.observations,[],'Provider use must not precede configuration and Models mount');
+  const requests=fixture.requests;assert.ok(Array.isArray(requests));assert.deepEqual(requests,[]);let modelsMounted=false;
+  const catalogOnly=lease=>{
+    assert.ok(lease.observations.length<=32&&requests.length<=32,'Original catalog receipt bound exceeded');
+    if(!modelsMounted){assert.deepEqual(lease.observations,[]);assert.deepEqual(requests,[]);}
+    for(const row of lease.observations){assert.equal(row.method,'GET');assert.equal(row.path,'/v1/models');assert.equal(row.syntheticAuthorization,true);}
+    for(const row of requests){assert.equal(row.method,'GET');assert.equal(row.path,'/v1/models');}
+  };
   const current=()=>{
     assert.ok(t.app===app&&t.ax===ax&&t.fixture===fixture&&t.credentialPair===pair&&t.credentialEndpoint===endpointLease&&!t.signal.aborted);
     const now=readDisposableCredentialApp(app,pair,endpointLease), lease=readDisposableModelCredentialEndpoint(endpointLease);
     assert.equal(now.pid,pid);assert.equal(now.generation,original.generation);assert.deepEqual(now.process,original.process);
     assert.deepEqual(app.processObservation,processOwner);assert.equal(ax.pid,pid);
-    assert.equal(lease.endpoint,endpoint.endpoint);assert.equal(lease.reservation,endpoint.reservation);assert.deepEqual(lease.observations,[]);
+    assert.equal(lease.endpoint,endpoint.endpoint);assert.equal(lease.reservation,endpoint.reservation);assert.equal(fixture.requests,requests);catalogOnly(lease);
   };
   const owned=async producer=>{current();const result=await producer();current();return result;};
   assert.equal((await owned(()=>ax.query(search))).length,0,'Models capture begins with Settings closed');
@@ -49,7 +56,7 @@ export async function captureModelSavedKeyAppearance(t) {
   const one=async selector=>{const rows=await owned(()=>ax.query(selector));assert.equal(rows.length,1,`Original ${selector.name} must be unique`);return rows[0];};
   let opened=false,menuOpen=false,primary;const captures=[],debts=[];
   try {
-    opened=true;await owned(()=>ax.key('command+,','hid'));await owned(()=>ax.press(shell('Models','AXButton')));
+    opened=true;await owned(()=>ax.key('command+,','hid'));modelsMounted=true;await owned(()=>ax.press(shell('Models','AXButton')));
     await owned(()=>ax.waitFor(shell('Discover models','AXButton'),'enabled'));
     for(const name of ['Model provider','OpenAI-compatible endpoint','Provider API key','Planner model','Vision model','Fast model ID','Standard model ID','Deep model ID','Visual model ID','Parallel worker pages','Max model turns per run']) await one(shell(name));
     const keyField=await one(shell('Provider API key','AXTextField'));assert.equal(keyField.subrole,'AXSecureTextField');assert.equal(Object.hasOwn(keyField,'value'),false,'Original helper must suppress secure field values');
@@ -68,7 +75,7 @@ export async function captureModelSavedKeyAppearance(t) {
   }
   if(debts.length)throw new AggregateError([primary,...debts].filter(Boolean),'Original Models capture or UI restoration unresolved');
   if(primary)throw primary;
-  return {ax:await owned(()=>ax.query(composer)),rpc:{settings,pages,runs,workspace,nativeSamples},captures,nativeSamples,readOnly:true,qualification:false,pending:['explicit-removal-review-consent','probe-success-and-failure','private-inactive-runtime'],settingsUnchanged:true,providerRequestsUnchanged:true,personSaveRemoveInvoked:false,originalSavedReceipt:original.owner.guardian.records};
+  return {ax:await owned(()=>ax.query(composer)),rpc:{settings,pages,runs,workspace,nativeSamples},captures,nativeSamples,readOnly:true,qualification:false,pending:['explicit-removal-review-consent','probe-success-and-failure','private-inactive-runtime'],settingsUnchanged:true,catalogObservations:readDisposableModelCredentialEndpoint(endpointLease).observations,noProbeChatOrPersonMutation:true,personSaveRemoveInvoked:false,originalSavedReceipt:original.owner.guardian.records};
 }
 
 /** Cleanup uses the original App's browser/guardian completion, even after the

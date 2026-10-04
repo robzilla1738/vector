@@ -1,3 +1,9 @@
+### Saved Models catalog and narrow Settings handoff preparation
+
+The original saved-model wrapper now observes Models' legitimate automatic catalog fetch: zero requests before original configuration/mount, then bounded authenticated fixed-loopback GET catalog receipts. It retains the original ledger and rejects foreign auth, POST/probe/chat or person Save/Remove. Root verifies exact replay and real rebuilt SettingsService/HTTP controls. Narrow unkeyed Models preparation now adds actual Models/Services form separation and registered Settings→New chat focus/draft captures with original owner/window/ledger and secure-value suppression. Original normal flows remain intact. Source/mock controls pass; native/F21 acceptance remains pending.
+
+Native export catches an actual TypeScript error in the new exact registry-neighbor assertions; two optional accesses preserve the same exact failure for missing neighbors. Root rebuild and focused registry/runtime controls pass after correction. The dedicated candidate synchronizes27 tracked native mirrors and the canonical old .cc deletion; staging remains held until original current inputs and generated-source proof are admitted. No source proof is native qualification.
+
 ### Native image lifecycle preparation
 
 The original narrow mounted-image wrapper now prepares real HID Escape→original tray focus→same Preview reopen→loaded Close focus captures before its original Include/Remove cleanup. Root verifies exact current helper/UI APIs, original/result pins, replay and source controls. Short normal and long defaults retain their original capture flow. Async loading is accepted only if genuinely observed before/after capture; no delay, fabricated state or private image ID is introduced. Native execution and F21 remain pending. Source-only caller successor does not change native/renderer/helper bytes.
