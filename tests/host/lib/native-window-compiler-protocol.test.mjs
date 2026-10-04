@@ -53,3 +53,19 @@ test('missing or compiler-self-produced audit cannot replace independent root me
   const f=fixture();change(f);assert.throws(f.decode,/Independent/);
  }
 });
+
+test('explicit target matches original SDK/versions and independently audited fresh cache',()=>{
+ const f=fixture();f.m.compiler.argv=['xcrun','swiftc',f.m.source.path,'-target','arm64-apple-macosx27.0','-o',f.m.compiler.originalOutputPath];
+ f.m.output.path+='-target27-001';f.m.output.minimumOS=f.m.output.sdkVersion='27.0.0';
+ f.a.compilerArgvSha256=hash(JSON.stringify(f.m.compiler.argv));f.a.outputMinimumOS=f.a.outputSdkVersion='27.0.0';
+ assert.equal(f.decode().manifest.output.minimumOS,'27.0.0');
+ for(const change of [g=>g.m.compiler.argv[4]='arm64-apple-macosx26.0',g=>g.m.output.minimumOS='27.2.0',
+  g=>g.m.output.sdkVersion='26.0.0',g=>g.m.output.path=g.m.output.path.replace('target27','target26'),
+  g=>g.m.output.path=g.m.output.path.replace('-001','-000'),g=>g.m.compiler.argv.push('-sdk'),
+  g=>g.a.compilerArgvSha256='e'.repeat(64)]) {
+  const g={m:structuredClone(f.m),a:structuredClone(f.a),admission:structuredClone(f.admission)};change(g);
+  const manifestRaw=raw(g.m);g.admission.manifestSha256=hash(manifestRaw);g.a.manifestSha256=g.admission.manifestSha256;
+  const auditRaw=raw(g.a);g.admission.auditSha256=hash(auditRaw);
+  assert.throws(()=>decodeNativeWindowCompiler(manifestRaw,auditRaw,g.admission));
+ }
+});

@@ -49,7 +49,10 @@ export function decodeNativeWindowCompiler(manifestRaw, auditRaw, admission) {
   keys(m.compiler.swiftc,'path resolvedPath sha256'); absolute(m.compiler.swiftc.path); absolute(m.compiler.swiftc.resolvedPath); sha(m.compiler.swiftc.sha256);
   keys(m.compiler.version,'stdoutPath stdoutSha256 stderrPath stderrSha256 exitCode'); logs(m.compiler.version);
   absolute(m.compiler.originalOutputPath);
-  assert.deepEqual(m.compiler.argv,['xcrun','swiftc',m.source.path,'-o',m.compiler.originalOutputPath]);
+  const explicitTarget = m.compiler.argv.length === 7;
+  assert.deepEqual(m.compiler.argv, explicitTarget
+    ? ['xcrun','swiftc',m.source.path,'-target',`arm64-apple-macosx${m.sdk.version}`,'-o',m.compiler.originalOutputPath]
+    : ['xcrun','swiftc',m.source.path,'-o',m.compiler.originalOutputPath]);
   keys(m.compiler.environment,'PATH DEVELOPER_DIR SDKROOT TOOLCHAINS');
   for (const v of Object.values(m.compiler.environment)) assert.ok(v === null || (typeof v === 'string' && v.length <= 8192 && !v.includes('\0')));
   keys(m.sdk,'path resolvedPath settingsPath settingsSha256 version selection');
@@ -62,11 +65,21 @@ export function decodeNativeWindowCompiler(manifestRaw, auditRaw, admission) {
   assert.equal(m.compile.cancelled,false); assert.equal(m.compile.originalGroupEmpty,true);
   keys(m.output,'path sha256 bytes mode architecture fileType uuid minimumOS sdkVersion');
   absolute(m.output.path); sha(m.output.sha256); mode(m.output.mode); assert.ok(m.output.mode & 0o100);
-  assert.equal(basename(m.output.path),`native-window-${m.source.sha256.slice(0,12)}`);
+  const cacheName = `native-window-${m.source.sha256.slice(0,12)}`;
+  if (explicitTarget) {
+    assert.match(basename(m.output.path), new RegExp(`^${cacheName}-target${m.sdk.version.split('.')[0]}-[0-9]{3}$`));
+    assert.ok(!basename(m.output.path).endsWith('-000'));
+  } else assert.equal(basename(m.output.path),cacheName);
   assert.notEqual(m.output.path,m.compiler.originalOutputPath);
   assert.ok(Number.isSafeInteger(m.output.bytes) && m.output.bytes > 0 && m.output.bytes <= 64*1024*1024);
   assert.equal(m.output.architecture,'arm64'); assert.equal(m.output.fileType,'MH_EXECUTE');
   assert.ok(hex(m.output.uuid,32) && !/^0+$/.test(m.output.uuid)); version(m.output.minimumOS); version(m.output.sdkVersion);
+  if (explicitTarget) {
+    const sdk = m.sdk.version.split('.');
+    while (sdk.length < 3) sdk.push('0');
+    assert.equal(m.output.minimumOS,sdk.join('.'),'Explicit target must match original selected SDK');
+    assert.equal(m.output.sdkVersion,sdk.join('.'),'Original executable SDK must match selected SDK');
+  }
   keys(m.readback,'readerPath readerSha256 stdoutPath stdoutSha256 exitCode'); absolute(m.readback.readerPath);
   sha(m.readback.readerSha256); absolute(m.readback.stdoutPath); sha(m.readback.stdoutSha256); assert.equal(m.readback.exitCode,0);
   keys(m.admission,'independentAuditRequired helperExecuted performanceQualified');
