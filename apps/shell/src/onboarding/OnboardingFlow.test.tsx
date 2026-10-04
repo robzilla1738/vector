@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { OnboardingState, PageTarget } from "@aux/contracts";
@@ -548,4 +550,49 @@ it("remaps permission details only through its original focused setup control", 
   expect(() => invokeScopedControl("toggle-setup-permission-details")).toThrow("current setup");
   expect(details.open).toBe(true);
   expect(rpc.mock.calls.some(([method]) => /grant|permission|chat|page/.test(method))).toBe(false);
+});
+
+it("wraps the complete original diagnostic while keeping setup recovery usable", async () => {
+  const diagnostic = "Owned source unavailable: /" + "x".repeat(500);
+  const originalRpc = rpc.getMockImplementation()!;
+  rpc.mockImplementation(async (method: string, params: any) => {
+    if (method === "onboarding.update") throw new Error(diagnostic);
+    return originalRpc(method, params);
+  });
+  await render(initial("welcome"));
+  const step = document.querySelector<HTMLButtonElement>('button[aria-label="2. import"]')!;
+  expect(step).not.toBeNull();
+  await act(async () => step.click());
+  const alert = [...document.querySelectorAll<HTMLElement>('[role="alert"]')].find((node) =>
+    node.textContent?.includes(diagnostic),
+  )!;
+  expect(alert.querySelector("p")!.textContent).toBe(diagnostic);
+  expect(alert.parentElement!.classList.contains("onboarding-scroll")).toBe(true);
+  const require = createRequire(import.meta.url);
+  const postcss = createRequire(require.resolve("vite"))("postcss");
+  const css = postcss.parse(readFileSync(new URL("./onboarding.css", new URL(import.meta.url)), "utf8"));
+  const rule = css.nodes
+    .find((node: any) => node.name === "layer")
+    .nodes.find((node: any) => node.selector?.includes('.onboarding-scroll > [role="alert"]'));
+  expect(rule).toBeDefined();
+  const style = document.createElement("style");
+  style.textContent = rule.toString();
+  document.head.append(style);
+  try {
+    expect(getComputedStyle(alert).minWidth).toBe("0");
+    expect(getComputedStyle(alert).overflowWrap).toBe("anywhere");
+    const retry = button("Reload setup progress");
+    expect(retry.disabled).toBe(false);
+    retry.focus();
+    expect(document.activeElement).toBe(retry);
+    await act(async () => retry.click());
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(current.step).toBe("welcome");
+    expect(current.revision).toBe(0);
+    expect(close).not.toHaveBeenCalled();
+    expect(openPage).not.toHaveBeenCalled();
+    expect(openConversation).not.toHaveBeenCalled();
+  } finally {
+    style.remove();
+  }
 });

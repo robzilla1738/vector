@@ -1,0 +1,166 @@
+@layer components {
+  .aux-native-dialog.onboarding-dialog {
+    width: min(640px, calc(100vw - 32px));
+    max-height: calc(100dvh - 40px);
+    padding: 0;
+    /* The step rail and footer stay in the border box. Only the step body scrolls. */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .onboarding-flow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-height: 0;
+    padding: var(--space-6);
+    overflow: hidden;
+  }
+  .onboarding-scroll {
+    min-height: 0;
+    max-height: calc(100dvh - 320px);
+    overflow: auto;
+    display: grid;
+    gap: 16px;
+    align-content: start;
+  }
+  .onboarding-scroll > output,
+  .onboarding-scroll > [role="alert"] {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .onboarding-flow header,
+  .onboarding-flow footer,
+  .onboarding-flow nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .onboarding-flow header {
+    justify-content: space-between;
+  }
+  .onboarding-flow h1 {
+    font-size: 24px;
+    line-height: 1.2;
+    margin: 0;
+  }
+  .onboarding-flow h1:focus {
+    outline: none;
+  }
+  .onboarding-flow nav { gap:var(--space-1); }
+  .onboarding-flow nav > button { width:28px; height:28px; min-height:28px; padding:0; border-radius:var(--r-pill); color:var(--ink-2); }
+  .onboarding-flow nav [aria-current="step"] { color:var(--ink-0); background:var(--bg-hover); }
+  .onboarding-flow nav > button:focus-visible { outline:2px solid var(--focus-line); outline-offset:2px; }
+  .onboarding-flow .eyebrow { font-size:var(--fs-xs); color:var(--ink-2); }
+  .onboarding-flow footer > button:first-child { margin-right:auto; }
+  .onboarding-flow footer > button:last-child { background:var(--accent); color:var(--accent-ink); }
+  .onboarding-content {
+    display: grid;
+    gap: var(--space-3);
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+  .onboarding-content p {
+    margin: 0;
+    line-height: var(--lh-relaxed);
+    font-size:var(--fs-sm);
+    color:var(--ink-1);
+    overflow-wrap:anywhere;
+  }
+  .onboarding-content label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .onboarding-content input[type="url"],
+  .onboarding-content select {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .onboarding-content ul {
+    padding-inline-start: 22px;
+  }
+  .onboarding-content li + li {
+    margin-top: 10px;
+  }
+  .onboarding-details {
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-group);
+    padding: var(--space-2) var(--space-3);
+    min-width: 0;
+  }
+  .onboarding-details summary {
+    cursor: pointer;
+    color: var(--ink-1);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-relaxed);
+  }
+  .onboarding-details summary:focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: 2px;
+    border-radius: var(--r-xs);
+  }
+  .onboarding-details[open] > p { margin-top: var(--space-2); }
+  .onboarding-postcards {
+    display: grid;
+    gap: 12px;
+  }
+  .onboarding-postcards article {
+    display: grid;
+    gap: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 16px;
+  }
+  .onboarding-postcards h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+  .onboarding-flow footer {
+    border-top: var(--hairline) solid var(--line);
+    padding-top: 16px;
+  }
+  .onboarding-review {
+    display: grid;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow-wrap: anywhere;
+  }
+  .onboarding-review h2,
+  .onboarding-review h3 {
+    margin: 0 0 8px;
+  }
+  .onboarding-review h2 {
+    font-size: 18px;
+  }
+  .onboarding-review h3 {
+    font-size: 14px;
+  }
+  .onboarding-review .import-counts {
+    margin: 8px 0;
+    padding: 0;
+    list-style: none;
+  }
+  .onboarding-review .import-counts li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .onboarding-review .import-counts li span:first-child {
+    min-width: 120px;
+  }
+  .onboarding-review .row {
+    flex-wrap: wrap;
+  }
+  @media (max-width: 540px) {
+    .onboarding-flow {
+      padding: 18px;
+    }
+  }
+}

@@ -24,6 +24,11 @@
     gap: 16px;
     align-content: start;
   }
+  .onboarding-scroll > output,
+  .onboarding-scroll > [role="alert"] {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
   .onboarding-flow header,
   .onboarding-flow footer,
   .onboarding-flow nav {
