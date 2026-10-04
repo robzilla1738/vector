@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+ ✓ |unit| tests/unit/disposable-saved-model-catalog.test.ts (1 test) 74ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  07:19:45
+   Duration  28.77s (transform 8.67s, setup 0ms, collect 28.09s, tests 74ms, environment 0ms, prepare 171ms)
+
