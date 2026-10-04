@@ -326,3 +326,4 @@ aux/runtime/0337-original-appearance-channel-retirement.patch
 0356-native-compiler-declarations-and-scoped-types.patch
 0357-native-capture-repeating-identity-reference.patch
 0358-native-capture-fixture-capturing-callback-api.patch
+0359-native-credential-fixture-explicit-pointer-types.patch
