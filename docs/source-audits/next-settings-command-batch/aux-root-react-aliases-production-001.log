@@ -1,0 +1,19 @@
+✔ build-only aliases are the exact installed constructors, including fallback (0.384416ms)
+✔ supported development builds retain original jsxDEV constructor and arguments (0.070042ms)
+✔ Vite build selects aliases while serve keeps original development runtime (12.888125ms)
+✔ single and multiple children preserve order, content, ref and callback (1.666167ms)
+✔ fragments, null/boolean children, arrays and empty roots retain exact values (0.9065ms)
+✔ function type defaultProps and explicit undefined remain installed semantics (1.004208ms)
+✔ key-before-spread preserves getter evaluation and spread key precedence (0.725292ms)
+✔ key-after-spread preserves actual createElement fallback and reserved props (1.124708ms)
+✔ original throwing prop effects abort construction identically (0.837833ms)
+✔ construction still returns distinct original elements on repeated calls (0.617083ms)
+✔ actual installed server renderer emits identical element markup (65.305167ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 280.018792

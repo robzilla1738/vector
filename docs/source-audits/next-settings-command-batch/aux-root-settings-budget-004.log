@@ -1,0 +1,6 @@
+FAIL renderer startup JS                491 KB  (budget 490 KB)
+ok   renderer startup CSS               175 KB  (budget 180 KB)
+ok   renderer total JS                 1778 KB  (budget 1800 KB)
+       253 KB  assets/App-xm_k3pnf.js
+       203 KB  assets/index-DRjOwcfC.js
+        35 KB  assets/feature-stage-reconciliation-BocZBfiJ.js

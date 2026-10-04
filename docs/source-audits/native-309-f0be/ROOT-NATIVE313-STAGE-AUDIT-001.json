@@ -1,0 +1,12 @@
+{
+  "status": "ROOT ACTUAL NATIVE313 STAGE PASS",
+  "proofSha256": "76d81eb69d2b0c2fb03b09f3450201311484a415c341339d2fdf21cdb58d2d9f",
+  "native": 690,
+  "generated": 3,
+  "compiledUnchanged": 8801,
+  "assets": 175,
+  "runtimeHelperCachePreserved": true,
+  "actualOriginalChildrenGroupsAbsent": true,
+  "slotAbsent": true,
+  "gnBuildAppAdmitted": false
+}

@@ -1,0 +1,25 @@
+A props object containing a "key" prop is being spread into JSX:
+  let props = {key: someKey, title: ..., ref: ..., onClick: ..., overridden: ...};
+  <Type {...props} />
+React keys must be passed directly to JSX without using spread:
+  let props = {title: ..., ref: ..., onClick: ..., overridden: ...};
+  <Type key={someKey} {...props} />
+✔ build-only aliases are the exact installed constructors, including fallback (0.353083ms)
+✔ supported development builds retain original jsxDEV constructor and arguments (12.314292ms)
+✔ Vite build selects aliases while serve keeps original development runtime (1.63575ms)
+✔ single and multiple children preserve order, content, ref and callback (1.4275ms)
+✔ fragments, null/boolean children, arrays and empty roots retain exact values (1.238791ms)
+✔ function type defaultProps and explicit undefined remain installed semantics (1.014292ms)
+✔ key-before-spread preserves getter evaluation and spread key precedence (1.013166ms)
+✔ key-after-spread preserves actual createElement fallback and reserved props (1.156708ms)
+✔ original throwing prop effects abort construction identically (1.04425ms)
+✔ construction still returns distinct original elements on repeated calls (0.802ms)
+✔ actual installed server renderer emits identical element markup (107.717583ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 248.444709
