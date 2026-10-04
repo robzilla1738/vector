@@ -1,0 +1,68 @@
+{
+  "prerequisitePackets": [
+    "Generated5 aa8ea0ece",
+    "Designer hint/row75df1c309 + format5ba1f4ef4",
+    "Root milestone f72107673"
+  ],
+  "files": [
+    {
+      "path": "apps/shell/src/components/SavedResultPreview.tsx",
+      "beforeSha256": "21a56ec530df0d48a99eb6f3028b1c69e5ce3ff1773a06e2f8d3773309de0723",
+      "afterSha256": "5dc0b3534aeb027884e60c93c16a4bea9a1ea1dfe2c6f8fd9d7864296713e123"
+    },
+    {
+      "path": "apps/shell/src/components/ResultPreviewControls.tsx",
+      "beforeSha256": "9f033865e0037aa7056e5cdad7b31a1d09e5273a35066d9130db7ae9df6e17fa",
+      "afterSha256": "1cbae6cd5c32079ec5f8a89c312231dada4d7814e3237e8a21a61ab83e174679"
+    },
+    {
+      "path": "apps/shell/src/components/SavedResultPreview.commands.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "2edce6a71972dacf832da6d20e8bc9b0d71b95b3a4d127b901d90fb902b0c172"
+    },
+    {
+      "path": "apps/shell/src/components/ResultViewer.test.tsx",
+      "beforeSha256": "bdb4a075810ad98ffee7c210e36a4af6a5b397ea5aa98674221f46943304ecb8",
+      "afterSha256": "58e78f492967d7fd845ee53aacd0eaec18a016f9fbfdc5034a0d159b482e5a8e"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "56868b5d0aa7a672d5feb3a565ab0c0ee8f3b783cfc94b4f229a7344235da136",
+      "afterSha256": "0e90fccb91198bdfe5dfe1876d81ff39f1a68304c21cb0b615a60b842f484b09"
+    }
+  ],
+  "unchangedPrerequisites": [
+    {
+      "path": "apps/shell/src/ui/button-props.ts",
+      "sha256": "23a580bbc95060ab70d78845b52f3b41fcc701205f058620d9ea56aac209398e",
+      "policy": "readonly adopted prerequisite; excluded from patch"
+    },
+    {
+      "path": "apps/shell/src/ui/class-props.ts",
+      "sha256": "26ede734c35859e363a506c7749e791f77b7bb50ae67a02a03e35194c971c799",
+      "policy": "readonly adopted prerequisite; excluded from patch"
+    },
+    {
+      "path": "apps/shell/src/error-message.ts",
+      "sha256": "7ee2b978c3b95a0d051475f0a071af80485c51a3786918c9cac4900b1c38899e",
+      "policy": "readonly adopted prerequisite; excluded from patch"
+    }
+  ],
+  "patchSha256": "43813af30a53901824e8ac78f2fa162fe5eb183e946517de409d2d631a0a4b42",
+  "forwardReverseForward": true,
+  "exactResultBytes": true,
+  "checks": {
+    "newMounted": 17,
+    "originalViewer": 6,
+    "originalGeneratedAndCommands": 15,
+    "drafts": 3,
+    "types": true,
+    "lint": "pass with five effect/tabindex warnings",
+    "falsifiers": [
+      "Original unconditional post-save write erases newest same-artifact draft RED",
+      "Actual remapped inline revision error duplicates global toast RED; invocation-specific reporting guard GREEN"
+    ]
+  },
+  "nativeExecuted": false,
+  "budgetAccepted": false
+}

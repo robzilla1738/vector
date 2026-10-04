@@ -11,6 +11,7 @@ import { writeResultDraft } from "../result-drafts";
 let host:HTMLDialogElement, root:ReturnType<typeof createRoot>;
 beforeEach(()=>{
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);
+  vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);
   vi.stubGlobal("requestAnimationFrame",(fn:FrameRequestCallback)=>{fn(0);return 1;});
   vi.stubGlobal("cancelAnimationFrame",()=>{});
   const data=new Map<string,string>();

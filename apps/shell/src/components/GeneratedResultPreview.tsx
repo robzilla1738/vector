@@ -24,7 +24,9 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
   const reference=useMemo(()=>({artifactId}),[artifactId]);
   const referenceCurrent=useConversationAttachmentOwner(conversationCurrent,[reference]);
   const current=useCallback(()=>referenceCurrent(reference),[reference,referenceCurrent]);
-  const loadedCurrent=useConversationAttachmentOwner(current,result?[result,...versions]:[]);
+  const published=useRef<{result:GeneratedResult;current:()=>boolean}|null>(null);
+  const recordCurrent=useConversationAttachmentOwner(current,result?[result,...versions]:[]);
+  const loadedCurrent=useCallback((record:GeneratedResultSummary)=>!!result&&result.chatId===chatId&&result.artifactId===artifactId&&published.current?.result===result&&published.current.current===current&&recordCurrent(record),[result,chatId,artifactId,current,recordCurrent]);
   const draftIdentity=useMemo(()=>({draft}),[draft]);
   const draftOwner=useRef(draftIdentity);
   const pending=useRef<object|null>(null);
@@ -40,8 +42,8 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
     void Promise.all([call("results.generated.get",{artifactId}),call("results.generated.versions",{artifactId})]).then(([file,history])=>{
       if(!live||!current())return;
       if(file.chatId!==chatId)throw new Error("This result belongs to another conversation.");
-      setResult(file);setVersions(history);setDraft(JSON.stringify(file.spec,null,2));
-      if(file.kind==="chart")void call("artifacts.read",{artifactId}).then(data=>{
+      published.current={result:file,current};setResult(file);setVersions(history);setDraft(JSON.stringify(file.spec,null,2));
+      if(file.kind==="chart"&&file.artifactId===artifactId)void call("artifacts.read",{artifactId}).then(data=>{
         if(live&&current()&&data.artifact.mediaType==="image/png"&&data.artifact.size<=5*1024*1024)setImage(`data:image/png;base64,${data.dataBase64}`);
       }).catch(reason=>{if(live&&current())setError(String(reason));});
     }).catch(reason=>{if(live&&current())setError(String(reason));});
@@ -52,6 +54,7 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
     const original=result,originalDraft=draftIdentity,token={};
     pending.current=token;latestOperation.current=token;setBusy(true);if(revision)setError("");
     const delivering=()=>loadedCurrent(original)&&latestOperation.current===token&&(!revision||draftOwner.current===originalDraft);
+    let errorHandled=false;
     const completion=(async()=>{
       try{
         const ack=revision
@@ -62,10 +65,10 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
           else if(ack)toast("Result exported");
         }
         return ack;
-      }catch(reason){if(revision&&delivering())setError(errorMessage(reason));throw reason;}
+      }catch(reason){if(revision&&delivering()){setError(errorMessage(reason));errorHandled=true;}throw reason;}
       finally{if(pending.current===token){pending.current=null;if(current())setBusy(false);}}
     })();
-    return guardCommandCompletion(completion,delivering);
+    return guardCommandCompletion(completion,()=>delivering()&&!errorHandled);
   }
   return <ViewerFrame label="Generated result preview" title={result?.filename??"Generated result"} onClose={onClose} closeLabel="Close result preview" closeControl={<ResultPreviewControl command="close-generated-result-preview" current={current} invoke={onClose} className="icon-btn xs" aria-label="Close result preview">{shellIconClose}</ResultPreviewControl>}
     metadata={result&&<>v{result.revision} · {result.kind.toUpperCase()} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB · {new Date(result.createdAt).toLocaleString()}</>}

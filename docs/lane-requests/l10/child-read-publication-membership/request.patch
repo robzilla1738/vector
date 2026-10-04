@@ -1,0 +1,134 @@
+diff --git a/apps/shell/src/components/DocumentSnapshot.commands.test.tsx b/apps/shell/src/components/DocumentSnapshot.commands.test.tsx
+index ac5721d..44e06b8 100644
+--- a/apps/shell/src/components/DocumentSnapshot.commands.test.tsx
++++ b/apps/shell/src/components/DocumentSnapshot.commands.test.tsx
+@@ -1,5 +1,5 @@
+ // @vitest-environment jsdom
+-import { act } from "react";
++import { act,useLayoutEffect } from "react";
+ import { createRoot } from "react-dom/client";
+ import { beforeEach,afterEach,expect,it,vi } from "vitest";
+ import { COMMANDS, type ConversationAttachment } from "@aux/contracts";
+@@ -30,3 +30,5 @@ it("focused remaps use actual loaded summary and included-text controls",async()
+ it("full included reference hides text-scope control exactly as original",async()=>{await render();const value=snapshot();value.contextCharacters=value.content.length;delete value.contextText;await act(async()=>reads[0]!.resolve(value));expect(control(text)).toBeNull();expect(host.textContent).toContain("Entire text reference included in new replies");});
+ it("hidden/unfocused controls refuse original close or display mutation",async()=>{await ready();control(closeId).setAttribute("hidden","");control(closeId).focus();await expect(executeCommand(closeId)).rejects.toThrow();host.focus();await expect(executeCommand(text)).rejects.toThrow();expect(close).not.toHaveBeenCalled();});
+ it("all four actions remain original normal scoped controls",()=>{for(const id of [text,details,retry,closeId])expect(COMMANDS.find(row=>row.id===id)).toMatchObject({windows:["normal"],palette:false,bindings:[],intercept:true});});
++
++it("committed layout-cut same-attachment new-chat cannot disclose old snapshot before passive clear",async()=>{let attack=false,completion:Promise<unknown>|undefined,observedOpen:boolean|undefined;function Probe({attack}:{attack:boolean}){useLayoutEffect(()=>{if(attack){control(details).focus();completion=executeCommand(details);void completion.catch(()=>{});observedOpen=host.querySelector<HTMLDetailsElement>("details")!.open;}},[attack]);return null;}function View({chat}:{chat:string}){return <><DocumentSnapshot attachmentId="one" chatId={chat} onClose={close}/><Probe attack={attack}/></>;}await act(async()=>root.render(<View chat="a"/>));await act(async()=>reads[0]!.resolve(snapshot()));attack=true;await act(async()=>root.render(<View chat="b"/>));expect(observedOpen).toBe(false);await expect(completion).rejects.toThrow();await act(async()=>reads[1]!.resolve(snapshot()));await command(details);expect(host.querySelector<HTMLDetailsElement>("details")!.open).toBe(true);});
+diff --git a/apps/shell/src/components/DocumentSnapshot.tsx b/apps/shell/src/components/DocumentSnapshot.tsx
+index 6728057..e10983c 100644
+--- a/apps/shell/src/components/DocumentSnapshot.tsx
++++ b/apps/shell/src/components/DocumentSnapshot.tsx
+@@ -1,6 +1,6 @@
+ import { staticHintProps } from "../ui/class-props";
+ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
++import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+ import type { ConversationAttachment } from "@aux/contracts";
+ import { call, useStore } from "../store";
+ import { useConversationOwner } from "./ConversationControls";
+@@ -21,17 +21,16 @@ export function DocumentSnapshot({ chatId, attachmentId, onClose }: { chatId: st
+   const connected=useStore(state=>state.connected), chatCurrent=useConversationOwner(chatId,connected);
+   const reference=useMemo(()=>({attachmentId}),[attachmentId]), referenceCurrent=useConversationAttachmentOwner(chatCurrent,[reference]);
+   const current=useCallback(()=>referenceCurrent(reference),[referenceCurrent,reference]);
+-  const published=useRef<Snapshot|null>(null);
+-  useLayoutEffect(()=>{published.current=snapshot;},[snapshot]);
++  const published=useRef<{snapshot:Snapshot;current:()=>boolean}|null>(null);
+   const recordCurrent=useConversationAttachmentOwner(current,snapshot ? [snapshot.attachment] : []);
+-  const loadedCurrent=()=>!!snapshot && published.current===snapshot && recordCurrent(snapshot.attachment);
++  const loadedCurrent=()=>!!snapshot && snapshot.attachment.attachmentId===attachmentId && published.current?.snapshot===snapshot && published.current.current===current && recordCurrent(snapshot.attachment);
+ 
+   useEffect(() => {
+     let live = true;
+     setSnapshot(null); setError(""); setIncludedOnly(false);
+     if(!current())return;
+     void call("conversations.attachments.read", { chatId, attachmentId })
+-      .then(value => { if (live && current()) setSnapshot(value); })
++      .then(value => { if (live && current()) {published.current={snapshot:value,current};setSnapshot(value);} })
+       .catch(reason => { if (live && current()) setError(String(reason)); });
+     return () => { live = false; };
+   }, [chatId, attachmentId, retry, current]);
+diff --git a/apps/shell/src/components/GeneratedResultPreview.commands.test.tsx b/apps/shell/src/components/GeneratedResultPreview.commands.test.tsx
+index fee95b4..73e2667 100644
+--- a/apps/shell/src/components/GeneratedResultPreview.commands.test.tsx
++++ b/apps/shell/src/components/GeneratedResultPreview.commands.test.tsx
+@@ -1,5 +1,5 @@
+ // @vitest-environment jsdom
+-import { act } from "react";
++import { act,useLayoutEffect } from "react";
+ import { createRoot } from "react-dom/client";
+ import { beforeEach,afterEach,expect,it,vi } from "vitest";
+ import { COMMANDS,type GeneratedResult } from "@aux/contracts";
+@@ -43,3 +43,5 @@ it("context disabled and original revision20 preserve original revise gate while
+ it("committed connection ABA renews exact source and old save cannot deliver",async()=>{await ready();await command(ids.toggle);const operation=await command(ids.save);await act(async()=>useStore.setState({connected:true}));await act(async()=>useStore.setState({connected:false}));expect(reads).toHaveLength(3);await act(async()=>reads[2]!.pending.resolve(file()));await act(async()=>generations[0]!.pending.resolve(file("retired","a",2)));await expect(operation.result).resolves.toMatchObject({artifactId:"retired"});expect(changed).not.toHaveBeenCalled();expect(host.textContent).toContain("Original one");});
+ it("actual remapped current revision failure stays inline without a global duplicate",async()=>{useStore.setState({settings:{shortcutOverrides:{[ids.save]:[{key:"l",command:true,alt:true}]}}});await ready();await command(ids.toggle);await act(async()=>{control(ids.save).focus();expect(dispatchShortcut({key:"l",meta:true,alt:true,shift:false})).toBe(true);});const reason=new Error("Original remapped generated failure");await act(async()=>generations[0]!.pending.reject(reason));expect(host.querySelector('[role="alert"]')?.textContent).toBe(reason.message);expect(useStore.getState().toasts).toEqual([]);expect(control(ids.save).disabled).toBe(false);});
+ it("actual remapped current native export error still reports once",async()=>{useStore.setState({settings:{shortcutOverrides:{[ids.export]:[{key:"l",command:true,alt:true}]}}});await ready();await act(async()=>{control(ids.export).focus();expect(dispatchShortcut({key:"l",meta:true,alt:true,shift:false})).toBe(true);});await act(async()=>exports[0]!.reject(new Error("Actual native export error")));expect(useStore.getState().toasts.map(value=>value.text)).toEqual(["Actual native export error"]);expect(control(ids.export).disabled).toBe(false);});
++
++it("committed layout-cut source change cannot export old result before passive clear",async()=>{let attack=false,completion:Promise<unknown>|undefined;function Probe({attack}:{attack:boolean}){useLayoutEffect(()=>{if(attack){control(ids.export).focus();completion=executeCommand(ids.export);void completion.catch(()=>{});}},[attack]);return null;}function View({id,nextChat}:{id:string;nextChat:string}){return <><GeneratedResultPreview artifactId={id} chatId={nextChat} onClose={close}/><Probe attack={attack}/></>;}await act(async()=>root.render(<View id="one" nextChat="a"/>));await act(async()=>reads[0]!.pending.resolve(file()));attack=true;chat="b";await act(async()=>root.render(<View id="two" nextChat="b"/>));expect(exports).toEqual([]);await expect(completion).rejects.toThrow();await act(async()=>reads[1]!.pending.resolve(file("two","b")));await command(ids.export);expect(bridge.saveStoredArtifact).toHaveBeenCalledWith("two","report.docx");await act(async()=>exports[0]!.resolve(null));});
+diff --git a/apps/shell/src/components/GeneratedResultPreview.tsx b/apps/shell/src/components/GeneratedResultPreview.tsx
+index 48744fa..a7f39cf 100644
+--- a/apps/shell/src/components/GeneratedResultPreview.tsx
++++ b/apps/shell/src/components/GeneratedResultPreview.tsx
+@@ -24,7 +24,9 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
+   const reference=useMemo(()=>({artifactId}),[artifactId]);
+   const referenceCurrent=useConversationAttachmentOwner(conversationCurrent,[reference]);
+   const current=useCallback(()=>referenceCurrent(reference),[reference,referenceCurrent]);
+-  const loadedCurrent=useConversationAttachmentOwner(current,result?[result,...versions]:[]);
++  const published=useRef<{result:GeneratedResult;current:()=>boolean}|null>(null);
++  const recordCurrent=useConversationAttachmentOwner(current,result?[result,...versions]:[]);
++  const loadedCurrent=useCallback((record:GeneratedResultSummary)=>!!result&&result.chatId===chatId&&result.artifactId===artifactId&&published.current?.result===result&&published.current.current===current&&recordCurrent(record),[result,chatId,artifactId,current,recordCurrent]);
+   const draftIdentity=useMemo(()=>({draft}),[draft]);
+   const draftOwner=useRef(draftIdentity);
+   const pending=useRef<object|null>(null);
+@@ -40,8 +42,8 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
+     void Promise.all([call("results.generated.get",{artifactId}),call("results.generated.versions",{artifactId})]).then(([file,history])=>{
+       if(!live||!current())return;
+       if(file.chatId!==chatId)throw new Error("This result belongs to another conversation.");
+-      setResult(file);setVersions(history);setDraft(JSON.stringify(file.spec,null,2));
+-      if(file.kind==="chart")void call("artifacts.read",{artifactId}).then(data=>{
++      published.current={result:file,current};setResult(file);setVersions(history);setDraft(JSON.stringify(file.spec,null,2));
++      if(file.kind==="chart"&&file.artifactId===artifactId)void call("artifacts.read",{artifactId}).then(data=>{
+         if(live&&current()&&data.artifact.mediaType==="image/png"&&data.artifact.size<=5*1024*1024)setImage(`data:image/png;base64,${data.dataBase64}`);
+       }).catch(reason=>{if(live&&current())setError(String(reason));});
+     }).catch(reason=>{if(live&&current())setError(String(reason));});
+diff --git a/apps/shell/src/components/SavedResultPreview.commands.test.tsx b/apps/shell/src/components/SavedResultPreview.commands.test.tsx
+index 2b06505..3472655 100644
+--- a/apps/shell/src/components/SavedResultPreview.commands.test.tsx
++++ b/apps/shell/src/components/SavedResultPreview.commands.test.tsx
+@@ -1,5 +1,5 @@
+ // @vitest-environment jsdom
+-import { act } from "react";
++import { act,useLayoutEffect } from "react";
+ import { createRoot } from "react-dom/client";
+ import { beforeEach,afterEach,expect,it,vi } from "vitest";
+ import { COMMANDS } from "@aux/contracts";
+@@ -43,3 +43,5 @@ it("hidden/unfocused/Private real controls refuse clipboard and mutations",async
+ 
+ it("recorded markdown navigation retains modifier URL and retired source cannot fall back to new tab",async()=>{const newTab=vi.fn().mockResolvedValue("actual-tab");useStore.setState({newTab});await render();await act(async()=>reads[0]!.resolve(file("one","a","[Original source](https://example.test/original)","text/markdown")));const link=host.querySelector<HTMLAnchorElement>("a")!;await act(async()=>link.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,metaKey:true})));expect(citation).toHaveBeenCalledExactlyOnceWith("https://example.test/original",true);citation.mockClear();bridge.windowId="foreign";await act(async()=>link.click());bridge.windowId=originalWindow;await act(async()=>link.click());expect(citation).not.toHaveBeenCalled();expect(newTab).not.toHaveBeenCalled();});
+ it("remapped current Save reports the original revision failure inline without a global duplicate",async()=>{useStore.setState({settings:{shortcutOverrides:{[ids.save]:[{key:"l",command:true,alt:true}]}}});await ready(true);await act(async()=>{control(ids.save).focus();expect(dispatchShortcut({key:"l",meta:true,alt:true,shift:false})).toBe(true);});const reason=new Error("Original remapped revision failure");await act(async()=>mutations[0]!.pending.reject(reason));expect(host.querySelector('[role="alert"]')?.textContent).toBe(reason.message);expect(useStore.getState().toasts).toEqual([]);expect(control(ids.save).disabled).toBe(false);});
++
++it("committed layout-cut result change cannot dispatch old result Copy before passive clear",async()=>{let attack=false,completion:Promise<unknown>|undefined;function Probe({attack}:{attack:boolean}){useLayoutEffect(()=>{if(attack){control(ids.copy).focus();completion=executeCommand(ids.copy);void completion.catch(()=>{});}},[attack]);return null;}function View({id,chat}:{id:string;chat:string}){return <><SavedResultPreview artifactId={id} chatId={chat} onClose={close}/><Probe attack={attack}/></>;}await act(async()=>root.render(<View id="one" chat="a"/>));await act(async()=>reads[0]!.resolve(file()));attack=true;await act(async()=>root.render(<View id="two" chat="b"/>));expect(copies).toEqual([]);await expect(completion).rejects.toThrow();await act(async()=>reads[1]!.resolve(file("two","b")));await command(ids.copy);expect(navigator.clipboard.writeText).toHaveBeenCalledWith(file("two","b").content);await act(async()=>copies[0]!.resolve());});
+diff --git a/apps/shell/src/components/SavedResultPreview.tsx b/apps/shell/src/components/SavedResultPreview.tsx
+index 76dfd5c..1952512 100644
+--- a/apps/shell/src/components/SavedResultPreview.tsx
++++ b/apps/shell/src/components/SavedResultPreview.tsx
+@@ -46,8 +46,9 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
+   const reference=useMemo(()=>({artifactId}),[artifactId]);
+   const referenceCurrent=useConversationAttachmentOwner(conversationCurrent,[reference]);
+   const current=useCallback(()=>referenceCurrent(reference),[reference,referenceCurrent]);
++  const published=useRef<{result:Result;current:()=>boolean}|null>(null);
+   const loadedOwner=useConversationAttachmentOwner(current,result?[result]:[]);
+-  const loadedCurrent=useCallback(()=>!!result&&loadedOwner(result),[result,loadedOwner]);
++  const loadedCurrent=useCallback(()=>!!result&&result.chatId===chatId&&result.artifactId===artifactId&&published.current?.result===result&&published.current.current===current&&loadedOwner(result),[result,chatId,artifactId,current,loadedOwner]);
+   const draftOwner=useRef(draft);
+   useLayoutEffect(()=>{draftOwner.current=draft;},[draft]);
+   const pending=useRef<object|null>(null),latestOperation=useRef<object|null>(null),latestCopy=useRef<object|null>(null);
+@@ -89,7 +90,7 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
+   useEffect(()=>{
+     let active=true; setResult(null);setError("");
+     if(!current())return;
+-    void call("results.read",{artifactId}).then(value=>{if(!active||!current())return;if(value.chatId!==chatId)throw new Error("This result belongs to another conversation.");setResult(value);}).catch(reason=>{if(active&&current()){
++    void call("results.read",{artifactId}).then(value=>{if(!active||!current())return;if(value.chatId!==chatId)throw new Error("This result belongs to another conversation.");published.current={result:value,current};setResult(value);}).catch(reason=>{if(active&&current()){
+       if((reason as {code?:string})?.code==="not_found"){
+         if(!revokeResultDrafts([artifactId]))setDraftError("A saved draft could not be removed from this browser.");
+         setDraft(null);

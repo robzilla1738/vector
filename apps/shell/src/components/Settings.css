@@ -54,7 +54,7 @@
 .extension-store-input { flex:1 1 240px; min-width:0; }
 .extension-confirm-actions { display:flex; justify-content:flex-end; gap:var(--space-2); margin-top:var(--space-4); }
 .extension-compatibility, .extension-details { font-size:var(--fs-sm); color:var(--ink-2); }
-.extension-compatibility summary, .extension-details summary { cursor:pointer; padding:var(--space-1) 0; }
+.extension-compatibility summary, .extension-details summary { min-height:var(--hit); cursor:pointer; padding:var(--space-1) 0; }
 .extension-compatibility p, .extension-details p { margin:var(--space-1-5) 0; overflow-wrap:anywhere; }
 .extension-copy { flex-direction: column; flex:1; min-width:180px; display: flex; gap: var(--space-1); }
 .extension-actions { flex: none; flex-wrap:wrap; display: flex; gap: var(--space-optical); }

@@ -1,0 +1,35 @@
+diff --git a/apps/shell/src/components/GeneratedResultPreview.commands.test.tsx b/apps/shell/src/components/GeneratedResultPreview.commands.test.tsx
+index 92146e8..fee95b4 100644
+--- a/apps/shell/src/components/GeneratedResultPreview.commands.test.tsx
++++ b/apps/shell/src/components/GeneratedResultPreview.commands.test.tsx
+@@ -41,3 +41,5 @@ it("retained version remap chooses exact recorded target and title toggle is foc
+ it("hidden and Private controls never admit original callback or export",async()=>{await ready();control(ids.export).hidden=true;control(ids.export).focus();await expect(executeCommand(ids.export)).rejects.toThrow();bridge.privateMode=true;control(ids.close).focus();await expect(executeCommand(ids.close)).rejects.toThrow();expect(exports).toEqual([]);expect(close).not.toHaveBeenCalled();});
+ it("context disabled and original revision20 preserve original revise gate while allowing export",async()=>{await render("a","one",true);await act(async()=>reads[0]!.pending.resolve(file("one","a",20)));expect(control(ids.toggle).disabled).toBe(true);const operation=await command(ids.export);await act(async()=>exports[0]!.resolve(null));await expect(operation.result).resolves.toBeNull();expect(generations).toEqual([]);});
+ it("committed connection ABA renews exact source and old save cannot deliver",async()=>{await ready();await command(ids.toggle);const operation=await command(ids.save);await act(async()=>useStore.setState({connected:true}));await act(async()=>useStore.setState({connected:false}));expect(reads).toHaveLength(3);await act(async()=>reads[2]!.pending.resolve(file()));await act(async()=>generations[0]!.pending.resolve(file("retired","a",2)));await expect(operation.result).resolves.toMatchObject({artifactId:"retired"});expect(changed).not.toHaveBeenCalled();expect(host.textContent).toContain("Original one");});
++it("actual remapped current revision failure stays inline without a global duplicate",async()=>{useStore.setState({settings:{shortcutOverrides:{[ids.save]:[{key:"l",command:true,alt:true}]}}});await ready();await command(ids.toggle);await act(async()=>{control(ids.save).focus();expect(dispatchShortcut({key:"l",meta:true,alt:true,shift:false})).toBe(true);});const reason=new Error("Original remapped generated failure");await act(async()=>generations[0]!.pending.reject(reason));expect(host.querySelector('[role="alert"]')?.textContent).toBe(reason.message);expect(useStore.getState().toasts).toEqual([]);expect(control(ids.save).disabled).toBe(false);});
++it("actual remapped current native export error still reports once",async()=>{useStore.setState({settings:{shortcutOverrides:{[ids.export]:[{key:"l",command:true,alt:true}]}}});await ready();await act(async()=>{control(ids.export).focus();expect(dispatchShortcut({key:"l",meta:true,alt:true,shift:false})).toBe(true);});await act(async()=>exports[0]!.reject(new Error("Actual native export error")));expect(useStore.getState().toasts.map(value=>value.text)).toEqual(["Actual native export error"]);expect(control(ids.export).disabled).toBe(false);});
+diff --git a/apps/shell/src/components/GeneratedResultPreview.tsx b/apps/shell/src/components/GeneratedResultPreview.tsx
+index 1f318db..48744fa 100644
+--- a/apps/shell/src/components/GeneratedResultPreview.tsx
++++ b/apps/shell/src/components/GeneratedResultPreview.tsx
+@@ -52,6 +52,7 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
+     const original=result,originalDraft=draftIdentity,token={};
+     pending.current=token;latestOperation.current=token;setBusy(true);if(revision)setError("");
+     const delivering=()=>loadedCurrent(original)&&latestOperation.current===token&&(!revision||draftOwner.current===originalDraft);
++    let errorHandled=false;
+     const completion=(async()=>{
+       try{
+         const ack=revision
+@@ -62,10 +63,10 @@ export function GeneratedResultPreview({artifactId,chatId,onClose,onVersionSaved
+           else if(ack)toast("Result exported");
+         }
+         return ack;
+-      }catch(reason){if(revision&&delivering())setError(errorMessage(reason));throw reason;}
++      }catch(reason){if(revision&&delivering()){setError(errorMessage(reason));errorHandled=true;}throw reason;}
+       finally{if(pending.current===token){pending.current=null;if(current())setBusy(false);}}
+     })();
+-    return guardCommandCompletion(completion,delivering);
++    return guardCommandCompletion(completion,()=>delivering()&&!errorHandled);
+   }
+   return <ViewerFrame label="Generated result preview" title={result?.filename??"Generated result"} onClose={onClose} closeLabel="Close result preview" closeControl={<ResultPreviewControl command="close-generated-result-preview" current={current} invoke={onClose} className="icon-btn xs" aria-label="Close result preview">{shellIconClose}</ResultPreviewControl>}
+     metadata={result&&<>v{result.revision} · {result.kind.toUpperCase()} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB · {new Date(result.createdAt).toLocaleString()}</>}

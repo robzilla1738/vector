@@ -1,6 +1,6 @@
 import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConversationAttachment } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { useConversationOwner } from "./ConversationControls";
@@ -21,17 +21,16 @@ export function DocumentSnapshot({ chatId, attachmentId, onClose }: { chatId: st
   const connected=useStore(state=>state.connected), chatCurrent=useConversationOwner(chatId,connected);
   const reference=useMemo(()=>({attachmentId}),[attachmentId]), referenceCurrent=useConversationAttachmentOwner(chatCurrent,[reference]);
   const current=useCallback(()=>referenceCurrent(reference),[referenceCurrent,reference]);
-  const published=useRef<Snapshot|null>(null);
-  useLayoutEffect(()=>{published.current=snapshot;},[snapshot]);
+  const published=useRef<{snapshot:Snapshot;current:()=>boolean}|null>(null);
   const recordCurrent=useConversationAttachmentOwner(current,snapshot ? [snapshot.attachment] : []);
-  const loadedCurrent=()=>!!snapshot && published.current===snapshot && recordCurrent(snapshot.attachment);
+  const loadedCurrent=()=>!!snapshot && snapshot.attachment.attachmentId===attachmentId && published.current?.snapshot===snapshot && published.current.current===current && recordCurrent(snapshot.attachment);
 
   useEffect(() => {
     let live = true;
     setSnapshot(null); setError(""); setIncludedOnly(false);
     if(!current())return;
     void call("conversations.attachments.read", { chatId, attachmentId })
-      .then(value => { if (live && current()) setSnapshot(value); })
+      .then(value => { if (live && current()) {published.current={snapshot:value,current};setSnapshot(value);} })
       .catch(reason => { if (live && current()) setError(String(reason)); });
     return () => { live = false; };
   }, [chatId, attachmentId, retry, current]);

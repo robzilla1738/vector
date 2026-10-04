@@ -1,3 +1,9 @@
+## Active continuation: viewer publication and native runtime batch
+
+Saved-result actions, inline revision error handling, and Saved/Generated/Document publication guards are integrated in the isolated root source. Document summary refusal now prevents default disclosure. Workspace compilation, shell types, lint, format and Vite passed. Whole-unit verification passed. Exact bundle remains blocked: startup 502424 / 501760 bytes; total JS 1846067 / 1843200 bytes; CSS passes. This source batch is not promoted.
+
+Native332 full18 compilation and independent compiled identity passed. Original 524 case sets and generated source ownership are retained. Matching offline runtime/helper staging and independent pair/compiler audit passed. Binary enumeration is running; safety assertions, app journeys, performance and final visual qualification remain pending. Independent StructuredResult implementation, source-grounded extension disclosure polish and bundle reserve work continue. See source-audits/parallel-integration-034/CONTINUATION-STATUS-004.json.
+
 ## Current continuation — 2026-10-04, Document controls and native332 staging
 
 Document preview close, read retry, original full-text inclusion and details now use remappable scoped commands. Attachment and supporting-content controls remain integrated. Root rebuilt workspace before mounted tests; assembled controls, types, full lint and ratchet formatting pass on the Document/modifier/eight-class source snapshot. The supplied06 source design map and Aux branding requirements remain mandatory.

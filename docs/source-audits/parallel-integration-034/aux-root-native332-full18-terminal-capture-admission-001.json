@@ -1,0 +1,12 @@
+{
+  "full18NativeBuildPassed": true,
+  "actual15RawPins": true,
+  "actual18BinaryHashes": true,
+  "original12Pids2GroupsAbsent": true,
+  "physical3OriginalGeneratedRestored": true,
+  "readonlyCaptureOnlyAdmission": true,
+  "request": "/private/tmp/aux-builder-native332-preparation-001/NATIVE332-READONLY-COMPILED-CAPTURE-REQUEST-001.json",
+  "requestSha256": "b710b5abe75a117234d85f136310d8d1ad7865e1c76bf66fd9f0079399f37018",
+  "captureControllerSha256": "d09c2570f60a1a1954a9a4ce41a416c331e0aa5209c2dc6f3023ca51ce7e6c28",
+  "runtimeHelperSafetyAppNotAdmitted": true
+}

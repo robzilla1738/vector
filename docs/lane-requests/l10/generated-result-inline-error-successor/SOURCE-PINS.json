@@ -1,0 +1,26 @@
+{
+  "files": [
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.tsx",
+      "beforeSha256": "83b84c03bbf1263c44f176941448350734e064a2036df91ceb0abef464a16750",
+      "afterSha256": "5b6b515d66c3da125d8f23c427f8f278d88d56b06595ebfc7d4638cbb073f87c"
+    },
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.commands.test.tsx",
+      "beforeSha256": "57c8fc2c23e318732cc6075610607def3073befd140e86e348049197527288a3",
+      "afterSha256": "dda680089e9bf28183ed848800ae1f54cd5f5dd51c41c92d73a752a305ba368a"
+    }
+  ],
+  "patchSha256": "902dd227ce97db4e6bb4f6186567349c429b2b99eb902b562ab172a3b6a02d15",
+  "forwardReverseForward": true,
+  "exactResultBytes": true,
+  "checks": {
+    "newRemappedCases": 2,
+    "cohort": 43,
+    "types": true,
+    "lint": "pass; same two effect warnings",
+    "falsifier": "Real dispatchShortcut current revision failure previously generated inline+global duplicate RED"
+  },
+  "nativeExecuted": false,
+  "budgetAccepted": false
+}

@@ -1,0 +1,9 @@
+const fs=require("node:fs"),path=require("node:path"),{createRequire}=require("node:module");
+const root=process.cwd(), packet=path.join(root,"docs/lane-requests/design/static-record-label-constructors"),ts=createRequire(path.join(root,"packages/contracts/package.json"))("typescript");
+const results=[];
+for(const [relative,config] of [["packages/contracts/src/commands.ts","packages/contracts/tsconfig.json"],["apps/shell/src/ui/class-props.ts","apps/shell/tsconfig.json"]]) {
+ const file=path.join(root,relative),cfg=ts.readConfigFile(path.join(root,config),ts.sys.readFile),parsed=ts.parseJsonConfigFileContent(cfg.config,ts.sys,path.dirname(path.join(root,config)));
+ function build(text) {const opts={...parsed.options,incremental:false,composite:false,noEmit:false,declaration:true,emitDeclarationOnly:true},host=ts.createCompilerHost(opts),read=host.readFile;host.readFile=p=>path.resolve(p)===file?text:read(p); const program=ts.createProgram(parsed.fileNames,opts,host),diagnostics=ts.getPreEmitDiagnostics(program); if(diagnostics.length)throw Error(ts.formatDiagnosticsWithColorAndContext(diagnostics,{getCanonicalFileName:p=>p,getCurrentDirectory:()=>root,getNewLine:()=>"\n"}));let output;program.emit(program.getSourceFile(file),(p,s)=>{if(p.endsWith(".d.ts"))output=s});return output;}
+ const before=build(fs.readFileSync(path.join(packet,"before",relative),"utf8")),after=build(fs.readFileSync(path.join(packet,"after",relative),"utf8"));if(before!==after){ fs.writeFileSync("/tmp/aux-record-declaration-before.txt",before);fs.writeFileSync("/tmp/aux-record-declaration-after.txt",after); } if(before!==after)throw Error(relative+" public declarations changed");results.push({path:relative,bytes:Buffer.byteLength(before),publicDeclarationsByteExact:true});
+}
+const result={installedTypeScript:ts.version,results};fs.writeFileSync(path.join(packet,"PUBLIC-TYPES.json"),JSON.stringify(result,null,2)+"\n");console.log(JSON.stringify(result));

@@ -1,0 +1,21 @@
+{
+  "rootRegistryBefore": "0e90fccb91198bdfe5dfe1876d81ff39f1a68304c21cb0b615a60b842f484b09",
+  "files": [
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "0e90fccb91198bdfe5dfe1876d81ff39f1a68304c21cb0b615a60b842f484b09",
+      "afterSha256": "a1632924d541598b73ff6748bfe406dbf76e8ba7df74d1d2f7b635633a157add"
+    },
+    {
+      "path": "apps/shell/src/ui/class-props.ts",
+      "beforeSha256": "2192159edb2850711e0f1b356a0fa22fecd1594886c59439328cd1ef547b3f65",
+      "afterSha256": "b5c0ae32e8d9d191a30c555d88a1639c2d389a9dbd3fdad2016d0c2e2be46be9"
+    },
+    {
+      "path": "tests/unit/static-record-label-construction.test.ts",
+      "beforeSha256": null,
+      "afterSha256": "00ee77efca3b2450c0090addcda3bc37962c6f1092a0ead4a45e0d46c18e42e3"
+    }
+  ],
+  "patchSha256": "3dbd351b5f606c097703dc15280d2af5062f33a9ee914ef96331df916a6b2e35"
+}

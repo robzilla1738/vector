@@ -1,0 +1,1138 @@
+{
+  "files": [
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "edits": [
+        {
+          "start": 8532,
+          "end": 8533,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 8575,
+          "end": 8575,
+          "original": "",
+          "result": "\" conversation \", "
+        },
+        {
+          "start": 8601,
+          "end": 8628,
+          "original": "\"Choose conversation image\"",
+          "result": "\"Choose\", \"image\""
+        },
+        {
+          "start": 8655,
+          "end": 8682,
+          "original": "\"Capture conversation page\"",
+          "result": "\"Capture\", \"page\""
+        },
+        {
+          "start": 8716,
+          "end": 8750,
+          "original": "\"Select conversation image region\"",
+          "result": "\"Select\", \"image region\""
+        },
+        {
+          "start": 8777,
+          "end": 8804,
+          "original": "\"Attach conversation image\"",
+          "result": "\"Attach\", \"image\""
+        },
+        {
+          "start": 8831,
+          "end": 8865,
+          "original": "\"Cancel conversation image review\"",
+          "result": "\"Cancel\", \"image review\""
+        },
+        {
+          "start": 8895,
+          "end": 8925,
+          "original": "\"Use whole conversation image\"",
+          "result": "\"Use whole\", \"image\""
+        },
+        {
+          "start": 8952,
+          "end": 8989,
+          "original": "\"Toggle conversation image inclusion\"",
+          "result": "\"Toggle\", \"image inclusion\""
+        },
+        {
+          "start": 9016,
+          "end": 9043,
+          "original": "\"Remove conversation image\"",
+          "result": "\"Remove\", \"image\""
+        },
+        {
+          "start": 9071,
+          "end": 9099,
+          "original": "\"Preview conversation image\"",
+          "result": "\"Preview\", \"image\""
+        },
+        {
+          "start": 9123,
+          "end": 9147,
+          "original": "\"Fit conversation image\"",
+          "result": "\"Fit\", \"image\""
+        },
+        {
+          "start": 9184,
+          "end": 9224,
+          "original": "\"Show conversation image at actual size\"",
+          "result": "\"Show\", \"image at actual size\""
+        },
+        {
+          "start": 9253,
+          "end": 9282,
+          "original": "\"Zoom conversation image out\"",
+          "result": "\"Zoom\", \"image out\""
+        },
+        {
+          "start": 9310,
+          "end": 9338,
+          "original": "\"Zoom conversation image in\"",
+          "result": "\"Zoom\", \"image in\""
+        },
+        {
+          "start": 9373,
+          "end": 9406,
+          "original": "\"Show conversation image details\"",
+          "result": "\"Show\", \"image details\""
+        },
+        {
+          "start": 9440,
+          "end": 9474,
+          "original": "\"Retry conversation image preview\"",
+          "result": "\"Retry\", \"image preview\""
+        },
+        {
+          "start": 9504,
+          "end": 9534,
+          "original": "\"Attach conversation document\"",
+          "result": "\"Attach\", \"document\""
+        },
+        {
+          "start": 15378,
+          "end": 15379,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 15419,
+          "end": 15419,
+          "original": "",
+          "result": "\" task receipt \", "
+        },
+        {
+          "start": 15448,
+          "end": 15478,
+          "original": "\"Select task receipt evidence\"",
+          "result": "\"Select\", \"evidence\""
+        },
+        {
+          "start": 15501,
+          "end": 15524,
+          "original": "\"Add task receipt note\"",
+          "result": "\"Add\", \"note\""
+        },
+        {
+          "start": 15551,
+          "end": 15578,
+          "original": "\"Capture task receipt page\"",
+          "result": "\"Capture\", \"page\""
+        },
+        {
+          "start": 15608,
+          "end": 15638,
+          "original": "\"Import task receipt document\"",
+          "result": "\"Import\", \"document\""
+        },
+        {
+          "start": 15666,
+          "end": 15694,
+          "original": "\"Save task receipt document\"",
+          "result": "\"Save\", \"document\""
+        },
+        {
+          "start": 15724,
+          "end": 15754,
+          "original": "\"Cancel task receipt document\"",
+          "result": "\"Cancel\", \"document\""
+        },
+        {
+          "start": 15785,
+          "end": 15816,
+          "original": "\"Accept task receipt criterion\"",
+          "result": "\"Accept\", \"criterion\""
+        },
+        {
+          "start": 15847,
+          "end": 15878,
+          "original": "\"Reject task receipt criterion\"",
+          "result": "\"Reject\", \"criterion\""
+        },
+        {
+          "start": 15909,
+          "end": 15940,
+          "original": "\"Verify task receipt criterion\"",
+          "result": "\"Verify\", \"criterion\""
+        },
+        {
+          "start": 15964,
+          "end": 15988,
+          "original": "\"Undo task receipt form\"",
+          "result": "\"Undo\", \"form\""
+        },
+        {
+          "start": 16016,
+          "end": 16044,
+          "original": "\"Undo task receipt bookmark\"",
+          "result": "\"Undo\", \"bookmark\""
+        },
+        {
+          "start": 16072,
+          "end": 16100,
+          "original": "\"Undo task receipt download\"",
+          "result": "\"Undo\", \"download\""
+        },
+        {
+          "start": 16127,
+          "end": 16154,
+          "original": "\"Undo task receipt history\"",
+          "result": "\"Undo\", \"history\""
+        },
+        {
+          "start": 16184,
+          "end": 16214,
+          "original": "\"Review task receipt run undo\"",
+          "result": "\"Review\", \"run undo\""
+        },
+        {
+          "start": 16247,
+          "end": 16280,
+          "original": "\"Select task receipt undo change\"",
+          "result": "\"Select\", \"undo change\""
+        },
+        {
+          "start": 16316,
+          "end": 16352,
+          "original": "\"Undo task receipt selected changes\"",
+          "result": "\"Undo\", \"selected changes\""
+        },
+        {
+          "start": 16382,
+          "end": 16412,
+          "original": "\"Cancel task receipt run undo\"",
+          "result": "\"Cancel\", \"run undo\""
+        },
+        {
+          "start": 16449,
+          "end": 16486,
+          "original": "\"Select task receipt action evidence\"",
+          "result": "\"Select\", \"action evidence\""
+        },
+        {
+          "start": 16526,
+          "end": 16566,
+          "original": "\"Select task receipt operation evidence\"",
+          "result": "\"Select\", \"operation evidence\""
+        },
+        {
+          "start": 16594,
+          "end": 16622,
+          "original": "\"Accept task receipt action\"",
+          "result": "\"Accept\", \"action\""
+        },
+        {
+          "start": 16650,
+          "end": 16678,
+          "original": "\"Reject task receipt action\"",
+          "result": "\"Reject\", \"action\""
+        },
+        {
+          "start": 16709,
+          "end": 16740,
+          "original": "\"Accept task receipt operation\"",
+          "result": "\"Accept\", \"operation\""
+        },
+        {
+          "start": 16771,
+          "end": 16802,
+          "original": "\"Reject task receipt operation\"",
+          "result": "\"Reject\", \"operation\""
+        },
+        {
+          "start": 16817,
+          "end": 16818,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 16852,
+          "end": 16852,
+          "original": "",
+          "result": "\" personal info\", "
+        },
+        {
+          "start": 16872,
+          "end": 16893,
+          "original": "\"Retry personal info\"",
+          "result": "\"Retry\", \"\""
+        },
+        {
+          "start": 16921,
+          "end": 16949,
+          "original": "\"Import prior personal info\"",
+          "result": "\"Import prior\", \"\""
+        },
+        {
+          "start": 16969,
+          "end": 16989,
+          "original": "\"Edit personal info\"",
+          "result": "\"Edit\", \"\""
+        },
+        {
+          "start": 17009,
+          "end": 17029,
+          "original": "\"Save personal info\"",
+          "result": "\"Save\", \"\""
+        },
+        {
+          "start": 17051,
+          "end": 17073,
+          "original": "\"Cancel personal info\"",
+          "result": "\"Cancel\", \"\""
+        },
+        {
+          "start": 17733,
+          "end": 17734,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 17763,
+          "end": 17763,
+          "original": "",
+          "result": "\" step \", "
+        },
+        {
+          "start": 17784,
+          "end": 17803,
+          "original": "\"Show step details\"",
+          "result": "\"Show\", \"details\""
+        },
+        {
+          "start": 17826,
+          "end": 17852,
+          "original": "\"Inspect step observation\"",
+          "result": "\"Inspect\", \"observation\""
+        },
+        {
+          "start": 17876,
+          "end": 17892,
+          "original": "\"Open step link\"",
+          "result": "\"Open\", \"link\""
+        },
+        {
+          "start": 17917,
+          "end": 17933,
+          "original": "\"Open step file\"",
+          "result": "\"Open\", \"file\""
+        },
+        {
+          "start": 17947,
+          "end": 17948,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 17985,
+          "end": 17985,
+          "original": "",
+          "result": "\" installed \", "
+        },
+        {
+          "start": 18010,
+          "end": 18045,
+          "original": "\"Retry installed build information\"",
+          "result": "\"Retry\", \"build information\""
+        },
+        {
+          "start": 18086,
+          "end": 18124,
+          "original": "\"Toggle installed build error details\"",
+          "result": "\"Toggle\", \"build error details\""
+        },
+        {
+          "start": 18166,
+          "end": 18205,
+          "original": "\"Toggle installed feature availability\"",
+          "result": "\"Toggle\", \"feature availability\""
+        },
+        {
+          "start": 18219,
+          "end": 18220,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 18256,
+          "end": 18256,
+          "original": "",
+          "result": "\" Task data \", "
+        },
+        {
+          "start": 18277,
+          "end": 18313,
+          "original": "\"Choose Task data backup to restore\"",
+          "result": "\"Choose\", \"backup to restore\""
+        },
+        {
+          "start": 18343,
+          "end": 18377,
+          "original": "\"Cancel pending Task data restore\"",
+          "result": "\"Cancel pending\", \"restore\""
+        },
+        {
+          "start": 18407,
+          "end": 18441,
+          "original": "\"Refresh Task data restore status\"",
+          "result": "\"Refresh\", \"restore status\""
+        },
+        {
+          "start": 18551,
+          "end": 18552,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 18591,
+          "end": 18591,
+          "original": "",
+          "result": "\"ted recovery\", "
+        },
+        {
+          "start": 18612,
+          "end": 18647,
+          "original": "\"Create encrypted recovery package\"",
+          "result": "\"Create encryp\", \" package\""
+        },
+        {
+          "start": 18669,
+          "end": 18704,
+          "original": "\"Choose protected recovery package\"",
+          "result": "\"Choose protec\", \" package\""
+        },
+        {
+          "start": 18726,
+          "end": 18761,
+          "original": "\"Review protected recovery package\"",
+          "result": "\"Review protec\", \" package\""
+        },
+        {
+          "start": 18782,
+          "end": 18817,
+          "original": "\"Stage reviewed protected recovery\"",
+          "result": "\"Stage reviewed protec\", \"\""
+        },
+        {
+          "start": 18831,
+          "end": 18832,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 18865,
+          "end": 18865,
+          "original": "",
+          "result": "\"Toggle this \", "
+        },
+        {
+          "start": 18899,
+          "end": 18938,
+          "original": "\"Toggle this run\u2019s takeover checkpoint\"",
+          "result": "\"\", \"run\u2019s takeover checkpoint\""
+        },
+        {
+          "start": 18968,
+          "end": 19003,
+          "original": "\"Toggle this turn\u2019s result details\"",
+          "result": "\"\", \"turn\u2019s result details\""
+        },
+        {
+          "start": 19026,
+          "end": 19058,
+          "original": "\"Toggle this turn\u2019s run details\"",
+          "result": "\"\", \"turn\u2019s run details\""
+        },
+        {
+          "start": 20573,
+          "end": 20574,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 20607,
+          "end": 20607,
+          "original": "",
+          "result": "\" local Task data backup\", "
+        },
+        {
+          "start": 20629,
+          "end": 20661,
+          "original": "\"Toggle local Task data backups\"",
+          "result": "\"Toggle\", \"s\""
+        },
+        {
+          "start": 20685,
+          "end": 20718,
+          "original": "\"Refresh local Task data backups\"",
+          "result": "\"Refresh\", \"s\""
+        },
+        {
+          "start": 20749,
+          "end": 20789,
+          "original": "\"Review local Task data backup deletion\"",
+          "result": "\"Review\", \" deletion\""
+        },
+        {
+          "start": 20820,
+          "end": 20860,
+          "original": "\"Delete reviewed local Task data backup\"",
+          "result": "\"Delete reviewed\", \"\""
+        },
+        {
+          "start": 20891,
+          "end": 20931,
+          "original": "\"Cancel local Task data backup deletion\"",
+          "result": "\"Cancel\", \" deletion\""
+        },
+        {
+          "start": 21269,
+          "end": 21270,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 21299,
+          "end": 21299,
+          "original": "",
+          "result": "\" startup \", "
+        },
+        {
+          "start": 21321,
+          "end": 21339,
+          "original": "\"Set startup mode\"",
+          "result": "\"Set\", \"mode\""
+        },
+        {
+          "start": 21362,
+          "end": 21380,
+          "original": "\"Add startup page\"",
+          "result": "\"Add\", \"page\""
+        },
+        {
+          "start": 21406,
+          "end": 21427,
+          "original": "\"Remove startup page\"",
+          "result": "\"Remove\", \"page\""
+        },
+        {
+          "start": 21459,
+          "end": 21486,
+          "original": "\"Retry startup preferences\"",
+          "result": "\"Retry\", \"preferences\""
+        },
+        {
+          "start": 21500,
+          "end": 21501,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 21530,
+          "end": 21530,
+          "original": "",
+          "result": "\" language\", "
+        },
+        {
+          "start": 21553,
+          "end": 21572,
+          "original": "\"Add site language\"",
+          "result": "\"Add site\", \"\""
+        },
+        {
+          "start": 21600,
+          "end": 21623,
+          "original": "\"Move site language up\"",
+          "result": "\"Move site\", \" up\""
+        },
+        {
+          "start": 21653,
+          "end": 21678,
+          "original": "\"Move site language down\"",
+          "result": "\"Move site\", \" down\""
+        },
+        {
+          "start": 21705,
+          "end": 21727,
+          "original": "\"Remove site language\"",
+          "result": "\"Remove site\", \"\""
+        },
+        {
+          "start": 21760,
+          "end": 21788,
+          "original": "\"Retry language preferences\"",
+          "result": "\"Retry\", \" preferences\""
+        },
+        {
+          "start": 22304,
+          "end": 22305,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 22343,
+          "end": 22343,
+          "original": "",
+          "result": "\" task notice\", "
+        },
+        {
+          "start": 22365,
+          "end": 22386,
+          "original": "\"Toggle task notices\"",
+          "result": "\"Toggle\", \"s\""
+        },
+        {
+          "start": 22408,
+          "end": 22436,
+          "original": "\"Review current task notice\"",
+          "result": "\"Review current\", \"\""
+        },
+        {
+          "start": 22459,
+          "end": 22488,
+          "original": "\"Dismiss current task notice\"",
+          "result": "\"Dismiss current\", \"\""
+        },
+        {
+          "start": 22898,
+          "end": 22899,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 22935,
+          "end": 22935,
+          "original": "",
+          "result": "\" download folder\", "
+        },
+        {
+          "start": 22956,
+          "end": 22980,
+          "original": "\"Choose download folder\"",
+          "result": "\"Choose\", \"\""
+        },
+        {
+          "start": 23001,
+          "end": 23030,
+          "original": "\"Use default download folder\"",
+          "result": "\"Use default\", \"\""
+        },
+        {
+          "start": 23051,
+          "end": 23074,
+          "original": "\"Retry download folder\"",
+          "result": "\"Retry\", \"\""
+        },
+        {
+          "start": 24009,
+          "end": 24010,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 24050,
+          "end": 24050,
+          "original": "",
+          "result": "\" search engine\", "
+        },
+        {
+          "start": 24071,
+          "end": 24093,
+          "original": "\"Choose search engine\"",
+          "result": "\"Choose\", \"\""
+        },
+        {
+          "start": 24122,
+          "end": 24149,
+          "original": "\"Show custom search engine\"",
+          "result": "\"Show custom\", \"\""
+        },
+        {
+          "start": 24169,
+          "end": 24196,
+          "original": "\"Save custom search engine\"",
+          "result": "\"Save custom\", \"\""
+        },
+        {
+          "start": 24223,
+          "end": 24250,
+          "original": "\"Add keyword search engine\"",
+          "result": "\"Add keyword\", \"\""
+        },
+        {
+          "start": 24280,
+          "end": 24310,
+          "original": "\"Remove keyword search engine\"",
+          "result": "\"Remove keyword\", \"\""
+        },
+        {
+          "start": 27369,
+          "end": 27370,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 27407,
+          "end": 27407,
+          "original": "",
+          "result": "\" browser \", "
+        },
+        {
+          "start": 27434,
+          "end": 27466,
+          "original": "\"Remove selected browser source\"",
+          "result": "\"Remove selected\", \"source\""
+        },
+        {
+          "start": 27494,
+          "end": 27528,
+          "original": "\"Select additional browser source\"",
+          "result": "\"Select additional\", \"source\""
+        },
+        {
+          "start": 27557,
+          "end": 27581,
+          "original": "\"Choose browser context\"",
+          "result": "\"Choose\", \"context\""
+        },
+        {
+          "start": 27595,
+          "end": 27596,
+          "original": "G",
+          "result": "GL"
+        },
+        {
+          "start": 27631,
+          "end": 27631,
+          "original": "",
+          "result": "\" article\", "
+        },
+        {
+          "start": 27652,
+          "end": 27683,
+          "original": "\"Toggle remembered article use\"",
+          "result": "\"Toggle remembered\", \" use\""
+        },
+        {
+          "start": 27712,
+          "end": 27746,
+          "original": "\"Set remembered article retention\"",
+          "result": "\"Set remembered\", \" retention\""
+        },
+        {
+          "start": 27774,
+          "end": 27807,
+          "original": "\"Toggle remembered article sites\"",
+          "result": "\"Toggle remembered\", \" sites\""
+        },
+        {
+          "start": 27834,
+          "end": 27866,
+          "original": "\"Remove remembered article site\"",
+          "result": "\"Remove remembered\", \" site\""
+        },
+        {
+          "start": 27886,
+          "end": 27911,
+          "original": "\"Read remembered article\"",
+          "result": "\"Read remembered\", \"\""
+        },
+        {
+          "start": 27938,
+          "end": 27970,
+          "original": "\"Open remembered article source\"",
+          "result": "\"Open remembered\", \" source\""
+        },
+        {
+          "start": 27992,
+          "end": 28019,
+          "original": "\"Forget remembered article\"",
+          "result": "\"Forget remembered\", \"\""
+        },
+        {
+          "start": 28038,
+          "end": 28068,
+          "original": "\"Ask about remembered article\"",
+          "result": "\"Ask about remembered\", \"\""
+        },
+        {
+          "start": 28097,
+          "end": 28129,
+          "original": "\"Review forgetting all articles\"",
+          "result": "\"Review forgetting all\", \"s\""
+        },
+        {
+          "start": 28150,
+          "end": 28182,
+          "original": "\"Forget all remembered articles\"",
+          "result": "\"Forget all remembered\", \"s\""
+        },
+        {
+          "start": 28210,
+          "end": 28242,
+          "original": "\"Cancel forgetting all articles\"",
+          "result": "\"Cancel forgetting all\", \"s\""
+        },
+        {
+          "start": 28270,
+          "end": 28296,
+          "original": "\"Close remembered article\"",
+          "result": "\"Close remembered\", \"\""
+        },
+        {
+          "start": 28326,
+          "end": 28361,
+          "original": "\"Toggle remembered article actions\"",
+          "result": "\"Toggle remembered\", \" actions\""
+        },
+        {
+          "start": 2136,
+          "end": 2136,
+          "original": "",
+          "result": "const GL = <const M extends string, const R extends readonly (readonly [string, string, string, string])[], const D extends Omit<CommandDef, \"id\" | \"label\">>(defaults: D, middle: M, labelMiddle: string, rows: R) => rows.map(([start, end, labelStart, labelEnd]) => S(`${start}${middle}${end}`, `${labelStart}${labelMiddle}${labelEnd}`, defaults)) as { [I in keyof R]: D & { readonly id: `${R[I][0]}${M}${R[I][1]}`; readonly label: string; readonly dispatch: \"scoped\" } };\n"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/ui/class-props.ts",
+      "edits": [
+        {
+          "start": 110,
+          "end": 146,
+          "original": "Object.freeze({ className: \"hint\" })",
+          "result": "classAttribute(\"hint\")"
+        },
+        {
+          "start": 178,
+          "end": 213,
+          "original": "Object.freeze({ className: \"row\" })",
+          "result": "classAttribute(\"row\")"
+        },
+        {
+          "start": 252,
+          "end": 295,
+          "original": "Object.freeze({ className: \"field-error\" })",
+          "result": "classAttribute(\"field-error\")"
+        },
+        {
+          "start": 329,
+          "end": 366,
+          "original": "Object.freeze({ className: \"field\" })",
+          "result": "classAttribute(\"field\")"
+        },
+        {
+          "start": 403,
+          "end": 444,
+          "original": "Object.freeze({ className: \"menu-item\" })",
+          "result": "classAttribute(\"menu-item\")"
+        },
+        {
+          "start": 483,
+          "end": 523,
+          "original": "Object.freeze({ className: \"icon-btn\" })",
+          "result": "classAttribute(\"icon-btn\")"
+        },
+        {
+          "start": 566,
+          "end": 614,
+          "original": "Object.freeze({ className: \"mcp-source-label\" })",
+          "result": "classAttribute(\"mcp-source-label\")"
+        },
+        {
+          "start": 657,
+          "end": 705,
+          "original": "Object.freeze({ className: \"mcp-source-value\" })",
+          "result": "classAttribute(\"mcp-source-value\")"
+        },
+        {
+          "start": 749,
+          "end": 792,
+          "original": "Object.freeze({ className: \"icon-btn sm\" })",
+          "result": "classAttribute(\"icon-btn sm\")"
+        },
+        {
+          "start": 831,
+          "end": 874,
+          "original": "Object.freeze({ className: \"field-input\" })",
+          "result": "classAttribute(\"field-input\")"
+        },
+        {
+          "start": 0,
+          "end": 0,
+          "original": "",
+          "result": "const classAttribute = <const C extends string>(className: C) => Object.freeze({ className });\n"
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "defaults": "browserContextControl",
+      "idMiddle": "-conversation-",
+      "labelMiddle": " conversation ",
+      "rows": 16,
+      "grossBeforeNewHelper": 158,
+      "ids": [
+        "choose-conversation-image",
+        "capture-conversation-page",
+        "select-conversation-image-region",
+        "attach-conversation-image",
+        "cancel-conversation-image",
+        "use-whole-conversation-image",
+        "toggle-conversation-image",
+        "remove-conversation-image",
+        "preview-conversation-image",
+        "fit-conversation-image",
+        "show-conversation-image-actual-size",
+        "zoom-conversation-image-out",
+        "zoom-conversation-image-in",
+        "toggle-conversation-image-details",
+        "retry-conversation-image-preview",
+        "attach-conversation-document"
+      ]
+    },
+    {
+      "defaults": "searchEngineControl",
+      "idMiddle": "-task-receipt-",
+      "labelMiddle": " task receipt ",
+      "rows": 23,
+      "grossBeforeNewHelper": 235,
+      "ids": [
+        "select-task-receipt-evidence",
+        "add-task-receipt-note",
+        "capture-task-receipt-page",
+        "import-task-receipt-document",
+        "save-task-receipt-document",
+        "cancel-task-receipt-document",
+        "accept-task-receipt-criterion",
+        "reject-task-receipt-criterion",
+        "verify-task-receipt-criterion",
+        "undo-task-receipt-form",
+        "undo-task-receipt-bookmark",
+        "undo-task-receipt-download",
+        "undo-task-receipt-history",
+        "review-task-receipt-run-undo",
+        "select-task-receipt-undo-change",
+        "undo-task-receipt-selected-changes",
+        "cancel-task-receipt-run-undo",
+        "select-task-receipt-action-evidence",
+        "select-task-receipt-operation-evidence",
+        "accept-task-receipt-action",
+        "reject-task-receipt-action",
+        "accept-task-receipt-operation",
+        "reject-task-receipt-operation"
+      ]
+    },
+    {
+      "defaults": "memoryControl",
+      "idMiddle": "-personal-info",
+      "labelMiddle": " personal info",
+      "rows": 5,
+      "grossBeforeNewHelper": 37,
+      "ids": [
+        "retry-personal-info",
+        "import-prior-personal-info",
+        "edit-personal-info",
+        "save-personal-info",
+        "cancel-personal-info"
+      ]
+    },
+    {
+      "defaults": "memoryControl",
+      "idMiddle": "-run-step",
+      "labelMiddle": " step ",
+      "rows": 4,
+      "grossBeforeNewHelper": 2,
+      "ids": [
+        "toggle-run-step",
+        "inspect-run-step",
+        "open-run-step-url",
+        "open-run-step-path"
+      ]
+    },
+    {
+      "defaults": "searchEngineControl",
+      "idMiddle": "-installed-",
+      "labelMiddle": " installed ",
+      "rows": 3,
+      "grossBeforeNewHelper": 9,
+      "ids": [
+        "retry-installed-build",
+        "toggle-installed-build-error-details",
+        "toggle-installed-feature-availability"
+      ]
+    },
+    {
+      "defaults": "memoryControl",
+      "idMiddle": "-runtime-restore",
+      "labelMiddle": " Task data ",
+      "rows": 3,
+      "grossBeforeNewHelper": 9,
+      "ids": [
+        "choose-runtime-restore",
+        "cancel-pending-runtime-restore",
+        "refresh-runtime-restore-status"
+      ]
+    },
+    {
+      "defaults": "memoryControl",
+      "idMiddle": "-protected-recovery",
+      "labelMiddle": "ted recovery",
+      "rows": 4,
+      "grossBeforeNewHelper": 20,
+      "ids": [
+        "create-protected-recovery",
+        "choose-protected-recovery",
+        "review-protected-recovery",
+        "stage-protected-recovery"
+      ]
+    },
+    {
+      "defaults": "runPanelControl",
+      "idMiddle": "toggle-run-",
+      "labelMiddle": "Toggle this ",
+      "rows": 3,
+      "grossBeforeNewHelper": 11,
+      "ids": [
+        "toggle-run-takeover-checkpoint",
+        "toggle-run-result-details",
+        "toggle-run-details"
+      ]
+    },
+    {
+      "defaults": "memoryControl",
+      "idMiddle": "-local-backup",
+      "labelMiddle": " local Task data backup",
+      "rows": 5,
+      "grossBeforeNewHelper": 73,
+      "ids": [
+        "toggle-local-backups",
+        "refresh-local-backups",
+        "review-local-backup-deletion",
+        "delete-reviewed-local-backup",
+        "cancel-local-backup-deletion"
+      ]
+    },
+    {
+      "defaults": "memoryControl",
+      "idMiddle": "-startup-",
+      "labelMiddle": " startup ",
+      "rows": 4,
+      "grossBeforeNewHelper": 11,
+      "ids": [
+        "set-startup-mode",
+        "add-startup-page",
+        "remove-startup-page",
+        "retry-startup-preferences"
+      ]
+    },
+    {
+      "defaults": "memoryControl",
+      "idMiddle": "-language",
+      "labelMiddle": " language",
+      "rows": 5,
+      "grossBeforeNewHelper": 17,
+      "ids": [
+        "add-site-language",
+        "move-site-language-up",
+        "move-site-language-down",
+        "remove-site-language",
+        "retry-language-preferences"
+      ]
+    },
+    {
+      "defaults": "searchEngineControl",
+      "idMiddle": "-task-notice",
+      "labelMiddle": " task notice",
+      "rows": 3,
+      "grossBeforeNewHelper": 11,
+      "ids": [
+        "toggle-task-notices",
+        "review-task-notice",
+        "dismiss-task-notice"
+      ]
+    },
+    {
+      "defaults": "memoryControl",
+      "idMiddle": "-download-folder",
+      "labelMiddle": " download folder",
+      "rows": 3,
+      "grossBeforeNewHelper": 19,
+      "ids": [
+        "choose-download-folder",
+        "reset-download-folder",
+        "retry-download-folder"
+      ]
+    },
+    {
+      "defaults": "searchEngineControl",
+      "idMiddle": "-search-engine",
+      "labelMiddle": " search engine",
+      "rows": 5,
+      "grossBeforeNewHelper": 37,
+      "ids": [
+        "select-search-engine",
+        "toggle-custom-search-engine",
+        "save-search-engine",
+        "add-keyword-search-engine",
+        "remove-keyword-search-engine"
+      ]
+    },
+    {
+      "defaults": "browserContextControl",
+      "idMiddle": "-browser-",
+      "labelMiddle": " browser ",
+      "rows": 3,
+      "grossBeforeNewHelper": 5,
+      "ids": [
+        "remove-browser-source",
+        "toggle-browser-source",
+        "select-browser-context"
+      ]
+    },
+    {
+      "defaults": "memoryControl",
+      "idMiddle": "-content-memory",
+      "labelMiddle": " article",
+      "rows": 13,
+      "grossBeforeNewHelper": 53,
+      "ids": [
+        "toggle-content-memory",
+        "set-content-memory-retention",
+        "toggle-content-memory-sites",
+        "remove-content-memory-site",
+        "read-content-memory",
+        "open-content-memory-source",
+        "forget-content-memory",
+        "ask-content-memory",
+        "confirm-clear-content-memory",
+        "clear-content-memory",
+        "cancel-clear-content-memory",
+        "close-content-memory-detail",
+        "toggle-content-memory-actions"
+      ]
+    }
+  ]
+}

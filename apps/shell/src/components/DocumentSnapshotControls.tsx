@@ -11,6 +11,6 @@ export function DocumentSnapshotControl({command,current,invoke,summary,...props
     if(summary){const details=element.parentElement;if(!(details instanceof HTMLDetailsElement)||details.firstElementChild!==element)throw new Error("Choose the original snapshot disclosure.");event?.preventDefault();details.open=!details.open;return;}
     return invoke();
   });
-  const run=(event:{nativeEvent:Event})=>{const completion=executeCommand(command,{payload:{scopeId:scope},nativeInputEvent:event.nativeEvent});void completion.catch(reason=>reportCommandCompletionFailure(completion,reason,error=>{if(current())errToast(error);}));};
+  const run=(event:{nativeEvent:Event})=>{if(summary)event.nativeEvent.preventDefault();const completion=executeCommand(command,{payload:{scopeId:scope},nativeInputEvent:event.nativeEvent});void completion.catch(reason=>reportCommandCompletionFailure(completion,reason,error=>{if(current())errToast(error);}));};
   return summary ? <summary ref={ref} data-command-id={command} onClick={run}>{props.children}</summary> : <button {...props} ref={ref} data-command-id={command} onClick={run}/>;
 }

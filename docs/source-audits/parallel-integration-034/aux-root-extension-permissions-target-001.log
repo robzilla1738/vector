@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+ ✓ |unit| apps/shell/src/components/Extensions.permissions-target.test.tsx (1 test) 41ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  15:15:55
+   Duration  508ms (transform 35ms, setup 0ms, collect 80ms, tests 41ms, environment 198ms, prepare 38ms)
+

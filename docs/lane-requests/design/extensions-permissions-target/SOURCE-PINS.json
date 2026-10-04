@@ -1,0 +1,29 @@
+{
+  "files": [
+    {
+      "path": "apps/shell/src/components/Settings.css",
+      "before": "1ff3bcb0814bcf428215e8c2d55526510ac2247a30f4410cae510e508b3522bc",
+      "after": "60530226bcb9f4ef0cee0d91b23249ad1161735dbc6b6c09807d388f295b00c2"
+    },
+    {
+      "path": "apps/shell/src/components/Extensions.permissions-target.test.tsx",
+      "before": null,
+      "after": "a466ee6a363b81c0c23d4f0ae1ab8bee0a9f8a4991b89e38114dc2caac751b63"
+    }
+  ],
+  "patchSha256": "a54228e48d097e1097dfb220e8d0a4ae384c0bc3f9128f15cc66f76be6fcb59e",
+  "references": [
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/layout_constants.cc",
+      "sha256": "354a0a83efda3d2782c00285b900940ddc0e185393efd90807e8a0d2b2f1b6f8"
+    },
+    {
+      "path": "/private/tmp/aux-design-extensions-permissions-target/apps/shell/src/tokens.css",
+      "sha256": "c0036220218afbe4bd7ff1fe395cf842504b849e6df2e7dd668c5a056a251c1f"
+    },
+    {
+      "path": "/private/tmp/aux-design-extensions-permissions-target/apps/shell/src/components/Extensions.tsx",
+      "sha256": "82cf028b747ae2a76103a7211d337c9ece65b7219d020fffb88a5ca8708a5bf1"
+    }
+  ]
+}

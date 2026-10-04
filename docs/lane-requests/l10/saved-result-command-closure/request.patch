@@ -1,0 +1,293 @@
+diff --git a/apps/shell/src/components/ResultPreviewControls.tsx b/apps/shell/src/components/ResultPreviewControls.tsx
+index cbeda85..9d744e6 100644
+--- a/apps/shell/src/components/ResultPreviewControls.tsx
++++ b/apps/shell/src/components/ResultPreviewControls.tsx
+@@ -1,12 +1,17 @@
+-import { useId, type ButtonHTMLAttributes } from "react";
+-import { usePreferenceCommand } from "../settings/sections/preference-command";
++import { useCallback, useId, type ButtonHTMLAttributes } from "react";
++import { useScopedCommandControls } from "../scoped-command-controls";
+ import { executeCommand } from "../commands";
+ import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
+ import { errToast } from "../store";
+-type ResultCommand = "close-generated-result-preview" | "toggle-generated-result-source" | "export-generated-result" | "select-generated-result-version" | "save-generated-result-version";
+-export function ResultPreviewControl({command,current,invoke,report=true,...props}:Omit<ButtonHTMLAttributes<HTMLButtonElement>,"onClick"> & {command:ResultCommand;current():boolean;invoke():unknown;report?:boolean}) {
++export type ResultCommand = "close-generated-result-preview" | "toggle-generated-result-source" | "export-generated-result" | "select-generated-result-version" | "save-generated-result-version" | "close-saved-result-preview" | "toggle-saved-result-source" | "copy-saved-result" | "toggle-saved-result-export" | "export-saved-result" | "export-saved-result-excel" | "retry-saved-result-read" | "discard-saved-result-edits" | "save-saved-result-version" | "attach-saved-result-copy";
++export function useResultPreviewCommand(command:ResultCommand,current:()=>boolean,invoke:(element:HTMLButtonElement,event?:Event)=>unknown,report=true){
+   const scope=useId();
+-  const [ref]=usePreferenceCommand<HTMLButtonElement>(command,scope,()=>current()?invoke():guardCommandCompletion(Promise.reject(new Error("Choose the original result preview.")),current));
++  const [publish]=useScopedCommandControls(scope,()=>current);
++  const ref=useCallback((element:HTMLButtonElement|null)=>publish(command,command,element,()=>current()&&element?invoke(element):guardCommandCompletion(Promise.reject(new Error("Choose the original result preview.")),current)),[publish,command,current,invoke]);
+   const run=(event:{nativeEvent:Event})=>{const completion=executeCommand(command,{payload:{scopeId:scope},nativeInputEvent:event.nativeEvent});void completion.catch(reason=>reportCommandCompletionFailure(completion,reason,error=>{if(report&&current())errToast(error);}));};
++  return [ref,run] as const;
++}
++export function ResultPreviewControl({command,current,invoke,report=true,...props}:Omit<ButtonHTMLAttributes<HTMLButtonElement>,"onClick"> & {command:ResultCommand;current():boolean;invoke():unknown;report?:boolean}) {
++  const [ref,run]=useResultPreviewCommand(command,current,invoke,report);
+   return <button {...props} ref={ref} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/ResultViewer.test.tsx b/apps/shell/src/components/ResultViewer.test.tsx
+index 3b881ca..bf8c78a 100644
+--- a/apps/shell/src/components/ResultViewer.test.tsx
++++ b/apps/shell/src/components/ResultViewer.test.tsx
+@@ -11,6 +11,7 @@ import { writeResultDraft } from "../result-drafts";
+ let host:HTMLDialogElement, root:ReturnType<typeof createRoot>;
+ beforeEach(()=>{
+   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);
++  vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);
+   vi.stubGlobal("requestAnimationFrame",(fn:FrameRequestCallback)=>{fn(0);return 1;});
+   vi.stubGlobal("cancelAnimationFrame",()=>{});
+   const data=new Map<string,string>();
+diff --git a/apps/shell/src/components/SavedResultPreview.commands.test.tsx b/apps/shell/src/components/SavedResultPreview.commands.test.tsx
+new file mode 100644
+index 0000000..2b06505
+--- /dev/null
++++ b/apps/shell/src/components/SavedResultPreview.commands.test.tsx
+@@ -0,0 +1,45 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { beforeEach,afterEach,expect,it,vi } from "vitest";
++import { COMMANDS } from "@aux/contracts";
++import { bridge } from "../bridge";
++import { useStore } from "../store";
++import { executeCommand,dispatchShortcut } from "../commands";
++import { readResultDraft,writeResultDraft } from "../result-drafts";
++import { SavedResultPreview } from "./SavedResultPreview";
++const initial=useStore.getState(),originalWindow=bridge.windowId,originalPrivate=bridge.privateMode,originalKind=bridge.windowKind;
++let host:HTMLDialogElement,root:ReturnType<typeof createRoot>;
++const close=vi.fn(),changed=vi.fn(),citation=vi.fn();
++const file=(id="one",chat="a",content="Name,Value\nOriginal,42",mediaType="text/csv")=>({artifactId:id,chatId:chat,filename:"report.csv",mediaType,content,createdAt:1,revision:2});
++type Pending<T>={promise:Promise<T>;resolve(value:T):void;reject(reason:unknown):void};
++function hold<T>():Pending<T>{let resolve!:(value:T)=>void,reject!:(reason:unknown)=>void;const promise=new Promise<T>((yes,no)=>{resolve=yes;reject=no;});return{promise,resolve,reject};}
++let reads:Pending<ReturnType<typeof file>>[],mutations:{method:string;params:unknown;pending:Pending<unknown>}[],exports:Pending<string|null>[],copies:Pending<void>[],data:Map<string,string>;
++beforeEach(()=>{vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT",true);vi.stubGlobal("requestAnimationFrame",(fn:FrameRequestCallback)=>{fn(0);return 1;});vi.stubGlobal("cancelAnimationFrame",()=>{});vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{width:100}] as unknown as DOMRectList);data=new Map();vi.stubGlobal("localStorage",{getItem:(key:string)=>data.get(key)??null,setItem:(key:string,value:string)=>data.set(key,value),removeItem:(key:string)=>data.delete(key),key:(index:number)=>[...data.keys()][index]??null,get length(){return data.size;}});writeResultDraft("one",null);writeResultDraft("two",null);useStore.setState({...initial,connected:false,toasts:[]},true);close.mockReset();changed.mockReset();citation.mockReset();citation.mockReturnValue(true);reads=[];mutations=[];exports=[];copies=[];vi.spyOn(bridge,"invoke").mockImplementation((method,params)=>{if(method==="results.read"){const pending=hold<ReturnType<typeof file>>();reads.push(pending);return pending.promise;}const pending=hold<unknown>();mutations.push({method,params,pending});return pending.promise;});vi.spyOn(bridge,"saveFile").mockImplementation(()=>{const pending=hold<string|null>();exports.push(pending);return pending.promise;});vi.spyOn(bridge,"saveWorkbook").mockImplementation(()=>{const pending=hold<string|null>();exports.push(pending);return pending.promise;});vi.stubGlobal("navigator",{clipboard:{writeText:vi.fn(()=>{const pending=hold<void>();copies.push(pending);return pending.promise;})}});host=document.createElement("dialog");host.open=true;document.body.append(host);root=createRoot(host);});
++afterEach(async()=>{await act(async()=>root.unmount());host.remove();writeResultDraft("one",null);writeResultDraft("two",null);useStore.setState(initial,true);bridge.windowId=originalWindow;bridge.privateMode=originalPrivate;bridge.windowKind=originalKind;vi.restoreAllMocks();vi.unstubAllGlobals();});
++const ids={close:"close-saved-result-preview",toggle:"toggle-saved-result-source",copy:"copy-saved-result",menu:"toggle-saved-result-export",export:"export-saved-result",excel:"export-saved-result-excel",retry:"retry-saved-result-read",discard:"discard-saved-result-edits",save:"save-saved-result-version",attach:"attach-saved-result-copy"};
++async function render(chat="a",id="one",contextDisabled=false){await act(async()=>root.render(<SavedResultPreview chatId={chat} artifactId={id} contextDisabled={contextDisabled} onClose={close} onVersionSaved={changed} onCitationOpen={citation}/>));}
++async function ready(draft=false){if(draft)writeResultDraft("one",{chatId:"a",source:file().content,content:"Name,Value\nEdited,43"});await render();await act(async()=>reads[0]!.resolve(file()));}
++const control=(id:string)=>host.querySelector<HTMLButtonElement>(`[data-command-id="${id}"]`)!;
++const trigger=()=>host.querySelector<HTMLButtonElement>('[aria-label="Export result"]')!;
++const item=(name:string)=>[...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(node=>node.textContent?.includes(name))!;
++async function command(id:string,node?:HTMLButtonElement){let result!:Promise<unknown>;await act(async()=>{(node??control(id)).focus();result=executeCommand(id);void result.catch(()=>{});});return {result};}
++async function menu(){await act(async()=>trigger().click());}
++it("all ten original actions use normal scoped metadata and close offline retains ACK",async()=>{await ready();for(const id of Object.values(ids))expect(COMMANDS.find(row=>row.id===id)).toMatchObject({windows:["normal"],palette:false,bindings:[],intercept:true});const ack={closed:true};close.mockReturnValue(ack);await expect((await command(ids.close)).result).resolves.toBe(ack);expect(useStore.getState().connected).toBe(false);});
++it("actual Export menu pointer keeps original file args and closes/focuses original trigger",async()=>{await ready();await menu();expect(document.querySelector<HTMLDialogElement>('[role="menu"]')?.open).toBe(true);await act(async()=>item("Export file").click());expect(bridge.saveFile).toHaveBeenCalledExactlyOnceWith("report.csv",file().content);expect(document.querySelector('[role="menu"]')).toBeNull();expect(document.activeElement).toBe(trigger());await act(async()=>exports[0]!.resolve("/tmp/report.csv"));expect(useStore.getState().toasts.map(value=>value.text)).toContain("Result exported");});
++it("focused remapped original menu opener and Excel item keep actual workbook ACK",async()=>{useStore.setState({settings:{shortcutOverrides:{[ids.menu]:[{key:"j",command:true,alt:true}],[ids.excel]:[{key:"k",command:true,alt:true}]}}});await ready();await act(async()=>{trigger().focus();expect(dispatchShortcut({key:"j",meta:true,alt:true,shift:false})).toBe(true);});await act(async()=>{item("Excel").focus();expect(dispatchShortcut({key:"k",meta:true,alt:true,shift:false})).toBe(true);});expect(bridge.saveWorkbook).toHaveBeenCalledExactlyOnceWith(file().content,"csv");await act(async()=>exports[0]!.resolve(null));expect(useStore.getState().toasts).toEqual([]);});
++it("saved version retains exact draft/source params, original ACK and durable draft cleanup",async()=>{await ready(true);const operation=await command(ids.save);expect(mutations[0]).toMatchObject({method:"results.saveVersion",params:{chatId:"a",sourceArtifactId:"one",content:"Name,Value\nEdited,43"}});const ack={artifactId:"new",filename:"report.csv",revision:3};await act(async()=>mutations[0]!.pending.resolve(ack));await expect(operation.result).resolves.toBe(ack);expect(changed).toHaveBeenCalledExactlyOnceWith("new");expect(readResultDraft("one")).toBeNull();});
++it("attaches exact bounded edited copy and retains actual ACK/included state",async()=>{await ready(true);const operation=await command(ids.attach);expect(mutations[0]).toMatchObject({method:"conversations.attachments.add",params:{chatId:"a",filename:"edited-report.csv",content:"Name,Value\nEdited,43",sourceArtifactId:"one"}});const ack={attachmentId:"actual",included:true};await act(async()=>mutations[0]!.pending.resolve(ack));await expect(operation.result).resolves.toBe(ack);expect(control(ids.attach).textContent).toBe("Copy attached");expect(control(ids.attach).disabled).toBe(true);});
++it("same-tick original mutation reservation rejects duplicate admission",async()=>{await ready(true);await act(async()=>{control(ids.save).click();control(ids.attach).click();});expect(mutations).toHaveLength(1);await act(async()=>mutations[0]!.pending.resolve({artifactId:"new",filename:"report.csv",revision:3}));});
++it("held save A→B→A cannot delete newest human draft or clear fresh busy",async()=>{await ready(true);const old=await command(ids.save);await render("b","two");await render();await act(async()=>reads[2]!.resolve(file()));const freshDraft={chatId:"a",source:file().content,content:"Name,Value\nFresh,99"};writeResultDraft("one",freshDraft);await render("a","two");await render();await act(async()=>reads[4]!.resolve(file()));const fresh=await command(ids.save);const oldAck={artifactId:"old",filename:"report.csv",revision:3};await act(async()=>mutations[0]!.pending.resolve(oldAck));await expect(old.result).resolves.toBe(oldAck);expect(readResultDraft("one")).toEqual(freshDraft);expect(changed).not.toHaveBeenCalled();expect(control(ids.save).disabled).toBe(true);const freshAck={artifactId:"fresh",filename:"report.csv",revision:3};await act(async()=>mutations[1]!.pending.resolve(freshAck));await expect(fresh.result).resolves.toBe(freshAck);expect(changed).toHaveBeenCalledExactlyOnceWith("fresh");});
++it("observed foreign window ABA refuses held mutation failure/toast and later local actions",async()=>{await ready(true);const operation=await command(ids.attach);bridge.windowId="foreign";await act(async()=>control(ids.close).click());bridge.windowId=originalWindow;const reason=new Error("Original retired attach error");await act(async()=>mutations[0]!.pending.reject(reason));await expect(operation.result).rejects.toBe(reason);expect(host.querySelector('[role="alert"]')).toBeNull();expect(useStore.getState().toasts).toEqual([]);control(ids.discard).focus();await expect(executeCommand(ids.discard)).rejects.toThrow();expect(readResultDraft("one")).not.toBeNull();});
++it("original active revision error stays inline, exact rejection and busy recover",async()=>{await ready(true);const operation=await command(ids.save);const reason=new Error("Original revision failure");await act(async()=>mutations[0]!.pending.reject(reason));await expect(operation.result).rejects.toBe(reason);expect(host.querySelector('[role="alert"]')?.textContent).toBe(reason.message);expect(control(ids.save).disabled).toBe(false);expect(useStore.getState().toasts).toEqual([]);});
++it("Copy uses original human content and retires delayed clipboard toast after draft changes",async()=>{await ready(true);const operation=await command(ids.copy);expect(navigator.clipboard.writeText).toHaveBeenCalledWith("Name,Value\nEdited,43");await command(ids.discard);await act(async()=>copies[0]!.resolve());await expect(operation.result).resolves.toBeUndefined();expect(useStore.getState().toasts).toEqual([]);expect(readResultDraft("one")).toBeNull();});
++it("held export rejection retains reason without presenting to new result",async()=>{await ready();await menu();const operation=await command(ids.export,item("Export file"));await render("a","two");await act(async()=>reads[1]!.resolve(file("two")));const reason=new Error("Retired export");await act(async()=>exports[0]!.reject(reason));await expect(operation.result).rejects.toBe(reason);expect(useStore.getState().toasts).toEqual([]);});
++it("Retry renews exact original read and current not_found revokes only original draft",async()=>{await ready(true);await render("a","two");await render();const reason=Object.assign(new Error("Actual missing"),{code:"not_found"});await act(async()=>reads[2]!.reject(reason));expect(readResultDraft("one")).toBeNull();await command(ids.retry);expect(reads).toHaveLength(4);await act(async()=>reads[3]!.resolve(file()));expect(host.querySelector('[role="alert"]')).toBeNull();});
++it("old not_found after artifact ABA cannot revoke new same-artifact draft",async()=>{writeResultDraft("one",{chatId:"a",source:file().content,content:"Retained human copy"});await render();await render("a","two");await render();await act(async()=>reads[2]!.resolve(file()));await act(async()=>reads[0]!.reject(Object.assign(new Error("Old missing"),{code:"not_found"})));expect(readResultDraft("one")?.content).toBe("Retained human copy");expect(host.querySelector('[role="alert"]')).toBeNull();});
++it("original source conflict/context-disabled gates save/attach while export remains usable",async()=>{writeResultDraft("one",{chatId:"a",source:"Earlier source",content:"My retained edits"});await render("a","one",true);await act(async()=>reads[0]!.resolve(file()));expect(control(ids.save).disabled).toBe(true);expect(control(ids.attach).disabled).toBe(true);expect(host.textContent).toContain("source changed");await menu();await command(ids.export,item("Export file"));expect(bridge.saveFile).toHaveBeenCalledWith("edited-report.csv","My retained edits");await act(async()=>exports[0]!.resolve(null));});
++it("hidden/unfocused/Private real controls refuse clipboard and mutations",async()=>{await ready(true);control(ids.copy).hidden=true;control(ids.copy).focus();await expect(executeCommand(ids.copy)).rejects.toThrow();bridge.privateMode=true;control(ids.save).focus();await expect(executeCommand(ids.save)).rejects.toThrow();expect(copies).toEqual([]);expect(mutations).toEqual([]);});
++
++it("recorded markdown navigation retains modifier URL and retired source cannot fall back to new tab",async()=>{const newTab=vi.fn().mockResolvedValue("actual-tab");useStore.setState({newTab});await render();await act(async()=>reads[0]!.resolve(file("one","a","[Original source](https://example.test/original)","text/markdown")));const link=host.querySelector<HTMLAnchorElement>("a")!;await act(async()=>link.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,metaKey:true})));expect(citation).toHaveBeenCalledExactlyOnceWith("https://example.test/original",true);citation.mockClear();bridge.windowId="foreign";await act(async()=>link.click());bridge.windowId=originalWindow;await act(async()=>link.click());expect(citation).not.toHaveBeenCalled();expect(newTab).not.toHaveBeenCalled();});
++it("remapped current Save reports the original revision failure inline without a global duplicate",async()=>{useStore.setState({settings:{shortcutOverrides:{[ids.save]:[{key:"l",command:true,alt:true}]}}});await ready(true);await act(async()=>{control(ids.save).focus();expect(dispatchShortcut({key:"l",meta:true,alt:true,shift:false})).toBe(true);});const reason=new Error("Original remapped revision failure");await act(async()=>mutations[0]!.pending.reject(reason));expect(host.querySelector('[role="alert"]')?.textContent).toBe(reason.message);expect(useStore.getState().toasts).toEqual([]);expect(control(ids.save).disabled).toBe(false);});
+diff --git a/apps/shell/src/components/SavedResultPreview.tsx b/apps/shell/src/components/SavedResultPreview.tsx
+index c82a877..76dfd5c 100644
+--- a/apps/shell/src/components/SavedResultPreview.tsx
++++ b/apps/shell/src/components/SavedResultPreview.tsx
+@@ -3,28 +3,33 @@ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
+ import { errorMessage } from "../error-message";
+ import { readResultDraft, revokeResultDrafts, writeResultDraft } from "../result-drafts";
+ import { StructuredResult } from "./StructuredResult";
+-import { useEffect, useRef, useState } from "react";
++import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+ import { bridge, inNativeHost } from "../bridge";
+-import { call, errToast, toast } from "../store";
++import { call, toast, useStore } from "../store";
+ import { AnswerMarkdown } from "./AnswerMarkdown";
++import { guardCommandCompletion } from "../command-completion";
++import { useConversationOwner } from "./ConversationControls";
++import { useConversationAttachmentOwner } from "./ConversationAttachmentControls";
++import { ResultPreviewControl, useResultPreviewCommand } from "./ResultPreviewControls";
++import { shellIconClose } from "./icons";
+ import { ViewerFrame } from "./ViewerFrame";
+ import { ActionMenu } from "../ui";
+ import { isolatedHtmlDocument } from "../isolated-html";
+ 
+ type Result = { artifactId: string; chatId: string; filename: string; mediaType: string; content: string; createdAt: number; revision?:number;parentArtifactId?:string };
+-function IsolatedHtmlResult({html}:{html:string}) {
++function IsolatedHtmlResult({html,current}:{html:string;current():boolean}) {
+   const [url,setUrl]=useState<string|null>(null),[error,setError]=useState("");
+   useEffect(()=>{
+-    if(!inNativeHost)return;
++    if(!inNativeHost||!current())return;
+     let live=true,registered:string|undefined;
+     setUrl(null);setError("");
+     void bridge.createResultPreview(html).then(value=>{
+       registered=value;
+-      if(live)setUrl(value);
++      if(live&&current())setUrl(value);
+       else void bridge.releaseResultPreview(value);
+-    }).catch(reason=>{if(live)setError(errorMessage(reason));});
++    }).catch(reason=>{if(live&&current())setError(errorMessage(reason));});
+     return()=>{live=false;if(registered)void bridge.releaseResultPreview(registered);};
+-  },[html]);
++  },[html,current]);
+   if(error)return <p role="alert" className="field-error">{error}</p>;
+   if(!inNativeHost)return <iframe title="Inert HTML result" sandbox="" referrerPolicy="no-referrer" srcDoc={isolatedHtmlDocument(html)}/>;
+   return url?<iframe title="Isolated HTML result" sandbox="allow-scripts" referrerPolicy="no-referrer" src={url}/>:<output data-block {...staticHintProps}>Preparing isolated preview…</output>;
+@@ -36,9 +41,20 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
+   const [draftError,setDraftError]=useState("");
+   const [attaching,setAttaching]=useState(false);
+   const [attached,setAttached]=useState<string|null>(null);
+-  const pending=useRef(false);
++  const connected=useStore(state=>state.connected);
++  const conversationCurrent=useConversationOwner(chatId,connected);
++  const reference=useMemo(()=>({artifactId}),[artifactId]);
++  const referenceCurrent=useConversationAttachmentOwner(conversationCurrent,[reference]);
++  const current=useCallback(()=>referenceCurrent(reference),[reference,referenceCurrent]);
++  const loadedOwner=useConversationAttachmentOwner(current,result?[result]:[]);
++  const loadedCurrent=useCallback(()=>!!result&&loadedOwner(result),[result,loadedOwner]);
++  const draftOwner=useRef(draft);
++  useLayoutEffect(()=>{draftOwner.current=draft;},[draft]);
++  const pending=useRef<object|null>(null),latestOperation=useRef<object|null>(null),latestCopy=useRef<object|null>(null);
++  useLayoutEffect(()=>{pending.current=null;latestOperation.current=null;latestCopy.current=null;setSaving(false);setAttaching(false);return()=>{pending.current=null;latestOperation.current=null;latestCopy.current=null;};},[current]);
++  useEffect(()=>{const original=readResultDraft(artifactId);setDraft(original?.chatId===chatId?original:null);setEditing(!!original&&original.chatId===chatId);setAttached(null);setDraftError("");},[artifactId,chatId]);
+   const edit=(content:string)=>{
+-    if(!result)return;
++    if(!result||!loadedCurrent()||pending.current)return;
+     const next={chatId,content,source:draft?.source??result.content};
+     setDraft(next);setAttached(null);
+     setDraftError(writeResultDraft(artifactId,next)?"":"Your edits are kept in this window but could not be saved for restart.");
+@@ -47,30 +63,33 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
+   const editedName=result ? `edited-${result.filename}` : "edited-result.txt";
+   const content=draft?.content??result?.content??"";
+   const valid=!!result && new TextEncoder().encode(content).length<=262144 && !content.includes("\0");
+-  async function attachCopy(){
+-    if(!result||!draft||contextDisabled||pending.current||!valid||sourceChanged)return;
+-    pending.current=true;setAttaching(true);setDraftError("");
+-    try {
+-      await call("conversations.attachments.add",{chatId,filename:editedName.slice(0,255),content,sourceArtifactId:artifactId});
+-      setAttached(content);toast("Edited copy attached to this conversation");
+-    } catch(reason){setDraftError(errorMessage(reason));}
+-    finally{pending.current=false;setAttaching(false);}
+-  }
+-  async function saveVersion(){
+-    if(!result||!draft||contextDisabled||pending.current||!valid||sourceChanged)return;
+-    pending.current=true;setAttaching(true);setDraftError("");
+-    try{
+-      const saved=await call("results.saveVersion",{chatId,sourceArtifactId:artifactId,content});
+-      if(!writeResultDraft(artifactId,null))toast("Version saved, but the old local draft could not be removed.","error");
+-      setDraft(null);setAttached(null);
+-      onVersionSaved?.(saved.artifactId);
+-      toast(`Saved ${saved.filename} · v${saved.revision}`);
+-    }catch(reason){setDraftError(errorMessage(reason));}
+-    finally{pending.current=false;setAttaching(false);}
++  function mutate(version:boolean){
++    if(!result||!draft||contextDisabled||pending.current||!valid||sourceChanged||!loadedCurrent())return;
++    const originalDraft=draft,token={};pending.current=token;latestOperation.current=token;setAttaching(true);setDraftError("");
++    const delivering=()=>loadedCurrent()&&latestOperation.current===token&&draftOwner.current===originalDraft;
++    let errorHandled=false;
++    const completion=(async()=>{
++      try{
++        if(version){
++          const saved=await call("results.saveVersion",{chatId,sourceArtifactId:artifactId,content});
++          if(delivering()){
++            if(!writeResultDraft(artifactId,null))toast("Version saved, but the old local draft could not be removed.","error");
++            setDraft(null);setAttached(null);onVersionSaved?.(saved.artifactId);toast(`Saved ${saved.filename} · v${saved.revision}`);
++          }
++          return saved;
++        }
++        const ack=await call("conversations.attachments.add",{chatId,filename:editedName.slice(0,255),content,sourceArtifactId:artifactId});
++        if(delivering()){setAttached(content);toast("Edited copy attached to this conversation");}
++        return ack;
++      }catch(reason){if(delivering()){setDraftError(errorMessage(reason));errorHandled=true;}throw reason;}
++      finally{if(pending.current===token){pending.current=null;if(current())setAttaching(false);}}
++    })();
++    return guardCommandCompletion(completion,()=>delivering()&&!errorHandled);
+   }
+   useEffect(()=>{
+     let active=true; setResult(null);setError("");
+-    void call("results.read",{artifactId}).then(value=>{if(!active)return;if(value.chatId!==chatId)throw new Error("This result belongs to another conversation.");setResult(value);}).catch(reason=>{if(active){
++    if(!current())return;
++    void call("results.read",{artifactId}).then(value=>{if(!active||!current())return;if(value.chatId!==chatId)throw new Error("This result belongs to another conversation.");setResult(value);}).catch(reason=>{if(active&&current()){
+       if((reason as {code?:string})?.code==="not_found"){
+         if(!revokeResultDrafts([artifactId]))setDraftError("A saved draft could not be removed from this browser.");
+         setDraft(null);
+@@ -78,25 +97,47 @@ export function SavedResultPreview({artifactId, chatId, onClose, onVersionSaved,
+       setError(String(reason));
+     }});
+     return()=>{active=false;};
+-  },[artifactId,chatId,retry]);
+-  async function save(excel=false) {
+-    if(!result||pending.current||!valid)return;pending.current=true;setSaving(true);
+-    try { if(await (excel?bridge.saveWorkbook(content,"csv"):bridge.saveFile(draft?editedName:result.filename,content)))toast("Result exported"); } catch(reason){errToast(reason);} finally{pending.current=false;setSaving(false);}
++  },[artifactId,chatId,retry,current]);
++  function save(excel=false){
++    if(!result||pending.current||!valid||!loadedCurrent())return;
++    const token={},originalDraft=draft;pending.current=token;latestOperation.current=token;setSaving(true);
++    const delivering=()=>loadedCurrent()&&latestOperation.current===token&&draftOwner.current===originalDraft;
++    const completion=(async()=>{
++      try{const ack=await (excel?bridge.saveWorkbook(content,"csv"):bridge.saveFile(draft?editedName:result.filename,content));if(delivering()&&ack)toast("Result exported");return ack;}
++      finally{if(pending.current===token){pending.current=null;if(current())setSaving(false);}}
++    })();
++    return guardCommandCompletion(completion,delivering);
++  }
++  function copy(){
++    if(!loadedCurrent())return;
++    const token={},originalDraft=draft;latestCopy.current=token;
++    const delivering=()=>loadedCurrent()&&latestCopy.current===token&&draftOwner.current===originalDraft;
++    const completion=(async()=>{const ack=await navigator.clipboard.writeText(content);if(delivering())toast("Result copied");return ack;})();
++    return guardCommandCompletion(completion,delivering);
++  }
++  function discard(){
++    if(!loadedCurrent()||pending.current)return;
++    if(!writeResultDraft(artifactId,null)){setDraftError("The saved draft could not be removed. Try Discard edits again.");return;}
++    setDraft(null);setEditing(false);setAttached(null);setDraftError("");
+   }
+-  return <ViewerFrame label="Saved result preview" title={result?.filename ?? "Saved result"} onClose={onClose} closeLabel="Close result preview"
++  const activateExport=useRef<(()=>void)|null>(null);
++  const [exportTrigger,runExportTrigger]=useResultPreviewCommand("toggle-saved-result-export",loadedCurrent,()=>activateExport.current?.());
++  const [exportFileRef,runExportFile]=useResultPreviewCommand("export-saved-result",loadedCurrent,()=>save());
++  const [exportExcelRef,runExportExcel]=useResultPreviewCommand("export-saved-result-excel",loadedCurrent,()=>save(true));
++  return <ViewerFrame label="Saved result preview" title={result?.filename ?? "Saved result"} onClose={onClose} closeLabel="Close result preview" closeControl={<ResultPreviewControl command="close-saved-result-preview" current={current} invoke={onClose} className="icon-btn xs" aria-label="Close result preview">{shellIconClose}</ResultPreviewControl>}
+     metadata={result && <>v{result.revision ?? 1} · {result.mediaType} · {new Date(result.createdAt).toLocaleString()}</>}
+-    toolbar={result && <><button {...smallGhostButtonProps} disabled={attaching||saving} aria-pressed={editing} onClick={()=>setEditing(value=>!value)}>{editing?"Preview":"Edit copy"}</button><button {...smallGhostButtonProps} onClick={()=>void navigator.clipboard.writeText(content).then(()=>toast("Result copied")).catch(errToast)}>Copy</button><ActionMenu label="Export result" actions={[
+-      {label:"Export file…",disabled:saving||attaching||!valid,onSelect:()=>void save()},
+-      ...(result.mediaType === "text/csv" ? [{label:"Export Excel…",disabled:saving||attaching||!valid,onSelect:()=>void save(true)}] : []),
++    toolbar={result && <><ResultPreviewControl command="toggle-saved-result-source" current={loadedCurrent} invoke={()=>setEditing(value=>!value)} {...smallGhostButtonProps} disabled={attaching||saving} aria-pressed={editing}>{editing?"Preview":"Edit copy"}</ResultPreviewControl><ResultPreviewControl command="copy-saved-result" current={loadedCurrent} invoke={copy} {...smallGhostButtonProps}>Copy</ResultPreviewControl><ActionMenu label="Export result" triggerControl={(node,activate)=>{exportTrigger(node);activateExport.current=node?activate:null;}} onTrigger={runExportTrigger} actions={[
++      {label:"Export file…",disabled:saving||attaching||!valid,controlRef:exportFileRef,onSelect:event=>{if(event)runExportFile(event);}},
++      ...(result.mediaType === "text/csv" ? [{label:"Export Excel…",disabled:saving||attaching||!valid,controlRef:exportExcelRef,onSelect:(event?:React.MouseEvent<HTMLButtonElement>)=>{if(event)runExportExcel(event);}}] : []),
+     ]}>{saving ? "Exporting…" : "Export…"}</ActionMenu></>}>
+-    {error?<p role="alert">{error} <button {...smallButtonProps} onClick={()=>setRetry(value=>value+1)}>Retry</button></p>:!result?<output {...staticHintProps} data-block>Loading saved result…</output>:<>
++    {error?<p role="alert">{error} <ResultPreviewControl command="retry-saved-result-read" current={current} invoke={()=>setRetry(value=>value+1)} {...smallButtonProps}>Retry</ResultPreviewControl></p>:!result?<output {...staticHintProps} data-block>Loading saved result…</output>:<>
+       {result.mediaType==="text/csv"&&<p {...staticHintProps}>Excel export writes cell values. Safe http(s) source URLs become hyperlinks. Formatting, formulas and images are not created.</p>}
+       {result.mediaType==="text/html"&&<p {...staticHintProps}>Interactive preview runs in an isolated origin. Network, files, forms, and Aux access are blocked; generated content may contain unverified text.</p>}
+-      {draft && <div className="result-edit-status"><span {...staticHintProps}>Edited copy · original preserved</span><button {...smallGhostButtonProps} disabled={saving||attaching} onClick={()=>{if(!writeResultDraft(artifactId,null)){setDraftError("The saved draft could not be removed. Try Discard edits again.");return;}setDraft(null);setEditing(false);setAttached(null);setDraftError("");}}>Discard edits</button><button {...smallButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged} onClick={()=>void saveVersion()}>{attaching?"Saving…":"Save version"}</button><button {...smallGhostButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content} onClick={()=>void attachCopy()}>{attached===content?"Copy attached":"Attach as document"}</button></div>}
++      {draft && <div className="result-edit-status"><span {...staticHintProps}>Edited copy · original preserved</span><ResultPreviewControl command="discard-saved-result-edits" current={loadedCurrent} invoke={discard} {...smallGhostButtonProps} disabled={saving||attaching}>Discard edits</ResultPreviewControl><ResultPreviewControl command="save-saved-result-version" report={false} current={loadedCurrent} invoke={()=>mutate(true)} {...smallButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged}>{attaching?"Saving…":"Save version"}</ResultPreviewControl><ResultPreviewControl command="attach-saved-result-copy" report={false} current={loadedCurrent} invoke={()=>mutate(false)} {...smallGhostButtonProps} disabled={contextDisabled||saving||attaching||!valid||sourceChanged||attached===content}>{attached===content?"Copy attached":"Attach as document"}</ResultPreviewControl></div>}
+       {sourceChanged&&<p className="field-error" role="alert">The saved source changed since this draft began. Export your edits or discard them to work from the current source.</p>}
+       {draftError&&<p className="field-error" role="alert">{draftError}</p>}
+       {!valid&&<p className="field-error" role="alert">Use text without null characters, up to 256 KB.</p>}
+-      {editing ? <textarea className="result-source-editor" aria-label="Edit result copy" spellCheck={result.mediaType==="text/markdown"||result.mediaType==="text/plain"} maxLength={262144} value={content} disabled={attaching||saving} onChange={event=>edit(event.target.value)}/> : <div className={`saved-result-content ${result.mediaType==="text/html"?"html-result":""}`} tabIndex={0}>{result.mediaType==="text/html"?<IsolatedHtmlResult html={content}/>:result.mediaType==="text/markdown"?<AnswerMarkdown text={content} onOpenLink={onCitationOpen}/>:<StructuredResult key={result.artifactId} content={content} mediaType={result.mediaType}/>}</div>}
++      {editing ? <textarea className="result-source-editor" aria-label="Edit result copy" spellCheck={result.mediaType==="text/markdown"||result.mediaType==="text/plain"} maxLength={262144} value={content} disabled={attaching||saving} onChange={event=>edit(event.target.value)}/> : <div className={`saved-result-content ${result.mediaType==="text/html"?"html-result":""}`} tabIndex={0}>{result.mediaType==="text/html"?<IsolatedHtmlResult html={content} current={loadedCurrent}/>:result.mediaType==="text/markdown"?<AnswerMarkdown text={content} onOpenLink={(url,background)=>loadedCurrent()?(onCitationOpen?.(url,background)??false):true}/>:<StructuredResult key={result.artifactId} content={content} mediaType={result.mediaType}/>}</div>}
+     </>}
+   </ViewerFrame>;
+ }
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index f4a94a0..c33899c 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -161,6 +161,16 @@ export const COMMANDS = [
+   S("export-generated-result", "Export generated result", browserContextControl),
+   S("select-generated-result-version", "Select generated result version", browserContextControl),
+   S("save-generated-result-version", "Save generated result version", browserContextControl),
++  S("close-saved-result-preview", "Close saved result preview", browserContextControl),
++  S("toggle-saved-result-source", "Toggle saved result source", browserContextControl),
++  S("copy-saved-result", "Copy saved result", browserContextControl),
++  S("toggle-saved-result-export", "Toggle saved result export menu", browserContextControl),
++  S("export-saved-result", "Export saved result", browserContextControl),
++  S("export-saved-result-excel", "Export saved result as Excel", browserContextControl),
++  S("retry-saved-result-read", "Retry saved result read", browserContextControl),
++  S("discard-saved-result-edits", "Discard saved result edits", browserContextControl),
++  S("save-saved-result-version", "Save saved result version", browserContextControl),
++  S("attach-saved-result-copy", "Attach saved result copy", browserContextControl),
+   ...G(pageRecoveryControl, "-page-recovery", [
+     ["retry", "", "Retry this page"],
+     ["edit", "-address", "Edit failing page address"],
