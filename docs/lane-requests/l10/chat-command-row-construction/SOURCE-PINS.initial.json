@@ -1,0 +1,30 @@
+{
+  "file": "packages/contracts/src/commands.ts",
+  "beforeSha256": "dcd7789ede2ecdc4c8d08a2696f28fb5290ad8063b2ced38a66f59ddc7d0e9dd",
+  "afterSha256": "f33f88ef14f0c01163bf44a8cdeb49cecc8b23dffce5b249019f2eeee0019e8d",
+  "patchSha256": "f6d1300f8f2642dd91e3781a2caf4a6cc04587e8194b9a5690f7682cd9f9d8ef",
+  "replay": "exact F/R/F PASS",
+  "controls": 29,
+  "suites": 4,
+  "types": "PASS",
+  "lint": "PASS",
+  "native": false,
+  "measurement": {
+    "before": {
+      "startup": 503358,
+      "total": 1873109,
+      "css": 179427
+    },
+    "after": {
+      "startup": 502480,
+      "total": 1872231,
+      "css": 179427
+    },
+    "delta": {
+      "startup": 878,
+      "total": 878,
+      "css": 0
+    }
+  },
+  "rootBudgetAcceptance": false
+}

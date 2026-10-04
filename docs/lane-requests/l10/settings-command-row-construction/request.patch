@@ -1,0 +1,103 @@
+diff --git a/packages/contracts/src/commands.ts b/packages/contracts/src/commands.ts
+index 92c2cfc2a..aab433c28 100644
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -66,39 +66,49 @@ const diagnosticsControl = { ...memoryControl, windows: ["normal", "private"] }
+ const runPanelControl = { ...runControl, palette: false } as const;
+ const modelControl = { ...memoryControl, windows: ["normal", "private"] } as const;
+ export const COMMANDS = [
+-  S("save-selection-capture-settings", "Save Selection & Capture", memoryControl),
+-  S("reload-selection-capture-settings", "Reload saved Selection & Capture", memoryControl),
+-  S("toggle-selection-action", "Toggle selection action", memoryControl),
+-  S("move-selection-action-up", "Move selection action up", memoryControl),
+-  S("move-selection-action-down", "Move selection action down", memoryControl),
+-  S("preview-selection-action", "Preview selection action", memoryControl),
+-  S("remove-selection-action", "Remove selection action", memoryControl),
+-  S("add-selection-action", "Add selection action", memoryControl),
+-  S("close-selection-action-preview", "Close selection action preview", memoryControl),
+-  S("record-selection-capture-shortcut", "Record Selection & Capture shortcut", memoryControl),
+-  S("disable-selection-capture-shortcut", "Disable Selection & Capture shortcut", memoryControl),
++  ...singleScopedRows(memoryControl, "-selection-capture-", "Selection & Capture", [
++    ["save", "settings", "Save ", ""],
++    ["reload", "settings", "Reload saved ", ""],
++  ]),
++  ...singleScopedRows(memoryControl, "-selection-action", " selection action", [
++    ["toggle", "", "Toggle", ""],
++    ["move", "-up", "Move", " up"],
++    ["move", "-down", "Move", " down"],
++    ["preview", "", "Preview", ""],
++    ["remove", "", "Remove", ""],
++    ["add", "", "Add", ""],
++    ["close", "-preview", "Close", " preview"],
++  ]),
++  ...singleScopedRows(memoryControl, "-selection-capture-", "Selection & Capture", [
++    ["record", "shortcut", "Record ", " shortcut"],
++    ["disable", "shortcut", "Disable ", " shortcut"],
++  ]),
+   S("toggle-inline-assist", "Toggle inline assist", memoryControl),
+ 
+-  S("select-model-provider", "Select model provider", modelControl),
+-  S("save-model-endpoint", "Save model endpoint", modelControl),
+-  S("discover-provider-models", "Discover provider models", modelControl),
+-  S("save-provider-model-key", "Save provider model key", modelControl),
+-  S("save-planner-model", "Save planner model", modelControl),
+-  S("probe-model-connection", "Test model connection", modelControl),
+-  S("show-model-probe-details", "Show model test details", modelControl),
+-  S("save-vision-model", "Save vision model", modelControl),
+-  S("save-model-role", "Save model role", modelControl),
+-  S("use-automatic-model-role", "Use automatic model role", modelControl),
+-  S("set-model-worker-limit", "Set model worker limit", modelControl),
+-  S("set-model-turn-limit", "Set model turn limit", modelControl),
+-  S("manage-model-provider", "Manage model provider", modelControl),
+-  S("edit-provider-models", "Edit provider models", modelControl),
++  ...singleScopedRows(modelControl, "model", "model", [
++    ["select-", "-provider", "Select ", " provider"],
++    ["save-", "-endpoint", "Save ", " endpoint"],
++    ["discover-provider-", "s", "Discover provider ", "s"],
++    ["save-provider-", "-key", "Save provider ", " key"],
++    ["save-planner-", "", "Save planner ", ""],
++    ["probe-", "-connection", "Test ", " connection"],
++    ["show-", "-probe-details", "Show ", " test details"],
++    ["save-vision-", "", "Save vision ", ""],
++    ["save-", "-role", "Save ", " role"],
++    ["use-automatic-", "-role", "Use automatic ", " role"],
++    ["set-", "-worker-limit", "Set ", " worker limit"],
++    ["set-", "-turn-limit", "Set ", " turn limit"],
++    ["manage-", "-provider", "Manage ", " provider"],
++    ["edit-provider-", "s", "Edit provider ", "s"],
++  ]),
+   S("reauthenticate-model-provider", "Edit provider key", modelControl),
+-  S("toggle-model-provider-connection", "Connect or disconnect model provider", modelControl),
+-  S("remove-saved-model-key", "Review saved model key removal", modelControl),
+-  S("set-image-generation-model", "Set image-generation model", modelControl),
+-  S("confirm-model-key-removal", "Confirm model key removal", modelControl),
+-  S("cancel-model-key-removal", "Cancel model key removal", modelControl),
++  ...singleScopedRows(modelControl, "model", "model", [
++    ["toggle-", "-provider-connection", "Connect or disconnect ", " provider"],
++    ["remove-saved-", "-key", "Review saved ", " key removal"],
++    ["set-image-generation-", "", "Set image-generation ", ""],
++    ["confirm-", "-key-removal", "Confirm ", " key removal"],
++    ["cancel-", "-key-removal", "Cancel ", " key removal"],
++  ]),
+ 
+   ...GL(browserContextControl, "-conversation-", " conversation ", [
+     ["choose", "image", "Choose", "image"],
+@@ -199,11 +209,13 @@ export const COMMANDS = [
+     ["cancel", "removal", "Cancel", "removal"],
+     ["confirm", "removal", "Confirm", "removal"],
+   ]),
+-  S("select-library-view", "Select Library view", diagnosticsControl),
+-  S("select-library-history-range", "Select Library history range", diagnosticsControl),
+-  S("retry-library-load", "Retry Library load", diagnosticsControl),
+-  S("load-more-library-history", "Load older Library visits", diagnosticsControl),
+-  S("close-library", "Close Library", diagnosticsControl),
++  ...singleScopedRows(diagnosticsControl, "library", "Library", [
++    ["select-", "-view", "Select ", " view"],
++    ["select-", "-history-range", "Select ", " history range"],
++    ["retry-", "-load", "Retry ", " load"],
++    ["load-more-", "-history", "Load older ", " visits"],
++    ["close-", "", "Close ", ""],
++  ]),
+   ...G(pageRecoveryControl, "-page-recovery", [
+     ["retry", "", "Retry this page"],
+     ["edit", "-address", "Edit failing page address"],

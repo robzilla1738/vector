@@ -7,6 +7,7 @@ import { ConversationQueuedControls } from "./ConversationQueuedControls";
 import { ConversationLiveAction, useConversationLiveOwner } from "./ConversationLiveControls";
 import { HomeEntryAction } from "./HomeEntryControls";
 import { useInteractiveComposer } from "../use-interactive-composer";
+import { availableForFocus } from "../ui/focus";
 import { NightRunOverflow } from "../features/morning-review/NightRunOverflow";
 import { runCommand } from "../commands";
 import type { MentionRef } from "@aux/contracts";
@@ -154,6 +155,8 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   const activePageId = useStore(s => s.activePageId);
   const layout = useStore(s => s.layout);
   const connected = useStore(s => s.connected);
+  const focusRequest = useStore(s => s.focusRequest);
+  const seenFocusRequest = useRef(focusRequest);
   const conversationCurrent = useConversationOwner(id, connected);
   const contextControls = useConversationContextControls(conversationCurrent);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -833,6 +836,15 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   };
   const newChat = !embedded && !turns.length && !pendingTurns.length && !historyLoading && !historyError && !taskBound;
   useEffect(() => { if (newChat) textareaRef.current?.focus(); }, [newChat, textareaRef]);
+  // The composer remains mounted behind Settings; only an explicit new hero request transfers focus back.
+  useEffect(() => {
+    if (seenFocusRequest.current === focusRequest) return;
+    seenFocusRequest.current = focusRequest;
+    const state = useStore.getState(), input = textareaRef.current;
+    if (!embedded && !home && state.focusRequest === focusRequest && state.focusSlot === "hero" &&
+        state.mode === "conversation" && !state.overlay && conversationCurrent() && input && availableForFocus(input))
+      input.focus();
+  }, [focusRequest, embedded, home, conversationCurrent, textareaRef]);
   const imageTray = <ConversationImages detachedTools toolsTarget={contextTools} showAttachedImages={false} incomingFile={incomingImage} onFileConsumed={file => setIncomingImage(current => current === file ? null : current)} chatId={id} page={selectedContext} images={images} disabled={contextLocked || attachmentSaving} ensureChatId={ensureChatId} onDocument={() => void attachDocument()} onBusy={busy => setImageOperations(count => Math.max(0, count + (busy ? 1 : -1)))} onChange={(chatId, value) => { if (activeChat.current === chatId) { setImages(value); setContextRefresh(current => current + 1); } }} />;
   if (id === "history") return <ConversationHistory/>;
   const dictation = <Dictation draftKey={id ? draftKey(id) : "new"} key={`dictation-${id ?? "new"}`} disabled={archived || sending || answerPending} composerRef={textareaRef} onInsert={words => {

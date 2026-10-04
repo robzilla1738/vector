@@ -1,0 +1,9 @@
+{
+  "result": "ADMITTED_ORIGINAL17_SERIAL524_ASSERTIONS",
+  "launcherSha256": "80311b2b9401ae6d55c624847ec6363d82b2497bec44709b084408895f45caad",
+  "outerSha256": "b941fd05714979c62801899f07fb1559624169975826203dcea872ae0d9c4532",
+  "actual14LaunchPins": true,
+  "originalPolicySourceReview": "/tmp/aux-root-native333-assertions-source-review-001.json",
+  "scope": "Serial17 native batches/524 actual cases/retry0/jobs1/original defaulttimeouts; no App/helperexecution/compile/restage/qualification",
+  "noSafetyPassClaim": true
+}

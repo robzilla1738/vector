@@ -1,0 +1,18 @@
+{
+  "result": "PASS",
+  "pairProof": "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-runtime-helper-target27-001/pair-proof.json",
+  "pairProofSHA256": "dcf2bfca4823bd316ce20ad53e5aaf8147d3202da26a683488d3d63431c756d5",
+  "actualRuntimeFilesChecked": 92,
+  "rawArtifactsChecked": 37,
+  "naturalChildren": 10,
+  "actualOriginalPIDsAndGroupsAbsent": true,
+  "originalSDK27MachO": {
+    "architecture": "arm64",
+    "imageUuid": "9d466d7953973adbb94aa4c6d2b7a29e",
+    "minimumOS": "27.0.0",
+    "sdkVersion": "27.0.0"
+  },
+  "independentCompilerAudit": "/tmp/aux-root-native333-helper-independent-audit-001.json",
+  "independentCompilerAuditSHA256": "2d88589b2399a01182a17a7c00c2a52faebbeb3120cdeac638899448939623f9",
+  "scope": "Matching runtime/helper pair and original nonprompting trusted preflight only. App and assertions not yet admitted."
+}

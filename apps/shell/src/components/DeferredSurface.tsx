@@ -1,6 +1,6 @@
 import { staticRowProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
-import { Component, Suspense, lazy, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { Component, Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useStore } from "../store";
 import { SurfaceSkeleton } from "./Skeleton";
 
@@ -54,11 +54,13 @@ export function deferSurface<Props extends object>(load:()=>Promise<{default:Com
   function DeferredSurface(props:Props) {
     const [attempt, setAttempt] = useState(0);
     const previousFocus = useRef(document.activeElement as HTMLElement | null);
-    useEffect(() => () => {
+    useLayoutEffect(() => () => {
       if (pane) return;
+      const original = document.activeElement;
       queueMicrotask(() => {
-        const previous = previousFocus.current;
-        if (previous?.isConnected && !previous.closest("[inert]")) previous.focus();
+        const previous = previousFocus.current, active = document.activeElement;
+        if (original && !original.isConnected && (active === document.body || active === null) &&
+            previous?.isConnected && !previous.closest("[inert]")) previous.focus();
       });
     }, []);
     return <SurfaceBoundary key={attempt} fallback={error => <SurfaceStatus label={label} error={error} pane={pane} onClose={onClose} retry={() => setAttempt(value => value + 1)} />}>

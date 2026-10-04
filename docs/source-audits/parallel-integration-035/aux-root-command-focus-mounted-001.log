@@ -1,0 +1,20 @@
+
+ RUN  v3.2.4 /private/tmp/aux-root-sidebar-selection-next
+
+ ✓ |unit| apps/shell/src/components/DeferredSurface.test.tsx (2 tests) 39ms
+(node:61231) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:61230) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:61229) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Library.commands.test.tsx (12 tests) 429ms
+ ✓ |unit| apps/shell/src/components/Settings.new-chat-focus.test.tsx (8 tests) 129ms
+ ✓ |unit| apps/shell/src/components/Conversation.source-controls.test.tsx (21 tests) 1646ms
+   ✓ Calendar account choice preserves real text, explicit Cancel command, Escape and opener focus  415ms
+
+ Test Files  4 passed (4)
+      Tests  43 passed (43)
+   Start at  16:37:26
+   Duration  5.01s (transform 1.12s, setup 0ms, collect 7.91s, tests 2.24s, environment 1.45s, prepare 196ms)
+

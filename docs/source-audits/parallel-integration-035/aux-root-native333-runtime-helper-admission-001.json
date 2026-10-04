@@ -1,0 +1,14 @@
+{
+  "status": "COMPILED_IDENTITY_AND_RUNTIME_HELPER_ADMISSION_PASS",
+  "actualNative": 733,
+  "actualPackets": 333,
+  "actualAssets": 174,
+  "actualRuntime": 92,
+  "historicalHelperExact": true,
+  "actualSourceIdentityInBinary": true,
+  "actualToolRows": 11,
+  "launcher": "1b3a15e8b658f388c533036cbf34c098edda146ee2aa4e8cd495589493d3abf6",
+  "outer": "023cf040a482bc4bd0edb398db33384dda4f2451824d6e7e8d6e3f278793324b",
+  "exactOriginalControllerExceptReviewedSourceLiteralsAndPacketCount": true,
+  "scope": "offline matching runtime +fresh unchanged d7SDK27 helper trusted-only nonprompting; no App or safety dispatch"
+}

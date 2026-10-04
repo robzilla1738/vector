@@ -259,7 +259,7 @@ export const COMMAND_ACTIONS = {
     const page = st.pages.find((page) => page.pageId === st.activePageId);
     if (page) return navigator.clipboard.writeText(page.url).then(() => st.toast("Link copied"));
   },
-  "new-chat": st => st.openConversation(null),
+  "new-chat": st => { st.openConversation(null); st.focusCommandBar("hero"); },
   "open-chat-history": st => { st.openConversation(null); useStore.setState({ conversationId: "history" }); },
   "open-tasks": st => st.setOverlay("tasks"),
   "quick-ask": () => bridge.quickAsk("open"),

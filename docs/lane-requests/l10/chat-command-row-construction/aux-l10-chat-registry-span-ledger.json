@@ -1,0 +1,65 @@
+[
+  {
+    "first": "load-conversation-history",
+    "last": "toggle-conversation-error-details",
+    "rows": 3,
+    "middle": "conversation",
+    "labelMiddle": "conversation"
+  },
+  {
+    "first": "select-home-search",
+    "last": "open-home-conversation",
+    "rows": 3,
+    "middle": "-home-",
+    "labelMiddle": " Home "
+  },
+  {
+    "first": "select-conversation-answer",
+    "last": "open-conversation-recorded-source",
+    "rows": 19,
+    "middle": "conversation",
+    "labelMiddle": "conversation"
+  },
+  {
+    "first": "choose-conversation-source-profile",
+    "last": "cancel-conversation-source-profile",
+    "rows": 2,
+    "middle": "conversation",
+    "labelMiddle": null
+  },
+  {
+    "first": "preview-conversation-document",
+    "last": "reset-conversation-supporting-width",
+    "rows": 10,
+    "middle": "conversation",
+    "labelMiddle": "conversation"
+  },
+  {
+    "first": "retry-conversation-document-read",
+    "last": "close-conversation-document-preview",
+    "rows": 4,
+    "middle": "conversation",
+    "labelMiddle": null
+  },
+  {
+    "first": "close-generated-result-preview",
+    "last": "save-generated-result-version",
+    "rows": 5,
+    "middle": "-generated-result",
+    "labelMiddle": " generated result"
+  },
+  {
+    "first": "close-saved-result-preview",
+    "last": "close-saved-result-row-details",
+    "rows": 13,
+    "middle": "-saved-result",
+    "labelMiddle": " saved result"
+  },
+  {
+    "first": "toggle-extension-permissions",
+    "last": "confirm-extension-removal",
+    "rows": 4,
+    "middle": "-extension-",
+    "labelMiddle": " extension "
+  }
+]

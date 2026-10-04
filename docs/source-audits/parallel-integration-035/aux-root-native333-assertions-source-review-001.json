@@ -1,0 +1,8 @@
+{
+  "result": "ORIGINAL_SERIAL524_ASSERTION_SOURCE_PASS",
+  "controllerSha256": "8a82b8d635b650e5c4346a30452a74a31c0c92de961c1bbaf099810b26959473",
+  "proposalSha256": "3182d731a7d1c3a8efde4aae4074e194ad73b4f321e48e9e1835b25a962257bf",
+  "original17BatchesArgumentsFiltersCompiledCasesExact": true,
+  "originalControllerASTOutsideReviewedLiteralsExact": true,
+  "noPhysicalJourneys": true
+}

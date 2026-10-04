@@ -1,0 +1,15 @@
+{
+  "status": "FULL18_NATURAL_TERMINAL_AND_READONLY_CAPTURE_ADMISSION_PASS",
+  "actualRaw": 15,
+  "actualOutputHashes": 18,
+  "freshAbsentPids": 12,
+  "freshAbsentGroups": 2,
+  "actualPhysical0644Restored": 3,
+  "captureRequestSha256": "c974560e96324f31e28d2848090e3d2bc2e5236375a2438b2906f1fed973ab5c",
+  "captureController": {
+    "path": "/private/tmp/aux-builder-native333-preparation-001/capture-native333-successful-compiled-stage-guard-001-REQUEST-ONLY.py",
+    "sha256": "0ba5d0c8f9e575c49c2331d47fdfbfe7ead3f66bc57393d0eaaffa6c99ff8ceb"
+  },
+  "firstSourceAuditRefusal": "uppercase NATIVE filename literals not normalized; corrected comparison covers exact reviewed literal delta, no native refusal",
+  "scope": "read-only compiled identity capture only; no runtime/helper/App"
+}

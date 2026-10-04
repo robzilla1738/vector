@@ -1,0 +1,5 @@
+{
+  "outsideExactCohortAndPrivateConstructor": "byte-exact unchanged",
+  "originalConstructors": "G/GL/S/C unchanged",
+  "beforeAfterForwardReverseForward": "PASS"
+}

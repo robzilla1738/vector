@@ -1,0 +1,119 @@
+{
+  "base": "95489d3e716a63b55269797dc42ed9ecf1fb05b0",
+  "leaves": [
+    {
+      "path": "apps/shell/src/commands.ts",
+      "before": "14909d2804944009ad36ecb1730bec592f3f6b6f2dad6227bdcd34775ef8bef7",
+      "after": "c98147a93d485663b2694607a09b030d88441bc032bdf5878e12917e6b59d3fd"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "before": "f72064ae79d66c6f5f15d45e5bec3a72717ecf57906d651043aaaecd43993bb1",
+      "after": "31bdc0134d97cbb8e09e5140d6c3e1d9a2aa00fae1fbf9973495af7ea49ee85c"
+    },
+    {
+      "path": "apps/shell/src/components/DeferredSurface.tsx",
+      "before": "cacdf6fc0b1f8d6ab7f296c3a7a47c9e8b2f21fa0776d3dd6916de3346d6dc79",
+      "after": "18cc85ad7a0914b180dc685a9684f728085974d3f338b6843e5357324a8e36c7"
+    },
+    {
+      "path": "apps/shell/src/components/Settings.new-chat-focus.test.tsx",
+      "before": null,
+      "after": "41dcc7b1cc32cf07a24a2c6cd2f7d69679f8116c6a4befd77ffdacf3bf5e7ba1"
+    }
+  ],
+  "patchSha256": "cda34962c70a62416d07f692eb0fbdea9440acc216dd43555899056204f86b36",
+  "replay": "forward/reverse/forward byte-exact PASS",
+  "producerPins": [
+    {
+      "path": "apps/shell/src/components/Settings.tsx",
+      "sha256": "f3e1b3967d03894ed29322cae715430c32802e0251fece9eb84b02819298b06a"
+    },
+    {
+      "path": "apps/shell/src/components/Stage.tsx",
+      "sha256": "4ee64f4890124c94b4f58f2142c745d6529fa5abe92671b4d9e871eb5db38e8b"
+    },
+    {
+      "path": "apps/shell/src/App.tsx",
+      "sha256": "49cd99db8e51d8a5ffb1386aaffe74bc31993c4e302a9415a87c4a7de3aa3f40"
+    },
+    {
+      "path": "apps/shell/src/store/ui-slice.ts",
+      "sha256": "bef692f4ad8f03bf514c463ea40809014ea873cbaff2da868e2c650dc31e2839"
+    },
+    {
+      "path": "apps/shell/src/store/runs-slice.ts",
+      "sha256": "3b6d6bae3d4f57c3131602ba653505ef3fc942df646bc01b3698fd55945cd76d"
+    },
+    {
+      "path": "apps/shell/src/ui/focus.ts",
+      "sha256": "222929301e855ce632390feeb1593de68336ee78e6cfd582c0c129837a0b2e2c"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationControls.tsx",
+      "sha256": "de6003d2ff75680d46eae542184a2b9070a953a7804262bf57453245c88c9abf"
+    },
+    {
+      "path": "apps/shell/src/components/HomeAsk.tsx",
+      "sha256": "9296f769f06483e8d674f3e3ee02abc1adb5e28231b891ee9f966ceac649227c"
+    },
+    {
+      "path": "apps/shell/src/components/ReaderView.tsx",
+      "sha256": "852e6e4ed8938075e76f55ce5bb1ba2a1f82674fcf609b8702a617ad4aaf611a"
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "sha256": "4643e46e373bde1e55c818be061709113675e59986a17c229ef8fbb7d1f2f00b"
+    },
+    {
+      "path": "apps/shell/src/components/Inspector.tsx",
+      "sha256": "32db6b4a0a2143ea4d31d1b1428651ee0142151e14d189a44871b31c0d1c5b7a"
+    },
+    {
+      "path": "apps/shell/src/components/Tasks.tsx",
+      "sha256": "1b7c95ea1d8280631ef90f889ee0a38f97623bbff35289023714d397b36a9635"
+    },
+    {
+      "path": "apps/shell/src/components/CommandSurface.tsx",
+      "sha256": "6c690e0989b8e39ee16b6f584e7b618fe56a47318df6f8e18782c6136e898d3a"
+    },
+    {
+      "path": "apps/shell/src/components/Downloads.tsx",
+      "sha256": "79ad562b7bffba72ae61b14e9d19af3b6f457006e866a55db4f23bd9f3845f2a"
+    },
+    {
+      "path": "apps/shell/src/components/InlineAssist.tsx",
+      "sha256": "c4bea657d657a937511d79a4f98a2ff323012f1af917829cf254ff42c895bac2"
+    },
+    {
+      "path": "apps/shell/src/components/SiteControls.tsx",
+      "sha256": "b2b134f50f93b4ffa0987c6a3c46df468846909ba5e0fa555d74cd5b029db60d"
+    },
+    {
+      "path": "apps/shell/src/components/SiteCustomization.tsx",
+      "sha256": "6b2390b54dd76755a9bb57504993d9ee10ff847a9a2f312464dead5e84ee7a15"
+    }
+  ],
+  "preview": {
+    "mode": "mock source preview, not native qualification",
+    "serverRoot": "/private/tmp/aux-design-source-preview-current",
+    "port": 5248,
+    "configSha256": "63dba640a45167c34e8694bd196280517b44f075ead0d485830899411c497dd4",
+    "servedCorrectedSourcePins": [
+      {
+        "path": "apps/shell/src/commands.ts",
+        "sha256": "c98147a93d485663b2694607a09b030d88441bc032bdf5878e12917e6b59d3fd"
+      },
+      {
+        "path": "apps/shell/src/components/Conversation.tsx",
+        "sha256": "31bdc0134d97cbb8e09e5140d6c3e1d9a2aa00fae1fbf9973495af7ea49ee85c"
+      },
+      {
+        "path": "apps/shell/src/components/DeferredSurface.tsx",
+        "sha256": "18cc85ad7a0914b180dc685a9684f728085974d3f338b6843e5357324a8e36c7"
+      }
+    ],
+    "priorReferencePacket": "/private/tmp/aux-design-source-preview-current/docs/lane-requests/design/current-source-preview-review/SOURCE-PINS.json",
+    "exactFinal720Result": "source-browser-final-720-pass.json"
+  }
+}

@@ -1,0 +1,353 @@
+diff --git a/apps/shell/src/commands.ts b/apps/shell/src/commands.ts
+index 94c6abfd9..c6a7af41f 100644
+--- a/apps/shell/src/commands.ts
++++ b/apps/shell/src/commands.ts
+@@ -259,7 +259,7 @@ export const COMMAND_ACTIONS = {
+     const page = st.pages.find((page) => page.pageId === st.activePageId);
+     if (page) return navigator.clipboard.writeText(page.url).then(() => st.toast("Link copied"));
+   },
+-  "new-chat": st => st.openConversation(null),
++  "new-chat": st => { st.openConversation(null); st.focusCommandBar("hero"); },
+   "open-chat-history": st => { st.openConversation(null); useStore.setState({ conversationId: "history" }); },
+   "open-tasks": st => st.setOverlay("tasks"),
+   "quick-ask": () => bridge.quickAsk("open"),
+diff --git a/apps/shell/src/components/Conversation.tsx b/apps/shell/src/components/Conversation.tsx
+index 45c290ca6..6a6b8c063 100644
+--- a/apps/shell/src/components/Conversation.tsx
++++ b/apps/shell/src/components/Conversation.tsx
+@@ -7,6 +7,7 @@ import { ConversationQueuedControls } from "./ConversationQueuedControls";
+ import { ConversationLiveAction, useConversationLiveOwner } from "./ConversationLiveControls";
+ import { HomeEntryAction } from "./HomeEntryControls";
+ import { useInteractiveComposer } from "../use-interactive-composer";
++import { availableForFocus } from "../ui/focus";
+ import { NightRunOverflow } from "../features/morning-review/NightRunOverflow";
+ import { runCommand } from "../commands";
+ import type { MentionRef } from "@aux/contracts";
+@@ -154,6 +155,8 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+   const activePageId = useStore(s => s.activePageId);
+   const layout = useStore(s => s.layout);
+   const connected = useStore(s => s.connected);
++  const focusRequest = useStore(s => s.focusRequest);
++  const seenFocusRequest = useRef(focusRequest);
+   const conversationCurrent = useConversationOwner(id, connected);
+   const contextControls = useConversationContextControls(conversationCurrent);
+   const [historyLoading, setHistoryLoading] = useState(false);
+@@ -833,6 +836,15 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+   };
+   const newChat = !embedded && !turns.length && !pendingTurns.length && !historyLoading && !historyError && !taskBound;
+   useEffect(() => { if (newChat) textareaRef.current?.focus(); }, [newChat, textareaRef]);
++  // The composer remains mounted behind Settings; only an explicit new hero request transfers focus back.
++  useEffect(() => {
++    if (seenFocusRequest.current === focusRequest) return;
++    seenFocusRequest.current = focusRequest;
++    const state = useStore.getState(), input = textareaRef.current;
++    if (!embedded && !home && state.focusRequest === focusRequest && state.focusSlot === "hero" &&
++        state.mode === "conversation" && !state.overlay && conversationCurrent() && input && availableForFocus(input))
++      input.focus();
++  }, [focusRequest, embedded, home, conversationCurrent, textareaRef]);
+   const imageTray = <ConversationImages detachedTools toolsTarget={contextTools} showAttachedImages={false} incomingFile={incomingImage} onFileConsumed={file => setIncomingImage(current => current === file ? null : current)} chatId={id} page={selectedContext} images={images} disabled={contextLocked || attachmentSaving} ensureChatId={ensureChatId} onDocument={() => void attachDocument()} onBusy={busy => setImageOperations(count => Math.max(0, count + (busy ? 1 : -1)))} onChange={(chatId, value) => { if (activeChat.current === chatId) { setImages(value); setContextRefresh(current => current + 1); } }} />;
+   if (id === "history") return <ConversationHistory/>;
+   const dictation = <Dictation draftKey={id ? draftKey(id) : "new"} key={`dictation-${id ?? "new"}`} disabled={archived || sending || answerPending} composerRef={textareaRef} onInsert={words => {
+diff --git a/apps/shell/src/components/DeferredSurface.tsx b/apps/shell/src/components/DeferredSurface.tsx
+index 30a3c781f..5e85b3b36 100644
+--- a/apps/shell/src/components/DeferredSurface.tsx
++++ b/apps/shell/src/components/DeferredSurface.tsx
+@@ -1,6 +1,6 @@
+ import { staticRowProps } from "../ui/class-props";
+ import { smallGhostButtonProps } from "../ui/button-props";
+-import { Component, Suspense, lazy, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
++import { Component, Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+ import { useStore } from "../store";
+ import { SurfaceSkeleton } from "./Skeleton";
+ 
+@@ -54,11 +54,13 @@ export function deferSurface<Props extends object>(load:()=>Promise<{default:Com
+   function DeferredSurface(props:Props) {
+     const [attempt, setAttempt] = useState(0);
+     const previousFocus = useRef(document.activeElement as HTMLElement | null);
+-    useEffect(() => () => {
++    useLayoutEffect(() => () => {
+       if (pane) return;
++      const original = document.activeElement;
+       queueMicrotask(() => {
+-        const previous = previousFocus.current;
+-        if (previous?.isConnected && !previous.closest("[inert]")) previous.focus();
++        const previous = previousFocus.current, active = document.activeElement;
++        if (original && !original.isConnected && (active === document.body || active === null) &&
++            previous?.isConnected && !previous.closest("[inert]")) previous.focus();
+       });
+     }, []);
+     return <SurfaceBoundary key={attempt} fallback={error => <SurfaceStatus label={label} error={error} pane={pane} onClose={onClose} retry={() => setAttempt(value => value + 1)} />}>
+diff --git a/apps/shell/src/components/Settings.new-chat-focus.test.tsx b/apps/shell/src/components/Settings.new-chat-focus.test.tsx
+new file mode 100644
+index 000000000..2f82c2ce4
+--- /dev/null
++++ b/apps/shell/src/components/Settings.new-chat-focus.test.tsx
+@@ -0,0 +1,268 @@
++// @vitest-environment jsdom
++import { act, type ComponentType } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { Conversation } from "./Conversation";
++import { Settings } from "./Settings";
++import { deferSurface } from "./DeferredSurface";
++const DeferredSettings = deferSurface(async () => ({ default: Settings }), "Settings");
++import { executeCommand } from "../commands";
++import { bridge } from "../bridge";
++import { useStore } from "../store";
++vi.mock("../features/registry", async (original) => ({
++  ...(await original<typeof import("../features/registry")>()),
++  featureSettingsAvailable: () => false,
++  FeatureSettings: () => null,
++}));
++vi.mock("./MemorySettings", () => ({ MemorySettings: () => null }));
++vi.mock("./ExternalAgents", () => ({ ExternalAgents: () => null }));
++vi.mock("./PluginsPanel", () => ({ PluginsPanel: () => null }));
++vi.mock("./Extensions", () => ({ Extensions: () => null }));
++vi.mock("./VaultSettings", () => ({ VaultSettings: () => null }));
++vi.mock("./CalendarConnections", () => ({ CalendarConnections: () => null }));
++vi.mock("./OutboundMcpSettings", () => ({ OutboundMcpSettings: () => null }));
++vi.mock("./ReviewedConnectors", () => ({ ReviewedConnectors: () => null }));
++vi.mock("../settings/sections/Appearance", () => ({ AppearanceSettings: () => null }));
++vi.mock("../settings/sections/Agents", () => ({ AgentsSettings: () => null }));
++vi.mock("../settings/sections/PrivacySecurity", () => ({ PrivacySecuritySettings: () => null }));
++vi.mock("../settings/sections/PasswordsAutofill", () => ({ PasswordsAutofillSettings: () => null }));
++vi.mock("../settings/sections/Models", () => ({ ModelsSettings: () => null }));
++vi.mock("../settings/sections/UsageBudgets", () => ({ UsageBudgetsSettings: () => null }));
++vi.mock("../settings/sections/Automations", () => ({ AutomationsSettings: () => null }));
++vi.mock("../settings/sections/Workspaces", () => ({ WorkspacesSettings: () => null }));
++vi.mock("../settings/sections/QuickAsk", () => ({ QuickAskSettings: () => null }));
++vi.mock("../settings/sections/SelectionCapture", () => ({ SelectionCaptureSettings: () => null }));
++vi.mock("../settings/sections/ArchivedChats", () => ({ ArchivedChatsSettings: () => null }));
++vi.mock("../settings/sections/General", () => ({ GeneralSettings: () => null }));
++vi.mock("../settings/sections/Profiles", () => ({ ProfilesSettings: () => null }));
++const initial = useStore.getState();
++const modal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal"),
++  close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close"),
++  scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>, style: HTMLStyleElement;
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
++    { width: 100 },
++  ] as unknown as DOMRectList);
++  vi.stubGlobal(
++    "ResizeObserver",
++    class {
++      observe() {}
++      disconnect() {}
++    },
++  );
++  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
++    callback(0);
++    return 1;
++  });
++  vi.stubGlobal("cancelAnimationFrame", () => {});
++  Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
++    configurable: true,
++    value: function (this: HTMLDialogElement) {
++      this.open = true;
++      this.querySelector<HTMLElement>("button,input")?.focus();
++    },
++  });
++  Object.defineProperty(HTMLDialogElement.prototype, "close", {
++    configurable: true,
++    value: function (this: HTMLDialogElement) {
++      this.open = false;
++    },
++  });
++  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
++  useStore.setState({
++    agentDraft: "Original page-free question",
++    railOpen: false,
++    runs: [],
++    pendingTurns: [],
++    pages: [],
++    connected: true,
++    conversationId: null,
++  });
++  vi.spyOn(bridge, "focusShell").mockResolvedValue(null);
++  vi.spyOn(bridge, "overlay").mockResolvedValue(true);
++  vi.spyOn(bridge, "dictationStatus").mockResolvedValue({ available: true });
++  vi.spyOn(bridge, "startDictation");
++  vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
++    if (method === "runs.list" || method === "conversations.list" || method === "runs.messages.list")
++      return [] as never;
++    if (method === "conversations.get") return { title: "Archived original", archived: true } as never;
++    if (method === "conversations.artifacts.get") return { artifacts: [] } as never;
++    if (method === "conversations.images.get") return { images: [] } as never;
++    if (method === "conversations.attachments.get") return { attachments: [] } as never;
++    if (method === "conversations.sources.get") return { sources: [] } as never;
++    if (method === "runs.context.get") return { entries: [], historyEnabled: true } as never;
++    return { workspace: null, memory: null } as never;
++  });
++  host = document.createElement("div");
++  document.body.append(host);
++  root = createRoot(host);
++  style = document.createElement("style");
++  document.head.append(style);
++});
++afterEach(async () => {
++  await act(async () => root.unmount());
++  host.remove();
++  style.remove();
++  useStore.setState(initial, true);
++  vi.restoreAllMocks();
++  vi.unstubAllGlobals();
++  for (const [prototype, key, descriptor] of [
++    [HTMLDialogElement.prototype, "showModal", modal],
++    [HTMLDialogElement.prototype, "close", close],
++    [HTMLElement.prototype, "scrollIntoView", scroll],
++  ] as const) {
++    if (descriptor) Object.defineProperty(prototype, key, descriptor);
++    else Reflect.deleteProperty(prototype, key);
++  }
++});
++
++function Shell() {
++  const overlay = useStore((state) => state.overlay);
++  return (
++    <>
++      <button aria-label="Original Settings opener" onClick={() => void executeCommand("settings")}>
++        Settings
++      </button>
++      <button aria-label="Original New chat" onClick={() => void executeCommand("new-chat")}>
++        New chat
++      </button>
++      <button aria-label="External newer owner">External newer owner</button>
++      <div inert={overlay === "settings"}>
++        <Conversation />
++      </div>
++      {overlay === "settings" && <DeferredSettings />}
++    </>
++  );
++}
++async function mount() {
++  useStore.setState({
++    mode: "conversation",
++    overlay: null,
++    focusRequest: 0,
++    focusSlot: "toolbar",
++    settingsCategory: "General",
++    runs: [],
++    pendingTurns: [],
++    conversationId: null,
++  });
++  await act(async () => root.render(<Shell />));
++}
++const input = () => host.querySelector<HTMLTextAreaElement>('textarea[aria-label="Reply to conversation"]')!;
++const opener = () => host.querySelector<HTMLButtonElement>('[aria-label="Original Settings opener"]')!;
++async function openSettings() {
++  opener().focus();
++  await act(async () => opener().click());
++}
++it("the actual New chat dispatcher focuses the retained composer after Settings retires", async () => {
++  await mount();
++  const original = input();
++  expect(document.activeElement).toBe(original);
++  await openSettings();
++  expect(host.querySelector('[aria-label="Settings"]')).not.toBeNull();
++  expect(document.activeElement).not.toBe(original);
++  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Original New chat"]')!.click());
++  expect(input()).toBe(original);
++  expect(useStore.getState().overlay).toBeNull();
++  expect(useStore.getState().focusRequest).toBe(1);
++  expect(useStore.getState().focusSlot).toBe("hero");
++  expect(document.activeElement).toBe(original);
++  expect(original.value).toBe("Original page-free question");
++  expect(useStore.getState().pages).toEqual([]);
++});
++it("ordinary Settings close restores its original opener without refocusing the covered chat", async () => {
++  await mount();
++  await openSettings();
++  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Close settings"]')!.click());
++  expect(document.activeElement).toBe(opener());
++  expect(useStore.getState().focusRequest).toBe(0);
++});
++it("Settings retirement retains a newer outside focus owner", async () => {
++  await mount();
++  await openSettings();
++  const external = host.querySelector<HTMLButtonElement>('[aria-label="External newer owner"]')!;
++  await act(async () => {
++    external.focus();
++    useStore.getState().setOverlay(null);
++  });
++  expect(document.activeElement).toBe(external);
++});
++it("toolbar focus requests do not pull focus back to the conversation", async () => {
++  await mount();
++  const external = host.querySelector<HTMLButtonElement>('[aria-label="External newer owner"]')!;
++  await act(async () => {
++    external.focus();
++    useStore.getState().focusCommandBar("toolbar");
++  });
++  expect(document.activeElement).toBe(external);
++});
++
++it("deferred Settings teardown preserves a still-connected newer modal focus owner", async () => {
++  await mount();
++  await openSettings();
++  const dialog = document.createElement("dialog"),
++    button = document.createElement("button");
++  button.textContent = "Original newer modal";
++  dialog.append(button);
++  document.body.append(dialog);
++  try {
++    await act(async () => {
++      dialog.showModal();
++      useStore.getState().setOverlay(null);
++    });
++    expect(document.activeElement).toBe(button);
++    expect(dialog.isConnected).toBe(true);
++  } finally {
++    dialog.close();
++    dialog.remove();
++  }
++});
++it.each(["loading", "error"] as const)(
++  "deferred %s teardown restores only physically retired focus",
++  async (state) => {
++    const opener = document.createElement("button");
++    opener.textContent = "Original deferred opener";
++    document.body.append(opener);
++    opener.focus();
++    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
++    const Surface = deferSurface(
++      () =>
++        state === "error"
++          ? Promise.reject<{ default: ComponentType<object> }>(new Error("Original failed module"))
++          : new Promise<{ default: ComponentType<object> }>(() => {}),
++      "Original surface",
++    );
++    try {
++      await act(async () => root.render(<Surface />));
++      const original = document.activeElement;
++      expect(host.contains(original)).toBe(true);
++      expect(original?.isConnected).toBe(true);
++      expect(host.textContent?.includes("Original failed module")).toBe(state === "error");
++      await act(async () => root.render(null));
++      expect(original?.isConnected).toBe(false);
++      expect(document.activeElement).toBe(opener);
++    } finally {
++      errors.mockRestore();
++      opener.remove();
++    }
++  },
++);
++it("deferred teardown does not interpret an unrelated BODY focus as owned removal", async () => {
++  const opener = document.createElement("button");
++  document.body.append(opener);
++  opener.focus();
++  const Surface = deferSurface(
++    () => new Promise<{ default: ComponentType<object> }>(() => {}),
++    "Original surface",
++  );
++  try {
++    await act(async () => root.render(<Surface />));
++    (document.activeElement as HTMLElement).blur();
++    expect(document.activeElement).toBe(document.body);
++    await act(async () => root.render(null));
++    expect(document.activeElement).toBe(document.body);
++  } finally {
++    opener.remove();
++  }
++});
