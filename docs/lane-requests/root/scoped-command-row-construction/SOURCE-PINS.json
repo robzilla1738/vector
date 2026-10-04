@@ -35,5 +35,15 @@
       "exitCode": 0
     }
   },
-  "rendererBytes": "Awaiting one combined coherent Settings/registry build; no passing budget or qualification claimed"
+  "rendererBytes": "Combined tiny gain insufficient; no qualification or separate registry saving claim",
+  "status": "Unadopted after actual combined Models/registry measurement; original source restored",
+  "combinedNegativeEvidence": "/private/tmp/aux-browser-runtime-design-next-owner-reserve/docs/lane-requests/design/next-model-view-construction-negative",
+  "combinedActualBytes": {
+    "startup": 500334,
+    "css": 179427,
+    "total": 1846112,
+    "limit": 1843200,
+    "over": 2912,
+    "combinedSaving": 162
+  }
 }
