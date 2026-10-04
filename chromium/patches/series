@@ -327,3 +327,4 @@ aux/runtime/0337-original-appearance-channel-retirement.patch
 0357-native-capture-repeating-identity-reference.patch
 0358-native-capture-fixture-capturing-callback-api.patch
 0359-native-credential-fixture-explicit-pointer-types.patch
+0360-native-capture-fixture-capturing-callback-api.patch

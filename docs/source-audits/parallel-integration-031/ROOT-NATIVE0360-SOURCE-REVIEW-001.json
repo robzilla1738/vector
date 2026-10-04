@@ -1,0 +1,41 @@
+{
+  "sourceOnly": true,
+  "nativeExecutionAdmission": false,
+  "componentFreezeSha256": "875b9ec58aa85980466a17f25633a157b24e554b3f3570479c61d882b53bdb7f",
+  "reservationFreezeSha256": "29354e9cadf70bd2895cf0e24439b37daeedf747784755be5a3da88ce672aa1d",
+  "installedAPIHashes": 10,
+  "exactWholeFileInverse": true,
+  "forwardReverseForward": true,
+  "retained329PrefixExact": true,
+  "appendOnlySeries": true,
+  "originalCases": 524,
+  "sourceRows": [
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise_test.cc",
+      "beforeSha256": "a4e76eb1854054e2d6cebb4e7f4761e8cad91a2c4762fb98418cb1b6ea3a98ee",
+      "resultSha256": "f34e11d2da7c5dc1b485242bdb629f575902bce1e11ec0c140da91b1a99e7552",
+      "capturingSites": 4,
+      "functionalBindIncludeRetainedForOtherOriginalFactories": false,
+      "explicitOnceCallbackAtOriginalMojoTemplateSite": false,
+      "wholeFileInverseExact": true
+    },
+    {
+      "path": "components/viz/service/display/surface_aggregator_unittest.cc",
+      "beforeSha256": "7b49fe9f281659be4397f481bd4fa4ee693ab6c33578f3fce18380b2e8f498cb",
+      "resultSha256": "728a98e9acf39c865955032a561d38e3d1ad8301f210e11dac25a3a7b495ff57",
+      "capturingSites": 2,
+      "functionalBindIncludeRetainedForOtherOriginalFactories": true,
+      "explicitOnceCallbackAtOriginalMojoTemplateSite": false,
+      "wholeFileInverseExact": true
+    },
+    {
+      "path": "content/browser/renderer_host/aux_person_capture_activation_unittest.cc",
+      "beforeSha256": "a7a00ff7b014b759380d327efe6a6365bc2caf27b3dc41d6846fa2e76a60706a",
+      "resultSha256": "b9a2ee36e842683b2a4a25b469b407a856a340691d6bd20c4f253a10e02633da",
+      "capturingSites": 3,
+      "functionalBindIncludeRetainedForOtherOriginalFactories": false,
+      "explicitOnceCallbackAtOriginalMojoTemplateSite": true,
+      "wholeFileInverseExact": true
+    }
+  ]
+}
