@@ -1,0 +1,15 @@
+{
+  "producer": "root-stock-graph-coherent-source-review",
+  "originalInputsIndependentlyPinned": true,
+  "combinedForwardReverseForwardExact": true,
+  "sourceControlsPassed": true,
+  "genuineGnCommandMacroEvidenceAvailable": false,
+  "compilationAdmitted": false,
+  "sdkCompileClosureProven": false,
+  "deployedLoadClosureProven": false,
+  "stock11Qualified": false,
+  "scope": "Offline prep only; initial static/Metal assumption corrected against actual pinned accelerators/gpu_registry.cc. Genuine complete action/runtime loader closure still required.",
+  "scopedLintPassed": true,
+  "lintCorrection": "Remove unnecessary opening-bracket regex escape; two original parser do/while(true) loops use equivalent for(;;), same returns/throws; original failure retained.",
+  "finalVerifierSha256": "4b8f04858e70b9179ad0d9fad8ac81fcc7f43415d10938c85dd9b2ec84f4092d"
+}
