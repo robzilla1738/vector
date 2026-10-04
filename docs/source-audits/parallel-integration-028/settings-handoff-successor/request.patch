@@ -1,0 +1,94 @@
+--- a/tests/host/appearance-journeys/model-settings-appearance.mjs
++++ b/tests/host/appearance-journeys/model-settings-appearance.mjs
+@@ -1,4 +1,5 @@
+ import assert from 'node:assert/strict';
++import { captureSettingsChatHandoff } from '../lib/settings-chat-handoff-appearance.mjs';
+ import { configureModel } from '../lib/l10-trust-fixtures.mjs';
+ import { captureModelSettingsAppearance } from '../lib/model-settings-appearance.mjs';
+ export const journey = { id: 'model-settings-appearance', title: 'Original loopback Models roles, limits and unavailable key removal', features: ['electronMigration'], needs: ['accessibility', 'screen-recording'], model: 'loopback', launch: {}, timeoutMs: 150000, owner: 'Trust' };
+@@ -9,6 +10,9 @@
+     t.signal.throwIfAborted();
+     await configureModel(t);
+     t.signal.throwIfAborted();
+-    return captureModelSettingsAppearance(t);
++    const original=await captureModelSettingsAppearance(t);
++    if(!t.narrowEnabled)return original;
++    const handoff=await captureSettingsChatHandoff(t);
++    return {...original,settingsChatHandoff:handoff,ax:handoff.ax,rpc:handoff.rpc};
+   });
+ }
+--- /dev/null
++++ b/tests/host/lib/settings-chat-handoff-appearance.mjs
+@@ -0,0 +1,46 @@
++import assert from 'node:assert/strict';
++import {captureHomeState} from './home-capture.mjs';
++import {readUtilityAppearanceJson} from './utility-appearance-owner.mjs';
++const shell=(name,role)=>({name,role,match:'exact',scope:'shell'});
++const composer=shell('Reply to conversation','AXTextArea'),search=shell('Search settings','AXTextField');
++const github=shell('GitHub live folders','AXHeading'),connection=shell('Connection name','AXTextField'),token=shell('Personal access token','AXTextField');
++/** Read-only Models/Services navigation and explicit registered page-free New chat. */
++export async function captureSettingsChatHandoff(t){
++ assert.equal(t.appearanceEnabled,true);assert.equal(t.narrowEnabled,true);
++ const app=t.app,ax=t.ax,model=t.model,fixture=t.fixture,calls=model.calls,pid=app.pid,processOwner=structuredClone(app.processObservation);
++ assert.ok(Number.isInteger(pid)&&pid>0&&ax.pid===pid);assert.ok(Array.isArray(calls));
++ const current=()=>{assert.ok(t.app===app&&t.ax===ax&&t.model===model&&t.fixture===fixture&&model.calls===calls&&app.pid===pid&&ax.pid===pid&&!t.signal.aborted,'Original Settings handoff owner retired');assert.deepEqual(app.processObservation,processOwner);};
++ const owned=async fn=>{current();const value=await fn();current();return value;};
++ const rows=s=>owned(()=>ax.query(s));
++ const one=async s=>{const nodes=await rows(s);assert.equal(nodes.length,1,`Original unique ${s.name} required`);return nodes[0];};
++ const absent=async s=>assert.equal((await rows(s)).length,0,`Unexpected ${s.name}`);
++ await absent(search);await absent(shell('New chat','AXHeading'));await one(shell('What would you like to work on?','AXHeading'));const draft=(await one(composer)).value;assert.equal(typeof draft,'string');
++ const before={};for(const method of ['settings.get','pages.list','runs.list','workspace.get'])before[method]=await owned(()=>t.rpc(method));
++ assert.deepEqual(before['pages.list'],[]);assert.deepEqual(before['runs.list'],[]);assert.equal(before['settings.get'].modelProvider,'openai-compatible');assert.equal(before['settings.get'].compatibleEndpoint,model.endpoint);assert.equal(before['settings.get'].modelApiKey,undefined);
++ assert.equal(new URL(model.endpoint).origin,new URL(fixture.url).origin);assert.ok(['127.0.0.1','localhost','[::1]'].includes(new URL(model.endpoint).hostname));
++ const originalCalls=structuredClone(calls),nativeSamples=[];
++ const inventory=async()=>{const list=(await owned(()=>ax.windows())).filter(w=>w.layer===0&&w.width>0&&w.height>0);assert.equal(list.length,1);assert.ok(Number.isInteger(list[0].id)&&list[0].id>0);assert.ok(list[0].width>=720&&list[0].width<=900);return list[0].id;};
++ const windowId=await inventory();
++ const unchanged=async()=>{assert.equal(await inventory(),windowId);for(const method of Object.keys(before))assert.deepEqual(await owned(()=>t.rpc(method)),before[method]);assert.deepEqual(calls,originalCalls);const start=Date.now(),raw=await owned(()=>app.observeAppearance({windowId,notBefore:new Date(start).toISOString()})),end=Date.now(),sample=readUtilityAppearanceJson(raw);assert.equal(sample.pid,pid);assert.equal(sample.windowId,windowId);assert.equal(sample.windowKind,'normal');assert.ok(sample.observedAtUnixMs>=start&&sample.observedAtUnixMs<=end);nativeSamples.push(raw);};
++ const press=async s=>{await unchanged();assert.equal((await one(s)).enabled,true);await owned(()=>ax.press(s));await unchanged();};
++ const captures=[];const capture=async(name,state)=>{await unchanged();captures.push(await owned(()=>captureHomeState(t,name,state)));await unchanged();};
++ let opened=false,sidebarOpened=false,primary,services='pending-unavailable';const debts=[];
++ try{
++  opened=true;await owned(()=>ax.key('command+,','hid'));await owned(()=>ax.waitFor(search,'present'));await press(shell('Models','AXButton'));await owned(()=>ax.waitFor(shell('Planner model','AXComboBox'),'present'));
++  for(const s of [github,connection,token])await absent(s);
++  await capture('models-form-separated-from-services','models-form-no-unrelated-service-form');
++  const tab=shell('Services','AXRadioButton'),tabs=await rows(tab);assert.ok(tabs.length<=1);
++  if(tabs.length){await press(tab);const forms=await rows(github);assert.ok(forms.length<=1);if(forms.length){await one(connection);const secure=await one(token);assert.equal(secure.subrole,'AXSecureTextField');assert.equal(Object.hasOwn(secure,'value'),false,'Original secure helper field must suppress values');await capture('services-form-owned-category','services-form-owned-category-no-credential-read');services='observed-original-service-form';}}
++  const newChat=shell('New chat','AXButton');let choices=await rows(newChat);assert.ok(choices.length<=1,'Ambiguous original New chat action');
++  if(!choices.length){sidebarOpened=true;await press(shell('Show sidebar','AXButton'));await owned(()=>ax.waitFor(newChat,'enabled'));}
++  await press(newChat);opened=false;await owned(()=>ax.waitFor(search,'absent'));await one(shell('New chat','AXHeading'));const input=await one(composer);assert.equal(input.focused,true,'Settings teardown must preserve original New chat textarea focus');assert.equal(input.value,draft,'Page-free Home and explicit new-chat share the original agentDraft');
++  await capture('settings-to-new-chat-original-draft-focused','settings-to-page-free-new-chat-original-agent-draft-focused');assert.equal((await one(composer)).focused,true);assert.equal((await one(composer)).value,draft);
++ }catch(reason){primary=reason;}
++ finally{
++  if(opened)try{if((await rows(search)).length){await owned(()=>ax.key('escape','hid'));await owned(()=>ax.waitFor(search,'absent'));}}catch(reason){debts.push(reason);}
++  if(sidebarOpened)try{await press(shell('Hide sidebar','AXButton'));}catch(reason){debts.push(reason);}
++  try{await unchanged();assert.equal((await one(composer)).value,draft);await owned(()=>ax.focus(composer));assert.equal((await one(composer)).focused,true);}catch(reason){debts.push(reason);}
++ }
++ if(debts.length)throw new AggregateError([primary,...debts].filter(Boolean),'Settings handoff and original cleanup debt');if(primary)throw primary;
++ return{ax:await owned(()=>ax.query(composer)),rpc:{...before,nativeSamples},captures,services,qualification:false,privateChatIdentity:'unobserved',originalAgentDraftRetained:true};
++}
+--- /dev/null
++++ b/tests/host/settings-chat-handoff-appearance.test.mjs
+@@ -0,0 +1,23 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {captureSettingsChatHandoff} from './lib/settings-chat-handoff-appearance.mjs';
++function fixture({services=true,wrongFocus=false,changedDraft=false,duplicate=false,leak=false}={}){
++ const state={settings:false,tab:'Models',sidebar:false,newchat:false,focus:true,actions:[],captures:[],draft:'Original page-free question'},snapshot={'settings.get':{modelProvider:'openai-compatible',compatibleEndpoint:'http://127.0.0.1:1234/v1'},'pages.list':[],'runs.list':[],'workspace.get':{id:'owned'}};
++ const app={pid:42,processObservation:{generation:1},observeAppearance:async()=>JSON.stringify({producer:'aux-native-appearance-snapshot',version:1,pid:42,windowId:12,windowKind:'normal',observedAtUnixMs:Date.now()})};
++ const t={appearanceEnabled:true,narrowEnabled:true,app,model:{endpoint:'http://127.0.0.1:1234/v1',calls:[]},fixture:{url:'http://127.0.0.1:1234'},signal:new AbortController().signal,rpc:async m=>structuredClone(snapshot[m]),capture:async(n,o)=>{state.captures.push([n,o]);},ax:{pid:42,windows:async()=>[{id:12,layer:0,width:800,height:700}],dump:async()=>({sourceOnly:true}),query:async s=>{
++  const n=s.name;if(n==='Search settings')return state.settings?[{enabled:true}]:[];
++  if(n==='Reply to conversation')return state.settings?[]:[{value:state.draft,focused:state.focus,enabled:true}];
++  if(n==='What would you like to work on?')return !state.settings?[{enabled:true}]:[];
++  if(n==='GitHub live folders'||n==='Connection name'||n==='Personal access token'){const present=state.settings&&(state.tab==='Services'||leak);if(!present)return[];if(n==='Personal access token'){const secure={enabled:true,subrole:'AXSecureTextField'};Object.defineProperty(secure,'value',{get(){throw Error('forbidden secure read')}});return[secure];}return[{enabled:true}];}
++  if(n==='Services'){assert.equal(s.role,'AXRadioButton');return services?[{enabled:true}]:[];}
++  if(n==='New chat'){if(s.role==='AXHeading')return state.newchat?[{enabled:true}]:[];return state.sidebar?(duplicate?[{enabled:true},{enabled:true}]:[{enabled:true}]):[];}
++  return[{enabled:true}];},key:async k=>{state.actions.push(k);state.settings=k==='command+,';},press:async s=>{state.actions.push(s.name);if(s.name==='Show sidebar')state.sidebar=true;if(s.name==='Hide sidebar')state.sidebar=false;if(s.name==='Models')state.tab='Models';if(s.name==='Services')state.tab='Services';if(s.name==='New chat'){state.settings=false;state.newchat=true;state.focus=!wrongFocus;if(changedDraft)state.draft='unrelated draft';}},focus:async()=>{state.focus=true;},waitFor:async()=>{}}};return{t,state,snapshot};
++}
++test('original registered narrow Settings handoff preserves draft/ledger and captures separate forms without secure values',async()=>{const{t,state}=fixture();const query=t.ax.query;t.ax.query=async s=>{const rows=await query(s);if(s.name==='Personal access token')return rows.map(()=>({enabled:true,subrole:'AXSecureTextField'}));return rows;};const result=await captureSettingsChatHandoff(t);assert.equal(result.services,'observed-original-service-form');assert.equal(result.privateChatIdentity,'unobserved');assert.equal(state.captures.length,3);assert.deepEqual(state.actions,['command+,','Models','Services','Show sidebar','New chat','Hide sidebar']);assert.equal(state.settings,false);assert.equal(state.sidebar,false);assert.equal(state.draft,'Original page-free question');assert.deepEqual(t.model.calls,[])});
++test('secure field value presence refuses without invoking getter or credential action',async()=>{const{t,state}=fixture();await assert.rejects(captureSettingsChatHandoff(t));assert.ok(!state.actions.includes('New chat'));assert.ok(!state.actions.some(n=>n==='Save key'||n==='Connect GitHub'));});
++test('unavailable Services remains pending with genuine New chat focus capture',async()=>{const{t,state}=fixture({services:false});const result=await captureSettingsChatHandoff(t);assert.equal(result.services,'pending-unavailable');assert.equal(state.captures.length,2);assert.ok(!state.actions.includes('Services'))});
++test('unrelated service form on Models refuses before Services/Newchat',async()=>{const{t,state}=fixture({leak:true});await assert.rejects(captureSettingsChatHandoff(t));assert.equal(state.captures.length,0);assert.ok(!state.actions.includes('Services'))});
++test('wrong focus or changed draft cannot be labeled as successful New chat handoff',async()=>{for(const options of [{wrongFocus:true},{changedDraft:true}]){const{t,state}=fixture({...options,services:false});await assert.rejects(captureSettingsChatHandoff(t));assert.ok(!state.captures.some(([n])=>n==='settings-to-new-chat-original-draft-focused'))}});
++test('duplicate mounted New chat controls refuse without choosing first',async()=>{const{t,state}=fixture({duplicate:true,services:false});await assert.rejects(captureSettingsChatHandoff(t));assert.ok(!state.actions.includes('New chat'))});
++test('samePID process incarnation drift and replaced model ledger refuse original capture',async()=>{for(const kind of ['process','ledger']){const{t,state}=fixture({services:false});const press=t.ax.press;t.ax.press=async s=>{await press(s);if(s.name==='Models'){if(kind==='process')t.app.processObservation.generation++;else t.model.calls=[];}};await assert.rejects(captureSettingsChatHandoff(t));assert.equal(state.captures.length,0)}});
++test('original capture failure plus cleanup failure retain both identities',async()=>{const{t}=fixture({services:false});const primary=new Error('native pixels refusal'),debt=new Error('original Escape cleanup debt');t.capture=async()=>{throw primary};const key=t.ax.key;t.ax.key=async k=>{if(k==='escape')throw debt;return key(k)};await assert.rejects(captureSettingsChatHandoff(t),e=>e instanceof AggregateError&&e.errors.includes(primary)&&e.errors.includes(debt));});

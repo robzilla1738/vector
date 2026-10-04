@@ -1,0 +1,54 @@
+{
+  "sourceOnly": true,
+  "nativeAcceptedCells": 0,
+  "files": [
+    {
+      "path": "tests/host/lib/mounted-image-appearance.mjs",
+      "before": "500e00ca2723ad1772e8794e030c81dbb9832514267bfcd6b85d0460164df6e6",
+      "after": "9770612de913c0cd053f2cebd8976dca5bc3e2960af4d93682e0cba77bc191f9",
+      "currentRootBeforeMatches": true
+    },
+    {
+      "path": "tests/host/appearance-journeys/mounted-image-appearance.mjs",
+      "before": "39e6eab37b97a48778d3f879ca5d69b149253c2a059eeb4295556bb8b459bf04",
+      "after": "c2e16707babbec7b06f548ba019e7f1473396c633aabb79971892c60b5daa292",
+      "currentRootBeforeMatches": true
+    },
+    {
+      "path": "tests/host/lib/mounted-image-preview-lifecycle.mjs",
+      "before": null,
+      "after": "5eefd8bb308b8aa76cae22c8b15baf7387aff3002376b7b94f7b67648d0630ef",
+      "currentRootBeforeMatches": true
+    },
+    {
+      "path": "tests/host/mounted-image-preview-lifecycle.test.mjs",
+      "before": null,
+      "after": "534a6a9da0ddff2e358dd0b3dd3bdfb57ea51c79129abbc88a1964c9245bfcc8",
+      "currentRootBeforeMatches": true
+    }
+  ],
+  "apiPins": [
+    {
+      "path": "tests/host/lib/ax.mjs",
+      "sha256": "bba460aa823fd8d234f22ea0c8d7d47a2cd74a3f6e92dc5bf1940560330b30e5"
+    },
+    {
+      "path": "tests/host/native-window.swift",
+      "sha256": "d7b9e10d38c8c805fa6b07898b9a33c33f5a2d975f2b9c469ae2592321a838ce"
+    },
+    {
+      "path": "apps/shell/src/components/SupportingContent.tsx",
+      "sha256": "ab27c294d981d52209bbe4e229b6efc0a0590b2b35c12de2f40929444607b527"
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.tsx",
+      "sha256": "69cf22a887de0409441acf989ae995cb150d980aab33bb92093ec067bb42dc3c"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "sha256": "3e5b9d8010f2e26ab6216d5bfc93866bc41c458f2f3657f1e815f855f04fb359"
+    }
+  ],
+  "replay": "exact forward/reverse/forward PASS",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-image-reopen-replay-dfpwhyof"
+}

@@ -1,0 +1,65 @@
+{
+  "sourceOnly": true,
+  "nativeAcceptedCells": 0,
+  "files": [
+    {
+      "path": "tests/host/appearance-journeys/model-settings-appearance.mjs",
+      "before": "0cff497a9deb3e6683085b4d3fdf25be2dde86fbce562a2486e1db7730f19b73",
+      "after": "5579817d805175dfa872037d30b2754215db864774007cea7b1352f32da3774d",
+      "currentRootBeforeMatches": true
+    },
+    {
+      "path": "tests/host/lib/settings-chat-handoff-appearance.mjs",
+      "before": null,
+      "after": "a326035a1088796c4d06aa3ebbb5a27beb222e31beb332230381fc5785e903df",
+      "currentRootBeforeMatches": true
+    },
+    {
+      "path": "tests/host/settings-chat-handoff-appearance.test.mjs",
+      "before": null,
+      "after": "869db7df9e06a0d65e7566b0af2f25a9662a7366b8977845aa9e9e480f453a4c",
+      "currentRootBeforeMatches": true
+    }
+  ],
+  "apiPins": [
+    {
+      "path": "tests/host/lib/ax.mjs",
+      "sha256": "bba460aa823fd8d234f22ea0c8d7d47a2cd74a3f6e92dc5bf1940560330b30e5"
+    },
+    {
+      "path": "tests/host/native-window.swift",
+      "sha256": "d7b9e10d38c8c805fa6b07898b9a33c33f5a2d975f2b9c469ae2592321a838ce"
+    },
+    {
+      "path": "tests/host/lib/model-settings-appearance.mjs",
+      "sha256": "a94733488a8957ea7e8abfc16680fbdbac6ceff4ea49c1f5685976f0f80fd19d"
+    },
+    {
+      "path": "apps/shell/src/components/Settings.tsx",
+      "sha256": "dc1d4eb08a786b7de8128e895ad9d791935b70d7e8da1cac036fe7f63e077ebe"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "sha256": "3e5b9d8010f2e26ab6216d5bfc93866bc41c458f2f3657f1e815f855f04fb359"
+    },
+    {
+      "path": "apps/shell/src/components/GithubConnections.tsx",
+      "sha256": "7cd6f72ba7f3c484095115a8705588eb259f41898d5c1b059851d7d19b3223f3"
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "sha256": "75f5c7d2f46f0c4c8eeeddebbaaa7e6444aa8e62abadc060d030f7a64e3f12f5"
+    },
+    {
+      "path": "apps/shell/src/commands.ts",
+      "sha256": "27b3390209810be078b8b3fbd55ce19bb6faf26e5a83e4b2e5914820a224879c"
+    }
+  ],
+  "nativeAX": {
+    "path": "/Users/rcourson/aux-chromium-stable/chromium/src/ui/accessibility/platform/ax_platform_node_cocoa.mm",
+    "sha256": "e70c52999ebbbfb6eb8150c52ae2d9741841b34a202fb86eb882cd9d3c507ce1",
+    "symbol": "kTab -> NSAccessibilityRadioButtonRole lines984\u2013985"
+  },
+  "replay": "exact F/R/F PASS",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-settings-handoff-replay-9giopgtn"
+}

@@ -1,0 +1,13 @@
+--- a/tests/unit/browser-host-registry.test.ts
++++ b/tests/unit/browser-host-registry.test.ts
+@@ -38,8 +38,8 @@
+     // original fingerprint separately from its exact additive schema/metadata.
+     const captureIndex = record.methods.findIndex(entry => entry.id === "native.personCapture");
+     expect(record.methods.filter(entry => entry.id === "native.personCapture")).toHaveLength(1);
+-    expect(record.methods[captureIndex - 1].id).toBe("native.egressRevoke");
+-    expect(record.methods[captureIndex + 1].id).toBe("native.personReadContext");
++    expect(record.methods[captureIndex - 1]?.id).toBe("native.egressRevoke");
++    expect(record.methods[captureIndex + 1]?.id).toBe("native.personReadContext");
+     expect(createHash("sha256").update(JSON.stringify(record.methods[captureIndex])).digest("hex"))
+       .toBe("225883491bbdcda2edadd87d7a482531257db9f8cb40555faa6e554def15d399");
+     record.methods.splice(captureIndex, 1);

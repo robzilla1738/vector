@@ -1,0 +1,39 @@
+{
+  "argv": [
+    "/opt/homebrew/Cellar/node/26.7.0/bin/node",
+    "chromium/stage-host-bindings.mjs"
+  ],
+  "cwd": "/private/tmp/aux-browser-runtime-builder-native325-source-001",
+  "pid": 95447,
+  "pgid": 95447,
+  "exitCode": 0,
+  "actualGroupEmpty": true,
+  "elapsedSeconds": 1.9093142920173705,
+  "stdout": "/private/tmp/aux-builder-native325-preparation-001/own-generated-source.stdout.log",
+  "stdoutSha256": "10b4aa9063640c4f07c1d871a2a0a5fbf3db8d08f31270e61a3e5d6fab957f00",
+  "stderr": "/private/tmp/aux-builder-native325-preparation-001/own-generated-source.stderr.log",
+  "stderrSha256": "faeaa94bcf7012d86f91ca647580449f56a263fb7eaf572c54789764f60a9b8f",
+  "scratch": "/private/tmp/aux-builder-native325-preparation-001/own-generated-source-001",
+  "files": [
+    {
+      "path": "/private/tmp/aux-builder-native325-preparation-001/own-generated-source-001/chrome/browser/resources/aux_host/aux_feature_stages.ts",
+      "sha256": "e94aca1186033dea2ee1a5a7a6ea43dbab88f5a8743c655b7d33e35ae1735af7",
+      "size": 18335
+    },
+    {
+      "path": "/private/tmp/aux-builder-native325-preparation-001/own-generated-source-001/chrome/browser/ui/aux/generated/BUILD.gn",
+      "sha256": "c30474d2900d5676ea57ce401cc968150789e3f5e0426b570f1c0e227d2658f6",
+      "size": 197
+    },
+    {
+      "path": "/private/tmp/aux-builder-native325-preparation-001/own-generated-source-001/chrome/browser/ui/aux/generated/aux_host_methods.cc",
+      "sha256": "c07f31c753cf5ba6b9121b700b85d887182f074a588a656faa318f89038e34fb",
+      "size": 205594
+    },
+    {
+      "path": "/private/tmp/aux-builder-native325-preparation-001/own-generated-source-001/chrome/browser/ui/aux/generated/aux_host_methods.h",
+      "sha256": "6e1e9c1581d3d891365bc07d3f5c79912ccc51457b4a55b50e02e7fff388cb38",
+      "size": 5398
+    }
+  ]
+}

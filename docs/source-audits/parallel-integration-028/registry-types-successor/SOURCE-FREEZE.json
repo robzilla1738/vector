@@ -1,0 +1,8 @@
+{
+  "source": "/private/tmp/aux-browser-runtime-builder-native325-source-001/tests/unit/browser-host-registry.test.ts",
+  "beforeSha256": "32cce7f3e7a0db1c1b564cf3924986f895972a8a46b9a2f53ea3d4517cdf3eb5",
+  "resultSha256": "0f0381f66ce54d5ae826411e92fa5164b1d12f188abb54e9884a7f94ad7b9db3",
+  "patchSha256": "0e2511a99a930536c13e517154dc5c4e82e02af0b817e20e861c2a87c6577fae",
+  "changes": "Only two neighbor access optional chains; exact original assertions unchanged; missing neighbor yields undefined and fails original expect.",
+  "nativeEffects": false
+}
