@@ -1,0 +1,32 @@
+{
+  "sourceOnly": true,
+  "baseCommit": "44052fe503a57a60ad4f914c83c371c865962b01",
+  "patchSha256": "86c6878774d86a71096bcedfc6fe41c8ef3083ef9395b571e04619fc9ea6699c",
+  "leaves": [
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "before": "e01f14ddb0038f8957ad4ef36b0306787d63099cda379c79a698d18d7b268dc1",
+      "after": "c114af8183c08b70704f33663971b9a58de24a1f21d0f2bc29514ad3def5d1f3"
+    },
+    {
+      "path": "apps/shell/src/commands.ts",
+      "before": "27b3390209810be078b8b3fbd55ce19bb6faf26e5a83e4b2e5914820a224879c",
+      "after": "14909d2804944009ad36ecb1730bec592f3f6b6f2dad6227bdcd34775ef8bef7"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "before": "067abb75235140f8509eec462d7a36ee83cca13c77483d15aecf63f92a787d82",
+      "after": "9cb55cfec9aeda5958d530b3fcfba6a3f7c03eb3b8f938b67307bd1292f98352"
+    }
+  ],
+  "exactReverseForwardPassed": true,
+  "newCommands": [
+    "open-chat-history",
+    "open-tasks",
+    "toggle-sidebar-more"
+  ],
+  "originalRowsUnchanged": true,
+  "coherentByteGatePending": true,
+  "nativeExecuted": false,
+  "finalMountedChecksPending": true
+}

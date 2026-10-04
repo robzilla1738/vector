@@ -1,0 +1,51 @@
+diff --git a/apps/shell/src/components/Sidebar.tsx b/apps/shell/src/components/Sidebar.tsx
+index 7a0af3549..d3b6f1a24 100644
+--- a/apps/shell/src/components/Sidebar.tsx
++++ b/apps/shell/src/components/Sidebar.tsx
+@@ -446,7 +446,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
+   const moveTabToFolder = useStore((s) => s.moveTabToFolder);
+   const sidebarWidth = useStore((s) => s.sidebarWidth);
+   const setSidebarWidth = useStore((s) => s.setSidebarWidth);
+-  const setMode = useStore((s) => s.setMode);
+ 
+   const space = layout.spaces.find((s) => s.id === layout.activeSpaceId) ?? layout.spaces[0]!;
+   const tabs = useMemo(() => tabsInSpace(layout, pages, space.id), [layout, pages, space.id]);
+@@ -757,7 +756,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
+           />
+         )}
+       </div>
+-        {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button onClick={() => setMode(mode === "overview" ? "focus" : "overview")} className="icon-btn" aria-label="Tab overview">{shellIconGrid}</button></> : <>
++        {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button data-command-id="overview" onClick={() => runCommand("overview")} className="icon-btn" aria-label="Tab overview">{shellIconGrid}</button></> : <>
+         <span className="sp" />
+         <button className="icon-btn" title={withShortcut("Search", key("palette"))} aria-label="Search browser" data-command-id="palette" onClick={() => runCommand("palette")}>{shellIconSearch}</button>
+         {activeController === "human" && <ReturnControlButton pageId={activePageId!} compact />}
+@@ -767,23 +766,13 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
+           {moreOpen && <Menu className="sidebar-native-menu sb-more-menu" label="Browser tools" anchor={moreTrigger} placement="above-end" returnFocus={moreTrigger} onClose={() => setMoreOpen(false)}>
+             <button role="menuitem" aria-label="Chats" onClick={() => { setMoreOpen(false); useStore.getState().openConversation(null); useStore.setState({conversationId:"history"}); }}>{shellIconAgentSm}<span>Chats</span></button>
+             <button role="menuitem" aria-label="Tasks" onClick={() => { setMoreOpen(false); setOverlay("tasks"); }}>{shellIconLayersSm}<span>Tasks</span></button>
+-            <button role="menuitem" aria-label="Library" data-command-id="command-bookmarks" onClick={() => { setMoreOpen(false); runCommand("command-bookmarks"); }}>{shellIconBookmark}<span>Library</span></button>
+-            <button role="menuitem" aria-label="Downloads" onClick={() => { setMoreOpen(false); setOverlay("downloads"); }}>{shellIconDownloadSm}<span>Downloads</span></button>
++            <button role="menuitem" aria-label="Library" data-command-id="command-bookmarks" onClick={() => { setMoreOpen(false); runCommand("command-bookmarks"); }}>{shellIconBookmark}<span>Library</span>{key("command-bookmarks") && <kbd>{key("command-bookmarks")}</kbd>}</button>
++            <button role="menuitem" aria-label="Downloads" data-command-id="downloads" onClick={() => { setMoreOpen(false); runCommand("downloads"); }}>{shellIconDownloadSm}<span>Downloads</span>{key("downloads") && <kbd>{key("downloads")}</kbd>}</button>
+             <hr />
+-            <button role="menuitem" aria-label={saved ? "Remove bookmark" : "Bookmark this page"} disabled={!web} onClick={() => {
+-              setMoreOpen(false);
+-              const current = useStore.getState().pages.find(item => item.pageId === activePageId);
+-              if (!current) return;
+-              void useStore.getState().toggleBookmark(current.url,current.title).catch(errToast);
+-            }}>{shellIconBookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span>{key("bookmark") && <kbd>{key("bookmark")}</kbd>}</button>
+-            <button role="menuitem" aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"} disabled={!web} onClick={() => {
+-              setMoreOpen(false);
+-              const current = useStore.getState().pages.find(item => item.pageId === activePageId);
+-              if (!current) return;
+-              void useStore.getState().toggleReadingList(current.url, current.title).catch(errToast);
+-            }}>{shellIconClock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span></button>
+-            <button role="menuitem" aria-label="Tab overview" onClick={() => { setMoreOpen(false); setMode(mode === "overview" ? "focus" : "overview"); }}>{shellIconGrid}<span>Tab overview</span></button>
+-            <button role="menuitem" aria-label="Settings" onClick={() => { setMoreOpen(false); setOverlay("settings"); }}>{shellIconGear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>
++            <button role="menuitem" aria-label={saved ? "Remove bookmark" : "Bookmark this page"} disabled={!web} data-command-id="bookmark" onClick={() => { setMoreOpen(false); runCommand("bookmark"); }}>{shellIconBookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span>{key("bookmark") && <kbd>{key("bookmark")}</kbd>}</button>
++            <button role="menuitem" aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"} disabled={!web} data-command-id="command-reading-list" onClick={() => { setMoreOpen(false); runCommand("command-reading-list"); }}>{shellIconClock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span>{key("command-reading-list") && <kbd>{key("command-reading-list")}</kbd>}</button>
++            <button role="menuitem" aria-label="Tab overview" data-command-id="overview" onClick={() => { setMoreOpen(false); runCommand("overview"); }}>{shellIconGrid}<span>Tab overview</span>{key("overview") && <kbd>{key("overview")}</kbd>}</button>
++            <button role="menuitem" aria-label="Settings" data-command-id="settings" onClick={() => { setMoreOpen(false); runCommand("settings"); }}>{shellIconGear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>
+           </Menu>}
+         </div>
+         </>}

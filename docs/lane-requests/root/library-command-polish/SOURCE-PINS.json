@@ -1,0 +1,26 @@
+{
+  "sourceOnly": true,
+  "baseCommit": "b48bdae66c9456b4a4636ed2aa839f8eb09866d4",
+  "patchSha256": "5ab227fbb97e64794dcb6b79314040c74b3ea0cb5c5f52ec7bb072f27d32abc3",
+  "leaves": [
+    {
+      "path": "apps/shell/src/components/Toolbar.tsx",
+      "beforeSha256": "0fe9c3affb3f8dac157a72879c937c564c993827b1febdccf22a021acbcfeb9b",
+      "afterSha256": "8ba509e18d0c65a50c7de190eb782662bd33d6526628be37194ffff455964110"
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "beforeSha256": "75f5c7d2f46f0c4c8eeeddebbaaa7e6444aa8e62abadc060d030f7a64e3f12f5",
+      "afterSha256": "463839b354925c886d163962779d0cfa777be94cb5a57f3970841d52d5b52381"
+    }
+  ],
+  "reverseForwardExact": true,
+  "existingCommand": "command-bookmarks",
+  "registeredMetadataUnchanged": true,
+  "shellTypesPassed": true,
+  "originalFocusedControlsPassed": true,
+  "scopedLintPassedWithExistingWarnings": true,
+  "nativeExecuted": false,
+  "byteGatePendingCoherentDesignBatch": true,
+  "dependencyNote": "Existing root and package node_modules links to following source; first root-only link failed module resolution, original failure log retained."
+}
