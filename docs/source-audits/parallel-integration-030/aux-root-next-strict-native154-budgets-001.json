@@ -1,0 +1,13 @@
+{
+  "actual": {
+    "startupJs": 499454,
+    "startupCss": 179427,
+    "totalJs": 1843147
+  },
+  "limits": {
+    "startupJs": 501760,
+    "startupCss": 184320,
+    "totalJs": 1843200
+  },
+  "pass": true
+}

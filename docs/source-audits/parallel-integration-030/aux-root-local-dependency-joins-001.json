@@ -1,0 +1,128 @@
+[
+  {
+    "path": "/private/tmp/aux-root-library-command-polish/node_modules",
+    "original": "/private/tmp/aux-browser-runtime-following-batch/node_modules",
+    "localWorkspaceAliases": {
+      "@aux/shell": "/private/tmp/aux-root-library-command-polish/apps/shell",
+      "@aux/runtime": "/private/tmp/aux-root-library-command-polish/apps/runtime",
+      "@aux/contracts": "/private/tmp/aux-root-library-command-polish/packages/contracts",
+      "@aux/mcp": "/private/tmp/aux-root-library-command-polish/packages/mcp",
+      "@aux/cli": "/private/tmp/aux-root-library-command-polish/packages/cli",
+      "@aux/sdk": "/private/tmp/aux-root-library-command-polish/packages/sdk",
+      "@aux/chromium-driver": "/private/tmp/aux-root-library-command-polish/packages/chromium-driver",
+      "@aux/filter-lists": "/private/tmp/aux-root-library-command-polish/packages/filter-lists"
+    }
+  },
+  {
+    "path": "/private/tmp/aux-root-library-command-polish/apps/shell/node_modules",
+    "original": "/private/tmp/aux-browser-runtime-following-batch/apps/shell/node_modules",
+    "localWorkspaceAliases": {
+      "@aux/shell": "/private/tmp/aux-root-library-command-polish/apps/shell",
+      "@aux/runtime": "/private/tmp/aux-root-library-command-polish/apps/runtime",
+      "@aux/contracts": "/private/tmp/aux-root-library-command-polish/packages/contracts",
+      "@aux/mcp": "/private/tmp/aux-root-library-command-polish/packages/mcp",
+      "@aux/cli": "/private/tmp/aux-root-library-command-polish/packages/cli",
+      "@aux/sdk": "/private/tmp/aux-root-library-command-polish/packages/sdk",
+      "@aux/chromium-driver": "/private/tmp/aux-root-library-command-polish/packages/chromium-driver",
+      "@aux/filter-lists": "/private/tmp/aux-root-library-command-polish/packages/filter-lists"
+    }
+  },
+  {
+    "path": "/private/tmp/aux-root-library-command-polish/apps/runtime/node_modules",
+    "original": "/private/tmp/aux-browser-runtime-following-batch/apps/runtime/node_modules",
+    "localWorkspaceAliases": {
+      "@aux/shell": "/private/tmp/aux-root-library-command-polish/apps/shell",
+      "@aux/runtime": "/private/tmp/aux-root-library-command-polish/apps/runtime",
+      "@aux/contracts": "/private/tmp/aux-root-library-command-polish/packages/contracts",
+      "@aux/mcp": "/private/tmp/aux-root-library-command-polish/packages/mcp",
+      "@aux/cli": "/private/tmp/aux-root-library-command-polish/packages/cli",
+      "@aux/sdk": "/private/tmp/aux-root-library-command-polish/packages/sdk",
+      "@aux/chromium-driver": "/private/tmp/aux-root-library-command-polish/packages/chromium-driver",
+      "@aux/filter-lists": "/private/tmp/aux-root-library-command-polish/packages/filter-lists"
+    }
+  },
+  {
+    "path": "/private/tmp/aux-root-library-command-polish/packages/contracts/node_modules",
+    "original": "/private/tmp/aux-browser-runtime-following-batch/packages/contracts/node_modules",
+    "localWorkspaceAliases": {
+      "@aux/shell": "/private/tmp/aux-root-library-command-polish/apps/shell",
+      "@aux/runtime": "/private/tmp/aux-root-library-command-polish/apps/runtime",
+      "@aux/contracts": "/private/tmp/aux-root-library-command-polish/packages/contracts",
+      "@aux/mcp": "/private/tmp/aux-root-library-command-polish/packages/mcp",
+      "@aux/cli": "/private/tmp/aux-root-library-command-polish/packages/cli",
+      "@aux/sdk": "/private/tmp/aux-root-library-command-polish/packages/sdk",
+      "@aux/chromium-driver": "/private/tmp/aux-root-library-command-polish/packages/chromium-driver",
+      "@aux/filter-lists": "/private/tmp/aux-root-library-command-polish/packages/filter-lists"
+    }
+  },
+  {
+    "path": "/private/tmp/aux-root-library-command-polish/packages/mcp/node_modules",
+    "original": "/private/tmp/aux-browser-runtime-following-batch/packages/mcp/node_modules",
+    "localWorkspaceAliases": {
+      "@aux/shell": "/private/tmp/aux-root-library-command-polish/apps/shell",
+      "@aux/runtime": "/private/tmp/aux-root-library-command-polish/apps/runtime",
+      "@aux/contracts": "/private/tmp/aux-root-library-command-polish/packages/contracts",
+      "@aux/mcp": "/private/tmp/aux-root-library-command-polish/packages/mcp",
+      "@aux/cli": "/private/tmp/aux-root-library-command-polish/packages/cli",
+      "@aux/sdk": "/private/tmp/aux-root-library-command-polish/packages/sdk",
+      "@aux/chromium-driver": "/private/tmp/aux-root-library-command-polish/packages/chromium-driver",
+      "@aux/filter-lists": "/private/tmp/aux-root-library-command-polish/packages/filter-lists"
+    }
+  },
+  {
+    "path": "/private/tmp/aux-root-library-command-polish/packages/cli/node_modules",
+    "original": "/private/tmp/aux-browser-runtime-following-batch/packages/cli/node_modules",
+    "localWorkspaceAliases": {
+      "@aux/shell": "/private/tmp/aux-root-library-command-polish/apps/shell",
+      "@aux/runtime": "/private/tmp/aux-root-library-command-polish/apps/runtime",
+      "@aux/contracts": "/private/tmp/aux-root-library-command-polish/packages/contracts",
+      "@aux/mcp": "/private/tmp/aux-root-library-command-polish/packages/mcp",
+      "@aux/cli": "/private/tmp/aux-root-library-command-polish/packages/cli",
+      "@aux/sdk": "/private/tmp/aux-root-library-command-polish/packages/sdk",
+      "@aux/chromium-driver": "/private/tmp/aux-root-library-command-polish/packages/chromium-driver",
+      "@aux/filter-lists": "/private/tmp/aux-root-library-command-polish/packages/filter-lists"
+    }
+  },
+  {
+    "path": "/private/tmp/aux-root-library-command-polish/packages/sdk/node_modules",
+    "original": "/private/tmp/aux-browser-runtime-following-batch/packages/sdk/node_modules",
+    "localWorkspaceAliases": {
+      "@aux/shell": "/private/tmp/aux-root-library-command-polish/apps/shell",
+      "@aux/runtime": "/private/tmp/aux-root-library-command-polish/apps/runtime",
+      "@aux/contracts": "/private/tmp/aux-root-library-command-polish/packages/contracts",
+      "@aux/mcp": "/private/tmp/aux-root-library-command-polish/packages/mcp",
+      "@aux/cli": "/private/tmp/aux-root-library-command-polish/packages/cli",
+      "@aux/sdk": "/private/tmp/aux-root-library-command-polish/packages/sdk",
+      "@aux/chromium-driver": "/private/tmp/aux-root-library-command-polish/packages/chromium-driver",
+      "@aux/filter-lists": "/private/tmp/aux-root-library-command-polish/packages/filter-lists"
+    }
+  },
+  {
+    "path": "/private/tmp/aux-root-library-command-polish/packages/chromium-driver/node_modules",
+    "original": "/private/tmp/aux-browser-runtime-following-batch/packages/chromium-driver/node_modules",
+    "localWorkspaceAliases": {
+      "@aux/shell": "/private/tmp/aux-root-library-command-polish/apps/shell",
+      "@aux/runtime": "/private/tmp/aux-root-library-command-polish/apps/runtime",
+      "@aux/contracts": "/private/tmp/aux-root-library-command-polish/packages/contracts",
+      "@aux/mcp": "/private/tmp/aux-root-library-command-polish/packages/mcp",
+      "@aux/cli": "/private/tmp/aux-root-library-command-polish/packages/cli",
+      "@aux/sdk": "/private/tmp/aux-root-library-command-polish/packages/sdk",
+      "@aux/chromium-driver": "/private/tmp/aux-root-library-command-polish/packages/chromium-driver",
+      "@aux/filter-lists": "/private/tmp/aux-root-library-command-polish/packages/filter-lists"
+    }
+  },
+  {
+    "path": "/private/tmp/aux-root-library-command-polish/packages/filter-lists/node_modules",
+    "original": "/private/tmp/aux-browser-runtime-following-batch/packages/filter-lists/node_modules",
+    "localWorkspaceAliases": {
+      "@aux/shell": "/private/tmp/aux-root-library-command-polish/apps/shell",
+      "@aux/runtime": "/private/tmp/aux-root-library-command-polish/apps/runtime",
+      "@aux/contracts": "/private/tmp/aux-root-library-command-polish/packages/contracts",
+      "@aux/mcp": "/private/tmp/aux-root-library-command-polish/packages/mcp",
+      "@aux/cli": "/private/tmp/aux-root-library-command-polish/packages/cli",
+      "@aux/sdk": "/private/tmp/aux-root-library-command-polish/packages/sdk",
+      "@aux/chromium-driver": "/private/tmp/aux-root-library-command-polish/packages/chromium-driver",
+      "@aux/filter-lists": "/private/tmp/aux-root-library-command-polish/packages/filter-lists"
+    }
+  }
+]

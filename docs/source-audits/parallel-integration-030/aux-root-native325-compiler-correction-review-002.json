@@ -1,0 +1,11 @@
+{
+  "sourceOnly": true,
+  "freezeSha256": "c50e09e0a8c698ca341bcfecd673123358e1f2f1e0e7ddcca26ec831e851c80e",
+  "patchSha256": "09ab1147dfed4d259573de2010f74c4fb9f2568bb607179ed387b2cbe43cb6b6",
+  "actualBeforeAPIAndFailureEvidenceVerified": true,
+  "exactForwardReversePassed": true,
+  "retained001Review": "/tmp/aux-root-native325-compiler-correction-review-001.json",
+  "credentialSemantics": "Same const void pointer deduction written explicitly; same default-invalid CF wrapper directly constructed for existing failure return. No Security operation or query change.",
+  "required18And524Unchanged": true,
+  "executionAdmitted": false
+}

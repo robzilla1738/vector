@@ -1,0 +1,11 @@
+{
+  "originalTerminalClosureSha256": "d275d910402ea5000d6cae8fe1cc5131e932c141d051a2d6d3cdd85a959a13af",
+  "actual16ArtifactPinsVerified": true,
+  "actual3GeneratedDriftSnapshotsVerified": true,
+  "actual12OriginalPidsAnd2GroupsAbsent": true,
+  "actualNativeSlotAbsent": true,
+  "graphPassed": false,
+  "pairAdmitted": false,
+  "appAdmitted": false,
+  "rootCauseActorUnproved": true
+}
