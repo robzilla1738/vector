@@ -1,0 +1,13 @@
+{
+  "sourceOnly": true,
+  "actualBeforeAfterPins": 2,
+  "forwardReverseForward": true,
+  "guardUnchanged": "4ec29345d6a9b61781a99316a242fe128bb208ae5caf2b73be8e769a9255b547",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-owner-join-replay-uhfhp2zl",
+  "nativeExecutionAdmission": false,
+  "actualControls": "/tmp/aux-root-owner-join-controls-001.log",
+  "actualLint": "/tmp/aux-root-owner-join-lint-001.log",
+  "actualFocusedTypes": "/tmp/aux-root-owner-join-types-002.log",
+  "typesInitialDiagnostic": "001 omitted existing tests allowJs setting; TS7016 before correction, no source changes",
+  "originalControllerTransportReview": "/tmp/aux-root-native327-owner-transport-review-001.json"
+}
