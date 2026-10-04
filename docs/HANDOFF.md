@@ -1,3 +1,9 @@
+## Active continuation: Library, extension confirmation and composer controls
+
+Isolated source milestone `95489d3e7` now includes remappable Library navigation, history range, Retry, pagination and close; scoped extension permissions and removal review/confirmation; upstream-grounded32px Add context and narrow dictation targets; and full Library diagnostic wrapping. Root workspace, shell types and actual mounted behavior checks pass. Old geometry fixtures were corrected to use the real command dispatcher without removing their assertions. The combined whole-suite and final source gates follow the current shared-plumbing reserve batch.
+
+Exact renderer limits remain unchanged and blocked: latest measured startup503007/501760 bytes and total1850835/1843200 bytes; CSS179481/184320 passes. That measurement precedes the confirmation successor. No source promotion is claimed. Native332 compilation, matching runtime/helper and binary enumeration passed; original524 safety finished naturally with failures isolated to browser/unit groups. The original owner is drained. Native333 fixture-only correction source is independently reviewed; production authority, original assertions/deadlines and required case sets remain intact. App journeys, performance and F21 qualification remain pending. Details: `docs/source-audits/parallel-integration-034/CONTINUATION-STATUS-006.json`.
+
 ## Current isolated source milestone 8a600eb28
 
 Result controls now remain bound to their original loaded content across chat/result transitions; revision failures stay inline, and document disclosure refusal blocks the browser default. Settings clear and extension disclosure targets use the captured layout scale while retaining Aux branding. Combined runtime rebuild, whole behavioral suite, shell types, lint, format and renderer build passed in the isolated root. Exact bundle still exceeds startup/total limits, so product adoption remains pending.
