@@ -13,9 +13,9 @@ export function requireModelSettingsAppearance({journeyId,appearance,pair}) {
  * before/pixels/after producer; source controls are not native qualification. */
 export async function captureModelSettingsAppearance(t) {
   assert.equal(t.appearanceEnabled,true);
-  const app=t.app, ax=t.ax, model=t.model, fixture=t.fixture, calls=model.calls, pid=app.pid;
+  const app=t.app, ax=t.ax, model=t.model, fixture=t.fixture, calls=model.calls, pid=app.pid, processOwner=structuredClone(app.processObservation);
   assert.ok(Number.isInteger(pid)&&pid>0&&ax.pid===pid&&!t.signal.aborted);
-  const current=()=>assert.ok(t.app===app&&t.ax===ax&&t.model===model&&t.fixture===fixture&&model.calls===calls&&app.pid===pid&&ax.pid===pid&&!t.signal.aborted,'Original model appearance owner retired');
+  const current=()=>{assert.deepEqual(app.processObservation,processOwner);assert.ok(t.app===app&&t.ax===ax&&t.model===model&&t.fixture===fixture&&model.calls===calls&&app.pid===pid&&ax.pid===pid&&!t.signal.aborted,'Original model appearance owner retired');};
   const owned=async producer=>{current();const result=await producer();current();return result;};
   assert.equal((await owned(()=>ax.query(search))).length,0,'Models capture begins with Settings closed');
   const settings=await owned(()=>t.rpc('settings.get'));
@@ -56,5 +56,5 @@ export async function captureModelSettingsAppearance(t) {
   }
   if(debts.length)throw new AggregateError([primary,...debts].filter(Boolean),'Original Models capture or UI restoration unresolved');
   if(primary)throw primary;
-  return {captures,nativeSamples,readOnly:true,qualification:false,pending:['saved-key-mask-and-removal-review','probe-success-and-failure','private-inactive-runtime','long-model-label'],settingsUnchanged:true,modelCallsUnchanged:true};
+  return {ax:await owned(()=>ax.query(composer)),rpc:{settings,pages,runs,workspace,nativeSamples},captures,nativeSamples,readOnly:true,qualification:false,pending:['saved-key-mask-and-removal-review','probe-success-and-failure','private-inactive-runtime','long-model-label'],settingsUnchanged:true,modelCallsUnchanged:true};
 }

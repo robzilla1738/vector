@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { MOUNTED_IMAGE_APPEARANCE_ID, requireMountedImageAppearance } from './appearance-journeys/mounted-image-appearance.mjs';
+import { requireModelSettingsAppearance } from './lib/model-settings-appearance.mjs';
+import { requireModelProbeAppearance } from './lib/model-probe-appearance.mjs';
+import { LONG_MODEL_CATALOG_ID, requireLongModelCatalogAppearance } from './lib/long-model-catalog-appearance.mjs';
 import { MODEL_DISCOVERY_APPEARANCE_ID, requireModelDiscoveryAppearance } from './lib/model-discovery-appearance.mjs';
 import { MEMORY_APPEARANCE_ID, requireMemoryAppearance } from './lib/memory-appearance.mjs';
 import { MENTIONS_APPEARANCE_ID, requireMentionsAppearance } from './lib/mentions-appearance.mjs';
@@ -54,7 +58,32 @@ const slot = await acquireNativeSlot();
 process.env.AUX_NATIVE_SLOT_TOKEN = slot.token;
 try {
 let entry;
-if (values.journey === PAGE_RECOVERY_APPEARANCE_ID) {
+if (values.journey === MOUNTED_IMAGE_APPEARANCE_ID) {
+  requireMountedImageAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/mounted-image-appearance.mjs');
+  const module = await import('./appearance-journeys/mounted-image-appearance.mjs');
+  entry = { ...module, path };
+} else if (values.journey === 'model-settings-appearance') {
+  requireModelSettingsAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/model-settings-appearance.mjs');
+  const module = await import('./appearance-journeys/model-settings-appearance.mjs');
+  entry = { ...module, path };
+} else if (values.journey === 'model-probe-success-appearance') {
+  requireModelProbeAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/model-probe-success-appearance.mjs');
+  const module = await import('./appearance-journeys/model-probe-success-appearance.mjs');
+  entry = { ...module, path };
+} else if (values.journey === 'model-probe-failure-appearance') {
+  requireModelProbeAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/model-probe-failure-appearance.mjs');
+  const module = await import('./appearance-journeys/model-probe-failure-appearance.mjs');
+  entry = { ...module, path };
+} else if (values.journey === LONG_MODEL_CATALOG_ID) {
+  requireLongModelCatalogAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/long-model-catalog-appearance.mjs');
+  const module = await import('./appearance-journeys/long-model-catalog-appearance.mjs');
+  entry = { ...module, path };
+} else if (values.journey === PAGE_RECOVERY_APPEARANCE_ID) {
   requirePageRecoveryAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
   const path = join(root, 'tests/host/appearance-journeys/page-recovery-appearance.mjs');
   const module = await import('./appearance-journeys/page-recovery-appearance.mjs');

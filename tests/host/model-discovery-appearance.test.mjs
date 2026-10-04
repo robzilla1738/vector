@@ -34,14 +34,14 @@ test('original HTTP cancellation retires pending response and never admits relea
 });
 async function host() {
   const fixture = await createFixture(), controller = new AbortController(); let settings = { modelProvider: 'openai-compatible', compatibleEndpoint: `${fixture.url}/v1`, plannerModel: 'fixture-model' }, open = false, pending, focused = '', delivered = false;
-  const original = { ...settings }, app = { pid: 234 }, captures = [], writes = [];
+  const original = { ...settings }, app = { pid: 234, processObservation: { pid: 234, generation: 1, launchKind: 'child' } }, captures = [], writes = [];
   const ax = { pid: 234, windows: async () => [{ id: 3, layer: 0, width: 810, height: 700 }], dump: async () => ({ open, focused }),
     query: async selector => {
       if (selector.name === 'Search settings') return open ? [{}] : [];
       if (selector.name === 'Reply to conversation') return [{ value: 'Retained original draft', focused: focused === selector.name }];
       if (selector.name === 'Discovering…') return !delivered ? [{ enabled: false }] : [];
       if (selector.name === 'Discover models') return delivered ? [{ enabled: true }] : [];
-      if (selector.name === 'Planner model') return [{ value: settings.plannerModel, focused: focused === selector.name }];
+      if (selector.name === 'Planner model') { assert.equal(selector.role, 'AXComboBox', 'Actual input[list] Cocoa role'); return [{ role: 'AXComboBox', value: settings.plannerModel, focused: focused === selector.name }]; }
       return [];
     },
     key: async key => { if (key === 'command+,') open = true; if (key === 'escape') open = false; },
@@ -49,7 +49,7 @@ async function host() {
     focus: async selector => { focused = selector.name; },
     waitFor: async (selector, mode) => until(selector.name, async () => { const nodes = await ax.query(selector); return mode === 'absent' ? !nodes.length : nodes.length; }),
   };
-  const t = { appearanceEnabled: true, app, ax, fixture, signal: controller.signal, until,
+  const t = { appearanceEnabled: true, app, ax, fixture, model: { calls: [] }, signal: controller.signal, until,
     rpc: async (method, patch) => { if (method === 'settings.set') { settings = { ...settings, ...patch }; return {}; } if (method === 'settings.get') return { ...settings }; if (method === 'pages.list' || method === 'runs.list') return []; if (method === 'workspace.get') return { workspaceId: 'original' }; assert.fail(method); },
     capture: async (name, options) => captures.push({ name, options }),
   };
@@ -74,4 +74,35 @@ test('pending UI falsely enabled refuses capture and restores original settings'
   f.t.ax.query = async selector => selector.name === 'Discovering…' ? [{ enabled: true }] : query(selector);
   try { await assert.rejects(captureModelDiscoveryAppearance(f.t)); assert.deepEqual(f.captures, []); assert.deepEqual(f.read().settings, f.original); }
   finally { await f.close(); }
+});
+
+test('same App and PID with replaced original process generation refuses restoration authority', async () => {
+  const f = await host();
+  f.t.capture = async () => { f.t.app.processObservation.generation++; };
+  try { await assert.rejects(captureModelDiscoveryAppearance(f.t), /original restoration unresolved/); assert.equal(f.read().open, true); }
+  finally { await f.close(); }
+});
+test('replacement request ledger refuses even when foreign ledger is empty', async () => {
+  const f = await host(), original = f.t.model.calls;
+  f.t.capture = async () => { original.push({ original: true }); f.t.model.calls = []; };
+  try { await assert.rejects(captureModelDiscoveryAppearance(f.t), /original restoration unresolved/); assert.deepEqual(original, [{ original: true }]); }
+  finally { await f.close(); }
+});
+test('duplicate actual planner control refuses instead of selecting an indexed candidate', async () => {
+  const f = await host(), query = f.t.ax.query;
+  f.t.ax.query = async selector => { assert.equal(selector.index, undefined); const nodes = await query(selector); return selector.name === 'Planner model' ? [...nodes, ...nodes] : nodes; };
+  try { await assert.rejects(captureModelDiscoveryAppearance(f.t)); assert.deepEqual(f.read().settings, f.original); }
+  finally { await f.close(); }
+});
+
+test('discovery cannot overwrite a preexisting fixed route', async () => {
+  const fixture = await createFixture(), controller = new AbortController();
+  try { fixture.route('/appearance-model-discovery/v1/models', { owner: 'original' }); assert.throws(() => holdModelDiscovery(fixture, controller.signal), /already has an owner/); assert.deepEqual(await (await fetch(`${fixture.url}/appearance-model-discovery/v1/models`)).json(), { owner: 'original' }); }
+  finally { await fixture.close(); }
+});
+test('replaced held discovery route refuses release and preserves replacement during cleanup', async () => {
+  const fixture = await createFixture(), controller = new AbortController(), http = holdModelDiscovery(fixture, controller.signal);
+  let pending;
+  try { pending = fetch(`${http.endpoint}/models`).catch(error => error); await until('original pending GET', () => http.receipts.length); fixture.route('/appearance-model-discovery/v1/models', { owner: 'replacement' }); assert.throws(() => http.release()); assert.throws(() => http.dispose(), /cleanup debt/); assert.deepEqual(await (await fetch(`${http.endpoint}/models`)).json(), { owner: 'replacement' }); await pending; }
+  finally { controller.abort(); await fixture.close(); }
 });

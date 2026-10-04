@@ -3,7 +3,7 @@ import { captureHomeState } from './home-capture.mjs';
 export const MODEL_DISCOVERY_APPEARANCE_ID = 'model-discovery-appearance';
 export const discoveryModel = 'aux-owned-discovered-model';
 const route = '/appearance-model-discovery/v1/models';
-const shell = (name, role) => ({ name, ...(role ? { role } : {}), match: 'exact', scope: 'shell', index: 0 });
+const shell = (name, role) => ({ name, ...(role ? { role } : {}), match: 'exact', scope: 'shell' });
 const composer = shell('Reply to conversation', 'AXTextArea');
 export function requireModelDiscoveryAppearance({ journeyId, appearance, pair }) {
   assert.equal(journeyId, MODEL_DISCOVERY_APPEARANCE_ID); assert.equal(appearance, true); assert.ok(pair, 'Original admitted appearance pair required');
@@ -14,28 +14,34 @@ export function holdModelDiscovery(fixture, signal) {
   let release; const gate = new Promise(resolve => { release = resolve; });
   const receipts = []; let released = false, cancelled = false;
   const cancel = () => { cancelled = true; release(); };
-  signal.addEventListener('abort', cancel, { once: true });
-  const remove = fixture.route(route, async (request, response) => {
+  assert.equal(typeof fixture.claimRoute, 'function', 'Original route ownership capability required');
+  const lease = fixture.claimRoute(route, async (request, response) => {
+    assert.ok(lease.current(), 'Original discovery route owner retired');
     assert.equal(request.method, 'GET'); assert.equal(request.url, route); assert.equal(receipts.length, 0, 'Discovery is one original request');
     const receipt = { method: request.method, path: request.url, status: 200, state: 'pending' }; receipts.push(receipt);
     const disconnect = () => { if (!response.writableEnded) { receipt.state = 'disconnected'; cancel(); } };
     response.once('close', disconnect);
     await gate;
-    if (cancelled || signal.aborted) { receipt.state = 'cancelled'; response.destroy(); return; }
+    if (!lease.current() || cancelled || signal.aborted) { receipt.state = 'cancelled'; response.destroy(); return; }
     receipt.state = 'released'; response.once('finish', () => { receipt.state = 'delivered'; });
     return { data: [{ id: discoveryModel }] };
   }, { headers: { 'content-type': 'application/json' } });
+  signal.addEventListener('abort', cancel, { once: true });
   return { endpoint: `${fixture.url}/appearance-model-discovery/v1`, receipts,
-    requirePending() { assert.ok(!released && !cancelled && receipts.length === 1 && receipts[0].state === 'pending', 'Original discovery response is no longer pending'); },
-    release() { assert.ok(!cancelled); released = true; release(); },
-    dispose() { cancel(); remove(); signal.removeEventListener('abort', cancel); },
+    requirePending() { assert.ok(lease.current()); assert.ok(!released && !cancelled && receipts.length === 1 && receipts[0].state === 'pending', 'Original discovery response is no longer pending'); },
+    release() { assert.ok(lease.current()); assert.ok(!cancelled && !released); released = true; release(); },
+    dispose() { cancel(); signal.removeEventListener('abort', cancel); lease.remove(); },
   };
 }
 export async function captureModelDiscoveryAppearance(t) {
   assert.equal(t.appearanceEnabled, true);
-  const app = t.app, ax = t.ax, pid = app.pid;
-  const stable = () => assert.ok(t.app === app && t.ax === ax && app.pid === pid && ax.pid === pid && Number.isInteger(pid) && pid > 0 && !t.signal.aborted, 'Original discovery owner retired');
-  const owned = async action => { stable(); const value = await action(); stable(); return value; };
+  const app = t.app, ax = t.ax, fixture = t.fixture, model = t.model, calls = model.calls, pid = app.pid;
+  const processOwner = structuredClone(app.processObservation);
+  assert.equal(processOwner.pid, pid); assert.ok(Number.isSafeInteger(processOwner.generation) && processOwner.generation > 0);
+  assert.equal(processOwner.launchKind, 'child'); assert.deepEqual(calls, []);
+  const stable = () => assert.ok(t.app === app && t.ax === ax && t.fixture === fixture && t.model === model && model.calls === calls && app.pid === pid && ax.pid === pid && Number.isInteger(pid) && pid > 0 && !t.signal.aborted, 'Original discovery owner retired');
+  const live = () => { stable(); assert.deepEqual(app.processObservation, processOwner, 'Original discovery process generation changed'); assert.deepEqual(calls, [], 'Discovery appearance cannot call the model'); };
+  const owned = async action => { live(); const value = await action(); live(); return value; };
   assert.equal((await owned(() => ax.query(shell('Search settings', 'AXTextField')))).length, 0, 'Discovery fixture begins with Settings closed');
   const settings = await owned(() => t.rpc('settings.get')), pages = await owned(() => t.rpc('pages.list')), runs = await owned(() => t.rpc('runs.list')), workspace = await owned(() => t.rpc('workspace.get'));
   assert.deepEqual(pages, []); assert.deepEqual(runs, []); assert.equal(settings.modelProvider, 'openai-compatible', 'Original model fixture must already own compatible provider configuration'); assert.equal(settings.modelProbe, undefined, 'A saved connection probe cannot be erased by appearance preparation');
@@ -56,7 +62,7 @@ export async function captureModelDiscoveryAppearance(t) {
     http.requirePending(); await unchanged(); await owned(() => captureHomeState(t, 'provider-model-discovery-pending', 'provider-model-discovery-real-http-pending')); http.requirePending(); await unchanged();
     http.release(); await owned(() => ax.waitFor(shell('Discover models', 'AXButton'))); assert.equal((await owned(() => ax.query(shell('Discover models', 'AXButton'))))[0]?.enabled, true);
     await owned(() => t.until('original model response actually delivered', () => http.receipts[0].state === 'delivered'));
-    const planner = shell('Planner model', 'AXTextField'); await owned(() => ax.focus(planner)); const modelInput = await owned(() => ax.query(planner)); assert.equal(modelInput.length, 1); assert.equal(modelInput[0].focused, true); assert.equal(modelInput[0].value, settings.plannerModel);
+    const planner = shell('Planner model', 'AXComboBox'); await owned(() => ax.focus(planner)); const modelInput = await owned(() => ax.query(planner)); assert.equal(modelInput.length, 1); assert.equal(modelInput[0].focused, true); assert.equal(modelInput[0].value, settings.plannerModel);
     await unchanged(); await owned(() => captureHomeState(t, 'provider-model-discovery-released-focused', 'provider-model-discovery-released-planner-focused')); await unchanged();
     result = { ax: await owned(() => ax.dump()), rpc: { settings: await owned(() => t.rpc('settings.get')), pages, runs, workspace }, http: http.receipts, unknownAvailability: { status: 'unproven', reason: 'Configured IDs are merged into the real catalog; editable datalist is not an unknown-model availability witness' } };
   } catch (error) { primary = error; }

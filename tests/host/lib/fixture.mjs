@@ -34,6 +34,21 @@ export async function createFixture({ tls = false } = {}) {
     routes.set(key, { handler, status, headers });
     return () => routes.delete(key);
   };
+  const claimRoute = (path, handler, options = {}) => {
+    const key = `${(options.method ?? 'GET').toUpperCase()} ${path}`;
+    if (routes.has(key)) throw new Error('Original fixture route already has an owner');
+    const remove = route(path, handler, options);
+    const original = routes.get(key);
+    let removed = false;
+    return {
+      current() { return !removed && routes.get(key) === original; },
+      remove() {
+        if (removed) return;
+        if (routes.get(key) !== original) throw new Error('Original fixture route replaced; cleanup debt retained');
+        remove(); removed = true;
+      },
+    };
+  };
   for (const [name, color] of [['Red', '#b84750'], ['Blue', '#4b85b9'], ['Green', '#55a377']])
     route(`/${name.toLowerCase()}`, fixturePage(`Aux native ${name}`, `<p>${name} loopback fixture.</p>`, color));
   route('/tone.wav', toneWavBytes(), { headers: { 'content-type': 'audio/wav' } });
@@ -107,6 +122,6 @@ export async function createFixture({ tls = false } = {}) {
       const tlsPort = await listen(createHttpsServer({ key: readFileSync(key), cert: readFileSync(cert) }, handler));
       tlsUrl = `https://127.0.0.1:${tlsPort}`;
     }
-    return { tunnel, url: `http://127.0.0.1:${port}`, route, close, requests, get tlsHellos() { return tlsHellos; }, ...(tlsUrl ? { tlsUrl, certificate, certificateSpki: createHash('sha256').update(new X509Certificate(readFileSync(certificate)).publicKey.export({ type: 'spki', format: 'der' })).digest('base64') } : {}) };
+    return { tunnel, url: `http://127.0.0.1:${port}`, route, claimRoute, close, requests, get tlsHellos() { return tlsHellos; }, ...(tlsUrl ? { tlsUrl, certificate, certificateSpki: createHash('sha256').update(new X509Certificate(readFileSync(certificate)).publicKey.export({ type: 'spki', format: 'der' })).digest('base64') } : {}) };
   } catch (error) { await close(); throw error; }
 }
