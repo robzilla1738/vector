@@ -1,0 +1,7 @@
+{
+  "initialReadonlyCheckFailure": "Native CSP absent",
+  "rootCause": "literal HTML entity encoding was not decoded by root check",
+  "sourceChanged": false,
+  "actualDecodedNativeCspPresent": true,
+  "buildRepeated": false
+}

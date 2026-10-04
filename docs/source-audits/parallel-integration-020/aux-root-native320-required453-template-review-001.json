@@ -1,0 +1,35 @@
+{
+  "schema": "aux-root-native320-required453-template-review/v1",
+  "request": "/private/tmp/aux-builder-native316-runtime-teardown-source-001/native319-preparation-001/NATIVE320-REQUIRED453-TEMPLATE-REVIEW-REQUEST-001.json",
+  "requestSha256": "b43b72765a85626bef8f66c48cf5afa922e64935c761caf57c1b7486dd313906",
+  "actualSevenPinsAndOriginalReferences": true,
+  "original449Retained": true,
+  "exactFourAdded": {
+    "cc_unittests": [],
+    "unit_tests": [
+      "NativeCommandPresentationPair.RetainsAllThreeObservedModeSourcePairs"
+    ],
+    "browser_tests": [
+      "NativePersonObserverControllerBrowserTest.HostFirstDestructionRetiresExistingControllerAuthority",
+      "NativePersonObserverControllerBrowserTest.ProfileUserDataClearRetiresOriginalPublishedConnection",
+      "NativePersonObserverControllerBrowserTest.UnpublishedHostUserDataClearDoesNotCreateAuthority"
+    ],
+    "profile_spaces_unittests": [],
+    "owner_mutation_fence_unittests": [],
+    "blink_unittests": [],
+    "blink_platform_unittests": [],
+    "viz_unittests": [],
+    "content_unittests": [],
+    "journey_fixture_path_unittests": [],
+    "link_routing_unittests": [],
+    "auto_pip_site_policy_unittests": [],
+    "blink_common_unittests": [],
+    "components_unittests": [],
+    "interactive_ui_tests": [],
+    "components_browsertests": []
+  },
+  "argumentsAndOriginalDeadlinesUnchanged": true,
+  "actualEnumerationPending": true,
+  "sourceOnly": true,
+  "executionAdmission": false
+}

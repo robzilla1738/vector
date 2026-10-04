@@ -1,0 +1,7 @@
+$ node scripts/check-budgets.mjs bundle
+ok   renderer startup JS                486 KB  (budget 490 KB)
+ok   renderer startup CSS               175 KB  (budget 180 KB)
+ok   renderer total JS                 1792 KB  (budget 1800 KB)
+       247 KB  assets/App-DpS48AoD.js
+       203 KB  assets/index-BDdBQVTL.js
+        36 KB  assets/CNh6r0l6.js
