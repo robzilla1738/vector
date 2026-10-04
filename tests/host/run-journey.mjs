@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { MOUNTED_LONG_IMAGE_APPEARANCE_ID, requireMountedLongImageAppearance } from './appearance-journeys/mounted-long-image-appearance.mjs';
 import { MOUNTED_IMAGE_APPEARANCE_ID, requireMountedImageAppearance } from './appearance-journeys/mounted-image-appearance.mjs';
+import { MODEL_SAVED_KEY_APPEARANCE_ID, requireModelSavedKeyAppearance, retireModelSavedKeyAppearance } from './lib/model-saved-key-appearance.mjs';
 import { requireModelSettingsAppearance } from './lib/model-settings-appearance.mjs';
 import { requireModelProbeAppearance } from './lib/model-probe-appearance.mjs';
 import { LONG_MODEL_CATALOG_ID, requireLongModelCatalogAppearance } from './lib/long-model-catalog-appearance.mjs';
@@ -56,6 +57,7 @@ if (!process.env.AUX_NATIVE_SLOT_TOKEN) {
   process.exit(result.status ?? 1);
 }
 const slot = await acquireNativeSlot();
+let savedCredentialSlotRetained=false;
 process.env.AUX_NATIVE_SLOT_TOKEN = slot.token;
 try {
 let entry;
@@ -69,6 +71,11 @@ if (values.journey === MOUNTED_IMAGE_APPEARANCE_ID) {
   const path = join(root, 'tests/host/appearance-journeys/mounted-long-image-appearance.mjs');
   const module = await import('./appearance-journeys/mounted-long-image-appearance.mjs');
   entry = { ...module, path };
+} else if (values.journey === MODEL_SAVED_KEY_APPEARANCE_ID) {
+  requireModelSavedKeyAppearance({journeyId:values.journey,appearance:Boolean(values.appearance),pair:values['appearance-pair']});
+  const path=join(root,'tests/host/appearance-journeys/model-saved-key-appearance.mjs');
+  const module=await import('./appearance-journeys/model-saved-key-appearance.mjs');
+  entry={...module,path};
 } else if (values.journey === 'model-settings-appearance') {
   requireModelSettingsAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
   const path = join(root, 'tests/host/appearance-journeys/model-settings-appearance.mjs');
@@ -171,6 +178,7 @@ const narrowGenerations = values.narrow ? createOwnedNarrowGenerations(() => ({ 
 let deadline;
 const inputs = [];
 const inputCommands = new Set(['press', 'click', 'focus', 'key', 'type', 'drag', 'scroll', 'menu', 'contextMenu', 'savePanel', 'openPanel']);
+let credentialEndpoint, credentialRetirement;
 async function execute() {
   const permissions = appearancePair ? preflightAppearancePair(appearancePair) : await preflight(compilerArtifact === undefined ? {} : { compilerArtifact });
   assert.ok(permissions.accessibility && permissions.screenRecording, 'Accessibility and Screen Recording are required');
@@ -180,9 +188,10 @@ async function execute() {
     const { createModelFixture } = await import('./lib/model-fixture.mjs');
     model = await createModelFixture(fixture, { signal });
   }
+  if(journey.id===MODEL_SAVED_KEY_APPEARANCE_ID){credentialEndpoint=fixture.claimDisposableModelCredentialEndpoint();savedCredentialSlotRetained=true;}
   const launch = typeof journey.launch === 'function' ? journey.launch({ fixture, model, identity, appearance: Boolean(values.appearance) }) : journey.launch ?? {};
   assert.ok(!values.appearance || !launch.perf, 'Appearance sampling must not perturb a performance run');
-  app = createJourneyApp({ appPath: resolve(values.app), ...(appearancePair ? { appearancePair } : {}), launch: {
+  app = createJourneyApp({ appPath: resolve(values.app), ...(journey.id===MODEL_SAVED_KEY_APPEARANCE_ID?{credentialPair:appearancePair,credentialEndpoint}:appearancePair ? { appearancePair } : {}), launch: {
     ...launch,
     ...(values.appearance ? { args: [...(launch.args ?? []), '--aux-native-appearance-observer'] } : {}),
     ...(journey.devAcceptance?.length ? { devAcceptance: { features: journey.devAcceptance, sourceCommit: identity.label } } : {}),
@@ -259,7 +268,7 @@ async function execute() {
     }
     return processMemoryReader;
   }
-  const context = { app, rpc, fixture, model, appearanceEnabled: Boolean(values.appearance), narrowEnabled: Boolean(values.narrow), ax: observedAx, assert, until, visual: createVisual(outputDir),
+  const context = { app, rpc, fixture, model, ...(journey.id===MODEL_SAVED_KEY_APPEARANCE_ID?{credentialPair:appearancePair,credentialEndpoint}:{}), appearanceEnabled: Boolean(values.appearance), narrowEnabled: Boolean(values.narrow), ax: observedAx, assert, until, visual: createVisual(outputDir),
     async startSubagentMemoryWorkload({ scopedRpc, parent, idlePageIds, parentHold }) {
       const { startSubagentMemoryWorkload } = await import('./lib/native-subagent-memory-workload.mjs');
       const { createNativeWorkloadPreparationAdapter } = await import('./lib/native-memory-workload-collector.mjs');
@@ -432,7 +441,7 @@ try {
     try { await narrowGenerations.restore(); }
     catch { process.exitCode = 1; } // The original generation retains its actual cleanup error.
   }
-  for (const [name, cleanup] of [['ax', () => ax?.close()], ['app', () => importSourcePrepared ? retirePreparedImportSource(app) : app?.quit()], ['fixture', () => fixture?.close()]]) {
+  for (const [name, cleanup] of [['ax', () => ax?.close()], ['app', async () => {if(journey.id===MODEL_SAVED_KEY_APPEARANCE_ID && app){credentialRetirement=await retireModelSavedKeyAppearance({app,pair:appearancePair,endpointLease:credentialEndpoint});manifest.disposableCredentialRetirement=credentialRetirement;}else if(importSourcePrepared)await retirePreparedImportSource(app);else await app?.quit();}], ['fixture', async () => {if(credentialEndpoint && !credentialRetirement){if(app)throw new Error('Original credential cleanup unresolved; original fixture route/server retained');credentialEndpoint.dispose();}await fixture?.close();if(credentialEndpoint)savedCredentialSlotRetained=false;}]]) {
     try { await cleanup(); if (name === 'ax') compilerArtifact?.release(); } catch (error) {
       (manifest.cleanupErrors ??= []).push({ name, error: error.message });
       process.exitCode = 1;
@@ -448,4 +457,4 @@ try {
   if (app) writeFileSync(join(outputDir, 'launcher.log'), app.log);
   writeFileSync(join(outputDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', { flag: 'wx' });
 }
-} finally { slot.release(); }
+} finally { if(!savedCredentialSlotRetained)slot.release(); }

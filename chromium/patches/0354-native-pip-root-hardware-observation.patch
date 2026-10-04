@@ -1,0 +1,1437 @@
+diff --git a/chrome/browser/picture_in_picture/picture_in_picture_window_manager.cc b/chrome/browser/picture_in_picture/picture_in_picture_window_manager.cc
+index 28f0cc9..92aa978 100644
+--- a/chrome/browser/picture_in_picture/picture_in_picture_window_manager.cc
++++ b/chrome/browser/picture_in_picture/picture_in_picture_window_manager.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/native_pip_presentation_fixture.h"
++#endif
+ 
+ #include "base/memory/raw_ptr.h"
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+@@ -851,6 +854,55 @@ void PictureInPictureWindowManager::OnScopedDisallowPictureInPictureDestroyed(
+ }
+ 
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++void PictureInPictureWindowManager::ObserveNativeVideoCreationForMeasurement(
++    VideoOverlayWindowViews* window) {
++  if (!window || window->GetController() != pip_window_controller_) return;
++  const auto original_widget = window->GetWeakPtr();
++  auto* const original_controller = window->GetController();
++  aux::ObserveNativePipCreatedForMeasurement(window, aux::NativePipSurfaceKind::kVideo,
++      base::BindRepeating([](PictureInPictureWindowManager* manager,
++          base::WeakPtr<views::Widget> original_widget,
++          content::PictureInPictureWindowController* original_controller)
++              -> std::optional<aux::NativePipOwner> {
++        if (!original_widget || manager->pip_window_controller_ != original_controller)
++          return std::nullopt;
++        auto* window = static_cast<VideoOverlayWindowViews*>(original_widget.get());
++        if (window->GetController() != original_controller) return std::nullopt;
++        auto* opener = original_controller->GetWebContents();
++        if (!opener || opener->IsBeingDestroyed()) return std::nullopt;
++        return aux::NativePipOwner{Profile::FromBrowserContext(opener->GetBrowserContext()),
++                                  opener, nullptr, original_controller};
++      }, base::Unretained(this), original_widget, original_controller));
++}
++void PictureInPictureWindowManager::ObserveNativeDocumentCreationForMeasurement(
++    DocumentPipHost* host) {
++  if (!host || !host->GetWidget() || !pip_window_controller_ ||
++      host->GetOpenerWebContents() != pip_window_controller_->GetWebContents() ||
++      host->GetChildWebContents() != pip_window_controller_->GetChildWebContents()) return;
++  const auto original_host = host->GetWeakPtr();
++  const auto original_widget = host->GetWidget()->GetWeakPtr();
++  auto* const original_controller = pip_window_controller_.get();
++  aux::ObserveNativePipCreatedForMeasurement(host->GetWidget(),
++      aux::NativePipSurfaceKind::kDocument,
++      base::BindRepeating([](PictureInPictureWindowManager* manager,
++          base::WeakPtr<DocumentPipHost> original_host,
++          base::WeakPtr<views::Widget> original_widget,
++          content::PictureInPictureWindowController* original_controller)
++              -> std::optional<aux::NativePipOwner> {
++        if (!original_host || !original_widget ||
++            manager->pip_window_controller_ != original_controller ||
++            original_host->GetWidget() != original_widget.get() ||
++            original_host->GetOpenerWebContents() != original_controller->GetWebContents() ||
++            original_host->GetChildWebContents() != original_controller->GetChildWebContents())
++          return std::nullopt;
++        return aux::NativePipOwner{original_host->GetProfile(),
++            original_host->GetOpenerWebContents(), original_host->GetChildWebContents(),
++            original_controller};
++      }, base::Unretained(this), original_host, original_widget, original_controller));
++}
++#endif  // BUILDFLAG(ENABLE_AUX_SHELL)
++
+ void PictureInPictureWindowManager::RegisterNativeVideoAppearanceForTesting(VideoOverlayWindowViews* window) {
+   if (!aux::NativePipAppearanceObservationEnabled() || !window ||
+       window->GetController() != pip_window_controller_) return;
+diff --git a/chrome/browser/picture_in_picture/picture_in_picture_window_manager.h b/chrome/browser/picture_in_picture/picture_in_picture_window_manager.h
+index c5dd803..c4ae861 100644
+--- a/chrome/browser/picture_in_picture/picture_in_picture_window_manager.h
++++ b/chrome/browser/picture_in_picture/picture_in_picture_window_manager.h
+@@ -285,6 +285,12 @@ class PictureInPictureWindowManager {
+ 
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+   // Actual lifetime owners only; no caller IDs or controller creation.
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  // Measurement-only actual native pre-Show notifications; no PiP admission,
++  // policy or Show result changes. Source/target authority stays native-owned.
++  void ObserveNativeVideoCreationForMeasurement(VideoOverlayWindowViews* window);
++  void ObserveNativeDocumentCreationForMeasurement(DocumentPipHost* host);
++#endif
+   void RegisterNativeVideoAppearanceForTesting(VideoOverlayWindowViews* window);
+   void RegisterNativeBrowserDocumentAppearanceForTesting(BrowserWindowInterface* browser,
+                                                          views::Widget* widget);
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 98debdd..5b3e11e 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -61,6 +61,8 @@ source_set("runtime") {
+     "native_little_creation_ticket.cc",
+     "native_little_presentation_fixture.h",
+     "native_little_presentation_fixture.cc",
++    "native_pip_presentation_fixture.h",
++    "native_pip_presentation_fixture.cc",
+     "native_presentation_record_codec.h",
+     "native_presentation_record_codec.cc",
+     "native_organization_work_fixture.h",
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+index c6679c5..7c334ea 100644
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -43,6 +43,9 @@
+ #include "chrome/browser/ui/aux/native_command_presentation_session.h"
+ #include "chrome/browser/ui/aux/native_guest_presentation_fixture.h"
+ #include "chrome/browser/ui/aux/native_little_presentation_fixture.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/native_pip_presentation_fixture.h"
++#endif
+ #include "chrome/browser/ui/aux/native_performance_mailbox.h"
+ #include "chrome/browser/ui/aux/native_cdp_measurement_producer.h"
+ #include "chrome/browser/ui/aux/native_stop_input_endpoint.h"
+@@ -466,6 +469,43 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+     }
+     return;
+   }
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (method == "preparePipWindowPresentation" || method == "completePipWindowPresentation" || method == "retirePipWindowPresentation") {
++    auto* contents = web_ui() ? web_ui()->GetWebContents() : nullptr;
++    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++    if (!args.empty() || !aux::NativePerformanceObservationEnabled() || !IsAuthorizedAuxDocument() ||
++        !frame || frame != web_ui()->GetRenderFrameHost()) {
++      std::move(callback).Run(false, "", "forbidden", "PiP root presentation fixture requires its current owner and no arguments"); return;
++    }
++    const auto sequence = performance_mailbox_ ? performance_mailbox_->TakeExpected(method) : std::nullopt;
++    if (!sequence) {
++      std::move(callback).Run(false, "", "forbidden", "PiP root presentation fixture requires its owned mailbox operation"); return;
++    }
++    if (!pip_presentation_fixture_ || (method == "preparePipWindowPresentation" && pip_presentation_fixture_->HasRetired()))
++      pip_presentation_fixture_ = std::make_unique<aux::NativePipPresentationFixture>(GetWeakPtr());
++    auto reply = base::BindOnce([](base::WeakPtr<WebUIBrowserUI> ui,
++        content::WeakDocumentPtr document, uint64_t sequence, std::string operation,
++        RequestCallback callback, base::DictValue record) {
++      auto* frame = document.AsRenderFrameHostIfValid();
++      if (!ui || !aux::NativePerformanceObservationEnabled() || !ui->IsAuthorizedAuxDocument() ||
++          !ui->web_ui() || !ui->web_ui()->GetWebContents() || !frame ||
++          frame != ui->web_ui()->GetRenderFrameHost() ||
++          frame != ui->web_ui()->GetWebContents()->GetPrimaryMainFrame()) {
++        std::move(callback).Run(false, "", "forbidden", "PiP root presentation fixture owner changed"); return;
++      }
++      if (!ui->performance_mailbox_ || !ui->performance_mailbox_->EmitReply(sequence, operation, record)) {
++        std::move(callback).Run(false, "", "forbidden", "PiP root presentation fixture reply changed"); return;
++      }
++      const auto json = base::WriteJson(record);
++      std::move(callback).Run(json && json->size() <= 16384, json.value_or(""),
++          json ? "" : "unavailable", json ? "" : "PiP root presentation fixture unavailable");
++    }, GetWeakPtr(), frame->GetWeakDocumentPtr(), *sequence, method, std::move(callback));
++    if (method == "completePipWindowPresentation") pip_presentation_fixture_->Complete(std::move(reply));
++    else if (method == "retirePipWindowPresentation") pip_presentation_fixture_->Retire(std::move(reply));
++    else pip_presentation_fixture_->Prepare(std::move(reply));
++    return;
++  }
++#endif
+   if (method == "prepareLittleWindowPresentation" || method == "completeLittleWindowPresentation") {
+     auto* contents = web_ui() ? web_ui()->GetWebContents() : nullptr;
+     auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
+diff --git a/chrome/browser/ui/aux/native_performance_mailbox.cc b/chrome/browser/ui/aux/native_performance_mailbox.cc
+index 71dcb22..1e22ac6 100644
+--- a/chrome/browser/ui/aux/native_performance_mailbox.cc
++++ b/chrome/browser/ui/aux/native_performance_mailbox.cc
+@@ -128,6 +128,8 @@ bool IsNativePerformanceMailboxOperation(const std::string& operation) {
+       operation == "sampleShellMemory" || operation == "sampleProcessMemory" ||
+       operation == "prepareSubagentMemoryWorkload" ||
+       operation == "prepareAuxWarmWindow" || operation == "completeAuxWarmWindow" ||
++      operation == "preparePipWindowPresentation" || operation == "completePipWindowPresentation" ||
++      operation == "retirePipWindowPresentation" ||
+       operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation" ||
+       operation == "prepareOrganizationAutoArchiveWork" ||
+       operation == "prepareOrganizationLiveFolderWork" || operation == "completeOrganizationWork";
+@@ -266,6 +268,8 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
+   const bool cdp = cdp_prepare || operation == "completeCdpRetirementMeasurement";
+   const bool warm = operation == "prepareAuxWarmWindow" || operation == "completeAuxWarmWindow";
+   const bool little = operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation";
++  const bool pip_retire = operation == "retirePipWindowPresentation";
++  const bool pip = pip_retire || operation == "preparePipWindowPresentation" || operation == "completePipWindowPresentation";
+   const bool preparation = operation == "prepareSubagentMemoryWorkload";
+   const bool process_memory = operation == "sampleProcessMemory";
+   const bool memory = operation == "sampleShellMemory" || process_memory;
+@@ -289,9 +293,12 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
+ #endif
+   if (!producer || *producer != (cdp ? "aux-native-cdp-retirement" : warm ? "aux-native-warm-window" : preparation ? "aux-native-subagent-preparation" : process_memory ? "aux-native-process-memory" : memory ? "aux-native-shell-memory" :
+           organization ? "aux-native-organization-work-v1" :
++          pip_retire ? "aux-native-pip-root-retirement" : pip ? "aux-native-pip-root-presentation" :
+           little ? "aux-native-little-presentation-upperbound" : "aux-native-guest-presentation") ||
+       record.FindInt("version") != 1 || !status ||
+-      (cdp ? (*status != "armed" && *status != "sampled" && *status != "refused") : preparation ? (*status != "ready" && *status != "refused") : memory ? (*status != "sampled" && *status != "refused") :
++      (pip ? (*status != "refused" && *status !=
++          (pip_retire ? "retired" : operation == "preparePipWindowPresentation" ? "ready" : "measured")) :
++       cdp ? (*status != "armed" && *status != "sampled" && *status != "refused") : preparation ? (*status != "ready" && *status != "refused") : memory ? (*status != "sampled" && *status != "refused") :
+           (*status != "ready" && *status != "measured" && *status != "refused")) ||
+       (!cdp && *status != "refused" && record.FindInt("windowId") != measured_window_id)) {
+     Refuse(); return false;
+diff --git a/chrome/browser/ui/aux/native_pip_presentation_fixture.cc b/chrome/browser/ui/aux/native_pip_presentation_fixture.cc
+new file mode 100644
+index 0000000..28200a0
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_pip_presentation_fixture.cc
+@@ -0,0 +1,460 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_pip_presentation_fixture.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
++#include <utility>
++#include "base/functional/bind.h"
++#include "base/no_destructor.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/task/sequenced_task_runner.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/native_performance_observer.h"
++#include "chrome/browser/ui/aux/native_presentation_record_codec.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++#include "content/public/browser/picture_in_picture_window_controller.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "ui/compositor/compositor.h"
++#include "ui/views/widget/widget.h"
++namespace aux {
++namespace {
++base::WeakPtr<NativePipPresentationFixture>& ActiveFixture() {
++  static base::NoDestructor<base::WeakPtr<NativePipPresentationFixture>> active;
++  return *active;
++}
++}  // namespace
++void ObserveNativePipInitializedForMeasurement(
++    views::Widget* widget, NativePipSurfaceKind kind, content::WebContents* opener) {
++  if (ActiveFixture()) ActiveFixture()->Initialized(widget, kind, opener);
++}
++void ObserveNativePipCreatedForMeasurement(
++    views::Widget* widget, NativePipSurfaceKind kind,
++    NativePipAppearanceRegistry::OwnerReader reader) {
++  if (ActiveFixture()) ActiveFixture()->Created(widget, kind, std::move(reader));
++}
++NativePipPresentationFixture::NativePipPresentationFixture(
++    base::WeakPtr<WebUIBrowserUI> source) : source_(source) {}
++NativePipPresentationFixture::~NativePipPresentationFixture() {
++  if (ActiveFixture().get() == this) ActiveFixture().reset();
++  weak_factory_.InvalidateWeakPtrs();
++  timeout_.Stop();
++  StopHardware();
++  widget_.Reset();
++  Observe(nullptr);
++  // Retirement is never inferred from fixture/member/receipt destruction.
++}
++bool NativePipPresentationFixture::WithinDeadline() const {
++  return !deadline_.is_null() && base::TimeTicks::Now() < deadline_;
++}
++bool NativePipPresentationFixture::StableShell() {
++  if (!source_ || !source_browser_ || !NativePerformanceObservationEnabled() ||
++      !shell_owner_ || source_->browser() != source_browser_.get() ||
++      !source_browser_->GetProfile() ||
++      source_browser_->GetProfile()->IsOffTheRecord() ||
++      source_browser_->GetProfile() != owner_.profile) return false;
++  const auto weak = weak_factory_.GetWeakPtr();
++  const auto actual = ReadNativeGuestStageShellOwner(source_);
++  return weak && actual == shell_owner_;
++}
++bool NativePipPresentationFixture::StableSource() {
++  if (!StableShell() || !opener_ || opener_->IsBeingDestroyed() ||
++      opener_->GetBrowserContext() != owner_.profile ||
++      !source_browser_->GetTabStripModel() ||
++      source_browser_->GetTabStripModel()->GetActiveWebContents() != opener_.get())
++    return false;
++  auto* frame = opener_document_.AsRenderFrameHostIfValid();
++  auto* identity = PageIdentity::FromWebContents(opener_.get());
++  return frame && frame == opener_->GetPrimaryMainFrame() &&
++      !frame->IsErrorDocument() && frame->IsRenderFrameLive() && identity &&
++      identity->id() == page_id_ && !identity->runtime_owned();
++}
++bool NativePipPresentationFixture::StableTarget(bool require_visible) {
++  if (refused_ || destroying_ || !WithinDeadline() || !StableSource() ||
++      !target_ || !widget_.IsObserving() ||
++      widget_.GetSource() != target_.get() || !compositor_.IsObserving() ||
++      target_->GetCompositor() != compositor_.GetSource() || read_owner_.is_null())
++    return false;
++  const auto weak = weak_factory_.GetWeakPtr();
++  const auto target = target_;
++  const auto actual = read_owner_.Run();
++  if (!weak || !target || !actual || *actual != owner_ ||
++      !owner_.controller || owner_.controller->GetWebContents() != opener_.get() ||
++      owner_.controller->GetChildWebContents() != owner_.child) return false;
++  if (owner_.child) {
++    auto* child_frame = child_document_.AsRenderFrameHostIfValid();
++    if (!child_frame || owner_.child->IsBeingDestroyed() ||
++        owner_.child->GetBrowserContext() != owner_.profile ||
++        child_frame != owner_.child->GetPrimaryMainFrame() ||
++        child_frame->IsErrorDocument() || !child_frame->IsRenderFrameLive())
++      return false;
++  }
++  auto* compositor = compositor_.GetSource();
++  if (display_generation_ &&
++      compositor->native_startup_display_generation() != display_generation_)
++    return false;
++  if (root_.is_valid() &&
++      (root_ != viz::SurfaceId(compositor->frame_sink_id(),
++                              compositor->local_surface_id_from_parent()) ||
++       bounds_ != gfx::Rect(compositor->size()))) return false;
++  const bool visible = !require_visible || target->IsVisible();
++  return weak && target && target_.get() == target.get() && visible;
++}
++void NativePipPresentationFixture::Prepare(Reply ready) {
++  if (used_ || (ActiveFixture() && ActiveFixture().get() != this)) {
++    std::move(ready).Run(Record("refused", "prior_fixture_unretired")); return;
++  }
++  used_ = true;
++  armed_ = base::TimeTicks::Now();
++  deadline_ = armed_ + base::Seconds(5);
++  nonce_ = base::UnguessableToken::Create();
++  if (!source_ || !source_->browser()) {
++    std::move(ready).Run(Record("refused", "unavailable_original_shell")); return;
++  }
++  source_browser_ = source_->browser()->GetWeakPtr();
++  owner_.profile = source_browser_->GetProfile();
++  const auto self = weak_factory_.GetWeakPtr();
++  auto unavailable = Record("refused", "original_shell_retired_during_read");
++  const auto shell = ReadNativeGuestStageShellOwner(source_);
++  if (!self || !source_browser_) {
++    std::move(ready).Run(std::move(unavailable)); return;
++  }
++  shell_owner_ = shell;
++  auto* strip = source_browser_->GetTabStripModel();
++  auto* opener = strip ? strip->GetActiveWebContents() : nullptr;
++  auto* frame = opener ? opener->GetPrimaryMainFrame() : nullptr;
++  auto* identity = opener ? PageIdentity::FromWebContents(opener) : nullptr;
++  if (!frame || !identity || identity->runtime_owned()) {
++    std::move(ready).Run(Record("refused", "unavailable_original_person_page")); return;
++  }
++  opener_ = opener->GetWeakPtr();
++  opener_document_ = frame->GetWeakDocumentPtr();
++  page_id_ = identity->id();
++  unavailable = Record("refused", "original_person_scope_changed");
++  if (!WithinDeadline() || !StableSource()) {
++    std::move(ready).Run(std::move(unavailable)); return;
++  }
++  Observe(opener);
++  ActiveFixture() = weak_factory_.GetWeakPtr();
++  timeout_.Start(FROM_HERE, deadline_ - base::TimeTicks::Now(), base::BindOnce(
++      &NativePipPresentationFixture::Refuse, weak_factory_.GetWeakPtr(),
++      "original_pip_deadline_elapsed"));
++  std::move(ready).Run(Record("ready", "original_native_arm"));
++}
++void NativePipPresentationFixture::Initialized(
++    views::Widget* widget, NativePipSurfaceKind kind, content::WebContents* opener) {
++  const auto self = weak_factory_.GetWeakPtr();
++  if (!used_ || refused_ || consumed_ || !WithinDeadline() || !StableSource() ||
++      !widget || target_ || opener != opener_.get() || widget->IsVisible() ||
++      !widget->GetNativeWindow() || !widget->GetRootView() ||
++      !widget->GetCompositor()) {
++    if (self) Refuse("unavailable_actual_fresh_widget_initialization");
++    return;
++  }
++  // This entry is called only after the actual factory's Widget::Init has
++  // returned. Existing Show/Hide paths cannot mint this creation witness.
++  target_ = widget->GetWeakPtr();
++  kind_ = kind;
++  created_ = base::TimeTicks::Now();
++  widget_receipt_ = base::UnguessableToken::Create();
++  widget_.Observe(widget);
++}
++void NativePipPresentationFixture::Created(
++    views::Widget* widget, NativePipSurfaceKind kind,
++    NativePipAppearanceRegistry::OwnerReader reader) {
++  const auto self = weak_factory_.GetWeakPtr();
++  if (!used_ || refused_ || consumed_ || !WithinDeadline() || !StableSource() ||
++      !widget || !target_ || target_.get() != widget || kind != kind_ ||
++      !widget_.IsObserving() || widget_.GetSource() != widget ||
++      !read_owner_.is_null() || reader.is_null() || widget->IsVisible() ||
++      !widget->GetCompositor()) {
++    if (self) Refuse("unavailable_fresh_pre_show_target");
++    return;
++  }
++  const auto weak = weak_factory_.GetWeakPtr();
++  const auto original_widget = widget->GetWeakPtr();
++  const auto actual = reader.Run();
++  if (!weak || !original_widget) return;
++  if (!actual || actual->profile != owner_.profile ||
++      actual->opener != opener_.get() || !actual->controller ||
++      actual->controller->GetWebContents() != opener_.get() ||
++      actual->controller->GetChildWebContents() != actual->child ||
++      (kind == NativePipSurfaceKind::kVideo && actual->child) ||
++      (kind == NativePipSurfaceKind::kDocument && !actual->child) ||
++      !StableSource() || !self || !original_widget || original_widget->IsVisible()) {
++    if (self) Refuse("original_native_pip_owner_refused");
++    return;
++  }
++  owner_ = *actual;
++  if (owner_.child) {
++    auto* child_frame = owner_.child->GetPrimaryMainFrame();
++    if (!child_frame) { Refuse("unavailable_original_pip_child"); return; }
++    child_document_ = child_frame->GetWeakDocumentPtr();
++  }
++  kind_ = kind;
++  read_owner_ = std::move(reader);
++  target_ = original_widget;
++  compositor_.Observe(widget->GetCompositor());
++  if (!StableTarget(false) || !widget->ObserveNativeRootPaintForTesting(
++      base::BindOnce(&NativePipPresentationFixture::Painted,
++                     weak_factory_.GetWeakPtr()))) {
++    if (self) Refuse("unavailable_original_root_paint_enrollment");
++    return;
++  }
++  compositor_.GetSource()->BeginNativeStockStartupHardwareObservation(nonce_,
++      base::BindOnce(&NativePipPresentationFixture::Registered,
++                     weak_factory_.GetWeakPtr()));
++}
++void NativePipPresentationFixture::Registered(
++    std::optional<base::TimeTicks> actual) {
++  const auto self = weak_factory_.GetWeakPtr();
++  if (!StableTarget(false) || !ready_.is_null() || !registered_.is_null() ||
++      !actual || actual->is_null() || *actual < created_ ||
++      *actual > base::TimeTicks::Now()) {
++    if (self) Refuse("native_display_registration_refused");
++    return;
++  }
++  display_generation_ = compositor_.GetSource()->native_startup_display_generation();
++  if (!display_generation_) { Refuse("unavailable_original_display_generation"); return; }
++  registered_ = *actual;
++}
++void NativePipPresentationFixture::Painted(
++    views::NativeRootPaintObservation actual) {
++  const auto self = weak_factory_.GetWeakPtr();
++  if (!StableTarget(true) || !ready_.is_null() || registered_.is_null() ||
++      !actual.entire_client_painted || actual.ready.is_null() ||
++      actual.ready < registered_ || actual.ready > base::TimeTicks::Now() ||
++      actual.recording_bounds_in_pixels != gfx::Rect(compositor_.GetSource()->size()) ||
++      actual.device_scale_factor != compositor_.GetSource()->device_scale_factor()) {
++    if (self) Refuse("original_full_root_paint_refused");
++    return;
++  }
++  bounds_ = actual.recording_bounds_in_pixels;
++  ready_ = actual.ready;
++  root_ = viz::SurfaceId(compositor_.GetSource()->frame_sink_id(),
++                         compositor_.GetSource()->local_surface_id_from_parent());
++  if (!root_.is_valid() || !StableTarget(true)) {
++    if (self) Refuse("original_root_surface_changed");
++    return;
++  }
++  viz::NativeStockReadyFrame marker;
++  marker.nonce = nonce_; marker.client_bounds = bounds_; marker.ready = ready_;
++  compositor_.GetSource()->QueueNativeStockReadyPaint(marker, base::BindOnce(
++      &NativePipPresentationFixture::Submitted, weak_factory_.GetWeakPtr()));
++}
++void NativePipPresentationFixture::Submitted(
++    std::optional<viz::NativeStockReadyFrame> actual) {
++  const auto self = weak_factory_.GetWeakPtr();
++  if (!StableTarget(true) || submission_ || !actual || actual->nonce != nonce_ ||
++      actual->client_bounds != bounds_ || actual->ready != ready_ ||
++      !actual->frame_token || actual->commit.is_null() || actual->submitted.is_null() ||
++      ready_ > actual->commit || actual->commit > actual->submitted ||
++      actual->submitted > base::TimeTicks::Now()) {
++    if (self) Refuse("original_root_submission_refused");
++    return;
++  }
++  submission_ = std::move(actual);
++  compositor_.GetSource()->CompleteNativeStockStartupHardwareObservation(
++      nonce_, root_, submission_->frame_token, base::BindOnce(
++          &NativePipPresentationFixture::Presented, weak_factory_.GetWeakPtr()));
++}
++void NativePipPresentationFixture::Presented(
++    viz::mojom::NativeStockRootPresentationPtr actual) {
++  const auto self = weak_factory_.GetWeakPtr();
++  const auto now = base::TimeTicks::Now();
++  if (!StableTarget(true) || measured_ || !submission_ || !actual ||
++      actual->nonce != nonce_ || actual->root != root_ ||
++      actual->token != submission_->frame_token || actual->output != bounds_ ||
++      actual->committed_client_bounds != bounds_ || actual->ready != ready_ ||
++      actual->commit != submission_->commit ||
++      actual->submitted != submission_->submitted || actual->draw.is_null() ||
++      actual->swap.swap_start.is_null() || actual->swap.swap_end.is_null() ||
++      actual->feedback.timestamp.is_null() || actual->observed.is_null() ||
++      actual->submitted > actual->draw || actual->draw > actual->swap.swap_start ||
++      actual->swap.swap_start > actual->swap.swap_end ||
++      actual->swap.swap_end > actual->feedback.timestamp ||
++      actual->feedback.timestamp > actual->observed || actual->observed > now ||
++      !(actual->feedback.flags & gfx::PresentationFeedback::kHWCompletion) ||
++      (actual->feedback.flags & gfx::PresentationFeedback::kFailure)) {
++    if (self) Refuse("original_pip_root_hardware_pair_refused");
++    return;
++  }
++  auto record = Record("measured", "created_native_pip_root_hardware_upperbound");
++  record.Set("measured", true);
++  const auto& local = root_.local_surface_id();
++  record.Set("rootSurface", base::DictValue()
++      .Set("frameSink", EncodeNativePresentationSink(root_.frame_sink_id()))
++      .Set("parentSequenceNumber", static_cast<double>(local.parent_sequence_number()))
++      .Set("childSequenceNumber", static_cast<double>(local.child_sequence_number()))
++      .Set("embedToken", local.embed_token().ToString()));
++  record.Set("frameToken", static_cast<double>(actual->token));
++  record.Set("output", base::ListValue().Append(bounds_.x()).Append(bounds_.y())
++      .Append(bounds_.width()).Append(bounds_.height()));
++  record.Set("feedbackFlags", static_cast<double>(actual->feedback.flags));
++  record.Set("alphaReadbackAttempted", actual->alpha_readback_attempted);
++  AppendNativePresentationTick(record, "readyUs", ready_);
++  AppendNativePresentationTick(record, "commitUs", actual->commit);
++  AppendNativePresentationTick(record, "submittedUs", actual->submitted);
++  AppendNativePresentationTick(record, "drawUs", actual->draw);
++  AppendNativePresentationTick(record, "swapStartUs", actual->swap.swap_start);
++  AppendNativePresentationTick(record, "swapEndUs", actual->swap.swap_end);
++  AppendNativePresentationTick(record, "presentedUs", actual->feedback.timestamp);
++  AppendNativePresentationTick(record, "observedUs", actual->observed);
++  record.Set("elapsedUs", base::NumberToString(
++      (actual->feedback.timestamp - armed_).InMicroseconds()));
++  // Leave the original Widget observation and absolute timer installed. A
++  // successful sample alone cannot retire ownership or free the next trial.
++  measured_ = true;
++  record_ = std::move(record);
++  StopHardware();
++  DeliverRecord();
++}
++base::DictValue NativePipPresentationFixture::Record(
++    const char* status, const char* reason) const {
++  auto result = base::DictValue().Set("producer", "aux-native-pip-root-presentation")
++      .Set("version", 1).Set("status", status).Set("reason", reason)
++      .Set("metric", "pip-window").Set("startKind", "native-arm-upperbound")
++      .Set("measured", false).Set("rootHardwareCoverage", true)
++      .Set("videoGuestCoverage", false).Set("earliestPresentationProven", false)
++      .Set("firstFrameProven", false);
++  if (!nonce_.is_empty()) result.Set("requestNonce", nonce_.ToString());
++  if (!page_id_.empty()) result.Set("sourcePageId", page_id_);
++  if (!widget_receipt_.is_empty())
++    result.Set("targetWidgetReceipt", widget_receipt_.ToString());
++  if (shell_owner_) {
++    result.Set("windowId", shell_owner_->window_id);
++    result.Set("widgetRoutingId", shell_owner_->shell_widget_routing_id);
++    result.Set("rendererPid", shell_owner_->shell_renderer_pid);
++    result.Set("shellSink", EncodeNativePresentationSink(shell_owner_->shell_sink));
++    result.Set("displaySink", EncodeNativePresentationSink(shell_owner_->display_sink));
++  }
++  if (!widget_receipt_.is_empty()) result.Set("surfaceKind",
++      kind_ == NativePipSurfaceKind::kVideo ? "video-pip" : "document-pip");
++  if (display_generation_)
++    result.Set("displayGeneration", base::NumberToString(display_generation_));
++  AppendNativePresentationTick(result, "armedUs", armed_);
++  AppendNativePresentationTick(result, "deadlineUs", deadline_);
++  AppendNativePresentationTick(result, "createdUs", created_);
++  AppendNativePresentationTick(result, "registeredUs", registered_);
++  return result;
++}
++void NativePipPresentationFixture::Complete(Reply completed) {
++  auto refusal = Record("refused", "no_current_prepared_pip_sample");
++  if (!used_ || consumed_ || completed_ || !WithinDeadline() || !StableShell()) {
++    std::move(completed).Run(std::move(refusal)); return;
++  }
++  completed_ = std::move(completed);
++  DeliverRecord();
++}
++void NativePipPresentationFixture::DeliverRecord() {
++  if (!record_ || !completed_) return;
++  auto record = std::move(*record_);
++  record_.reset();
++  auto reply = std::move(completed_);
++  consumed_ = true;
++  // Never cross an external RPC callback from an original pre-Show, native
++  // paint, Widget destructor, or compositor observer stack. Original hardware
++  // stamps are retained, and original owner/deadline still bracket delivery.
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
++      base::BindOnce([](base::WeakPtr<NativePipPresentationFixture> fixture,
++                       Reply reply, base::DictValue record) {
++        if (!fixture) {
++          record.Set("status", "refused");
++          record.Set("reason", "fixture_retired_before_reply");
++          record.Set("measured", false);
++        } else if (!fixture->WithinDeadline() || !fixture->StableShell() ||
++                   (fixture->measured_ && !fixture->StableSource())) {
++          if (!fixture) {
++            record.Set("status", "refused");
++            record.Set("reason", "fixture_retired_before_reply");
++          } else {
++            record.Set("status", "refused");
++            record.Set("reason", "original_scope_changed_before_reply");
++          }
++          record.Set("measured", false);
++        }
++        std::move(reply).Run(std::move(record));
++      }, weak_factory_.GetWeakPtr(), std::move(reply), std::move(record)));
++}
++void NativePipPresentationFixture::StopHardware() {
++  if (auto* compositor = compositor_.GetSource())
++    compositor->CancelNativeStockStartupHardwareObservation(nonce_);
++  compositor_.Reset();
++}
++void NativePipPresentationFixture::Refuse(const char* reason) {
++  if (refused_ || retired_) return;
++  refused_ = true;
++  measured_ = false;
++  StopHardware();
++  record_ = Record("refused", reason);
++  DeliverRecord();
++  // Keep actual Widget observation/identity and debt even after timeout/failure.
++}
++void NativePipPresentationFixture::PrimaryPageChanged(content::Page&) {
++  Refuse("original_pip_source_document_changed");
++}
++void NativePipPresentationFixture::WebContentsDestroyed() {
++  owner_.opener = nullptr;
++  if (!consumed_ || !measured_) Refuse("original_pip_source_destroyed_before_sample");
++  Observe(nullptr);
++}
++void NativePipPresentationFixture::OnWidgetDestroying(views::Widget* widget) {
++  if (widget_.GetSource() != widget) return;
++  destroying_ = true;
++  // Retire raw owner references before native/controller/child teardown. The
++  // opaque creation identity and exact observed Widget remain for destruction.
++  read_owner_.Reset();
++  owner_.opener = nullptr;
++  owner_.child = nullptr;
++  owner_.controller = nullptr;
++  StopHardware();
++  if (!consumed_ || !measured_) Refuse("original_pip_target_destroying_before_sample");
++}
++void NativePipPresentationFixture::OnWidgetDestroyed(views::Widget* widget) {
++  if (widget_.GetSource() != widget || !destroying_) return;
++  destroyed_ = base::TimeTicks::Now();
++  widget_.Reset();
++  target_.reset();
++  StopHardware();
++  // This genuine native destruction event is the only successful retirement
++  // witness. Hide, receipt replacement and fixture destruction never set it.
++}
++void NativePipPresentationFixture::OnWidgetVisibilityChanged(
++    views::Widget* widget, bool visible) {
++  if (widget_.GetSource() == widget && !visible && !consumed_)
++    Refuse("original_pip_target_hidden_before_sample");
++}
++void NativePipPresentationFixture::OnCompositingShuttingDown(ui::Compositor*) {
++  compositor_.Reset();
++  if (!consumed_) Refuse("original_pip_compositor_destroyed_before_sample");
++}
++void NativePipPresentationFixture::OnCompositorVisibilityChanging(
++    ui::Compositor*, bool visible) {
++  if (!visible && !consumed_) Refuse("original_pip_compositor_hidden_before_sample");
++}
++base::DictValue NativePipPresentationFixture::RetirementRecord(
++    const char* status, const char* reason) const {
++  auto result = Record(status, reason);
++  result.Set("producer", "aux-native-pip-root-retirement");
++  result.Set("nativeWidgetDestroyed", !destroyed_.is_null());
++  AppendNativePresentationTick(result, "destroyedUs", destroyed_);
++  return result;
++}
++bool NativePipPresentationFixture::HasRetired() const { return retired_; }
++void NativePipPresentationFixture::Retire(Reply retired) {
++  auto refusal = RetirementRecord("refused", "original_widget_destruction_not_retired");
++  if (retired_ || !consumed_ || destroyed_.is_null() || !destroying_ ||
++      widget_.IsObserving() || target_ || !WithinDeadline() ||
++      destroyed_ < created_ || destroyed_ >= deadline_ || !StableShell()) {
++    std::move(retired).Run(std::move(refusal));
++    return;
++  }
++  retired_ = true;
++  timeout_.Stop();
++  if (ActiveFixture().get() == this) ActiveFixture().reset();
++  Observe(nullptr);
++  std::move(retired).Run(RetirementRecord("retired", "original_native_widget_destroyed"));
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_pip_presentation_fixture.h b/chrome/browser/ui/aux/native_pip_presentation_fixture.h
+new file mode 100644
+index 0000000..ae1e495
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_pip_presentation_fixture.h
+@@ -0,0 +1,104 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PIP_PRESENTATION_FIXTURE_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PIP_PRESENTATION_FIXTURE_H_
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
++#include <optional>
++#include <string>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/scoped_observation.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "chrome/browser/ui/aux/native_guest_stage_owner.h"
++#include "chrome/browser/ui/aux/native_pip_appearance_registry.h"
++#include "components/viz/common/quads/native_stock_ready_frame.h"
++#include "components/viz/common/surfaces/surface_id.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "services/viz/privileged/mojom/compositing/display_private.mojom.h"
++#include "ui/compositor/compositor_observer.h"
++#include "ui/views/widget/native_root_paint_observation.h"
++#include "ui/views/widget/widget_observer.h"
++class BrowserWindowInterface;
++class WebUIBrowserUI;
++namespace aux {
++// Actual native manager pre-Show notification only. There is no selector,
++// renderer readiness input, effect, or alternative PiP admission path here.
++void ObserveNativePipInitializedForMeasurement(
++    views::Widget* widget, NativePipSurfaceKind kind, content::WebContents* opener);
++void ObserveNativePipCreatedForMeasurement(
++    views::Widget* widget, NativePipSurfaceKind kind,
++    NativePipAppearanceRegistry::OwnerReader read_original_owner);
++
++// Arm→created native PiP root hardware upper bound. Root coverage does not
++// claim video/child surface coverage, earliest presentation or input latency.
++class NativePipPresentationFixture final : public content::WebContentsObserver,
++                                          public ui::CompositorObserver,
++                                          public views::WidgetObserver {
++ public:
++  using Reply = base::OnceCallback<void(base::DictValue)>;
++  explicit NativePipPresentationFixture(base::WeakPtr<WebUIBrowserUI> source);
++  ~NativePipPresentationFixture() override;
++  void Prepare(Reply ready);
++  void Complete(Reply completed);
++  void Retire(Reply retired);
++  bool HasRetired() const;
++  void Initialized(views::Widget* widget, NativePipSurfaceKind kind,
++                   content::WebContents* opener);
++  void Created(views::Widget* widget, NativePipSurfaceKind kind,
++               NativePipAppearanceRegistry::OwnerReader read_original_owner);
++  void PrimaryPageChanged(content::Page& page) override;
++  void WebContentsDestroyed() override;
++  void OnWidgetDestroying(views::Widget* widget) override;
++  void OnWidgetDestroyed(views::Widget* widget) override;
++  void OnWidgetVisibilityChanged(views::Widget* widget, bool visible) override;
++  void OnCompositingShuttingDown(ui::Compositor* compositor) override;
++  void OnCompositorVisibilityChanging(ui::Compositor* compositor,
++                                     bool visible) override;
++ private:
++  friend class NativePipPresentationFixtureLifetimeTest;
++  bool WithinDeadline() const;
++  bool StableShell();
++  bool StableSource();
++  bool StableTarget(bool require_visible);
++  void Registered(std::optional<base::TimeTicks> registered);
++  void Painted(views::NativeRootPaintObservation actual);
++  void Submitted(std::optional<viz::NativeStockReadyFrame> actual);
++  void Presented(viz::mojom::NativeStockRootPresentationPtr actual);
++  void Refuse(const char* reason);
++  void StopHardware();
++  void DeliverRecord();
++  base::DictValue Record(const char* status, const char* reason) const;
++  base::DictValue RetirementRecord(const char* status, const char* reason) const;
++
++  base::WeakPtr<WebUIBrowserUI> source_;
++  base::WeakPtr<BrowserWindowInterface> source_browser_;
++  std::optional<NativeGuestStageOwnedSnapshot> shell_owner_;
++  base::WeakPtr<content::WebContents> opener_;
++  content::WeakDocumentPtr opener_document_, child_document_;
++  std::string page_id_;
++  NativePipOwner owner_;
++  NativePipAppearanceRegistry::OwnerReader read_owner_;
++  NativePipSurfaceKind kind_ = NativePipSurfaceKind::kVideo;
++  base::WeakPtr<views::Widget> target_;
++  base::ScopedObservation<views::Widget, views::WidgetObserver> widget_{this};
++  base::ScopedObservation<ui::Compositor, ui::CompositorObserver> compositor_{this};
++  base::UnguessableToken nonce_, widget_receipt_;
++  viz::SurfaceId root_;
++  gfx::Rect bounds_;
++  uint64_t display_generation_ = 0;
++  base::TimeTicks armed_, deadline_, created_, registered_, ready_, destroyed_;
++  std::optional<viz::NativeStockReadyFrame> submission_;
++  std::optional<base::DictValue> record_;
++  Reply completed_;
++  bool used_ = false, refused_ = false, consumed_ = false;
++  bool destroying_ = false, measured_ = false, retired_ = false;
++  base::OneShotTimer timeout_;
++  base::WeakPtrFactory<NativePipPresentationFixture> weak_factory_{this};
++};
++}  // namespace aux
++#endif
++#endif
+diff --git a/chrome/browser/ui/aux/native_pip_presentation_fixture_unittest.cc b/chrome/browser/ui/aux/native_pip_presentation_fixture_unittest.cc
+new file mode 100644
+index 0000000..99e2924
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_pip_presentation_fixture_unittest.cc
+@@ -0,0 +1,131 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_pip_presentation_fixture.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
++#include <memory>
++#include "base/functional/bind.h"
++#include "base/test/task_environment.h"
++#include "base/test/test_future.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "ui/views/test/views_test_base.h"
++#include "ui/views/widget/widget.h"
++namespace aux {
++// Actual Widget lifecycle tests with an explicitly synthetic observer binding.
++// There is NO admitted shell/source, ready setter, hardware/frame ACK or sample.
++class NativePipPresentationFixtureLifetimeTest : public views::ViewsTestBase {
++ public:
++  NativePipPresentationFixtureLifetimeTest()
++      : ViewsTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
++ protected:
++  std::unique_ptr<views::Widget> CreateWindow() {
++    auto widget = std::make_unique<views::Widget>();
++    auto params = CreateParams(views::Widget::InitParams::CLIENT_OWNS_WIDGET,
++                              views::Widget::InitParams::TYPE_WINDOW_FRAMELESS);
++    params.bounds = gfx::Rect(0, 0, 100, 80);
++    widget->Init(std::move(params));
++    widget->SetContentsView(std::make_unique<views::View>());
++    return widget;
++  }
++  void BindLifecycleOnly(NativePipPresentationFixture& fixture,
++                         views::Widget* original) {
++    fixture.target_ = original->GetWeakPtr();
++    fixture.widget_.Observe(original);
++    fixture.created_ = base::TimeTicks::Now();
++    fixture.widget_receipt_ = base::UnguessableToken::Create();
++  }
++  void CheckHiddenIsNotDestruction() {
++    NativePipPresentationFixture fixture{base::WeakPtr<WebUIBrowserUI>()};
++    auto original = CreateWindow();
++    BindLifecycleOnly(fixture, original.get());
++    original->Show();
++    original->Hide();
++    EXPECT_TRUE(fixture.destroyed_.is_null());
++    EXPECT_TRUE(fixture.target_);
++    EXPECT_TRUE(fixture.widget_.IsObserving());
++    original.reset();
++    EXPECT_FALSE(fixture.destroyed_.is_null());
++    EXPECT_TRUE(fixture.destroying_);
++    EXPECT_FALSE(fixture.target_);
++    EXPECT_FALSE(fixture.widget_.IsObserving());
++    base::test::TestFuture<base::DictValue> reply;
++    fixture.Retire(reply.GetCallback());
++    // The real destruction alone never fabricates source/sample authority.
++    EXPECT_EQ(reply.Get().FindBool("nativeWidgetDestroyed"), true);
++    EXPECT_EQ(*reply.Get().FindString("status"), "refused");
++  }
++  void CheckForeignWindowCannotRetireOriginal() {
++    NativePipPresentationFixture fixture{base::WeakPtr<WebUIBrowserUI>()};
++    auto original = CreateWindow();
++    auto foreign = CreateWindow();
++    BindLifecycleOnly(fixture, original.get());
++    foreign.reset();
++    EXPECT_TRUE(fixture.destroyed_.is_null());
++    EXPECT_EQ(fixture.widget_.GetSource(), original.get());
++    original.reset();
++    EXPECT_FALSE(fixture.destroyed_.is_null());
++  }
++  void CheckReceiptDestructionIsNotWindowDestruction() {
++    auto original = CreateWindow();
++    const auto original_weak = original->GetWeakPtr();
++    auto fixture = std::make_unique<NativePipPresentationFixture>(
++        base::WeakPtr<WebUIBrowserUI>());
++    BindLifecycleOnly(*fixture, original.get());
++    EXPECT_TRUE(fixture->destroyed_.is_null());
++    fixture.reset();
++    EXPECT_TRUE(original_weak);
++    original.reset();
++    EXPECT_FALSE(original_weak);
++  }
++  void CheckExactOriginalDeadline() {
++    NativePipPresentationFixture fixture{base::WeakPtr<WebUIBrowserUI>()};
++    // Pure original-clock predicate control, not an admitted trial.
++    fixture.armed_ = base::TimeTicks::Now();
++    fixture.deadline_ = fixture.armed_ + base::Seconds(5);
++    EXPECT_TRUE(fixture.WithinDeadline());
++    task_environment()->FastForwardBy(base::Seconds(5));
++    EXPECT_FALSE(fixture.WithinDeadline());
++    task_environment()->FastForwardBy(base::Seconds(1));
++    EXPECT_FALSE(fixture.WithinDeadline());
++  }
++};
++TEST_F(NativePipPresentationFixtureLifetimeTest, HideIsNotNativeWidgetDestruction) {
++  CheckHiddenIsNotDestruction();
++}
++TEST_F(NativePipPresentationFixtureLifetimeTest, ForeignWindowDestructionCannotRetireOriginal) {
++  CheckForeignWindowCannotRetireOriginal();
++}
++TEST_F(NativePipPresentationFixtureLifetimeTest, ReceiptDestructionKeepsOriginalWidgetAlive) {
++  CheckReceiptDestructionIsNotWindowDestruction();
++}
++TEST_F(NativePipPresentationFixtureLifetimeTest, ExactFiveSecondDeadlineNeverRefreshes) {
++  CheckExactOriginalDeadline();
++}
++TEST_F(NativePipPresentationFixtureLifetimeTest, MissingSourceNeverInventsReadyOrHardware) {
++  NativePipPresentationFixture fixture{base::WeakPtr<WebUIBrowserUI>()};
++  base::test::TestFuture<base::DictValue> ready;
++  fixture.Prepare(ready.GetCallback());
++  EXPECT_EQ(*ready.Get().FindString("status"), "refused");
++  EXPECT_EQ(ready.Get().FindBool("measured"), false);
++  EXPECT_FALSE(ready.Get().contains("targetWidgetReceipt"));
++  EXPECT_FALSE(ready.Get().contains("elapsedUs"));
++  base::test::TestFuture<base::DictValue> complete;
++  fixture.Complete(complete.GetCallback());
++  EXPECT_EQ(*complete.Get().FindString("status"), "refused");
++  EXPECT_EQ(complete.Get().FindBool("measured"), false);
++}
++TEST_F(NativePipPresentationFixtureLifetimeTest, ReadyRefusalMayDestroyFixture) {
++  auto fixture = std::make_unique<NativePipPresentationFixture>(
++      base::WeakPtr<WebUIBrowserUI>());
++  unsigned replies = 0;
++  fixture->Prepare(base::BindOnce(
++      [](std::unique_ptr<NativePipPresentationFixture>* owner,
++         unsigned* replies, base::DictValue actual) {
++        ++*replies;
++        EXPECT_EQ(*actual.FindString("status"), "refused");
++        owner->reset();
++      }, &fixture, &replies));
++  task_environment()->RunUntilIdle();
++  EXPECT_FALSE(fixture);
++  EXPECT_EQ(replies, 1u);
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_private_fixture_methods.h b/chrome/browser/ui/aux/native_private_fixture_methods.h
+index 53dd5c9..9e13f1d 100644
+--- a/chrome/browser/ui/aux/native_private_fixture_methods.h
++++ b/chrome/browser/ui/aux/native_private_fixture_methods.h
+@@ -17,6 +17,9 @@ inline constexpr NativePrivateFixtureMethod kNativePrivateFixtureMethods[] = {
+   {"prepareGuestDividerFramePresentation", NativePrivateFixtureGate::kPerformance},
+   {"prepareGuestTabSwitchPresentation", NativePrivateFixtureGate::kPerformance},
+   {"completeGuestPresentation", NativePrivateFixtureGate::kPerformance},
++  {"preparePipWindowPresentation", NativePrivateFixtureGate::kPerformance},
++  {"completePipWindowPresentation", NativePrivateFixtureGate::kPerformance},
++  {"retirePipWindowPresentation", NativePrivateFixtureGate::kPerformance},
+   {"prepareLittleWindowPresentation", NativePrivateFixtureGate::kPerformance},
+   {"completeLittleWindowPresentation", NativePrivateFixtureGate::kPerformance},
+   {"performanceFixtureNextRequest", NativePrivateFixtureGate::kPerformance},
+diff --git a/chrome/browser/ui/views/overlay/video_overlay_window_views.cc b/chrome/browser/ui/views/overlay/video_overlay_window_views.cc
+index 8ec04e4..803c837 100644
+--- a/chrome/browser/ui/views/overlay/video_overlay_window_views.cc
++++ b/chrome/browser/ui/views/overlay/video_overlay_window_views.cc
+@@ -21,6 +21,9 @@
+ #include "chrome/browser/media/media_engagement_service.h"
+ #include "chrome/browser/picture_in_picture/picture_in_picture_occlusion_tracker.h"
+ #include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/native_pip_presentation_fixture.h"
++#endif
+ #include "chrome/browser/picture_in_picture/video_overlay_window.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_init_state.h"
+@@ -368,6 +371,10 @@ std::unique_ptr<VideoOverlayWindowViews> VideoOverlayWindowViews::Create(
+ 
+   overlay_window->Init(std::move(params));
+   overlay_window->OnRootViewReady();
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
++  aux::ObserveNativePipInitializedForMeasurement(overlay_window.get(),
++      aux::NativePipSurfaceKind::kVideo, controller->GetWebContents());
++#endif
+ 
+ #if BUILDFLAG(IS_WIN)
+   std::wstring app_user_model_id;
+@@ -1724,6 +1731,10 @@ void VideoOverlayWindowViews::Close() {
+ }
+ 
+ void VideoOverlayWindowViews::ShowInactive() {
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
++  PictureInPictureWindowManager::GetInstance()->ObserveNativeVideoCreationForMeasurement(this);
++#endif
++
+ // Fade in animation is disabled for Document and Video Picture-in-Picture on
+ // Windows. On Windows, resizable windows can not be translucent. See
+ // crbug.com/425711450.
+diff --git a/chrome/browser/ui/views/picture_in_picture/document_pip_host.cc b/chrome/browser/ui/views/picture_in_picture/document_pip_host.cc
+index f58d007..a96dd2d 100644
+--- a/chrome/browser/ui/views/picture_in_picture/document_pip_host.cc
++++ b/chrome/browser/ui/views/picture_in_picture/document_pip_host.cc
+@@ -15,6 +15,10 @@
+ #include "chrome/browser/content_settings/page_specific_content_settings_delegate.h"
+ #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/native_pip_presentation_fixture.h"
++#endif
+ #include "chrome/browser/ui/views/picture_in_picture/document_pip_contents_view.h"
+ #include "chrome/browser/ui/views/picture_in_picture/document_pip_dialog_manager_delegate.h"
+ #include "chrome/browser/ui/views/picture_in_picture/document_pip_frame_view.h"
+@@ -163,6 +167,10 @@ void DocumentPipHost::CreateAndShowPipWindow(
+   params.native_widget = new DocumentPipNativeWidgetMac(widget_.get());
+ #endif
+   widget_->Init(std::move(params));
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
++  aux::ObserveNativePipInitializedForMeasurement(widget_.get(),
++      aux::NativePipSurfaceKind::kDocument, web_contents());
++#endif
+ 
+   widget_observation_.Observe(widget_.get());
+   if (auto* contents_view = widget_delegate_->GetDocumentPipContentsView()) {
+@@ -199,6 +207,9 @@ void DocumentPipHost::CreateAndShowPipWindow(
+   // is initialized because the dialog manager anchors to it.
+   CreateChildWebContentsHelpers(GetChildWebContents());
+ 
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
++  PictureInPictureWindowManager::GetInstance()->ObserveNativeDocumentCreationForMeasurement(this);
++#endif
+   widget_->Show();
+ }
+ 
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index a5567ed..135c41c 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -17,6 +17,7 @@
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/journey_fixture_path.h"
+ #include "chrome/browser/ui/aux/native_cdp_measurement_producer.h"
++#include "chrome/browser/ui/aux/native_pip_presentation_fixture.h"
+ #include "chrome/browser/ui/aux/native_stop_input_endpoint.h"
+ #include "chrome/browser/ui/aux/native_performance_observer.h"
+ #include "content/public/browser/native_platform_input_admission.h"
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index e80e915..a62af80 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -78,6 +78,9 @@ class DictationMac;
+ class NativeCommandPresentationSession;
+ class NativeGuestPresentationFixture;
+ class NativeLittlePresentationFixture;
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++class NativePipPresentationFixture;
++#endif
+ class NativeOrganizationWorkFixture;
+ class NativePerformanceMailbox;
+ class NativeShellMemorySampler;
+@@ -366,6 +369,9 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+   std::unique_ptr<aux::NativeCommandPresentationSession> command_presentation_session_;
+   std::unique_ptr<aux::NativeGuestPresentationFixture> guest_presentation_fixture_;
+   std::unique_ptr<aux::NativeLittlePresentationFixture> little_presentation_fixture_;
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  std::unique_ptr<aux::NativePipPresentationFixture> pip_presentation_fixture_;
++#endif
+   std::unique_ptr<aux::NativePerformanceMailbox> performance_mailbox_;
+   std::unique_ptr<aux::NativeOrganizationWorkFixture> organization_work_fixture_;
+   std::unique_ptr<aux::NativeShellMemorySampler> shell_memory_sampler_;
+diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
+index a29fcfe..52f2c78 100644
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -8089,6 +8089,7 @@ test("unit_tests") {
+       "../browser/ui/aux/native_guest_presentation_fixture_unittest.cc",
+       "../browser/ui/aux/native_little_creation_ticket_unittest.cc",
+       "../browser/ui/aux/native_little_presentation_fixture_unittest.cc",
++      "../browser/ui/aux/native_pip_presentation_fixture_unittest.cc",
+       "../browser/ui/aux/native_startup_launch_receipt_unittest.cc",
+       "../browser/ui/aux/native_private_fixture_methods_unittest.cc",
+       "../browser/ui/aux/native_aux_warm_fixture_unittest.cc",
+diff --git a/ui/views/BUILD.gn b/ui/views/BUILD.gn
+index 2402dbe..0bff68c 100644
+--- a/ui/views/BUILD.gn
++++ b/ui/views/BUILD.gn
+@@ -339,6 +339,7 @@ component("views") {
+     "widget/any_widget_observer.h",
+     "widget/any_widget_observer_singleton.h",
+     "widget/drop_helper.h",
++    "widget/native_root_paint_observation.h",
+     "widget/native_widget.h",
+     "widget/native_widget_delegate.h",
+     "widget/native_widget_private.h",
+diff --git a/ui/views/widget/native_root_paint_observation.h b/ui/views/widget/native_root_paint_observation.h
+new file mode 100644
+index 0000000..95b43a4
+--- /dev/null
++++ b/ui/views/widget/native_root_paint_observation.h
+@@ -0,0 +1,24 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef UI_VIEWS_WIDGET_NATIVE_ROOT_PAINT_OBSERVATION_H_
++#define UI_VIEWS_WIDGET_NATIVE_ROOT_PAINT_OBSERVATION_H_
++
++#include "base/functional/callback_forward.h"
++#include "base/time/time.h"
++#include "ui/gfx/geometry/rect.h"
++
++namespace views {
++// Actual RootView PaintChildren completion; never a submission/presentation
++// receipt. Caller clocks, geometry, scheduling and ready setters are absent.
++struct NativeRootPaintObservation {
++  base::TimeTicks ready;
++  gfx::Rect recording_bounds_in_pixels;
++  float device_scale_factor = 0;
++  bool entire_client_painted = false;
++};
++using NativeRootPaintCallback =
++    base::OnceCallback<void(NativeRootPaintObservation)>;
++}  // namespace views
++
++#endif  // UI_VIEWS_WIDGET_NATIVE_ROOT_PAINT_OBSERVATION_H_
+diff --git a/ui/views/widget/root_view.cc b/ui/views/widget/root_view.cc
+index cc90464..4a02096 100644
+--- a/ui/views/widget/root_view.cc
++++ b/ui/views/widget/root_view.cc
+@@ -5,6 +5,7 @@
+ #include "ui/views/widget/root_view.h"
+ 
+ #include <algorithm>
++#include <cmath>
+ #include <memory>
+ #include <string_view>
+ 
+@@ -29,8 +30,10 @@
+ #include "ui/events/gestures/gesture_recognizer.h"
+ #include "ui/events/keycodes/keyboard_codes.h"
+ #include "ui/gfx/canvas.h"
++#include "ui/gfx/geometry/size_conversions.h"
+ #include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/drag_controller.h"
++#include "ui/views/paint_info.h"
+ #include "ui/views/view_class_properties.h"
+ #include "ui/views/view_targeter.h"
+ #include "ui/views/view_tracker.h"
+@@ -819,6 +822,84 @@ void RootView::OnDidSchedulePaint(const gfx::Rect& rect) {
+   }
+ }
+ 
++bool RootView::ObserveNativeRootPaintForTesting(NativeRootPaintCallback callback) {
++  if (native_root_paint_used_ || callback.is_null() || !widget_ ||
++      widget_->GetRootView() != this) {
++    return false;
++  }
++  native_root_paint_used_ = true;
++  native_root_paint_callback_ = std::move(callback);
++  return true;
++}
++
++bool RootView::BeginNativeRootPaintForTesting() {
++  if (native_root_paint_in_progress_) {
++    native_root_paint_ambiguous_ = true;
++    return false;
++  }
++  native_root_paint_in_progress_ = true;
++  return true;
++}
++
++void RootView::PaintChildren(const PaintInfo& info) {
++  if (!native_root_paint_in_progress_ ||
++      native_root_paint_callback_.is_null() || native_root_paint_observation_) {
++    View::PaintChildren(info);
++    return;
++  }
++  const auto self = weak_factory_.GetWeakPtr();
++  const auto original_bounds = GetLocalBounds();
++  const auto recording = info.paint_recording_bounds();
++  const float scale = info.context().device_scale_factor();
++  const bool valid_scale = scale > 0 && std::isfinite(scale);
++  const auto expected_recording_size = valid_scale
++      ? (info.IsPixelCanvas()
++             ? gfx::ScaleToCeiledSize(original_bounds.size(), scale)
++             : original_bounds.size())
++      : gfx::Size();
++  const bool complete = recording.size() == expected_recording_size &&
++      info.ShouldPaint() && recording.origin() == gfx::Point() &&
++      !original_bounds.IsEmpty() &&
++      (!info.context().CanCheckInvalid() ||
++       info.context().InvalidationForTesting().Contains(recording));
++  const auto pixels = valid_scale
++      ? (info.IsPixelCanvas() ? recording.size()
++                             : gfx::ScaleToCeiledSize(recording.size(), scale))
++      : gfx::Size();
++  // Original paint order remains unchanged. No external completion is invoked
++  // while View::PaintFromPaintRoot may still access this view for debug paint.
++  View::PaintChildren(info);
++  if (!self || native_root_paint_callback_.is_null() ||
++      native_root_paint_observation_ || !widget_ ||
++      widget_->GetRootView() != this) {
++    return;
++  }
++  const bool visible = widget_->IsVisible();
++  if (!self || !visible || !widget_ || widget_->GetRootView() != this) {
++    return;
++  }
++  native_root_paint_observation_ = NativeRootPaintObservation{
++      base::TimeTicks(), gfx::Rect(pixels), scale,
++      complete && GetLocalBounds() == original_bounds && valid_scale &&
++          !pixels.IsEmpty()};
++}
++
++void RootView::CompleteNativeRootPaintForTesting() {
++  native_root_paint_in_progress_ = false;
++  if (!native_root_paint_observation_ ||
++      native_root_paint_callback_.is_null()) {
++    return;
++  }
++  auto observation = std::move(*native_root_paint_observation_);
++  observation.ready = base::TimeTicks::Now();
++  observation.entire_client_painted &= !native_root_paint_ambiguous_;
++  native_root_paint_observation_.reset();
++  auto callback = std::move(native_root_paint_callback_);
++  // Widget calls this only after the original whole paint returns. Delivery is
++  // still in the same UpdateLayers pipeline; no member access follows it.
++  std::move(callback).Run(std::move(observation));
++}
++
+ void RootView::OnPaint(gfx::Canvas* canvas) {
+   if (!layer() || !layer()->fills_bounds_opaquely()) {
+     canvas->DrawColor(SK_ColorTRANSPARENT, SkBlendMode::kClear);
+diff --git a/ui/views/widget/root_view.h b/ui/views/widget/root_view.h
+index 615f203..87736d7 100644
+--- a/ui/views/widget/root_view.h
++++ b/ui/views/widget/root_view.h
+@@ -6,6 +6,7 @@
+ #define UI_VIEWS_WIDGET_ROOT_VIEW_H_
+ 
+ #include <memory>
++#include <optional>
+ #include <string>
+ 
+ #include "base/memory/raw_ptr.h"
+@@ -16,6 +17,7 @@
+ #include "ui/views/focus/focus_search.h"
+ #include "ui/views/view.h"
+ #include "ui/views/view_targeter_delegate.h"
++#include "ui/views/widget/native_root_paint_observation.h"
+ 
+ namespace views {
+ 
+@@ -148,6 +150,7 @@ class VIEWS_EXPORT RootView : public View,
+   void VisibilityChanged(View* starting_from, bool is_visible) override;
+   void OnDidSchedulePaint(const gfx::Rect& rect) override;
+   void OnPaint(gfx::Canvas* canvas) override;
++  void PaintChildren(const PaintInfo& info) override;
+   View::LayerOffsetData CalculateOffsetToAncestorWithLayer(
+       ui::Layer** layer_parent) override;
+   View::DragInfo* GetDragInfo() override;
+@@ -159,6 +162,12 @@ class VIEWS_EXPORT RootView : public View,
+   friend class ::views::test::ViewTargeterTest;
+   friend class ::views::test::WidgetTest;
+ 
++  // Widget forwards the actual native root only. One-use observer, no paint
++  // scheduling, caller bounds, caller clock, or ready-state setter.
++  bool ObserveNativeRootPaintForTesting(NativeRootPaintCallback callback);
++  bool BeginNativeRootPaintForTesting();
++  void CompleteNativeRootPaintForTesting();
++
+   // Input ---------------------------------------------------------------------
+ 
+   // Update the cursor given a mouse event. This is called by non mouse_move
+@@ -278,6 +287,12 @@ class VIEWS_EXPORT RootView : public View,
+   raw_ptr<AnnounceTextView, AcrossTasksDanglingUntriaged> announce_view_ =
+       nullptr;
+ 
++  bool native_root_paint_used_ = false;
++  bool native_root_paint_in_progress_ = false;
++  bool native_root_paint_ambiguous_ = false;
++  NativeRootPaintCallback native_root_paint_callback_;
++  std::optional<NativeRootPaintObservation> native_root_paint_observation_;
++
+   base::WeakPtrFactory<RootView> weak_factory_{this};
+ };
+ 
+diff --git a/ui/views/widget/root_view_unittest.cc b/ui/views/widget/root_view_unittest.cc
+index 9d31821..68a06de 100644
+--- a/ui/views/widget/root_view_unittest.cc
++++ b/ui/views/widget/root_view_unittest.cc
+@@ -5,13 +5,16 @@
+ #include "ui/views/widget/root_view.h"
+ 
+ #include <memory>
++#include <optional>
+ #include <utility>
+ 
+ #include "base/functional/bind.h"
+ #include "base/functional/callback.h"
+ #include "base/memory/ptr_util.h"
++#include "base/memory/ref_counted.h"
+ #include "base/memory/raw_ptr.h"
+ #include "build/build_config.h"
++#include "cc/paint/display_item_list.h"
+ #include "ui/accessibility/ax_enums.mojom.h"
+ #include "ui/accessibility/ax_node_data.h"
+ #include "ui/accessibility/platform/ax_platform_node.h"
+@@ -19,6 +22,7 @@
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/mojom/dialog_button.mojom.h"
+ #include "ui/base/mojom/menu_source_type.mojom.h"
++#include "ui/compositor/paint_context.h"
+ #include "ui/events/event_utils.h"
+ #include "ui/events/keycodes/dom/dom_code.h"
+ #include "ui/gfx/native_ui_types.h"
+@@ -106,6 +110,100 @@ END_METADATA
+ 
+ using RootViewTest = ViewsTestBase;
+ 
++// These exercise the real Views paint entrypoint, not hardware presentation.
++class NativeRootPaintChild : public View {
++ public:
++  explicit NativeRootPaintChild(bool* painted) : painted_(painted) {}
++  void OnPaint(gfx::Canvas* canvas) override { *painted_ = true; }
++
++ private:
++  raw_ptr<bool> painted_;
++};
++
++TEST_F(RootViewTest, NativeRootPaintObservedAfterOriginalChildren) {
++  RootViewTestState state(this, {.bounds = gfx::Rect(0, 0, 40, 30)});
++  bool painted = false;
++  state.widget()->SetContentsView(
++      std::make_unique<NativeRootPaintChild>(&painted));
++  std::optional<NativeRootPaintObservation> actual;
++  ASSERT_TRUE(state.widget()->ObserveNativeRootPaintForTesting(base::BindOnce(
++      [](bool* child_painted,
++         std::optional<NativeRootPaintObservation>* result,
++         NativeRootPaintObservation observation) {
++        EXPECT_TRUE(*child_painted);
++        *result = std::move(observation);
++      }, &painted, &actual)));
++  EXPECT_FALSE(actual);
++  // An arbitrary root-view paint is not the actual native Widget entrypoint.
++  auto direct_items = base::MakeRefCounted<cc::DisplayItemList>();
++  state.widget()->GetRootView()->PaintFromPaintRoot(ui::PaintContext(
++      direct_items.get(), 1.f, state.widget()->GetRootView()->GetLocalBounds(),
++      false));
++  EXPECT_FALSE(actual);
++  const auto before = base::TimeTicks::Now();
++  auto items = base::MakeRefCounted<cc::DisplayItemList>();
++  state.widget()->OnNativeWidgetPaint(ui::PaintContext(
++      items.get(), 1.f, state.widget()->GetRootView()->GetLocalBounds(), false));
++  ASSERT_TRUE(actual);
++  EXPECT_GE(actual->ready, before);
++  EXPECT_LE(actual->ready, base::TimeTicks::Now());
++  EXPECT_EQ(actual->recording_bounds_in_pixels,
++            state.widget()->GetRootView()->GetLocalBounds());
++  EXPECT_EQ(actual->device_scale_factor, 1.f);
++  EXPECT_TRUE(actual->entire_client_painted);
++}
++
++TEST_F(RootViewTest, NativeRootPartialPaintDoesNotQualifyAndIsOneUse) {
++  RootViewTestState state(this, {.bounds = gfx::Rect(0, 0, 40, 30)});
++  std::optional<NativeRootPaintObservation> actual;
++  ASSERT_TRUE(state.widget()->ObserveNativeRootPaintForTesting(base::BindOnce(
++      [](std::optional<NativeRootPaintObservation>* result,
++         NativeRootPaintObservation observation) {
++        *result = std::move(observation);
++      }, &actual)));
++  auto items = base::MakeRefCounted<cc::DisplayItemList>();
++  state.widget()->OnNativeWidgetPaint(
++      ui::PaintContext(items.get(), 1.f, gfx::Rect(0, 0, 1, 1), false));
++  ASSERT_TRUE(actual);
++  EXPECT_FALSE(actual->entire_client_painted);
++  EXPECT_FALSE(state.widget()->ObserveNativeRootPaintForTesting(base::BindOnce(
++      [](NativeRootPaintObservation) { ADD_FAILURE(); })));
++}
++
++TEST_F(RootViewTest, NativeRootHiddenPaintCannotProduceReadiness) {
++  RootViewTestState state(this, {.bounds = gfx::Rect(0, 0, 40, 30)});
++  bool called = false;
++  ASSERT_TRUE(state.widget()->ObserveNativeRootPaintForTesting(base::BindOnce(
++      [](bool* result, NativeRootPaintObservation) { *result = true; },
++      &called)));
++  state.widget()->Hide();
++  auto items = base::MakeRefCounted<cc::DisplayItemList>();
++  state.widget()->OnNativeWidgetPaint(ui::PaintContext(
++      items.get(), 1.f, state.widget()->GetRootView()->GetLocalBounds(), false));
++  EXPECT_FALSE(called);
++}
++
++TEST_F(RootViewTest, NativeRootCompletionMayDestroyOriginalWidget) {
++  auto widget = std::make_unique<Widget>();
++  auto params = CreateParams(Widget::InitParams::CLIENT_OWNS_WIDGET,
++                            Widget::InitParams::TYPE_WINDOW_FRAMELESS);
++  params.bounds = gfx::Rect(0, 0, 40, 30);
++  widget->Init(std::move(params));
++  widget->SetContentsView(std::make_unique<View>());
++  widget->Show();
++  const auto original = widget->GetWeakPtr();
++  ASSERT_TRUE(widget->ObserveNativeRootPaintForTesting(base::BindOnce(
++      [](std::unique_ptr<Widget>* owner, NativeRootPaintObservation observation) {
++        EXPECT_TRUE(observation.entire_client_painted);
++        owner->reset();
++      }, &widget)));
++  auto items = base::MakeRefCounted<cc::DisplayItemList>();
++  widget->OnNativeWidgetPaint(ui::PaintContext(
++      items.get(), 1.f, widget->GetRootView()->GetLocalBounds(), false));
++  EXPECT_FALSE(original);
++  EXPECT_FALSE(widget);
++}
++
+ // Verifies deleting a View in OnKeyPressed() doesn't crash and that the
+ // target is marked as destroyed in the returned EventDispatchDetails.
+ TEST_F(RootViewTest, DeleteViewDuringKeyEventDispatch) {
+diff --git a/ui/views/widget/widget.cc b/ui/views/widget/widget.cc
+index 5100d0c..239e150 100644
+--- a/ui/views/widget/widget.cc
++++ b/ui/views/widget/widget.cc
+@@ -1363,6 +1363,11 @@ void Widget::FlashFrame(bool flash) {
+   }
+ }
+ 
++bool Widget::ObserveNativeRootPaintForTesting(NativeRootPaintCallback callback) {
++  return root_view_ &&
++         root_view_->ObserveNativeRootPaintForTesting(std::move(callback));
++}
++
+ View* Widget::GetRootView() {
+   return root_view_.get();
+ }
+@@ -2276,7 +2281,21 @@ void Widget::OnNativeWidgetPaint(const ui::PaintContext& context) {
+   if (!native_widget_initialized_) {
+     return;
+   }
+-  GetRootView()->PaintFromPaintRoot(context);
++  if (root_view_->native_root_paint_callback_.is_null()) {
++    GetRootView()->PaintFromPaintRoot(context);
++    return;
++  }
++  const auto original_widget = GetWeakPtr();
++  auto* const original_root = root_view_.get();
++  const auto original_root_weak = original_root->weak_factory_.GetWeakPtr();
++  const bool original_paint = original_root->BeginNativeRootPaintForTesting();
++  original_root->PaintFromPaintRoot(context);
++  if (!original_widget || !original_root_weak || !original_paint ||
++      root_view_.get() != original_root) {
++    return;
++  }
++  // Final operation after View has finished all normal/debug root painting.
++  original_root->CompleteNativeRootPaintForTesting();
+ }
+ 
+ int Widget::GetNonClientComponent(const gfx::Point& point) {
+diff --git a/ui/views/widget/widget.h b/ui/views/widget/widget.h
+index 4b71f01..286d966 100644
+--- a/ui/views/widget/widget.h
++++ b/ui/views/widget/widget.h
+@@ -41,6 +41,7 @@
+ #include "ui/views/focus/focus_manager.h"
+ #include "ui/views/input_event_activation_protector.h"
+ #include "ui/views/view_utils.h"
++#include "ui/views/widget/native_root_paint_observation.h"
+ #include "ui/views/widget/native_widget_delegate.h"
+ #include "ui/views/window/client_view.h"
+ #include "ui/views/window/frame_view.h"
+@@ -1087,6 +1088,10 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
+   View* GetRootView();
+   const View* GetRootView() const;
+ 
++  // Observes one actual visible native root paint after its children, without
++  // forcing a repaint. This is not a frame/submission/hardware proof.
++  bool ObserveNativeRootPaintForTesting(NativeRootPaintCallback callback);
++
+   // Returns whether the Widget is mapped by the window server. It doesn't
+   // necessarily mean the window's pixels are currently visible on a physical
+   // display to the user.

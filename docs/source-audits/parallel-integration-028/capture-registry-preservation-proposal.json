@@ -1,0 +1,18 @@
+{
+  "sourceOnly": true,
+  "rootEdited": false,
+  "path": "tests/unit/browser-host-registry.test.ts",
+  "beforeSha256": "19f2cf633c94510358b232c9188cf10b1178b0d9704ed80d7f2e6ecfc0c44003",
+  "resultSha256": "32cce7f3e7a0db1c1b564cf3924986f895972a8a46b9a2f53ea3d4517cdf3eb5",
+  "patchSha256": "b8b140807c70a3c0b81b8e25bd93fc4070b1a45565973b2d7bb5ad3d84c721eb",
+  "exactAddition": "native.personCapture",
+  "actualRuntimeCount": 71,
+  "actualBrowserCount": 154,
+  "actualNormalizedCurrentHash": "91eca119b91a9c9467e47e7a5fff7337cbfaa7e8df0eed4dc6f5ac679e559664",
+  "subtractExactAdditionRestoresOriginalHash": "fa75c457314c47a4b44e29bb7bd73ab1fe4f45a064c75d8e2eda04554b464c3d",
+  "additiveMethodSchemaMetadataHash": "225883491bbdcda2edadd87d7a482531257db9f8cb40555faa6e554def15d399",
+  "sourceDeltaOnlyImportAndOneRegistryRow": true,
+  "allOriginalAssertionsRetainedExceptTruthfulRuntimeTotal71": true,
+  "proposalNotTested": true,
+  "initialReadOnlyProbeRefusal": "root eval could not resolve nested zod; exact probe succeeded from original contracts package cwd, no dependency changes"
+}

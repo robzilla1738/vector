@@ -5,6 +5,8 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 import Darwin
+import Security
+import LocalAuthentication
 
 func trustedState() -> [String: Bool] {
   return ["accessibility": AXIsProcessTrusted(), "screenRecording": CGPreflightScreenCaptureAccess(),
@@ -22,6 +24,273 @@ if CommandLine.arguments.count == 2 && CommandLine.arguments[1] == "trusted" {
   let data = try! JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
   print(String(data: data, encoding: .utf8)!)
   exit(0)
+}
+
+private enum CredentialGuardianFailure: Error { case refused }
+private struct CredentialDirectory {
+  let fd: Int32
+  let path: String
+  let original: stat
+  init(_ fd: Int32) throws {
+    var info = stat()
+    var name = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+    guard fstat(fd, &info) == 0, info.st_mode & S_IFMT == S_IFDIR,
+      info.st_uid == geteuid(), info.st_mode & 0o777 == 0o700,
+      fcntl(fd, F_GETPATH, &name) == 0 else { throw CredentialGuardianFailure.refused }
+    self.fd = fd; self.path = String(cString: name); self.original = info
+  }
+  func current() -> Bool {
+    var held = stat(), named = stat()
+    guard fstat(fd, &held) == 0, lstat(path, &named) == 0 else { return false }
+    return [held, named].allSatisfy {
+      $0.st_dev == original.st_dev && $0.st_ino == original.st_ino &&
+      $0.st_uid == original.st_uid && $0.st_mode == original.st_mode &&
+      $0.st_mode & S_IFMT == S_IFDIR
+    }
+  }
+}
+private struct CredentialSlot {
+  let directory: CredentialDirectory
+  let owner: CredentialDirectoryOwner
+  init() throws {
+    directory = try CredentialDirectory(7)
+    guard directory.path == FileManager.default.homeDirectoryForCurrentUser.path + "/aux-chromium-stable/.aux-native-slot" else {
+      throw CredentialGuardianFailure.refused
+    }
+    owner = try CredentialDirectoryOwner(8, path: directory.path + "/owner.json")
+    guard current() else { throw CredentialGuardianFailure.refused }
+  }
+  func current() -> Bool {
+    var quarantine = stat()
+    return directory.current() && owner.current() &&
+      fstatat(directory.fd, "quarantine.json", &quarantine, AT_SYMLINK_NOFOLLOW) != 0 && errno == ENOENT
+  }
+}
+private struct CredentialDirectoryOwner {
+  let fd: Int32
+  let path: String
+  let original: stat
+  let bytes: Data
+  let ownerPid: Int32
+  let token: String
+  init(_ fd: Int32, path: String) throws {
+    var info = stat(), named = stat()
+    guard fstat(fd, &info) == 0, lstat(path, &named) == 0,
+      info.st_mode & S_IFMT == S_IFREG, info.st_uid == geteuid(), info.st_mode & 0o777 == 0o600,
+      info.st_nlink == 1, info.st_dev == named.st_dev, info.st_ino == named.st_ino,
+      info.st_size > 0, info.st_size <= 4096 else { throw CredentialGuardianFailure.refused }
+    let size = Int(info.st_size)
+    var buffer = [UInt8](repeating: 0, count: size)
+    guard pread(fd, &buffer, size, 0) == size,
+      let text = String(bytes: buffer, encoding: .utf8),
+      text.range(of: #"^\{"pid":[1-9][0-9]*,"token":"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}","startedAt":[1-9][0-9]*\}$"#, options: .regularExpression) != nil,
+      let record = try JSONSerialization.jsonObject(with: Data(buffer)) as? [String: Any],
+      let pid = record["pid"] as? Int, pid > 0, pid <= Int(Int32.max),
+      let originalToken = record["token"] as? String,
+      ProcessInfo.processInfo.environment["AUX_NATIVE_SLOT_TOKEN"] == originalToken else {
+      throw CredentialGuardianFailure.refused
+    }
+    self.fd = fd; self.path = path; original = info; bytes = Data(buffer); ownerPid = Int32(pid); token = originalToken
+  }
+  func current() -> Bool {
+    var held = stat(), named = stat()
+    guard fstat(fd, &held) == 0, lstat(path, &named) == 0,
+      held.st_size == original.st_size, held.st_nlink == 1, named.st_nlink == 1,
+      [held, named].allSatisfy({ $0.st_dev == original.st_dev && $0.st_ino == original.st_ino &&
+        $0.st_uid == original.st_uid && $0.st_mode == original.st_mode }),
+      ProcessInfo.processInfo.environment["AUX_NATIVE_SLOT_TOKEN"] == token,
+      kill(ownerPid, 0) == 0 || errno == EPERM else { return false }
+    let size = Int(original.st_size)
+    var buffer = [UInt8](repeating: 0, count: size)
+    return pread(fd, &buffer, size, 0) == size && Data(buffer) == bytes
+  }
+}
+private final class FixedCredentialGuardian {
+  private let slot: CredentialSlot
+  private let root: CredentialDirectory
+  private let profile: CredentialDirectory
+  private let defaultProfile: CredentialDirectory
+  private var service: String
+  private let account = "modelKey-openai-compatible"
+  private var endpointReservation: String?
+  private var endpoint: String?
+  private var nonce: String?
+  private var witness: Data?
+  private var reference: Data?
+  private var absent = false
+  private var debt = false
+  private var browserRetired = false
+  private var retired = false
+  private let acquired = mach_absolute_time()
+  private var profileBound = false
+  private func reservationCurrent() -> Bool {
+    var scale = mach_timebase_info_data_t()
+    guard mach_timebase_info(&scale) == KERN_SUCCESS, scale.numer > 0, scale.denom > 0 else { return false }
+    let (scaled, overflow) = UInt64(150_000_000_000).multipliedReportingOverflow(by: UInt64(scale.denom))
+    guard !overflow else { return false }
+    let ticks = scaled / UInt64(scale.numer)
+    let (deadline, endOverflow) = acquired.addingReportingOverflow(ticks)
+    return !endOverflow && mach_absolute_time() < deadline
+  }
+  init() throws {
+    slot = try CredentialSlot()
+    root = try CredentialDirectory(4); profile = try CredentialDirectory(5)
+    defaultProfile = try CredentialDirectory(6)
+    let base = URL(fileURLWithPath: root.path).lastPathComponent
+    guard root.path == "/private/tmp/" + base,
+      base.range(of: "^aux-native-journey-[A-Za-z0-9]+$", options: .regularExpression) != nil,
+      profile.path == root.path + "/profile",
+      defaultProfile.path == profile.path + "/Default" else { throw CredentialGuardianFailure.refused }
+    service = "dev.aux.browser:" + defaultProfile.path
+    guard current() else { throw CredentialGuardianFailure.refused }
+  }
+  private func current() -> Bool {
+    if retired { return false }
+    if !reservationCurrent() || !slot.current() || !root.current() || !profile.current() || !defaultProfile.current() { retired = true }
+    return !retired
+  }
+  private func fixedQuery() -> [String: Any] {
+    let context = LAContext(); context.interactionNotAllowed = true
+    return [kSecClass as String: kSecClassGenericPassword,
+      kSecAttrService as String: service, kSecAttrAccount as String: account,
+      kSecAttrSynchronizable as String: false, kSecUseAuthenticationContext as String: context]
+  }
+  private func observe(_ original: Data? = nil) throws -> [String: Any]? {
+    guard current() else { throw CredentialGuardianFailure.refused }
+    var query = fixedQuery()
+    query[kSecReturnAttributes as String] = true
+    query[kSecReturnPersistentRef as String] = true
+    query[kSecMatchLimit as String] = kSecMatchLimitOne
+    if let original { query[kSecMatchItemList as String] = [original] }
+    var result: CFTypeRef?
+    let status = SecItemCopyMatching(query as CFDictionary, &result)
+    guard current() else { throw CredentialGuardianFailure.refused }
+    if status == errSecItemNotFound { return nil }
+    guard status == errSecSuccess, let attributes = result as? [String: Any] else {
+      throw CredentialGuardianFailure.refused
+    }
+    return attributes
+  }
+  private func originalAttributes(_ attributes: [String: Any]) throws -> Data {
+    guard attributes[kSecAttrService as String] as? String == service,
+      attributes[kSecAttrAccount as String] as? String == account,
+      let heldWitness = witness,
+      attributes[kSecAttrGeneric as String] as? Data == heldWitness,
+      let item = attributes[kSecValuePersistentRef as String] as? Data,
+      !item.isEmpty, item.count <= 1024,
+      reference == nil || item == reference else { throw CredentialGuardianFailure.refused }
+    return item
+  }
+  func command(_ line: String) throws -> String {
+    guard line.utf8.count <= 4096, current() else { throw CredentialGuardianFailure.refused }
+    let fields = line.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+    if fields.count == 4, fields[0] == "HELLO", nonce == nil,
+      fields[2].range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil,
+      let endpointBytes = Data(base64Encoded: fields[3]), endpointBytes.base64EncodedString() == fields[3],
+      let heldEndpoint = String(data: endpointBytes, encoding: .utf8),
+      let target = URLComponents(string: heldEndpoint), target.scheme == "http", target.host == "127.0.0.1",
+      let port = target.port, port > 0, port <= 65535,
+      heldEndpoint == "http://127.0.0.1:\(port)/v1",
+      fields[1].range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil {
+      endpointReservation = fields[2]; endpoint = heldEndpoint
+      nonce = fields[1]
+      return "READY|\(fields[1])|\(getpid())|\(defaultProfile.original.st_dev)|\(defaultProfile.original.st_ino)|\(acquired)"
+    }
+    guard fields.count >= 2, let nonce, fields[1] == nonce else { throw CredentialGuardianFailure.refused }
+    let prefix = fields[0]
+    if prefix == "PROFILE", fields.count == 3, !profileBound, !absent, !debt, !browserRetired,
+      reservationCurrent(), ["tmp", "private-tmp"].contains(fields[2]) {
+      service = "dev.aux.browser:" + (fields[2] == "tmp"
+        ? String(defaultProfile.path.dropFirst("/private".count)) : defaultProfile.path)
+      profileBound = true; return "PROFILE-BOUND|\(nonce)"
+    }
+    if prefix == "ARM", fields.count == 2, profileBound, endpointReservation != nil, endpoint != nil, !absent, !debt, !browserRetired,
+      reservationCurrent() {
+      guard try observe() == nil else { throw CredentialGuardianFailure.refused }
+      absent = true; return "ABSENT|\(nonce)"
+    }
+    if prefix == "INTENT", fields.count == 3, absent, !debt, !browserRetired,
+      reservationCurrent(),
+      fields[2].range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil {
+      // Retain the original native-issued witness BEFORE acknowledging any Add.
+      witness = Data(fields[2].utf8); debt = true
+      return "INTENT-RETAINED|\(nonce)|\(fields[2])"
+    }
+    if prefix == "SAVED", fields.count == 4, debt, !browserRetired,
+      let bytes = Data(base64Encoded: fields[3]), !bytes.isEmpty, bytes.count <= 1024,
+      bytes.base64EncodedString() == fields[3], witness == Data(fields[2].utf8), reference == nil {
+      guard let actual = try observe(bytes), try originalAttributes(actual) == bytes else {
+        throw CredentialGuardianFailure.refused
+      }
+      reference = bytes; return "SAVED-RETAINED|\(nonce)"
+    }
+    if prefix == "BROWSER-RETIRED", fields.count == 2 {
+      browserRetired = true; return "BROWSER-RETIRED|\(nonce)"
+    }
+    if prefix == "CLEANUP", fields.count == 2, browserRetired, debt {
+      if let attributes = try observe(reference) {
+        let actualReference = try originalAttributes(attributes)
+        var query = fixedQuery()
+        query[kSecMatchItemList as String] = [actualReference]
+        query[kSecAttrGeneric as String] = witness!
+        guard current() else { throw CredentialGuardianFailure.refused }
+        let status = SecItemDelete(query as CFDictionary)
+        guard current(), status == errSecSuccess || status == errSecItemNotFound else {
+          throw CredentialGuardianFailure.refused
+        }
+      }
+      // A missing old reference does not bless a replacement account item.
+      guard try observe() == nil else { throw CredentialGuardianFailure.refused }
+      debt = false; return "REMOVED|\(nonce)"
+    }
+    if prefix == "FINISH", fields.count == 2, browserRetired, !debt {
+      guard try observe() == nil else { throw CredentialGuardianFailure.refused }
+      retired = true; return "FINAL|\(nonce)|absent"
+    }
+    throw CredentialGuardianFailure.refused
+  }
+}
+// Insert this fixed branch before original native-window AX/PID dispatch. It
+// deliberately uses no normal AX request-table selector or credential argument.
+func runFixedDisposableCredentialGuardian() -> Never {
+  do {
+    var channel = stat()
+    guard fstat(3, &channel) == 0, channel.st_mode & S_IFMT == S_IFSOCK,
+      channel.st_uid == geteuid() else {
+      throw CredentialGuardianFailure.refused
+    }
+    var peerUid: uid_t = 0, peerGid: gid_t = 0, peerPid: pid_t = 0
+    var peerSize = socklen_t(MemoryLayout<pid_t>.size)
+    guard getpeereid(3, &peerUid, &peerGid) == 0, peerUid == geteuid(),
+      getsockopt(3, SOL_LOCAL, LOCAL_PEERPID, &peerPid, &peerSize) == 0,
+      peerSize == socklen_t(MemoryLayout<pid_t>.size), peerPid == getppid() else {
+      throw CredentialGuardianFailure.refused
+    }
+    let guardian = try FixedCredentialGuardian()
+    let file = FileHandle(fileDescriptor: 3, closeOnDealloc: false)
+    var line = Data()
+    while true {
+      let byte = file.readData(ofLength: 1)
+      if byte.isEmpty { throw CredentialGuardianFailure.refused }
+      if byte[0] == 10 {
+        guard let text = String(data: line, encoding: .utf8) else { throw CredentialGuardianFailure.refused }
+        let result = try guardian.command(text)
+        file.write(Data((result + "\n").utf8)); line.removeAll(keepingCapacity: true)
+        if result.hasPrefix("FINAL|") { exit(0) }
+      } else {
+        guard line.count < 4096 else { throw CredentialGuardianFailure.refused }
+        line.append(byte)
+      }
+    }
+  } catch {
+    // No discarded token/reference, account-wide delete, auth prompt or guessed
+    // cleanup is emitted on failure. Original App retains explicit debt.
+    exit(1)
+  }
+}
+
+if CommandLine.arguments.count == 2 && CommandLine.arguments[1] == "credential-guardian" {
+  runFixedDisposableCredentialGuardian()
 }
 
 guard CommandLine.arguments.count >= 3,

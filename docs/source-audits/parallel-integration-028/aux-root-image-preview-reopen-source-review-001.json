@@ -1,0 +1,11 @@
+{
+  "sourceOnly": true,
+  "nativeF21Accepted": false,
+  "patchSha256": "16dd6c2152c7cffc505df3e5331e0054a5509b195d438ef371a91fb64c481857",
+  "sourcePinsSha256": "ab63b775733c6025d5244b5b758dcb4b0052d49a39daa52b4d52646b2213182e",
+  "rootActualOriginalResultJoinsAndForwardReverseForward": true,
+  "validOriginalImageGuardPrecedesExplicitPreviewGeneration": true,
+  "originalChatImageAndDraftIdentityRetained": true,
+  "retiredReadFenceControlsPreserved": true,
+  "strictBudgetAndWholeSourceGatesPending": true
+}

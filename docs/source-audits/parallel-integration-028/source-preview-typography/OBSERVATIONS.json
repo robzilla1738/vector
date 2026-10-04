@@ -1,0 +1,37 @@
+{
+  "sourceOnly": true,
+  "nativeAcceptedCells": 0,
+  "sourcePrerequisiteFreeze": "eb73985aa623cd88d34ff1fec3c1deb110e889ed012f8a4d5dac5d354364e7d0",
+  "previewCorrection": "exact original installed font files copied to owned public/preview-fonts; preview-only import alias relocates CSS URLs; all original font-face descriptors unchanged; no external allow-list relaxation",
+  "actualFontVerification": {
+    "light720": {
+      "FontFaceSetStatus": "loaded",
+      "registeredFaces": 11,
+      "check400_14px_GeistVariable_AuxQuestion": true,
+      "computedTextareaFamily": "Geist Variable, Geist, sans-serif",
+      "draftLength": 376,
+      "textareaClientAndScrollWidth": 622,
+      "rootScrollWidth": 720
+    },
+    "dark720": {
+      "FontFaceSetStatus": "loaded",
+      "registeredFaces": 11,
+      "check400_14px_GeistVariable_AuxQuestion": true,
+      "computedTextareaFamily": "Geist Variable, Geist, sans-serif",
+      "draftLength": 376,
+      "textareaClientAndScrollWidth": 622,
+      "rootScrollWidth": 720
+    }
+  },
+  "fontHttpReadback": {
+    "file": "geist-latin-wght-normal.woff2",
+    "ownedHttpBytesEqual": true,
+    "sha256": "19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1"
+  },
+  "limitations": [
+    "read-only browser facade exposes FontFaceSet.check/status/size but not face iteration",
+    "Geist Mono declared and byte-pinned; no visible monospaced state exercised",
+    "preview CSS import URL overlay is isolated and not a production modification",
+    "native fonts/material/RT/RM/hit pixels and owner approval remain pending"
+  ]
+}

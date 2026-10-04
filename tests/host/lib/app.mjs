@@ -1,3 +1,5 @@
+import { readDisposableModelCredentialEndpoint } from './fixture.mjs';
+import { prepareOriginalCredentialLaunch } from './disposable-model-credential-launch.mjs';
 import { createImportSourceOwner, createImportSourceHome, createImportInterruptionSourceHome, readImportSourceHome, disposeImportSourceHome, importSourceEnvironment } from './import-source-home.mjs';
 import { modelFixtureEnvironment } from './model-fixture-environment.mjs';
 import { homedir } from 'node:os';
@@ -18,6 +20,22 @@ import { readPackagedRuntimePair, readPackagedRuntimePairBytes } from './package
 import { createPrivateWindowStream } from './private-window-stream.mjs';
 import { createPrivateObservationOwner } from './private-observation-owner.mjs';
 
+const credentialApps = new WeakMap();
+export function readDisposableCredentialApp(app, pair, endpointLease) {
+  const original = credentialApps.get(app);
+  if (!original || original.pair !== pair || original.endpointLease !== endpointLease)
+    throw new Error('Foreign disposable credential App owner');
+  readPackagedRuntimePair(pair).validate();
+  const endpoint = readDisposableModelCredentialEndpoint(endpointLease);
+  return original.read(endpoint);
+}
+export function readOriginalDisposableCredentialRetirement(app, pair, endpointLease) {
+  const original = credentialApps.get(app);
+  if (!original || original.pair !== pair || original.endpointLease !== endpointLease)
+    throw new Error('Foreign disposable credential App retirement');
+  readPackagedRuntimePair(pair).validate();
+  return original.retirement();
+}
 const privateApps = new WeakMap();
 const fileApps = new WeakMap();
 const stoppedCommandProfiles = new WeakMap();
@@ -130,7 +148,16 @@ export function observeJourneyProcess({ child, externalPid, generation, spawnErr
     exitStatusAvailable: !externalPid && (child?.exitCode != null || child?.signalCode != null) };
 }
 
-export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRoot, admittedPair, appearancePair }) {
+export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRoot, admittedPair, appearancePair, credentialPair, credentialEndpoint }) {
+  const credentialArtifact = credentialPair === undefined ? null : readPackagedRuntimePair(credentialPair);
+  if (credentialArtifact && (suppliedRoot !== undefined || admittedPair !== undefined || appearancePair !== undefined ||
+      realpathSync(appPath) !== credentialArtifact.bundle || Object.keys(launch).some(key => !['env', 'args', 'profiles', 'timeoutMs'].includes(key)) ||
+      (launch.profiles && (launch.profiles.length !== 1 || launch.profiles[0] !== 'Default')) ||
+      !Array.isArray(launch.args) || launch.args.length !== 1 || launch.args[0] !== '--aux-native-appearance-observer'))
+    throw new Error('Fixed credential observation requires its original admitted pair, generated normal Default and fixed direct appearance launch');
+  credentialArtifact?.validate();
+  if (credentialArtifact) readDisposableModelCredentialEndpoint(credentialEndpoint);
+  else if (credentialEndpoint !== undefined) throw new Error("Credential endpoint requires its original pair");
   const appearanceArtifact = appearancePair === undefined ? null : readPackagedRuntimePairBytes(appearancePair);
   if (appearanceArtifact && (admittedPair !== undefined || launch.perf || realpathSync(appPath) !== appearanceArtifact.bundle || (launch.profiles && (launch.profiles.length !== 1 || launch.profiles[0] !== "Default")))) throw new Error("File appearance requires the original regular Default artifact outside performance/private runs");
   const privatePair = admittedPair === undefined ? null : readPackagedRuntimePair(admittedPair);
@@ -151,7 +178,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   profiles.forEach(nativeProfileName);
   const acceptance = launch.devAcceptance ? createDevelopmentAcceptance({ userDataDir, profiles, ...launch.devAcceptance }) : null;
   const launchArgs = launch.args ?? [];
-  if (!Array.isArray(launchArgs) || launchArgs.some(arg => typeof arg !== 'string' || /^(--user-data-dir|--profile-directory|--remote-debugging|--password-store|--use-mock-keychain)/.test(arg)))
+  if (!Array.isArray(launchArgs) || launchArgs.some(arg => typeof arg !== 'string' || /^(--user-data-dir|--profile-directory|--remote-debugging|--password-store|--use-mock-keychain|--aux-fixed-disposable-model-credential)/.test(arg)))
     throw new Error('Launch args must preserve disposable Profile and disabled public debugging');
   const fixtureEnvironment = modelFixtureEnvironment(importSourceEnvironment(modelFixtureEnvironment(process.env), launch.env));
   const env = privatePair ? { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8',
@@ -183,6 +210,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       if (env.AUX_IMPORT_SOURCE_HOME !== receipt.home) throw new Error('Original import source environment changed');
     } else if (env.AUX_IMPORT_SOURCE_HOME !== undefined) throw new Error('Unowned import source environment');
   }
+  let credentialOwner, credentialPreparationFailure, credentialStarted = false, credentialCloseReceipt, credentialLaunch, credentialEndpointReleased = false;
   let child;
   let directCloseReceipt, directClosedPromise, stoppedCommandDeadline, stoppedProfileEpoch = 0, successfulQuitGeneration;
   const commandProfileIdentity = randomBytes(16).toString('hex');
@@ -329,7 +357,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     throw new Error(`Timed out waiting for disposable Profile runtime (${name}); browser stderr retained in launcher.log`);
   }
   function spawnDirect(args) {
-    child = spawn(join(bundle, 'Contents/MacOS/Aux'), args, { env: { ...env, AUX_NATIVE_SLOT_TOKEN: slot.token }, stdio: ['ignore', 'ignore', 'pipe'] });
+    child = spawn(join(bundle, 'Contents/MacOS/Aux'), args, { env: { ...env, AUX_NATIVE_SLOT_TOKEN: slot.token }, stdio: credentialOwner ? credentialOwner.stdio : ['ignore', 'ignore', 'pipe'] });
     const originalChild = child, originalGeneration = generation;
     directCloseReceipt = undefined;
     directClosedPromise = new Promise(resolveClose => child.once('close', (code, signal) => {
@@ -338,6 +366,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       resolveClose(receipt);
     }));
     child.once('error', error => { spawnError = error; });
+    if (credentialOwner) credentialOwner.bindOriginalChild(originalChild);
     if (privatePair) {
       const originalPid = child.pid ?? null, originalGeneration = generation;
       child.once('close', (code, signal) => { privateCloseReceipt = Object.freeze({ pid: originalPid, generation: originalGeneration, code, signal }); });
@@ -373,6 +402,9 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
   }
   async function start({ externalUrl, auxUrl, background = false } = {}) {
+    if (credentialArtifact && (credentialStarted || externalUrl || auxUrl || background))
+      throw new Error('Fixed credential observation is one original direct launch; no replacement or LS descriptor transport');
+    if (credentialArtifact) { credentialStarted = true; credentialLaunch = { active: true }; }
     ++stoppedProfileEpoch; successfulQuitGeneration = undefined; stoppedCommandDeadline = undefined;
     if (privatePair) throw new Error('Private observation cannot use ordinary runtime startup');
     if (startupAttachment) throw new Error("Attached startup cannot use another launcher");
@@ -398,6 +430,17 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     ];
     try {
       assertImportSource();
+      if (credentialArtifact) {
+        if (!credentialLaunch?.active) throw new Error("Original credential launch retired before preparation");
+        credentialArtifact.validate();
+        try {
+          credentialOwner = await prepareOriginalCredentialLaunch({ pair: credentialPair, credentialEndpoint, profileRoot, userDataDir,
+            originalSlot: slot, originalRootIdentity: rootInfo, originalProfileIdentity: profileInfo, currentLaunch: () => credentialLaunch?.active === true });
+        } catch (error) { credentialPreparationFailure = error; throw error; }
+        if (!credentialLaunch?.active) throw new Error("Original credential launch retired before browser spawn");
+        credentialArtifact.validate();
+        args.push('--aux-fixed-disposable-model-credential');
+      }
       if (externalUrl || auxUrl) {
         if (appearanceArtifact) { appearanceArtifact.validate(); if (activeProfile !== "Default" || launchArgs.filter(arg => arg === "--aux-native-appearance-observer").length !== 1) throw new Error("Owned file observation requires actual Default appearance opt-in"); }
         const receipt = await launchUrl(auxUrl ?? externalUrl, args, null, !!auxUrl, background);
@@ -438,6 +481,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
   }
   async function quit() {
+    if (credentialLaunch) credentialLaunch.active = false;
     stoppedCommandDeadline ??= Date.now() + 10000;
     const originalChild = child, originalGeneration = generation, originalEpoch = stoppedProfileEpoch;
     if (appearanceReservation) appearanceReservation.active = false;
@@ -451,6 +495,8 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   }
   async function quitOwned() {
     disposeAppearance(Boolean(fileAppearance && externalPid)); disposePerformance();
+    if (credentialPreparationFailure) throw new AggregateError([credentialPreparationFailure],
+      'Fixed credential preparation has original retained owner debt; slot and generated Profile retained', { cause: credentialPreparationFailure });
     if (privatePair) {
       privateOwner?.retire(new Error('Original private observation stopping'));
       if (child && !privateCloseReceipt) {
@@ -481,6 +527,10 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
           const killDeadline = Date.now() + 5000;
           while (running() && Date.now() < killDeadline) await delay(50);
           if (running()) throw new Error("Original LS appearance process retirement unverified; slot and artifacts retained");
+        } else if (credentialOwner) {
+          const killDeadline = Math.min(credentialOwner.retainedDeadline, performance.now() + 5000);
+          while (running() && performance.now() < killDeadline) await delay(50);
+          if (running()) throw new Error('Original credential browser retirement unverified; guardian and slot retained');
         } else while (running()) await delay(50);
       }
     }
@@ -500,6 +550,17 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       appearanceChannelRetirement = Object.freeze({ ...original, receipt }); fileAppearance = undefined;
     }
     if (launchQuarantine) { await launchQuarantine.clearAfterOriginalRetirement(); launchQuarantine = undefined; }
+    if (credentialOwner && !credentialCloseReceipt) {
+      const originalOwner = credentialOwner, originalChild = child, originalGeneration = generation;
+      const receipt = await originalOwner.retireAfterOriginalClose();
+      if (credentialOwner !== originalOwner || child !== originalChild || generation !== originalGeneration ||
+          receipt.browser.originalPid !== originalChild.pid || receipt.guardian.completed !== true)
+        throw new Error('Original credential retirement changed; guardian, slot and artifact retained');
+      credentialCloseReceipt = receipt;
+    }
+    if (credentialCloseReceipt && !credentialEndpointReleased) {
+      credentialEndpoint.dispose(); credentialEndpointReleased = true;
+    }
     slot?.release(); slot = undefined;
   }
   const api = {
@@ -523,7 +584,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     },
     claimStoppedCommandProfile() {
       if (arguments.length || suppliedRoot !== undefined || privatePair || appearanceArtifact || startupAttachment ||
-          activeProfile !== 'Default' || profiles.length !== 1 || profiles[0] !== 'Default' ||
+          credentialArtifact || activeProfile !== 'Default' || profiles.length !== 1 || profiles[0] !== 'Default' ||
           !launchArgs.includes('--aux-native-performance-observer') || externalPid || launchUncertain || slot || spawnError ||
           generation <= 0 || successfulQuitGeneration !== generation || !child ||
           !directCloseReceipt || directCloseReceipt.child !== child || directCloseReceipt.generation !== generation ||
@@ -588,12 +649,16 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       performanceMailbox = mailbox; return mailbox;
     },
     async createAppearanceHelper() {
-      if (!appearanceArtifact || !running()) throw new Error('No original admitted appearance process');
+      const artifact = appearanceArtifact ?? credentialArtifact;
+      const originalPair = appearanceArtifact ? appearancePair : credentialPair;
+      if (!artifact || !running()) throw new Error('No original admitted appearance process');
       const observedPid = api.pid, observedGeneration = generation;
-      appearanceArtifact.validate();
-      const helper = await createAxClient(observedPid, { compilerArtifact: readPackagedRuntimePair(appearancePair).compilerArtifact });
+      artifact.validate();
+      if (credentialArtifact) readDisposableCredentialApp(api, credentialPair, credentialEndpoint);
+      const helper = await createAxClient(observedPid, { compilerArtifact: readPackagedRuntimePair(originalPair).compilerArtifact });
       try {
-        appearanceArtifact.validate();
+        artifact.validate();
+        if (credentialArtifact) readDisposableCredentialApp(api, credentialPair, credentialEndpoint);
         if (!running() || api.pid !== observedPid || generation !== observedGeneration) throw new Error('Original appearance process retired during helper creation');
         return helper;
       } catch (error) {
@@ -736,7 +801,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       acceptance.markers.push(...added.markers);
       return {profileId, restartRequired:true};
     },
-    start, async restart(options) { if (startupAttachment || privatePair) throw new Error("Attached startup cannot use another launcher"); await quit(); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
+    start, async restart(options) { if (credentialArtifact) throw new Error("Fixed credential observation cannot restart or rearm"); if (startupAttachment || privatePair) throw new Error("Attached startup cannot use another launcher"); await quit(); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
     async openExternal(url) { if (startupAttachment || privatePair) throw new Error("Attached startup is observation-only"); if (!running()) throw new Error("Disposable Aux is not running"); return launchUrl(url, [], api.pid); },
     async openAux(url, {cold = false, background = false} = {}) {
       if (startupAttachment || privatePair) throw new Error("Attached startup is observation-only");
@@ -779,6 +844,27 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       return { native: { ...describe.nativeIdentity, manifestHash }, runtime: describe.runtimeIdentity };
     },
   };
+  if (credentialArtifact) credentialApps.set(api, { pair: credentialPair, endpointLease: credentialEndpoint,
+    retirement() {
+      credentialArtifact.validate();
+      const receipt = credentialCloseReceipt;
+      if (!receipt || !credentialEndpointReleased || slot || running() || !child ||
+          receipt.browser.originalPid !== child.pid || receipt.guardian.completed !== true ||
+          receipt.guardian.record.status !== 'FINAL' || receipt.guardian.close.code !== 0 ||
+          receipt.guardian.close.signal !== null || receipt.guardian.close.completed !== true ||
+          receipt.guardian.close.cleanupDebt !== false)
+        throw new Error('Original disposable credential retirement unconfirmed');
+      return structuredClone(receipt);
+    },
+    read(endpoint) {
+      credentialArtifact.validate();
+      if (!credentialOwner || credentialPreparationFailure || credentialCloseReceipt || !running() ||
+          !child || credentialOwner.receipt.originalBrowser !== child.pid)
+        throw new Error('Original disposable credential App retired');
+      return Object.freeze({ pid: child.pid, generation, endpoint: endpoint.endpoint, reservation: endpoint.reservation,
+        owner: credentialOwner.receipt, process: observeJourneyProcess({ child, externalPid, generation, spawnError }) });
+    },
+  });
   if (privatePair) privateApps.set(api, privatePair);
   if (appearanceArtifact) fileApps.set(api, appearancePair);
   return api;

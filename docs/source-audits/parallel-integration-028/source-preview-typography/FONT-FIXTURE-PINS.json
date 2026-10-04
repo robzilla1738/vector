@@ -1,0 +1,87 @@
+{
+  "previewOnly": true,
+  "externalAllowListChanged": false,
+  "rows": [
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist@5.3.0/node_modules/@fontsource-variable/geist/files/geist-cyrillic-ext-wght-normal.woff2",
+      "copy": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/public/preview-fonts/geist/geist-cyrillic-ext-wght-normal.woff2",
+      "sha256": "2317fa4bb293c9c0b110e18315d529235c47a0ddd3338cea3d8c7955e927899e",
+      "copyEqual": true
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist@5.3.0/node_modules/@fontsource-variable/geist/files/geist-cyrillic-wght-normal.woff2",
+      "copy": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/public/preview-fonts/geist/geist-cyrillic-wght-normal.woff2",
+      "sha256": "6894439694946a589d157ece003086960a6a4013d74a813dab7602efdb3d8c09",
+      "copyEqual": true
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist@5.3.0/node_modules/@fontsource-variable/geist/files/geist-vietnamese-wght-normal.woff2",
+      "copy": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/public/preview-fonts/geist/geist-vietnamese-wght-normal.woff2",
+      "sha256": "8fa40e5d248247735eb97a0bd593b8852440430600d6ba01364c31fe0abc1fe1",
+      "copyEqual": true
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist@5.3.0/node_modules/@fontsource-variable/geist/files/geist-latin-ext-wght-normal.woff2",
+      "copy": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/public/preview-fonts/geist/geist-latin-ext-wght-normal.woff2",
+      "sha256": "824f485b5d26e2f2da3c2b236132ece1bc8e4e43373452950bb0e40548b4313f",
+      "copyEqual": true
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist@5.3.0/node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2",
+      "copy": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/public/preview-fonts/geist/geist-latin-wght-normal.woff2",
+      "sha256": "19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1",
+      "copyEqual": true
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist@5.3.0/node_modules/@fontsource-variable/geist/index.css",
+      "sourceSha256": "97fe28a6688629d5a016347a47282efabffc85e5dd49bd953217d048e47c6872",
+      "overlay": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/preview-fonts/geist.css",
+      "overlaySha256": "d65cbb77f5a67ae95f779f4c67bc809f7dc56280a8104b1cdf55c45681b9299d",
+      "onlyChange": "relative files URLs relocated to owned public/preview-fonts; original font-face declarations unchanged"
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist-mono@5.3.0/node_modules/@fontsource-variable/geist-mono/files/geist-mono-cyrillic-ext-wght-normal.woff2",
+      "copy": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/public/preview-fonts/geist-mono/geist-mono-cyrillic-ext-wght-normal.woff2",
+      "sha256": "cd8800999070b729e1cc0bf7a48da6c3ac096a044251171b9a7574b56d96d4b4",
+      "copyEqual": true
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist-mono@5.3.0/node_modules/@fontsource-variable/geist-mono/files/geist-mono-cyrillic-wght-normal.woff2",
+      "copy": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/public/preview-fonts/geist-mono/geist-mono-cyrillic-wght-normal.woff2",
+      "sha256": "4866787fc952dbdbd591d6923d67bc21c2d894b93f34ab69d0cdf25d47bfb2df",
+      "copyEqual": true
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist-mono@5.3.0/node_modules/@fontsource-variable/geist-mono/files/geist-mono-symbols2-wght-normal.woff2",
+      "copy": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/public/preview-fonts/geist-mono/geist-mono-symbols2-wght-normal.woff2",
+      "sha256": "5bb66d8319ba1602bb2eb67dce8d79c2b4687be8ce183a0574433e949b3c60ad",
+      "copyEqual": true
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist-mono@5.3.0/node_modules/@fontsource-variable/geist-mono/files/geist-mono-vietnamese-wght-normal.woff2",
+      "copy": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/public/preview-fonts/geist-mono/geist-mono-vietnamese-wght-normal.woff2",
+      "sha256": "d39b60889a94a527a7f73c7988a2d6efb6c081614aef683b0b386c02d74c2175",
+      "copyEqual": true
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist-mono@5.3.0/node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-ext-wght-normal.woff2",
+      "copy": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/public/preview-fonts/geist-mono/geist-mono-latin-ext-wght-normal.woff2",
+      "sha256": "1a189eb997c3e2ece68373e387afaec9e8617424186c4b1ab3cff7c54ba6223b",
+      "copyEqual": true
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist-mono@5.3.0/node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2",
+      "copy": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/public/preview-fonts/geist-mono/geist-mono-latin-wght-normal.woff2",
+      "sha256": "684ad5b531f81d43c1e8c7038262d5db7cdc1f68006e04d6c7769efa8d33c8cc",
+      "copyEqual": true
+    },
+    {
+      "source": "/Users/rcourson/Documents/Vibe/web/node_modules/.pnpm/@fontsource-variable+geist-mono@5.3.0/node_modules/@fontsource-variable/geist-mono/index.css",
+      "sourceSha256": "bdae3b9d0a316181ab042c8f6c94f63a7510ea9160740d45deccd253015d1e65",
+      "overlay": "/private/tmp/aux-browser-runtime-design-integrated-focus-preview/apps/shell/preview-fonts/geist-mono.css",
+      "overlaySha256": "05f10794b2e9a6bb23b9b4c0fb1280cf9e0b6762d5c9167b402330a1e247bb4a",
+      "onlyChange": "relative files URLs relocated to owned public/preview-fonts; original font-face declarations unchanged"
+    }
+  ],
+  "configSha256": "e77b2cbb7a38c42ff4dfab797c1c427ae6d0b6f42ea1c9086e9b6074e593b3de"
+}

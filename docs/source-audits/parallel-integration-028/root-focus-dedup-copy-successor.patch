@@ -1,0 +1,159 @@
+diff --git a/apps/shell/src/components/Settings.tsx b/apps/shell/src/components/Settings.tsx
+index 7ad986a..22d6edd 100644
+--- a/apps/shell/src/components/Settings.tsx
++++ b/apps/shell/src/components/Settings.tsx
+@@ -32,29 +32,29 @@ import { bridge, inNativeHost } from "../bridge";
+ import { SettingsNav } from "../settings/SettingsNav";
+ import { SettingsShell } from "../settings/SettingsShell";
+ import { pushSettingsPath, settingsPath, settingsRouteFromPath, type ConnectionTab, type SettingsRoute } from "../settings/routes";
+-import { availableForFocus } from "../ui/focus";
++import { availableForFocus, ownsFocus } from "../ui/focus";
+ import { moveListFocus } from "../keyboard-list";
+ import { useFeature } from "../use-feature";
+ 
+ const categoryDescriptions: Record<string, string> = {
+-  Downloads: "File naming, exclusions, and smart download preferences.",
++  Downloads: "File names, exclusions and smart downloads.",
+   General: "Search, shortcuts, and your browsing data.",
+-  Profiles: "Manage separate browsing identities and their local data.",
++  Profiles: "Separate browsing identities and local data.",
+   "Link Routing": "Choose where links open across Profiles and Spaces.",
+   Advanced: "Control local script access to browser tabs.",
+   Appearance: "Make Aux feel at home, from tabs to text size.",
+   "Passwords & Autofill": "Manage personal info and Chromium Profile passwords.",
+   Memory: "Manage the context Aux remembers for your work.",
+-  Workspaces: "Review local folders, agent instructions, and file access for each Space.",
+-  Connections: "Manage your models, services, and connected tools.",
+-  "Usage & Budgets": "Review model spending and set caps for runs, days, and routines.",
+-  Automations: "Review schedules, results, and spending limits for saved Skills.",
++  Workspaces: "Folders, agent instructions and file access by Space.",
++  Connections: "Models, services and connected tools.",
++  "Usage & Budgets": "Model spending limits for runs, days and routines.",
++  Automations: "Schedules, results and spending limits for Skills.",
+   "Quick Ask": "Open a compact chat from Aux or any app.",
+   "Selection & Capture": "Review selections, capture shortcuts, and writing assistance.",
+-  "Archived chats": "Find, open, and restore conversations you archived.",
++  "Archived chats": "Find and restore archived conversations.",
+   "Site permissions": "Choose what websites can access.",
+   "Agent permissions": "Control what Aux can do on your behalf.",
+-  Extensions: "Manage the extensions available in your browser.",
++  Extensions: "Manage browser extensions.",
+ };
+ 
+ const connectionCategories = ["Models", "Connections", "External agents", "Vault"];
+@@ -225,8 +225,7 @@ export function Settings() {
+     const shell = dialogRef.current;
+     firstCategory.current?.focus();
+     return () => {
+-      const active = document.activeElement;
+-      if ((active === document.body || active === null || shell?.contains(active)) && previous && availableForFocus(previous)) previous.focus({ preventScroll: true });
++      if (ownsFocus(shell) && previous && availableForFocus(previous)) previous.focus({ preventScroll: true });
+     };
+   }, []);
+ 
+diff --git a/apps/shell/src/components/SupportingContent.tsx b/apps/shell/src/components/SupportingContent.tsx
+index e137479..f058a08 100644
+--- a/apps/shell/src/components/SupportingContent.tsx
++++ b/apps/shell/src/components/SupportingContent.tsx
+@@ -24,12 +24,13 @@ export function SupportingContent({ container, title, children, onClose, initial
+     observer.observe(element);
+     return () => observer.disconnect();
+   }, [container]);
+-  useDismissable(overlay, () => setExpanded(false));
++  const collapse = () => setExpanded(false);
++  useDismissable(overlay, collapse);
+   useNativeDialog(overlay, dialog);
+-  const pane = viewer ? <div className="supporting-viewer">{children}</div> : <DetailPane title={title} onClose={overlay ? () => setExpanded(false) : onClose}>{children}</DetailPane>;
++  const pane = viewer ? <div className="supporting-viewer">{children}</div> : <DetailPane title={title} onClose={overlay ? collapse : onClose}>{children}</DetailPane>;
+   if (!wide) return <>
+     <button type="button" className="supporting-chip" onClick={() => setExpanded(true)} aria-haspopup="dialog">{shellIconResult}<span>{title}</span>{shellIconOpen}</button>
+-    {overlay && createPortal(<dialog ref={dialog} tabIndex={-1} className="supporting-dialog ctx-menu" aria-label={title} onCancel={event => { event.preventDefault(); setExpanded(false); }} onClick={event => { if (event.target === event.currentTarget) setExpanded(false); }}>{pane}</dialog>, document.body)}
++    {overlay && createPortal(<dialog ref={dialog} tabIndex={-1} className="supporting-dialog ctx-menu" aria-label={title} onCancel={event => { event.preventDefault(); collapse(); }} onClick={event => { if (event.target === event.currentTarget) collapse(); }}>{pane}</dialog>, document.body)}
+   </>;
+   return <aside className="supporting-content" style={{ width }}>
+     <div className="supporting-resize" role="separator" tabIndex={0} aria-label="Supporting content width" aria-orientation="vertical" aria-valuemin={280} aria-valuemax={440} aria-valuenow={width} title="Drag to resize · double-click resets" onDoubleClick={() => setWidth(320)} onKeyDown={event => {
+diff --git a/apps/shell/src/ui/focus.ts b/apps/shell/src/ui/focus.ts
+index 21e4b85..3a43849 100644
+--- a/apps/shell/src/ui/focus.ts
++++ b/apps/shell/src/ui/focus.ts
+@@ -18,3 +18,9 @@ export function availableControls(root: ParentNode): HTMLElement[] {
+     (node) => node.tabIndex >= 0 && availableForFocus(node),
+   );
+ }
++
++/** Preserve a newer focus owner when an overlay retires. */
++export function ownsFocus(owner: HTMLElement | null): boolean {
++  const active = document.activeElement;
++  return active === document.body || active === null || !!owner?.contains(active);
++}
+diff --git a/apps/shell/src/ui/native-dialog.ts b/apps/shell/src/ui/native-dialog.ts
+index 6577bfc..e2ad81d 100644
+--- a/apps/shell/src/ui/native-dialog.ts
++++ b/apps/shell/src/ui/native-dialog.ts
+@@ -1,11 +1,11 @@
+ import { useLayoutEffect, type RefObject } from "react";
+ import { acquireFloatingSidebarLock } from "../floating-sidebar";
+ import { requestStageReport } from "../stage-obstruction";
+-import { availableControls, availableForFocus } from "./focus";
++import { availableControls, availableForFocus, ownsFocus } from "./focus";
+ 
+ const ownedDialogs = new Set<HTMLDialogElement>();
+ const topModal = () => [...document.querySelectorAll<HTMLDialogElement>("dialog:modal")].some(item => !ownedDialogs.has(item))
+-  ? null : [...ownedDialogs].filter(item => item.open && item.isConnected).at(-1);
++  ? null : [...ownedDialogs].findLast(item => item.open && item.isConnected);
+ 
+ /** One lifecycle for native top-layer dialogs, menus and popovers. */
+ export function useNativeDialog(
+@@ -17,40 +17,41 @@ export function useNativeDialog(
+   useLayoutEffect(() => {
+     if (!open || !ref.current) return;
+     const dialog = ref.current;
+-    const target = returnFocus?.current ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
++    const previous = document.activeElement;
++    const target = returnFocus?.current ?? (previous instanceof HTMLElement ? previous : null);
+     const unlock = acquireFloatingSidebarLock("keep-current");
+     if (!dialog.open) {
+       if (typeof dialog.showModal === "function") dialog.showModal();
+       else dialog.setAttribute("open", "");
+     }
+     ownedDialogs.add(dialog);
+-    const focusFirst = () => (availableControls(dialog)[0] ?? dialog).focus({ preventScroll: true });
++    const focusInside = (node = availableControls(dialog)[0] ?? dialog) => node.focus({ preventScroll: true });
++    let focused = document.activeElement;
+     const preferred = initialFocus?.current;
+     if (preferred && dialog.contains(preferred) && availableForFocus(preferred)) {
+-      preferred.focus({ preventScroll: true });
++      focusInside(preferred);
+     } else if (
+-      !(document.activeElement instanceof HTMLElement) ||
+-      !dialog.contains(document.activeElement) ||
+-      !availableForFocus(document.activeElement)
++      !(focused instanceof HTMLElement) ||
++      !dialog.contains(focused) ||
++      !availableForFocus(focused)
+     ) {
+       // Native showModal normally chooses this itself. The fallback also covers
+       // a dialog with no controls and hosts without native modal focus support.
+-      focusFirst();
++      focusInside();
+     }
+-    let focused = document.activeElement;
++    focused = document.activeElement;
+     const rememberFocus = () => { focused = document.activeElement; };
+     dialog.addEventListener("focusin", rememberFocus);
+     const observer = new MutationObserver(() => {
+       if (dialog.open && focused && !focused.isConnected && document.activeElement === document.body && topModal() === dialog)
+-        focusFirst();
++        focusInside();
+     });
+     observer.observe(dialog, { childList: true, subtree: true });
+     requestStageReport();
+     return () => {
+       observer.disconnect();
+       dialog.removeEventListener("focusin", rememberFocus);
+-      const active = document.activeElement;
+-      const ownedFocus = active === document.body || active === null || dialog.contains(active);
++      const ownedFocus = ownsFocus(dialog);
+       if (typeof dialog.close === "function") dialog.close();
+       else dialog.removeAttribute("open");
+       ownedDialogs.delete(dialog);

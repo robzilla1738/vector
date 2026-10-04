@@ -1,0 +1,15 @@
+{
+  "sourceOnly": true,
+  "executionAdmitted": false,
+  "nativeCompiled": false,
+  "rootActualOriginalStable79AndFinal79Joins": true,
+  "rootPhysicalForwardReverseForward": true,
+  "compositionSha256": "436e66049ba2b1818714487865a178abd6f112ba08ac8f0424f7ad960f9cae0b",
+  "combinedPatch": {
+    "path": "/private/tmp/aux-builder-native0352-0355-final-composition-006/0352-0355-complete-native-request.patch",
+    "sha256": "740ed3d1392ef86c1495942af0d43e58a18e9b6d1c87b7b38026b57d45c20ce7"
+  },
+  "original321PrefixAnd453AssertionsRequired": true,
+  "helperFinalSourceSha256": "d7b9e10d38c8c805fa6b07898b9a33c33f5a2d975f2b9c469ae2592321a838ce",
+  "callerSourceAndRendererGateFreezePending": true
+}

@@ -1,11 +1,18 @@
 import { createServer as createHttpServer } from 'node:http';
-import { createHash, X509Certificate } from 'node:crypto';
+import { createHash, randomBytes, X509Certificate } from 'node:crypto';
 import { createServer as createHttpsServer } from 'node:https';
 import { connect } from 'node:net';
 import { Server as TlsServer } from 'node:tls';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+
+const disposableCredentialEndpoints = new WeakMap();
+export function readDisposableModelCredentialEndpoint(lease) {
+  const original = disposableCredentialEndpoints.get(lease);
+  if (!original) throw new Error('Foreign disposable credential endpoint lease');
+  return original();
+}
 
 export function toneWavBytes({ seconds = 1, rate = 8000 } = {}) {
   const pcm = Buffer.alloc(Math.floor(rate * seconds) * 2);
@@ -122,6 +129,48 @@ export async function createFixture({ tls = false } = {}) {
       const tlsPort = await listen(createHttpsServer({ key: readFileSync(key), cert: readFileSync(cert) }, handler));
       tlsUrl = `https://127.0.0.1:${tlsPort}`;
     }
-    return { tunnel, url: `http://127.0.0.1:${port}`, route, claimRoute, close, requests, get tlsHellos() { return tlsHellos; }, ...(tlsUrl ? { tlsUrl, certificate, certificateSpki: createHash('sha256').update(new X509Certificate(readFileSync(certificate)).publicKey.export({ type: 'spki', format: 'der' })).digest('base64') } : {}) };
+    let credentialEndpointClaimed = false;
+    const claimDisposableModelCredentialEndpoint = function () {
+      if (arguments.length || tls || credentialEndpointClaimed)
+        throw new Error('Disposable credential endpoint is one fixed original HTTP lease');
+      const address = httpServer.address();
+      if (!httpServer.listening || !address || typeof address === 'string' ||
+          address.address !== '127.0.0.1' || address.port !== port)
+        throw new Error('Original loopback fixture unavailable');
+      const reservation = randomBytes(32).toString('hex');
+      const endpoint = `http://127.0.0.1:${port}/v1`;
+      let retired = false;
+      const observations = [];
+      let original;
+      const current = () => {
+        const now = httpServer.address();
+        if (retired || !httpServer.listening || !now || typeof now === 'string' ||
+            now.address !== address.address || now.port !== address.port || !original?.current()) retired = true;
+        return !retired;
+      };
+      original = claimRoute('/v1/models', (request, response) => {
+        if (!current()) throw new Error('Original disposable credential endpoint retired');
+        // Fixed synthetic literal only, never retain arbitrary Authorization.
+        const syntheticAuthorization = request.headers.authorization ===
+          'Bearer aux-disposable-loopback-appearance-synthetic-key-v1';
+        observations.push(Object.freeze({ method: request.method, path: '/v1/models', syntheticAuthorization }));
+        if (!syntheticAuthorization) { response.writeHead(403); response.end('Fixed synthetic credential required'); return; }
+        return { object: 'list', data: [{ id: 'aux-disposable-credential-appearance', object: 'model' }] };
+      }, { headers: { 'content-type': 'application/json' } });
+      credentialEndpointClaimed = true;
+      const lease = Object.freeze({
+        dispose() {
+          if (!current()) throw new Error('Original endpoint route debt retained');
+          original.remove(); retired = true;
+        },
+      });
+      disposableCredentialEndpoints.set(lease, () => {
+        if (!current()) throw new Error('Original disposable credential endpoint retired');
+        return Object.freeze({ endpoint, reservation, model: 'aux-disposable-credential-appearance',
+          observations: Object.freeze(observations.slice()) });
+      });
+      return lease;
+    };
+    return { tunnel, url: `http://127.0.0.1:${port}`, route, claimRoute, claimDisposableModelCredentialEndpoint, close, requests, get tlsHellos() { return tlsHellos; }, ...(tlsUrl ? { tlsUrl, certificate, certificateSpki: createHash('sha256').update(new X509Certificate(readFileSync(certificate)).publicKey.export({ type: 'spki', format: 'der' })).digest('base64') } : {}) };
   } catch (error) { await close(); throw error; }
 }

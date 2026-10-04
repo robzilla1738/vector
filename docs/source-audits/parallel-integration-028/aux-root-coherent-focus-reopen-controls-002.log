@@ -1,0 +1,32 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+ ✓ |unit| apps/shell/src/components/Settings.changed-surface-focus.test.tsx (1 test) 26ms
+(node:79998) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:80003) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:79999) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:80001) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:80002) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/ui/popover.test.tsx (1 test) 39ms
+ ✓ |unit| apps/shell/src/components/SupportingContent.changed-surface-focus.test.tsx (1 test) 227ms
+ ✓ |unit| apps/shell/src/ui/native-dialog.parent-focus.test.tsx (2 tests) 1607ms
+   ✓ returns nested composer focus past a nonmodal education dialog without stealing newer focus  685ms
+   ✓ uses actual modal acquisition order when retained dialogs are arranged in reverse DOM order  922ms
+ ✓ |unit| apps/shell/src/components/Composer.image-preview-reopen.test.tsx (2 tests) 1307ms
+   ✓ reopens the same original image through the registered tray command after Escape without changing the draft  715ms
+   ✓ retires the original pending read on an explicit reopen and rejects a detached original Preview  591ms
+ ✓ |unit| apps/shell/src/ui/dialog.test.tsx (4 tests) 3889ms
+   ✓ Tab leaves the menu toward the next control while Shift-Tab moves backward  540ms
+   ✓ keeps menu Tab traversal inside its parent dialog and skips unavailable controls  2692ms
+   ✓ Dialog focuses an explicit heading and restores the opener on close  420ms
+
+ Test Files  6 passed (6)
+      Tests  11 passed (11)
+   Start at  06:21:14
+   Duration  5.62s (transform 1.00s, setup 0ms, collect 7.65s, tests 7.09s, environment 1.91s, prepare 383ms)
+

@@ -27,6 +27,8 @@ function fixture({ spawnThrows = false, noPid = false, debt = false, appearance 
     observe: () => stream.discover(), write() {}, dispose() { pendingReject?.(new Error('Original stream retired')); } };
   const directory = () => ({ uid: 100, mode: 0o40700, dev: 1, ino: 1, isSymbolicLink: () => false, isDirectory: () => true });
   const imports = {
+    './fixture.mjs': {},
+    './disposable-model-credential-launch.mjs': { prepareOriginalCredentialLaunch() { throw new Error('Original ordinary/private source fixture cannot prepare credentials'); } },
     './import-source-home.mjs': { importSourceEnvironment, createImportSourceOwner(filename) { assert.equal(filename, root + '/profile'); return Object.freeze({ fixtureOwned: true }); } },
     './model-fixture-environment.mjs': { modelFixtureEnvironment },
     './ax.mjs': { createAxClient() { throw new Error('Ordinary/private fixture must not create an appearance helper'); } },

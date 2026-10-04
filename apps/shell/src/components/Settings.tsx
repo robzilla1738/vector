@@ -32,28 +32,29 @@ import { bridge, inNativeHost } from "../bridge";
 import { SettingsNav } from "../settings/SettingsNav";
 import { SettingsShell } from "../settings/SettingsShell";
 import { pushSettingsPath, settingsPath, settingsRouteFromPath, type ConnectionTab, type SettingsRoute } from "../settings/routes";
+import { availableForFocus, ownsFocus } from "../ui/focus";
 import { moveListFocus } from "../keyboard-list";
 import { useFeature } from "../use-feature";
 
 const categoryDescriptions: Record<string, string> = {
-  Downloads: "File naming, exclusions, and smart download preferences.",
+  Downloads: "File names, exclusions and smart downloads.",
   General: "Search, shortcuts, and your browsing data.",
-  Profiles: "Manage separate browsing identities and their local data.",
+  Profiles: "Separate browsing identities and local data.",
   "Link Routing": "Choose where links open across Profiles and Spaces.",
   Advanced: "Control local script access to browser tabs.",
   Appearance: "Make Aux feel at home, from tabs to text size.",
   "Passwords & Autofill": "Manage personal info and Chromium Profile passwords.",
   Memory: "Manage the context Aux remembers for your work.",
-  Workspaces: "Review local folders, agent instructions, and file access for each Space.",
-  Connections: "Manage your models, services, and connected tools.",
-  "Usage & Budgets": "Review model spending and set caps for runs, days, and routines.",
-  Automations: "Review schedules, results, and spending limits for saved Skills.",
+  Workspaces: "Folders, agent instructions and file access by Space.",
+  Connections: "Models, services and connected tools.",
+  "Usage & Budgets": "Model spending limits for runs, days and routines.",
+  Automations: "Schedules, results and spending limits for Skills.",
   "Quick Ask": "Open a compact chat from Aux or any app.",
   "Selection & Capture": "Review selections, capture shortcuts, and writing assistance.",
-  "Archived chats": "Find, open, and restore conversations you archived.",
+  "Archived chats": "Find and restore archived conversations.",
   "Site permissions": "Choose what websites can access.",
   "Agent permissions": "Control what Aux can do on your behalf.",
-  Extensions: "Manage the extensions available in your browser.",
+  Extensions: "Manage browser extensions.",
 };
 
 const connectionCategories = ["Models", "Connections", "External agents", "Vault"];
@@ -74,7 +75,7 @@ export function Settings() {
   const automationsAvailable = automationsFeatureAvailable || featureSettingsAvailable("Automations");
   const outboundMcpAvailable = useFeature("outboundMcp");
   const connectorsAvailable = useFeature("connectors");
-  const servicesAvailable = outboundMcpAvailable || connectorsAvailable;
+  const servicesAvailable = outboundMcpAvailable || connectorsAvailable || featureSettingsAvailable("Connections");
   const permissionsAvailable = useFeature("sitePermissions");
   const vaultAvailable = useFeature("vault");
   const extensionsAvailable = useFeature("extensions");
@@ -221,8 +222,11 @@ export function Settings() {
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
+    const shell = dialogRef.current;
     firstCategory.current?.focus();
-    return () => previous?.focus();
+    return () => {
+      if (ownsFocus(shell) && previous && availableForFocus(previous)) previous.focus({ preventScroll: true });
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -368,7 +372,7 @@ export function Settings() {
           tabIndex={0}
           aria-label={searching ? "Settings search results" : `${category} settings`}
         >
-          <FeatureSettings category={!searching && !subview ? category : null} />
+          <FeatureSettings category={!searching && !subview && (category !== "Connections" || connectionTab === "Services") ? category : null} />
           {searching && (
             <div className="settings-search-results">
               <output className="hint" data-block>

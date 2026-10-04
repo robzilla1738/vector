@@ -248,6 +248,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   const resultPreview = useStore(state => state.resultPreview);
   const [documentPreview, setDocumentPreview] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imagePreviewGeneration, setImagePreviewGeneration] = useState(0);
   const activeChat = useRef(id);
   activeChat.current = id;
   const documentBusy = useRef(false);
@@ -716,7 +717,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       onOpen:() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(item.attachmentId); },
       onToggle:(included:boolean) => void changeDocument(item.attachmentId,included), onRemove:() => void changeDocument(item.attachmentId) })),
     ...images.map(item => ({ imageCurrent:() => currentImage(item), key:`image:${item.imageId}`, name:item.filename, kind:"image" as const, included:item.included, detail:`${item.width} × ${item.height}`,
-      onOpen:() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setDocumentPreview(null); setImagePreview(item.imageId); },
+      onOpen:() => { if (!currentImage(item)) throw new Error("Choose the current image control."); setSourceDetail(null); useStore.setState({resultPreview:null}); setDocumentPreview(null); setImagePreview(item.imageId); setImagePreviewGeneration(value => value + 1); },
       onToggle:(included:boolean) => changeImage(item,included), onRemove:() => changeImage(item) })),
     ...generated.filter(item => !item.automaticReport || item.included).map(item => ({ key:`result:${item.artifactId}`, name:item.filename, kind:"result" as const, included:item.included, detail:`Saved result · v${item.revision ?? artifactVersions[item.artifactId] ?? 1}`,
       onOpen:() => { setSourceDetail(null); setImagePreview(null); setDocumentPreview(null); useStore.setState({resultPreview:item.artifactId}); },
@@ -803,7 +804,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
 
       </ComposerFrame>
     </div></div>
-    </div>{supporting && <SupportingContent key={supportingKey} container={conversationRoot} viewer={!!(resultPreview || documentPreview || imagePreview)} title={supportingKey === "browser" ? "Browser preview" : sourceDetail && supportingKey === sourceDetail.sourceId ? "Source details" : "Result details"} initiallyExpanded={supportingKey !== "browser"} onClose={closeSupporting}>{supporting}</SupportingContent>}</div>
+    </div>{supporting && <SupportingContent key={imagePreview ? `${supportingKey}:${imagePreviewGeneration}` : supportingKey} container={conversationRoot} viewer={!!(resultPreview || documentPreview || imagePreview)} title={supportingKey === "browser" ? "Browser preview" : sourceDetail && supportingKey === sourceDetail.sourceId ? "Source details" : "Result details"} initiallyExpanded={supportingKey !== "browser"} onClose={closeSupporting}>{supporting}</SupportingContent>}</div>
     {calendarSourceChoice && <CalendarSourceChoiceDialog choice={calendarSourceChoice} returnFocus={calendarChoiceOpener} initialFocus={calendarChoiceCancel} onClose={() => setCalendarSourceChoice(null)} onChoose={profile => void openCalendarSourceInProfile(profile)} />}
   </section>;
 }

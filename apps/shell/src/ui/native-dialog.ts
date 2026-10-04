@@ -1,7 +1,11 @@
 import { useLayoutEffect, type RefObject } from "react";
 import { acquireFloatingSidebarLock } from "../floating-sidebar";
 import { requestStageReport } from "../stage-obstruction";
-import { availableControls, availableForFocus } from "./focus";
+import { availableControls, availableForFocus, ownsFocus } from "./focus";
+
+const ownedDialogs = new Set<HTMLDialogElement>();
+const topModal = () => [...document.querySelectorAll<HTMLDialogElement>("dialog:modal")].some(item => !ownedDialogs.has(item))
+  ? null : [...ownedDialogs].findLast(item => item.open && item.isConnected);
 
 /** One lifecycle for native top-layer dialogs, menus and popovers. */
 export function useNativeDialog(
@@ -13,39 +17,50 @@ export function useNativeDialog(
   useLayoutEffect(() => {
     if (!open || !ref.current) return;
     const dialog = ref.current;
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previous = document.activeElement;
+    const target = returnFocus?.current ?? (previous instanceof HTMLElement ? previous : null);
     const unlock = acquireFloatingSidebarLock("keep-current");
     if (!dialog.open) {
       if (typeof dialog.showModal === "function") dialog.showModal();
       else dialog.setAttribute("open", "");
     }
+    ownedDialogs.add(dialog);
+    const focusInside = (node = availableControls(dialog)[0] ?? dialog) => node.focus({ preventScroll: true });
+    let focused = document.activeElement;
     const preferred = initialFocus?.current;
     if (preferred && dialog.contains(preferred) && availableForFocus(preferred)) {
-      preferred.focus({ preventScroll: true });
+      focusInside(preferred);
     } else if (
-      !(document.activeElement instanceof HTMLElement) ||
-      !dialog.contains(document.activeElement) ||
-      !availableForFocus(document.activeElement)
+      !(focused instanceof HTMLElement) ||
+      !dialog.contains(focused) ||
+      !availableForFocus(focused)
     ) {
       // Native showModal normally chooses this itself. The fallback also covers
       // a dialog with no controls and hosts without native modal focus support.
-      (availableControls(dialog)[0] ?? dialog).focus({ preventScroll: true });
+      focusInside();
     }
+    focused = document.activeElement;
+    const rememberFocus = () => { focused = document.activeElement; };
+    dialog.addEventListener("focusin", rememberFocus);
+    const observer = new MutationObserver(() => {
+      if (dialog.open && focused && !focused.isConnected && document.activeElement === document.body && topModal() === dialog)
+        focusInside();
+    });
+    observer.observe(dialog, { childList: true, subtree: true });
     requestStageReport();
     return () => {
-      const active = document.activeElement;
-      const ownedFocus = active === document.body || active === null || dialog.contains(active);
+      observer.disconnect();
+      dialog.removeEventListener("focusin", rememberFocus);
+      const ownedFocus = ownsFocus(dialog);
       if (typeof dialog.close === "function") dialog.close();
       else dialog.removeAttribute("open");
+      ownedDialogs.delete(dialog);
       unlock();
-      const target = returnFocus?.current ?? previous;
       // A newly opened overlay may already own focus. Closing this one must not
       // pull focus back behind it; otherwise return to the explicit/live opener.
       if (ownedFocus && target && availableForFocus(target)) {
-        const remaining = [...document.querySelectorAll<HTMLDialogElement>("dialog[open]")]
-          .filter((item) => item !== dialog)
-          .at(-1);
-        if (!remaining || remaining.contains(target)) target.focus({ preventScroll: true });
+        const remaining = topModal();
+        if (remaining !== null && (!remaining || remaining.contains(target))) target.focus({ preventScroll: true });
       }
       requestAnimationFrame(requestStageReport);
     };

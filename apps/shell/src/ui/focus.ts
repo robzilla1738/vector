@@ -18,3 +18,9 @@ export function availableControls(root: ParentNode): HTMLElement[] {
     (node) => node.tabIndex >= 0 && availableForFocus(node),
   );
 }
+
+/** Preserve a newer focus owner when an overlay retires. */
+export function ownsFocus(owner: HTMLElement | null): boolean {
+  const active = document.activeElement;
+  return active === document.body || active === null || !!owner?.contains(active);
+}
