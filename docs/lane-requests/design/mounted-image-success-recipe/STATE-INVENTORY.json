@@ -1,0 +1,94 @@
+{
+  "sourceOnly": true,
+  "nativeAcceptedCells": 0,
+  "states": [
+    {
+      "state": "image-local-editor-original",
+      "producer": "actual733 chooser \u2192 bridge.pickEvidenceImage \u2192 decode/local capture editor",
+      "status": "missing-success-helper",
+      "predicates": [
+        "held owned PNG original bytes/inode/mode",
+        "same original Home native window after chooser closes",
+        "original draft retained; no model/run/page/grant creation"
+      ]
+    },
+    {
+      "state": "image-original-attached-tray",
+      "producer": "actual Attach UI \u2192 conversations.images.add ACK \u2192 mounted AttachmentTray",
+      "status": "missing-success-helper",
+      "predicates": [
+        "original newly minted unsent chat ID must be genuinely observed, never selected by title",
+        "exact public saved-image ID/artifact metadata from genuine permitted receipt",
+        "original included true and retained draft"
+      ]
+    },
+    {
+      "state": "image-original-preview-open",
+      "producer": "mounted preview-conversation-image \u2192 selected ImageSnapshot guarded conversations.images.read",
+      "status": "source-controls-prepared/native-pending",
+      "predicates": [
+        "same original image ID/chat/native host/read incarnation",
+        "actual saved original data URL ACK",
+        "bracketed capture only after sole original normal window inventory"
+      ]
+    },
+    {
+      "state": "image-original-preview-closed",
+      "producer": "mounted cancel-conversation-image",
+      "status": "source-controls-prepared/native-pending",
+      "predicates": [
+        "same original selected-image close control",
+        "actual preview absent; draft/items retained",
+        "focus measured explicitly, no restoration inference"
+      ]
+    },
+    {
+      "state": "image-original-excluded",
+      "producer": "mounted toggle-conversation-image \u2192 original images.toggle ACK",
+      "status": "source-controls-prepared/native-pending",
+      "predicates": [
+        "AXCheckBox actual checked false (733 checkbox mapping)",
+        "same image identity retained; no request/model call",
+        "source inspection must confirm client permission for public image metadata"
+      ]
+    },
+    {
+      "state": "image-original-removed",
+      "producer": "mounted remove-conversation-image \u2192 original images.remove ACK",
+      "status": "source-controls-prepared/native-pending",
+      "predicates": [
+        "exact original image absent; retained draft and run/page absence",
+        "owned fixture file cleanup retains primary/cleanup debt",
+        "retained disposable profile artifacts are not claimed erased"
+      ]
+    },
+    {
+      "state": "page-original-capture-and-region",
+      "producer": "original normal person page/native document capture \u2192 real region UI",
+      "status": "separate-missing-helper",
+      "predicates": [
+        "actual runtime BWI/page/document/selected source capture receipt",
+        "original permission/visible page/sole-page and editable masking policy",
+        "genuine region dimensions/crop/pixels; no requested rectangle as proof"
+      ]
+    }
+  ],
+  "registeredCommands": [
+    "choose-conversation-image",
+    "capture-conversation-page",
+    "select-conversation-image-region",
+    "attach-conversation-image",
+    "cancel-conversation-image",
+    "preview-conversation-image",
+    "toggle-conversation-image",
+    "remove-conversation-image"
+  ],
+  "pendingPreviewSuccessor": [
+    "fit-conversation-image",
+    "show-conversation-image-actual-size",
+    "zoom-conversation-image-out",
+    "zoom-conversation-image-in",
+    "toggle-conversation-image-details",
+    "retry-conversation-image-preview"
+  ]
+}

@@ -260,7 +260,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
       {selection}
       {captureActions}
     </div>}
-    {preview && <div ref={review}><ImagePreview snapshot={preview} onClose={() => setPreview(null)} closeControl={<ConversationImageAction command="cancel-conversation-image" className="icon-btn xs" aria-label="Close image preview" current={current} invoke={() => setPreview(null)}>{shellIconClose}</ConversationImageAction>} /></div>}
+    {preview && <div ref={review}><ImagePreview snapshot={preview} current={current} onClose={() => setPreview(null)} closeControl={<ConversationImageAction command="cancel-conversation-image" className="icon-btn xs" aria-label="Close image preview" current={current} invoke={() => setPreview(null)}>{shellIconClose}</ConversationImageAction>} /></div>}
     </div>}
   </section>{capture && lasso && overlay === "capture" && createPortal(<div className="page-lasso" role="dialog" aria-modal="true" aria-label="Select an area of the captured page">
     <div className="page-lasso-image" style={{ left: lasso.bounds.left + (lasso.bounds.width - Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.width) / 2, top: lasso.bounds.top + (lasso.bounds.height - Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.height) / 2, width: Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.width, height: Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.height }}>{selection}</div>

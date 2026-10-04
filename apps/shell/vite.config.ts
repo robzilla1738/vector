@@ -79,6 +79,7 @@ export default defineConfig({
     target: process.env.AUX_CHROMIUM_SHELL_BUILD === "1" ? "chrome154" : "chrome150",
     // scripts/check-budgets.mjs walks the manifest to measure startup bytes
     manifest: true,
+    rollupOptions: { output: { chunkFileNames: chunk => ["App", "MockPage", "xterm"].includes(chunk.name) ? "assets/[name]-[hash].js" : "assets/[hash].js" } },
   },
   server: {
     port: 5197,

@@ -1,0 +1,18 @@
+{
+  "schema": "aux-root-pip-caller-ownership-review/v1",
+  "freeze": "/private/tmp/aux-browser-runtime-l10-pip-performance/docs/lane-requests/l10/pip-caller-ownership-successor/FREEZE.json",
+  "freezeSha256": "aacc6b5a09555f741a323e7d5f1c7511d27d017d8c4abc8ad4c8fdbc6a792467",
+  "patchSha256": "3db9574bd9e437f8f5a3a4eb1ee2f117be9d1b0420629edaabf93e9edf12bfbb",
+  "actualForwardReverseForward": true,
+  "actualLeaves": 3,
+  "sourceControls": {
+    "log": "/tmp/aux-root-pip-source-controls-001.log",
+    "sha256": "2ae1cfdcddae6be5baecf6a59d83c9a5418dc5cc2b1ed2dcbcdb13ec8c96cc5c",
+    "pass": true
+  },
+  "expiredProducerRefusedBeforeReservationAndIssue": true,
+  "originalPreAckPromiseAndOwnersRetained": true,
+  "nativeCompiled": false,
+  "hardwareQualified": false,
+  "acceptance": false
+}

@@ -1,0 +1,1 @@
+Not adopted: actual native154 renderer024 showed no reserve from these tree-shaken policy records. Production file restored byte-for-byte. Original ordered values, identity relationships, literal public types and safety checks passed before restoration. Renderer024 total1844794 exceeds unchanged1843200 by1594; retain this failed intermediate measure.

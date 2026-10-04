@@ -1,0 +1,79 @@
+{
+  "sourceOnly": true,
+  "baseCommit": "98cc0547392bd4955d18a008d0b209c2c6a30049",
+  "sourceCommit": "b4638d36d7ce7e6ff1a5076783f273f451459477",
+  "patchSha256": "f83ce692f4b54dfc9d420d7922cd7b01ae90875bbc8a1938573aee5d9ef58e21",
+  "ownedLeaves": [
+    {
+      "path": "apps/shell/src/components/AttachmentTray.tsx",
+      "beforeSha256": "5edfa2f58403f7ee1eeaddc34d55691a1e58c652ec16382c6faf2f2fad9864e1",
+      "afterSha256": "ede59b9e658341e3b940a4e0f2e71d483d5ca8dde868810ba65e1f0d2ec93a09"
+    },
+    {
+      "path": "apps/shell/src/components/Composer.mounted-image-controls.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "f7e8b504c08380b48c1d78213b4ea1f40fe6274198dc5dbb96f4de521a074105"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "beforeSha256": "d314e8e9c833c35f976bd27c5114dfe4a68e25d770ed76b746dfbf1ad8abdaa8",
+      "afterSha256": "170265758d99996f7392935e5806f139e4ab52fee27d724c21a58b412f9a4f4d"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImageControl.tsx",
+      "beforeSha256": "667281c5b40e96959e0a71514b678f43f215c983c8821ff8c58fbe3f72b237d8",
+      "afterSha256": "63b6677ecad798b39306c4a1f5e1254d1f324a8c5679164229594a3190850789"
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.tsx",
+      "beforeSha256": "2d49ebabe6f48b193f3134cc65fdbfd2c3c1ab718784762084f7630e77fab9d8",
+      "afterSha256": "ba1f15cb01a634950669acde64674bc38ab5f8cc46399286193c13d853068848"
+    }
+  ],
+  "unchangedDependencies": [
+    {
+      "path": "apps/shell/src/settings/sections/preference-command.tsx",
+      "sha256": "888f0f4434d10269f2acd15f13fc2be3ce8a4898abb499fe20c34e6dcb59ad1b"
+    },
+    {
+      "path": "apps/shell/src/scoped-control-commands.ts",
+      "sha256": "1d734e4ca4b41ccc3e80fc502254e7bd7c559602e0b18c3c85e26c8d55ff6f66"
+    },
+    {
+      "path": "apps/shell/src/command-completion.ts",
+      "sha256": "01527b9f86c227ab5f7e6cd2721ccb5f4d5a6fbc34aaba358e73c9ba07ba8e9d"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationControls.tsx",
+      "sha256": "95b78d31960f6eff38b823c6b5a24f244bb3d38d2ac4470d1438323be5547466"
+    },
+    {
+      "path": "apps/shell/src/ui/index.tsx",
+      "sha256": "7174ba0ede985c75a1f3103373fa1a31acc5431b5e7aa5e660cb0d035b316a80"
+    },
+    {
+      "path": "apps/shell/src/components/ViewerFrame.tsx",
+      "sha256": "3d85bd6d7ff9844a297707bf03e2350d60c527105d2e430bbdedc7aec036212e"
+    }
+  ],
+  "replay": {
+    "forwardReverseForward": "PASS",
+    "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-mounted-image-replay-tla3_e2d"
+  },
+  "controls": {
+    "newMountedParent": 6,
+    "unchangedImageControls": 13,
+    "totalPassed": 19,
+    "logs": [
+      "/tmp/aux-mounted-image-controls-final.log",
+      "/tmp/aux-mounted-image-types-5.log",
+      "/tmp/aux-mounted-image-lint-2.log"
+    ],
+    "shellTypes": "PASS",
+    "lintErrors": 0,
+    "lintWarningDelta": 0
+  },
+  "nativeExecuted": false,
+  "budgetMeasured": false,
+  "visualAccepted": false
+}

@@ -1,0 +1,95 @@
+{
+  "sourceBase": "98cc0547392bd4955d18a008d0b209c2c6a30049",
+  "nativeCandidate": "9c8b162cab02402b4e526e8d84f229e679e919ba",
+  "sourceDeliverables": [
+    "Actual mounted attachment tray registered preview/include/remove/close",
+    "Saved image Fit/100%/zoom/details/Retry registered with original snapshot/window/read lifetime",
+    "Original ordered metadata and alias relationships preserved by smaller closed constructors"
+  ],
+  "sourceFocusedControlsPassed": true,
+  "sourceWholeGatesPending": true,
+  "nativeSourceStageAndGenuineGnRootReviewed": true,
+  "nativeFull17Running": true,
+  "original449PlusFourRequired453StillPending": true,
+  "provisionalRenderer": {
+    "actual": {
+      "startup": 500019,
+      "css": 179368,
+      "total": 1843934
+    },
+    "limits": {
+      "startup": 501760,
+      "css": 184320,
+      "total": 1843200
+    },
+    "strictPass": false,
+    "native154": true,
+    "sourceOnly": true
+  },
+  "fullPreviewRendererPending": true,
+  "budgetWaived": false,
+  "qualification": false,
+  "visualAcceptance": false,
+  "artifacts": [
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-native320-source-stage-admission-001.json",
+      "sha256": "0127ca20941a37a1934a38be2c534cb36e5c9dda69256b0189c19bcf9957dd9a"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-native320-stage-terminal-review-001.json",
+      "sha256": "6e39faa19ae9a50f2de2f50b29505c1d21292f511f241b40812f47c1859e8b6a"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-native320-gn-admission-001.json",
+      "sha256": "857ecd946bda5ea14b5a4cce18a9df056fc6cdfb32b63f3e81615da985988ff2"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-native320-gn-terminal-full17-admission-001.json",
+      "sha256": "ed4e6969083f5ab09c9bcdcdce8bde730152d2e8597a973f40172bee817d3b5c"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-mounted-image-tray-adoption-001.json",
+      "sha256": "2c3af6ec72d3227e77eed31d8236eec9f2e7863b6603f03b31ed2ad1d4139f6e"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-image-preview-controls-adoption-001.json",
+      "sha256": "75883228d285ea75a93c786eab8644be021b5f7f27718ee4f5a4b9f96c4a562c"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-chat-first-native-recipe-review-001.json",
+      "sha256": "360253e962ad21d2dca09eff1000e421d31034e3414df789c7c5ccf479868ada"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-pip-root-paint-prerequisite-review-001.json",
+      "sha256": "26e2b5ffc6c83b6db17f9b9f541537cc849f92575d09a36654ed6c4c92edd8cb"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-command-constructors-036.log",
+      "sha256": "3b6ec44221e8c5254d922b21244ce0f907760ccda3c0803dda38bb5e65f140f2"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-command-constructors-037.log",
+      "sha256": "09ce994ba2635b2498d46333b85cba4ab503e75adbbcc2cb48876d067590938e"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-mounted-image-controls-036.log",
+      "sha256": "dc0ebd7cc75bff65f2bda510e1fb0854c45f4467417a7a9f5678246365ffe752"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-coherent-build-036.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-coherent-strict-budget-023.json",
+      "sha256": "6022528d37844117a6449ebba2b5adcc3b5ca3355011cbd9645e4e0357abc774"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-coherent-renderer-023.log",
+      "sha256": "37929d6ec99c2d28c8a693daf1715575b841dd8700404109886ab564bf160dfe"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-018/aux-root-image-coherent-controls-038.log",
+      "sha256": "000e8d4ef67f1131bccfbbfc6dc667fb7741ff784adbe2fa0de0194c54728c1e"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+# Remaining mounted model commands
+
+Source-only pending implementation inventory. No native or F21 acceptance claim.
+
+The actual Settings and onboarding callers mount ModelsSettings and ModelConnections. Their saved-model/endpoint/route/credential actions still invoke direct callbacks. Existing credential masking, explicit provider switching, no fallback, disconnect and reviewed removal confirmation remain required. No tool or journey may read a real credential.
+
+Next coherent command cohort: select-model-provider, save-model-endpoint, discover-provider-models, save-provider-model-key, save-planner-model, probe-model-connection, show-model-probe-details, save-vision-model, save-model-role, use-automatic-model-role, set-model-worker-limit, set-model-turn-limit, manage-model-provider, edit-provider-models, reauthenticate-model-provider, toggle-model-provider-connection, remove-saved-model-key, set-image-generation-model.
+
+Use original mounted controls and authoritative scoped dispatch. Draft typing remains local. Native window/provider/active/draft generations retire permanently, including ABA; same-tick duplicate work must refuse. Preserve real settings boolean ACK and original rejection, original provider/storage policy and confirmation. Focus a remapped command only into its current original control; input Enter must dispatch the same save action using the original input event, with no simultaneous duplicate command registration. Old hidden/inactive fixture clicks must be revised to mounted active owners using loopback synthetic data, retaining every original callback/assertion; no visibility or original hidden-control refusal may be weakened to satisfy tests.
+
+Ownership is REQUEST ONLY: no production/model leaf edits or new registry rows yet. Root owns contracts; design owns current reserve script and image packets. Root will assign this implementation after the coherent image/bundle batch is sealed. Tests must cover real mounted commands, original mask/destination/no-provider-request behavior, original ACK/error, delayed provider/native ABA, reviewed removal and Settings search fields. Source references below are actual current files, not assumptions about private upstream UI.

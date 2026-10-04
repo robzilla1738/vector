@@ -1,0 +1,52 @@
+{
+  "sourceOnly": true,
+  "mountedPrerequisite": "34f5424b9016097e3a594964586f14f3dc5a1ab8",
+  "pins": [
+    {
+      "path": "apps/shell/src/components/AttachmentTray.tsx",
+      "sourceTree": "/tmp/aux-browser-runtime-design-mounted-images",
+      "sha256": "ede59b9e658341e3b940a4e0f2e71d483d5ca8dde868810ba65e1f0d2ec93a09"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "sourceTree": "/tmp/aux-browser-runtime-design-mounted-images",
+      "sha256": "170265758d99996f7392935e5806f139e4ab52fee27d724c21a58b412f9a4f4d"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImageControl.tsx",
+      "sourceTree": "/tmp/aux-browser-runtime-design-mounted-images",
+      "sha256": "63b6677ecad798b39306c4a1f5e1254d1f324a8c5679164229594a3190850789"
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.tsx",
+      "sourceTree": "/tmp/aux-browser-runtime-design-mounted-images",
+      "sha256": "ba1f15cb01a634950669acde64674bc38ab5f8cc46399286193c13d853068848"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImages.tsx",
+      "sourceTree": "/tmp/aux-browser-runtime-design-mounted-images",
+      "sha256": "027f8df06dfba788b0e6508025dd2bdbc7a7df3b67bd663fa2dde0d3e783eb26"
+    },
+    {
+      "path": "tests/host/lib/home-capture.mjs",
+      "sourceTree": "/tmp/aux-browser-runtime-following-batch",
+      "sha256": "6fd157b411ea8c9ae5a974f07fe1be93b8d6caea0c90289267422a7a584a6a51"
+    },
+    {
+      "path": "tests/host/lib/ax.mjs",
+      "sourceTree": "/tmp/aux-browser-runtime-following-batch",
+      "sha256": "bba460aa823fd8d234f22ea0c8d7d47a2cd74a3f6e92dc5bf1940560330b30e5"
+    },
+    {
+      "path": "tests/host/lib/composer-image-appearance.mjs",
+      "sourceTree": "/tmp/aux-browser-runtime-following-batch",
+      "sha256": "23efdafd544eb5741adc4281ef16943a4e42587a40a2161ba362ab356027afa1"
+    },
+    {
+      "path": "scripts/design-qa.mjs",
+      "sourceTree": "/tmp/aux-browser-runtime-following-batch",
+      "sha256": "48231213bcf5dae2ccfbbb23eca92a62af526b9885b7c57d4efcd7141ca013b4"
+    }
+  ],
+  "nativeCaptureAccepted": false
+}

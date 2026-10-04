@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "stageProof": "/private/tmp/aux-browser-runtime-builder-native319-source-001/release/test-artifacts/builder-native320-9c8b162c-stage-preflight-001/prep-proof.json",
+  "stageProofSha256": "5f4375ddb8fd05e2f2cc7626585f0138db79a33a4c700eafd3412d5def12a7b6",
+  "terminal": "/private/tmp/aux-builder-native316-runtime-teardown-source-001/native319-preparation-001/native320-stage-original-launch-001/original-terminal.json",
+  "terminalSha256": "9ac67194545430bdfb64a46bc87a104511f247b29a52097d10227e96c6880b3c",
+  "actualGeneratedAndShellPins": true,
+  "originalCompiledGuardMapRetained": true,
+  "originalChildrenRawArtifactsAndClosure": true,
+  "scope": "Source stage integrity only; compiled assertions/runtime pair/App pending"
+}

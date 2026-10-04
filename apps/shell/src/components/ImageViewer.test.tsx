@@ -5,8 +5,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ImageViewer } from './ImageViewer';
 import { ImagePreview } from './ImageSnapshot';
 let host:HTMLDivElement, root:ReturnType<typeof createRoot>;
-beforeEach(()=>{vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);host=document.createElement('div');document.body.append(host);root=createRoot(host);});
-afterEach(async()=>{await act(async()=>root.unmount());host.remove();vi.unstubAllGlobals();});
+beforeEach(()=>{vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);vi.spyOn(HTMLElement.prototype,'getClientRects').mockReturnValue([{width:100}] as unknown as DOMRectList);host=document.createElement('div');document.body.append(host);root=createRoot(host);});
+afterEach(async()=>{await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();vi.unstubAllGlobals();});
 it('zooms the original local pixels with bounded controls and resets for a different image',async()=>{
   await act(async()=>root.render(<ImageViewer src="data:image/png;base64,AA==" alt="Screenshot"/>));
   const img=host.querySelector('img')!;

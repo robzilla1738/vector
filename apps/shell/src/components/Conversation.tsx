@@ -21,6 +21,8 @@ import { Dictation } from "./Dictation";
 import { ImageSnapshot } from "./ImageSnapshot";
 import { SavedResultPreview } from "./SavedResultPreview";
 import { GeneratedResultPreview } from "./GeneratedResultPreview";
+import { guardCommandCompletion } from "../command-completion";
+import { ConversationImageAction } from "./ConversationImageControl";
 import { ConversationImages } from "./ConversationImages";
 import { DocumentSnapshot } from "./DocumentSnapshot";
 import { AuxMark } from "./AuxMark";
@@ -41,7 +43,7 @@ import { ConversationAction, ConversationDetails, useConversationOwner } from ".
 import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory";
 import { browserLinkUrl as answerUrl } from "../browser-links";
 import { RunPanel } from "./RunPanel";
-import { shellIconArrowDown, shellIconDownloadSm, shellIconGlobe, shellIconOpen, shellIconPlusSm, shellIconRail, shellIconSend, shellIconSplit } from "./icons";
+import { shellIconArrowDown, shellIconClose, shellIconDownloadSm, shellIconGlobe, shellIconOpen, shellIconPlusSm, shellIconRail, shellIconSend, shellIconSplit } from "./icons";
 import "./Conversation.css";
 import "./ConversationContextMenu.css";
 
@@ -476,15 +478,34 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     else useStore.setState({ conversationId: chatId });
     return chatId;
   };
-  const changeImage = async (imageId: string, included?: boolean) => {
-    if (!id || documentBusy.current || attachmentSaving) return;
+  const imageSnapshot = JSON.stringify(images);
+  const committedImages = useRef(imageSnapshot);
+  const imageMutation = useRef<{release():void} | null>(null);
+  useLayoutEffect(() => { committedImages.current = imageSnapshot; }, [imageSnapshot]);
+  useLayoutEffect(() => () => { imageMutation.current?.release(); }, [conversationCurrent]);
+  const currentImage = (item: ConversationImage) => conversationCurrent() && committedImages.current === imageSnapshot && images.includes(item);
+  const currentImagePreview = useCallback(() => conversationCurrent() && committedImages.current === imageSnapshot && imagePreview !== null, [conversationCurrent,imageSnapshot,imagePreview]);
+  const changeImage = (item: ConversationImage, included?: boolean) => {
+    const imageId = item.imageId;
+    if (!id || !currentImage(item) || contextLocked || documentBusy.current || attachmentSaving) throw new Error("Choose the current image control.");
     const chatId = id;
+    const current = () => currentImage(item);
+    const operation = {release() {
+      if (imageMutation.current !== operation) return;
+      imageMutation.current = null; documentBusy.current = false;
+      setImageOperations(count => Math.max(0,count - 1));
+    }};
+    imageMutation.current = operation;
     documentBusy.current = true; setImageOperations(count => count + 1);
-    try {
-      const result = await call(included === undefined ? "conversations.images.remove" : "conversations.images.toggle", {chatId,imageId,...(included === undefined ? {} : {included})});
-      if (activeChat.current === chatId) { setImages(result.images); setImagePreview(null); setContextRefresh(value => value + 1); }
-    } catch (error) { errToast(error); }
-    finally { documentBusy.current = false; setImageOperations(count => Math.max(0,count - 1)); }
+    const completion = (async () => {
+      try {
+        const result = await call(included === undefined ? "conversations.images.remove" : "conversations.images.toggle", {chatId,imageId,...(included === undefined ? {} : {included})});
+        if (current() && imageMutation.current === operation) { setImages(result.images); setImagePreview(null); setContextRefresh(value => value + 1); }
+        return result;
+      } catch (error) { if (current() && imageMutation.current === operation) errToast(error); throw error; }
+      finally { operation.release(); }
+    })();
+    return guardCommandCompletion(completion,current);
   };
   const changeDocument = async (attachmentId: string, included?: boolean) => {
     if (!id || documentBusy.current) return;
@@ -694,9 +715,9 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     ...attachments.map(item => ({ key:`document:${item.attachmentId}`, name:item.filename, kind:"document" as const, included:item.included,
       onOpen:() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setImagePreview(null); setDocumentPreview(item.attachmentId); },
       onToggle:(included:boolean) => void changeDocument(item.attachmentId,included), onRemove:() => void changeDocument(item.attachmentId) })),
-    ...images.map(item => ({ key:`image:${item.imageId}`, name:item.filename, kind:"image" as const, included:item.included, detail:`${item.width} × ${item.height}`,
+    ...images.map(item => ({ imageCurrent:() => currentImage(item), key:`image:${item.imageId}`, name:item.filename, kind:"image" as const, included:item.included, detail:`${item.width} × ${item.height}`,
       onOpen:() => { setSourceDetail(null); useStore.setState({resultPreview:null}); setDocumentPreview(null); setImagePreview(item.imageId); },
-      onToggle:(included:boolean) => void changeImage(item.imageId,included), onRemove:() => void changeImage(item.imageId) })),
+      onToggle:(included:boolean) => changeImage(item,included), onRemove:() => changeImage(item) })),
     ...generated.filter(item => !item.automaticReport || item.included).map(item => ({ key:`result:${item.artifactId}`, name:item.filename, kind:"result" as const, included:item.included, detail:`Saved result · v${item.revision ?? artifactVersions[item.artifactId] ?? 1}`,
       onOpen:() => { setSourceDetail(null); setImagePreview(null); setDocumentPreview(null); useStore.setState({resultPreview:item.artifactId}); },
       onToggle:(included:boolean) => void changeResult(item.artifactId,included) })),
@@ -733,7 +754,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     </Menu>}
   </div> : null;
   const supporting = id && resultPreview ? (generated.find(item=>item.artifactId===resultPreview && item.generatedKind) ? <GeneratedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onClose={() => useStore.setState({resultPreview:null})} onVersionSaved={artifactId=>useStore.setState({resultPreview:artifactId})}/> : <SavedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onCitationOpen={openCitation} onClose={() => useStore.setState({resultPreview:null})} onVersionSaved={artifactId=>useStore.setState({resultPreview:artifactId})}/>)
-    : id && imagePreview && images.some(image => image.imageId === imagePreview) ? <ImageSnapshot key={`${id}:${imagePreview}`} chatId={id} imageId={imagePreview} onClose={() => setImagePreview(null)}/>
+    : id && imagePreview && images.some(image => image.imageId === imagePreview) ? <ImageSnapshot key={`${id}:${imagePreview}`} chatId={id} imageId={imagePreview} current={currentImagePreview} onClose={() => setImagePreview(null)} closeControl={<ConversationImageAction command="cancel-conversation-image" current={currentImagePreview} invoke={() => setImagePreview(null)} type="button" className="icon-btn xs" aria-label="Close image preview">{shellIconClose}</ConversationImageAction>}/>
     : id && documentPreview ? <DocumentSnapshot key={`${id}:${documentPreview}`} chatId={id} attachmentId={documentPreview} onClose={() => setDocumentPreview(null)}/>
     : sourceDetail ? <><SourceRow source={sourceDetail} profileNames={sourceProfileNames} onOpen={() => void openSource(sourceDetail)}/><p className="hint selectable">{sourceDetail.url}</p><button className="btn" onClick={() => void openSource(sourceDetail)}>Open recorded source {shellIconOpen}</button></>
     : browserPreview;

@@ -1,0 +1,32 @@
+{
+  "sourceOnly": true,
+  "nativeCaptureAccepted": false,
+  "actualAuthorityFinding": "Journey HTTP master-bearer RPC is external:true; images.get is aux-webui and prepared rejects external. ConversationSummary requires latestRun and does not expose unsent images. No assumed public metadata authority.",
+  "requiredNextSeam": "Actual original normal-window/current-WebUI-owned image observation for the fixed disposable fixture, or visual-only AX capture with identity limitations explicitly retained. Do not widen auth or invoke UI methods through external HTTP.",
+  "pins": [
+    {
+      "path": "tests/host/lib/rpc.mjs",
+      "sha256": "d2d430aad38ef081cd710586b99a080e36ad3bab5eaaf412ac24940bba6d403b"
+    },
+    {
+      "path": "apps/runtime/src/api/server.ts",
+      "sha256": "bba6c4778f70c8cad962cb9fa1e34b14de949df2e8e06d40dd46dd3774ec02a3"
+    },
+    {
+      "path": "apps/runtime/src/api/invoke.ts",
+      "sha256": "f8554c97f27fc669dc6a1097fc6e7491ae7177df61218c2200f5ae32369bb3ce"
+    },
+    {
+      "path": "apps/runtime/src/api/methods/conversations.ts",
+      "sha256": "95019c5e54f4abc8e5f8a91d2660c9526d311486784a16ff3d73151fa4129676"
+    },
+    {
+      "path": "packages/contracts/src/runtime-method-policy.ts",
+      "sha256": "db5ca5eff12b829a59c3e1bd7e13ea4cdf8254f675d111cd71b0ce9ac1f26343"
+    },
+    {
+      "path": "packages/contracts/src/entities.ts",
+      "sha256": "79f7522886bfee86b4ac91aed459d0d46c5bfabe1530cd043976d1c14a3da524"
+    }
+  ]
+}

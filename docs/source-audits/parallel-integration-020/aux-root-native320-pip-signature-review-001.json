@@ -1,0 +1,14 @@
+{
+  "schema": "aux-root-native320-pip-signature-review/v1",
+  "actualSourceAndInstalledApiPins": true,
+  "exactSingleSignatureChange": true,
+  "actualForwardReverseForward": true,
+  "rawOriginalFaultVerified": true,
+  "freeze": "/private/tmp/aux-builder-native316-runtime-teardown-source-001/native319-preparation-001/native320-pip-diagnostic-window-interface-correction-001/FREEZE.json",
+  "freezeSha256": "c8d70d2206b63cf6a5762bd4b1b57016fdf234a27a06bcfd76f5e444d03cec1e",
+  "patchSha256": "32fdcc5b2930c14b9136e5c9decafa169f7a54dd04b75e8e34857366491f0928",
+  "allOriginalDiagnosticAndAssertionBytesUnchanged": true,
+  "nativeCompiled": false,
+  "stableMutationAuthorized": false,
+  "awaitOriginalFailedGraphTerminal": true
+}

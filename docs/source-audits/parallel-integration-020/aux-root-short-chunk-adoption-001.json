@@ -1,0 +1,21 @@
+{
+  "schema": "aux-root-short-chunk-adoption/v1",
+  "actualForwardReverseForward": true,
+  "productionLeaves": [
+    {
+      "path": "apps/shell/vite.config.ts",
+      "beforeSha256": "f288bae3e5b933dfd5374c3aa462f80916800e1f4ce5def8a5c9b874ded1ae7b",
+      "afterSha256": "210e91720ece13614c95bad0a1df935ffba62e8d1d06ec8016e68e9c58a9c892"
+    },
+    {
+      "path": "tests/tools/shell-chunk-filenames.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "8dd7beb0c8f3096578d8ad0cdb60661c2a780e181788d1743f3f167ee32eb490"
+    }
+  ],
+  "patchSha256": "dfe45559a57c74b805c2bfa5b1600331ca7c676c0077c7c2a5550a809c5b29d9",
+  "actualConsumerPinsUnchanged": true,
+  "beforeRenderer": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-short-chunk-before-x_wmdb_p/dist",
+  "nativeBuildAndBudgetPending": true,
+  "qualification": false
+}

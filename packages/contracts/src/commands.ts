@@ -21,10 +21,13 @@ const C = <const I extends string, const D extends Omit<CommandDef, "id" | "labe
 /** Scoped actions derive their dispatcher from this authoritative registry. */
 const S = <const I extends string, const D extends Omit<CommandDef, "id" | "label">>(id: I, label: string, defaults: D) => ({ ...C(id, label, defaults), dispatch: "scoped" } as const);
 const G = <const M extends string, const R extends readonly (readonly [string, string, string])[], const D extends Omit<CommandDef, "id" | "label">>(defaults: D, middle: M, rows: R) => rows.map(([start, end, label]) => S(`${start}${middle}${end}`, label, defaults)) as { [I in keyof R]: D & { readonly id: `${R[I][0]}${M}${R[I][1]}`; readonly label: string; readonly dispatch: "scoped" } };
+const focusedFeature = <const T extends CommandDef["section"], const F extends AuxFeature>(section: T, feature: F) => ({ section, handler: "shell", feature, focusShell: true, palette: false, windows: ["normal"], bindings: [] } as const);
+const tabFeature = <const F extends AuxFeature>(feature: F) => ({ section: "Tabs", handler: "shell", feature, palette: false, windows: ["normal"], bindings: [] } as const);
+const nightFeature = <const P extends boolean>(palette: P) => ({ section: "Agent", handler: "shell", feature: "overnightReview", focusShell: true, windows: ["normal"], bindings: [], palette } as const);
 const quickAskControl = { section: "Agent", handler: "shell", feature: "quickAsk", focusShell: true, palette: false, bindings: [], intercept: true } as const;
 const searchEngineControl = { section: "Application", handler: "shell", focusShell: true, palette: false, bindings: [], intercept: true } as const;
 const memoryControl = { section: "Application", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [], intercept: true } as const;
-const sitePermissionControl = { section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] } as const;
+const sitePermissionControl = focusedFeature("Agent", "agentSitePermissions");
 const focusedAgentControl = { section: "Agent", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [] } as const;
 const runControl = { section: "Agent", handler: "shell", focusShell: true, windows: ["normal"], bindings: [], intercept: true } as const;
 const browserContextControl = { section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true } as const;
@@ -32,22 +35,22 @@ const shellApplication = { section: "Application", handler: "shell", focusShell:
 const normalApplication = { section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] } as const;
 const demonstrationControl = { section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: false } as const;
 const skillReplayControl = { section: "Agent", handler: "shell", feature: "automations", focusShell: true, windows: ["normal"], bindings: [], palette: false } as const;
-const profileControl = { section: "Application", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] } as const;
-const linkRoutingControl = { section: "Application", handler: "shell", feature: "linkRouting", focusShell: true, palette: false, windows: ["normal"], bindings: [] } as const;
-const extensionControl = { section: "Application", handler: "shell", feature: "extensions", focusShell: true, palette: false, windows: ["normal"], bindings: [] } as const;
-const pinnedAppControl = { section: "Tabs", handler: "shell", feature: "pinnedApps", palette: false, windows: ["normal"], bindings: [] } as const;
-const liveFolderControl = { section: "Tabs", handler: "shell", feature: "liveFolders", palette: false, windows: ["normal"], bindings: [] } as const;
-const archiveControl = { section: "Tabs", handler: "shell", feature: "archive", palette: false, windows: ["normal"], bindings: [] } as const;
+const profileControl = focusedFeature("Application", "profiles");
+const linkRoutingControl = focusedFeature("Application", "linkRouting");
+const extensionControl = focusedFeature("Application", "extensions");
+const pinnedAppControl = tabFeature("pinnedApps");
+const liveFolderControl = tabFeature("liveFolders");
+const archiveControl = tabFeature("archive");
 
-const mentionControl = { section: "Agent", handler: "shell", feature: "tabMentions", focusShell: true, palette: false, windows: ["normal"], bindings: [] } as const;
+const mentionControl = focusedFeature("Agent", "tabMentions");
 const translationControl = { section: "Application", handler: "shell", feature: "aiTranslate", focusShell: true, bindings: [] } as const;
-const nightReviewEntry = { section: "Agent", handler: "shell", feature: "overnightReview", focusShell: true, windows: ["normal"], bindings: [], palette: true } as const;
-const nightReviewControl = { section: "Agent", handler: "shell", feature: "overnightReview", focusShell: true, windows: ["normal"], bindings: [], palette: false } as const;
-const nightSettingsControl = { section: "Agent", handler: "shell", feature: "overnightReview", focusShell: true, windows: ["normal"], bindings: [], palette: false, intercept: true } as const;
+const nightReviewEntry = nightFeature(true);
+const nightReviewControl = nightFeature(false);
+const nightSettingsControl = { ...nightFeature(false), intercept: true } as const;
 const downloadNamingControl = { section: "Application", bindings: [], handler: "shell", feature: "smartDownloadNames", palette: false, windows: ["normal"] } as const;
 const windowSyncControl = { section: "Windows", handler: "shell", feature: "windowSync", windows: ["normal"], bindings: [] } as const;
 const littlePageControl = { section: "Windows", handler: "shell", feature: "littleWindow", windows: ["little"], bindings: [] } as const;
-const profileWindowControl = { section: "Windows", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] } as const;
+const profileWindowControl = focusedFeature("Windows", "profiles");
 const archiveBatchControl = { section: "Tabs", handler: "shell", feature: "archive", windows: ["normal"], bindings: [] } as const;
 
 const pageRecoveryControl = { ...memoryControl, section: "Page", windows: ["normal", "private", "little", "quick-ask"] } as const;
@@ -64,6 +67,12 @@ export const COMMANDS = [
     ["toggle", "image", "Toggle conversation image inclusion"],
     ["remove", "image", "Remove conversation image"],
     ["preview", "image", "Preview conversation image"],
+    ["fit", "image", "Fit conversation image"],
+    ["show", "image-actual-size", "Show conversation image at actual size"],
+    ["zoom", "image-out", "Zoom conversation image out"],
+    ["zoom", "image-in", "Zoom conversation image in"],
+    ["toggle", "image-details", "Show conversation image details"],
+    ["retry", "image-preview", "Retry conversation image preview"],
     ["attach", "document", "Attach conversation document"],
   ]),
   S("load-conversation-history", "Load conversation history", browserContextControl),

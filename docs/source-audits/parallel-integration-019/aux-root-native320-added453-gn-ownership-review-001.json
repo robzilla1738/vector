@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "scope": "Actual source/generated GN ownership only; compiled objects/enumeration/native execution pending",
+  "sourceProof": "/private/tmp/aux-builder-native316-runtime-teardown-source-001/native319-preparation-001/NATIVE320-ADDED453-ACTUAL-GN-OWNERSHIP-001.json",
+  "sourceProofSha256": "6aa6ce49d67c96fa321c8d4b74ed2e07cd59c210b945aad92c0b7c34d22b0aee",
+  "additionalRequiredCases": [
+    "NativeCommandPresentationPair.RetainsAllThreeObservedModeSourcePairs",
+    "NativePersonObserverControllerBrowserTest.HostFirstDestructionRetiresExistingControllerAuthority",
+    "NativePersonObserverControllerBrowserTest.ProfileUserDataClearRetiresOriginalPublishedConnection",
+    "NativePersonObserverControllerBrowserTest.UnpublishedHostUserDataClearDoesNotCreateAuthority"
+  ],
+  "originalSelectedCount": 449,
+  "proposedCount": 453,
+  "compiled": false
+}

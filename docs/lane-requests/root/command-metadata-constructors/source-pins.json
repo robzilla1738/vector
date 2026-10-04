@@ -1,0 +1,5 @@
+{
+  "originalSha256": "323a339482b790db9feaf2e568b4d47c456a8b654444ced0b62812db26b7aaff",
+  "constructorSha256": "3fe50feae80572c104dc904fdac8b18cbd478c1b6207f3c03ba27b7f49d7bf04",
+  "semantics": "Ordered metadata, literal types, fresh arrays per family and original sharing within family must remain exact"
+}

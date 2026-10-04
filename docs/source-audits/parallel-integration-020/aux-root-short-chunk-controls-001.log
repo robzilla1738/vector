@@ -1,0 +1,16 @@
+✔ exact original cached URLs/order/indices, mutable cache identity and failure behavior are retained (2.905583ms)
+✔ explicit original cache getter and original index map effects occur in the same order (0.58625ms)
+✔ fresh lexical name preserves preceding effects and refuses foreign/dynamic/changed helpers (0.967166ms)
+✔ source maps and nonchunk assets are left untouched (0.204459ms)
+✔ actual installed Vite output retains every preload URL and import/dynamic edge under supported post hook (301.079042ms)
+✔ original boot and forbidden-development filename selectors remain intact (2.103125ms)
+✔ actual installed Rollup preserves entry, modules, exports and lazy graph with supported filename callback (25.607083ms)
+✔ same-content dynamic chunks retain eight-character hash collision handling and unique URLs (5.103375ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 573.159416

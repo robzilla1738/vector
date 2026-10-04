@@ -1,0 +1,11 @@
+# Short nonboot shell chunk URLs
+
+Request-only config change plus three meaningful installed-Rollup source controls. No body, module boundary, minifier, dependency, validator, runtime policy, feature or budget change.
+
+Nonboot chunks use Vite/Rollup's supported `assets/[hash].js` pattern. App, MockPage and xterm retain `assets/[name]-[hash].js`; entryFileNames and assetFileNames stay original. App boot budget/preload detection and stage-shell's development-chunk refusal selectors therefore remain exact. Hash length is still the original eight. Installed Rollup4.63.2 `getPreliminaryFileName` uses the supported callback and `generateFinalHashes` retains its case-insensitive collision/re-hash loop; the actual same-content separate dynamic-chunk control proves distinct URLs with eight-character hashes.
+
+Measured native154 strict-CSP/no-map identical held-input output saves 2,485 startup and 9,673 total JS bytes. All120 prefinal module groups, module exports/removed exports and ordered static/dynamic graph edges match. Both builds remove the same two CSS-only synthetic chunks; all118 emitted JS bodies are exact after URL relabeling and Vite empty-CSS comment whitespace normalization. All142 manifest entries and the full HTML (including original preload order/CSP/host bootstrap ordering) match under the same file mapping. All51 non-JS assets are byte-identical. No JavaScript token or callback changed.
+
+`stage-shell.mjs` collects actual filenames/bytes/SHA and checks MIME extensions, strict native CSP, bootstrap and original index-entry prefix; none change. Its MockPage/xterm filename guard is explicitly preserved. Existing preload-prefix controls pass alongside the new installed-Rollup entry/effect/lazy/collision controls (8 cases total).
+
+The measurement used held024 compiled contracts. Root restored runtime-policy source/dist separately; the official current coherent root build remains required after adoption. Production filename changes necessarily produce fresh manifests/GRIT names/carrier evidence and packaged native pair hashes; historical asset approvals cannot be reused. Native builds, App execution, F21 pixels/material/focus/owner signoff and physical performance qualification remain pending and unchanged.

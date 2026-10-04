@@ -1,0 +1,15 @@
+{
+  "actual": {
+    "startup": 497534,
+    "css": 179368,
+    "total": 1835121
+  },
+  "limits": {
+    "startup": 501760,
+    "css": 184320,
+    "total": 1843200
+  },
+  "strictPass": true,
+  "native154": true,
+  "sourceOnly": true
+}
