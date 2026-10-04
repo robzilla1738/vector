@@ -323,3 +323,5 @@ aux/runtime/0337-original-appearance-channel-retirement.patch
 0353-native-disposable-model-credential-original-owner.patch
 0354-native-pip-root-hardware-observation.patch
 0355-native-original-scope-diagnostics-and-fixture-lifecycle.patch
+0356-native-compiler-declarations-and-scoped-types.patch
+0357-native-capture-repeating-identity-reference.patch

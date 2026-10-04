@@ -1,0 +1,10 @@
+{
+  "sourceOnly": true,
+  "executionAdmission": false,
+  "freezeSha256": "d674ea3de522b65f62cbe33f52b3416b25785f811771a4482ec4d1d224046334",
+  "retainedPrefixActualHashes": 326,
+  "exactSeriesAppend": true,
+  "candidateUnchanged": true,
+  "sourcePatchIndependentReplayReceipt": "/tmp/aux-root-native326-capture-bind-review-001.json",
+  "requiredCases": 524
+}

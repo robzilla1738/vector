@@ -705,7 +705,7 @@ void AuxRuntimeHost::HandleNativePersonReadCall(
     }
     const auto current = base::BindRepeating([](base::WeakPtr<AuxRuntimeHost> owner,
         base::WeakPtr<aux::EgressController> authority, aux::NativePersonReadReceipt receipt,
-        base::WeakPtr<BrowserWindowInterface> original_window, uint64_t generation, base::DictValue identity) {
+        base::WeakPtr<BrowserWindowInterface> original_window, uint64_t generation, const base::DictValue& identity) {
       if (!owner || !authority || !original_window || owner->shutting_down_ ||
           owner->admitted_native_generation_ != generation || generation <= owner->retired_native_generation_ ||
           owner->native_person_connection_id_.empty() || !authority->MayReadPerson(receipt)) return false;

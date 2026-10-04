@@ -1,0 +1,41 @@
+--- a/chrome/browser/picture_in_picture/picture_in_picture_window_manager.cc
++++ b/chrome/browser/picture_in_picture/picture_in_picture_window_manager.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/native_pip_presentation_fixture.h"
+ #endif
+ 
+--- a/chrome/browser/ui/aux/native_person_capture_controller.cc
++++ b/chrome/browser/ui/aux/native_person_capture_controller.cc
+@@ -188,7 +188,7 @@
+   const auto& metadata = widget->render_frame_metadata_provider()->LastRenderFrameMetadata();
+   const auto surface = view ? view->GetAuxPersonCaptureSurfaceId() : viz::SurfaceId();
+   if (!surface.is_valid() || !metadata.local_surface_id || surface.local_surface_id() != *metadata.local_surface_id) { Painted(false); return; }
+-  for (size_t i = 0; i < widgets_.size(); ++i) if (widgets_[i] == widget) { surfaces_[i] = surface; submission_tokens_[i] = token; }
++  for (size_t i = 0; i < widgets_.size(); ++i) if (widgets_[i].get() == widget.get()) { surfaces_[i] = surface; submission_tokens_[i] = token; }
+   Painted(true);
+ }
+ void NativePersonCaptureController::Painted(bool accepted) {
+--- a/chrome/browser/ui/aux/native_disposable_model_credential_backend.mm
++++ b/chrome/browser/ui/aux/native_disposable_model_credential_backend.mm
+@@ -17,7 +17,7 @@
+       kCFAllocatorDefault, value.c_str(), kCFStringEncodingUTF8));
+ }
+ bool EqualField(CFDictionaryRef dictionary, CFStringRef key, CFTypeRef expected) {
+-  const auto actual = CFDictionaryGetValue(dictionary, key);
++  auto* const actual = CFDictionaryGetValue(dictionary, key);
+   return actual && expected && CFEqual(actual, expected);
+ }
+ }  // namespace
+@@ -73,7 +73,7 @@
+       kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+   auto service = String("dev.aux.browser:" + original_profile_.AsUTF8Unsafe());
+   auto account = String(kAccount);
+-  if (!query || !service || !account) return {};
++  if (!query || !service || !account) return base::apple::ScopedCFTypeRef<CFMutableDictionaryRef>();
+   CFDictionarySetValue(query.get(), kSecClass, kSecClassGenericPassword);
+   CFDictionarySetValue(query.get(), kSecAttrService, service.get());
+   CFDictionarySetValue(query.get(), kSecAttrAccount, account.get());
