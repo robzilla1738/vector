@@ -1,0 +1,23 @@
+{
+  "sourceOnly": true,
+  "predecessor": "6c9c3bc7d336ab2703ee14d6fb5bb0f89bcc36d3",
+  "path": "apps/shell/src/components/Sidebar.tsx",
+  "beforeSha256": "463839b354925c886d163962779d0cfa777be94cb5a57f3970841d52d5b52381",
+  "afterSha256": "a9208cafee961ba6b65c1a3ea9e3d9895fd5bc41fe04de80195d57c657317e19",
+  "patchSha256": "b6fc9f8cd98b0f7fb816473c8113dac29601da4295297fe19a812e402cb50440",
+  "reverseForwardExact": true,
+  "commands": [
+    "bookmark",
+    "command-reading-list",
+    "overview",
+    "downloads",
+    "settings"
+  ],
+  "registeredMetadataUnchanged": true,
+  "actualMenuClosureAndDisabledWebGuardRetained": true,
+  "shellTypesPassed": true,
+  "originalFocusedControlsPassed": true,
+  "nativeExecuted": false,
+  "coherentByteGatePending": true,
+  "deadSubscriptionRemoved": "setMode subscription became unused after both overview callsites entered existing command."
+}
