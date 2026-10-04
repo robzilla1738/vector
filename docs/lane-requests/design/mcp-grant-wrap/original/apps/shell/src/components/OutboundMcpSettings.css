@@ -1,0 +1,90 @@
+@layer components {
+  .outbound-mcp {
+    border-top: 1px solid var(--line);
+    padding-top: 18px;
+  }
+
+  .outbound-mcp :is(.mcp-register, .mcp-server-card, .mcp-grant-review) {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+  }
+
+  .outbound-mcp .mcp-source-details {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .outbound-mcp .mcp-source-details > div {
+    display: grid;
+    grid-template-columns: minmax(120px, 25%) minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .outbound-mcp .mcp-source-details :is(.mcp-source-label, .mcp-source-value) {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .outbound-mcp .mcp-source-details .mcp-source-label {
+    color: var(--ink-2);
+  }
+  .outbound-mcp .mcp-source-details ol {
+    margin: 0;
+    padding-left: 18px;
+  }
+  .outbound-mcp .mcp-source-details li + li {
+    margin-top: 4px;
+  }
+
+  .outbound-mcp .mcp-grant-row {
+    align-items: start;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 12px 0;
+    flex-wrap: wrap;
+  }
+
+  .outbound-mcp .mcp-grant-row > div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .outbound-mcp .mcp-grant-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .outbound-mcp .mcp-tool-test {
+    flex: 1 0 100%;
+  }
+
+  .outbound-mcp .mcp-tool-result {
+    max-height: 240px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 700px) {
+    .outbound-mcp .mcp-source-details > div {
+      grid-template-columns: 1fr;
+      gap: 2px;
+    }
+    .outbound-mcp .mcp-grant-row {
+      flex-wrap: wrap;
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+    .outbound-mcp :is(.mcp-register, .mcp-server-card, .mcp-grant-review) {
+      background: var(--bg-0);
+    }
+  }
+}

@@ -1,0 +1,30 @@
+diff --git a/apps/shell/src/components/OutboundMcpSettings.test.tsx b/apps/shell/src/components/OutboundMcpSettings.test.tsx
+--- a/apps/shell/src/components/OutboundMcpSettings.test.tsx
++++ b/apps/shell/src/components/OutboundMcpSettings.test.tsx
+@@ -1,6 +1,7 @@
+ // @vitest-environment jsdom
+ import { readFileSync } from "node:fs";
+ import { createRequire } from "node:module";
++import { OutboundMcpGrantSchema, OutboundMcpServerSchema } from "@aux/contracts";
+ import { act } from "react";
+ import { createRoot, type Root } from "react-dom/client";
+ import { afterEach, beforeEach, expect, it, vi } from "vitest";
+@@ -210,14 +211,15 @@
+ });
+ 
+ it("contains a full long tool and Space name in the actual original grant row without altering actions", async () => {
+-  const toolName="tool_"+"x".repeat(180),spaceName="Research_"+"y".repeat(180);
+-  const approved={...server(),state:"approved"};
++  const toolName="tool_"+"x".repeat(180),spaceName="Research_"+"y".repeat(80);
++  const approved=OutboundMcpServerSchema.parse({...server(),state:"approved"});
++  const grant=OutboundMcpGrantSchema.parse({grantId:"22222222-2222-4222-8222-222222222222",serverId,toolName,scope:{kind:"workspace",workspaceId:"workspace-1"},mode:"standing",outputTokenLimit:1024,createdAt:1});
+   rpc.mockImplementation(async(method:string)=> {
+     if(method==="workspaces.list")return [{workspaceId:"workspace-1",name:spaceName}];
+     if(method==="tasks.list" || method==="mcp.tools.list")return [];
+     if(method==="mcp.servers.list")return [approved];
+     if(method==="mcp.oauth.status")return {connected:true};
+-    if(method==="mcp.grants.list")return [{grantId:"original-grant",serverId,toolName,scope:{kind:"workspace",workspaceId:"workspace-1"},mode:"session",outputTokenLimit:1024,createdAt:1}];
++    if(method==="mcp.grants.list")return [grant];
+     throw new Error(`Unexpected long-label read ${method}`);
+   });
+   await act(async()=>root.render(<OutboundMcpSettings />));

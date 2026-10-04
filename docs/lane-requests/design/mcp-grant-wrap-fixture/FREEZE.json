@@ -1,0 +1,13 @@
+{
+  "sourceOnly": true,
+  "prerequisite": "85556ae2ef4125cdbcb2ba3ff927ce31f96adb4b",
+  "path": "apps/shell/src/components/OutboundMcpSettings.test.tsx",
+  "beforeSha256": "75e843948aea7f0fce6ff9792b4beb1bed83adc253187620c937e648af3ab01c",
+  "afterSha256": "42d71febe70ddcfb4252e912ccfd5c689f8fe7cdae7d21dd4bf347e8a6b0c199",
+  "patchSha256": "783d410fbeb49d57652c78539878659d36ef707d5716e03a3b89c6541b811424",
+  "actualGrantSchemaSha256": "09cade6e39d7bd4b44217033d10e183aa881a3cf54a42ee8f29324624412d1d5",
+  "forwardReverseForward": "PASS",
+  "controls": 3,
+  "lintWarnings": 0,
+  "nativeCaptured": false
+}

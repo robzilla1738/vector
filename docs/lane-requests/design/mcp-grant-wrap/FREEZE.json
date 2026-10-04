@@ -1,0 +1,46 @@
+{
+  "sourceOnly": true,
+  "base": "73c07552e",
+  "paths": [
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.css",
+      "beforeSha256": "9c385b5d708e638307e674b3febbd3996f9ac82679ebb4dfbfa726822b893afa",
+      "afterSha256": "e997ddb5878e437c3c4074937c49b2bb4f795e56989313f953454cc02d0e47f3"
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.test.tsx",
+      "beforeSha256": "665e7bf5be438e52758d0461d83f62d74ba9d658454e74a36f917e13eddae5e9",
+      "afterSha256": "75e843948aea7f0fce6ff9792b4beb1bed83adc253187620c937e648af3ab01c"
+    }
+  ],
+  "references": [
+    {
+      "path": "/Users/rcourson/AI Blueprints/06/assets/extension/assets_globals-D6PBr-GP.css",
+      "sha256": "2c2b198d715f3894d41c96b88ef9a32a4f61404891baf954d7e4e5a33d976e79",
+      "rules": [
+        ".min-w-0{min-width:0}",
+        ".max-w-full{max-width:100%}",
+        ".wrap-anywhere{overflow-wrap:anywhere}"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "sha256": "0abc66496130a36c3d9c2d6eaf86d4fe22b03729a8b342e56043f354b12f88cf"
+    },
+    {
+      "path": "apps/shell/src/components/Settings.css",
+      "sha256": "dd769372aa9cda5605b97f0b18d352071c82eaf89e30b854327a5508d8d77c29"
+    },
+    {
+      "path": "apps/shell/src/tokens.css",
+      "sha256": "c0036220218afbe4bd7ff1fe395cf842504b849e6df2e7dd668c5a056a251c1f"
+    }
+  ],
+  "patchSha256": "e776e16990da3ee10abcec4a0d919a4f7ca1d7c4502644631289729c2230fc3f",
+  "forwardReverseForward": "PASS",
+  "wholeUnrelatedCssInverse": "PASS",
+  "componentControls": 3,
+  "lintWarnings": 0,
+  "startupJavascriptChanged": false,
+  "nativeCaptured": false
+}

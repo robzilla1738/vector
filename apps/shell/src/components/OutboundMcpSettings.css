@@ -54,6 +54,8 @@
     display: grid;
     gap: 4px;
     min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .outbound-mcp .mcp-grant-actions {
