@@ -188,6 +188,14 @@
       "sha256": "3555edf2e3b1fc7e4c0934585aab53f7446e2647fef384c5f0f6a81fd5c59814"
     },
     {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-image-lifecycle-image-controls-001.log",
+      "sha256": "6daa79417dc95a60f821259abc3aa78c1f6777991655852fcaba207927f876a3"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-image-lifecycle-lint-001.log",
+      "sha256": "3444472c1e2616c4735b4b6c527058042261e51e157d74bdd4d6f10b1a155330"
+    },
+    {
       "path": "docs/source-audits/parallel-integration-028/aux-root-image-preview-reopen-source-review-001.json",
       "sha256": "77598208c48b64877dc77176f1c93b7a6a48bc8122593053a768fbc1b091add3"
     },
@@ -206,6 +214,18 @@
     {
       "path": "docs/source-audits/parallel-integration-028/capture-registry-preservation.patch",
       "sha256": "b8b140807c70a3c0b81b8e25bd93fc4070b1a45565973b2d7bb5ad3d84c721eb"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/image-lifecycle-successor/ROOT-REVIEW.json",
+      "sha256": "bcb2a1c25c04bf11f3f57e33888acdfd92443e2c0aac7654c4523a1e91ae8fd9"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/image-lifecycle-successor/SOURCE-PINS.json",
+      "sha256": "fafd187439cdc442cef26ebdb46efd0d04a78ae8a68d4c9ffa88f27cdda21a0f"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/image-lifecycle-successor/request.patch",
+      "sha256": "3472c59424dc3968e0c672037d98c7baf07a31cbdf8bebfd68919dc7f8dd43b0"
     },
     {
       "path": "docs/source-audits/parallel-integration-028/root-focus-dedup-copy-successor-pins.json",
@@ -241,5 +261,6 @@
     }
   ],
   "sourcePreviewTypography": "pinned local fonts genuinely loaded in narrow light/dark; native/F21 pending",
-  "savedCredentialExecutionRetentionIntegrated": true
+  "savedCredentialExecutionRetentionIntegrated": true,
+  "originalNarrowImageReopenCallerIntegrated": true
 }

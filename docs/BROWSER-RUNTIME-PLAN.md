@@ -1,3 +1,7 @@
+### Native image lifecycle preparation
+
+The original narrow mounted-image wrapper now prepares real HID Escape→original tray focus→same Preview reopen→loaded Close focus captures before its original Include/Remove cleanup. Root verifies exact current helper/UI APIs, original/result pins, replay and source controls. Short normal and long defaults retain their original capture flow. Async loading is accepted only if genuinely observed before/after capture; no delay, fabricated state or private image ID is introduced. Native execution and F21 remain pending. Source-only caller successor does not change native/renderer/helper bytes.
+
 ## Parallel implementation update — coherent Capture, model fixture, PiP and interaction batch (2026-10-04)
 
 Canonical0352→0353→0354→0355 are composed in the required order. Root independently verifies all79 original/result native leaves and forward/reverse/forward replay. Capture retains genuine masked child-frame composition and restoration ownership; the fixed disposable model fixture retains original authenticated App/Host/Worker, guardian reservation, original slot and independent cleanup ownership; PiP retains original root hardware/destruction observations; the five original failure corrections retain every assertion and deadline. The original failed Native321 evidence remains. These are source changes: genuine full18 compilation, original453 plus71 new source definitions in actual binaries, helper compilation, safety assertions and App admission remain pending.

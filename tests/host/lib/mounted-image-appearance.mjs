@@ -10,9 +10,9 @@ const details=shell('Image details','AXButton');
 const saved={...shell('^Saved\\s+.+$','AXStaticText'),match:'regex'};
 
 /** UI-only preparation: no private chat/image ID is inferred from AX or pixels. */
-export async function captureMountedImageAppearance(t){return captureOwnedMountedImage(t,'valid-image.png',createValidImageFixture,'home-mounted-image')}
+export async function captureMountedImageAppearance(t,previewLifecycle){return captureOwnedMountedImage(t,'valid-image.png',createValidImageFixture,'home-mounted-image',previewLifecycle)}
 export async function captureLongNamedMountedImageAppearance(t){return captureOwnedMountedImage(t,longImageFilename,createLongNamedValidImageFixture,'home-mounted-long-image')}
-async function captureOwnedMountedImage(t,filename,createFixture,capturePrefix){
+async function captureOwnedMountedImage(t,filename,createFixture,capturePrefix,previewLifecycle){
  const remove=shell(`Remove ${filename}`,'AXButton');
  const include=shell(`Use ${filename} in next reply`,'AXCheckBox');
  const escaped=filename.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
@@ -47,7 +47,7 @@ async function captureOwnedMountedImage(t,filename,createFixture,capturePrefix){
   await ax.waitFor(remove,'enabled');await ax.waitFor(shell('Preparing image…'),'absent');
   assert.equal((await unique(include)).checked,true);
   await capture('home-mounted-image-tray','home-mounted-image-tray-included-visual-only');
-  await click(preview);previewOpen=true;await ax.waitFor(close,'enabled');await ax.waitFor(shell('Loading image…'),'absent');
+  await click(preview);previewOpen=true;await previewLifecycle?.afterOpen({ax,unique,unchanged,capture,click,preview,close,fit});await ax.waitFor(close,'enabled');await ax.waitFor(shell('Loading image…'),'absent');
   await ax.waitFor(fit,'enabled');assert.equal((await unique(fit)).checked,true);assert.equal((await unique(actualSize)).checked,false);await unique(shell(filename,'AXImage'));
   await capture('home-mounted-image-preview','home-mounted-image-preview-visual-only');
   await click(actualSize);await t.until('Original Preview is at actual size',async()=> (await unique(actualSize)).checked===true);assert.equal((await unique(fit)).checked,false);
@@ -62,6 +62,7 @@ async function captureOwnedMountedImage(t,filename,createFixture,capturePrefix){
   await capture('home-mounted-image-preview-details-expanded','home-mounted-image-preview-details-expanded-visual-only');
   await click(details);await ax.waitFor(saved,'absent');await unique(saved,false);
   await capture('home-mounted-image-preview-details-collapsed','home-mounted-image-preview-details-collapsed-visual-only');
+  await previewLifecycle?.beforeClose({ax,unique,unchanged,capture,click,preview,close,fit});
   await click(close);previewOpen=false;await ax.waitFor(close,'absent');
   await capture('home-mounted-image-preview-closed','home-mounted-image-preview-closed-visual-only');
   await click(include);await t.until('Original mounted image checkbox is unchecked',async()=>{await unchanged();return (await unique(include)).checked===false});
