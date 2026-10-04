@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { MOUNTED_LONG_IMAGE_APPEARANCE_ID, requireMountedLongImageAppearance } from './appearance-journeys/mounted-long-image-appearance.mjs';
 import { MOUNTED_IMAGE_APPEARANCE_ID, requireMountedImageAppearance } from './appearance-journeys/mounted-image-appearance.mjs';
+import { retainSavedCredentialExecution } from './lib/saved-credential-execution.mjs';
 import { MODEL_SAVED_KEY_APPEARANCE_ID, requireModelSavedKeyAppearance, retireModelSavedKeyAppearance } from './lib/model-saved-key-appearance.mjs';
 import { requireModelSettingsAppearance } from './lib/model-settings-appearance.mjs';
 import { requireModelProbeAppearance } from './lib/model-probe-appearance.mjs';
@@ -178,11 +179,12 @@ const narrowGenerations = values.narrow ? createOwnedNarrowGenerations(() => ({ 
 let deadline;
 const inputs = [];
 const inputCommands = new Set(['press', 'click', 'focus', 'key', 'type', 'drag', 'scroll', 'menu', 'contextMenu', 'savePanel', 'openPanel']);
-let credentialEndpoint, credentialRetirement;
+let credentialEndpoint, credentialRetirement, savedCredentialExecution, journeyFailure;
 async function execute() {
   const permissions = appearancePair ? preflightAppearancePair(appearancePair) : await preflight(compilerArtifact === undefined ? {} : { compilerArtifact });
   assert.ok(permissions.accessibility && permissions.screenRecording, 'Accessibility and Screen Recording are required');
   fixture = await createFixture({ tls: journey.fixture?.tls === true });
+  if(journey.id===MODEL_SAVED_KEY_APPEARANCE_ID)signal.throwIfAborted();
   let model;
   if (journey.model === 'loopback') {
     const { createModelFixture } = await import('./lib/model-fixture.mjs');
@@ -424,8 +426,11 @@ try {
     signal.addEventListener('abort', () => reject(signal.reason), { once: true });
     deadline = setTimeout(() => controller.abort(new Error(`Journey deadline exceeded: ${journey.id}`)), journey.timeoutMs);
   });
-  await Promise.race([execute(), cancelled]);
+  const originalExecution=execute();
+  if(journey.id===MODEL_SAVED_KEY_APPEARANCE_ID){savedCredentialSlotRetained=true;savedCredentialExecution=retainSavedCredentialExecution(originalExecution);}
+  await Promise.race([originalExecution, cancelled]);
 } catch (error) {
+  journeyFailure=error;
   manifest.error = error.stack ?? String(error);
   if (app) writeFileSync(join(outputDir, 'failure-process.json'), JSON.stringify(app.processObservation, null, 2) + '\n');
   if (ax) {
@@ -441,12 +446,13 @@ try {
     try { await narrowGenerations.restore(); }
     catch { process.exitCode = 1; } // The original generation retains its actual cleanup error.
   }
-  for (const [name, cleanup] of [['ax', () => ax?.close()], ['app', async () => {if(journey.id===MODEL_SAVED_KEY_APPEARANCE_ID && app){credentialRetirement=await retireModelSavedKeyAppearance({app,pair:appearancePair,endpointLease:credentialEndpoint});manifest.disposableCredentialRetirement=credentialRetirement;}else if(importSourcePrepared)await retirePreparedImportSource(app);else await app?.quit();}], ['fixture', async () => {if(credentialEndpoint && !credentialRetirement){if(app)throw new Error('Original credential cleanup unresolved; original fixture route/server retained');credentialEndpoint.dispose();}await fixture?.close();if(credentialEndpoint)savedCredentialSlotRetained=false;}]]) {
+  for (const [name, cleanup] of [['ax', () => ax?.close()], ['app', async () => {if(journey.id===MODEL_SAVED_KEY_APPEARANCE_ID && app){credentialRetirement=await retireModelSavedKeyAppearance({app,pair:appearancePair,endpointLease:credentialEndpoint});manifest.disposableCredentialRetirement=credentialRetirement;}else if(importSourcePrepared)await retirePreparedImportSource(app);else await app?.quit();}], ['fixture', async () => {savedCredentialExecution?.assertDrained(journeyFailure);if(credentialEndpoint && !credentialRetirement){if(app)throw new Error('Original credential cleanup unresolved; original fixture route/server retained');credentialEndpoint.dispose();}await fixture?.close();if(savedCredentialExecution)savedCredentialSlotRetained=false;}]]) {
     try { await cleanup(); if (name === 'ax') compilerArtifact?.release(); } catch (error) {
       (manifest.cleanupErrors ??= []).push({ name, error: error.message });
       process.exitCode = 1;
     }
   }
+  if(savedCredentialExecution)manifest.savedCredentialExecution=savedCredentialExecution.receipt;
   if (appearancePair && app?.launchServicesQuarantineReceipt) manifest.nativeSlotQuarantine = app.launchServicesQuarantineReceipt;
   if (appearancePair && !(manifest.cleanupErrors?.length)) appearancePair.release();
   // A failed original helper/process cleanup retains admission and native slot

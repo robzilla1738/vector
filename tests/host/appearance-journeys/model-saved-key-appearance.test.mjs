@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {retainSavedCredentialExecution} from '../lib/saved-credential-execution.mjs';
 const source=readFileSync(new URL('../run-journey.mjs',import.meta.url),'utf8');
 const start=source.indexOf("['app', async () =>");
 const end=source.indexOf(']]) {',start);
@@ -8,10 +9,10 @@ const callbacks=source.slice(start,end+1);
 function cleanupFixture(failure,closeFailure){
  let quit=0,close=0,dispose=0;
  const app={},pair={},lease={dispose(){dispose++;}},manifest={},journey={id:'model-saved-key-appearance'};
- const build=new Function('journey','MODEL_SAVED_KEY_APPEARANCE_ID','app','appearancePair','credentialEndpoint','manifest','fixture','retireModelSavedKeyAppearance',`
- let credentialRetirement,savedCredentialSlotRetained=true,importSourcePrepared=false;
+ const build=new Function('journey','MODEL_SAVED_KEY_APPEARANCE_ID','app','appearancePair','credentialEndpoint','manifest','fixture','retireModelSavedKeyAppearance','savedCredentialExecution',`
+ let credentialRetirement,savedCredentialSlotRetained=true,importSourcePrepared=false,journeyFailure;
  const cleanups=[${callbacks}];return {cleanups,get retained(){return savedCredentialSlotRetained;}};`);
- const result=build(journey,journey.id,app,pair,lease,manifest,{close(){close++;if(closeFailure)throw closeFailure;}},async owner=>{quit++;assert.equal(owner.app,app);assert.equal(owner.pair,pair);assert.equal(owner.endpointLease,lease);if(failure)throw failure;return {browser:{originalPid:123},guardian:{record:{status:'FINAL'},completed:true}};});
+ const result=build(journey,journey.id,app,pair,lease,manifest,{close(){close++;if(closeFailure)throw closeFailure;}},async owner=>{quit++;assert.equal(owner.app,app);assert.equal(owner.pair,pair);assert.equal(owner.endpointLease,lease);if(failure)throw failure;return {browser:{originalPid:123},guardian:{record:{status:'FINAL'},completed:true}};},retainSavedCredentialExecution(Promise.resolve()));
  return {result,manifest,counts:()=>({quit,close,dispose})};
 }
 test('actual runner cleanup callbacks retain endpoint/server/slot when original App retirement rejects',async()=>{

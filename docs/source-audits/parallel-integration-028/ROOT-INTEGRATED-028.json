@@ -156,6 +156,30 @@
       "sha256": "965d79e039da2d24f6459777e69d8b57d597a4ca01fe936b31b6d295561376a9"
     },
     {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-final-native325-format-001.log",
+      "sha256": "90f03bbd69b53a9f2b2207c26df5d08780f684f34bb66cfe1b44679db0d36909"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-final-native325-lint-001.log",
+      "sha256": "837c172f4b17b2a375f297feb8afbf22544a3b637ed75bc238cc555ea428fdc7"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-final-native325-lint-003.log",
+      "sha256": "fc84c04eb75b694c1dc1dccfe041bfd03ff7d828af3fccb91bbd8ef0d4c2af39"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-final-native325-saved-execution-001.log",
+      "sha256": "6a8c696f9fffeb81c2df155e2ff3770aa5b921fac6690246d7d3d49189cfae48"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-final-native325-saved-execution-002.log",
+      "sha256": "e738457f130a0664289f69f73c2b8b6e2c16fa7ed3d6c1df70a7042045af59be"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/aux-root-final-native325-saved-execution-003.log",
+      "sha256": "7af9d4c57300c2f9a8acded38b72c7a34f52333cfafc28791b837874e64e458f"
+    },
+    {
       "path": "docs/source-audits/parallel-integration-028/aux-root-focus-reopen-native154-budget-001.json",
       "sha256": "343bb553cad0867bb32f5f3478acd529cb00e06665d3dbc951c22db544bea4a6"
     },
@@ -192,6 +216,14 @@
       "sha256": "6da913ed7d71907891a427f1301155bbd7e40859b6ead9e55bbf4b1dcc6c0438"
     },
     {
+      "path": "docs/source-audits/parallel-integration-028/saved-execution-successor/ROOT-REVIEW.json",
+      "sha256": "7b2b7c1972d7d947e2ed044329797ff20b68feea5953a776b6adec29c85c800c"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-028/saved-execution-successor/SOURCE-FREEZE.json",
+      "sha256": "75dd18535489805b0c206b90b66dfdd11d3c2c8ad4075e72cd1923a678a2a45d"
+    },
+    {
       "path": "docs/source-audits/parallel-integration-028/source-preview-typography/FONT-FIXTURE-PINS.json",
       "sha256": "c13b05eab8c7812daaf4e898bb62b1a9ad3e075d9491f87a619272b1ea4c6498"
     },
@@ -208,5 +240,6 @@
       "sha256": "6f60ed7746a91d700a2d4a8c5f102621147f104885e4d47036c1c7875ab5b609"
     }
   ],
-  "sourcePreviewTypography": "pinned local fonts genuinely loaded in narrow light/dark; native/F21 pending"
+  "sourcePreviewTypography": "pinned local fonts genuinely loaded in narrow light/dark; native/F21 pending",
+  "savedCredentialExecutionRetentionIntegrated": true
 }
