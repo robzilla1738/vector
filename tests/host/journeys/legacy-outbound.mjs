@@ -3,13 +3,14 @@ import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { shell, settings, press } from '../fixtures/legacy-ui.mjs';
+import { captureOutboundMcpAppearance } from '../lib/outbound-mcp-appearance.mjs';
 
 export const journey = { id: 'outbound-mcp', title: 'Review a disposable local MCP source and grant, call and revoke one tool through Settings', features: ['outboundMcp'], devAcceptance: ['outboundMcp', 'spaces'], needs: ['accessibility', 'screen-recording'], model: 'none', launch: {}, timeoutMs: 120000, owner: 'LJ' };
 export async function run(t) {
   const directory = join(t.app.userDataDir, 'outbound-mcp-fixture');
   mkdirSync(directory);
   const script = join(directory, 'server.mjs');
-  writeFileSync(script, readFileSync(new URL('../fixtures/outbound-mcp-server.mjs', import.meta.url)));
+  writeFileSync(script, readFileSync(new URL(t.appearanceEnabled && t.narrowEnabled ? '../fixtures/outbound-mcp-appearance-server.mjs' : '../fixtures/outbound-mcp-server.mjs', import.meta.url)));
   const space = (await t.rpc('workspaces.list')).find(item => item.name === 'Personal');
   t.assert.ok(space);
   const read = query => {
@@ -81,5 +82,9 @@ export async function run(t) {
     const ax = await t.ax.dump({ scope: 'shell' });
     await t.capture('outbound-tool-revoked');
     return { ax, rpc: { completed, grant: revoked } };
+  });
+  if (t.appearanceEnabled && t.narrowEnabled) await t.step('observe the explicitly reviewed long MCP tool in the original narrow window', { kind: 'ui', features: ['outboundMcp'] }, async () => {
+    const rpc = await captureOutboundMcpAppearance(t, { choose, grants, servers, server, sourceDigest, space });
+    return { ax: await t.ax.dump({ scope: 'shell' }), rpc };
   });
 }
