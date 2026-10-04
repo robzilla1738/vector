@@ -1,0 +1,105 @@
+{
+  "scope": "source checkpoint; capability correction and final coherent source gates pending",
+  "runtimePersonFreshPublicationAndOwnerGuardsIntegrated": true,
+  "wholeRuntimeBuild020Passed": true,
+  "wholeUnit005Passed": false,
+  "wholeUnit005FailureFiles": [
+    "page-attachment-session.test.ts",
+    "session-recovery.test.ts",
+    "tab-catalog-sync.test.ts",
+    "trust-continuity.test.ts"
+  ],
+  "nativeReaderCapabilityAbsenceCorrectionPending": true,
+  "sourceRendererBudgetsPassed": true,
+  "native316SourcePrepared": true,
+  "native316Compiled": false,
+  "originalNative314FailuresRetained": true,
+  "acceptedNewF21Cells": 0,
+  "qualification": false,
+  "records": [
+    {
+      "path": "aux-root-person-owner-and-focus-adoption-001.json",
+      "sha256": "dab3f497beacd6817fbbd911174c667d633d005dc7e81d37e43fd87d0e33c74a"
+    },
+    {
+      "path": "aux-root-person-publication-adoption-001.json",
+      "sha256": "13ff29ce624f5d41f79a44ee4a3f4e7647eb725754a259c04ec82b676176eb41"
+    },
+    {
+      "path": "aux-root-person-test-types-adoption-001.json",
+      "sha256": "1956a2b966016feac009cc5705a707a2d105b92f2c3db48b31bbcc87c4b9b898"
+    },
+    {
+      "path": "aux-root-mcp-grant-wrap-adoption-001.json",
+      "sha256": "892292163cf58dbc23346778ebabb85d63f241d936b4f77b86ddb9bfecc078e3"
+    },
+    {
+      "path": "aux-root-onboarding-wrap-adoption-001.json",
+      "sha256": "66e20e8f13ccc49111371b8d3bc77c986c4393de03091ea517b7f0f1a986c29b"
+    },
+    {
+      "path": "aux-root-focused-visual-request-adoption-001.json",
+      "sha256": "7f0f1d738c012109b5acdee9e5e528a4cee67ce405f9f0342a08249974d0fde2"
+    },
+    {
+      "path": "aux-root-native315-rect-header-source-audit-001.json",
+      "sha256": "718d452630da2578d86cd840a41232de520c7fdb935167057ccc64cd24f7de3d"
+    },
+    {
+      "path": "aux-root-native316-rect-append-audit-001.json",
+      "sha256": "2c267c2d127c9503fa27ddb5ce7158a5557c046b2641e1bca9eb82afa0a9e355"
+    },
+    {
+      "path": "aux-root-coherent-runtime-build-019.log",
+      "sha256": "26d5f2a24b04c365cda86b2352785214a4bd5b520b15528164e3f89cec857bec"
+    },
+    {
+      "path": "aux-root-coherent-runtime-build-020.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "aux-root-coherent-whole-unit-005.log",
+      "sha256": "9f0da7fd820803449716f39fde8a822f775ef1f63bf4042aaca073c7ae3ed74f"
+    },
+    {
+      "path": "aux-root-coherent-shell-types-021.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "aux-root-coherent-renderer-013.log",
+      "sha256": "cb238f267610f24d4d15791d62853b1c8fe6c6254d656c8976a12d7e7ed363f5"
+    },
+    {
+      "path": "aux-root-coherent-strict-budget-013.json",
+      "sha256": "7fc8c75911365f06d64e2571671b08b3e59fc97085029d7606d7eb0eeeb8f760"
+    },
+    {
+      "path": "aux-root-coherent-lint-010.log",
+      "sha256": "36171e12bb062688267c7bfddb590037b4edf7f7f9b687e574c19995ccf84d8d"
+    },
+    {
+      "path": "aux-root-coherent-format-010.log",
+      "sha256": "2130a6645d27428eecbf2883b6903832c79bb3bed78922329d6df764405faf0d"
+    },
+    {
+      "path": "aux-root-coherent-format-011.log",
+      "sha256": "ae1111ad55bb4eb91a81aff57ae56b7ff866054bf001e762fd77b156a611f506"
+    },
+    {
+      "path": "aux-root-coherent-format-012.log",
+      "sha256": "90f03bbd69b53a9f2b2207c26df5d08780f684f34bb66cfe1b44679db0d36909"
+    },
+    {
+      "path": "aux-root-mcp-test-format-audit-002.json",
+      "sha256": "d4f83334980ff35cc965005c2ef6f71eda0e6c30876152f40d1a1fd1de8a3507"
+    },
+    {
+      "path": "aux-root-coherent-host-registration-004.log",
+      "sha256": "018b9b4ceddc2d48df01b42f90b380b08943745760d66a60d320c842018b928e"
+    },
+    {
+      "path": "aux-root-coherent-model-source-controls-004.log",
+      "sha256": "f82d403ebfa870a12ea365c3d609ae6b03c9c6bb3fda965e0ebf9ebeaccfc30e"
+    }
+  ]
+}
