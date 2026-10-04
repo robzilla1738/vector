@@ -1,0 +1,15 @@
+✔ every actual method/event stays ordered with identical policy and installed Zod schema (122.974625ms)
+✔ real strict validation, optional tuple arity, fresh schema identity and metadata remain intact (12.248625ms)
+✔ closed source factoring retains all original argument expressions and factory order (90.887666ms)
+✔ actual installed factory invocation order and every original shared-schema relationship stay identical (9.47825ms)
+✔ all original preview refusals stay asynchronous, distinct, exact and fresh per invocation (15.010167ms)
+✔ native bridge identity, ACK, original rejection and mode policy remain untouched (3.871167ms)
+✔ preview successes and mutable return values retain their original behavior (2.223209ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 342.123875

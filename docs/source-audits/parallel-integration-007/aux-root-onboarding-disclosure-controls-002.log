@@ -1,0 +1,10 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+ ✓ |unit| apps/shell/src/onboarding/OnboardingFlow.test.tsx (22 tests) 206ms
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Start at  21:32:05
+   Duration  2.86s (transform 866ms, setup 0ms, collect 1.83s, tests 206ms, environment 632ms, prepare 55ms)
+

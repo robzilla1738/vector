@@ -1,0 +1,19 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-following-batch
+
+ ✓ |unit| apps/shell/src/components/ImportDataSetting.test.tsx (9 tests) 60ms
+(node:57600) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57602) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:57601) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/TaskReceiptRunUndo.test.tsx (1 test) 33ms
+ ✓ |unit| apps/shell/src/task-receipt-view.test.tsx (2 tests) 37ms
+ ✓ |unit| apps/shell/src/components/TaskReceiptRead.commands.test.tsx (17 tests) 111ms
+
+ Test Files  4 passed (4)
+      Tests  29 passed (29)
+   Start at  21:33:03
+   Duration  2.73s (transform 1.02s, setup 0ms, collect 6.99s, tests 241ms, environment 1.39s, prepare 197ms)
+

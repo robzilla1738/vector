@@ -1,0 +1,20 @@
+{
+  "status": "ROOT actual fresh complete compiled guard PASS; runtime/helper/App admission separate",
+  "guardSha256": "f4164ff117e5acfc04c19563b18d8cdf12e60c0c2c6898976252cec9c2a7f7c9",
+  "identity": {
+    "commit": "259693e22afc9801123eb2cdbaf0400c5211b1aa",
+    "tree": "c9ed35f0ee3668f7072f2d2ca128c21811ebbf72",
+    "dirty": false,
+    "label": "259693e22afc9801123eb2cdbaf0400c5211b1aa"
+  },
+  "actual17Binaries": 17,
+  "actualExactDylibSet": 577,
+  "actualExactPakSet": 8207,
+  "actualNative": 690,
+  "actualGenerated": 3,
+  "actualPackets": 314,
+  "actualAssets": 175,
+  "originalRuntimeHelperRetained": true,
+  "actualCompiledIdentityLiteral": true,
+  "originalProcessGroupAndSlotAbsent": true
+}
