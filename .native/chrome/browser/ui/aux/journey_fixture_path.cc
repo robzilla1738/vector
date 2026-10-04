@@ -3,6 +3,9 @@
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
 #include "build/build_config.h"
 #include "chrome/browser/buildflags.h"
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+#include "chrome/browser/ui/aux/native_disposable_credential_grant.h"
+#endif
 #include <fcntl.h>
 #include <limits>
 #include <utility>
@@ -47,7 +50,14 @@ std::unique_ptr<NativeObservationMetadata> NativeObservationMetadata::Capture(
 #else
   const bool stock = false;
 #endif
-  if (!appearance && !performance && !stock) return nullptr;
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  const bool credential = command.HasSwitch("aux-fixed-disposable-model-credential");
+#else
+  const bool credential = false;
+#endif
+  if (!appearance && !performance && !stock && !credential) return nullptr;
+  if (credential && (performance || stock || command.HasSwitch("incognito") ||
+      command.GetSwitchValueASCII("profile-directory") != "Default")) return nullptr;
   const base::FilePath profile(command.GetSwitchValueASCII("user-data-dir"));
   if (profile.BaseName().value() != "profile" ||
       !OwnedJourneyFixtureRoot(profile.DirName().value())) return nullptr;
@@ -69,6 +79,12 @@ std::unique_ptr<NativeObservationMetadata> NativeObservationMetadata::Capture(
   result->appearance_ = appearance;
   result->performance_ = performance;
   result->stock_ = stock;
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  if (credential) {
+    result->credential_grant_ = NativeDisposableCredentialGrant::CaptureInherited();
+    if (!result->credential_grant_) return nullptr;
+  }
+#endif
   return result;
 }
 bool NativeObservationMetadata::Enabled(bool appearance) const {
@@ -112,6 +128,14 @@ ScopedNativeObservationMetadataForTesting::~ScopedNativeObservationMetadataForTe
   state.scope_generation = previous_generation_;
 }
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+std::unique_ptr<NativeDisposableCredentialGrant> NativeObservationMetadata::TakeCredentialGrant(const base::FilePath& profile) {
+  if (!CurrentDirectories() || !credential_grant_ || !credential_grant_->Current(profile)) return nullptr;
+  return std::move(credential_grant_);
+}
+std::unique_ptr<NativeDisposableCredentialGrant> TakeNativeCredentialGrant(const base::FilePath& profile) {
+  auto& state = State();
+  return state.metadata ? state.metadata->TakeCredentialGrant(profile) : nullptr;
+}
 std::optional<NativeAppearanceDirectoryLease> NativeObservationMetadata::TakeAppearanceDirectoryLease() {
   if (!appearance_file_ || performance_ || appearance_file_leased_ || !Enabled(true)) return std::nullopt;
   appearance_file_leased_ = true;

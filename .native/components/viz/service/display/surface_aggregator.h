@@ -272,6 +272,7 @@ class VIZ_SERVICE_EXPORT SurfaceAggregator : public SurfaceObserver {
 
   void CopyUndrawnSurfaces(PrewalkResult* prewalk);
   void CopyPasses(ResolvedFrameData& resolved_frame);
+  bool MeetsAuxPersonCaptureFrames(ResolvedFrameData& source, const CopyOutputRequest& request);
   void AddRootReadbackPass();
   void AddDisplayTransformPass();
   void AddRenderPassHelper(AggregatedRenderPassId render_pass_id,

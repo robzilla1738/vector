@@ -48,6 +48,8 @@ source_set("runtime") {
     "native_cdp_retirement_measurement.h",
     "native_stop_input_endpoint.cc",
     "native_stop_input_endpoint.h",
+    "native_person_capture_controller.cc",
+    "native_person_capture_controller.h",
     "native_person_observer_controller.cc",
     "native_person_observer_controller.h",
     "native_recorder_controller.cc",
@@ -61,6 +63,8 @@ source_set("runtime") {
     "native_little_creation_ticket.cc",
     "native_little_presentation_fixture.h",
     "native_little_presentation_fixture.cc",
+    "native_pip_presentation_fixture.h",
+    "native_pip_presentation_fixture.cc",
     "native_presentation_record_codec.h",
     "native_presentation_record_codec.cc",
     "native_organization_work_fixture.h",
@@ -249,6 +253,18 @@ source_set("runtime") {
     "//third_party/blink/public/common:common",
     "//url",
   ]
+  if (aux_allow_remote_debugging_for_tests) {
+    sources += [
+      "native_disposable_model_credential_lease.h",
+      "native_disposable_model_credential_lease.cc",
+      "native_disposable_model_credential_backend.h",
+      "native_disposable_model_credential_backend.mm",
+      "native_disposable_credential_grant.h",
+      "native_disposable_credential_grant.cc",
+      "native_disposable_credential_profile.h",
+      "native_disposable_credential_profile.cc",
+    ]
+  }
   frameworks = [
     "PDFKit.framework",
     "AVFoundation.framework",
@@ -404,6 +420,9 @@ test("profile_spaces_unittests") {
 
 test("journey_fixture_path_unittests") {
   sources = [ "journey_fixture_path_unittest.cc", "journey_fixture_path.cc" ]
+  if (is_mac && enable_aux_shell && aux_allow_remote_debugging_for_tests) {
+    sources += [ "native_disposable_credential_grant.h", "native_disposable_credential_grant.cc" ]
+  }
   deps = [
     "//chrome/browser:buildflags",
     "//base",

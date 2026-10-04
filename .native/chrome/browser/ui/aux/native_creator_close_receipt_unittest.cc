@@ -1,6 +1,7 @@
 // Copyright 2026 The Aux Authors
 #include "chrome/browser/ui/aux/native_creator_close_receipt.h"
 
+#include <array>
 #include <atomic>
 #include <memory>
 #include <optional>
@@ -19,6 +20,8 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/site_instance.h"
+#include "content/public/browser/security_principal.h"
+#include "content/public/browser/storage_partition.h"
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/web_contents_tester.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -45,12 +48,33 @@ class NativeCreatorCloseReceiptTest : public BrowserWithTestWindowTest {
     page_id_ = PageIdentity::GetOrCreate(profile(), page_.get());
     TabCatalog::GetForProfile(profile())->MarkRuntimeOwned(page_id_);
     ASSERT_EQ(TabCatalog::GetForProfile(profile())->FindPage(page_id_), page_.get());
+    const auto scope_snapshot = [&]() {
+      auto* frame = page_ ? page_->GetPrimaryMainFrame() : nullptr;
+      auto* site = frame ? frame->GetSiteInstance() : nullptr;
+      auto* storage = frame ? frame->GetStoragePartition() : nullptr;
+      auto* identity = page_ ? PageIdentity::FromWebContents(page_.get()) : nullptr;
+      return std::array<bool, 4>{
+          frame != nullptr,
+          site && site->GetSecurityPrincipal().GetStoragePartitionConfig() == partition,
+          storage && storage->GetConfig() == partition,
+          identity && identity->runtime_owned()};
+    };
+    const auto original_scope = scope_snapshot();
     navigation_ = content::NavigationSimulator::CreateBrowserInitiated(GURL("about:blank"), page_.get());
     navigation_->ReadyToCommit();
+    const auto ready_scope = scope_snapshot();
     auto created = controller_->RegisterCreatorPage(page_.get(),
         navigation_->GetNavigationHandle()->GetNavigationId(), kGeneration, nullptr);
     const auto* result = created.FindDict("result");
-    ASSERT_TRUE(result) << created.DebugString();
+    ASSERT_TRUE(result) << created.DebugString()
+        << " original_frame=" << original_scope[0]
+        << " original_site_partition=" << original_scope[1]
+        << " original_storage_partition=" << original_scope[2]
+        << " original_runtime_owned=" << original_scope[3]
+        << " ready_frame=" << ready_scope[0]
+        << " ready_site_partition=" << ready_scope[1]
+        << " ready_storage_partition=" << ready_scope[2]
+        << " ready_runtime_owned=" << ready_scope[3];
     const auto* id_value = result->FindString("creationId");
     ASSERT_TRUE(id_value);
     creation_id_ = *id_value;

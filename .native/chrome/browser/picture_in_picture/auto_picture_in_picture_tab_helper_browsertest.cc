@@ -4520,6 +4520,8 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
   const auto run = base::Uuid::GenerateRandomV4().AsLowercaseString();
   const auto task = base::Uuid::GenerateRandomV4().AsLowercaseString();
   auto [isolation_id, partition] = controller->ReserveIsolation(run, task, 1);
+  const bool original_generation_scope_before_setup =
+      controller->CheckRunResume(run, 1).FindDict("result") != nullptr;
   const auto url = chrome_test_utils::GetTestUrl(
       base::FilePath(base::FilePath::kCurrentDirectory),
       base::FilePath(kNotRegisteredPage));
@@ -4530,8 +4532,17 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
   ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
   const auto original_isolation_diagnostic =
       OriginalPiPIsolationDiagnostic(page, browser(), partition);
+  const bool original_generation_scope_after_setup =
+      controller->CheckRunResume(run, 1).FindDict("result") != nullptr;
+  const bool original_run_stopped_after_setup =
+      controller->HasStoppedRunIntent(run, 1);
   ASSERT_TRUE(controller->RegisterIsolation(page, isolation_id, run, task, 1,
-                                           {run}, 1)) << original_isolation_diagnostic;
+                                           {run}, 1)) << original_isolation_diagnostic
+      << " originalGenerationScopeBeforeSetup="
+      << original_generation_scope_before_setup
+      << " originalGenerationScopeAfterSetup="
+      << original_generation_scope_after_setup
+      << " originalRunStoppedAfterSetup=" << original_run_stopped_after_setup;
   const auto page_id = aux::PageIdentity::GetOrCreate(profile, page);
   const auto expected_url = page->GetLastCommittedURL().spec();
   auto response = controller->Context(base::DictValue().Set("tabId", page_id)
@@ -4685,7 +4696,16 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
   ASSERT_TRUE(helper->AreAutoPictureInPicturePreconditionsMet());
   // Test EvalJs activation alone cannot consume the native input receipt.
   EXPECT_EQ("NotAllowedError", content::EvalJs(page,
-      "documentPictureInPicture.requestWindow().then(() => 'entered', e => e.name)"));
+      R"(documentPictureInPicture.requestWindow().then(() => 'entered', e => {
+        console.error('AUX_ORIGINAL_MANUAL_PIP_REFUSAL ' + JSON.stringify({
+          name: String(e.name).slice(0, 64),
+          message: String(e.message).slice(0, 160),
+          visibility: document.visibilityState,
+          transientActivation: navigator.userActivation.isActive,
+          documentPiPWindowPresent: !!documentPictureInPicture.window
+        }));
+        return e.name;
+      }))"));
   EXPECT_FALSE(page->HasPictureInPictureDocument());
   EXPECT_TRUE(helper->AreAutoPictureInPicturePreconditionsMet());
   ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
@@ -4809,6 +4829,8 @@ IN_PROC_BROWSER_TEST_F(AuxAutoPictureInPictureEligibilityBrowserTest,
   const auto run = base::Uuid::GenerateRandomV4().AsLowercaseString();
   const auto task = base::Uuid::GenerateRandomV4().AsLowercaseString();
   auto [isolation_id, partition] = controller->ReserveIsolation(run, task, 1);
+  const bool original_generation_scope_before_setup =
+      controller->CheckRunResume(run, 1).FindDict("result") != nullptr;
   const auto url = chrome_test_utils::GetTestUrl(
       base::FilePath(base::FilePath::kCurrentDirectory),
       base::FilePath(kAutoVideoPipPage));
@@ -4819,8 +4841,17 @@ IN_PROC_BROWSER_TEST_F(AuxAutoPictureInPictureEligibilityBrowserTest,
   ASSERT_TRUE(helper->IsEligibleForAutoPictureInPicture(false));
   const auto original_isolation_diagnostic =
       OriginalPiPIsolationDiagnostic(page, browser(), partition);
+  const bool original_generation_scope_after_setup =
+      controller->CheckRunResume(run, 1).FindDict("result") != nullptr;
+  const bool original_run_stopped_after_setup =
+      controller->HasStoppedRunIntent(run, 1);
   ASSERT_TRUE(controller->RegisterIsolation(page, isolation_id, run, task, 1,
-                                           {run}, 1)) << original_isolation_diagnostic;
+                                           {run}, 1)) << original_isolation_diagnostic
+      << " originalGenerationScopeBeforeSetup="
+      << original_generation_scope_before_setup
+      << " originalGenerationScopeAfterSetup="
+      << original_generation_scope_after_setup
+      << " originalRunStoppedAfterSetup=" << original_run_stopped_after_setup;
   const auto page_id = aux::PageIdentity::GetOrCreate(profile, page);
   const auto expected_url = page->GetLastCommittedURL().spec();
   auto response = controller->Context(base::DictValue().Set("tabId", page_id)

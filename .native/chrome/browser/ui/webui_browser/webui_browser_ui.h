@@ -78,6 +78,9 @@ class DictationMac;
 class NativeCommandPresentationSession;
 class NativeGuestPresentationFixture;
 class NativeLittlePresentationFixture;
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+class NativePipPresentationFixture;
+#endif
 class NativeOrganizationWorkFixture;
 class NativePerformanceMailbox;
 class NativeShellMemorySampler;
@@ -366,6 +369,9 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
   std::unique_ptr<aux::NativeCommandPresentationSession> command_presentation_session_;
   std::unique_ptr<aux::NativeGuestPresentationFixture> guest_presentation_fixture_;
   std::unique_ptr<aux::NativeLittlePresentationFixture> little_presentation_fixture_;
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  std::unique_ptr<aux::NativePipPresentationFixture> pip_presentation_fixture_;
+#endif
   std::unique_ptr<aux::NativePerformanceMailbox> performance_mailbox_;
   std::unique_ptr<aux::NativeOrganizationWorkFixture> organization_work_fixture_;
   std::unique_ptr<aux::NativeShellMemorySampler> shell_memory_sampler_;

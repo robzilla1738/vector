@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/platform/widget/compositing/widget_compositor.h"
+#include "base/task/bind_post_task.h"
 #include "third_party/blink/public/mojom/widget/native_organization_work.mojom-blink.h"
 
 #include <utility>
@@ -13,6 +14,7 @@
 #include "base/types/pass_key.h"
 #include "cc/trees/layer_tree_host.h"
 #include "third_party/blink/renderer/platform/widget/compositing/queue_report_time_swap_promise.h"
+#include "third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.h"
 #include "third_party/blink/renderer/platform/widget/widget_base.h"
 #include "third_party/blink/renderer/platform/widget/widget_base_client.h"
 
@@ -66,6 +68,19 @@ void WidgetCompositor::BindOnThread(
 void WidgetCompositor::ResetOnThread() {
   DCHECK(CalledOnValidCompositorThread());
   receiver_.reset();
+}
+
+void WidgetCompositor::AuxPersonCaptureVisualStateRequest(AuxPersonCaptureVisualStateRequestCallback callback) {
+  DCHECK(CalledOnValidCompositorThread());
+  auto reply = base::BindPostTask(compositor_task_runner_ ? compositor_task_runner_ : main_task_runner_, std::move(callback));
+  if (main_task_runner_->BelongsToCurrentThread()) CreateAuxPersonCaptureSwap(std::move(reply));
+  else main_task_runner_->PostTask(FROM_HERE, base::BindOnce(&WidgetCompositor::CreateAuxPersonCaptureSwap, base::RetainedRef(this), std::move(reply)));
+}
+void WidgetCompositor::CreateAuxPersonCaptureSwap(AuxPersonCaptureVisualStateRequestCallback callback) {
+  DCHECK(main_task_runner_->BelongsToCurrentThread());
+  if (!widget_base_ || widget_base_->WillBeDestroyed()) { std::move(callback).Run(0); return; }
+  LayerTreeHost()->QueueSwapPromise(std::make_unique<AuxPersonCaptureSwapPromise>(std::move(callback)));
+  LayerTreeHost()->SetNeedsCommitWithForcedRedraw();
 }
 
 void WidgetCompositor::VisualStateRequest(VisualStateRequestCallback callback) {

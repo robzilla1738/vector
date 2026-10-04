@@ -347,6 +347,7 @@ class CONTENT_EXPORT RenderWidgetHostImpl
       const gfx::Point& point,
       const ui::mojom::MenuSourceType source_type) override;
   void InsertVisualStateCallback(VisualStateCallback callback) override;
+  void RequestAuxPersonCaptureFrame(base::OnceCallback<void(uint32_t)> callback);
   // Internal C++ only. Actual private fixture/Profile/window/RFH authorization
   // and native-input pairing belong to the browser caller, not this transport.
   void BeginNativeStartupFrameForTesting(

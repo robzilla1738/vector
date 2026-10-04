@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 #include "components/viz/service/display/surface_aggregator.h"
+#include <functional>
+#include <map>
+#include <set>
 #include "components/viz/service/display/native_stock_root_coverage.h"
 
 #include <stddef.h>
@@ -888,6 +891,10 @@ void SurfaceAggregator::EmitSurfaceContent(
     surface->TakeCopyOutputRequests(&copy_requests);
   }
 
+  std::erase_if(copy_requests, [&](const auto& entry) {
+    return !MeetsAuxPersonCaptureFrames(resolved_frame, *entry.second);
+  });
+
   if (!resolved_frame.is_valid()) {
     // As |copy_requests| goes out-of-scope, all copy requests in that container
     // will auto-send an empty result upon destruction.
@@ -1561,6 +1568,60 @@ void SurfaceAggregator::CopyQuadsToPass(
   }
 }
 
+bool SurfaceAggregator::MeetsAuxPersonCaptureFrames(ResolvedFrameData& source, const CopyOutputRequest& request) {
+  const auto& required = request.aux_person_capture_surfaces();
+  const auto& tokens = request.aux_person_capture_tokens();
+  if (required.empty()) return tokens.empty();
+  if (required.size() > 64 || required.size() != tokens.size()) return false;
+  std::map<SurfaceId,uint32_t> selected;
+  std::set<SurfaceId> ancestors;
+  size_t examined = 0;
+  std::function<bool(ResolvedFrameData&,size_t)> visit = [&](ResolvedFrameData& frame, size_t depth) {
+    if (!frame.is_valid() || depth > 64 || ancestors.contains(frame.surface_id())) return false;
+    if (selected.contains(frame.surface_id())) return true;
+    if (selected.size() >= 64) return false;
+    selected.emplace(frame.surface_id(), frame.GetMetadata().frame_token);
+    ancestors.insert(frame.surface_id());
+    // Only passes reachable from the original root contribute pixels. An
+    // unused pass containing a foreign SurfaceDrawQuad cannot satisfy a claim.
+    std::set<CompositorRenderPassId> active_passes, visited_passes;
+    std::function<bool(const ResolvedPassData&,size_t)> visit_pass = [&](const ResolvedPassData& pass, size_t pass_depth) {
+      const auto id = pass.render_pass().id;
+      if (pass_depth > 64 || active_passes.contains(id)) return false;
+      if (visited_passes.contains(id)) return true;
+      if (visited_passes.size() >= 64) return false;
+      active_passes.insert(id);
+      for (const auto* quad : pass.render_pass().quad_list) {
+        if (++examined > 10000) return false;
+        if (const auto* pass_quad = quad->DynamicCast<CompositorRenderPassDrawQuad>()) {
+          const ResolvedPassData* referenced = nullptr;
+          for (const auto& candidate : frame.GetResolvedPasses())
+            if (candidate.render_pass().id == pass_quad->render_pass_id) referenced = &candidate;
+          if (!referenced || !visit_pass(*referenced,pass_depth+1)) return false;
+        } else if (quad->material == DrawQuad::Material::kSurfaceContent) {
+          const auto* surface_quad = SurfaceDrawQuad::MaterialCast(quad);
+          // The same cached range resolution is used by EmitSurfaceContent.
+          auto* child = GetResolvedFrame(surface_quad->surface_range);
+          if (!child || !visit(*child,depth+1)) return false;
+        }
+      }
+      active_passes.erase(id); visited_passes.insert(id); return true;
+    };
+    if (!visit_pass(frame.GetRootRenderPassData(),0)) return false;
+    ancestors.erase(frame.surface_id()); return true;
+  };
+  if (!visit(source,0)) return false;
+  for (size_t i = 0; i < required.size(); ++i) {
+    if (!required[i].is_valid() || !tokens[i]) return false;
+    for (size_t j = 0; j < i; ++j) if (required[i].frame_sink_id() == required[j].frame_sink_id()) return false;
+    auto actual = selected.find(required[i]);
+    // Serial-number comparison refuses older and ambiguous half-range tokens,
+    // including wraparound; never accept zero as an activated masked frame.
+    if (actual == selected.end() || !actual->second || static_cast<uint32_t>(actual->second-tokens[i]) >= 0x80000000u) return false;
+  }
+  return true;
+}
+
 void SurfaceAggregator::CopyPasses(ResolvedFrameData& resolved_frame) {
   Surface* surface = resolved_frame.surface();
 
@@ -1570,6 +1631,10 @@ void SurfaceAggregator::CopyPasses(ResolvedFrameData& resolved_frame) {
   Surface::CopyRequestsMap copy_requests;
   if (take_copy_requests_)
     surface->TakeCopyOutputRequests(&copy_requests);
+
+  std::erase_if(copy_requests, [&](const auto& entry) {
+    return !MeetsAuxPersonCaptureFrames(resolved_frame, *entry.second);
+  });
 
   if (!resolved_frame.is_valid()) {
     return;

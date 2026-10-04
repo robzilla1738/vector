@@ -4,6 +4,8 @@
 
 #include "chrome/browser/ui/aux/result_preview.h"
 
+#include <optional>
+
 #include <string>
 
 #include "base/json/json_writer.h"
@@ -16,6 +18,7 @@
 #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
 #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
 #include "chrome/test/base/in_process_browser_test.h"
+#include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents_observer.h"
@@ -42,12 +45,43 @@ class PreviewFixtureNavigationDiagnostic final : public content::WebContentsObse
       : content::WebContentsObserver(contents) {}
   void DidFinishNavigation(content::NavigationHandle* navigation) override {
     if (records_.size() >= 8) return;
+    auto* parent = navigation->GetParentFrame();
+    const auto& initiator_token = navigation->GetInitiatorFrameToken();
+    auto* initiator_frame = initiator_token
+        ? content::RenderFrameHost::FromFrameToken(content::GlobalRenderFrameHostToken(
+              navigation->GetInitiatorProcessId(), *initiator_token))
+        : nullptr;
+    const auto& initiator_origin = navigation->GetInitiatorOrigin();
+    auto* committed_frame = navigation->HasCommitted()
+        ? navigation->GetRenderFrameHost() : nullptr;
+    // This getter is valid only after response processing. Never query it for
+    // an uncommitted cancellation or substitute a supplied expected origin.
+    const auto browser_origin = navigation->HasCommitted() && !navigation->IsErrorPage()
+        ? navigation->GetOriginToCommit() : std::nullopt;
+    const auto destination_precursor = [](const url::Origin& origin) {
+      const auto& tuple = origin.GetTupleOrPrecursorTupleIfOpaque();
+      return tuple.scheme() == kResultPreviewScheme && tuple.host() == "preview";
+    };
     records_.Append(base::DictValue()
         .Set("primary", navigation->IsInPrimaryMainFrame())
         .Set("committed", navigation->HasCommitted())
         .Set("errorPage", navigation->IsErrorPage())
         .Set("netError", static_cast<int>(navigation->GetNetErrorCode()))
-        .Set("scheme", navigation->GetURL().scheme().substr(0, 32)));
+        .Set("scheme", navigation->GetURL().scheme().substr(0, 32))
+        .Set("parentPresent", parent != nullptr)
+        .Set("parentCurrentOriginal", parent && web_contents() &&
+             parent == web_contents()->GetPrimaryMainFrame())
+        .Set("initiatorTokenPresent", initiator_token.has_value())
+        .Set("initiatorIsParent", parent && initiator_frame == parent)
+        .Set("initiatorOriginPresent", initiator_origin.has_value())
+        .Set("initiatorOriginOpaque", initiator_origin && initiator_origin->opaque())
+        .Set("browserOriginPresent", browser_origin.has_value())
+        .Set("browserOriginOpaque", browser_origin && browser_origin->opaque())
+        .Set("browserDestinationPrecursor", browser_origin && destination_precursor(*browser_origin))
+        .Set("committedDestinationPrecursor", committed_frame &&
+             destination_precursor(committed_frame->GetLastCommittedOrigin()))
+        .Set("sameBrowserCommittedOrigin", browser_origin && committed_frame &&
+             browser_origin->IsSameOriginWith(committed_frame->GetLastCommittedOrigin())));
   }
   std::string Describe() const { return records_.DebugString(); }
  private:
@@ -188,8 +222,9 @@ IN_PROC_BROWSER_TEST_F(ResultPreviewBrowserTest,
   const auto first_origin = frame->GetLastCommittedOrigin();
   EXPECT_TRUE(first_origin.opaque());
   EXPECT_EQ(first_origin.GetTupleOrPrecursorTupleIfOpaque().scheme(),
-            kResultPreviewScheme);
-  EXPECT_EQ(first_origin.GetTupleOrPrecursorTupleIfOpaque().host(), "preview");
+            kResultPreviewScheme) << diagnostic.Describe();
+  EXPECT_EQ(first_origin.GetTupleOrPrecursorTupleIfOpaque().host(), "preview")
+      << diagnostic.Describe();
   EXPECT_TRUE(first_origin.CanBeDerivedFrom(preview));
   EXPECT_FALSE(first_origin.IsSameOriginWith(
       shell->GetPrimaryMainFrame()->GetLastCommittedOrigin()));
@@ -250,7 +285,7 @@ IN_PROC_BROWSER_TEST_F(ResultPreviewBrowserTest,
   content::TestNavigationManager pending(shell, preview);
   ASSERT_TRUE(BeginPreview(shell, preview));
   ASSERT_TRUE(pending.WaitForResponse()) << diagnostic.Describe();
-  ASSERT_TRUE(content::NavigateToURL(shell, GURL("chrome://aux/")));
+  ASSERT_TRUE(content::NavigateToURL(shell, GURL("chrome://aux/"))) << diagnostic.Describe();
   ASSERT_TRUE(pending.WaitForNavigationFinished()) << diagnostic.Describe();
   EXPECT_FALSE(pending.was_successful()) << diagnostic.Describe();
   EXPECT_NE(original.AsRenderFrameHostIfValid(), shell->GetPrimaryMainFrame());

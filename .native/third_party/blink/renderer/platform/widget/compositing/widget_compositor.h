@@ -55,6 +55,7 @@ class PLATFORM_EXPORT WidgetCompositor
 
   // mojom::WidgetCompositor:
   void VisualStateRequest(VisualStateRequestCallback callback) override;
+  void AuxPersonCaptureVisualStateRequest(AuxPersonCaptureVisualStateRequestCallback callback) override;
   void BeginNativeStartupFrame(
       mojom::blink::NativeStartupFrameScopePtr scope,
       mojo::PendingReceiver<mojom::blink::NativeStartupFrameLease> lease,
@@ -128,6 +129,7 @@ class PLATFORM_EXPORT WidgetCompositor
   void NativeCommandPresentationResponse(
       MeasureNativeCommandPresentationCallback callback,
       mojom::blink::NativeCommandPresentationResultPtr result);
+  void CreateAuxPersonCaptureSwap(AuxPersonCaptureVisualStateRequestCallback callback);
   void CreateQueueSwapPromise(base::OnceCallback<void(int)> drain_callback,
                               base::OnceClosure swap_callback,
                               VisualStateRequestCallback callback);

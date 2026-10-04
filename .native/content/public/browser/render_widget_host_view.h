@@ -5,6 +5,7 @@
 #ifndef CONTENT_PUBLIC_BROWSER_RENDER_WIDGET_HOST_VIEW_H_
 #define CONTENT_PUBLIC_BROWSER_RENDER_WIDGET_HOST_VIEW_H_
 
+#include <vector>
 #include <optional>
 #include <string>
 #include <utility>
@@ -16,6 +17,8 @@
 #include "base/types/expected.h"
 #include "build/build_config.h"
 #include "content/common/content_export.h"
+#include "components/viz/common/surfaces/surface_id.h"
+#include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/mojom/input/pointer_lock_result.mojom.h"
 #include "third_party/skia/include/core/SkColor.h"
@@ -267,6 +270,11 @@ class CONTENT_EXPORT RenderWidgetHostView {
       base::TimeDelta timeout,
       base::OnceCallback<void(const CopyFromSurfaceResult&)> callback) = 0;
 
+
+  virtual viz::SurfaceId GetAuxPersonCaptureSurfaceId() const;
+  virtual void CopyAuxPersonCaptureSurface(const viz::SurfaceId& surface,
+      const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens,
+      base::TimeDelta timeout, base::OnceCallback<void(const CopyFromSurfaceResult&)> callback);
 
   // Creates a video capturer, which will allow the caller to receive a stream
   // of media::VideoFrames captured from this view. The capturer is configured

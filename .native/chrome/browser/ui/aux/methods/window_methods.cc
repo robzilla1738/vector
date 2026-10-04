@@ -43,6 +43,9 @@
 #include "chrome/browser/ui/aux/native_command_presentation_session.h"
 #include "chrome/browser/ui/aux/native_guest_presentation_fixture.h"
 #include "chrome/browser/ui/aux/native_little_presentation_fixture.h"
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+#include "chrome/browser/ui/aux/native_pip_presentation_fixture.h"
+#endif
 #include "chrome/browser/ui/aux/native_performance_mailbox.h"
 #include "chrome/browser/ui/aux/native_cdp_measurement_producer.h"
 #include "chrome/browser/ui/aux/native_stop_input_endpoint.h"
@@ -466,6 +469,43 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
     }
     return;
   }
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  if (method == "preparePipWindowPresentation" || method == "completePipWindowPresentation" || method == "retirePipWindowPresentation") {
+    auto* contents = web_ui() ? web_ui()->GetWebContents() : nullptr;
+    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
+    if (!args.empty() || !aux::NativePerformanceObservationEnabled() || !IsAuthorizedAuxDocument() ||
+        !frame || frame != web_ui()->GetRenderFrameHost()) {
+      std::move(callback).Run(false, "", "forbidden", "PiP root presentation fixture requires its current owner and no arguments"); return;
+    }
+    const auto sequence = performance_mailbox_ ? performance_mailbox_->TakeExpected(method) : std::nullopt;
+    if (!sequence) {
+      std::move(callback).Run(false, "", "forbidden", "PiP root presentation fixture requires its owned mailbox operation"); return;
+    }
+    if (!pip_presentation_fixture_ || (method == "preparePipWindowPresentation" && pip_presentation_fixture_->HasRetired()))
+      pip_presentation_fixture_ = std::make_unique<aux::NativePipPresentationFixture>(GetWeakPtr());
+    auto reply = base::BindOnce([](base::WeakPtr<WebUIBrowserUI> ui,
+        content::WeakDocumentPtr document, uint64_t sequence, std::string operation,
+        RequestCallback callback, base::DictValue record) {
+      auto* frame = document.AsRenderFrameHostIfValid();
+      if (!ui || !aux::NativePerformanceObservationEnabled() || !ui->IsAuthorizedAuxDocument() ||
+          !ui->web_ui() || !ui->web_ui()->GetWebContents() || !frame ||
+          frame != ui->web_ui()->GetRenderFrameHost() ||
+          frame != ui->web_ui()->GetWebContents()->GetPrimaryMainFrame()) {
+        std::move(callback).Run(false, "", "forbidden", "PiP root presentation fixture owner changed"); return;
+      }
+      if (!ui->performance_mailbox_ || !ui->performance_mailbox_->EmitReply(sequence, operation, record)) {
+        std::move(callback).Run(false, "", "forbidden", "PiP root presentation fixture reply changed"); return;
+      }
+      const auto json = base::WriteJson(record);
+      std::move(callback).Run(json && json->size() <= 16384, json.value_or(""),
+          json ? "" : "unavailable", json ? "" : "PiP root presentation fixture unavailable");
+    }, GetWeakPtr(), frame->GetWeakDocumentPtr(), *sequence, method, std::move(callback));
+    if (method == "completePipWindowPresentation") pip_presentation_fixture_->Complete(std::move(reply));
+    else if (method == "retirePipWindowPresentation") pip_presentation_fixture_->Retire(std::move(reply));
+    else pip_presentation_fixture_->Prepare(std::move(reply));
+    return;
+  }
+#endif
   if (method == "prepareLittleWindowPresentation" || method == "completeLittleWindowPresentation") {
     auto* contents = web_ui() ? web_ui()->GetWebContents() : nullptr;
     auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;

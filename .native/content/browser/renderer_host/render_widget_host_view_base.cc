@@ -66,6 +66,17 @@
 #endif
 
 namespace content {
+viz::SurfaceId RenderWidgetHostView::GetAuxPersonCaptureSurfaceId() const { return {}; }
+void RenderWidgetHostView::CopyAuxPersonCaptureSurface(const viz::SurfaceId&,
+    const std::vector<viz::SurfaceId>&, const std::vector<uint32_t>&,
+    base::TimeDelta, base::OnceCallback<void(const CopyFromSurfaceResult&)> callback) {
+  std::move(callback).Run(base::unexpected(CopyFromSurfaceError::kUnknownVizError));
+}
+
+viz::SurfaceId RenderWidgetHostViewBase::GetAuxPersonCaptureSurfaceId() const {
+  return viz::SurfaceId(GetFrameSinkId(), GetLocalSurfaceId());
+}
+
 
 bool RenderWidgetHostView::HasNativeInputAdmissionForDocument(
     const WeakDocumentPtr& document) const {

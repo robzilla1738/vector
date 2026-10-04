@@ -16,6 +16,10 @@
 #include "chrome/browser/ui/aux/native_appearance_file_channel.h"
 
 namespace aux {
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+class NativeDisposableCredentialGrant;
+std::unique_ptr<NativeDisposableCredentialGrant> TakeNativeCredentialGrant(const base::FilePath& profile);
+#endif
 // Metadata only: this never opens a Profile, session, credential or Keychain file.
 inline bool OwnedJourneyFixtureRoot(const std::string& value, uid_t owner = geteuid()) {
   const base::FilePath path(value);
@@ -56,6 +60,7 @@ class NativeObservationMetadata {
   bool StockEnabled() const;
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
   std::optional<NativeAppearanceDirectoryLease> TakeAppearanceDirectoryLease();
+  std::unique_ptr<NativeDisposableCredentialGrant> TakeCredentialGrant(const base::FilePath& profile);
 #endif
  private:
   NativeObservationMetadata();
@@ -65,6 +70,9 @@ class NativeObservationMetadata {
   struct stat root_identity_ {}, profile_identity_ {};
   bool appearance_ = false, performance_ = false, stock_ = false;
   bool appearance_file_ = false, appearance_file_leased_ = false;
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  std::unique_ptr<NativeDisposableCredentialGrant> credential_grant_;
+#endif
 };
 // Test-only scoped installation captures the same real directory receipt and
 // restores prior process admission. It cannot turn invalid metadata into true.

@@ -6,7 +6,16 @@
 #include "chrome/browser/ui/aux/native_startup_admission_waiter.h"
 #include "chrome/browser/ui/aux/native_recorder_controller.h"
 #include "chrome/browser/ui/aux/native_person_observer_controller.h"
+#include "chrome/browser/ui/aux/native_person_capture_controller.h"
+#include "content/public/browser/render_frame_host.h"
 #include "chrome/browser/ui/aux/power_activity_mac.h"
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+#include "chrome/browser/ui/aux/native_disposable_model_credential_backend.h"
+#include "chrome/browser/ui/aux/native_disposable_model_credential_lease.h"
+#include "chrome/browser/ui/aux/journey_fixture_path.h"
+#include "base/base64.h"
+#include "base/apple/foundation_util.h"
+#endif
 
 #include "base/task/thread_pool.h"
 
@@ -197,7 +206,11 @@ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
                   profile->GetPath(),
                   profile->GetPath().BaseName().AsUTF8Unsafe(),
                   base::SequencedTaskRunner::GetCurrentDefault(),
-                  weak_factory_.GetWeakPtr());
+                  weak_factory_.GetWeakPtr()
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+                  , aux::NativeDisposableCredentialProfile::Existing(profile)
+#endif
+                  );
   cdp_authority_subscription_ = aux::EgressController::ForProfile(profile_)->ObserveAuthority(
       base::BindRepeating(&AuxRuntimeHost::OnCdpAuthorityChanged, weak_factory_.GetWeakPtr()));
   profile_library_ = std::make_unique<aux::ProfileLibrary>(
@@ -605,6 +618,10 @@ void AuxRuntimeHost::NativeConnectionPublished(uint64_t generation) {
 void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
   if (!generation)
     return;
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  if (admitted_native_generation_ == generation && credential_grant_)
+    credential_grant_->Retire();
+#endif
   retired_native_generation_ = std::max(retired_native_generation_, generation);
   if (admitted_native_generation_ != generation)
     return;
@@ -625,6 +642,12 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
   auto reads = std::move(native_person_reads_);
   native_person_reads_.clear();
   const auto weak = weak_factory_.GetWeakPtr();
+  auto captures = std::move(native_person_captures_);
+  native_person_captures_.clear();
+  for (const auto& [id, capture] : captures) {
+    if (capture) capture->Retire();
+    if (!weak) return;
+  }
   for (const auto& [id, reader] : reads) {
     if (reader)
       reader->Disconnect(generation);
@@ -646,8 +669,9 @@ void AuxRuntimeHost::HandleNativePersonReadCall(
   const auto* page_id = params.FindString("pageId");
   const auto* request = params.FindDict("request");
   const bool describe = method == "native.personReadContext";
-  if (params.size() != (describe ? 1u : 2u) || !page_id || !aux::PageIdentity::IsValid(*page_id) ||
-      (!describe && (method != "native.personRead" || !request))) {
+  const bool capture = method == "native.personCapture";
+  if (params.size() != (describe ? 1u : capture ? 6u : 2u) || !page_id || !aux::PageIdentity::IsValid(*page_id) ||
+      (!describe && !capture && (method != "native.personRead" || !request))) {
     std::move(callback).Run(NativeFault("invalid_params", "Invalid fixed page read"));
     return;
   }
@@ -656,7 +680,8 @@ void AuxRuntimeHost::HandleNativePersonReadCall(
     return;
   }
   auto* catalog = aux::TabCatalog::GetForProfile(profile_);
-  auto* page = catalog ? catalog->FindPage(*page_id) : nullptr;
+  BrowserWindowInterface* original_window = nullptr;
+  auto* page = catalog ? catalog->FindPage(*page_id, &original_window) : nullptr;
   auto* authority = aux::EgressController::ForProfile(profile_);
   auto receipt = page && authority ? authority->CapturePersonRead(page) : std::nullopt;
   if (!receipt || receipt->page_id() != *page_id) {
@@ -674,6 +699,58 @@ void AuxRuntimeHost::HandleNativePersonReadCall(
     std::move(callback).Run(std::move(context));
     return;
   }
+  if (capture) {
+    if (!original_window || native_person_captures_.size() >= 8) {
+      std::move(callback).Run(NativeFault("conflict", "Original page capture is unavailable")); return;
+    }
+    const auto current = base::BindRepeating([](base::WeakPtr<AuxRuntimeHost> owner,
+        base::WeakPtr<aux::EgressController> authority, aux::NativePersonReadReceipt receipt,
+        base::WeakPtr<BrowserWindowInterface> original_window, uint64_t generation, base::DictValue identity) {
+      if (!owner || !authority || !original_window || owner->shutting_down_ ||
+          owner->admitted_native_generation_ != generation || generation <= owner->retired_native_generation_ ||
+          owner->native_person_connection_id_.empty() || !authority->MayReadPerson(receipt)) return false;
+      auto* frame = receipt.document().AsRenderFrameHostIfValid();
+      auto* page = frame ? content::WebContents::FromRenderFrameHost(frame) : nullptr;
+      auto* catalog = aux::TabCatalog::GetForProfile(owner->profile_);
+      BrowserWindowInterface* observed_window = nullptr;
+      if (!page || !catalog || catalog->FindPage(receipt.page_id(), &observed_window) != page || observed_window != original_window.get()) return false;
+      const auto* page_id = identity.FindString("pageId");
+      const auto* window_id = identity.FindString("windowId");
+      const auto* target_id = identity.FindString("targetId");
+      const auto* url = identity.FindString("url");
+      if (!page_id || *page_id != receipt.page_id() || !window_id ||
+          *window_id != base::NumberToString(original_window->GetSessionID().id()) ||
+          !target_id || *target_id != "atab-" + receipt.page_id() || !url || *url != frame->GetLastCommittedURL().spec()) return false;
+      const auto described = aux::NativePersonObserverController::Describe(receipt, owner->native_person_connection_id_);
+      if (!owner || !authority || !original_window || !authority->MayReadPerson(receipt)) return false;
+      const auto* context = described.FindDict("result");
+      for (const auto* key : {"pageId", "documentId", "sessionId", "url"}) {
+        const auto* wanted = identity.FindString(key);
+        const auto* actual = context ? context->FindString(key) : nullptr;
+        if (!wanted || !actual || *wanted != *actual) return false;
+      }
+      return true;
+    }, weak_factory_.GetWeakPtr(), authority->GetWeakPtr(), *receipt,
+       original_window->GetWeakPtr(), connection_generation, params.Clone());
+    if (!current.Run()) { std::move(callback).Run(NativeFault("target_detached", "Original page capture identity retired")); return; }
+    aux::NativePersonCaptureController::CreateForWebContents(page);
+    auto controller = aux::NativePersonCaptureController::FromWebContents(page)->GetWeakPtr();
+    const auto operation = base::Uuid::GenerateRandomV4().AsLowercaseString();
+    native_person_captures_.emplace(operation, controller);
+    controller->Capture(params.Clone(), current, base::BindOnce([](base::WeakPtr<AuxRuntimeHost> owner,
+        std::string operation, base::RepeatingCallback<bool()> current,
+        base::OnceCallback<void(base::DictValue)> callback, base::DictValue reply) {
+      const bool original_slot = owner && owner->native_person_captures_.erase(operation) == 1;
+      if (!original_slot || !current.Run()) {
+        if (reply.FindDict("error")) std::move(callback).Run(std::move(reply));
+        else std::move(callback).Run(NativeFault("target_detached", "Original page capture retired"));
+        return;
+      }
+      std::move(callback).Run(std::move(reply));
+    }, weak_factory_.GetWeakPtr(), operation, current, std::move(callback)));
+    return;
+  }
+
   aux::NativePersonObserverController::CreateForWebContents(page);
   auto reader = aux::NativePersonObserverController::FromWebContents(page)->GetWeakPtr();
   // Private operation identity survives controller callback invalidation;
@@ -1083,11 +1160,19 @@ AuxRuntimeHost::Worker::Worker(
     base::FilePath profile_path,
     std::string profile_id,
     scoped_refptr<base::SequencedTaskRunner> ui_runner,
-    base::WeakPtr<AuxRuntimeHost> owner)
+    base::WeakPtr<AuxRuntimeHost> owner
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+    , std::shared_ptr<aux::NativeDisposableCredentialProfile::State> credential_profile
+#endif
+    )
     : profile_path_(std::move(profile_path)),
       profile_id_(std::move(profile_id)),
       ui_runner_(std::move(ui_runner)),
-      owner_(std::move(owner)) {}
+      owner_(std::move(owner)) {
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  credential_profile_ = std::move(credential_profile);
+#endif
+}
 
 AuxRuntimeHost::Worker::~Worker() {
   Disconnect();
@@ -1393,7 +1478,7 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
                              }, state));
                          return;
                        }
-                       if (owner && (method == "native.personRead" || method == "native.personReadContext")) {
+                       if (owner && (method == "native.personRead" || method == "native.personReadContext" || method == "native.personCapture")) {
                          owner->HandleNativePersonReadCall(method, params, connection_generation,
                              base::BindOnce([](std::shared_ptr<NativeReplyState> state,
                                                base::DictValue reply) {
@@ -1573,6 +1658,108 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
   return std::move(state->reply);
 }
 
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+bool AuxRuntimeHost::Worker::PrepareDisposableCredential() {
+  if (credential_cache_checked_) return credential_cache_admitted_ && credential_profile_ &&
+      credential_profile_->alive.load() && credential_profile_->profile == profile_path_ &&
+      (!credential_grant_ || credential_grant_->Current(profile_path_));
+  struct Prepared {
+    base::WaitableEvent ready;
+    std::atomic_bool cancelled{false};
+    std::shared_ptr<aux::NativeDisposableCredentialGrant> grant;
+    std::shared_ptr<aux::NativeDisposableCredentialProfile::State> profile;
+    std::optional<base::UnguessableToken> host;
+    bool selected = false;
+  };
+  auto state = std::make_shared<Prepared>();
+  ui_runner_->PostTask(FROM_HERE, base::BindOnce(
+      [](base::WeakPtr<AuxRuntimeHost> owner, uint64_t generation,
+         std::shared_ptr<Prepared> state) {
+        state->selected = base::CommandLine::ForCurrentProcess()->HasSwitch("aux-fixed-disposable-model-credential");
+        if (!owner || state->cancelled.load() || owner->shutting_down_ ||
+            owner->admitted_native_generation_ != generation || generation <= owner->retired_native_generation_ ||
+            owner->profile_->IsOffTheRecord() || !owner->profile_->IsRegularProfile()) {
+          state->ready.Signal(); return;
+        }
+        state->profile = aux::NativeDisposableCredentialProfile::Existing(owner->profile_);
+        if (state->selected && state->profile) {
+          // An original acknowledged fixture item survives Host reconnection.
+          // Reuse only ordinary cache read authority, never another Add grant.
+          state->selected = !state->profile->saved_ack.load();
+          if (state->selected) { state->ready.Signal(); return; }
+        }
+        if (state->selected) {
+          // Take is one use and retains original pre-thread descriptors. No
+          // connection/Host recreation recaptures a replacement grant.
+          auto grant = aux::TakeNativeCredentialGrant(owner->profile_->GetPath());
+          state->host = base::UnguessableToken::DeserializeFromString(owner->native_owner_incarnation_);
+          if (grant && state->host && grant->BindOriginal(owner->profile_->GetPath(),
+                  owner->native_owner_incarnation_, generation)) {
+            state->profile = aux::NativeDisposableCredentialProfile::InstallBeforeIntent(owner->profile_);
+            if (state->profile) {
+              state->profile->write_intent.store(true);
+              state->grant = std::move(grant);
+              owner->credential_grant_ = state->grant;
+            }
+          }
+        }
+        if (state->cancelled.load() && state->grant) state->grant->Retire();
+        state->ready.Signal();
+      }, owner_, connection_generation_, state));
+  if (!state->ready.TimedWait(base::Seconds(5))) {
+    state->cancelled.store(true);
+    return false;
+  }
+  credential_profile_ = state->profile;
+  if (!state->selected) {
+    credential_cache_checked_ = true;
+    credential_cache_admitted_ = state->profile && state->profile->alive.load() && state->profile->saved_ack.load();
+    return credential_cache_admitted_;
+  }
+  credential_cache_checked_ = true;
+  credential_grant_ = state->grant;
+  if (!credential_grant_ || !credential_profile_ || !state->host) return false;
+  const auto original_profile = credential_profile_;
+  const auto grant = credential_grant_;
+  const base::FilePath path = profile_path_;
+  auto current = base::BindRepeating([](
+      std::shared_ptr<aux::NativeDisposableCredentialGrant> grant,
+      std::shared_ptr<aux::NativeDisposableCredentialProfile::State> profile,
+      base::FilePath path) {
+    return profile->alive.load() && profile->profile == path && grant->Current(path);
+  }, grant, original_profile, path);
+  std::string witness;
+  if (!current.Run() || !grant->AcquireOriginalWitness(&witness) || !current.Run()) return false;
+  // Guardian intent is retained before even constructing the fixed Security
+  // backend. Original absence/Add semantics remain in the reviewed primitive.
+  auto backend = aux::NativeDisposableModelCredentialBackend::ForOriginalProfile(path, current, witness);
+  if (!backend) return false;
+  auto* original_backend = backend.get();
+  auto lease = std::unique_ptr<aux::NativeDisposableModelCredentialLease>(
+      new aux::NativeDisposableModelCredentialLease(
+          {*state->host, original_profile->identity, connection_generation_},
+          std::move(backend), current,
+          base::BindOnce([](std::shared_ptr<aux::NativeDisposableCredentialProfile::State> profile,
+              aux::NativeDisposableModelCredentialLease::Receipt receipt,
+              std::shared_ptr<aux::NativeDisposableModelCredentialLease::Backend> /*original_backend*/) {
+            profile->cleanup_debt.store(receipt.cleanup_debt);
+            // The independent original guardian already retains witness debt;
+            // no browser destructor issues Security deletion or loses that debt.
+          }, original_profile)));
+  original_profile->cleanup_debt.store(true);
+  if (!lease->AcquireAbsent() || !lease->SaveFixed() || !current.Run()) return false;
+  const auto reference = original_backend->persistent_ref_.get();
+  if (!reference || CFDataGetLength(reference) <= 0 || CFDataGetLength(reference) > 1024) return false;
+  const auto encoded = base::Base64Encode(base::apple::CFDataToSpan(reference));
+  if (!grant->RetainOriginalReference(witness, encoded) || !current.Run()) return false;
+  original_profile->saved_ack.store(true);
+  credential_cache_admitted_ = true;
+  // Genuine native.readSecret below performs the existing cache read only
+  // after the original guardian has acknowledged actual item ownership.
+  return true;
+}
+#endif
+
 bool AuxRuntimeHost::Worker::HandleNativeRequest(
     const base::DictValue& data) {
   const std::optional<int> nested_id = data.FindInt("id");
@@ -1595,8 +1782,16 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
       *native_method == "native.storeSecret") {
     const std::string* name = native_params->FindString("name");
     const std::string* value = native_params->FindString("value");
+    aux::SecretWriteMetadata metadata = aux::SecretWriteMetadata::kOrdinary;
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+    if (name && *name == "modelKey-openai-compatible") {
+      if (credential_profile_ &&
+          credential_profile_->profile == profile_path_ && credential_profile_->write_intent.load())
+        metadata = aux::SecretWriteMetadata::kRetireDisposableModelWitness;
+    }
+#endif
     if (name && value &&
-        aux::StoreSecret(profile_path_, *name, *value, &native_error)) {
+        aux::StoreSecret(profile_path_, *name, *value, &native_error, metadata)) {
       base::DictValue result;
       result.Set("ok", true);
       reply.Set("result", std::move(result));
@@ -1605,7 +1800,13 @@ bool AuxRuntimeHost::Worker::HandleNativeRequest(
              *native_method == "native.readSecret") {
     const std::string* name = native_params->FindString("name");
     std::optional<std::string> value;
-    if (name && aux::ReadSecret(profile_path_, *name, &value, &native_error)) {
+    bool original_read = true;
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+    if (name && *name == "modelKey-openai-compatible" &&
+        base::CommandLine::ForCurrentProcess()->HasSwitch("aux-fixed-disposable-model-credential"))
+      original_read = PrepareDisposableCredential();
+#endif
+    if (original_read && name && aux::ReadSecret(profile_path_, *name, &value, &native_error)) {
       base::DictValue result;
       if (value) {
         result.Set("value", *value);

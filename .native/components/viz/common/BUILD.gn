@@ -294,6 +294,7 @@ viz_source_set("unit_tests") {
     "frame_sinks/begin_frame_args_unittest.cc",
     "frame_sinks/begin_frame_source_unittest.cc",
     "frame_sinks/copy_output_util_unittest.cc",
+    "frame_sinks/aux_person_capture_copy_request_unittest.cc",
     "frame_sinks/delay_based_time_source_unittest.cc",
     "gpu/context_cache_controller_unittest.cc",
     "hit_test/hit_test_query_unittest.cc",

@@ -17,6 +17,7 @@
 #if BUILDFLAG(ENABLE_AUX_SHELL)
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
 #include "chrome/browser/ui/aux/native_cdp_measurement_producer.h"
+#include "chrome/browser/ui/aux/native_pip_presentation_fixture.h"
 #include "chrome/browser/ui/aux/native_stop_input_endpoint.h"
 #include "chrome/browser/ui/aux/native_performance_observer.h"
 #include "content/public/browser/native_platform_input_admission.h"

@@ -1207,6 +1207,13 @@ void RenderWidgetHostViewMac::SetSupportsAutoFill(bool supports) {
   ns_view_->SetSupportsAutoFill(supports);
 }
 
+viz::SurfaceId RenderWidgetHostViewMac::GetAuxPersonCaptureSurfaceId() const { return GetCurrentSurfaceId(); }
+void RenderWidgetHostViewMac::CopyAuxPersonCaptureSurface(const viz::SurfaceId& surface,
+      const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens,
+    base::TimeDelta timeout, base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
+  browser_compositor_->GetDelegatedFrameHost()->CopyAuxPersonCaptureSurface(surface, required_surfaces, required_tokens, timeout, std::move(callback));
+}
+
 void RenderWidgetHostViewMac::CopyFromSurface(
     const gfx::Rect& src_subrect,
     const gfx::Size& dst_size,

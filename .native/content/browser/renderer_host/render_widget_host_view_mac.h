@@ -265,6 +265,10 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
       gfx::PointF* transformed_point) override;
   viz::FrameSinkId GetRootFrameSinkId() override;
   viz::SurfaceId GetCurrentSurfaceId() const override;
+  viz::SurfaceId GetAuxPersonCaptureSurfaceId() const override;
+  void CopyAuxPersonCaptureSurface(const viz::SurfaceId& surface,
+      const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens, base::TimeDelta timeout,
+      base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) override;
 
   // TextInputManager::Observer implementation.
   void OnUpdateTextInputStateCalled(TextInputManager* text_input_manager,

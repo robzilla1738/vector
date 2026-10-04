@@ -75,6 +75,7 @@ interface WidgetCompositor {
   // Requests that the RenderWidget sends back a response after the next main
   // frame is generated and presented in the display compositor.
   VisualStateRequest() => ();
+  AuxPersonCaptureVisualStateRequest() => (uint32 frame_token);
 
   // No JS/public receiver. Caller must hold the private owned-fixture grant
   // and verify the same Profile/window/current RFH/document/widget before and

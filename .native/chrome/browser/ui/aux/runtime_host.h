@@ -16,6 +16,10 @@
 #include "build/build_config.h"
 #include "chrome/browser/buildflags.h"
 #include "chrome/browser/ui/aux/native_startup_runtime_hello.h"
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+#include "chrome/browser/ui/aux/native_disposable_credential_grant.h"
+#include "chrome/browser/ui/aux/native_disposable_credential_profile.h"
+#endif
 #include "base/callback_list.h"
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
@@ -44,6 +48,7 @@ class ProfileLibrary;
 class NativeFind;
 class NativeRecorderController;
 class NativePersonObserverController;
+class NativePersonCaptureController;
 class CredentialFill;
 class NativeOrganizationWorkFixture;
 class NativeProcessMemorySampler;
@@ -143,7 +148,11 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
     Worker(base::FilePath profile_path,
            std::string profile_id,
            scoped_refptr<base::SequencedTaskRunner> ui_runner,
-           base::WeakPtr<AuxRuntimeHost> owner);
+           base::WeakPtr<AuxRuntimeHost> owner
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+           , std::shared_ptr<aux::NativeDisposableCredentialProfile::State> credential_profile = nullptr
+#endif
+           );
     ~Worker();
     void CallApi(std::string method, std::string params_json,
                  std::string person_resume, ResponseCallback callback);
@@ -182,6 +191,12 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
     base::DictValue DispatchNative(const std::string& method,
                                    base::DictValue params);
     bool HandleNativeRequest(const base::DictValue& data);
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+    bool PrepareDisposableCredential();
+    std::shared_ptr<aux::NativeDisposableCredentialProfile::State> credential_profile_;
+    std::shared_ptr<aux::NativeDisposableCredentialGrant> credential_grant_;
+    bool credential_cache_checked_ = false, credential_cache_admitted_ = false;
+#endif
     void ForwardNote(const base::DictValue& data);
     void HandleResponse(const base::DictValue& data);
     struct PendingRequest {
@@ -315,6 +330,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
       observers_;
   bool pump_scheduled_ = false;
   bool runtime_connected_ = false;
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  std::shared_ptr<aux::NativeDisposableCredentialGrant> credential_grant_;
+#endif
   const std::string native_owner_incarnation_ = base::UnguessableToken::Create().ToString();
   base::WeakPtr<aux::EgressController> native_connection_egress_;
   uint64_t admitted_native_generation_ = 0;
@@ -324,6 +342,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
   base::WeakPtr<aux::NativeRecorderController> native_recorder_;
   std::map<std::string, base::WeakPtr<aux::NativePersonObserverController>>
       native_person_reads_;
+  std::map<std::string, base::WeakPtr<aux::NativePersonCaptureController>> native_person_captures_;
   std::string native_person_connection_id_;
   bool shutting_down_ = false;
   base::WeakPtr<aux::EgressController> owner_mutation_egress_;

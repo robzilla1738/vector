@@ -128,6 +128,8 @@ bool IsNativePerformanceMailboxOperation(const std::string& operation) {
       operation == "sampleShellMemory" || operation == "sampleProcessMemory" ||
       operation == "prepareSubagentMemoryWorkload" ||
       operation == "prepareAuxWarmWindow" || operation == "completeAuxWarmWindow" ||
+      operation == "preparePipWindowPresentation" || operation == "completePipWindowPresentation" ||
+      operation == "retirePipWindowPresentation" ||
       operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation" ||
       operation == "prepareOrganizationAutoArchiveWork" ||
       operation == "prepareOrganizationLiveFolderWork" || operation == "completeOrganizationWork";
@@ -266,6 +268,8 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
   const bool cdp = cdp_prepare || operation == "completeCdpRetirementMeasurement";
   const bool warm = operation == "prepareAuxWarmWindow" || operation == "completeAuxWarmWindow";
   const bool little = operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation";
+  const bool pip_retire = operation == "retirePipWindowPresentation";
+  const bool pip = pip_retire || operation == "preparePipWindowPresentation" || operation == "completePipWindowPresentation";
   const bool preparation = operation == "prepareSubagentMemoryWorkload";
   const bool process_memory = operation == "sampleProcessMemory";
   const bool memory = operation == "sampleShellMemory" || process_memory;
@@ -289,9 +293,12 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
 #endif
   if (!producer || *producer != (cdp ? "aux-native-cdp-retirement" : warm ? "aux-native-warm-window" : preparation ? "aux-native-subagent-preparation" : process_memory ? "aux-native-process-memory" : memory ? "aux-native-shell-memory" :
           organization ? "aux-native-organization-work-v1" :
+          pip_retire ? "aux-native-pip-root-retirement" : pip ? "aux-native-pip-root-presentation" :
           little ? "aux-native-little-presentation-upperbound" : "aux-native-guest-presentation") ||
       record.FindInt("version") != 1 || !status ||
-      (cdp ? (*status != "armed" && *status != "sampled" && *status != "refused") : preparation ? (*status != "ready" && *status != "refused") : memory ? (*status != "sampled" && *status != "refused") :
+      (pip ? (*status != "refused" && *status !=
+          (pip_retire ? "retired" : operation == "preparePipWindowPresentation" ? "ready" : "measured")) :
+       cdp ? (*status != "armed" && *status != "sampled" && *status != "refused") : preparation ? (*status != "ready" && *status != "refused") : memory ? (*status != "sampled" && *status != "refused") :
           (*status != "ready" && *status != "measured" && *status != "refused")) ||
       (!cdp && *status != "refused" && record.FindInt("windowId") != measured_window_id)) {
     Refuse(); return false;

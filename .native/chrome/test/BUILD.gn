@@ -3507,6 +3507,7 @@ if (!is_android) {
           "../browser/ui/aux/native_creator_close_receipt_browsertest.cc",
           "../browser/ui/aux/native_input_ack_browsertest.mm",
           "../browser/ui/aux/native_person_observer_controller_browsertest.cc",
+          "../browser/ui/aux/native_person_capture_controller_browsertest.cc",
           "../browser/ui/aux/native_recorder_controller_browsertest.cc",
         ]
         deps += [ "//chrome/browser/ui/aux:runtime" ]
@@ -8075,6 +8076,14 @@ test("unit_tests") {
       "../browser/ui/stock_measurement/native_stock_startup_session_unittest.cc",
     ]
   }
+  if (enable_aux_shell && is_mac && aux_allow_remote_debugging_for_tests) {
+    sources += [
+      "../browser/ui/aux/native_disposable_model_credential_lease_unittest.cc",
+      "../browser/ui/aux/native_disposable_model_credential_backend_unittest.mm",
+      "../browser/ui/aux/native_disposable_credential_grant_unittest.cc",
+      "../browser/ui/aux/native_disposable_credential_profile_unittest.cc",
+    ]
+  }
   if (enable_aux_shell && is_mac) {
     sources += [
       "../browser/ui/aux/download_naming_unittest.cc",
@@ -8084,11 +8093,13 @@ test("unit_tests") {
       "../browser/ui/aux/native_utility_appearance_owner_unittest.cc",
       "../browser/ui/aux/native_pip_appearance_registry_unittest.cc",
       "../browser/ui/aux/native_appearance_file_channel_unittest.cc",
+      "../browser/ui/aux/native_person_capture_controller_unittest.cc",
       "../browser/ui/aux/native_pip_video_backing_unittest.cc",
       "../browser/ui/aux/native_command_presentation_session_unittest.cc",
       "../browser/ui/aux/native_guest_presentation_fixture_unittest.cc",
       "../browser/ui/aux/native_little_creation_ticket_unittest.cc",
       "../browser/ui/aux/native_little_presentation_fixture_unittest.cc",
+      "../browser/ui/aux/native_pip_presentation_fixture_unittest.cc",
       "../browser/ui/aux/native_startup_launch_receipt_unittest.cc",
       "../browser/ui/aux/native_private_fixture_methods_unittest.cc",
       "../browser/ui/aux/native_aux_warm_fixture_unittest.cc",

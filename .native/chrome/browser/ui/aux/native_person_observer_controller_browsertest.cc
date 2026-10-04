@@ -21,7 +21,9 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "components/profile_metrics/browser_profile_type.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/common/referrer.h"
 #include "content/public/test/browser_test.h"
@@ -110,6 +112,26 @@ class NativePersonObserverControllerBrowserTest : public InProcessBrowserTest {
     reader_ = NativePersonObserverController::FromWebContents(page_);
     ASSERT_NE(reader_, nullptr);
   }
+  base::DictValue OriginalReadScope() {
+    auto* page = page_.get();
+    auto* frame = page ? page->GetPrimaryMainFrame() : nullptr;
+    const auto* identity = page ? PageIdentity::FromWebContents(page) : nullptr;
+    auto* profile = browser()->GetProfile();
+    auto* catalog = TabCatalog::GetForProfile(profile);
+    auto* authority = EgressController::ForProfile(profile);
+    return base::DictValue()
+        .Set("same_profile", page && page->GetBrowserContext() == profile)
+        .Set("off_record", profile->IsOffTheRecord())
+        .Set("pending_owner", authority->owner_mutations().pending())
+        .Set("identity_present", identity != nullptr)
+        .Set("runtime_owned", identity && identity->runtime_owned())
+        .Set("frame_active", frame && frame->IsActive())
+        .Set("frame_live", frame && frame->IsRenderFrameLive())
+        .Set("same_catalog_page", identity && catalog && catalog->FindPage(identity->id()) == page)
+        .Set("isolated_page", authority->IsIsolatedPage(page))
+        .Set("http_url", page && page->GetLastCommittedURL().SchemeIsHTTPOrHTTPS())
+        .Set("original_opener", page && page->GetFirstWebContentsInLiveOriginalOpenerChain() != nullptr);
+  }
   base::DictValue Read(base::DictValue request = Observe()) {
     base::test::TestFuture<base::DictValue> reply;
     reader_->Read(1, std::move(request), reply.GetCallback());
@@ -121,9 +143,10 @@ class NativePersonObserverControllerBrowserTest : public InProcessBrowserTest {
 
 IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
                        FixedReadReturnsOriginalDocumentWithoutFieldValues) {
+  const auto original_scope = OriginalReadScope();
   auto reply = Read();
   auto* result = reply.FindDict("result");
-  ASSERT_NE(result, nullptr) << reply.DebugString();
+  ASSERT_NE(result, nullptr) << reply.DebugString() << " original_scope=" << original_scope.DebugString();
   auto* value = result->FindDict("value");
   ASSERT_NE(value, nullptr);
   ASSERT_NE(value->FindString("title"), nullptr);
@@ -203,9 +226,10 @@ IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
 }
 IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
                        NativeReadSessionRetainsOriginalDocumentAndConnection) {
+  const auto original_scope = OriginalReadScope();
   auto* authority = EgressController::ForProfile(browser()->GetProfile());
   auto receipt = authority->CapturePersonRead(page_);
-  ASSERT_TRUE(receipt);
+  ASSERT_TRUE(receipt) << " original_scope=" << original_scope.DebugString();
   const auto connection = base::Uuid::GenerateRandomV4().AsLowercaseString();
   auto first = NativePersonObserverController::Describe(*receipt, connection);
   auto repeated = NativePersonObserverController::Describe(*receipt, connection);
@@ -371,9 +395,21 @@ namespace aux {
 namespace {
 class NativeConnectionTeardownProfile : public TestingProfile {
  public:
+  NativeConnectionTeardownProfile();
+  ~NativeConnectionTeardownProfile() override;
   void ClearOriginalUserData() { ClearAllUserData(); }
   size_t OriginalUserDataCount() const { return UserDataCount(); }
+
+ private:
+  const profile_metrics::BrowserProfileType original_profile_type_;
 };
+NativeConnectionTeardownProfile::NativeConnectionTeardownProfile()
+    : original_profile_type_(profile_metrics::GetBrowserProfileType(this)) {}
+NativeConnectionTeardownProfile::~NativeConnectionTeardownProfile() {
+  // The tests observe genuinely empty user data after retirement. Restore only
+  // original lifecycle metadata required by TestingProfile service shutdown.
+  profile_metrics::SetBrowserProfileType(this, original_profile_type_);
+}
 }  // namespace
 
 IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,

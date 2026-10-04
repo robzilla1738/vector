@@ -2363,6 +2363,14 @@ void RenderWidgetHostImpl::MeasureNativeCommandPresentationForTesting(
           }, weak_factory_.GetWeakPtr(), std::move(expected), std::move(reply)));
 }
 
+void RenderWidgetHostImpl::RequestAuxPersonCaptureFrame(base::OnceCallback<void(uint32_t)> callback) {
+  if (!blink_frame_widget_) { std::move(callback).Run(0); return; }
+  if (!widget_compositor_) {
+    blink_frame_widget_->BindWidgetCompositor(widget_compositor_.BindNewPipeAndPassReceiver(GetUIThreadTaskRunner({BrowserTaskType::kUserInput})));
+  }
+  widget_compositor_->AuxPersonCaptureVisualStateRequest(mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), 0u));
+}
+
 void RenderWidgetHostImpl::InsertVisualStateCallback(
     VisualStateCallback callback) {
   if (!blink_frame_widget_) {
