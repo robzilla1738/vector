@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, unlink, rmdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { readFile, writeFile, lstat } from 'node:fs/promises';
 import { captureComposerImageRejection, createInvalidImageFixture } from './lib/composer-image-appearance.mjs';
 
 function context() {
@@ -51,18 +50,23 @@ test('retired original owner prevents capture while exact owned fixture cleanup 
 });
 test('changed original fixture refuses removal instead of hiding cleanup debt', async () => {
   const fixture = await createInvalidImageFixture();
+  const original = await lstat(fixture.path), bytes = await readFile(fixture.path);
   await writeFile(fixture.path, 'foreign bytes');
   await assert.rejects(fixture.validate()); await assert.rejects(fixture.dispose());
   assert.equal(await readFile(fixture.path, 'utf8'), 'foreign bytes');
-  await unlink(fixture.path); await rmdir(dirname(fixture.path));
+  const now = await lstat(fixture.path); assert.equal(now.ino, original.ino); assert.equal(now.dev, original.dev);
+  await writeFile(fixture.path, bytes); await fixture.validate(); await fixture.dispose();
 });
 
 test('original chooser failure and changed fixture preserve both failures', async () => {
   const { t, paths } = context(); const primary = new Error('Original chooser refusal');
-  t.ax.openPanel = async path => { paths.push(path); await writeFile(path, 'changed original fixture'); throw primary; };
-  await assert.rejects(captureComposerImageRejection(t), error => error instanceof AggregateError && error.errors[0] === primary && error.errors.length === 2);
+  let original, bytes, failure;
+  t.ax.openPanel = async path => { paths.push(path); original = await lstat(path); bytes = await readFile(path); await writeFile(path, 'changed original fixture'); throw primary; };
+  await assert.rejects(captureComposerImageRejection(t), error => { failure = error; return error instanceof AggregateError && error.errors[0] === primary && error.errors.length === 2; });
   assert.equal(await readFile(paths[0], 'utf8'), 'changed original fixture');
-  await unlink(paths[0]); await rmdir(dirname(paths[0]));
+  const lease = failure.errors[1].ownedImageFixture; assert.ok(lease);
+  const now = await lstat(paths[0]); assert.equal(now.ino, original.ino); assert.equal(now.dev, original.dev);
+  await writeFile(paths[0], bytes); await lease.validate(); await lease.dispose();
 });
 
 test('same-PID replacement native window and changed state refuse before appearance capture', async () => {

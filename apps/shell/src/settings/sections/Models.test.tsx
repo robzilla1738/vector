@@ -3,8 +3,17 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { collectSettingsFields } from "../search";
+import { call } from "../../store";
 import { ModelsSettings } from "./Models";
 
+
+vi.mock("../../bridge", () => ({ bridge: { windowId: "models-fixture", windowKind: "normal", privateMode: false }, inNativeHost: false, inMock: true }));
+vi.mock("../../commands", async () => {
+  const { invokeScopedControl } = await import("../../scoped-control-commands");
+  return { executeCommand: (command: string, context: Parameters<typeof invokeScopedControl>[1]) => {
+    try { return Promise.resolve(invokeScopedControl(command, context)); } catch (reason) { return Promise.reject(reason); }
+  } };
+});
 vi.mock("../../store", () => ({
   call: vi.fn(),
   toast: vi.fn(),
@@ -12,11 +21,14 @@ vi.mock("../../store", () => ({
 
 it("keeps an unsaved provider key in the editor and indexes model controls", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
   const container = document.createElement("div");
   const root = createRoot(container);
+  vi.mocked(call).mockResolvedValue({ models: [] });
   const onSave = vi.fn(async () => false);
   try {
-    await act(async () => root.render(<ModelsSettings active={false} settings={{ modelProvider: "gateway" }} onSave={onSave} />));
+    document.body.append(container);
+    await act(async () => root.render(<ModelsSettings active settings={{ modelProvider: "gateway" }} onSave={onSave} />));
     const fields = collectSettingsFields(container);
     expect(fields.some(field => field.category === "Models" && field.label === "Planner model")).toBe(true);
     expect(fields.some(field => field.category === "Models" && field.label === "Model provider")).toBe(true);
@@ -33,19 +45,24 @@ it("keeps an unsaved provider key in the editor and indexes model controls", asy
     expect(container.querySelector('[role="alert"]')?.textContent).toContain("not saved");
   } finally {
     await act(async () => root.unmount());
+    container.remove();
+    rects.mockRestore();
     vi.unstubAllGlobals();
   }
 });
 
 it("resets one model role to Automatic without dropping another override", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
   const container = document.createElement("div");
   const root = createRoot(container);
+  vi.mocked(call).mockResolvedValue({ models: [] });
   const onSave = vi.fn(async () => true);
   const fast = { modelId: "fixture-fast", reasoning: "low" } as const;
   const deep = [{ modelId: "fixture-deep", reasoning: "xhigh" as const }, { modelId: "fixture-backup", reasoning: "low" as const }];
   try {
-    await act(async () => root.render(<ModelsSettings active={false} settings={{
+    document.body.append(container);
+    await act(async () => root.render(<ModelsSettings active settings={{
       modelProvider: "gateway",
       agentModelRoutes: { fast, deep: deep[0] },
       agentModelRouteOverrides: { fast, deep },
@@ -57,6 +74,8 @@ it("resets one model role to Automatic without dropping another override", async
     expect(onSave).toHaveBeenCalledWith({ agentModelRoutes: { deep } });
   } finally {
     await act(async () => root.unmount());
+    container.remove();
+    rects.mockRestore();
     vi.unstubAllGlobals();
   }
 });

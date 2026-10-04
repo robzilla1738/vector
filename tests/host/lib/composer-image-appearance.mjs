@@ -5,15 +5,18 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { captureHomeState } from './home-capture.mjs';
 
-const bytes = Buffer.from('Aux owned invalid image fixture\n', 'ascii');
+const invalidBytes = Buffer.from('Aux owned invalid image fixture\n', 'ascii');
+const validBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMwqzz+nxLMMGrAqAGjBgwXAwCiVHUfEP0xPQAAAABJRU5ErkJggg==', 'base64');
 const digest = data => createHash('sha256').update(data).digest('hex');
 const shell = (name, role) => ({ name, ...(role ? { role } : {}), match: 'exact', scope: 'shell', index: 0 });
 const composer = shell('Reply to conversation');
 
 /** Fixed fixture only. No arbitrary source path or actual user image is accepted. */
-export async function createInvalidImageFixture() {
+export function createInvalidImageFixture() { return createOwnedImageFixture('invalid-image.png', invalidBytes); }
+export function createValidImageFixture() { return createOwnedImageFixture('valid-image.png', validBytes); }
+async function createOwnedImageFixture(filename, bytes) {
   const directory = await mkdtemp(join(tmpdir(), 'aux-image-appearance-'));
-  const path = join(directory, 'invalid-image.png');
+  const path = join(directory, filename);
   let file, parent, initialFile;
   try {
     parent = await lstat(directory); // Retain original identity before any file open.
@@ -28,7 +31,7 @@ export async function createInvalidImageFixture() {
       for (const key of ['dev', 'ino', 'uid', 'mode']) assert.equal(dir[key], parent[key], `Owned image directory ${key} changed`);
       assert.equal(now.uid, process.getuid()); assert.equal(now.mode & 0o777, 0o600); assert.equal(dir.mode & 0o777, 0o700);
       assert.equal(now.nlink, 1); assert.equal(held.ino, original.ino); assert.equal(held.dev, original.dev);
-      assert.deepEqual(await readdir(directory), ['invalid-image.png']);
+      assert.deepEqual(await readdir(directory), [filename]);
       const content = Buffer.alloc(bytes.length); const read = await file.read(content, 0, content.length, 0);
       assert.equal(read.bytesRead, bytes.length); assert.equal(digest(content), digest(bytes));
     };
@@ -83,7 +86,7 @@ export async function createInvalidImageFixture() {
             assert.ok(Number.isSafeInteger(held.size) && held.size >= 0 && held.size <= bytes.length); assert.equal(named.size, held.size);
             const partial = Buffer.alloc(held.size), read = await file.read(partial, 0, partial.length, 0);
             assert.equal(read.bytesRead, partial.length); assert.ok(partial.equals(bytes.subarray(0, partial.length)), 'Unknown partial creation bytes refuse cleanup');
-            assert.deepEqual(await readdir(directory), ['invalid-image.png']);
+            assert.deepEqual(await readdir(directory), [filename]);
             await unlink(path); fileRemoved = true;
           }
           await originalDirectory(); assert.deepEqual(await readdir(directory), []);

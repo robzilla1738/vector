@@ -56,7 +56,29 @@ const archiveBatchControl = { section: "Tabs", handler: "shell", feature: "archi
 const pageRecoveryControl = { ...memoryControl, section: "Page", windows: ["normal", "private", "little", "quick-ask"] } as const;
 const diagnosticsControl = { ...memoryControl, windows: ["normal", "private"] } as const;
 const runPanelControl = { ...runControl, palette: false } as const;
+const modelControl = { ...memoryControl, windows: ["normal", "private"] } as const;
 export const COMMANDS = [
+  S("select-model-provider", "Select model provider", modelControl),
+  S("save-model-endpoint", "Save model endpoint", modelControl),
+  S("discover-provider-models", "Discover provider models", modelControl),
+  S("save-provider-model-key", "Save provider model key", modelControl),
+  S("save-planner-model", "Save planner model", modelControl),
+  S("probe-model-connection", "Test model connection", modelControl),
+  S("show-model-probe-details", "Show model test details", modelControl),
+  S("save-vision-model", "Save vision model", modelControl),
+  S("save-model-role", "Save model role", modelControl),
+  S("use-automatic-model-role", "Use automatic model role", modelControl),
+  S("set-model-worker-limit", "Set model worker limit", modelControl),
+  S("set-model-turn-limit", "Set model turn limit", modelControl),
+  S("manage-model-provider", "Manage model provider", modelControl),
+  S("edit-provider-models", "Edit provider models", modelControl),
+  S("reauthenticate-model-provider", "Edit provider key", modelControl),
+  S("toggle-model-provider-connection", "Connect or disconnect model provider", modelControl),
+  S("remove-saved-model-key", "Review saved model key removal", modelControl),
+  S("set-image-generation-model", "Set image-generation model", modelControl),
+  S("confirm-model-key-removal", "Confirm model key removal", modelControl),
+  S("cancel-model-key-removal", "Cancel model key removal", modelControl),
+
   ...G(browserContextControl, "-conversation-", [
     ["choose", "image", "Choose conversation image"],
     ["capture", "page", "Capture conversation page"],

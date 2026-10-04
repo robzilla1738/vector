@@ -1,6 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useId, useRef, useState } from "react";
 import { MODEL_PROVIDER_NAMES, type ModelConnectionStatus, type ModelProvider } from "@aux/contracts";
 import { ModelConnections } from "./ModelConnections";
+import { PreferenceAction, usePreferenceCommand } from "./preference-command";
+import {
+  useModelControlOwner,
+  useModelDraftCommand,
+  type ModelControlOwner,
+} from "./models-command-controls";
 import "./ModelProbeStatus.css";
 import {
   DEFAULT_PLANNER_MODEL_ID,
@@ -39,8 +45,10 @@ function ModelRoleField({
   overrides,
   options,
   disabled,
+  active,
   onSave,
 }: {
+  active: boolean;
   role: (typeof MODEL_ROLES)[number];
   route: AgentModelRoute;
   override?: AgentModelRouteChain;
@@ -51,20 +59,26 @@ function ModelRoleField({
 }) {
   const [modelId, setModelId] = useState(route.modelId);
   const [reasoning, setReasoning] = useState<AgentModelRoute["reasoning"]>(route.reasoning);
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<ModelControlOwner | null>(null);
+  const roleOwner = useModelControlOwner(active, `${role.id}:${route.modelId}:${route.reasoning}`);
+  const busy = pending === roleOwner;
+  const roleScope = useId();
   const selectedOverride = Array.isArray(override) ? override[0] : override;
-  const save = async (automatic: boolean) => {
-    if (busy || disabled || (!automatic && !modelId.trim())) return;
-    const next = { ...overrides };
-    if (automatic) delete next[role.id];
-    else next[role.id] = { modelId: modelId.trim(), reasoning };
-    setBusy(true);
-    try {
-      await onSave({ agentModelRoutes: next });
-    } finally {
-      setBusy(false);
-    }
-  };
+  const save = (automatic: boolean) =>
+    roleOwner.completion(async () => {
+      if (busy || disabled || (!automatic && !modelId.trim()) || !roleOwner.reserve("route"))
+        throw new Error("Choose the current model route.");
+      const next = { ...overrides };
+      if (automatic) delete next[role.id];
+      else next[role.id] = { modelId: modelId.trim(), reasoning };
+      setPending(roleOwner);
+      try {
+        return await onSave({ agentModelRoutes: next });
+      } finally {
+        roleOwner.finish("route");
+        if (roleOwner.current()) setPending(null);
+      }
+    });
   return (
     <IndexedField label={`${role.label} model`} hint={role.hint}>
       <div className="row">
@@ -93,7 +107,10 @@ function ModelRoleField({
           <option value="medium">Medium</option>
           <option value="xhigh">Extra high</option>
         </select>
-        <button
+        <PreferenceAction
+          command="save-model-role"
+          scopeId={roleScope}
+          invoke={() => save(false)}
           className="btn sm"
           disabled={
             busy ||
@@ -103,14 +120,19 @@ function ModelRoleField({
               modelId.trim() === selectedOverride.modelId &&
               reasoning === selectedOverride.reasoning)
           }
-          onClick={() => void save(false)}
         >
           Save route
-        </button>
+        </PreferenceAction>
         {override && (
-          <button className="btn sm ghost" disabled={busy || disabled} onClick={() => void save(true)}>
+          <PreferenceAction
+            command="use-automatic-model-role"
+            scopeId={roleScope}
+            invoke={() => save(true)}
+            className="btn sm ghost"
+            disabled={busy || disabled}
+          >
             Automatic
-          </button>
+          </PreferenceAction>
         )}
       </div>
       <span className="hint">
@@ -163,7 +185,11 @@ export function ModelsSettings({
   const providerNames = MODEL_PROVIDER_NAMES;
   const keyInput = useRef<HTMLInputElement>(null),
     modelInput = useRef<HTMLInputElement>(null);
-  const focusRequest = useRef<{ provider: ModelProvider; field: "model" | "key" } | null>(null);
+  const focusRequest = useRef<{
+    provider: ModelProvider;
+    field: "model" | "key";
+    owner: ModelControlOwner;
+  } | null>(null);
   const [connectionError, setConnectionError] = useState("");
   const [modelDraft, setModelDraft] = useState(() => plannerModelSelection(settings, provider));
   const [endpointDraft, setEndpointDraft] = useState(String(settings.compatibleEndpoint ?? ""));
@@ -182,39 +208,60 @@ export function ModelsSettings({
     setProbe(saved ? { ...saved, error: saved.ok ? undefined : "Last connection test failed" } : null);
   }, [settings.modelProbe, provider]);
   const [probing, setProbing] = useState(false);
-  const operationOwner = useRef({ active: true, keyPending: false, probePending: false });
+  const owner = useModelControlOwner(active, provider);
+  const windowOwner = useModelControlOwner(active, "model-window");
+  const probeOwner = useModelControlOwner(
+    active,
+    JSON.stringify([
+      provider,
+      settings.plannerModel,
+      settings.compatibleEndpoint,
+      settings.modelApiKey,
+      settings.modelConnections,
+    ]),
+  );
+  useEffect(() => {
+    setProbing(false);
+    probeSequence.current++;
+  }, [probeOwner]);
+  const scopeId = useId();
+  const providerCommit = useRef({ provider, epoch: 0 });
   useLayoutEffect(() => {
-    const owner = { active: true, keyPending: false, probePending: false };
-    operationOwner.current = owner;
-    return () => { owner.active = false; };
-  }, [active, provider]);
+    providerCommit.current = { provider, epoch: providerCommit.current.epoch + 1 };
+  }, [owner]);
+  const keyDraft = useRef(key);
+  const keyGeneration = useRef(0);
   const connection = (settings.modelConnections as ModelConnectionStatus[] | undefined)?.find(
     (item) => item.provider === provider,
   );
   const connected = connection?.enabled !== false;
   useEffect(() => {
+    if (focusRequest.current && !focusRequest.current.owner.current()) {
+      focusRequest.current = null;
+      return;
+    }
     if (switchingProvider || focusRequest.current?.provider !== provider) return;
     const field = focusRequest.current.field;
     focusRequest.current = null;
     (field === "key" ? keyInput.current : modelInput.current)?.focus();
-  }, [provider, switchingProvider]);
+  }, [provider, switchingProvider, windowOwner]);
   useEffect(() => {
-    if (!active) return;
+    if (!active || !owner.current()) return;
     const sequence = ++modelsSequence.current;
     setModels([]);
     setModelsBusy(true);
     void call("models.list")
       .then((result) => {
-        if (sequence === modelsSequence.current) setModels(result.models);
+        if (owner.current() && sequence === modelsSequence.current) setModels(result.models);
       })
       .catch(() => {})
       .finally(() => {
-        if (sequence === modelsSequence.current) setModelsBusy(false);
+        if (owner.current() && sequence === modelsSequence.current) setModelsBusy(false);
       });
     return () => {
       ++modelsSequence.current;
     };
-  }, [active, provider, settings.compatibleEndpoint, settings.modelApiKey]);
+  }, [active, provider, settings.compatibleEndpoint, settings.modelApiKey, owner]);
 
   const keyProvider = useRef(provider);
   useEffect(() => {
@@ -226,12 +273,24 @@ export function ModelsSettings({
     setProbing(false);
     setConnectionError("");
     probeSequence.current++;
-  }, [active, provider]);
+  }, [active, provider, owner]);
+  const previousModel = useRef({ provider, value: plannerModelSelection(settings, provider) });
+  const previousEndpoint = useRef({ provider, value: String(settings.compatibleEndpoint ?? "") });
   useEffect(() => {
-    setModelDraft(plannerModelSelection(settings, provider));
+    const previous = previousModel.current,
+      next = plannerModelSelection(settings, provider);
+    setModelDraft((current) =>
+      previous.provider !== provider || current === previous.value ? next : current,
+    );
+    previousModel.current = { provider, value: next };
   }, [settings.plannerModel, provider]);
   useEffect(() => {
-    setEndpointDraft(String(settings.compatibleEndpoint ?? ""));
+    const previous = previousEndpoint.current,
+      next = String(settings.compatibleEndpoint ?? "");
+    setEndpointDraft((current) =>
+      previous.provider !== provider || current === previous.value ? next : current,
+    );
+    previousEndpoint.current = { provider, value: next };
   }, [settings.compatibleEndpoint, provider]);
   useEffect(
     () => () => {
@@ -240,106 +299,219 @@ export function ModelsSettings({
     [],
   );
 
-  const set = async (patch: Record<string, unknown>) => {
-    if (
-      [
-        "gatewayApiKey",
-        "plannerModel",
-        "modelProvider",
-        "modelCredential",
-        "modelConnection",
-        "compatibleEndpoint",
-      ].some((key) => key in patch)
-    ) {
-      probeSequence.current++;
-      setProbe(null);
-    }
-    return onSave(patch);
+  const set = (patch: Record<string, unknown>) =>
+    owner.completion(async () => {
+      const action = Object.keys(patch).join(":");
+      if (!owner.reserve(action)) throw new Error("Choose the current model control.");
+      try {
+        if (
+          [
+            "gatewayApiKey",
+            "plannerModel",
+            "modelProvider",
+            "modelCredential",
+            "modelConnection",
+            "compatibleEndpoint",
+          ].some((key) => key in patch)
+        ) {
+          probeSequence.current++;
+          setProbe(null);
+        }
+        return await onSave(patch);
+      } finally {
+        owner.finish(action);
+      }
+    });
+
+  const editConnection = (target: ModelProvider, focus: "model" | "key") => {
+    const originalProviderEpoch = providerCommit.current.epoch;
+    return windowOwner.completion(
+      async () => {
+        if (!owner.current() || !windowOwner.reserve("provider-edit"))
+          throw new Error("Choose the current provider connection.");
+        if (target === provider) {
+          if (focus === "key") setKey("");
+          (focus === "key" ? keyInput.current : modelInput.current)?.focus();
+          windowOwner.finish("provider-edit");
+          return;
+        }
+        setSwitchingProvider(true);
+        try {
+          if (!(await set({ modelProvider: target })))
+            throw new Error(
+              "Could not select this provider. Stop active tasks or resolve the Settings error first.",
+            );
+          const committed = providerCommit.current;
+          if (
+            !windowOwner.current() ||
+            !(
+              owner.current() ||
+              (committed.provider === target && committed.epoch === originalProviderEpoch + 1)
+            )
+          )
+            return;
+          setKey("");
+          setModels([]);
+          setConnectionError("");
+          focusRequest.current = { provider: target, field: focus, owner: windowOwner };
+        } finally {
+          windowOwner.finish("provider-edit");
+          if (windowOwner.current()) setSwitchingProvider(false);
+        }
+      },
+      () =>
+        owner.current() ||
+        (providerCommit.current.provider === target &&
+          providerCommit.current.epoch === originalProviderEpoch + 1),
+    );
   };
 
-  const editConnection = async (target: ModelProvider, focus: "model" | "key") => {
-    if (target === provider) {
-      if (focus === "key") setKey("");
-      (focus === "key" ? keyInput.current : modelInput.current)?.focus();
-      return;
-    }
-    setSwitchingProvider(true);
-    try {
-      if (!(await set({ modelProvider: target })))
-        throw new Error(
-          "Could not select this provider. Stop active tasks or resolve the Settings error first.",
-        );
-      setKey("");
-      setModels([]);
+  const saveKey = () => {
+    const originalGeneration = keyGeneration.current;
+    return owner.completion(
+      async () => {
+        if (!owner.current() || savingKey || !key.trim() || key === KEY_MASK || !owner.reserve("key"))
+          throw new Error("Choose the current model key draft.");
+        const originalDraft = key;
+        setSavingKey(true);
+        setConnectionError("");
+        try {
+          const ok = await set({ modelCredential: { provider, key: key.trim() } });
+          if (
+            !owner.current() ||
+            keyDraft.current !== originalDraft ||
+            keyGeneration.current !== originalGeneration
+          )
+            return ok;
+          if (ok) setKey("");
+          else
+            setConnectionError(
+              "The key was not saved. Your entry is still here; resolve the storage error and try again.",
+            );
+          return ok;
+        } catch (reason) {
+          if (
+            !owner.current() ||
+            keyDraft.current !== originalDraft ||
+            keyGeneration.current !== originalGeneration
+          )
+            throw reason;
+          setConnectionError(
+            "The key was not saved. Your entry is still here; resolve the storage error and try again.",
+          );
+          throw reason;
+        } finally {
+          owner.finish("key");
+          if (owner.current()) setSavingKey(false);
+        }
+      },
+      () => keyGeneration.current === originalGeneration,
+    );
+  };
+
+  const runProbe = () => {
+    let sequence = 0;
+    return probeOwner.completion(
+      async () => {
+        if (!probeOwner.reserve("probe")) throw new Error("Choose the current model connection test.");
+        sequence = ++probeSequence.current;
+        setProbing(true);
+        setProbe(null);
+        try {
+          const result = await call("models.probe", {
+            modelId: (settings.plannerModel as string) || undefined,
+          });
+          if (probeOwner.current() && sequence === probeSequence.current)
+            setProbe({ ...result, checkedAt: Date.now() });
+          return result;
+        } catch (e) {
+          if (probeOwner.current() && sequence === probeSequence.current)
+            setProbe({ ok: false, modelId: "", error: e instanceof Error ? e.message : String(e) });
+          throw e;
+        } finally {
+          probeOwner.finish("probe");
+          if (probeOwner.current()) setProbing(false);
+        }
+      },
+      () => sequence === probeSequence.current,
+    );
+  };
+
+  const [keyInputRef, keyButtonRef, keyControlRef, keyRun] = useModelDraftCommand(
+    "save-provider-model-key",
+    scopeId,
+    owner,
+    saveKey,
+    key,
+  );
+  const [endpointInputRef, endpointButtonRef, endpointControlRef, endpointRun] = useModelDraftCommand(
+    "save-model-endpoint",
+    scopeId,
+    owner,
+    () => set({ compatibleEndpoint: endpointDraft.trim() }),
+    endpointDraft,
+  );
+  const [plannerInputRef, plannerButtonRef, plannerControlRef, plannerRun] = useModelDraftCommand(
+    "save-planner-model",
+    scopeId,
+    owner,
+    () => set({ plannerModel: modelDraft.trim() }),
+    modelDraft,
+  );
+  const discoverModels = () =>
+    owner.completion(async () => {
+      if (modelsBusy || !owner.reserve("discovery")) throw new Error("Choose the current provider models.");
+      const sequence = ++modelsSequence.current;
+      setModelsBusy(true);
       setConnectionError("");
-      focusRequest.current = { provider: target, field: focus };
-    } finally {
-      setSwitchingProvider(false);
-    }
-  };
+      try {
+        const result = await call("models.list");
+        if (!owner.current() || sequence !== modelsSequence.current) return result;
+        setModels(result.models);
+        if (!result.models.length) setConnectionError("The endpoint returned no models.");
+        return result;
+      } catch (error) {
+        if (owner.current() && sequence === modelsSequence.current)
+          setConnectionError(error instanceof Error ? error.message : String(error));
+        throw error;
+      } finally {
+        owner.finish("discovery");
+        if (owner.current() && sequence === modelsSequence.current) setModelsBusy(false);
+      }
+    });
 
-  const saveKey = async () => {
-    const owner = operationOwner.current;
-    if (!owner.active || owner.keyPending || savingKey || !key.trim() || key === KEY_MASK) return;
-    owner.keyPending = true;
-    setSavingKey(true);
-    setConnectionError("");
-    try {
-      const ok = await set({ modelCredential: { provider, key: key.trim() } });
-      if (!owner.active) return;
-      if (ok) setKey("");
-      else
-        setConnectionError(
-          "The key was not saved. Your entry is still here; resolve the storage error and try again.",
-        );
-    } catch {
-      if (!owner.active) return;
-      setConnectionError(
-        "The key was not saved. Your entry is still here; resolve the storage error and try again.",
-      );
-    } finally {
-      owner.keyPending = false;
-      if (owner.active) setSavingKey(false);
-    }
-  };
-
-  const runProbe = async () => {
-    const owner = operationOwner.current;
-    if (!owner.active || owner.probePending) return;
-    owner.probePending = true;
-    const sequence = ++probeSequence.current;
-    setProbing(true);
-    setProbe(null);
-    try {
-      const result = await call("models.probe", { modelId: (settings.plannerModel as string) || undefined });
-      if (owner.active && sequence === probeSequence.current) setProbe({ ...result, checkedAt: Date.now() });
-    } catch (e) {
-      if (owner.active && sequence === probeSequence.current)
-        setProbe({ ok: false, modelId: "", error: e instanceof Error ? e.message : String(e) });
-    } finally {
-      owner.probePending = false;
-      if (owner.active) setProbing(false);
-    }
-  };
-
-  const discoverModels = async () => {
-    if (modelsBusy) return;
-    const sequence = ++modelsSequence.current;
-    setModelsBusy(true);
-    setConnectionError("");
-    try {
-      const result = await call("models.list");
-      if (sequence !== modelsSequence.current) return;
-      setModels(result.models);
-      if (!result.models.length) setConnectionError("The endpoint returned no models.");
-    } catch (error) {
-      if (sequence === modelsSequence.current)
-        setConnectionError(error instanceof Error ? error.message : String(error));
-    } finally {
-      if (sequence === modelsSequence.current) setModelsBusy(false);
-    }
-  };
-
+  const [providerRef, selectProvider] = usePreferenceCommand<HTMLSelectElement>(
+    "select-model-provider",
+    scopeId,
+    (original) => editConnection(original.value as ModelProvider, "model"),
+  );
+  const [visionRef, saveVision] = usePreferenceCommand<HTMLInputElement>(
+    "save-vision-model",
+    scopeId,
+    (original) => {
+      if (original.value === String(settings.visionModel ?? "")) return;
+      return set({ visionModel: original.value.trim() });
+    },
+  );
+  const [workerRef, saveWorkers] = usePreferenceCommand<HTMLInputElement>(
+    "set-model-worker-limit",
+    scopeId,
+    (original) => set({ maxWorkers: Number(original.value) }),
+  );
+  const [turnRef, saveTurns] = usePreferenceCommand<HTMLSelectElement>(
+    "set-model-turn-limit",
+    scopeId,
+    (original) => set({ maxModelCalls: Number(original.value) }),
+  );
+  const [detailsRef, showDetails] = usePreferenceCommand<HTMLElement>(
+    "show-model-probe-details",
+    scopeId,
+    (original) => {
+      if (!owner.current() || !probe || probe.ok || !probe.error || !(original instanceof HTMLDetailsElement))
+        throw new Error("Choose the current model test details.");
+      original.open = !original.open;
+    },
+  );
   const plannerModel = plannerModelSelection(settings, provider);
   const plannerOptions: ModelEntry[] =
     provider === "gateway"
@@ -390,6 +562,7 @@ export function ModelsSettings({
       </output>
       <ModelConnections
         settings={settings}
+        active={active}
         disabled={savingKey || probing || switchingProvider}
         onSave={set}
         onEdit={editConnection}
@@ -402,18 +575,9 @@ export function ModelsSettings({
           aria-label="Model provider"
           value={provider}
           disabled={savingKey || probing || switchingProvider}
-          onChange={(event) => {
-            setSwitchingProvider(true);
-            void set({ modelProvider: event.target.value })
-              .then((ok) => {
-                if (ok) {
-                  setKey("");
-                  setModels([]);
-                  setConnectionError("");
-                }
-              })
-              .finally(() => setSwitchingProvider(false));
-          }}
+          ref={providerRef}
+          data-command-id="select-model-provider"
+          onChange={selectProvider}
         >
           {Object.entries(providerNames).map(([id, name]) => (
             <option key={id} value={id}>
@@ -427,8 +591,9 @@ export function ModelsSettings({
           label="Endpoint"
           hint="Prompts and screenshots are sent here. Remote endpoints must use HTTPS; localhost may use HTTP."
         >
-          <div className="row">
+          <div className="row" ref={endpointControlRef}>
             <input
+              ref={endpointInputRef}
               className="grow"
               aria-label="OpenAI-compatible endpoint"
               inputMode="url"
@@ -437,13 +602,14 @@ export function ModelsSettings({
               value={endpointDraft}
               disabled={probing || savingKey || switchingProvider}
               onChange={(event) => {
+                probeSequence.current++;
                 setEndpointDraft(event.target.value);
                 setProbe(null);
               }}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && endpointDraft.trim()) {
                   event.preventDefault();
-                  void set({ compatibleEndpoint: endpointDraft.trim() });
+                  endpointRun(event);
                 }
               }}
             />
@@ -456,11 +622,16 @@ export function ModelsSettings({
                 !endpointDraft.trim() ||
                 endpointDraft.trim() === String(settings.compatibleEndpoint ?? "")
               }
-              onClick={() => void set({ compatibleEndpoint: endpointDraft.trim() })}
+              ref={endpointButtonRef}
+              data-command-id="save-model-endpoint"
+              onClick={endpointRun}
             >
               Save endpoint
             </button>
-            <button
+            <PreferenceAction
+              command="discover-provider-models"
+              scopeId={scopeId}
+              invoke={discoverModels}
               className="btn sm"
               disabled={
                 probing ||
@@ -471,10 +642,9 @@ export function ModelsSettings({
                 !connectionReady ||
                 endpointDraft.trim() !== String(settings.compatibleEndpoint ?? "")
               }
-              onClick={() => void discoverModels()}
             >
               {modelsBusy ? "Discovering…" : "Discover models"}
-            </button>
+            </PreferenceAction>
           </div>
         </IndexedField>
       )}
@@ -503,9 +673,12 @@ export function ModelsSettings({
           </>
         }
       >
-        <div className="row">
+        <div className="row" ref={keyControlRef}>
           <input
-            ref={keyInput}
+            ref={(node) => {
+              keyInput.current = node;
+              keyInputRef(node);
+            }}
             type="password"
             aria-label="Provider API key"
             autoComplete="off"
@@ -520,6 +693,9 @@ export function ModelsSettings({
                   : "Enter this provider’s API key"
             }
             onChange={(e) => {
+              probeSequence.current++;
+              keyGeneration.current++;
+              keyDraft.current = e.target.value;
               setKey(e.target.value);
               setProbe(null);
               setConnectionError("");
@@ -527,14 +703,16 @@ export function ModelsSettings({
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                void saveKey();
+                keyRun(e);
               }
             }}
           />
           <button
             className="btn sm"
             disabled={savingKey || probing || switchingProvider || !key.trim() || key === KEY_MASK}
-            onClick={() => void saveKey()}
+            ref={keyButtonRef}
+            data-command-id="save-provider-model-key"
+            onClick={keyRun}
           >
             {savingKey ? "Saving…" : "Save key"}
           </button>
@@ -550,18 +728,28 @@ export function ModelsSettings({
         label="Planner model"
         hint="Enter the exact model ID for the selected provider. Availability depends on your account."
       >
-        <div className="row">
+        <div className="row" ref={plannerControlRef}>
           <input
             className="grow"
-            ref={modelInput}
+            ref={(node) => {
+              modelInput.current = node;
+              plannerInputRef(node);
+            }}
             aria-label="Planner model"
             aria-describedby={contributorSelected ? "contributor-data-use" : undefined}
             list="agent-model-options"
             value={modelDraft}
             disabled={probing || savingKey || switchingProvider}
             onChange={(event) => {
+              probeSequence.current++;
               setModelDraft(event.target.value);
               setProbe(null);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                plannerRun(event);
+              }
             }}
           />
           <datalist id="agent-model-options">
@@ -580,11 +768,16 @@ export function ModelsSettings({
               !modelDraft.trim() ||
               modelDraft.trim() === plannerModel
             }
-            onClick={() => void set({ plannerModel: modelDraft.trim() })}
+            ref={plannerButtonRef}
+            data-command-id="save-planner-model"
+            onClick={plannerRun}
           >
             Save model
           </button>
-          <button
+          <PreferenceAction
+            command="probe-model-connection"
+            scopeId={scopeId}
+            invoke={runProbe}
             className="btn sm"
             disabled={
               probing ||
@@ -595,10 +788,9 @@ export function ModelsSettings({
               !!key.trim() ||
               modelDraft.trim() !== plannerModel
             }
-            onClick={() => void runProbe()}
           >
             {probing ? "Testing…" : "Test connection"}
-          </button>
+          </PreferenceAction>
         </div>
         {contributorSelected && (
           <p className="hint" id="contributor-data-use">
@@ -615,8 +807,16 @@ export function ModelsSettings({
               {probe.checkedAt ? ` · ${new Date(probe.checkedAt).toLocaleString()}` : ""}
             </output>
             {!probe.ok && probe.error && (
-              <details className="hint model-probe-details">
-                <summary>Connection test details</summary>
+              <details className="hint model-probe-details" ref={detailsRef}>
+                <summary
+                  data-command-id="show-model-probe-details"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    showDetails(event);
+                  }}
+                >
+                  Connection test details
+                </summary>
                 <p>{probe.error}</p>
               </details>
             )}
@@ -638,10 +838,9 @@ export function ModelsSettings({
           defaultValue={String(settings.visionModel ?? "")}
           placeholder="Same as planner"
           disabled={switchingProvider || probing || savingKey}
-          onBlur={(event) => {
-            if (event.target.value !== String(settings.visionModel ?? ""))
-              void set({ visionModel: event.target.value.trim() });
-          }}
+          ref={visionRef}
+          data-command-id="save-vision-model"
+          onBlur={saveVision}
         />
       </IndexedField>
 
@@ -657,6 +856,7 @@ export function ModelsSettings({
           <ModelRoleField
             key={`${provider}:${role.id}:${route.modelId}:${route.reasoning}:${JSON.stringify(override)}`}
             role={role}
+            active={active}
             route={route}
             override={override}
             overrides={roleOverrides}
@@ -675,7 +875,9 @@ export function ModelsSettings({
             min={1}
             max={16}
             defaultValue={(settings.maxWorkers as number) ?? 4}
-            onBlur={(e) => void set({ maxWorkers: Number(e.target.value) })}
+            ref={workerRef}
+            data-command-id="set-model-worker-limit"
+            onBlur={saveWorkers}
           />
         </IndexedField>
         <IndexedField
@@ -685,7 +887,9 @@ export function ModelsSettings({
           <select
             aria-label="Max model turns per run"
             value={String(turnValue)}
-            onChange={(e) => void set({ maxModelCalls: Number(e.target.value) })}
+            ref={turnRef}
+            data-command-id="set-model-turn-limit"
+            onChange={saveTurns}
           >
             {turnOptions.map((n) => (
               <option key={n} value={n}>

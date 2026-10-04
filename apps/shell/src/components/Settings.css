@@ -34,6 +34,7 @@
 .settings-advanced { margin-top: var(--space-5); }
 .settings-advanced > summary { padding: var(--space-3-5) var(--space-3); color: var(--ink-2); font-size: var(--fs-sm); cursor: pointer; }
 .settings-advanced[open] > summary { color: var(--ink-0); }
+.model-probe-details > summary { min-height: 36px; height: auto; padding: var(--space-2) var(--space-3); white-space: normal; overflow-wrap: anywhere; }
 .settings-content .row { flex-wrap: wrap; }
 .settings-content .row .grow { min-width: 0; overflow-wrap: anywhere; }
 .settings-content .field:has(+ .settings-advanced) { border-radius: 0 0 var(--r-card) var(--r-card); border-bottom: 0; }

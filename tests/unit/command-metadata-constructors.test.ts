@@ -21,3 +21,21 @@ it("preserves original ordered command values and metadata reference relationshi
     }
   }
 });
+
+it("adds only the mounted image and model commands with their original window policy", () => {
+  const ids = [
+    "select-model-provider", "save-model-endpoint", "discover-provider-models", "save-provider-model-key",
+    "save-planner-model", "probe-model-connection", "show-model-probe-details", "save-vision-model",
+    "save-model-role", "use-automatic-model-role", "set-model-worker-limit", "set-model-turn-limit",
+    "manage-model-provider", "edit-provider-models", "reauthenticate-model-provider",
+    "toggle-model-provider-connection", "remove-saved-model-key", "set-image-generation-model",
+    "confirm-model-key-removal", "cancel-model-key-removal",
+  ];
+  const rows = COMMANDS.filter(row => ids.includes(row.id));
+  expect(rows.map(row => row.id)).toEqual(ids);
+  expect(new Set(COMMANDS.map(row => row.id)).size).toBe(COMMANDS.length);
+  for (const row of rows) {
+    expect(row).toMatchObject({ handler: "shell", section: "Application", windows: ["normal", "private"], palette: false,
+      intercept: true, focusShell: true, bindings: [], dispatch: "scoped" });
+  }
+});

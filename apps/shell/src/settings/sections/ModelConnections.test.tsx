@@ -7,6 +7,14 @@ import { ModelsSettings } from "./Models";
 import { collectSettingsFields } from "../search";
 
 const call = vi.hoisted(() => vi.fn());
+
+vi.mock("../../bridge", () => ({ bridge: { windowId: "models-fixture", windowKind: "normal", privateMode: false }, inNativeHost: false, inMock: true }));
+vi.mock("../../commands", async () => {
+  const { invokeScopedControl } = await import("../../scoped-control-commands");
+  return { executeCommand: (command: string, context: Parameters<typeof invokeScopedControl>[1]) => {
+    try { return Promise.resolve(invokeScopedControl(command, context)); } catch (reason) { return Promise.reject(reason); }
+  } };
+});
 vi.mock("../../store", () => ({ call }));
 let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
 const save = vi.fn();
@@ -30,7 +38,7 @@ function Fixture({ patch = {} }: { patch?: Record<string, unknown> }) {
   });
   return (
     <ModelsSettings
-      active={false}
+      active
       settings={settings}
       onSave={async (change) => {
         const ok = await save(change);
@@ -55,8 +63,9 @@ function Fixture({ patch = {} }: { patch?: Record<string, unknown> }) {
 }
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
   save.mockReset().mockResolvedValue(true);
-  call.mockReset();
+  call.mockReset().mockResolvedValue({ models: [] });
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -64,7 +73,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
-  vi.unstubAllGlobals();
+  vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 const button = (label: string) =>
   [...document.querySelectorAll<HTMLButtonElement>("button")].find(
@@ -79,6 +88,7 @@ async function chooseAction(label: string) {
 
 it("shows only masked connection status and performs explicit disconnect/reconnect without a request", async () => {
   await act(async () => root.render(<Fixture />));
+  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
   expect(call).not.toHaveBeenCalled();
   expect(save).not.toHaveBeenCalled();
   expect(collectSettingsFields(host).map((field) => field.label)).toEqual(
@@ -96,17 +106,20 @@ it("shows only masked connection status and performs explicit disconnect/reconne
 
 it("selects the exact provider and focuses its empty key editor for reauthentication", async () => {
   await act(async () => root.render(<Fixture />));
+  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
   await menu("Anthropic");
   await chooseAction("Reauthenticate");
   expect(save).toHaveBeenCalledWith({ modelProvider: "anthropic" });
   const key = host.querySelector<HTMLInputElement>('[aria-label="Provider API key"]')!;
   expect(document.activeElement).toBe(key);
   expect(key.value).toBe("");
-  expect(call).not.toHaveBeenCalled();
+  // Active Anthropic selection enumerates configured IDs only; no probe/request action.
+  expect(call.mock.calls.map(([method]) => method)).toEqual(["models.list"]);
 });
 
 it("keeps a failed credential replacement editable and does not claim success", async () => {
   await act(async () => root.render(<Fixture />));
+  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
   save.mockRejectedValueOnce(new Error("Synthetic storage failure"));
   const key = host.querySelector<HTMLInputElement>('[aria-label="Provider API key"]')!;
   await act(async () => {
@@ -121,6 +134,7 @@ it("keeps a failed credential replacement editable and does not claim success", 
 
 it("requires confirmation to remove a saved key and combines removal with disconnect", async () => {
   await act(async () => root.render(<Fixture />));
+  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
   await menu();
   await chooseAction("Remove saved key");
   expect(save).not.toHaveBeenCalled();
@@ -139,6 +153,7 @@ it("requires confirmation to remove a saved key and combines removal with discon
 
 it("saves the exact image selection or Off without a provider request and displays the spend-cap limit", async () => {
   await act(async () => root.render(<Fixture />));
+  expect(call).toHaveBeenCalledWith("models.list"); call.mockClear();
   const select = host.querySelector<HTMLSelectElement>('[aria-label="Image-generation model"]')!;
   expect(select.value).toBe("off");
   await act(async () => {
@@ -156,7 +171,7 @@ it("saves the exact image selection or Off without a provider request and displa
 });
 
 it("does not expose unavailable provider management as functional controls", async () => {
-  await act(async () => root.render(<ModelsSettings active={false} settings={{}} onSave={save} />));
+  await act(async () => root.render(<ModelsSettings active settings={{}} onSave={save} />));
   expect(host.querySelector('[aria-label="Manage Vercel AI Gateway"]')).toBeNull();
   expect(host.querySelector<HTMLSelectElement>('[aria-label="Image-generation model"]')!.disabled).toBe(true);
 });
@@ -165,7 +180,7 @@ it("clears an unsaved credential and stale readiness when another window changes
   await act(async () =>
     root.render(
       <ModelsSettings
-        active={false}
+        active
         settings={{ modelProvider: "gateway", modelProbe: { ok: true, modelId: "fixture" } }}
         onSave={save}
       />,
@@ -180,7 +195,7 @@ it("clears an unsaved credential and stale readiness when another window changes
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await act(async () =>
-    root.render(<ModelsSettings active={false} settings={{ modelProvider: "anthropic" }} onSave={save} />),
+    root.render(<ModelsSettings active settings={{ modelProvider: "anthropic" }} onSave={save} />),
   );
   expect(input.value).toBe("");
   expect(host.textContent).not.toContain("is ready.");

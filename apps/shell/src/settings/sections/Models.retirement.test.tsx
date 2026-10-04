@@ -4,10 +4,19 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { call } from "../../store";
 import { ModelsSettings } from "./Models";
+
+vi.mock("../../bridge", () => ({ bridge: { windowId: "models-fixture", windowKind: "normal", privateMode: false }, inNativeHost: false, inMock: true }));
+vi.mock("../../commands", async () => {
+  const { invokeScopedControl } = await import("../../scoped-control-commands");
+  return { executeCommand: (command: string, context: Parameters<typeof invokeScopedControl>[1]) => {
+    try { return Promise.resolve(invokeScopedControl(command, context)); } catch (reason) { return Promise.reject(reason); }
+  } };
+});
 vi.mock("../../store", () => ({ call: vi.fn(), toast: vi.fn() }));
 let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -16,7 +25,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
-  vi.unstubAllGlobals();
+  vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 function button(text: string) {
   return [...host.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent === text)!;
