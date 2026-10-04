@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "launcher": "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/assert-native316-required449-launch-003.json",
+  "launcherSha256": "bbd1b1a92fb4bfc6b2f899c1f8bc2d72b20c2074df09882de6b4a8fabf8b0dcf",
+  "actualPinsChecked": {
+    "/opt/homebrew/Cellar/node/26.7.0/bin/node": "1ef99ea25fe70c9b67e7efe768ef8ee22148d3cabc703db6131b57aeb617d040",
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/scripts/native-slot.mjs": "01e3d8e5b6d65bf5668a765032746c1b5b175cbae2b103dad83576bc19edeb86",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/assert-native316-required449-003-REQUEST-ONLY.py": "2585ad716929ff9d4485aca70dd39742a040a4c13c0d92e8ccb077dcbb43559a",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/native316-native-assertion-batch-proposal-003-REQUEST-ONLY.json": "2df96d150fad29b732770e04a63e67770478f11dc6192fd18037534ae0615a43",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/NATIVE316-ASSERTION-PREFLIGHT-SCOPE-SUCCESSOR-003.json": "788452517a791c696d04dfe5ce625f7ae24495662dd2275106f49aca91ac4547",
+    "/private/tmp/aux-browser-runtime-builder-native315-product-overlay-001/release/test-artifacts/builder-native316-2a014c6e-native-enumeration-001/enumeration.json": "04cff7350cfb24421f655e8eb100936514baea7481f16619526ad61043e5f215",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/NATIVE316-ENUMERATION-TERMINAL-CLOSURE-001.json": "704b811a996540a93c5ddd2a9829668dd73897110a970aad8cb4816effce4e9c",
+    "/tmp/aux-root-native316-runtime-helper-terminal-audit-001.json": "e1d2c2f0a68370cb05adbccf7daf9558358906e9c954ca7b633252dc72e32c9d",
+    "/tmp/aux-root-native316-enumeration-terminal-audit-001.json": "2086c634a980059431a4b5b7efa1b0b3d33f6aa38fe611bbf4c7e8a77d95b3dc",
+    "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/NATIVE316-ASSERTION-PREFLIGHT-REFUSAL-001.json": "9f9b49eb0675fd875f470098c2137c6081388208b3991b296b1e8a1bdf783eca"
+  },
+  "original16SelectedSourcesAnd449BatchesVerified": true,
+  "conditionalStock3SeparatelyRetained": true,
+  "actualRefusalRetained": {
+    "originalOwnerPid": 26405,
+    "originalGroup": 26405,
+    "actualRows": [],
+    "slotAbsent": true,
+    "artifacts": {
+      "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/native316-assertion-original-launch-001/stderr.log": "015381381bed394218925e4eb31ed27921ef32d43ad7e81c02ba6906dd59e4cb",
+      "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/native316-assertion-original-launch-001/stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/native316-assertion-original-launch-001/original-terminal.json": "e19ec230033e031af5fd51ed473b504ce0d860215cd15b42626a7bd3617d8baf",
+      "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/native316-assertion-original-launch-001/original-launch.json": "4e476fc2e9f6198541c3dde7295346ddf73086b5f901ce30abe6d37f9ab05a4d"
+    },
+    "reason": "Three separately conditional Stock rows incorrectly appended to selected sourceRows; no actualGeneratedLinkEdge for those omitted Stock graph leaves",
+    "assertionChildrenStarted": false,
+    "watcherStarted": false,
+    "appExecuted": false
+  },
+  "scope": "Serial449 exact actualcompiledcase assertions only; originalretry0/jobs1/timeouts/watcher/processdebt; no Appcanaries/helperexecution/compile/restage/qualification",
+  "utc": "2026-10-04T05:16:53.203402+00:00",
+  "qualification": false
+}

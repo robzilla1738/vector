@@ -1,0 +1,10 @@
+{
+  "nativeTarget": "chrome154",
+  "startupBytes": 502235,
+  "strictStartupLimit": 501760,
+  "cssBytes": 179368,
+  "totalBytes": 1846143,
+  "manifestSha256": "f5eb166e268fbcf37b7f2d29f6f8c0dad5ff48f565a3c8942ac4068ed9f5e4e0",
+  "nativeQualification": false,
+  "passed": false
+}
