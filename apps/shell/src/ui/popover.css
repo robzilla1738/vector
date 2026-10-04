@@ -21,7 +21,7 @@
     height: 14px;
     flex: none;
   }
-  .anchored-trigger:is(:hover, [aria-expanded="true"]) {
+  .anchored-trigger:not(:disabled):is(:hover, [aria-expanded="true"]) {
     background: var(--bg-hover);
     color: var(--ink-0);
   }

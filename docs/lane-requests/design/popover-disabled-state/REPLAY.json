@@ -1,0 +1,10 @@
+{
+  "patchSha256": "44db4d5ebde59bc250f8d81cfa5139bcff687e8462b08387edf123bd5c160dd2",
+  "sequence": [
+    "forward",
+    "reverse",
+    "forward"
+  ],
+  "exactAllLeaves": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-popover-replay-rs16qror"
+}
