@@ -1,0 +1,15 @@
+{
+  "result": "PASS",
+  "deliverable": "Original preview menu/activation/split use remappable scoped commands, preserve exact original selected page/space/document, retire stale owner continuations and stale error presentation.",
+  "replay": "Exact original4 + successor2 + test-environment1 forward/reverse/forward verified before integration",
+  "workspaceBuildExit": 0,
+  "shellTypesExit": 0,
+  "scopedLintExit": 0,
+  "completeChatCohort": {
+    "files": 10,
+    "passed": 111,
+    "log": "aux-root-preview-complete-chat-controls-001.log"
+  },
+  "native": "Actual full18 native compilation succeeded; compiled capture841fe3 independently under review. Assertions/runtime pair/App/design/performance/qualification remain open.",
+  "bundle": "No isolated Preview build. Prior static renderer exact501058 startup/179481 CSS/1840983 total; remaining startup reserve702. Next coherent batch must measure its own output."
+}

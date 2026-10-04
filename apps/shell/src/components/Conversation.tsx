@@ -1,3 +1,4 @@
+import { ConversationPreviewAction, previewPageIdentity, useConversationPreviewOwner } from "./ConversationPreviewControls";
 import { useConversationContextControls } from "./ConversationContextControls";
 import { ConversationViewAction } from "./ConversationViewControls";
 import { ConversationRecoveryAction } from "./ConversationRecoveryControls";
@@ -433,6 +434,18 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   }, [calendarSourceChoice, setCalendarSourceChoice]);
   const linked = pages.find(p => p.pageId === last?.pageIds[0] && !["crashed", "detached"].includes(p.viewStatus ?? ""));
   const selectedContext = conversationPage(pages, contextPage, activePageId, linked?.pageId);
+  const splitPlan = selectedContext ? previewSplit(layout, pages, selectedContext.pageId, activePageId) : null;
+  const previewLayoutIdentity = JSON.stringify([selectedContext && layout.tabSpace[selectedContext.pageId], layout.tabSpace]);
+  const readPreviewPage = useCallback(() => {
+    const state = useStore.getState();
+    const selection = state.conversationContexts[id ? draftKey(id) : "new"] ?? (id ? "linked" : "none");
+    if (selection !== contextPage) return undefined;
+    const latest = state.runs.filter(run => (run.config?.chatId ?? run.runId) === id).sort((a, b) => a.createdAt - b.createdAt).at(-1);
+    const selected = conversationPage(state.pages, selection, state.activePageId, latest?.pageIds[0]);
+    if (JSON.stringify([selected && state.layout.tabSpace[selected.pageId], state.layout.tabSpace]) !== previewLayoutIdentity) return undefined;
+    return selected;
+  }, [id, contextPage, previewLayoutIdentity]);
+  const previewCurrent = useConversationPreviewOwner(conversationCurrent, selectedContext, contextPage, previewLayoutIdentity, readPreviewPage);
   const missingContext = !["active", "linked", "none"].includes(contextPage) && !selectedContext;
   const changedBrowserSources = browserSources.filter(source => sourceStatus(source, pages) !== "current");
   const observations = useStore(s => s.observations);
@@ -799,33 +812,35 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   ];
   const queued = queuedMessages.filter(message => message.mode === "queue" && !["delivered", "cancelled"].includes(message.status));
   const closedPage = !linked && !!last?.pageIds.length;
-  const splitPlan = selectedContext ? previewSplit(layout, pages, selectedContext.pageId, activePageId) : null;
   const openPreview = (where: "tab" | "split") => {
-    if (!selectedContext) return;
+    if (!previewCurrent() || !selectedContext) throw new Error("Choose the current conversation preview page.");
     const pageId = selectedContext.pageId;
     setPreviewMenu(false);
-    if (where === "tab") {
-      void useStore.getState().activate(pageId).catch(errToast);
-      return;
-    }
+    if (where === "tab") return guardCommandCompletion(useStore.getState().activate(pageId), previewCurrent);
     const state = useStore.getState();
     const plan = previewSplit(state.layout, state.pages, pageId, state.activePageId);
-    if (!plan) {
-      toast("Open another tab in this Space to use split view.");
-      return;
-    }
-    void state.activate(plan.primary).then(() => {
-      if (useStore.getState().activePageId === plan.primary) runCommand("split-add", { payload: { pageId: plan.companion } });
-    }).catch(errToast);
+    if (!plan) { toast("Open another tab in this Space to use split view."); return; }
+    const primary = previewPageIdentity(state.pages.find(page => page.pageId === plan.primary));
+    const companion = previewPageIdentity(state.pages.find(page => page.pageId === plan.companion));
+    const spaceId = state.layout.tabSpace[plan.primary];
+    const completion = state.activate(plan.primary).then(ack => {
+      const now = useStore.getState();
+      if (previewCurrent() && now.activePageId === plan.primary && now.layout.tabSpace[plan.primary] === spaceId && now.layout.tabSpace[plan.companion] === spaceId &&
+          previewPageIdentity(now.pages.find(page => page.pageId === plan.primary)) === primary && previewPageIdentity(now.pages.find(page => page.pageId === plan.companion)) === companion &&
+          previewSplit(now.layout, now.pages, pageId, now.activePageId)?.companion === plan.companion)
+        runCommand("split-add", { payload: { pageId: plan.companion } });
+      return ack;
+    });
+    return guardCommandCompletion(completion, previewCurrent);
   };
   const browserPreview = !embedded && previewOpen && selectedContext && selectedContext.url !== "about:blank" ? <div className="conversation-preview">
-    <div className="conversation-preview-title">{shellIconGlobe}<b>{selectedContext.title || "Browser tab"}</b><button ref={previewTrigger} type="button" className="conversation-preview-open" aria-label="Choose where to open this page" aria-haspopup="menu" aria-expanded={previewMenu} onClick={() => setPreviewMenu(value => !value)}>{shellIconOpen}</button></div>
-    <button type="button" className="conversation-preview-live" aria-label={`Open ${selectedContext.title || "this page"}`} aria-expanded={previewMenu} onClick={() => setPreviewMenu(true)}>
+    <div className="conversation-preview-title">{shellIconGlobe}<b>{selectedContext.title || "Browser tab"}</b><ConversationPreviewAction controlRef={previewTrigger} command="toggle-conversation-preview-menu" current={previewCurrent} className="conversation-preview-open" aria-label="Choose where to open this page" aria-haspopup="menu" aria-expanded={previewMenu} invoke={() => setPreviewMenu(value => !value)}>{shellIconOpen}</ConversationPreviewAction></div>
+    <ConversationPreviewAction command="toggle-conversation-preview-menu" current={previewCurrent} className="conversation-preview-live" aria-label={`Open ${selectedContext.title || "this page"}`} aria-expanded={previewMenu} invoke={() => setPreviewMenu(true)}>
       <LivePage pageId={selectedContext.pageId} />
-    </button>
+    </ConversationPreviewAction>
     {previewMenu && <Menu className="menu conversation-preview-menu" label="Open browser preview" anchor={previewTrigger} returnFocus={previewTrigger} onClose={() => setPreviewMenu(false)}>
-      <button type="button" className="menu-item" role="menuitem" onClick={() => openPreview("tab")}>{shellIconOpen}<span>Open in tab</span></button>
-      {splitPlan && <button type="button" className="menu-item" role="menuitem" onClick={() => openPreview("split")}>{shellIconSplit}<span>Split view</span></button>}
+      <ConversationPreviewAction command="activate-conversation-preview-page" current={previewCurrent} className="menu-item" role="menuitem" invoke={() => openPreview("tab")}>{shellIconOpen}<span>Open in tab</span></ConversationPreviewAction>
+      {splitPlan && <ConversationPreviewAction command="split-conversation-preview-page" current={previewCurrent} className="menu-item" role="menuitem" invoke={() => openPreview("split")}>{shellIconSplit}<span>Split view</span></ConversationPreviewAction>}
     </Menu>}
   </div> : null;
   const supporting = id && resultPreview ? (generated.find(item=>item.artifactId===resultPreview && item.generatedKind) ? <GeneratedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onClose={() => useStore.setState({resultPreview:null})} onVersionSaved={artifactId=>useStore.setState({resultPreview:artifactId})}/> : <SavedResultPreview key={resultPreview} chatId={id} artifactId={resultPreview} contextDisabled={contextLocked} onCitationOpen={openCitation} onClose={() => useStore.setState({resultPreview:null})} onVersionSaved={artifactId=>useStore.setState({resultPreview:artifactId})}/>)

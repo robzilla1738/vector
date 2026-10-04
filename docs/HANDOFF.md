@@ -1,3 +1,13 @@
+## Current continuation — 2026-10-04, preview controls and native compilation
+
+Browser preview menu, page activation and split actions now use registered, remappable scoped commands. They retain original page, space and document identity, stop stale continuations, preserve original focus and native arguments, and avoid presenting errors in a retired chat/window. The assembled chat controls, workspace build, shell types and scoped lint pass. Source-choice controls are the next owned feature batch.
+
+The coherent Native331 build completed all 18 targets, including Views. Original owner processes and groups drained and generated files were restored; the compiled capture is retained for independent review. Compilation is complete; native safety assertions, matching runtime/helper pair, app journeys, design contactsheets, performance and qualification are still open. No app launch or acceptance is claimed.
+
+The previously measured renderer is within all bundle limits (501058 startup JavaScript, 179481 CSS, 1840983 total JavaScript). Preview/source additions need their own coherent measurement and additional startup reserve. The design lane is verifying loading-graph equivalence and studying meaningful startup reductions. Continue to derive UI geometry, colors, materials and typography from the supplied 06 source/capture index while retaining Aux name/logo. Source references do not replace actual native visual acceptance.
+
+Evidence: `docs/source-audits/parallel-integration-032/`; preceding failures and historical entries below remain valid historical records.
+
 ## Parallel continuation: chat source batch passes broad verification (2026-10-04)
 
 The isolated NEXT2961c7e4e source completes remappable live request, queued-message, Restore/Reopen, export/view and Add-context/summary controls. Original popover activation, nested dialog cancellation/return focus, drafts, pagination and save behavior remain intact. Root exact replay, mounted original/added controls, rebuilt workspace, shell types, command registry and broad unit verification pass. The queued-draft case failed because its jsdom fixture omitted visible control geometry; the test-only successor restores temporary geometry and original prototype cleanup while keeping every original assertion and checking actual registered Queue/Edit IDs. Raw failure and corrected broad pass are retained. A single changed ratchet Popover received narrow formatting; actual native154 lowering remains identical and the corrected format gate passes. Full lint remains below390.

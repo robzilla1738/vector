@@ -1,0 +1,29 @@
+{
+  "baseCommit": "7d73a879be4f5624b6378ee7829c9613c9c32e65",
+  "files": [
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "beforeSha256": "ecdeaf57a9b34a15f74602854832f941160da13bed78ee4b5cc07d2ac059cb1f",
+      "afterSha256": "27e11c9bf8355762ace3816bc85c295eb5038cd07a2df1aa1febe995cbd8696b"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationPreviewControls.tsx",
+      "beforeSha256": null,
+      "afterSha256": "9e548c8fba48c6584eac7170703408756dd1b4cfc852a6e502522d4dd0d08ae8"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.preview-controls.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "4e47f9878cf95952ccc09b16c2c555d5c7ddcf248c6f99fe13329c1f0f80bfe5"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "82d8bb566ebc78fb7d57800265a841bf319474b702a333c47f43334ea49242b7",
+      "afterSha256": "7f45fc61a52a1f0bd5c8b096da6cd351abfb71bdfc1209eba6df8bc9185c93a7"
+    }
+  ],
+  "patchSha256": "cda6d3c1da1628c9caf7eb6c088d2d06ce50a39a3fd4e8b4ed2c2da3f826ff81",
+  "replay": "F/R/F exact afterbytes PASS",
+  "controls": "63 mounted PASS(new16+original47); original postactivate activePageId-only falsifier1RED; shelltypes/scopedlintPASS(original Conversation warnings)",
+  "scope": "source-only; no Vite/native/budget/qualification claim"
+}

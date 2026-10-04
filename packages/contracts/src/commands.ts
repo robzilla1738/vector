@@ -129,6 +129,9 @@ export const COMMANDS = [
   S("toggle-conversation-browser-preview", "Toggle conversation browser preview", browserContextControl),
   S("jump-conversation-to-latest", "Jump to latest conversation message", browserContextControl),
   S("toggle-conversation-context", "Toggle conversation context choices", browserContextControl),
+  S("toggle-conversation-preview-menu", "Choose where to open conversation preview", browserContextControl),
+  S("activate-conversation-preview-page", "Open conversation preview in tab", browserContextControl),
+  S("split-conversation-preview-page", "Open conversation preview in split view", browserContextControl),
   ...G(pageRecoveryControl, "-page-recovery", [
     ["retry", "", "Retry this page"],
     ["edit", "-address", "Edit failing page address"],

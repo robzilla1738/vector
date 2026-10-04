@@ -1,0 +1,13 @@
+{
+  "closureSha256": "9129b69cfaecb3fcf56c0da734966e290103c7b2d4e8328255f322ce65a0c6c4",
+  "actualRawArtifacts": 17,
+  "original18OutputHashesVerified": true,
+  "graphExitCode": 0,
+  "watcherExitCode": 0,
+  "outerExitCode": 0,
+  "actualRetiredPids": 11,
+  "actualRetiredGroups": 2,
+  "generatedPhysicalRestoredRowsVerified": 3,
+  "assertionsExecuted": false,
+  "AppAdmitted": false
+}

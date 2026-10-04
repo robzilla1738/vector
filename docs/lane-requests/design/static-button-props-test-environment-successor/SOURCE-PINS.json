@@ -1,0 +1,11 @@
+{
+  "files": [
+    {
+      "path": "apps/shell/src/ui/button-props.test.tsx",
+      "beforeSHA256": "6ca537077f806ef5633490913c64b220ddebec15d62fe4d86c5edd144dd80a84",
+      "afterSHA256": "53f2bd21a3873d5b353b7ebc17a111aed9f748cf5f33eff8cbae2600bf557917"
+    }
+  ],
+  "patchSHA256": "f846011a2052e105169f7f5937af80b0ef83c6e4bfac3bd5237ee2a8dba4d654",
+  "testOnly": true
+}

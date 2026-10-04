@@ -1,0 +1,46 @@
+diff --git a/apps/shell/src/components/Conversation.preview-controls.test.tsx b/apps/shell/src/components/Conversation.preview-controls.test.tsx
+index 1d836e57e..11ff87276 100644
+--- a/apps/shell/src/components/Conversation.preview-controls.test.tsx
++++ b/apps/shell/src/components/Conversation.preview-controls.test.tsx
+@@ -132,6 +132,13 @@ it("actual source selection drift before scoped dispatch refuses without activat
+   await render(); const { activate } = heldActivate(); await open(); const original = action("activate-conversation-preview-page"); original.focus();
+   await act(async () => { useStore.setState({ conversationContexts: { "chat:a": "page-2" } }); await expect(executeCommand("activate-conversation-preview-page")).rejects.toThrow("current conversation preview"); }); expect(activate).not.toHaveBeenCalled();
+ });
++it("actual foreign-window clicks and focused shortcut refuse without a stale toast", async () => {
++  useStore.setState({ settings: { shortcutOverrides: { "toggle-conversation-preview-menu": [{ key: "j", command: true, alt: true }] } } }); await render(); const { activate } = heldActivate();
++  await act(async () => { title().focus(); bridge.windowId = "foreign"; title().click(); }); expect(menu()).toBeNull(); expect(useStore.getState().toasts).toEqual([]);
++  bridge.windowId = windowId; await act(async () => title().click()); expect(useStore.getState().toasts).toEqual([]);
++  await act(async () => { title().focus(); expect(dispatchShortcut({ key: "j", meta: true, alt: true, shift: false })).toBe(true); }); expect(useStore.getState().toasts).toEqual([]);
++  await expect(executeCommand("toggle-conversation-preview-menu")).rejects.toThrow("current conversation preview"); expect(activate).not.toHaveBeenCalled();
++});
+ it("all three commands retain normal scoped remappable policy", () => {
+   for (const id of ["toggle-conversation-preview-menu", "activate-conversation-preview-page", "split-conversation-preview-page"]) expect(COMMANDS.find(row => row.id === id)).toMatchObject({ windows: ["normal"], palette: false, bindings: [], intercept: true });
+ });
+diff --git a/apps/shell/src/components/ConversationPreviewControls.tsx b/apps/shell/src/components/ConversationPreviewControls.tsx
+index 30d03ee80..993f32e77 100644
+--- a/apps/shell/src/components/ConversationPreviewControls.tsx
++++ b/apps/shell/src/components/ConversationPreviewControls.tsx
+@@ -2,7 +2,7 @@ import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAt
+ import type { PageTarget } from "@aux/contracts";
+ import { usePreferenceCommand } from "../settings/sections/preference-command";
+ import { executeCommand } from "../commands";
+-import { reportCommandCompletionFailure } from "../command-completion";
++import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
+ import { errToast } from "../store";
+ 
+ export function previewPageIdentity(page: PageTarget | undefined) {
+@@ -27,12 +27,12 @@ export function ConversationPreviewAction({ command, current, invoke, controlRef
+ }) {
+   const scopeId = useId();
+   const [ref] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
+-    if (!current()) throw new Error("Choose the current conversation preview page.");
++    if (!current()) return guardCommandCompletion(Promise.reject(new Error("Choose the current conversation preview page.")), current);
+     return invoke();
+   });
+   const originalRef = useCallback((node: HTMLButtonElement | null) => { ref(node); if (controlRef) controlRef.current = node; }, [ref, controlRef]);
+   return <button {...props} type="button" ref={originalRef} data-command-id={command} onClick={event => {
+     const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
+-    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, errToast));
++    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, original => { if (current()) errToast(original); }));
+   }}/>;
+ }
