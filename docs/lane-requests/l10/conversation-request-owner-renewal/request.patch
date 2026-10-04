@@ -1,0 +1,50 @@
+diff --git a/apps/shell/src/components/Conversation.live-controls.test.tsx b/apps/shell/src/components/Conversation.live-controls.test.tsx
+index 5513d76e7..13e205ba0 100644
+--- a/apps/shell/src/components/Conversation.live-controls.test.tsx
++++ b/apps/shell/src/components/Conversation.live-controls.test.tsx
+@@ -157,3 +157,32 @@ it.each(["ack", "failure"] as const)("does not publish an original held request
+   await act(async () => control("select-conversation-queue").click());
+   expect(input().value).toBe("Original follow-up"); expect(useStore.getState().toasts).toEqual([]);
+ });
++
++it("renews genuine request hydration across committed connection ABA and refuses old replies", async () => {
++  const pending: { resolve(value: unknown): void; reject(reason: Error): void }[] = [];
++  const fallback = vi.mocked(bridge.invoke).getMockImplementation()!;
++  vi.mocked(bridge.invoke).mockImplementation((method, params) => method === "runs.get" ? new Promise((resolve, reject) => pending.push({ resolve, reject })) : fallback(method, params));
++  await render(); const mountedRequests = pending.length;
++  expect(mountedRequests).toBeGreaterThan(0);
++  await act(async () => useStore.setState({ connected: false }));
++  expect(pending).toHaveLength(mountedRequests + 1);
++  expect(control("select-conversation-queue")).not.toBeNull();
++  await act(async () => control("select-conversation-queue").click());
++  expect(control("select-conversation-queue").getAttribute("aria-pressed")).toBe("true");
++  await act(async () => useStore.setState({ connected: true }));
++  expect(pending).toHaveLength(mountedRequests + 2);
++  const newest = pending.at(-1)!;
++  await act(async () => newest.resolve({ run, suspension: request, steps: [] }));
++  expect(control("select-conversation-answer")).not.toBeNull();
++  await act(async () => control("select-conversation-answer").click());
++  expect(input().value).toBe("Original answer");
++  await act(async () => {
++    for (const original of pending.slice(0, mountedRequests)) original.resolve({ run, suspension: null, steps: [] });
++    pending[mountedRequests]!.reject(new Error("Original disconnected request failure"));
++  });
++  expect(control("select-conversation-answer")).not.toBeNull();
++  expect(input().value).toBe("Original answer");
++  expect(host.textContent).not.toContain("Current request unavailable");
++  expect(host.textContent).not.toContain("Original disconnected request failure");
++  expect(useStore.getState().toasts).toEqual([]);
++});
+diff --git a/apps/shell/src/components/Conversation.tsx b/apps/shell/src/components/Conversation.tsx
+index 578dd60c2..9bbdf6798 100644
+--- a/apps/shell/src/components/Conversation.tsx
++++ b/apps/shell/src/components/Conversation.tsx
+@@ -311,7 +311,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+       setCurrentSuspension({ runId, statusMessage, value });
+     }).catch(() => { if (active && conversationCurrent()) setCurrentSuspension({ runId, statusMessage, value: null }); });
+     return () => { active = false; };
+-  }, [last?.runId, last?.status, last?.statusMessage, suspensionRefresh]);
++  }, [last?.runId, last?.status, last?.statusMessage, suspensionRefresh, conversationCurrent]);
+   const suspensionLoaded = currentSuspension?.runId === last?.runId && currentSuspension?.statusMessage === last?.statusMessage;
+   const suspension = currentSuspension?.runId === last?.runId && currentSuspension?.statusMessage === last?.statusMessage
+     ? currentSuspension?.value ?? null : null;

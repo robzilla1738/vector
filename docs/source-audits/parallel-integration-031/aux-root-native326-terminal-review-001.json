@@ -1,0 +1,9 @@
+{
+  "closureSha256": "8b194447d16c951336bf3f225f16ad93a32d9696225d34cbb09fc52b0853bac1",
+  "actualRawArtifacts": 16,
+  "actualGeneratedIdentityModeRestoration": 3,
+  "actualOriginalPIDAndPGAbsent": true,
+  "nativeResult": "failed",
+  "noAppAdmission": true,
+  "actualSlotAbsent": true
+}

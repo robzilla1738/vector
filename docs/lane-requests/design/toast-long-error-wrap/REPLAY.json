@@ -1,0 +1,10 @@
+{
+  "exactTwoLeaves": true,
+  "sequence": [
+    "forward",
+    "reverse",
+    "forward"
+  ],
+  "patchSha256": "d0ad94711e632670d23233856963bd8452184a706bb89c2fe8103508b1d5c153",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-toast-wrap-replay-scblfxnp"
+}

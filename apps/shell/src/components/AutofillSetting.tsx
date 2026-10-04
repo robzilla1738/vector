@@ -34,7 +34,7 @@ export function AutofillSetting({
     kind = bridge.windowKind;
   const snapshot = JSON.stringify(value ?? {});
   const identity = useMemo(
-    () => ({ snapshot, windowId, privateMode, kind, active }),
+    () => ([snapshot, windowId, privateMode, kind, active]),
     [snapshot, windowId, privateMode, kind, active],
   );
   const admitted = useCallback(

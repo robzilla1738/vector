@@ -10,7 +10,7 @@ import { useSettingsStatusOwner } from "../settings/sections/use-settings-status
 export function DefaultBrowserSetting() {
   const privateMode = bridge.privateMode,
     windowId = bridge.windowId;
-  const identity = useMemo(() => ({ privateMode, windowId }), [privateMode, windowId]);
+  const identity = useMemo(() => ([privateMode, windowId]), [privateMode, windowId]);
   const admitted = useCallback(() => inNativeHost && !bridge.privateMode, []);
   const [getOwner, current, isDefault, busy, error, measure, perform, fail] = useSettingsStatusOwner<boolean>(identity, windowId, privateMode, admitted);
   useEffect(() => {

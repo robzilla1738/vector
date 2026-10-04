@@ -10,7 +10,7 @@ type HomeCommand = "select-home-search" | "select-home-ask" | "open-home-convers
 export function useHomeEntryOwner(active: boolean) {
   const connected = useStore(state => state.connected);
   const windowId = bridge.windowId, privateMode = bridge.privateMode, windowKind = bridge.windowKind;
-  const identity = useMemo(() => ({ active, connected, windowId, privateMode, windowKind }), [active, connected, windowId, privateMode, windowKind]);
+  const identity = useMemo(() => ([active, connected, windowId, privateMode, windowKind]), [active, connected, windowId, privateMode, windowKind]);
   const committed = useRef<{ active: boolean; identity: typeof identity } | null>(null);
   useLayoutEffect(() => {
     const original = { active: true, identity }; committed.current = original;

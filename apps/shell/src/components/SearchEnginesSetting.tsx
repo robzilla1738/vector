@@ -21,8 +21,8 @@ export function SearchEnginesSetting({
   const windowId = bridge.windowId,
     privateMode = bridge.privateMode,
     snapshot = JSON.stringify(value);
-  const identity = useMemo(() => ({ snapshot, windowId, privateMode }), [snapshot, windowId, privateMode]);
-  const draftIdentity = useMemo(() => ({ windowId, privateMode }), [windowId, privateMode]);
+  const identity = useMemo(() => ([snapshot, windowId, privateMode]), [snapshot, windowId, privateMode]);
+  const draftIdentity = useMemo(() => ([windowId, privateMode]), [windowId, privateMode]);
   const [getOwner,current,busy,error,fail,clearFailure,perform] = useSettingsSaveOwner(identity,windowId,privateMode);
   const [editing, setEditing] = useState({ identity: draftIdentity, draft: emptyDraft() });
   const draft = editing.identity === draftIdentity ? editing.draft : emptyDraft();

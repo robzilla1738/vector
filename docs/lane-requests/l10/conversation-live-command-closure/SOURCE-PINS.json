@@ -1,0 +1,71 @@
+{
+  "base": "0200727737e19e9b7f69d61229ca47f50120dbd2",
+  "prerequisites": [
+    "Home f4e61f0dc + disconnected17bd5bff9 exact results",
+    "root ea81e6503 metadata exact3a1569d9 request view committed separately020072773; own patch only four new rows"
+  ],
+  "sourceOnly": true,
+  "owned": [
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "beforeSha256": "096bc0dfd40bab6c1a55b3cf4ac370d85cd2deac91e49c6c2a3460dbeadbc6d2",
+      "afterSha256": "12234884456028f819975397425c9ecdb992bca78cd1aba4faf24a2509e2b06d"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationLiveControls.tsx",
+      "beforeSha256": null,
+      "afterSha256": "4e0c26bc7b994ba43dfaacb4040284b6eed7ce06b3629072b9e5fb2154822ee4"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.live-controls.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "c01241fa9e8c6b6528a140c28d7493e12f777db1c466254f8c6a7e7feaccfe7a"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "3a1569d97a6a676e118df2763311fc96bbfb9fa478e3d4917c03c856167864c2",
+      "afterSha256": "2d85022b20bf413426b17e4ef934d23ae0365668f5620046bd9eb8bfbb57d2aa"
+    }
+  ],
+  "patchSha256": "5b9980c658d8ef6e19ce8be407075951d02778b6494cdd83c9ba58539c39255f",
+  "exactForwardReverseForward": true,
+  "controls": {
+    "result": "34 PASS: dedicated11 +unchanged Composer10/Conversation13",
+    "originalGuardFalsification": "3 targeted RED/8 skipped: reverts only original suspension success/error publication checks and equality-only local run guard, same mounted tests",
+    "firstFailure": "31PASS/1newFAIL from guessed total runs.get count2; actual mounted consumers issue3 initial GETs. Corrected new control asserts exactly +1 after actual initial producer baseline; all original assertion bodies/files untouched.",
+    "types": "shell tsc --noEmit PASS",
+    "lint": "scoped lint PASS with original Conversation warnings"
+  },
+  "logs": [
+    {
+      "path": "docs/lane-requests/l10/conversation-live-command-closure/logs/aux-l10-conversation-live-controls-001.log",
+      "sha256": "da0299e16fd27de53c53a4a68acb9089f462b7653aa1d3b20cda6362c8bcc4bd"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-live-command-closure/logs/aux-l10-conversation-live-controls-002.log",
+      "sha256": "b9e80db68544e0a0fb74bb3e30def0b94e0ad172ee0d00b95109802f0fcc7a11"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-live-command-closure/logs/aux-l10-conversation-live-original-guard-red.log",
+      "sha256": "030127513332a1b4862b52b6ba0d4bea408b846f972d07f50d477a0d2dc75eab"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-live-command-closure/logs/aux-l10-conversation-live-types-001.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-live-command-closure/logs/aux-l10-conversation-live-types-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-live-command-closure/logs/aux-l10-conversation-live-lint-001.log",
+      "sha256": "e91e38a620f11e259becf0ba38c8ce446418bec8b20775db2ce8967304ce5cca"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-live-command-closure/logs/aux-l10-conversation-live-lint-final.log",
+      "sha256": "8212506830d7e64d9a13e6252fed5b2732bee6f4ea01df2b3245a566349836d1"
+    }
+  ],
+  "nativeExecuted": false,
+  "rendererBudgetMeasured": false
+}

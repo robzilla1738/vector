@@ -14,7 +14,7 @@ export function QuickAskSetting() {
   const key = useShortcutLabels(),
     windowId = bridge.windowId,
     privateMode = bridge.privateMode;
-  const identity = useMemo(() => ({ windowId, privateMode }), [windowId, privateMode]);
+  const identity = useMemo(() => ([windowId, privateMode]), [windowId, privateMode]);
   const [getOwner, current, status, busy, error, read, perform] = useSettingsStatusOwner<Status>(identity, windowId, privateMode);
   useEffect(() => {
     read(getOwner(), () => bridge.quickAskShortcut(), (value) => value);

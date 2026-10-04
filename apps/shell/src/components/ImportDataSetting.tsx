@@ -222,7 +222,7 @@ export function ImportDataSetting() {
   return (
     <div className="import-setting">
       <p className="hint">
-        Choose bookmarks and history from Chrome, Arc, Safari or Firefox, or live tabs from an attached
+        Choose bookmarks and history from Chrome, Arc, Safari or Firefox. Live tabs require an attached
         Chrome. Nothing is imported until you confirm.
       </p>
       <p className="hint">
@@ -238,10 +238,10 @@ export function ImportDataSetting() {
       <details>
         <summary>Keychain and macOS access</summary>
         <p className="hint">
-          This bookmarks and history import does not ask for browser Keychain passwords. Aux may separately
-          ask macOS to unlock its protected local storage. Review the app and purpose shown in the system
-          prompt; you can cancel it. Password transfers are reviewed separately in Passwords &amp; Autofill.
-          Reading Safari data may require Full Disk Access.
+          This import does not ask for browser Keychain passwords. Aux may separately ask macOS to unlock
+          its protected local storage. Check the app and purpose in that system prompt; you can cancel it.
+          Review password transfers separately in Passwords &amp; Autofill. Reading Safari data may require
+          Full Disk Access.
         </p>
       </details>
       {!preview && (
@@ -354,9 +354,8 @@ export function ImportDataSetting() {
               )) && (
               <>
                 <p className="hint">
-                  Review the current sources and select what to retry. Bookmarks and history merge safely.
-                  Retrying live tabs can open duplicates. Counts cover confirmed batches; an interrupted
-                  request may have added more.
+                  Review sources and select what to retry. Bookmarks and history merge safely; live tabs can open
+                  duplicates. Counts cover confirmed batches; an interrupted request may have added more.
                 </p>
                 <button className="btn sm ghost" disabled={loading} onClick={() => void loadPreview()}>
                   Review sources to retry

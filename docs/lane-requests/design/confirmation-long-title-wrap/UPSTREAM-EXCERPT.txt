@@ -1,0 +1,1 @@
+.wrap-anywhere{overflow-wrap:anywhere}

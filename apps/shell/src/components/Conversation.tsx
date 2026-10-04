@@ -1,3 +1,5 @@
+import { ConversationQueuedControls } from "./ConversationQueuedControls";
+import { ConversationLiveAction, useConversationLiveOwner } from "./ConversationLiveControls";
 import { HomeEntryAction } from "./HomeEntryControls";
 import { useInteractiveComposer } from "../use-interactive-composer";
 import { NightRunOverflow } from "../features/morning-review/NightRunOverflow";
@@ -302,19 +304,20 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     let active = true;
     setCurrentSuspension(null);
     void call("runs.get", { runId }).then(detail => {
-      if (!active) return;
+      if (!active || !conversationCurrent()) return;
       const value = detail.run.runId === runId && detail.run.status === "needs_input"
         && detail.run.statusMessage === statusMessage && detail.suspension?.state === "pending"
         && detail.suspension.runId === runId && detail.suspension.turnId === runId
         ? detail.suspension : null;
       setCurrentSuspension({ runId, statusMessage, value });
-    }).catch(() => { if (active) setCurrentSuspension({ runId, statusMessage, value: null }); });
+    }).catch(() => { if (active && conversationCurrent()) setCurrentSuspension({ runId, statusMessage, value: null }); });
     return () => { active = false; };
-  }, [last?.runId, last?.status, last?.statusMessage, suspensionRefresh]);
+  }, [last?.runId, last?.status, last?.statusMessage, suspensionRefresh, conversationCurrent]);
   const suspensionLoaded = currentSuspension?.runId === last?.runId && currentSuspension?.statusMessage === last?.statusMessage;
   const suspension = currentSuspension?.runId === last?.runId && currentSuspension?.statusMessage === last?.statusMessage
     ? currentSuspension?.value ?? null : null;
   const answering = last?.status === "needs_input" && suspension?.kind === "ask-user-question";
+  const liveControlCurrent = useConversationLiveOwner(conversationCurrent, id, last, suspension);
   const [sendingChat, setSendingChat] = useState<string | null>(null);
   const [queuedMessages, setQueuedMessages] = useState<RunMessage[]>([]);
   const queueAttemptRef = useRef<QueueAttempt | null>(null);
@@ -640,28 +643,43 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     } catch (error) { errToast(error); }
     finally { setReopening(false); }
   };
-  const queueChange = useRef<string | null>(null);
+  type QueueOperation = { owner: typeof conversationCurrent; messageId: string };
+  const queueChange = useRef<QueueOperation | null>(null);
   const resendOf = useRef<string | null>(null);
-  const [queueBusy, setQueueBusy] = useState<string | null>(null);
-  const cancelQueued = async (message: RunMessage, edit = false) => {
-    if (queueChange.current || archived) return;
-    queueChange.current = message.messageId; setQueueBusy(message.messageId);
+  const [queueBusy, setQueueBusy] = useState<QueueOperation | null>(null);
+  const cancelQueued = (message: RunMessage, edit: boolean, current: () => boolean) => {
+    if (!current() || queueChange.current?.owner === conversationCurrent || archived) return;
+    const original = { owner: conversationCurrent, message: structuredClone(message), messageId: message.messageId };
+    const delivering = () => original.owner() && queueChange.current === original;
+    queueChange.current = original; setQueueBusy(original);
     const chatId = id;
-    try {
-      const cancelled = await call("runs.message.cancel", { messageId: message.messageId });
-      if (activeChat.current !== chatId) return;
-      setQueuedMessages(items => items.map(item => item.messageId === cancelled.messageId ? cancelled : item));
-      if (edit && cancelled.status === "cancelled") {
-        const state = useStore.getState();
-        const prior = chatId ? state.conversationDrafts[draftKey(chatId)] ?? "" : state.agentDraft;
-        const next = prior.trim() ? `${prior}\n\n${message.text}` : message.text;
-        resendOf.current = cancelled.messageId;
-        if (chatId) state.setConversationDraft(chatId, next); else state.setAgentDraft(next);
-        setLiveSendMode("queue");
-        requestAnimationFrame(() => textareaRef.current?.focus());
+    const completion = (async () => {
+      try {
+        const cancelled = await call("runs.message.cancel", { messageId: message.messageId });
+        if (!delivering()) return cancelled;
+        if (cancelled.messageId !== original.message.messageId || cancelled.chatId !== chatId ||
+            cancelled.targetRunId !== original.message.targetRunId || cancelled.deliveryRunId !== original.message.deliveryRunId || cancelled.text !== original.message.text ||
+            cancelled.expectedRevision !== original.message.expectedRevision)
+          throw new Error("The queued message acknowledgment does not match this conversation.");
+        setQueuedMessages(items => items.map(item => item.messageId === cancelled.messageId ? cancelled : item));
+        if (edit && cancelled.status === "cancelled") {
+          const state = useStore.getState();
+          const prior = chatId ? state.conversationDrafts[draftKey(chatId)] ?? "" : state.agentDraft;
+          const next = prior.trim() ? `${prior}\n\n${original.message.text}` : original.message.text;
+          resendOf.current = cancelled.messageId;
+          if (chatId) state.setConversationDraft(chatId, next); else state.setAgentDraft(next);
+          setLiveSendMode("queue");
+          requestAnimationFrame(() => { if (original.owner()) textareaRef.current?.focus(); });
+        }
+        return cancelled;
+      } finally {
+        if (queueChange.current === original) {
+          queueChange.current = null;
+          if (original.owner()) setQueueBusy(value => value === original ? null : value);
+        }
       }
-    } catch (error) { errToast(error); }
-    finally { queueChange.current = null; setQueueBusy(null); }
+    })();
+    return guardCommandCompletion(completion, original.owner);
   };
   const contextLocked = !connected || archived || live || contextLoading || !!contextError;
   const receiveImage = (files: File[]) => {
@@ -707,7 +725,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
         const current = answerRunId && last ? state.runAnswerDrafts[last.runId]?.text ?? "" : id ? state.conversationDrafts[draftKey(id)] ?? "" : state.agentDraft;
         setText(current ? `${current}\n${words}` : words);
       }}/>;
-  const composerModes = live && <div className="conversation-live-actions" role="group" aria-label="Send while Aux is working">{(answering ? ["answer", "steer", "queue"] as const : ["steer", "queue"] as const).map(mode => <button key={mode} type="button" className={effectiveLiveMode === mode ? "selected" : ""} aria-pressed={effectiveLiveMode === mode} onClick={() => setLiveSendMode(mode)}>{mode === "answer" ? "Answer question" : mode === "steer" ? "Steer now" : "Queue next"}</button>)}</div>;
+  const composerModes = live && <div className="conversation-live-actions" role="group" aria-label="Send while Aux is working">{(answering ? ["answer", "steer", "queue"] as const : ["steer", "queue"] as const).map(mode => <ConversationLiveAction key={mode} command={mode === "answer" ? "select-conversation-answer" : mode === "steer" ? "select-conversation-steer" : "select-conversation-queue"} current={liveControlCurrent} className={effectiveLiveMode === mode ? "selected" : ""} aria-pressed={effectiveLiveMode === mode} invoke={() => setLiveSendMode(mode)}>{mode === "answer" ? "Answer question" : mode === "steer" ? "Steer now" : "Queue next"}</ConversationLiveAction>)}</div>;
   const browserContextControls = <BrowserContextTray key={id ?? "new"} primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/>;
   const composerFooter = !taskBound && !answering && <div className="new-chat-options">{entryControls}<span className="home-tools-trigger"><Popover label="Add context" trigger={<>{shellIconPlusSm}{!home && <span>Add context</span>}</>}>
     {close => <div className="home-tools-menu"><header>Add to your question</header><div ref={setContextTools} onClick={event => { if ((event.target as HTMLElement).closest('button')) close(); }}/><div className="home-tools-context">{browserContextControls}</div>{home && dictation}{home && <HomeEntryAction className="context-choice" command="open-home-conversation" current={conversationCurrent} invoke={() => { close(); useStore.getState().openConversationDraft(id ?? null); }}>{shellIconOpen}<span>Open full conversation</span></HomeEntryAction>}</div>}
@@ -778,8 +796,8 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     <div className="conversation-compose"><div className="conversation-compose-content">
       {closedPage ? <div className="conversation-context-note"><span>{selectedContext ? selectedContext.title || selectedContext.url : "This chat’s page is closed."}</span>{recoverUrl && <button className="btn sm" disabled={reopening || live || taskBound} title={recoverUrl} onClick={() => void reopen()}>{reopening ? "Opening…" : "Reopen"}</button>}</div> : null}
       {archived && <output className="conversation-archive-notice" data-block><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <button className="btn sm" disabled={restoring} onClick={()=>void restoreConversation()}>{restoring?"Restoring…":"Restore to reply"}</button>}</output>}
-      {queued.length > 0 && <section className="composer-queue" aria-label="Queued follow-ups"><header>Up next <span className="count nums">{queued.length}</span></header><ol>{queued.map(message => <li key={message.messageId} data-message-id={message.messageId}><p>{message.text}</p><div className="queued-message-state"><span role={message.status === "needs_attention" ? "alert" : undefined}>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><button type="button" disabled={archived || !!queueBusy} onClick={() => void cancelQueued(message, true)}>Edit</button><button type="button" disabled={archived || !!queueBusy} onClick={() => void cancelQueued(message)}>Remove</button></>}</div></li>)}</ol></section>}
-      <ComposerFrame notices={<>{last && <RunControls runId={last.runId}/>}{answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{suspension?.request.instruction}</p></div>}{last?.status === "needs_input" && !answering && suspension?.kind !== "handoff" && <div className="composer-question" role="status"><strong>{suspension ? "Decision needed" : suspensionLoaded ? "Current request unavailable" : "Loading current request"}</strong><p>{suspension ? "Review the approval prompt before Aux continues." : suspensionLoaded ? "Refresh the request before continuing." : "Checking the durable request…"}</p>{suspensionLoaded && !suspension && <button type="button" className="btn sm" onClick={() => setSuspensionRefresh(value => value + 1)}>Retry loading request</button>}</div>}</>}>
+      {queued.length > 0 && <section className="composer-queue" aria-label="Queued follow-ups"><header>Up next <span className="count nums">{queued.length}</span></header><ol>{queued.map(message => <li key={message.messageId} data-message-id={message.messageId}><p>{message.text}</p><div className="queued-message-state"><span role={message.status === "needs_attention" ? "alert" : undefined}>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><ConversationQueuedControls message={message} current={conversationCurrent} disabled={archived || queueBusy?.owner === conversationCurrent} onCancel={cancelQueued}/></>}</div></li>)}</ol></section>}
+      <ComposerFrame notices={<>{last && <RunControls runId={last.runId}/>}{answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{suspension?.request.instruction}</p></div>}{last?.status === "needs_input" && !answering && suspension?.kind !== "handoff" && <div className="composer-question" role="status"><strong>{suspension ? "Decision needed" : suspensionLoaded ? "Current request unavailable" : "Loading current request"}</strong><p>{suspension ? "Review the approval prompt before Aux continues." : suspensionLoaded ? "Refresh the request before continuing." : "Checking the durable request…"}</p>{suspensionLoaded && !suspension && <ConversationLiveAction command="reload-conversation-request" current={liveControlCurrent} className="btn sm" invoke={() => setSuspensionRefresh(value => value + 1)}>Retry loading request</ConversationLiveAction>}</div>}</>}>
       <div className="composer-context">
       {(selectedContext && selectedContext.url !== "about:blank" || browserSources.length > 0) && <button type="button" className="home-context-summary" onClick={() => conversationRoot.current?.querySelector<HTMLButtonElement>('.home-tools-trigger > button')?.click()}>{shellIconGlobe}<span>{selectedContext?.title || selectedContext?.url || "Selected browser context"}{browserSources.length ? ` · ${browserSources.length} saved ${browserSources.length === 1 ? "source" : "sources"}` : ""}</span></button>}
       <AttachmentTray items={attachmentItems} disabled={contextLocked} busy={attachmentSaving}/>

@@ -13,6 +13,9 @@
     background: rgb(0 0 0 / 0.15);
     backdrop-filter: blur(4px);
   }
+  .ui-alert-dialog :is(h3, p) {
+    overflow-wrap: anywhere;
+  }
   .ui-alert-dialog h3 {
     margin: 0;
     font-size: var(--fs-lg);

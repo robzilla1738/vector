@@ -1,0 +1,30 @@
+{
+  "sourceOnlyCandidate": true,
+  "livePlusHydrationExactReplay": true,
+  "queuedExactFourLeafReplay": true,
+  "tupleExactNineLeafReplayAndTenInitializerInverse": true,
+  "originalQueuedRuntimeProducerPinsUnchanged": true,
+  "rootActualControls": {
+    "queuedLiveConversationComposer": 46,
+    "identityCallerCohort": 67,
+    "identityRemainingCallers": 31,
+    "originalHome": 20,
+    "registry": 3,
+    "importOriginal": 9,
+    "importNew": 2
+  },
+  "workspaceBuild": "PASS",
+  "shellTypes": "PASS",
+  "scopedLint": "PASS original warnings",
+  "latestMeasuredBeforeQueuedTupleImport": {
+    "startupJS": 500487,
+    "startupCSS": 179481,
+    "totalJS": 1843823,
+    "totalLimit": 1843200,
+    "over": 623
+  },
+  "combinedRendererMeasurement": "pending recovery/importer cohort",
+  "wholeUnitFinal": "pending coherent batch; original timeout and fixture fix retained",
+  "noNativeAcceptance": true,
+  "noFollowingAdoption": true
+}

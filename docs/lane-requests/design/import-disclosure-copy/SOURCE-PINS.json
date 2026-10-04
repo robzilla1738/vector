@@ -1,0 +1,39 @@
+{
+  "base": "5f9b13f225ab60670041bd39adc90f04e3a478c7",
+  "patchSHA256": "742bed3899504074ce546026cf1777bb2f252fffa30de90e6970c87eb6f5c593",
+  "leaves": [
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.tsx",
+      "before": "3fbbe164d66a151da6f1e84683c3f83e8a1bf9af39dd9c3ab279fb63cd7edfbf",
+      "after": "6d828b4abb3f3e02d554eff0c2a326046e2c4c163dfacdbb1cd322334ec65911",
+      "beforeBytes": 14170,
+      "afterBytes": 14097
+    },
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.copy.test.tsx",
+      "before": null,
+      "after": "962ab7689f2ce6ddce6c2f63f5ccbac59aced1ab8f35920ff892f50b0b6f684b",
+      "beforeBytes": null,
+      "afterBytes": 4332
+    }
+  ],
+  "replay": "forward/reverse/forward byte-exact PASS",
+  "references": [
+    {
+      "source": "/Users/rcourson/AI Blueprints/06/assets/importer-webui.css",
+      "sha256": "6bc7c039ed9bb9cf2498748e57175cfd4059a2ec1e92a8e512beb903f8b81496"
+    },
+    {
+      "source": "/Users/rcourson/AI Blueprints/06/assets/06-agent-manager/assets/import-browser-3mA7e-Wx.js",
+      "sha256": "b8549c9e7c4110747ea8e6f9140ed9afb4c50add3086f6544bbb25ea32b3b157"
+    }
+  ],
+  "nativeAcceptance": "pending; no native or browser actions",
+  "checks": {
+    "controls": "11 PASS (9 original + 2 new), /tmp/aux-import-copy-controls-003.log",
+    "types": "PASS /tmp/aux-import-copy-types-002.log",
+    "lint": "PASS original Date.now purity warning retained /tmp/aux-import-copy-lint-002.log",
+    "initialFixtureTypeFailure": "/tmp/aux-import-copy-types.log retained; corrected missing original event seq/streamId/ts, no cast bypass",
+    "rendererBuild": "not run; modest 73 source bytes saved, not packaged reserve proof"
+  }
+}

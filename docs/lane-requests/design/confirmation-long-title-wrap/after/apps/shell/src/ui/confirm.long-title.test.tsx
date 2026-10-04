@@ -1,0 +1,88 @@
+// @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { expect, it, vi } from "vitest";
+import { useConfirm } from "./confirm";
+
+it("retains a full long Profile title and every consent detail, with Cancel focus and Escape refusal", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const name = "A".repeat(60);
+  const description =
+    "This permanently removes its sign-ins, tabs, history, chats, memory and connections on this Mac. This cannot be undone.";
+  const result = vi.fn();
+  function Fixture() {
+    const { confirm, confirmation } = useConfirm();
+    return (
+      <>
+        <button
+          onClick={() =>
+            void confirm({
+              title: `Delete “${name}”?`,
+              description,
+              confirmLabel: "Delete permanently",
+              cancelLabel: "Keep Profile",
+              danger: true,
+            }).then(result)
+          }
+        >
+          Review removal
+        </button>
+        {confirmation}
+      </>
+    );
+  }
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<Fixture />));
+    const opener = host.querySelector("button")!;
+    opener.focus();
+    await act(async () => opener.click());
+    const dialog = document.querySelector<HTMLDialogElement>('dialog[role="alertdialog"]')!;
+    expect(dialog.querySelector("h3")!.textContent).toBe(`Delete “${name}”?`);
+    expect(dialog.querySelector("p")!.textContent).toBe(description);
+    expect(dialog.getAttribute("aria-describedby")).toBe(dialog.querySelector("p")!.id);
+    const [cancel, accept] = Array.from(dialog.querySelectorAll("button"));
+    expect(cancel!.textContent).toBe("Keep Profile");
+    expect(accept!.textContent).toBe("Delete permanently");
+    expect(document.activeElement).toBe(cancel);
+    expect(result).not.toHaveBeenCalled();
+    await act(async () => cancel!.click());
+    expect(result).toHaveBeenCalledExactlyOnceWith(false);
+    expect(document.querySelector("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+    await act(async () => opener.click());
+    await act(async () =>
+      document
+        .querySelector("dialog")!
+        .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
+    );
+    expect(result).toHaveBeenCalledTimes(2);
+    expect(result).toHaveBeenLastCalledWith(false);
+    expect(document.querySelector("dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("applies the supplied anywhere-wrapping recipe only to full confirmation title and description", () => {
+  const css = readFileSync(resolve(process.cwd(), "apps/shell/src/ui/confirm.css"), "utf8");
+  const selector = css.match(/([^{}]+)\{\s*overflow-wrap:\s*anywhere;\s*\}/)![1]!.trim();
+  const dialog = document.createElement("div");
+  dialog.className = "ui-alert-dialog";
+  const title = document.createElement("h3"),
+    description = document.createElement("p"),
+    action = document.createElement("button");
+  dialog.append(title, description, action);
+  expect(title.matches(selector)).toBe(true);
+  expect(description.matches(selector)).toBe(true);
+  expect(action.matches(selector)).toBe(false);
+  expect(document.createElement("h3").matches(selector)).toBe(false);
+  // CSS selector inclusion is source proof; native narrow-width pixel layout stays pending.
+});

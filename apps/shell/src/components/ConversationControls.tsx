@@ -6,7 +6,7 @@ import { PreferenceAction, usePreferenceCommand } from "../settings/sections/pre
 /** A committed incarnation never becomes current again after navigation or host retirement. */
 export function useConversationOwner(chatId: string | null | undefined, connected: boolean) {
   const windowId = bridge.windowId, privateMode = bridge.privateMode, windowKind = bridge.windowKind;
-  const identity = useMemo(() => ({ chatId, connected, windowId, privateMode, windowKind }), [chatId, connected, windowId, privateMode, windowKind]);
+  const identity = useMemo(() => ([chatId, connected, windowId, privateMode, windowKind]), [chatId, connected, windowId, privateMode, windowKind]);
   const owner = useRef<{ active: boolean; identity: typeof identity } | null>(null);
   useLayoutEffect(() => {
     const original = { active: true, identity };

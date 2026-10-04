@@ -15,7 +15,7 @@ export function PageRecovery({ page }: { page: PageTarget }) {
     kind = bridge.windowKind;
   const snapshot = JSON.stringify(page);
   const identity = useMemo(
-    () => ({ snapshot, windowId, privateMode, kind }),
+    () => ([snapshot, windowId, privateMode, kind]),
     [snapshot, windowId, privateMode, kind],
   );
   const owner = useRef<Owner>({ active: false, pending: false, identity });

@@ -1,0 +1,9 @@
+# Clearer import disclosure copy
+
+The first sentence now distinguishes installed browser bookmarks/history from live tabs, which require attached Chrome. Existing confirmation and all exclusions remain visible. Existing folder/retry and Keychain/system-access disclosures remain collapsed by default. The access explanation retains Aux’s separate protected-storage prompt, app/purpose review, cancellation, separate Passwords & Autofill transfers and possible Safari Full Disk Access. Terminal retry copy retains safe bookmark/history merges, duplicate live tabs, confirmed-batch counts and possible extra interrupted writes.
+
+Only three text hunks change. No callbacks, selection defaults, receipt recovery, action labels, fields, hierarchy, styles or ongoing-job explanations change. Nine original importer cases plus two real mounted disclosure/progress cases pass. New cases verify disclosure focus/full policy and no discovery/run on opening details, then actual import.progress receipt transition from running to interrupted with partial count and explicit review button. Source-only UI/receipt simulations are not native captures or import qualification.
+
+Supplied06 importer-webui.css uses a short description (15px/22px, 304px text column) beside browser choices; the installed import-browser bundle similarly separates concise introduction from source/Profile selection. These support concise prose/progressive disclosure; Aux geometry and consent policy remain its existing implementation, not a copied upstream import policy. Aux branding remains unchanged.
+
+No renderer build or reserve claim. Production source reduction is modest; whole packaged bytes remain root-owned. Original tests are unchanged. Typecheck and scoped lint logs are recorded separately; the original Date.now purity warning is retained.

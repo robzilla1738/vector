@@ -1,0 +1,32 @@
+[
+  {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/extension/assets_globals-D6PBr-GP.css",
+    "sha256": "2c2b198d715f3894d41c96b88ef9a32a4f61404891baf954d7e4e5a33d976e79",
+    "role": "S06 decoded WebUI .wrap-anywhere overflow-wrap:anywhere"
+  },
+  {
+    "path": "/private/tmp/aux-design-home-mode-hit/apps/shell/src/ui/confirm.tsx",
+    "sha256": "0ee5e719b9e66c07dc968f3ce9130124b3c4c7324f3740fae96e32ad20afde28",
+    "role": "real AlertDialog description accessibility + original useConfirm settlement"
+  },
+  {
+    "path": "/private/tmp/aux-design-home-mode-hit/apps/shell/src/components/ProfileSwitcher.tsx",
+    "sha256": "4616be35c236ef7990d90f0a65ea81cbaae0bc7db1e57e84b060fa29ded9741c",
+    "role": "real Profile deletion fullname title and consent paragraph"
+  },
+  {
+    "path": "/private/tmp/aux-design-home-mode-hit/apps/shell/src/components/BrowserProfiles.tsx",
+    "sha256": "c403fcaaad3f335d1f2a7e3442a83b69403149b895ac413fa67509a1027fa354",
+    "role": "actual Profile name maxLength60"
+  },
+  {
+    "path": "/private/tmp/aux-design-home-mode-hit/apps/shell/src/ui/confirm.controls.test.tsx",
+    "sha256": "24b11625a140d38503e527b2c380d4fb063151b83bf2105a07c7810598c91225",
+    "role": "unchanged original confirmation guards"
+  },
+  {
+    "path": "/private/tmp/aux-design-home-mode-hit/apps/shell/src/ui/dialog.tsx",
+    "sha256": "7a122f86fb01a0a2571a85b72e3728a436b118031bc16708c4413a13a3341156",
+    "role": "original native-dialog focus/dismissal producer unchanged"
+  }
+]

@@ -22,7 +22,7 @@ export function SearchEngineSetting({
 }) {
   const windowId = bridge.windowId,
     privateMode = bridge.privateMode;
-  const identity = useMemo(() => ({ value, windowId, privateMode }), [value, windowId, privateMode]);
+  const identity = useMemo(() => ([value, windowId, privateMode]), [value, windowId, privateMode]);
   const initial = { identity, draft: value, custom: !ENGINES.some((engine) => engine.url === value) };
   const [editing, setEditing] = useState(initial);
   const { draft, custom } = editing.identity === identity ? editing : initial;

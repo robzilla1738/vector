@@ -73,7 +73,7 @@ export function SelectionCaptureSettings({ active, settings, onSave, nativeStatu
   const windowId = bridge.windowId, kind = bridge.windowKind, privateMode = bridge.privateMode;
   const connected = useStore(state => state.connected);
   const unavailable = !active || privateMode || kind !== "normal";
-  const identity = useMemo(() => ({ active, savedKey, windowId, kind, privateMode, connected }), [active, savedKey, windowId, kind, privateMode, connected]);
+  const identity = useMemo(() => ([active, savedKey, windowId, kind, privateMode, connected]), [active, savedKey, windowId, kind, privateMode, connected]);
   const admitted = useCallback(() => active && !privateMode && kind === "normal" && bridge.windowKind === kind && !bridge.privateMode && useStore.getState().connected === connected, [active, privateMode, kind, connected]);
   const [getOwner, current, busy, error, fail, clearFailure, perform] = useSettingsSaveOwner(identity, windowId, privateMode, admitted, true);
   const requireCurrent = () => { const original = getOwner(); if (!current(original) || original.pending) throw new Error("Choose the current Selection & Capture control."); return original; };

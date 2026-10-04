@@ -1,0 +1,15 @@
+{
+  "base": "9f05f15778eb748f56be1313bf8a613dc3aa8bbb",
+  "owned": [
+    {
+      "path": "apps/shell/src/ui/confirm.css",
+      "before": "62acb135b85e2b22bdeb92f1aa4260c447f7b1a73718955e2b4e8ec554db399b",
+      "after": "2febbdab48d4100731e3a2ee7a0e8a4b8107142b0c213f4b3ccae582e6c5a172"
+    },
+    {
+      "path": "apps/shell/src/ui/confirm.long-title.test.tsx",
+      "before": null,
+      "after": "eaf6febf6184268493196861d059e622b6c57f94aec241dbf4faafc737c158f4"
+    }
+  ]
+}

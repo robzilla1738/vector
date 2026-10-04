@@ -1,0 +1,68 @@
+{
+  "sourceOnly": true,
+  "base": "5f3524dfae7da879c6c8746cdd1d934914b0753f",
+  "owned": [
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "beforeSha256": "7a0d35f8ad43dff237c6ff4f1f32308e67b426b7de1c44dd92c1c577d5608521",
+      "afterSha256": "9cb130e5adf32095ee9740217826377a0773d72f6781f3ec689dbdb9ea8736ff"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationQueuedControls.tsx",
+      "beforeSha256": null,
+      "afterSha256": "5d48b99425ab7d20f93338fe45c743d194771ea0241a26e444019ebaceb3c8f4"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.queued-controls.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "cce04d8dcd64907ae167453e3b4b8f602ea8cdaf05436bb81ddccd9a6f99ff75"
+    },
+    {
+      "path": "packages/contracts/src/commands.ts",
+      "beforeSha256": "2d85022b20bf413426b17e4ef934d23ae0365668f5620046bd9eb8bfbb57d2aa",
+      "afterSha256": "da731c94029f27bdbc04ee1a420f1a0e1100b7a1bf7ffdb87fdbff92fa79679e"
+    }
+  ],
+  "patchSha256": "617e6a96332d22a00c7a5f251d9efcf2ca715a3e76f5bfc1d74aed46cada247a",
+  "exactForwardReverseForward": true,
+  "controls": {
+    "final": "33 PASS: queued11 + unchanged Composer10/live12",
+    "oldLifecyclePolicy": "2 RED: old ACK changes fresh draft and old finally clears newer busy",
+    "types": "shell noEmit PASS",
+    "lint": "scoped PASS, original Conversation warnings"
+  },
+  "logs": [
+    {
+      "path": "docs/lane-requests/l10/conversation-queued-command-closure/logs/aux-l10-conversation-queued-controls-001.log",
+      "sha256": "89b09f0ef7e0ee2e4b3d5bad85918e1a04e0dc09ebcb934f4fc560348f067e67"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-queued-command-closure/logs/aux-l10-conversation-queued-final-controls.log",
+      "sha256": "dfebbc0bed62d14be5ef0511e9ab7526eeb6f5fb63931ee8255cebb4fc032f95"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-queued-command-closure/logs/aux-l10-conversation-queued-old-policy-red.log",
+      "sha256": "08bb2e386389fdbfd8e63f3909c35c2c9e993c8b77814aeb0c9bca19c174a4f3"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-queued-command-closure/logs/aux-l10-conversation-queued-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/lane-requests/l10/conversation-queued-command-closure/logs/aux-l10-conversation-queued-lint.log",
+      "sha256": "6e2f7ec78d18b71059d700aaed7aa867f32aa9ed7eb73e47ed4dc8008e571b5d"
+    }
+  ],
+  "originalProducerPins": [
+    {
+      "path": "apps/runtime/src/api/methods/runs.ts",
+      "sha256": "16ce27572c7ef9f424a406724b2a1acd80a6d897e2d5ac6ae51c55d670adca87"
+    },
+    {
+      "path": "apps/runtime/src/services/run-messages.ts",
+      "sha256": "56d82282a2e917bd93615394feb026b93daa0d5ef73351d8db026e0b55e92f64"
+    }
+  ],
+  "rendererBudgetVerified": false,
+  "nativeExecution": false
+}

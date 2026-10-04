@@ -116,6 +116,12 @@ export const COMMANDS = [
   S("select-home-search", "Choose Home Search", browserContextControl),
   S("select-home-ask", "Choose Home Ask", browserContextControl),
   S("open-home-conversation", "Open full Home conversation", browserContextControl),
+  S("select-conversation-answer", "Answer the current conversation question", browserContextControl),
+  S("select-conversation-steer", "Steer the current conversation", browserContextControl),
+  S("select-conversation-queue", "Queue the next conversation message", browserContextControl),
+  S("reload-conversation-request", "Retry the current conversation request", browserContextControl),
+  S("edit-conversation-queued-message", "Edit queued conversation message", browserContextControl),
+  S("remove-conversation-queued-message", "Remove queued conversation message", browserContextControl),
   ...G(pageRecoveryControl, "-page-recovery", [
     ["retry", "", "Retry this page"],
     ["edit", "-address", "Edit failing page address"],

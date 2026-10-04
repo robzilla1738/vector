@@ -1,0 +1,10 @@
+{
+  "exactTwoLeaves": true,
+  "sequence": [
+    "forward",
+    "reverse",
+    "forward"
+  ],
+  "patchSha256": "b23a9933473f6cd3d6b9052669deebea117ce57d8c6acbe53a5d28c131031ada",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-confirm-wrap-replay-desr2jh8"
+}
