@@ -1,0 +1,17 @@
+✔ retains the actual original completed conversation and removed source independently (0.644ms)
+✔ restoring an existing page-free conversation makes no run or model request and keeps source removed (0.460583ms)
+✔ old source resurrection, hidden new work and changed original turn falsify restoration (0.994417ms)
+✔ a fresh unrelated chat cannot stand in for the restored original conversation (0.160083ms)
+✔ empty pageIds alone cannot hide reintroduced closed browser authority (0.263542ms)
+✔ missing actual next request or any old/foreign page observation refuses the proof (0.195125ms)
+✔ old turn or rewritten draft is not the explicit next Send (1.533667ms)
+✔ actual caller seam restarts, opens original native caption, then explicitly sends in the same chat (0.479542ms)
+✔ a hidden model request during restart rejects before any original conversation or Send action (0.571792ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 127.649291

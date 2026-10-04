@@ -1,0 +1,13 @@
+{
+  "admitted": true,
+  "scope": "Genuine GN generation/originalrealVersionAction/eightflags/descriptions only; preserve source/generated174asset/current8801compiled/runtime92/helper27/cache; no compile/runtime/helper/App",
+  "launcher": "/private/tmp/aux-builder-native315-coherent-correction-preparation-001/gn-native316-2a014c6e-after-stage-launch-001.json",
+  "launcherSha256": "b7c94490ede4f0c062de86266b9c0b955ffdd87e8cfe756f39f8744fa424321c",
+  "exactLauncherPinsChecked": 9,
+  "actualInheritedInputPinsChecked": 18,
+  "actualStageAudit": "/tmp/aux-root-native316-stage-terminal-audit-001.json",
+  "actualStageAuditSha256": "423d45d2cbf7ebcf6df76ab1cfb6700ac750ba888199e20caac02c0ca7d477a8",
+  "controllerRead": true,
+  "stageOnlySuccessDoesNotQualify": true,
+  "full17RuntimeHelperAppHeld": true
+}

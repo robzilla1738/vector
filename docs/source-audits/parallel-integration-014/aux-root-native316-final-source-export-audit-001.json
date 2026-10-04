@@ -1,0 +1,19 @@
+{
+  "candidateHead": "2a014c6ee2f9ef2295a6591f10c2d57d1a45bb18",
+  "identity": {
+    "commit": "2a014c6ee2f9ef2295a6591f10c2d57d1a45bb18",
+    "tree": "2122a28dca5fac8442b78960aa1a84b21d77deba",
+    "dirty": false,
+    "label": "2a014c6ee2f9ef2295a6591f10c2d57d1a45bb18"
+  },
+  "sourceExportSha256": "c3c0215d97d3cff74222ea721fbe00c5b48a089352264467072db142abc8c784",
+  "actualNativeLeaves": 690,
+  "actualPackets": 316,
+  "actualAssets": 174,
+  "assetDigest": "553d6341ccb875b33b41082ac1fd430a17568f191037fd26ad39ca9f93cc0ad7",
+  "rootNative154RendererReproducible": true,
+  "actualOwnedDistRows": 1664,
+  "actualGenerated3TemplateAndIdentityExact": true,
+  "rawChildPinsExact": true,
+  "qualification": false
+}

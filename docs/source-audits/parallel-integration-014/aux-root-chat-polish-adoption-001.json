@@ -1,0 +1,44 @@
+{
+  "records": [
+    {
+      "packet": "/private/tmp/aux-browser-runtime-l10-chat-history-error/docs/lane-requests/l10/chat-history-error",
+      "freezeSha256": "b0ac98b960d868a70af66cf1825a4ffc394fc56a2134cd684f5195ac3cbf1524",
+      "rows": [
+        {
+          "path": "apps/shell/src/components/Conversation.tsx",
+          "beforeSha256": "735e1d9800dc5065efd0423b03adaa557ae4e6f03482471c9dc9ddf2b717a3bc",
+          "afterSha256": "ff3dad385359cdbc8e04b8daf9cb7d402bae335272511d4f55077f6b65e1bd4d",
+          "beforeBytes": 63450,
+          "afterBytes": 63598,
+          "scope": "request-only"
+        },
+        {
+          "path": "apps/shell/src/components/Conversation.history-error.test.tsx",
+          "beforeSha256": null,
+          "afterSha256": "a46518dcc084987c9fab597752a951e1f3f74912dfb629395852961ee047fc3d",
+          "scope": "new-owned"
+        }
+      ],
+      "exactForwardReverseForward": true
+    },
+    {
+      "packet": "/tmp/aux-browser-runtime-design-user-message-wrap/docs/lane-requests/design/user-message-wrap",
+      "freezeSha256": "b8ab96e9d08aad0c751d36fc0a533db60b4b96b4f863f3ee058c1e362da0d1d7",
+      "rows": [
+        {
+          "path": "apps/shell/src/styles/workspace.css",
+          "beforeSha256": "6c8bcdf31609844d4c862ff36477341eaabe622a43b51f44c280938f381bd061",
+          "afterSha256": "081df62fb074aa5ab3626245a826a6072adae542d4a9de08758141537ab3cf1b"
+        },
+        {
+          "path": "apps/shell/src/components/Composer.user-message-wrap.test.tsx",
+          "beforeSha256": null,
+          "afterSha256": "6dca62059142635ef7788db2f2c86fbc00cf714e43fa745d9cf41ae64cc6487d"
+        }
+      ],
+      "exactForwardReverseForward": true
+    }
+  ],
+  "native316Unchanged": true,
+  "nativeQualification": false
+}
