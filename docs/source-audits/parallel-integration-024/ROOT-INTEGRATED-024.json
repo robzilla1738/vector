@@ -1,0 +1,59 @@
+{
+  "producer": "root-parallel-integration-024",
+  "nativeCandidate": "55de268d3af439535a98f7e113b00cbbabf29e1d",
+  "followingSource": "76770cbe",
+  "original453EnumerationVerified": true,
+  "serial453DispatchedOnce": true,
+  "assertionOwnerPidAndGroup": 50434,
+  "assertionTerminalPending": true,
+  "actualCreatorSetupFault": "permission_denied: Original native creation scope changed",
+  "appCanariesAdmitted": false,
+  "fixedChannelSixLeavesAndHelperProposalIndependentlyReviewed": true,
+  "capture0352AuthenticatedGrant0353PiP0354PendingCoherentNativeBatch": true,
+  "evidence": [
+    {
+      "path": "docs/source-audits/parallel-integration-024/aux-root-native321-actual-enumeration-review-001.json",
+      "sha256": "fbfde5003b3d884157ed509650376a76a789dff06b8af366032c8e61779d37da",
+      "originalPath": "/tmp/aux-root-native321-actual-enumeration-review-001.json"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-024/aux-root-native321-assertion-source-review-001.json",
+      "sha256": "bd67e06a54119d034653ae7cac1782d3d5f41186b37e25e2a0541111cbc6d209",
+      "originalPath": "/tmp/aux-root-native321-assertion-source-review-001.json"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-024/aux-root-native321-assertion-admission-001.json",
+      "sha256": "459dfcd27fe5318cdb8b46223f9d8c42bc4782d43a27011c76d81473d4204200",
+      "originalPath": "/tmp/aux-root-native321-assertion-admission-001.json"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-024/aux-root-fixed-credential-channel-source-review-001.json",
+      "sha256": "e9bde36fea2d49707e69b924d595e06a5a510ba1d2db0fc27c5753c648e21b74",
+      "originalPath": "/tmp/aux-root-fixed-credential-channel-source-review-001.json"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-024/aux-root-following-native321-prefix-integration-001.json",
+      "sha256": "f8bdeb4d5b83d29e62b0fa5ab9b6d124ec4ed493f5d01a898fb5b732538f185e",
+      "originalPath": "/tmp/aux-root-following-native321-prefix-integration-001.json"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-024/assert-native321-required453-launch-001.json",
+      "sha256": "cc132b34b014a86ad87dbb07d25411489a93f25c34824e6ed343a2773a254c8e",
+      "originalPath": "/private/tmp/aux-builder-native321-preparation-001/assert-native321-required453-launch-001.json"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-024/NATIVE321-REQUIRED453-ASSERTION-REQUEST-001.json",
+      "sha256": "871b8aee8a5890fe6d83b8f851c5b4b785aaecbc1a05f5f6b376668b39bfa185",
+      "originalPath": "/private/tmp/aux-builder-native321-preparation-001/NATIVE321-REQUIRED453-ASSERTION-REQUEST-001.json"
+    },
+    {
+      "path": "docs/source-audits/parallel-integration-024/NATIVE321-ENUMERATION-NATURAL-TERMINAL-CLOSURE-001.json",
+      "sha256": "54905de6b910ff124cf05c75ae3a594f02f37cd6261025a4a1562e354738300f",
+      "originalPath": "/private/tmp/aux-builder-native321-preparation-001/NATIVE321-ENUMERATION-NATURAL-TERMINAL-CLOSURE-001.json"
+    }
+  ],
+  "nativeQualification": false,
+  "performanceQualification": false,
+  "designQualification": false,
+  "allRoadmapGatesPreserved": true
+}
