@@ -1,0 +1,21 @@
+✔ ordinary mode does not mint a file or issue an action (0.771167ms)
+✔ fixed PNG is genuine16×16 RGBA and original retained lease disposes idempotently (13.069875ms)
+✔ mounted original UI flow produces only visual states and no private identity assertion (14.201458ms)
+✔ original preview capture failure preserves primary and uses actual close/remove cleanup (7.249917ms)
+✔ retired samePID App and unexpected run refuse subsequent captures and native mutations (14.185041ms)
+✔ duplicate mounted preview controls refuse; original known UI cleanup still completes (7.811291ms)
+✔ changed fixture retains original primary+cleanup lease and exact restored inode retry (8.892292ms)
+✔ unchanged Include checkbox cannot be relabeled as successful exclusion (11.725209ms)
+✔ original capture retirement preserves UI cleanup debt without acting on replacement owner (9.104833ms)
+✔ fresh actual channel kind/window/duplicate-key or retired awaited read refuses before UI (0.341834ms)
+✔ replacement call ledger cannot conceal original requests after chooser or capture (18.072334ms)
+✔ unobserved zoom and details transitions cannot be labeled as captured success (49.910167ms)
+✔ Preview action retirement preserves original UI debt and never acts through replacement (10.360167ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 238.119708
