@@ -1,3 +1,5 @@
+import { importSourceEnvironment } from './lib/import-source-home.mjs';
+import { modelFixtureEnvironment } from './lib/model-fixture-environment.mjs';
 // Actual App source against controlled original child/artifact/slot fixtures.
 // No application, helper, native slot, credentials or OS launch is accessed.
 import assert from 'node:assert/strict';
@@ -25,6 +27,8 @@ function fixture({ spawnThrows = false, noPid = false, debt = false, appearance 
     observe: () => stream.discover(), write() {}, dispose() { pendingReject?.(new Error('Original stream retired')); } };
   const directory = () => ({ uid: 100, mode: 0o40700, dev: 1, ino: 1, isSymbolicLink: () => false, isDirectory: () => true });
   const imports = {
+    './import-source-home.mjs': { importSourceEnvironment, createImportSourceOwner(filename) { assert.equal(filename, root + '/profile'); return Object.freeze({ fixtureOwned: true }); } },
+    './model-fixture-environment.mjs': { modelFixtureEnvironment },
     './ax.mjs': { createAxClient() { throw new Error('Ordinary/private fixture must not create an appearance helper'); } },
     './launch-services-appearance-owner.mjs': { createLaunchServicesAppearanceOwner() { throw new Error('Ordinary/private fixture must not create an LS owner'); } },
     'node:os': { homedir: () => '/controlled' }, 'node:path': path, 'node:crypto': crypto,

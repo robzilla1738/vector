@@ -1,3 +1,5 @@
+import { importSourceEnvironment } from './lib/import-source-home.mjs';
+import { modelFixtureEnvironment } from './lib/model-fixture-environment.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -19,6 +21,8 @@ function fixture() {
  const descriptor={port:1234,token:'controlled-fixture-only',pid:555,instanceId:'controlled-instance',startedAt:1,version:{schema:2}};
  const dir=filename=>({dev:1,ino:filename===root?state.rootInode:2,uid:100,mode:0o40700,isSymbolicLink:()=>false,isDirectory:()=>true,isFile:()=>false});
  const imports={
+    './import-source-home.mjs': { importSourceEnvironment, createImportSourceOwner(filename) { assert.equal(filename, root + '/profile'); return Object.freeze({ fixtureOwned: true }); } },
+    './model-fixture-environment.mjs': { modelFixtureEnvironment },
   './ax.mjs':{createAxClient(){throw new Error('Ordinary attachment must not create an appearance helper');}},
   './launch-services-appearance-owner.mjs':{createLaunchServicesAppearanceOwner(){throw new Error('Ordinary attachment must not create an LS owner');}},
   'node:os':{homedir:()=>'/controlled'},'node:path':path,'node:crypto':crypto,

@@ -1,0 +1,44 @@
+{
+  "baseline": "a6a7ba09247a8b1ce73a47bc540ba966ab7ef36c",
+  "patchSha256": "4543e0880da9003501bd19d065104265f39acdb012041acad9703e09723142b9",
+  "rows": [
+    {
+      "path": "tests/host/lib/app.mjs",
+      "beforeSha256": "2bba1d45359096ead4ba2eb5d9b1d514c672385a8b64ee06a2167160607020eb",
+      "afterSha256": "1018d00ade8e1c6bda43a1cbf6d8f5a09931becf46de620f88283eca6dde56fb",
+      "beforeBytes": 48854,
+      "afterBytes": 48979,
+      "new": false
+    },
+    {
+      "path": "tests/host/lib/model-fixture-environment.mjs",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "8bf82db3d823ded011ace8ac973dac316bcb8bd0b231ebb66b32127f8c445ab1",
+      "beforeBytes": 0,
+      "afterBytes": 752,
+      "new": true
+    },
+    {
+      "path": "tests/host/lib/model-fixture-environment.test.mjs",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "fea0ddf916f6cfb42dce2d4c12ba5c5d6566205348d33c0ffe9f88ac8d6b20b6",
+      "beforeBytes": 0,
+      "afterBytes": 2084,
+      "new": true
+    },
+    {
+      "path": "tests/host/lib/model-fixture-settings.test.mjs",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "c3a71cdfb905b4bcab26329270ec9ebc051d5a84aed18e2ebdaa301c1cfba9a5",
+      "beforeBytes": 0,
+      "afterBytes": 1436,
+      "new": true
+    }
+  ],
+  "replay": "forward/reverse/forward byte-exact",
+  "controls": {
+    "command": "node --test tests/host/lib/model-fixture-environment.test.mjs tests/host/lib/model-fixture-settings.test.mjs",
+    "passed": 5,
+    "scope": "source-only; compiled real SettingsService and disposable synthetic Repo; no native launch/provider/credentials"
+  }
+}

@@ -1,4 +1,5 @@
 import { createImportSourceOwner, createImportSourceHome, createImportInterruptionSourceHome, readImportSourceHome, disposeImportSourceHome, importSourceEnvironment } from './import-source-home.mjs';
+import { modelFixtureEnvironment } from './model-fixture-environment.mjs';
 import { homedir } from 'node:os';
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
@@ -146,7 +147,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   const launchArgs = launch.args ?? [];
   if (!Array.isArray(launchArgs) || launchArgs.some(arg => typeof arg !== 'string' || /^(--user-data-dir|--profile-directory|--remote-debugging|--password-store|--use-mock-keychain)/.test(arg)))
     throw new Error('Launch args must preserve disposable Profile and disabled public debugging');
-  const fixtureEnvironment = importSourceEnvironment(process.env, launch.env);
+  const fixtureEnvironment = modelFixtureEnvironment(importSourceEnvironment(modelFixtureEnvironment(process.env), launch.env));
   const env = privatePair ? { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8',
     HOME: profileRoot, TMPDIR: profileRoot } : { ...fixtureEnvironment, ...acceptance?.env };
   // Never inherit a developer token unless this launcher made its own marker.
