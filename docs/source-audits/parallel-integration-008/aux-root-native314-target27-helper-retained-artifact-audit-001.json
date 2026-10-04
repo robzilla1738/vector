@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "admission": {
+    "manifestPath": "/private/tmp/aux-browser-runtime-builder-native314-259693e2/release/test-artifacts/builder-native314-259693e2-helper-target27-001/native-window-helper-compiler-manifest.json",
+    "manifestSha256": "c77ce858bfc8b391d86dd819b44215a7d84d95cfe012ba833966ffd20c338cc6",
+    "auditPath": "/tmp/aux-root-native314-target27-independent-helper-audit-001.json",
+    "auditSha256": "d5bf058b063d45b9b3a4c5bd06ca5e02087de8350be5500c8b2ef87c6e118ec6"
+  },
+  "actualRetainedFilesAndMachO": true,
+  "executable": "/Users/rcourson/Library/Caches/dev.aux.journeys/native-window-73338487fccb-target27-001",
+  "helperExecuted": false,
+  "protocolPath": "tests/host/lib/native-window-compiler-protocol.mjs",
+  "protocolSha256": "9bd10ef1e395e2224db5034a84a72683e9d3f52667ad0f0bcb7ffb26ae693670",
+  "physicalPairAudit": "/tmp/aux-root-native314-current-pair-physical-audit-001.json"
+}

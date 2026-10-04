@@ -1,0 +1,11 @@
+✔ five actual metadata rows preserve all original definitions and normal focused scoped dispatch (126.670667ms)
+✔ authoritative scoped routing preserves every original command and original exact admission set (102.204666ms)
+✔ the original scoped resolver and every unscoped handler remain verbatim (0.804125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 185.610792

@@ -1,0 +1,24 @@
+✔ held original source mutation refuses (81.7895ms)
+✔ held original output mutation refuses (29.19575ms)
+✔ held original tool mutation refuses (20.5375ms)
+✔ held original settings mutation refuses (25.796792ms)
+✔ held original compileLog mutation refuses (22.960416ms)
+✔ held original manifest mutation refuses (22.095375ms)
+✔ same-byte atomic executable replacement refuses original inode continuity (22.510125ms)
+✔ symlink manifest refuses before artifact admission (11.007833ms)
+✔ retained controls preserve raw Mach-O versions, client bytes and retirement (21.445875ms)
+✔ public documentary metadata cannot retarget the held original helper lease (22.417459ms)
+✔ matching synthetic original documents retain actual version distinctions without artifact proof (1.846666ms)
+✔ approved digest must be external; changed raw bytes cannot self-admit (0.648ms)
+✔ duplicate keys, extra whitespace and exponential numeric serialization refuse even with supplied matching hashes (0.772084ms)
+✔ cancelled, timeout, live process group, unsafe executable and invented command refuse (3.412042ms)
+✔ missing or compiler-self-produced audit cannot replace independent root metadata (1.429583ms)
+✔ explicit target matches original SDK/versions and independently audited fresh cache (1.134958ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 423.6355
