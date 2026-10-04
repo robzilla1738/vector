@@ -1,0 +1,12 @@
+{
+  "launcherSha256": "661ecb6df8ca2fd7db4d87e4ea56d2f8094d31a5854fb9fa9d8ffcb03525789c",
+  "outerSha256": "c818080773330051b5eb05b7329e29d0f2f726196d7f7685502243501dbf639f",
+  "controllerSha256": "19154fdcf66e5db59922ec4ce3a6653fe7da51a11730818b2b009b078f397211",
+  "actualStageProof": "77c1f3083b75d9c24d772677308a4b1577e62815c8135152798b47b45b1032d7",
+  "actualGNProof": "cadeb8c72c6deab7bdeaaac10c5970f87d70c5abe937a457cd1c5aa355b1cf99",
+  "actualLauncherPins": 14,
+  "exactOriginalDelta": true,
+  "all18OriginalTargetsOrderRetained": true,
+  "requiredCasesRetained": 524,
+  "scope": "Admit exact coherent cached full18 build once; no runtime/helper/App admission"
+}
