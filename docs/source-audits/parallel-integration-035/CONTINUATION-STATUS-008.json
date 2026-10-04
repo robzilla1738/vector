@@ -1,0 +1,41 @@
+{
+  "completedSourceDeliverables": [
+    "Settings to New chat composer focus with full draft preserved",
+    "Deferred teardown respects newer outside and modal focus",
+    "Command metadata construction preserves full behavior and public types"
+  ],
+  "rootChecks": {
+    "mounted": "natural PASS actual43 controls/4 discovered suites",
+    "types": "natural PASS",
+    "lint": "natural PASS unchanged390 ceiling",
+    "format": "natural PASS",
+    "wholeUnit": "natural PASS641files4062tests"
+  },
+  "exactBundle": {
+    "startupJS": 501965,
+    "startupCSS": 179481,
+    "totalJS": 1849463,
+    "limits": {
+      "startupJS": 501760,
+      "startupCSS": 184320,
+      "totalJS": 1843200
+    },
+    "manifestSha256": "bc4df31b31bbbcaa65291a7de89301cd58c8859ac7e3d6a37064ffcc52b015a1",
+    "buildTarget": "chrome154 packaged",
+    "sourceStage": "1abd + command metadata3 + Settings New chat focus4",
+    "passed": false
+  },
+  "native": {
+    "full18": "actual natural PASS independently audited",
+    "matchingRuntimeHelper": "actual natural PASS independently audited",
+    "requiredEnumeration": "actual natural PASS original17/524 eachonce",
+    "safety": "original serial assertion run dispatched once owner67220; success unproven",
+    "App": "not admitted"
+  },
+  "remaining": [
+    "Tasks/Library focus fix",
+    "Strict startup and totalJS budgets",
+    "All required native safety and qualification/performance/design gates"
+  ],
+  "promoted": false
+}

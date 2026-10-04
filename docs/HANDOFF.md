@@ -1,3 +1,11 @@
+## Active continuation: New chat focus corrected; native safety running
+
+Settings → New chat now focuses the actual composer and preserves the unsent draft. Deferred teardown preserves newer outside/modal focus and still restores an original opener when its focused node physically retires. Root mounted verification, shell types, lint and ratchet formatting pass. The command metadata reductions independently preserve all command values, property order/descriptors, shared references and public declaration types (normalizing union order only). Whole source verification passes. Tasks/Library focus corrections and further coherent bundle reduction remain independently owned work.
+
+The explicit packaged154 build measures501965/501760 startupJS and1849463/1843200 totalJS; CSS179481/184320 passes. These strict failures remain blocking; no product promotion. Native333 full18 cached compilation, matching runtime/helper and original17-binary enumeration are independently verified from actual raw evidence. All required524 cases are listed exactly once. The sole builder is admitted for the original serial safety run with unchanged cases, retries, jobs, deadlines and ownership guards. Safety success and App journeys are not yet claimed.
+
+All supplied06 upstream/WebUI/token/font/material references and Aux branding remain mandatory. Full native/legacy/Stock qualification,20-trial performance,F21 contact sheets/noP0–P2/final owner signoff,merge order,WaveQ/all-on/final gates/localmain remain required. Nothing pushed,signed or released. Evidence: docs/source-audits/parallel-integration-035/. Earlier entries below are historical.
+
 ## Active continuation: coherent controls verified; focus and native build continue
 
 The isolated source completes shared scoped input dispatch with original event/completion identity, prevents stale Sources clicks from opening browser disclosure, wraps full task errors and preserves disabled Capture hover. The assembled Library/Extensions/composer batch passes rebuilt workspace, broad unit verification, shell types, full lint and ratchet formatting. Independent TypeScript AST review preserves original registration/admission callback arguments. All supplied06 upstream/WebUI/token/font/material references and Aux branding remain mandatory.
