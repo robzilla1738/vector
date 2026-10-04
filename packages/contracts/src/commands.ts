@@ -113,6 +113,9 @@ export const COMMANDS = [
   S("load-conversation-history", "Load conversation history", browserContextControl),
   S("reload-conversation-context", "Reload conversation context", browserContextControl),
   S("toggle-conversation-error-details", "Show conversation error details", browserContextControl),
+  S("select-home-search", "Choose Home Search", browserContextControl),
+  S("select-home-ask", "Choose Home Ask", browserContextControl),
+  S("open-home-conversation", "Open full Home conversation", browserContextControl),
   ...G(pageRecoveryControl, "-page-recovery", [
     ["retry", "", "Retry this page"],
     ["edit", "-address", "Edit failing page address"],

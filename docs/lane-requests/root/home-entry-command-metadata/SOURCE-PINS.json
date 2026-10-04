@@ -1,0 +1,14 @@
+{
+  "sourceOnly": true,
+  "owned": "packages/contracts/src/commands.ts",
+  "beforeSha256": "cd6de3252d972e0f8d839e1279d6bb6657a12a777a91c9b91914ae762f03d568",
+  "afterSha256": "3a1569d97a6a676e118df2763311fc96bbfb9fa478e3d4917c03c856167864c2",
+  "patchSha256": "16cf1b52388b98157a69fc616b60de864a493396c2955b85dd7da2495d72e0a9",
+  "IDs": [
+    "select-home-search",
+    "select-home-ask",
+    "open-home-conversation"
+  ],
+  "policy": "original browserContextControl normal-window scoped shell, palette:false, intercept:true, empty remappablebindings; no native producer",
+  "verificationPending": "coherent Home source+workspace rebuild before actual registry/host metadata checks"
+}
