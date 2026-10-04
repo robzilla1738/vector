@@ -1,0 +1,60 @@
+{
+  "status": "NATURAL_TERMINAL_FAILURE_VERIFIED",
+  "closureSHA256": "520b5be7097acec9a7e96f8d8e5bdc1d1c2018f433e47e460ced145acb3c9493",
+  "rawPinsVerified": 96,
+  "eachOriginalSelectedCaseRawStatusAndWatchClosureExact": true,
+  "selectedCaseCount": 524,
+  "actualStatusCounts": {
+    "SUCCESS": 473,
+    "FAILURE": 43,
+    "CRASH": 8
+  },
+  "failedTargets": [
+    "browser_tests",
+    "unit_tests"
+  ],
+  "originalPids": [
+    67220,
+    67226,
+    67343,
+    67363,
+    68135,
+    75717,
+    75744,
+    75752,
+    75828,
+    75845,
+    75895,
+    76031,
+    76041,
+    76054,
+    76062,
+    76077,
+    76103,
+    76211,
+    76278
+  ],
+  "originalGroups": [
+    67220,
+    67343,
+    67363,
+    68135,
+    75717,
+    75744,
+    75752,
+    75828,
+    75845,
+    75895,
+    76031,
+    76041,
+    76054,
+    76062,
+    76077,
+    76103,
+    76211,
+    76278
+  ],
+  "actualRemainingRows": [],
+  "appExecuted": false,
+  "qualification": false
+}

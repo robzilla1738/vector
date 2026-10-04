@@ -1,0 +1,1038 @@
+{
+  "producer": "builder-native333-original-required524-assertions-terminal-closure",
+  "terminal": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/terminal-proof.json",
+    "sha256": "e9b407217846e68de46f58905a23be9ec87016c0f6638a3e4f49f4e8b9fa2e14"
+  },
+  "outerTerminal": {
+    "path": "/private/tmp/aux-builder-native333-preparation-001/native333-assertions-original-launch-001/original-terminal.json",
+    "sha256": "2c7f11ab2d62015cce681b241afc1db3b12d91c2c35a69797a12f238562aea72"
+  },
+  "artifactPins": {
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/state.json": {
+      "sha256": "40d3fa43ea12260d926e9cbd87197ffffbf7c07e15699146445c47153b06f9d8",
+      "bytes": 280280
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/guards.json": {
+      "sha256": "e59084daf8a52ba0bd4489dadbfc8d92308b2114809101871b7a6db03e03099a",
+      "bytes": 3529
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/watch-arm": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/watch-config.json": {
+      "sha256": "0f2af0bda628e51280d588872210ee090bd50547881ca5ac52ce8d32c22e9dc0",
+      "bytes": 780
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/watch.stdout": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/watch-done": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/watch-ready": {
+      "sha256": "2855b0c5b292409c4e8ac6a8b16ce119f50fb270f8346c5833088227d20a449c",
+      "bytes": 844
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/watch.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/terminal-proof.json": {
+      "sha256": "e9b407217846e68de46f58905a23be9ec87016c0f6638a3e4f49f4e8b9fa2e14",
+      "bytes": 303635
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/watch/events.jsonl": {
+      "sha256": "7a06b4425302ddf9212d09abb04805ba080546cc0899ed9dbc31c7faae512817",
+      "bytes": 2300
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/components_unittests/stderr.log": {
+      "sha256": "78ee96cf74aff705867b8431eabd018e1c7af62182962c46767ad1f028b3d178",
+      "bytes": 736
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/components_unittests/controller-result.json": {
+      "sha256": "9f16f6cd185222da4fd409b1b59ae911f6ad5685901e49fe2200c50357887d6f",
+      "bytes": 1427
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/components_unittests/assertion-validation.json": {
+      "sha256": "2848f1784a62468a937c98c988381094c206448f5963e1f8eb6b8605e499bf14",
+      "bytes": 980
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/components_unittests/stdout.log": {
+      "sha256": "449881915503d011a15e2dd09cd8527356a79316592df8495a6121542f2f43ed",
+      "bytes": 1727
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/components_unittests/launcher-summary.json": {
+      "sha256": "8cdef3a2fc1675a58e6529991cbab233ed98989da55903110574ffde887b5476",
+      "bytes": 3778593
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_unittests/stderr.log": {
+      "sha256": "464f611e47ad5e91c5f8560f10cd39204e25817200bf22d0696b37c4546a62bb",
+      "bytes": 2576
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_unittests/controller-result.json": {
+      "sha256": "ffe83da37932ae86e4d98a6b8672d5a582ca0a442aec4f1834013c2c3769d99f",
+      "bytes": 5508
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_unittests/assertion-validation.json": {
+      "sha256": "6c693b826ddd9c208f1170be6cefe23c082bc1380e3e1c18f5d250820a9f0ae6",
+      "bytes": 15037
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_unittests/stdout.log": {
+      "sha256": "50c5cd59991442192a9ad0a321a70556cb3e28e12db6382149dc38c2dbd44cbe",
+      "bytes": 149829
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_unittests/launcher-summary.json": {
+      "sha256": "311553a6f9b37d82949e0460a1c86c1497e0a3a4d67e985c28de0e3572977885",
+      "bytes": 2094545
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/viz_unittests/stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/viz_unittests/controller-result.json": {
+      "sha256": "1a320e282ea4afdafe5b111d304f9f2f25711f5756eef39425c01c303e0c0f3c",
+      "bytes": 6117
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/viz_unittests/assertion-validation.json": {
+      "sha256": "1a1502098e892ee04e50a71930c2a0c9b35b7c360a3e987a9506d3bca2f1d15e",
+      "bytes": 18007
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/viz_unittests/stdout.log": {
+      "sha256": "7c3350cc8ac9af9a9958ec33d51e94006626d211c67b50cdb221f2c08202447f",
+      "bytes": 27237
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/viz_unittests/launcher-summary.json": {
+      "sha256": "f153a0329381fe892a4773bc668be2c3304ef2d3310e6883ab6f47a438cc7d74",
+      "bytes": 221891
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/journey_fixture_path_unittests/stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/journey_fixture_path_unittests/controller-result.json": {
+      "sha256": "42cb3aab8674f8d721b67d464338a28e6140ec7868d74ece54e10e16cd166bba",
+      "bytes": 1707
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/journey_fixture_path_unittests/assertion-validation.json": {
+      "sha256": "b79030c654e7f38da92237cc3b81b23211496e2c1089d8023d51bf2a427617d3",
+      "bytes": 1808
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/journey_fixture_path_unittests/stdout.log": {
+      "sha256": "47e22ae8405f58c711da3c5231ee53427cbd18bd23f2fd675513bbd6ec215bfe",
+      "bytes": 2763
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/journey_fixture_path_unittests/launcher-summary.json": {
+      "sha256": "24ef052160cbf12e9784be1193018cea2ae5f40a40597c4466eb97dc00b16363",
+      "bytes": 3415
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_platform_unittests/stderr.log": {
+      "sha256": "1fe6a10317beb5db29e8d7595617df695e65dfed6c796741e5ef9dd4d016cbdb",
+      "bytes": 736
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_platform_unittests/controller-result.json": {
+      "sha256": "6a855f0a094bb56aee8a8b741026070446c1ddaa9e48fb76273ea3d6d0f209ff",
+      "bytes": 1856
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_platform_unittests/assertion-validation.json": {
+      "sha256": "25621d31c7704826ce4a200a8f458ce9bc644a3d50f4499b269076f72d436e74",
+      "bytes": 2483
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_platform_unittests/stdout.log": {
+      "sha256": "33dd522152dddfaacae4e81428d8f6431c29f711904391ae724045010826fdce",
+      "bytes": 4179
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_platform_unittests/launcher-summary.json": {
+      "sha256": "f444fc503726ec04c5bc77b864966bbd980f762213f3d7913bf7ca58a3ccc816",
+      "bytes": 484908
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/unit_tests/stderr.log": {
+      "sha256": "4cf6b0e6339519538d687bbf22e01f6b5e987ff5ad94629f8466bf3b047931d8",
+      "bytes": 150801
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/unit_tests/controller-result.json": {
+      "sha256": "d7c6273c89595e858af2d1cd399db201125ef1328fe3013a4ec940f634fd4b41",
+      "bytes": 17543
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/unit_tests/assertion-validation.json": {
+      "sha256": "c318985649f4b6f4f043ea7c9b99ae5d7b67e883dfefbe982d88294d17985290",
+      "bytes": 59186
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/unit_tests/stdout.log": {
+      "sha256": "3d8ac94e2a50211debbc9d727a7a61fcfcaee21af10104e6a1e0b6b73e15de99",
+      "bytes": 90493
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/unit_tests/launcher-summary.json": {
+      "sha256": "ac59c3aef10bf164ab8d0b15e9299103370be5b1cade86b824978d39b282b69c",
+      "bytes": 2290344
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/views_unittests/stderr.log": {
+      "sha256": "c4fcde9e19dbecd62a4a7615d2200ad0c91d1b00f924294388178612c0d41cf5",
+      "bytes": 736
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/views_unittests/controller-result.json": {
+      "sha256": "10fbdba40894df482165b8ba009315ae5f16364e2a3d0d4919f924393ec4b715",
+      "bytes": 1603
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/views_unittests/assertion-validation.json": {
+      "sha256": "d81806244f2ed73f1145427ed67e9743e13ae4bb048e29e7bb3967b7b543a1ea",
+      "bytes": 1068
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/views_unittests/stdout.log": {
+      "sha256": "8e154b3bf2089fa5e2d6a2f109521480fd1136fb0a750b07ccadca6fc1471d49",
+      "bytes": 1801
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/views_unittests/launcher-summary.json": {
+      "sha256": "b13a3efe1f82784211c7746eadec11ec78b86d6d241c5640dd702c0c785fda05",
+      "bytes": 289789
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/profile_spaces_unittests/stderr.log": {
+      "sha256": "3ccfd772120d1a052e93dc8022a6b514874328a7ace7db27b30f7898dedfe67b",
+      "bytes": 2082
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/profile_spaces_unittests/controller-result.json": {
+      "sha256": "3e04c709a27d881a9d89c01d35887fbc92646245fa7fc5a959f2dabedfc81516",
+      "bytes": 1296
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/profile_spaces_unittests/assertion-validation.json": {
+      "sha256": "327cd4583684c5cef2c85628998a1c312df5e5bf18291b1b8999bb7af34237cc",
+      "bytes": 435
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/profile_spaces_unittests/stdout.log": {
+      "sha256": "884f28d376951c706dc932d96eb621188860a57b2a7217e2e1caed0759474633",
+      "bytes": 1014
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/profile_spaces_unittests/launcher-summary.json": {
+      "sha256": "b94a31fa75711f205c02af5d04309ed22a3da596fdb893956309f6837c425b3c",
+      "bytes": 653
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/auto_pip_site_policy_unittests/stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/auto_pip_site_policy_unittests/controller-result.json": {
+      "sha256": "1478d69879d516b727ca3e627838d4db696e454c278b9be49a20e426d9add496",
+      "bytes": 1256
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/auto_pip_site_policy_unittests/assertion-validation.json": {
+      "sha256": "63891b2f33a373bd476df924371c055226d0100893a8f6c58c5175f99f1c9e8b",
+      "bytes": 742
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/auto_pip_site_policy_unittests/stdout.log": {
+      "sha256": "1bfe12610fa907818d8cbdfb7bd2995d255980728e61751c1a29128f27992c9a",
+      "bytes": 966
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/link_routing_unittests/stderr.log": {
+      "sha256": "61c2c55e1c8b7c50036ce5def0f7946674d83aa293f032997b89af5c00075358",
+      "bytes": 759
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/link_routing_unittests/controller-result.json": {
+      "sha256": "c69aab7790fa8adc7fcabbf15db35eab4ae1f598b2e8d26b853d08eab38b80e9",
+      "bytes": 1450
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/link_routing_unittests/assertion-validation.json": {
+      "sha256": "0fcc6023b3d10804bacabd6b7a0d0867904316454a0bb88d8803e9952311800e",
+      "bytes": 1058
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/link_routing_unittests/stdout.log": {
+      "sha256": "b0c27b73837c08ca05b091b4494247b6db68adc1392a8990de7ab6ad01dcbc16",
+      "bytes": 1257
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/interactive_ui_tests/stderr.log": {
+      "sha256": "e717e39dfc05c6753b9b5e08897a9d527f03b2672a129ab1e80c124884142776",
+      "bytes": 20657
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/interactive_ui_tests/controller-result.json": {
+      "sha256": "529a6b5b362db607e81befe3084f14bf1f0185760d2140ef138e3f84950ef405",
+      "bytes": 1369
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/interactive_ui_tests/assertion-validation.json": {
+      "sha256": "dd276d7f4bc0e335b53f94e53c07060cb52e581155a392e742d73d124df045f7",
+      "bytes": 760
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/interactive_ui_tests/stdout.log": {
+      "sha256": "80739eeda8a3e2c5eb4cf216c1e0228a5efc2366d823b0c247e75aafda36d3cd",
+      "bytes": 9472
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/interactive_ui_tests/launcher-summary.json": {
+      "sha256": "fcc4e733511bdbc141daf63f77666fe20cba11689e60d8ce5ad0f98ce10eb8b0",
+      "bytes": 415653
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/content_unittests/stderr.log": {
+      "sha256": "8a683f08d0562707978e9c13401458b7e6cc5a5c0a892abbf5d71eff3fe77d03",
+      "bytes": 2680
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/content_unittests/controller-result.json": {
+      "sha256": "10b284d3d5d8b49624bd8c6e56b285892a2bbadc69066d9d184054ba1799a217",
+      "bytes": 3708
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/content_unittests/assertion-validation.json": {
+      "sha256": "4a2c48c7cd5742950f784173fc72d2eaf6f17d77ecf3f685cc3b7d7d8efacb3b",
+      "bytes": 9340
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/content_unittests/stdout.log": {
+      "sha256": "75bd13d3ebc48ebcb61ec196f065b2e68147424d659b9a40d8225a82311c66e1",
+      "bytes": 14343
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/content_unittests/launcher-summary.json": {
+      "sha256": "e2428bda28d633c29fc75db0ba72b685d04a0dc56624d5909962787ed1283cb8",
+      "bytes": 918811
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_common_unittests/stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_common_unittests/controller-result.json": {
+      "sha256": "5987566ccb471350ff05b13d5fc29a07c36b54adcc3e936a289ae0911cc37390",
+      "bytes": 1465
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_common_unittests/assertion-validation.json": {
+      "sha256": "c66980f8cc7a250d6726ea9cd4f1c3b632f25bcf1922158c5a349a18d91dfd68",
+      "bytes": 1156
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_common_unittests/stdout.log": {
+      "sha256": "8a367171d9fccee2677b16a7d35f6548c4420d45253c990d36dbe854e3c0a2d6",
+      "bytes": 1911
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/blink_common_unittests/launcher-summary.json": {
+      "sha256": "f68944ab4f7a108c05f7ec5f4a5add5c1941d1985ab7f373185e5e84f9898cb9",
+      "bytes": 36392
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/cc_unittests/stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/cc_unittests/controller-result.json": {
+      "sha256": "b4f442e7b0b22ff5acc8979365a6df31784bb72ecc226292af281818f3aeec77",
+      "bytes": 2445
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/cc_unittests/assertion-validation.json": {
+      "sha256": "b82ffd884c44eee33e9a08115e8c62dda2ad52cadc09f8bcc37513cfcf8a4543",
+      "bytes": 4062
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/cc_unittests/stdout.log": {
+      "sha256": "70132b7541d74d13dfae06707b6dacdc11b8f5497ebc0fb25d077de7bdcc91aa",
+      "bytes": 6307
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/cc_unittests/launcher-summary.json": {
+      "sha256": "c559e078682e1f03e85ca1a90d7b8aa71c69c4b27a84edd133851b738f47fc6a",
+      "bytes": 630739
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/owner_mutation_fence_unittests/stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/owner_mutation_fence_unittests/controller-result.json": {
+      "sha256": "6321ef6b3f2fae409dc28242f58b69881b6b3272e269dc8d58186fdcab1b62b2",
+      "bytes": 1441
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/owner_mutation_fence_unittests/assertion-validation.json": {
+      "sha256": "2d85f34d473399a19424927769544f506b986658deccdbd5505bf47a024ae65c",
+      "bytes": 1389
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/owner_mutation_fence_unittests/stdout.log": {
+      "sha256": "3ed6913b32e381b2048ce11f99cb96e103f47b41ba677d9d751f95d3bf51b48b",
+      "bytes": 1589
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/components_browsertests/stderr.log": {
+      "sha256": "41797b59559f2b5e166b054d7cf00a58786b85765e75c0afe34048f9bcbc4da1",
+      "bytes": 2968
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/components_browsertests/controller-result.json": {
+      "sha256": "4e28c0be9a030d110345ef6e0ba8c166f3825f0f791a395afadd1b473caea36e",
+      "bytes": 1302
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/components_browsertests/assertion-validation.json": {
+      "sha256": "8033780bbc4860397213f3f7dcae3a7466e49e2e412807c16ec99c9b617fe944",
+      "bytes": 468
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/components_browsertests/stdout.log": {
+      "sha256": "035a0d4a91dfb6341cd17c6a9b0e7819aeac701a6b85cc41eea28161afc23d2d",
+      "bytes": 1211
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/components_browsertests/launcher-summary.json": {
+      "sha256": "83949b408a5265ef1b2606bb0dd26640ae2a9f28f2d098a4b2eb20f3d4cd61c8",
+      "bytes": 82626
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/browser_tests/stderr.log": {
+      "sha256": "2f631bf68525896506d946a38ce5dee0a1482ed994fcaa5bcd83fc4c5b6c0d76",
+      "bytes": 1127788
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/browser_tests/controller-result.json": {
+      "sha256": "e56b5c1cf22741bee28983bd322d6fd72090b4b767454aa3a6e89d89664ea1ed",
+      "bytes": 10247
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/browser_tests/assertion-validation.json": {
+      "sha256": "94a535b93c87971d1ce808f4007fa7f5dc35828f2201bf0f17a65669cf6f31de",
+      "bytes": 32039
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/browser_tests/stdout.log": {
+      "sha256": "fbc8504f7362861accddeb2dad03b8947a633e2934358f86ee25125c86a2f3b1",
+      "bytes": 229375
+    },
+    "/private/tmp/aux-browser-runtime-builder-native333-source-001/release/test-artifacts/builder-native333-7fc07491-native-assertion-batch-001/native/browser_tests/launcher-summary.json": {
+      "sha256": "94dde6de4f3c1b59dca6c93cc58197cf7d1fc37b21a963c17196b67bfd9a9623",
+      "bytes": 3681313
+    },
+    "/private/tmp/aux-builder-native333-preparation-001/native333-assertions-original-launch-001/stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/aux-builder-native333-preparation-001/native333-assertions-original-launch-001/stdout.log": {
+      "sha256": "74a6ae339ad16ee5ca2ef26b7742e7a57295188c8472ca7a9e1c18ecaf102661",
+      "bytes": 902
+    },
+    "/private/tmp/aux-builder-native333-preparation-001/native333-assertions-original-launch-001/original-terminal.json": {
+      "sha256": "2c7f11ab2d62015cce681b241afc1db3b12d91c2c35a69797a12f238562aea72",
+      "bytes": 1307
+    },
+    "/private/tmp/aux-builder-native333-preparation-001/native333-assertions-original-launch-001/original-launch.json": {
+      "sha256": "3931f0aa30d1aef7770830d7e63285842b52eabf14cfc6b5b8b3e4f988f67a7e",
+      "bytes": 1165
+    }
+  },
+  "actualStatusCounts": {
+    "SUCCESS": 473,
+    "FAILURE": 43,
+    "CRASH": 8
+  },
+  "requiredCases": 524,
+  "originalBatches": 17,
+  "safetyPassed": false,
+  "originalPids": [
+    67220,
+    67226,
+    67343,
+    67363,
+    68135,
+    75717,
+    75744,
+    75752,
+    75828,
+    75845,
+    75895,
+    76031,
+    76041,
+    76054,
+    76062,
+    76077,
+    76103,
+    76211,
+    76278
+  ],
+  "originalGroups": [
+    67220,
+    67343,
+    67363,
+    68135,
+    75717,
+    75744,
+    75752,
+    75828,
+    75845,
+    75895,
+    76031,
+    76041,
+    76054,
+    76062,
+    76077,
+    76103,
+    76211,
+    76278
+  ],
+  "actualRemainingOriginalRows": [],
+  "processSnapshot": {
+    "path": "/private/tmp/aux-builder-native333-preparation-001/native333-assertions-original-terminal-ps.stdout",
+    "sha256": "93e89ecbf2b146e4860e80e4c854fb4822d386d8350cfdf9f7d49761d13beec1"
+  },
+  "slotAbsent": true,
+  "cleanupCompletedBeforeParentSlotRelease": true,
+  "appExecuted": false,
+  "qualification": false,
+  "actualRawStatusReparse": true,
+  "actualBatchStatusCounts": {
+    "cc_unittests": {
+      "SUCCESS": 13
+    },
+    "unit_tests": {
+      "SUCCESS": 213,
+      "FAILURE": 1
+    },
+    "browser_tests": {
+      "SUCCESS": 51,
+      "FAILURE": 42,
+      "CRASH": 8
+    },
+    "profile_spaces_unittests": {
+      "SUCCESS": 1
+    },
+    "owner_mutation_fence_unittests": {
+      "SUCCESS": 5
+    },
+    "blink_unittests": {
+      "SUCCESS": 53
+    },
+    "blink_platform_unittests": {
+      "SUCCESS": 9
+    },
+    "viz_unittests": {
+      "SUCCESS": 65
+    },
+    "content_unittests": {
+      "SUCCESS": 35
+    },
+    "journey_fixture_path_unittests": {
+      "SUCCESS": 6
+    },
+    "link_routing_unittests": {
+      "SUCCESS": 4
+    },
+    "auto_pip_site_policy_unittests": {
+      "SUCCESS": 3
+    },
+    "blink_common_unittests": {
+      "SUCCESS": 5
+    },
+    "components_unittests": {
+      "SUCCESS": 3
+    },
+    "interactive_ui_tests": {
+      "SUCCESS": 2
+    },
+    "components_browsertests": {
+      "SUCCESS": 1
+    },
+    "views_unittests": {
+      "SUCCESS": 4
+    }
+  },
+  "selectedCaseStatuses": {
+    "LayerTreeHostImplTest.GuestDocumentMetadataUsesActualActiveTree/CommitToActiveTree": "SUCCESS",
+    "LayerTreeHostImplTest.GuestDocumentMetadataUsesActualActiveTree/CommitToActiveTreeTreesInVizClient": "SUCCESS",
+    "LayerTreeHostImplTest.GuestDocumentMetadataUsesActualActiveTree/CommitToActiveTreeTreesInVizService": "SUCCESS",
+    "LayerTreeHostImplTest.GuestDocumentMetadataUsesActualActiveTree/CommitToPendingTree": "SUCCESS",
+    "LayerTreeHostImplTest.GuestDocumentMetadataUsesActualActiveTree/CommitToPendingTreeTreesInVizClient": "SUCCESS",
+    "NativePerformanceSwapPromiseTest.ExactSubmitTimestampSurvivesDelayedCallback": "SUCCESS",
+    "NativePerformanceSwapPromiseTest.ForeignFrameTokenNeverGetsSubmissionEvidence": "SUCCESS",
+    "NativePerformanceSwapPromiseTest.MetadataPreparationWithoutActualSubmissionRefuses": "SUCCESS",
+    "NativeStockReadySwapPromiseTest.ActivationWithoutCommitAndOccupiedMetadataRefuse": "SUCCESS",
+    "NativeStockReadySwapPromiseTest.BrokenOrDestroyedPromiseNeverRearmsLaterFrame": "SUCCESS",
+    "NativeStockReadySwapPromiseTest.ForeignActualSubmitTokenRefuses": "SUCCESS",
+    "NativeStockReadySwapPromiseTest.MetadataPreparationNeverSubstitutesForActualSubmit": "SUCCESS",
+    "NativeStockReadySwapPromiseTest.SameCommittedActivatedTokenRequiresActualSubmission": "SUCCESS",
+    "ChromeBrowserFieldTrialsTest.AuxBrowserAutoPipDefaultPreservesExplicitDisable": "SUCCESS",
+    "DownloadNaming.CompletionIdentityCannotBeReboundAfterReplacement": "SUCCESS",
+    "DownloadNaming.EveryEligibilityRefusalIsIndependent": "SUCCESS",
+    "DownloadNaming.ExclusiveMovePreservesIdentityBytesAndAttributes": "SUCCESS",
+    "DownloadNaming.NameCollisionNeverOverwritesEitherFile": "SUCCESS",
+    "DownloadNaming.RefusesChangedIdentitySizeAndOpenFiles": "SUCCESS",
+    "DownloadNaming.RefusesCrossDirectoryAndSymbolicLinks": "SUCCESS",
+    "NativeAppearanceFileChannelTest.ForeignProfileAndRetirementCannotPublish": "SUCCESS",
+    "NativeAppearanceFileChannelTest.KernelWriterLeaseOutlivesLogicalRetirementAndEndsWithOriginalState": "SUCCESS",
+    "NativeAppearanceFileChannelTest.NamedFileReplacementCannotUseOriginalDescriptor": "SUCCESS",
+    "NativeAppearanceFileChannelTest.OriginalKeyVerifiesOriginalPublishedBytesAndMutationRefuses": "SUCCESS",
+    "NativeAppearanceFileChannelTest.QueuedOriginalRecordsRetainCapabilitiesAndOrderedSequence": "SUCCESS",
+    "NativeAuxWarmFixtureLifetimeTest.DestroyedFixtureCannotReceiveDelayedOldRefusal": "SUCCESS",
+    "NativeAuxWarmFixtureLifetimeTest.DestructionResolvesPendingReplyExactlyOnceWithoutIdentity": "SUCCESS",
+    "NativeAuxWarmFixtureLifetimeTest.MissingOriginalLeaseCannotPrepareOrComplete": "SUCCESS",
+    "NativeCdpRetirementMeasurementTest.DispatchAfterRetirementCannotQualify": "SUCCESS",
+    "NativeCdpRetirementMeasurementTest.GenuineDestructionIsRetainedOnlyAfterStop": "SUCCESS",
+    "NativeCdpRetirementMeasurementTest.OriginalDeadlineAndFamilyRemainMandatory": "SUCCESS",
+    "NativeCdpRetirementMeasurementTest.PreservesOriginalClocksAndOneUseCompletion": "SUCCESS",
+    "NativeCdpRetirementMeasurementTest.ReadinessRequiresActualNewFinalDispatch": "SUCCESS",
+    "NativeCdpRetirementMeasurementTest.ReplacementLeaseCannotQualify": "SUCCESS",
+    "NativeCdpRetirementMeasurementTest.UnprovenPhysicalClockCannotQualify": "SUCCESS",
+    "NativeCommandPresentationPair.PreservesRawFractionalBoundary": "SUCCESS",
+    "NativeCommandPresentationPair.RefusesForeignNativeIdentityAndDifferentInputClock": "SUCCESS",
+    "NativeCommandPresentationPair.RefusesMissingInclusionAndFailedSubmission": "SUCCESS",
+    "NativeCommandPresentationPair.RefusesReceiptEarlierThanActualSubmissionEvenBeforeHardwareFeedback": "SUCCESS",
+    "NativeCommandPresentationSession.MissingOwnedWindowResolvesWithoutReadyOrMeasuredResult": "SUCCESS",
+    "NativeContentFrameMeasurement.DocumentChangeAndFailedCommitRetainRefusal": "SUCCESS",
+    "NativeContentFrameMeasurement.ForeignSinkAndUnrelatedTokenCannotComplete": "SUCCESS",
+    "NativeContentFrameMeasurement.MissingActualParentInclusionRefusesHardwareFeedback": "SUCCESS",
+    "NativeContentFrameMeasurement.MissingExactFrameTimesOutWithoutProxy": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.CreationDeadlineCannotBeRearmedByReady": "FAILURE",
+    "NativeCreatorCloseReceiptTest.DisconnectRetiresPendingReadyExactlyOnce": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.EarlyBlankReadyRetirementCannotReuseOriginalCreatorIterator": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.MoreThan128TerminalFamiliesReclaimOnlyAfterGenuinePageDestruction": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.OriginalConnectionCannotBeReplaced": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.OriginalResumeDeadlineCannotExtendAfterConsumption": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.OwnerMutationRefusesOriginalProofAndHumanCanClose": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.ParentRetirementRetainsOriginalRegisteredAncestry": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.ReadyRequiresOriginalCommittedNavigation": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.ReleasedChildRetainsHistoricalParentStopWithoutAuthority": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.ResumeOriginalIntentCannotConsumeReplacedStopOrReplay": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.TerminalChildCannotDiscardActiveParentHistoricalRegistration": "SUCCESS",
+    "NativeCreatorCloseReceiptTest.UnsupportedInputViewRefusesCleanupAndRetainsOriginalPage": "SUCCESS",
+    "NativeGuestPresentationFixtureTest.ClaimedMeasurementWithoutNativeInputIsRefused": "SUCCESS",
+    "NativeGuestPresentationFixtureTest.GeometryRequiresActualPixelFrameAndConnectorFloorCeilConversion": "SUCCESS",
+    "NativeGuestPresentationFixtureTest.InvalidScopeNeverAdvertisesReadyIdentity": "SUCCESS",
+    "NativeGuestPresentationFixtureTest.MissingOwnerFailureMustBeConsumedBeforeAnotherSample": "SUCCESS",
+    "NativeGuestPresentationFixtureTest.NativeInputWithoutActualPresentationCannotMeasure": "SUCCESS",
+    "NativeGuestPresentationFixtureTest.ReadyPreservesUnsignedFrameSinkIdentity": "SUCCESS",
+    "NativeLittleHardwareUpperBound.ForeignSurfacePartialShapeAndWrongRootAreRefused": "SUCCESS",
+    "NativeLittleHardwareUpperBound.MissingHardwareOrCausalOrderCannotMeasure": "SUCCESS",
+    "NativeLittleHardwareUpperBound.PositiveRetainsWholeTriggerDuration": "SUCCESS",
+    "NativeLittlePresentationFixtureLifetimeTest.OldCallbacksCannotRefuseRearmedSample": "SUCCESS",
+    "NativeLittlePresentationFixtureTest.MissingSourceNeverInventsReadyOrMeasuredIdentity": "SUCCESS",
+    "NativeLittlePresentationFixtureTest.ReentrantReadyRefusalCanDestroyOwnerWithoutAnotherReply": "SUCCESS",
+    "NativeOrganizationRuntimeTest.ExactSuccessfulPendingRefreshCountsOnce": "SUCCESS",
+    "NativeOrganizationRuntimeTest.FaultAndCachedErrorCannotClaimSourceRefresh": "SUCCESS",
+    "NativeOrganizationRuntimeTest.OrdinaryOtherFolderAndEmptyResponsesCannotClaimFreshWork": "SUCCESS",
+    "NativePerformanceMailboxFileTest.ExtraSelectorOrSkippedSequenceRefuses": "SUCCESS",
+    "NativePerformanceMailboxFileTest.FixedOwnedOperationAndHistoricalRequest": "SUCCESS",
+    "NativePerformanceMailboxFileTest.ForeignPermissionAndRootIdentityRefuse": "SUCCESS",
+    "NativePerformanceMailboxFileTest.LittleFixedOperationsCannotSelectWindowOrNavigation": "SUCCESS",
+    "NativePerformanceMailboxFileTest.MemoryOperationCannotCarryAProcessSelector": "SUCCESS",
+    "NativePerformanceMailboxFileTest.MissingFileIsIdle": "SUCCESS",
+    "NativePerformanceMailboxFileTest.PipeIsRefusedWithoutWaitingForAWriter": "SUCCESS",
+    "NativePerformanceMailboxFileTest.SymlinkCannotSelectAnyOtherFile": "SUCCESS",
+    "NativePerformanceMailboxFileTest.UnknownOperationAndRecordBoundRefuse": "SUCCESS",
+    "NativePerformanceSwapPromise.EmitsActualSubmittedTokenExactlyOnce": "SUCCESS",
+    "NativePerformanceSwapPromise.RefusesNoDamageAndPreActivationToken": "SUCCESS",
+    "NativePipAppearanceRegistry.ExplicitSwitchCannotGrantForeignProfile": "SUCCESS",
+    "NativePipAppearanceRegistry.MissingActualWidgetNeverProducesSnapshot": "SUCCESS",
+    "NativePipRegistrationLifetimeTest.ReaderDestroysRegistry": "SUCCESS",
+    "NativePipRegistrationLifetimeTest.ReaderDestroysWidget": "SUCCESS",
+    "NativePipRegistrationLifetimeTest.ReaderNestedRegisterRefusesOnlyNestedAttempt": "SUCCESS",
+    "NativePipRegistrationLifetimeTest.ReaderUnregisterCancelsPendingAttempt": "SUCCESS",
+    "NativePipRegistrationLifetimeTest.SnapshotMatcherDestroysRegistry": "SUCCESS",
+    "NativePipRegistrationLifetimeTest.ValidRegistrationAndReregistrationHaveDistinctGenerations": "SUCCESS",
+    "NativePipSolidBackingTest.AColorOnTexturedOrForeignViewCannotProveSolidMode": "SUCCESS",
+    "NativePipSolidBackingTest.ActualInstalledSolidIsPositiveAndStable": "SUCCESS",
+    "NativePipSolidBackingTest.PartialTransformedOrClippedFillIsUnknown": "SUCCESS",
+    "NativePipSolidBackingTest.ReflectedSubtreeIsNotSolidEvenWithBlackBackgroundColor": "SUCCESS",
+    "NativePipSolidBackingTest.TransparencyOrUnknownMaskIsNotAnOpaqueSolidBacking": "SUCCESS",
+    "NativePresentationTiming.RefusesFailureAndGuessedCompletion": "SUCCESS",
+    "NativePresentationTiming.RefusesNullReversedFutureAndStaleClocks": "SUCCESS",
+    "NativePresentationTiming.RetainsFractionalBudgetBoundary": "SUCCESS",
+    "NativePrivateFixtureMethodsTest.DisabledFixtureNeverAcceptsPrivateNames": "SUCCESS",
+    "NativePrivateFixtureMethodsTest.DistinctNativeGatesAndWarmBothOptIns": "SUCCESS",
+    "NativePrivateFixtureMethodsTest.ForeignUnknownAndMalformedArgumentsRefuse": "SUCCESS",
+    "NativeProcessFootprintTest.CurrentKernelProcessHasStableIdentityAndPositiveFootprint": "SUCCESS",
+    "NativeProcessFootprintTest.InvalidProcessCannotSelectTheCallerOrAnEstimate": "SUCCESS",
+    "NativeRuntimeMemoryWorkerTest.ClosedOriginalSocketRefusesOutstandingObservationAndKernel": "SUCCESS",
+    "NativeRuntimeMemoryWorkerTest.DisconnectRetiresPendingBeforeReentrantObservation": "SUCCESS",
+    "NativeRuntimeMemoryWorkerTest.FixedPreparationRetainsOriginalReadyAndRefusesOtherStatusesOrProducers": "SUCCESS",
+    "NativeRuntimeMemoryWorkerTest.FreshOriginalPeerRequestsBracketGenuineKernelReadings": "SUCCESS",
+    "NativeRuntimeMemoryWorkerTest.PriorAndWrongRequestIdsCannotCompleteFreshSecondObservation": "SUCCESS",
+    "NativeRuntimeMemoryWorkerTest.RefusedUnknownOrOversizedOriginalRecordsNeverBecomeMemoryProof": "SUCCESS",
+    "NativeRuntimeMemoryWorkerTest.ResponseAfterFiveSecondReceiptBoundCannotAttestFreshness": "SUCCESS",
+    "NativeRuntimePeerIdentityTest.NoDescriptorOrPipeCannotMintPeerIdentity": "SUCCESS",
+    "NativeRuntimePeerIdentityTest.RealAcceptedEndpointRetainsExactKernelAudit": "SUCCESS",
+    "NativeStartupLaunchLeaseFileTest.ExecutablePathReplacementCannotBorrowOriginalFd": "SUCCESS",
+    "NativeStartupLaunchLeaseFileTest.OriginalHeldFilesRemainStableButNeverAdmitFakeHelper": "SUCCESS",
+    "NativeStartupLaunchLeaseFileTest.ProfileSymlinkCannotBorrowFreshPath": "SUCCESS",
+    "NativeStartupLaunchLeaseFileTest.ReceiptInodeReplacementWithSameBytesRefused": "SUCCESS",
+    "NativeStartupLaunchLeaseFileTest.RenamedRootCannotBorrowReplacementRoot": "SUCCESS",
+    "NativeStartupLaunchReceiptTest.MissingOptInAndMissingReceiptsNeverAdmit": "SUCCESS",
+    "NativeStartupLaunchReceiptTest.UnsafeOrMalformedFixedFilesCannotAdmit": "SUCCESS",
+    "NativeStartupLaunchReceiptTest.WrongRootModeAndProfileSymlinkRefused": "SUCCESS",
+    "NativeStartupPresentationSessionLifetimeTest.DisconnectBeforeHardwareRefusesAndRetiresLateReply": "SUCCESS",
+    "NativeStartupPresentationSessionLifetimeTest.DisconnectWhileHelloPendingRefusesRetainedHardware": "SUCCESS",
+    "NativeStartupPresentationSessionLifetimeTest.LateHelloConfirmationCannotReplaceCancellation": "SUCCESS",
+    "NativeStartupPresentationSessionLifetimeTest.OwnerDestructionCancelsPendingCallback": "SUCCESS",
+    "NativeStartupPresentationSessionLifetimeTest.QueuedConfirmationAfterOriginalDeadlineRefusesBeforeDelayedTimer": "SUCCESS",
+    "NativeStartupViewport.BackingSizeAndScaleMustAgree": "SUCCESS",
+    "NativeStartupViewport.EmptyPartialForeignAndClippedClientRefused": "SUCCESS",
+    "NativeStartupViewport.NoBrowserOwnerCannotReadViewport": "SUCCESS",
+    "NativeStartupViewport.WholeClientUsesNativeRootOffset": "SUCCESS",
+    "NativeUtilityAppearanceOwnerTest.DuplicatePagesAndUnselectedLittleRefuse": "SUCCESS",
+    "NativeUtilityAppearanceOwnerTest.MissingCurrentUiRefuses": "SUCCESS",
+    "NativeUtilityAppearanceOwnerTest.ReplacementWindowOrDocumentRefuses": "SUCCESS",
+    "NativeUtilityAppearanceOwnerTest.SameClosedNormalAndLittleRecordsMatch": "SUCCESS",
+    "NativeUtilityAppearanceOwnerTest.UnknownKindMissingAndNoncanonicalIdentityRefuse": "SUCCESS",
+    "PermissionBrokerTest.ActualDenyCallbackCanDestroyManagerWithoutPostEffectAccess": "SUCCESS",
+    "PermissionBrokerTest.ActualDuplicateCallbackDestructionCannotGrantLaterDuplicate": "SUCCESS",
+    "PermissionBrokerTest.ActualGrantCallbackCanDestroyManagerWithoutPostEffectAccess": "SUCCESS",
+    "PermissionBrokerTest.BackgroundMatchingRevocationStillPreventsEffects": "SUCCESS",
+    "PermissionBrokerTest.BrowserResolverRejectsForeignBatchAndKeepsRealPendingRequest": "SUCCESS",
+    "PermissionBrokerTest.DenyIsImmediateWhileActualOwnerMutationPending": "SUCCESS",
+    "PermissionBrokerTest.DestroyedHostRetiresHeldConsentAndTokens": "SUCCESS",
+    "PermissionBrokerTest.DifferentProfileMutationDoesNotPauseThisProfile": "SUCCESS",
+    "PermissionBrokerTest.DisconnectedHostDropsHeldConsent": "SUCCESS",
+    "PermissionBrokerTest.DuplicateDecisionRevocationCancelsLaterDuplicateWithoutReplay": "SUCCESS",
+    "PermissionBrokerTest.EveryOverlapReceiptRequiredAndForeignReplayCannotRelease": "SUCCESS",
+    "PermissionBrokerTest.ExpiredReceiptCancelsExactDuplicateBatchWithoutDurableDenial": "SUCCESS",
+    "PermissionBrokerTest.FailedOwnerMutationCannotReplayConsumedAllow": "SUCCESS",
+    "PermissionBrokerTest.ForeignFreshNonceCannotGrantActualRequest": "SUCCESS",
+    "PermissionBrokerTest.GenuineHiddenReadyBatchAcceptsWithoutForegroundPrompt": "SUCCESS",
+    "PermissionBrokerTest.HeldAllowRequiresFreshInternalReceiptAfterEveryOwnerReceipt": "SUCCESS",
+    "PermissionBrokerTest.HeldDeadlineCancelsDespiteRealLeaseRenewal": "SUCCESS",
+    "PermissionBrokerTest.HiddenDeniedReplyUsesActualManagerDenialPipeline": "SUCCESS",
+    "PermissionBrokerTest.HiddenPersonRequestWaitsForAttendedNativePrompt": "SUCCESS",
+    "PermissionBrokerTest.InternalCallsCannotOriginateOwnerFence": "SUCCESS",
+    "PermissionBrokerTest.LiveFastCompletedDownloadAdmitsOnceWhileScanHistoryStaysSuppressed": "SUCCESS",
+    "PermissionBrokerTest.LiveFastDownloadEligibilityStillRefusesDangerousAndPersonPromptedFiles": "SUCCESS",
+    "PermissionBrokerTest.MatchingRevocationDropsQueuedAllow": "SUCCESS",
+    "PermissionBrokerTest.MutationAfterFreshRequestRequiresAnotherFreshRuntimeCheck": "SUCCESS",
+    "PermissionBrokerTest.NativeEffectRejectsCurrentProfileBackgroundRevocation": "SUCCESS",
+    "PermissionBrokerTest.NativeEffectRejectsExactOvernightWindowEndAfterReceiptQueue": "SUCCESS",
+    "PermissionBrokerTest.OriginalDecisionMutationCancelsUntouchedDuplicateWithoutReplay": "SUCCESS",
+    "PermissionBrokerTest.PersonPageWithoutRealLeaseStaysAttended": "SUCCESS",
+    "PermissionBrokerTest.PersonReadCannotSurviveSettledOwnerMutation": "SUCCESS",
+    "PermissionBrokerTest.PersonReadDisconnectCannotReplayOriginalReceipt": "SUCCESS",
+    "PermissionBrokerTest.PersonReadRefusesRegisteredIsolationBeforeInstall": "SUCCESS",
+    "PermissionBrokerTest.PersonReadRefusesRuntimeOwnedAndForeignProfile": "SUCCESS",
+    "PermissionBrokerTest.PersonReadRetainsOriginalOrdinaryDocument": "SUCCESS",
+    "PermissionBrokerTest.ReplacementDocumentCannotAcceptHeldReply": "SUCCESS",
+    "PermissionBrokerTest.ReplacementRequestCannotReceiveAlreadyQueuedAllow": "SUCCESS",
+    "PermissionBrokerTest.ResolverFinalBoundaryRejectsActualDocumentReplacement": "SUCCESS",
+    "PermissionBrokerTest.ResolverFinalBoundaryRejectsActualLeaseRevocation": "SUCCESS",
+    "PermissionBrokerTest.ResolverFinalBoundarySurvivesActualManagerDestruction": "SUCCESS",
+    "PermissionBrokerTest.SameLeaseRenewalKeepsImmutableRequestIdentity": "SUCCESS",
+    "PermissionBrokerTest.SupportedNativeKeysComeFromActualRequestTypeProducer": "SUCCESS",
+    "PermissionBrokerTest.UninitializedCreatedCompleteIsHistoricalAndNeverRenamedAfterInitialization": "SUCCESS",
+    "PermissionBrokerTest.UnrelatedSuccessfulMutationResumesOnlyAfterReceipt": "SUCCESS",
+    "PermissionBrokerTest.UnsupportedNativeRequestRemainsAttended": "SUCCESS",
+    "PermissionBrokerTest.VisiblePromptCanBecomeBackgroundWhileOwnerMutationHeld": "SUCCESS",
+    "PermissionBrokerTest.WrongBatchCannotCauseNativeAcceptance": "SUCCESS",
+    "NativeCommandPresentationPair.RetainsAllThreeObservedModeSourcePairs": "SUCCESS",
+    "NativeDisposableCredentialGrantTest.ActualPeerCloseRefusesAndRetiresOriginalExchange": "SUCCESS",
+    "NativeDisposableCredentialGrantTest.OriginalExpiredDeadlineIssuesNoRequest": "SUCCESS",
+    "NativeDisposableCredentialGrantTest.OriginalPrivateSocketUsesNoSigpipeAndNonblocking": "SUCCESS",
+    "NativeDisposableCredentialGrantTest.RetainedIntentCannotRefreshExpiredOriginalReservation": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.AcquireBackendSurvivesSynchronousOwnerDestruction": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.ActualExplicitRemovalRequiresAbsence": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.AtomicAddRefusesItemInsertedAfterAbsence": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.CancelReviewDoesNotRemoveOriginalItem": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.CleanupDoesNotPublishSuccessAfterOriginalOwnerDestruction": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.DroppedDebtSinkCannotDestroyExecutingAddBackend": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.ForeignReplacementRefusesDeletionAndRetainsDebt": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.LostCallerAckKeepsOriginalSavedDebt": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.ObservedOwnerAbaPermanentlyRefusesWrite": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.OriginalCurrentCallbackDestructionRefusesBeforeBackendDispatch": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.RemovalObservationRetainsDebtIfOriginalOwnerDiesDuringRead": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.RequiresOriginalAbsentItemBeforeFixedSave": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.RetiredHostCannotRearmButOriginalDebtCanCleanup": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.SavedOrUncertainAddRetainsOriginalDebtAfterOwnerDestruction": "SUCCESS",
+    "DisposableModelCredentialLeaseTest.UncertainWriteOrLockedRemovalRetainsOriginalDebt": "SUCCESS",
+    "NativePipPresentationFixtureLifetimeTest.ExactFiveSecondDeadlineNeverRefreshes": "SUCCESS",
+    "NativePipPresentationFixtureLifetimeTest.ForeignWindowDestructionCannotRetireOriginal": "SUCCESS",
+    "NativePipPresentationFixtureLifetimeTest.HideIsNotNativeWidgetDestruction": "SUCCESS",
+    "NativePipPresentationFixtureLifetimeTest.MissingSourceNeverInventsReadyOrHardware": "SUCCESS",
+    "NativePipPresentationFixtureLifetimeTest.ReadyRefusalMayDestroyFixture": "SUCCESS",
+    "NativePipPresentationFixtureLifetimeTest.ReceiptDestructionKeepsOriginalWidgetAlive": "SUCCESS",
+    "DisposableModelCredentialBackendTest.AddDestructionRetainsUncertainWriteDebt": "SUCCESS",
+    "DisposableModelCredentialBackendTest.AtomicDuplicateRaceNeverUpdatesUnknownItem": "SUCCESS",
+    "DisposableModelCredentialBackendTest.AttributesOnlyAbsentOriginalQueryThenFixedAtomicAdd": "SUCCESS",
+    "DisposableModelCredentialBackendTest.CopyDestructionRefusesWithoutReplacementAuthority": "SUCCESS",
+    "DisposableModelCredentialBackendTest.DeleteDestructionCannotReportRemovedReceipt": "SUCCESS",
+    "DisposableModelCredentialBackendTest.ExactOwnedReferenceDeleteAndAbsenceAreBothRequired": "SUCCESS",
+    "DisposableModelCredentialBackendTest.ExistingForeignItemNeverWritesOrDeletes": "SUCCESS",
+    "DisposableModelCredentialBackendTest.ForeignPersistentReferenceOrCreationWitnessRefusesCleanup": "SUCCESS",
+    "DisposableModelCredentialBackendTest.LockedAbsenceIsNotAuthorityToWrite": "SUCCESS",
+    "DisposableModelCredentialBackendTest.LockedRemovalAndRetiredProfileNeverDelete": "SUCCESS",
+    "DisposableModelCredentialBackendTest.LostCallerAckStillRetainsOriginalHandleForCleanup": "SUCCESS",
+    "DisposableModelCredentialBackendTest.MissingReturnedReferenceKeepsUncertainWriteWithoutBroadDelete": "SUCCESS",
+    "DisposableModelCredentialBackendTest.OriginalOwnerCallbackDestructionRefusesBeforeSecurity": "SUCCESS",
+    "DisposableModelCredentialBackendTest.RecursiveOwnerCheckCannotEnterSecurity": "SUCCESS",
+    "DisposableModelCredentialBackendTest.RetainedOriginalGuardianWitnessIsTheExactItemMarker": "SUCCESS",
+    "NativePersonCaptureOwnerTest.DirectOwnerRemovalInvalidatesWeakBeforeOriginalFailureReply": "SUCCESS",
+    "NativePersonCaptureOwnerTest.OriginalGuardMayDestroyItsController": "SUCCESS",
+    "NativePersonCaptureOwnerTest.ReservesBeforeOriginalGuardCanReenter": "SUCCESS",
+    "NativeDisposableCredentialProfileTest.ActualProfileDestructionRetiresRetainedWorkerMetadata": "SUCCESS",
+    "NativeDisposableCredentialProfileTest.HostReconnectionRetainsExactOriginalWriteRetirementState": "SUCCESS",
+    "NativeDisposableCredentialProfileTest.NormalProfileHasNoWriteRetirementUntilOriginalAdmission": "SUCCESS",
+    "AuxAutoPictureInPictureEligibilityBrowserTest.CurrentActiveOwnerCannotAutoEnter": "SUCCESS",
+    "AuxAutoPictureInPictureEligibilityBrowserTest.ExactSiteOptInIsRequired": "SUCCESS",
+    "AuxAutoPictureInPictureEligibilityBrowserTest.NativeProtectedDocumentRefusesEntry": "FAILURE",
+    "AuxAutoPictureInPictureEligibilityBrowserTest.NativeSecurityScopeRefusesEntry": "SUCCESS",
+    "AuxAutoPictureInPictureEligibilityBrowserTest.RuntimeOwnedPageCannotAutoEnter": "SUCCESS",
+    "AuxAutoPictureInPictureEligibilityBrowserTest.VisibleSplitPaneIsNotAHiddenCandidate": "SUCCESS",
+    "AuxOrdinaryAutoPictureInPictureBrowserTest.LargestVisibleOrdinaryPlayerWins": "SUCCESS",
+    "AuxOrdinaryAutoPictureInPictureBrowserTest.OrdinarySingleVideoNeedsNoWebsiteHandler": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.CurrentActiveOwnerRefusesHeldAutomaticPayload": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.CurrentAllowedOwnerCompletesActualQueuedAutomaticSession": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.DebuggerInputRoutingDoesNotCreateAPersonReceipt": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.DevToolsActivationCannotEraseAutomaticDocumentPiPLineage": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.DroppedActualAutomaticPayloadRefusesWithoutWindow": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.ExpiredAutomaticActivationCannotBecomeManualEntry": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.ExtensionActivationCannotMintNativeManualReceipt": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.GenuineLaterInputReceiptCannotReplayAfterManualEffect": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.NativeManualDocumentSupersedesQueuedAutomaticWithoutClockAdvance": "FAILURE",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.NativeProtectionInstalledBeforeActualAutomaticEffectRefusesWindow": "FAILURE",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.NativeSecurityScopeBeforeActualAutomaticEffectRefusesWindow": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.NewDevToolsActivationCannotEraseAutomaticNativeContext": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.PausedPlayerBeforeActualAutomaticEffectRefusesWindow": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.ReplacedDocumentRefusesHeldAutomaticPayload": "FAILURE",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.RuntimeOwnershipBeforeActualAutomaticEffectRefusesWindow": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.SiteAskRevocationBeforeActualAutomaticEffectRefusesWindow": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.SiteBlockBeforeActualAutomaticEffectRefusesWindow": "SUCCESS",
+    "AuxQueuedAutomaticPictureInPictureBrowserTest.VisibleStageBeforeActualAutomaticEffectRefusesWindow": "SUCCESS",
+    "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.AsyncRegisteredActionRemovalRetiresHeldAutomaticAuthority": "SUCCESS",
+    "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.AsyncRegisteredHandlerExpiryCannotBecomeManualEntry": "SUCCESS",
+    "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.AsyncRegisteredHandlerSiteRevocationCannotUseManualEntry": "SUCCESS",
+    "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.AutomaticDocumentHandlerRefusesButRealManualDocumentPipWorks": "SUCCESS",
+    "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.CurrentAsyncRegisteredHandlerUsesExactAutomaticAuthority": "SUCCESS",
+    "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.LegacyMissingTicketCannotEnterVideoOrMintManualActivation": "SUCCESS",
+    "LinkRouterBrowserTest.ExactOwnerDrainIsAtomicAndCloseClearsHeldURLs": "SUCCESS",
+    "LinkRouterBrowserTest.FullReceiptQueueRefusesBeforeNavigation": "SUCCESS",
+    "LinkRouterBrowserTest.MonotonicExpiryAndDuplicateResolveDoNotOpen": "SUCCESS",
+    "LinkRouterBrowserTest.PrivateOwnerCannotReadOrResolveRegularQueue": "SUCCESS",
+    "LinkRouterBrowserTest.RevokedAuthorityRefusesBeforeProfileOrWindowDispatch": "SUCCESS",
+    "LittleCreationBrowserTest.ReturnsActualOwner": "SUCCESS",
+    "NativeCreatorCloseReceiptBrowserTest.AttachRetirementCallbackDestroysOriginalWebContents": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.AttachRetirementCallbackReplacesSameUrlDocument": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.ConnectionRetirementRefusesOriginalAndHumanCanClose": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.FinalRealPredicateUserdataDestructionRefusesWithoutDeletion": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.GenuineBeforeUnloadContinuationDeletesOnlyOriginal": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.GenuineCreationMacAckAndFinalDeletionAreOneUse": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.GenuineLocalPersonReturnControlCreatesFreshOneUseNativeContext": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.GenuineParentOwnerStopRetiresOnlyRegisteredDescendantAndResumeIsOneUse": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.GenuineStartReadyTakeProducesCommittedCloseOnlyReceipt": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.HeldBeforeUnloadOwnerRetirementCannotDeleteOriginal": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.IndependentHumanCloseNeverBecomesAgentSuccess": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.NativeInstalledLeaseWithoutRuntimeAckRetiresToCloseOnly": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.NativePersonRetirementRefusesOriginalCleanup": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.NativeStartDeadlineCannotBeExtendedByDelayedTake": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.ObserverRetirementRefusesBeforeDestroyTabFeatures": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.SameProfileHostRecreationRetiresOriginalAuthority": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.TakeoverPreparationWaitsForRealOriginalFinalDispatch": "FAILURE",
+    "NativeCreatorCloseReceiptBrowserTest.UserdataRemovalIsNotSuccessfulWebContentsDestruction": "FAILURE",
+    "NativeInputAcknowledgementBrowserTest.DestructionRefusesOriginalWaiterBeforeLateAckRelease": "SUCCESS",
+    "NativeInputAcknowledgementBrowserTest.GenuineAckReleaseAdmitsOnlyOriginalDocument": "SUCCESS",
+    "NativeInputAcknowledgementBrowserTest.GenuineHumanDocumentReadinessCannotMintAgentAttachment": "SUCCESS",
+    "NativeInputAcknowledgementBrowserTest.ReplacementRetiresWaiterAndHeldOriginalCompletion": "SUCCESS",
+    "NativePerformanceMailboxBrowserTest.ForeignNormalAndOtherLittleNeverBorrowCleanupPermit": "SUCCESS",
+    "NativePerformanceMailboxBrowserTest.OnlyExactCreatedLittleCanCoexistWithOrigin": "SUCCESS",
+    "NativePersonObserverControllerBrowserTest.ActualEightPendingHostReadsRefuseNinthAndRetirementClearsAll": "FAILURE",
+    "NativePersonObserverControllerBrowserTest.ClosedRequestRejectsCallerScriptAndValueAttribute": "FAILURE",
+    "NativePersonObserverControllerBrowserTest.FixedReadReturnsOriginalDocumentWithoutFieldValues": "FAILURE",
+    "NativePersonObserverControllerBrowserTest.NativeReadSessionRetainsOriginalDocumentAndConnection": "FAILURE",
+    "NativePersonObserverControllerBrowserTest.NavigationRetiresOriginalBeforeReplacementDocumentRead": "FAILURE",
+    "NativePersonObserverControllerBrowserTest.OriginalDisconnectCannotClearReplacementRead": "FAILURE",
+    "NativePersonObserverControllerBrowserTest.OriginalHostPublicationIsIdempotentAndRetiredGenerationRefuses": "FAILURE",
+    "NativePersonObserverControllerBrowserTest.OriginalRetirementCallbackRetainsReentrantReplacementRead": "FAILURE",
+    "NativePersonObserverControllerBrowserTest.ProtectedDocumentRefusesBeforeReturningEchoes": "SUCCESS",
+    "NativePersonObserverControllerBrowserTest.SettledOwnerMutationRetiresPendingOriginalRead": "FAILURE",
+    "NativePersonObserverControllerBrowserTest.SettledOwnerMutationRotatesNativeReadSession": "FAILURE",
+    "NativeRecorderControllerBrowserTest.FixedWorldCapturesTrustedInputAndRejectsProgrammaticClick": "FAILURE",
+    "NativeRecorderControllerBrowserTest.OldRecordingReceiptCannotStopOrDrainReplacement": "FAILURE",
+    "NativeRecorderControllerBrowserTest.PreservesTrustedInputAndImmediateSubmitBeforeNavigation": "FAILURE",
+    "NativeRecorderControllerBrowserTest.RefusesForeignConnectionAndRuntimeOwnedPage": "FAILURE",
+    "NativeRecorderControllerBrowserTest.RetiredPendingReplyCannotOverwriteReplacementCleanup": "CRASH",
+    "NativeRecorderControllerBrowserTest.SettledOwnerMutationCannotReplayPersonRecorderReceipt": "FAILURE",
+    "ResultPreviewBrowserTest.InvalidTokenCannotCommitPreview": "SUCCESS",
+    "ResultPreviewBrowserTest.OriginalParentLoadsHaveDistinctOpaqueDestinationNonces": "FAILURE",
+    "ResultPreviewBrowserTest.OtherSchemesKeepDefaultOriginAdmission": "SUCCESS",
+    "ResultPreviewBrowserTest.ReplacedOriginalParentCannotReuseOriginalToken": "FAILURE",
+    "ResultPreviewBrowserTest.RevocationAfterResponseCancelsOriginalBeforeCommit": "SUCCESS",
+    "ResultPreviewBrowserTest.ScriptRunsButCannotReachBridgeStorageOrNetwork": "SUCCESS",
+    "SurfaceMediaBrowserTest.NewMainDocumentClearsVideo": "SUCCESS",
+    "SurfaceMediaBrowserTest.VideoSurvivesPauseAndClearsOnDestroy": "SUCCESS",
+    "NativePersonObserverControllerBrowserTest.HostFirstDestructionRetiresExistingControllerAuthority": "SUCCESS",
+    "NativePersonObserverControllerBrowserTest.ProfileUserDataClearRetiresOriginalPublishedConnection": "SUCCESS",
+    "NativePersonObserverControllerBrowserTest.UnpublishedHostUserDataClearDoesNotCreateAuthority": "SUCCESS",
+    "NativePersonCaptureControllerBrowserTest.ActiveTransitionAndAnimationCannotExposeEditablePixels": "FAILURE",
+    "NativePersonCaptureControllerBrowserTest.ActualViewportChangeAfterCopyRefusesExportAndRestoresMask": "CRASH",
+    "NativePersonCaptureControllerBrowserTest.ForeignStyleRetainsMaskRestorationDebtAndBlocksNextCapture": "CRASH",
+    "NativePersonCaptureControllerBrowserTest.NewEditableMutationRefusesPixelsButRestoresOriginalMask": "CRASH",
+    "NativePersonCaptureControllerBrowserTest.OOPIFOriginalChosenChildKeepsPublicPixelsAndMasksEditablePixels": "CRASH",
+    "NativePersonCaptureControllerBrowserTest.OriginalDocumentAndWidgetRetirementDoesNotRestoreReplacementDocument": "CRASH",
+    "NativePersonCaptureControllerBrowserTest.RealCustomElementForeignStyleRetainsOriginalDebt": "SUCCESS",
+    "NativePersonCaptureControllerBrowserTest.RealCustomElementMaskReactionCannotInsertUnmaskedEditableContent": "CRASH",
+    "NativePersonCaptureControllerBrowserTest.RestorationAuthorReactionDoesNotOverwriteLaterOriginalNode": "FAILURE",
+    "NativePersonCaptureControllerBrowserTest.SameWidgetFramesMaskEditablePixelsAndRestoreOriginalStyles": "FAILURE",
+    "NativePersonCaptureControllerBrowserTest.StyleABABeforeRestoreRetainsOriginalDebt": "CRASH",
+    "ProfileMoveDocumentTest.RechecksCapturedDocumentAfterDestinationLoad": "SUCCESS",
+    "OwnerMutationFenceTest.BoundRefusesWithoutReplacingExistingTokens": "SUCCESS",
+    "OwnerMutationFenceTest.FailureRetiresTheAnswerEpochBeforeNotification": "SUCCESS",
+    "OwnerMutationFenceTest.OverlappingMutationsRequireEveryExactReceipt": "SUCCESS",
+    "OwnerMutationFenceTest.ProfileInstancesCannotReleaseEachOther": "SUCCESS",
+    "OwnerMutationFenceTest.ReceiptObserverMayBeginAnotherMutation": "SUCCESS",
+    "All/HTMLVideoElementTest.AutoPipRefusesPauseHiddenAndDisabledVideo/Baseline": "SUCCESS",
+    "All/HTMLVideoElementTest.AutoPipRefusesPauseHiddenAndDisabledVideo/RasterInducingScroll": "SUCCESS",
+    "All/HTMLVideoElementTest.AutoPipRefusesPauseHiddenAndDisabledVideo/SpeculativeImageDecodes": "SUCCESS",
+    "All/HTMLVideoElementTest.AutoPipUsesCurrentTransformedVisibleLayout/Baseline": "SUCCESS",
+    "All/HTMLVideoElementTest.AutoPipUsesCurrentTransformedVisibleLayout/RasterInducingScroll": "SUCCESS",
+    "All/HTMLVideoElementTest.AutoPipUsesCurrentTransformedVisibleLayout/SpeculativeImageDecodes": "SUCCESS",
+    "MediaSessionTest.AutomaticHandlerDoesNotMintSyntheticActivation": "SUCCESS",
+    "MediaSessionTest.MissingAutomaticHandlerTicketCannotMintManualActivation": "SUCCESS",
+    "NativeCommandResultsWitnessTest.ActualCurrentGenerationAndVisibleSourceRequired": "SUCCESS",
+    "NativeCommandResultsWitnessTest.ActualInitialZeroGenerationCanAdvanceToFirstInput": "SUCCESS",
+    "NativeCommandResultsWitnessTest.InputEchoAndABAOrSkippedGenerationCannotCount": "SUCCESS",
+    "NativeCommandResultsWitnessTest.UnknownAndNoncanonicalGenerationRefuse": "SUCCESS",
+    "NativeCommandResultsWitnessTest.WrongProviderAndHiddenRowCannotCount": "SUCCESS",
+    "NativeGuestStageWitnessTest.ActualNextSelectedPageRequired": "SUCCESS",
+    "NativeGuestStageWitnessTest.CanonicalRoundedPaneAndInnerGuestAreDistinct": "SUCCESS",
+    "NativeGuestStageWitnessTest.LittleRequiresExplicitNativeSurfaceKindAndRealCommittedIdentities": "SUCCESS",
+    "NativeGuestStageWitnessTest.MatchingDropAndGeometryAreDistinct": "SUCCESS",
+    "NativeGuestStageWitnessTest.SamePageABAAndSkippedGenerationCannotCount": "SUCCESS",
+    "NativeGuestStageWitnessTest.UnknownHiddenAndOffViewportEmbedsRefuse": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.ActualCompletedTaskRetainsWorkAfterEndMark": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.ActualSaturatedLongTaskBufferRefuses": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.ExactFreshMeasureRequiredAndSuccessfulReadCannotReplay": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.ExistingMeasureCannotBecomeFreshWork": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.ForeignDocumentCannotArmOrRead": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.FreshMeasureReusingOldMarksCannotCount": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.LiveCurrentRowsAndNativeTaskBoundaryAreBothRequired": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.LiveMetadataCannotReplaceActualCommittedRows": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.MissingOrEmptyCompletionCannotBecomeWork": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.OtherMetricAndDocumentChangeCannotCount": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.RealMojoReadSerializesBeforeReadOncePipeRetirement": "SUCCESS",
+    "NativeOrganizationWorkWitnessTest.TwoFreshMeasuresCannotBeMisattributedToOneCycle": "SUCCESS",
+    "NativeStartupEarlyEligibilityTest.ForeignDocumentCannotBorrowAuxMarkFreeState": "SUCCESS",
+    "NativeStartupEarlyEligibilityTest.HiddenDisabledOrUnmarkedInstalledInstanceCannotArmLate": "SUCCESS",
+    "NativeStartupEarlyEligibilityTest.PriorMarkRefusesEvenRemovedOrRemountedComposer": "SUCCESS",
+    "NativeStartupEarlyEligibilityTest.UnmarkedOriginalDocumentCanArmBeforeComposerExists": "SUCCESS",
+    "NativeStartupFrameMeasurementLifetimeTest.NoWidgetCannotAuthorizePreparationOrEmitSample": "SUCCESS",
+    "NativeStartupFrameMeasurementLifetimeTest.RetiredCallbacksCannotRefuseFreshSequence": "SUCCESS",
+    "NativeStartupFrameTimingTest.ColdRequiresExactOriginalLaunchEndpoint": "SUCCESS",
+    "NativeStartupFrameTimingTest.MissingAndForeignPurposesRefuse": "SUCCESS",
+    "NativeStartupFrameTimingTest.RegistrationCannotPrecedeInputOrBeFuture": "SUCCESS",
+    "NativeStartupFrameTimingTest.WarmMustBeLaterThanRetainedLaunch": "SUCCESS",
+    "NativeStartupInteractiveWitnessTest.ForeignDocumentAndAmbiguousInputRefused": "SUCCESS",
+    "NativeStartupInteractiveWitnessTest.GenuineCurrentMarkAndEnabledInputMatch": "SUCCESS",
+    "NativeStartupInteractiveWitnessTest.InheritedDisabledInvisibleAndCoveredInputRefused": "SUCCESS",
+    "NativeStartupInteractiveWitnessTest.PriorDocumentMarkCannotAuthorizeRemountedComposer": "SUCCESS",
+    "PictureInPictureControllerTestWithWidget.EmptyAutomaticTicketRejectsBeforeServiceAndKeepsContext": "SUCCESS",
+    "PictureInPictureControllerTestWithWidget.MissingAutomaticTicketRemainsFailClosedContext": "SUCCESS",
+    "PictureInPictureControllerTestWithWidget.NewerActualManualActivationRetainsManualRoute": "SUCCESS",
+    "PictureInPictureControllerTestWithWidget.PreexistingActivationCannotRelabelAutomaticContext": "SUCCESS",
+    "WebNativeStopEventTest.DifferentOriginalRunRefusesAndOutsideDispatchStaysEmpty": "SUCCESS",
+    "WebNativeStopEventTest.GenericInputDoesNotBecomeNativeFromTrustedClick": "SUCCESS",
+    "WebNativeStopEventTest.OriginalClickUsesInstalledV8WrapperAndConsumesOnce": "SUCCESS",
+    "WebNativeStopEventTest.ScriptDispatchCannotBorrowAnUnconsumedOriginalToken": "SUCCESS",
+    "RenderFrameMetadataObserverImplTest.ScopedGuestReportsEveryExactToken": "SUCCESS",
+    "WidgetCompositorNativeCreatedTest.MissingOrUnsupportedActualWidgetNeverClaimsReady": "SUCCESS",
+    "WidgetCompositorNativeGuestTest.MissingActualWidgetRefusesBothPrivateRoutes": "SUCCESS",
+    "WidgetCompositorNativeGuestTest.UnsupportedClientCannotArmOrClaimReadiness": "SUCCESS",
+    "WidgetCompositorNativePresentationTest.MissingActualWidgetRefuses": "SUCCESS",
+    "WidgetCompositorNativePresentationTest.UnsupportedWidgetClientRefuses": "SUCCESS",
+    "AuxPersonCaptureSwapPromiseTest.ActualWillSwapTokenOnlyOnce": "SUCCESS",
+    "AuxPersonCaptureSwapPromiseTest.EveryNonSubmissionRefuses": "SUCCESS",
+    "AuxPersonCaptureSwapPromiseTest.MissingTokenAndDestroyedCallbackRefuse": "SUCCESS",
+    "NativeGuestCoverage.AuthenticatedHeaderShiftedRoundedPaneOnly": "SUCCESS",
+    "NativeGuestCoverage.MasksAndUnsupportedTransformsNeverCount": "SUCCESS",
+    "NativeGuestCoverage.MissingShellPlacementAndUnboundShapeNeverCount": "SUCCESS",
+    "NativeGuestCoverage.UsesRealTransformedChildInsteadOfPositiveClip": "SUCCESS",
+    "NativeGuestInclusion.DrawHierarchyWithoutEmittedVisibleContentCannotCount": "SUCCESS",
+    "NativeGuestInclusion.MissingPaneAndWrongLocalSurfaceCannotCount": "SUCCESS",
+    "NativeGuestInclusion.OlderShellTokenAndFailureFeedbackCannotCount": "SUCCESS",
+    "NativeGuestInclusion.ReusedGuestTokensCanCountOnlyInExactNewDisplayGroup": "SUCCESS",
+    "NativeShellStartupInclusion.EmittedHierarchyAloneAndSoftwareFeedbackNeverCount": "SUCCESS",
+    "NativeShellStartupInclusion.ExactOwnedFullShellStillRequiresHardwareAndIsOneUse": "SUCCESS",
+    "NativeShellStartupInclusion.GuestDefaultCannotBorrowEmptyStartupScope": "SUCCESS",
+    "NativeShellStartupInclusion.MissingSizeBoundsAndForeignSinkNeverCount": "SUCCESS",
+    "NativeShellStartupInclusion.PartialTinyMaskedAndTransparentEmissionNeverCount": "SUCCESS",
+    "NativeShellStartupInclusion.UnknownKindAndStartupWithGuestsNeverCount": "SUCCESS",
+    "NativeShellStartupInclusion.WrongLocalSurfaceTokenOrPlacementNeverCount": "SUCCESS",
+    "NativeStartupFirstHardwareRetentionTest.BoundedOverflowNeverEvictsIntoLaterGreenEvidence": "SUCCESS",
+    "NativeStartupFirstHardwareRetentionTest.CancelRetiresPendingReplyAndDelayedOriginalFeedback": "SUCCESS",
+    "NativeStartupFirstHardwareRetentionTest.DestroyedDisplayOwnerCannotDeliverIntoReplacement": "SUCCESS",
+    "NativeStartupFirstHardwareRetentionTest.FirstPartialPlacementCannotBeReplacedByFullRedraw": "SUCCESS",
+    "NativeStartupFirstHardwareRetentionTest.LaterRedrawCannotReplaceOriginalPendingGroup": "SUCCESS",
+    "NativeStartupFirstHardwareRetentionTest.MissingOriginalGroupTimesOutWithoutLaterFrameGuess": "SUCCESS",
+    "NativeStartupFirstHardwareRetentionTest.OriginalGroupBeforeJoinRetainsExactFullHardware": "SUCCESS",
+    "NativeStartupFirstHardwareRetentionTest.OriginalSoftwareFeedbackRefusesLaterHardwareReplacement": "SUCCESS",
+    "NativeStartupFirstHardwareRetentionTest.RegistrationAfterMutationOrForeignNonceRefuses": "SUCCESS",
+    "NativeStockBackingReadTest.ExactOpaqueSamples": "SUCCESS",
+    "NativeStockBackingReadTest.IncompleteOrEmptyCannotQualify": "SUCCESS",
+    "NativeStockBackingReadTest.RoundedNearOpaqueCannotQualify": "SUCCESS",
+    "NativeStockBackingReadTest.TransparentOrNonfiniteCannotQualify": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.ActualReadbackClassificationSurvivesOriginalJoin": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.CancelInvalidatesDelayedFeedbackAndRepliesOnce": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.CancelledRasterCallbackCannotCompleteOldGroup": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.ExactOriginalRootGroupBeforeJoinSurvivesLateJoin": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.FailedRasterCannotBorrowLaterRedraw": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.ForeignRasterTokenAndDuplicateReceiptRefuse": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.PartialFirstGroupCannotBeReplacedByLaterFullRedraw": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.QueuedJoinPastAbsoluteDeadlineRefusesBeforeTimerRuns": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.QueuedRasterPastDeadlineCannotBeatDelayedTimer": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.RasterAndHardwareRequireSameOriginalGroupInEitherArrivalOrder": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.ReadyBeforeRegistrationOrReversedSubmissionRefuses": "SUCCESS",
+    "NativeStockFirstHardwareRetentionTest.SoftwareOriginalCannotBeReplacedByHardwareRedraw": "SUCCESS",
+    "NativeStockGraphiteBackingTest.ActualAcquiredPartialAlphaRefuses": "SUCCESS",
+    "NativeStockGraphiteBackingTest.ActualAcquiredStoredOpaqueAlphaQualifies": "SUCCESS",
+    "NativeStockGraphiteBackingTest.ActualConsumedRGBXUsesNoAlphaSemantics": "SUCCESS",
+    "NativeStockGraphiteBackingTest.OpaqueMetadataCannotReplaceStoredAlpha": "SUCCESS",
+    "NativeStockRasterDrawTest.BoundingBoxesCannotHideHole": "SUCCESS",
+    "NativeStockRasterDrawTest.CompleteActualPartsCoverRoot": "SUCCESS",
+    "NativeStockRasterDrawTest.ContextLossCannotBorrowSolidBacking": "SUCCESS",
+    "NativeStockRasterDrawTest.DroppedGpuTaskRefusesOnce": "SUCCESS",
+    "NativeStockRasterDrawTest.OriginalBackingReadRequiredForImageHole": "SUCCESS",
+    "NativeStockRasterDrawTest.ReentrantReadRetiresPackWithoutBorrowingMemberLifetime": "SUCCESS",
+    "NativeStockRasterDrawTest.SourceOverwriteCannotBorrowOpaqueBackground": "SUCCESS",
+    "NativeStockRasterDrawTest.UnsupportedCompositionCannotBorrowOpaqueBackground": "SUCCESS",
+    "NativeStockRootCoverageTest.DestructiveForegroundInvalidatesEarlierFullBacking": "SUCCESS",
+    "NativeStockRootCoverageTest.EntirePassBoundRefusesEvenWithAnEarlyFullBacking": "SUCCESS",
+    "NativeStockRootCoverageTest.ExactAdjacentPaintTilesCoverWithoutBoundingBoxInference": "SUCCESS",
+    "NativeStockRootCoverageTest.RealClipAndTranslucentPaintCannotFillMissingArea": "SUCCESS",
+    "NativeStockRootCoverageTest.RoundedMaskCannotProveRectangularRootCoverage": "SUCCESS",
+    "NativeStockRootCoverageTest.TransformsAndNonSourceBlendNeverBecomeFullBacking": "SUCCESS",
+    "SkiaOutputSurfaceImplTest.NativeStockFullOriginalGpuPaintRepliesOpaque": "SUCCESS",
+    "SkiaOutputSurfaceImplTest.NativeStockPartialPackCannotBorrowActualFullGpuPaint": "SUCCESS",
+    "SurfaceAggregatorValidSurfaceTest.AuxPersonCaptureCannotBorrowUnusedPassChild": "SUCCESS",
+    "SurfaceAggregatorValidSurfaceTest.AuxPersonCaptureRefusesOlderOrForeignResolvedChild": "SUCCESS",
+    "SurfaceAggregatorValidSurfaceTest.AuxPersonCaptureRequiresActualChosenChildFrame": "SUCCESS",
+    "AuxPersonCaptureCopyRequestTest.OriginalFrameRequirementsAreClosedAndBounded": "SUCCESS",
+    "AuxPersonCaptureCopyRequestTest.SameOriginalFrameSinkCannotAssertTwoSurfaceGenerations": "SUCCESS",
+    "AutomaticPictureInPictureEffectTest.ForgedAutomaticTicketCannotEnterManualPath": "SUCCESS",
+    "AutomaticPictureInPictureEffectTest.MatchingAutomaticTicketEntersOriginalControllerOnce": "SUCCESS",
+    "AutomaticPictureInPictureEffectTest.QueuedAutomaticSessionCannotExtendSelectionDeadline": "SUCCESS",
+    "AutomaticPictureInPictureEffectTest.QueuedAutomaticSessionCannotUseRetiredOwner": "SUCCESS",
+    "AutomaticPictureInPictureEffectTest.RefusalDuringNativeDelegateQueryPrecedesWindowEffect": "SUCCESS",
+    "ChildProcessTaskPortProviderTest.GenericAndNonTaskPortsNeverMintOwnedAudit": "SUCCESS",
+    "ChildProcessTaskPortProviderTest.LatePortReplyCannotRelabelNewHost": "SUCCESS",
+    "ChildProcessTaskPortProviderTest.OwnedAuditUsesRealKernelTaskAndExactHost": "SUCCESS",
+    "ChildProcessTaskPortProviderTest.PublicOwnedIdentityRejectsInvalidNativeIdentity": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.AutomaticTicketHasOneUse": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.CurrentOwnerRefusalAfterTakeBlocksEffect": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.EqualAreasHaveStablePlayerOrder": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.ExpiredSelectionRefusesDelayedReply": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.ExplicitFeatureDisableRefusesEntry": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.ForeignTicketCannotConsumeSelectedTicket": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.GeometryChangeRefusesFinalDispatch": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.LargestDisplayedAreaWins": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.LaterSelectionInvalidatesTakenTicket": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.NavigationRefusesDelayedReply": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.OrdinarySingleVideoNeedsNoSiteHandler": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.OriginalSelectionDeadlineBoundsQueuedEffect": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.OwnerEligibilityRevocationRefusesDelayedReply": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.PausedAndRendererRefusedCandidatesCannotWin": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.RegisteredSiteHandlerRetainsOriginalDispatch": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.RemovedPlayerRefusesDelayedReply": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.RemovedSelectedPlayerBlocksTakenTicket": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.TakenTicketCannotSurviveDocumentReplacement": "SUCCESS",
+    "MediaSessionAutoPipSelectionTest.TicketCannotAuthorizeAnotherPlayer": "SUCCESS",
+    "MediaSessionImplTest.ExactNativeUIReceiptExpiresBeforeManualInvocation": "SUCCESS",
+    "MediaSessionImplTest.NativeUIReceiptCannotFallBackAfterDocumentReplacement": "SUCCESS",
+    "MediaSessionImplTest.NativeUIReceiptIsOneUseAtFinalManualEffect": "SUCCESS",
+    "NativeGuestFrameMetadata.AbsentMarkerCannotBorrowPriorDocument": "SUCCESS",
+    "NativeGuestFrameMetadata.ExactActivatedTupleAndScopeReset": "SUCCESS",
+    "AuxPersonCaptureActivationTest.OriginalQueueRequiresSubmittedToken": "SUCCESS",
+    "AuxPersonCaptureActivationTest.ZeroAndRetiredOriginalQueueRefuse": "SUCCESS",
+    "JourneyFixturePathTest.AcceptsOnlyOwnedPrivateCanonicalImmediateChild": "SUCCESS",
+    "JourneyFixturePathTest.AppearanceRequiresOptInAndExactPrivateProfile": "SUCCESS",
+    "JourneyFixturePathTest.CapturedObservationMetadataRefusesReplacedRoot": "SUCCESS",
+    "JourneyFixturePathTest.CapturedObservationMetadataRemainsValidWithoutUIResolution": "SUCCESS",
+    "JourneyFixturePathTest.RefusesTraversalNestedMissingRelativeAndTrailingRoots": "SUCCESS",
+    "JourneyFixturePathTest.ScopedRealMetadataDrivesDefaultGettersAndRestoresAdmission": "SUCCESS",
+    "LinkRoutingTest.OpenerOAuthPostPrivateAndProtectedFlowsStayInTheirProfile": "SUCCESS",
+    "LinkRoutingTest.PrecedenceAndOrderUseTheActualMatcher": "SUCCESS",
+    "LinkRoutingTest.SourceAndSenderRestrictionsAndFallback": "SUCCESS",
+    "LinkRoutingTest.UnsafeAndMalformedUrlsCannotMatch": "SUCCESS",
+    "AutoPipSitePolicyTest.CallsNeverAutoPip": "SUCCESS",
+    "AutoPipSitePolicyTest.LookalikesKeepDefaultPolicy": "SUCCESS",
+    "AutoPipSitePolicyTest.YouTubeAllowsInaudiblePlayback": "SUCCESS",
+    "UserActivationStateTest.ClearingTest": "SUCCESS",
+    "UserActivationStateTest.ConsumptionPlusExpirationTest": "SUCCESS",
+    "UserActivationStateTest.ConsumptionTest": "SUCCESS",
+    "UserActivationStateTest.ExpirationTest": "SUCCESS",
+    "UserActivationStateTest.GenerationAdvancesOnlyThroughActualActivationProducer": "SUCCESS",
+    "MediaSessionNotificationItemTest.ActualInputDelegationPrecedesControllerIPC": "SUCCESS",
+    "MediaSessionNotificationItemTest.FrozenItemCannotPublishInputOrSendAction": "SUCCESS",
+    "MediaSessionNotificationItemTest.ReentrantInputObserverMayDestroyItem": "SUCCESS",
+    "MediaDialogViewBrowserTest.ActualNativeViewsClickRetainsManualPiPAfterAutomaticContext": "SUCCESS",
+    "MediaDialogViewBrowserTest.SyntheticViewsEventCannotMintManualPiPAuthority": "SUCCESS",
+    "SurfaceEmbedBrowserTest.DestroyedOriginalGuestCannotAttachOrRetainPreviousGuest": "SUCCESS",
+    "RootViewTest.NativeRootCompletionMayDestroyOriginalWidget": "SUCCESS",
+    "RootViewTest.NativeRootHiddenPaintCannotProduceReadiness": "SUCCESS",
+    "RootViewTest.NativeRootPaintObservedAfterOriginalChildren": "SUCCESS",
+    "RootViewTest.NativeRootPartialPaintDoesNotQualifyAndIsOneUse": "SUCCESS"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "scope": "SOURCE PROPOSAL ONLY: not adopted or native-ready; actual cancellation cause remains unproved",
+  "source": "chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc",
+  "beforeSha256": "814838f595f2fe94383a87c2860da537f39adff8243273ed4df0200069121f3a",
+  "resultSha256": "c0b8742f216cf5d2a928308c8be4733c7fcd4a3d0bf4d47b5e0b597fda90489f",
+  "patchSha256": "e0903017699ab63419baafaa2d664976c4ae20fe6c2e08f2f69e03350b5fbf48",
+  "installedApiPins": [
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/runtime_host.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-empty-policy-bootstrap-proposal-001/installed-api/chrome/browser/ui/aux/runtime_host.h",
+      "sha256": "db33df94f826342a934b260847bd5ff4db66ff1e75a00e03da1a22947cc6ae37"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/runtime_host.cc",
+      "saved": "/private/tmp/aux-builder-native333-capture-empty-policy-bootstrap-proposal-001/installed-api/chrome/browser/ui/aux/runtime_host.cc",
+      "sha256": "8bc879827309beca812a4c2d9a39a7db4b89cf52845de5b2c8f4d8dcdee6678a"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/zap_controller.cc",
+      "saved": "/private/tmp/aux-builder-native333-capture-empty-policy-bootstrap-proposal-001/installed-api/chrome/browser/ui/aux/zap_controller.cc",
+      "sha256": "836e5bbccc0a7c96638ce152c9bf397419037dec23c599eb9d06edf39e90f099"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/profiles/profile_manager.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-empty-policy-bootstrap-proposal-001/installed-api/chrome/browser/profiles/profile_manager.h",
+      "sha256": "cba93d3f2d0c1dc9e6a0be507527543e6d5d5433bd0bd521b29f019c61ad7a9a"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/profiles/profile_manager_observer.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-empty-policy-bootstrap-proposal-001/installed-api/chrome/browser/profiles/profile_manager_observer.h",
+      "sha256": "23592d147d15cea6e9974176e5afb355ed8551f147d94466bfe6db74cebb6058"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/components/keyed_service/content/browser_context_dependency_manager.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-empty-policy-bootstrap-proposal-001/installed-api/components/keyed_service/content/browser_context_dependency_manager.h",
+      "sha256": "9d2b211ef827cd2e24ee986ade80ea953bafa30798a889d2f24a3cad629ba0e0"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/base/scoped_observation.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-empty-policy-bootstrap-proposal-001/installed-api/base/scoped_observation.h",
+      "sha256": "406257977df2006bd2046320066a8fbf4a8d183981541f24d99196d0eb3677f4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/base/json/json_reader.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-empty-policy-bootstrap-proposal-001/installed-api/base/json/json_reader.h",
+      "sha256": "cc11fc68ff19fafde085c15349a2b6d17b09d21b4a75fc81c1e158eeee648548"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/base/functional/bind.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-empty-policy-bootstrap-proposal-001/installed-api/base/functional/bind.h",
+      "sha256": "03b9b91d9afdfe67b1703e4531893239aab11826d4fcf62f0818d3679c3562f5"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/base/callback_list.h",
+      "saved": "/private/tmp/aux-builder-native333-capture-empty-policy-bootstrap-proposal-001/installed-api/base/callback_list.h",
+      "sha256": "f140dde6f4a7439b8663a068f825f3df051d4b2e662fe402e3eb62815391c64a"
+    }
+  ],
+  "originalWorkingFixtureComparator": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native333-source-001/.native/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc",
+    "sha256": "b7d8544ab7ddd15c3fc3f196d0dd2a6c45bd88e836bf5b46a854dba9726de15e",
+    "lines": "48-57 empty policy validation;155-179 genuine pre-Profile service observation"
+  },
+  "privateSeam": "Existing AuxRuntimeHostTestPeer friendship; class absent in browser_tests before, existing definition only separate unit_tests target",
+  "freshProfileAcquisition": "Original ProfileManager OnProfileAdded before original services/browser navigation, same existing Creator fixture lifecycle; no host replacement or existing host removal",
+  "policyScope": "Internal zap.snapshot with valid JSON and exact original Profile basename only; empty fresh synthetic fixture policy, all other calls unsupported; no grants/ready/generation bypass",
+  "wholeFileInverseExact": true,
+  "forwardReverseForwardExact": true,
+  "originalNavigateAssertionsDeadlinesAndTestBodiesUnchanged": true,
+  "coherentAdoptionPendingOriginal333TerminalAndParentReview": true,
+  "executionAuthorized": false
+}
