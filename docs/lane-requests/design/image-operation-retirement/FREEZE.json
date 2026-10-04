@@ -1,0 +1,27 @@
+{
+  "beforeCommit": "4034b76530d6eed4b05b0278b96ce8c793f25a63",
+  "patchSha256": "aca2fa759dc908014ea424d5b530645e825d68d53c2542401cca590628d31c70",
+  "files": [
+    {
+      "path": "apps/shell/src/components/ConversationImages.tsx",
+      "beforeSha256": "af5accf215ac0045b730472b30d0c6e202a765553e2ab4d1dbb1d28d1774531a",
+      "afterSha256": "3e115ecedc7f4f2f58e35aa37ecc54fc2f5829653474e55445d20c5eddcc932e"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationImages.retirement.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "7dfedf43032d27ea6b26cae13b25c608986d64ddcabf7a806caf0c7af58f041e"
+    }
+  ],
+  "controls": {
+    "heldOwner": 4,
+    "originalFilename": 1,
+    "originalLintWarnings": 13,
+    "resultLintWarnings": 13,
+    "forwardReverseForward": true
+  },
+  "newCommandRows": 0,
+  "newDependencies": 0,
+  "nativeExecuted": false,
+  "acceptedF21Cells": 0
+}

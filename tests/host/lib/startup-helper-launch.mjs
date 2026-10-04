@@ -106,7 +106,7 @@ export async function launchAuxStartupHelper({ bundle, fixtureRoot, trial, helpe
           retained.validate(); browserLease.validate();
           const measured = await stream.measured(launch, { helperImageUuid: helper.imageUuid });
           retained.validate(); browserLease.validate();
-          coldPresentation = Object.freeze({ ...measured, cold });
+          coldPresentation = Object.freeze({ ...measured, cold, originalLaunch: launch });
           return coldPresentation;
         } catch (error) {
           stream.refuse(error);

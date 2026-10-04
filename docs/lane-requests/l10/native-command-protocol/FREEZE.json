@@ -1,0 +1,45 @@
+{
+  "sourceOnly": true,
+  "baseline": "4034b7653 plus immutable89953df3 native request",
+  "requiresNativeRequest": "89953df32f1d2ca9474656ee74c97658c71512a7",
+  "files": [
+    {
+      "path": "tests/host/lib/native-command-presentation.mjs",
+      "ownership": "new-owned",
+      "beforeSha256": null,
+      "afterSha256": "145c42c78ded7cf6f158cafb83bce56d295589d161b29d3003a1f3452223319c"
+    },
+    {
+      "path": "tests/host/lib/native-command-presentation.test.mjs",
+      "ownership": "new-owned",
+      "beforeSha256": null,
+      "afterSha256": "07e64e5ae4fdcf19e4ba56261c4df3a738b001efa912af49b7dc0bbd23394b36"
+    },
+    {
+      "path": "tests/tools/command-performance-mailbox.test.mjs",
+      "ownership": "new-owned",
+      "beforeSha256": null,
+      "afterSha256": "63488303a4df91a625594ffb79fe19eb40b08871d96951f02c48f86d542e4c57"
+    },
+    {
+      "path": "tests/host/lib/performance-mailbox.mjs",
+      "ownership": "shared-request-only",
+      "beforeSha256": "b6830938c802100131a97c658f1f35cc718602a93e7fa294ee74684b35285c3e",
+      "afterSha256": "3dc742be68008be8256d2976f60fa68853540bdf9ff09285a22ab4ae82405f9d"
+    },
+    {
+      "path": "tests/host/lib/performance-mailbox-writer.py",
+      "ownership": "shared-request-only",
+      "beforeSha256": "6779a83bdfb7043736864dfd9c1eb3796533f03ec809a312177ebf1472e6bc68",
+      "afterSha256": "8103a0777e69dc916b6f8d544f4eb70948eb3db2f340435b85a25c5dedd52add"
+    }
+  ],
+  "patches": {
+    "owned.request.patch": "7eee35febf6d23c14365041772ad66c80c43531fc4f5e10ae4587b8f8a1ebf44",
+    "shared.request.patch": "6c513165eddb0a0548f21c1d8357a7551c4c5318de4e5a4768e9ec0441d93ac7"
+  },
+  "controls": 41,
+  "nativeExecuted": false,
+  "datasetCardinalityQualified": false,
+  "cohortQualified": false
+}

@@ -1,3 +1,4 @@
+import { decodeNativeCommandReady, decodeNativeCommandPresentation, extractNativeCommandFixtureRecord } from './native-command-presentation.mjs';
 import assert from 'node:assert/strict';
 import { StringDecoder } from 'node:string_decoder';
 import { constants, closeSync, fstatSync, lstatSync, openSync, readFileSync, realpathSync } from 'node:fs';
@@ -5,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname } from 'node:path';
-const operations = new Set(['prepareCdpStopMeasurement', 'prepareCdpTakeoverMeasurement', 'completeCdpRetirementMeasurement', 'prepareLittleWindowPresentation', 'completeLittleWindowPresentation', 'prepareOrganizationAutoArchiveWork', 'prepareOrganizationLiveFolderWork', 'completeOrganizationWork', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation', 'sampleShellMemory', 'sampleProcessMemory', 'sampleStockProcessMemory', 'prepareStockWarmWindow', 'completeStockWarmWindow', 'prepareAuxWarmWindow', 'completeAuxWarmWindow', 'prepareSubagentMemoryWorkload']);
+const operations = new Set(['commandPresentationSnapshot', 'prepareCdpStopMeasurement', 'prepareCdpTakeoverMeasurement', 'completeCdpRetirementMeasurement', 'prepareLittleWindowPresentation', 'completeLittleWindowPresentation', 'prepareOrganizationAutoArchiveWork', 'prepareOrganizationLiveFolderWork', 'completeOrganizationWork', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation', 'sampleShellMemory', 'sampleProcessMemory', 'sampleStockProcessMemory', 'prepareStockWarmWindow', 'completeStockWarmWindow', 'prepareAuxWarmWindow', 'completeAuxWarmWindow', 'prepareSubagentMemoryWorkload']);
 const prefix = 'AUX_NATIVE_FIXTURE_REPLY_V1 ';
 const refusalPrefix = 'AUX_NATIVE_FIXTURE_REFUSAL_V1 ';
 function ownedFixture(userDataDir) {
@@ -54,7 +55,8 @@ export function createPerformanceMailbox({ userDataDir, pid, generation }) {
     }
   };
   let sequence = 0, pending, failure, lastReceipt, disposed = false, bytes = 0, count = 0, partial = '', decoder = new StringDecoder('utf8');
-  const fail = error => { failure ??= error; if (pending) { clearTimeout(pending.timer); pending.reject(failure); pending = undefined; } };
+  let commandReadyCount = 0, lastCommandSample = 0n;
+  const fail = error => { failure ??= error; if (pending) { clearTimeout(pending.timer); pending.readyReject?.(failure); pending.reject(failure); pending = undefined; } };
   function publish(method) {
     verify();
     writeOwned({ ...fixedRequest({ profile, rootPin, profilePin }, 'publish'), sequence: String(sequence), operation: method }, writer);
@@ -72,6 +74,13 @@ export function createPerformanceMailbox({ userDataDir, pid, generation }) {
         try { publish(method); } catch (error) { fail(error); }
       });
     },
+    waitForCommandPresentationReady() {
+      if (failure || disposed) return Promise.reject(failure ?? new Error('Private mailbox disposed'));
+      if (!pending || pending.method !== 'commandPresentationSnapshot') return Promise.reject(new Error('No original pending command presentation'));
+      if (pending.commandReady) return Promise.resolve(structuredClone(pending.commandReady));
+      pending.readyPromise ??= new Promise((resolve, reject) => { pending.readyResolve = resolve; pending.readyReject = reject; });
+      return pending.readyPromise;
+    },
     write(chunk, source) {
       if (failure || disposed) return;
       try {
@@ -87,8 +96,20 @@ export function createPerformanceMailbox({ userDataDir, pid, generation }) {
             assert.equal(refusal.status, 'refused'); assert.equal(refusal.reason, 'invalid_private_mailbox');
             const error = new Error(`Original native mailbox refusal: ${refusal.reason}`); error.nativeRaw = text; throw error;
           }
+          if (text.startsWith('AUX_NATIVE_COMMAND_PRESENTATION_READY_V1 ')) {
+            assert.ok(pending?.method === 'commandPresentationSnapshot', 'Unrequested command readiness');
+            assert.ok(!pending.commandReady, 'Repeated original command readiness');
+            assert.ok(++commandReadyCount <= 4000, 'Command readiness exhausted');
+            const record = decodeNativeCommandReady(text);
+            assert.ok(BigInt(record.sampleSequence) > lastCommandSample, 'Stale original command sample');
+            lastCommandSample = BigInt(record.sampleSequence); verify();
+            pending.commandReady = { raw: text, pid, generation, sequence: pending.sequence, record };
+            pending.readyResolve?.(structuredClone(pending.commandReady));
+            continue;
+          }
           if (!text.startsWith(prefix)) continue;
           assert.ok(++count <= 4000, 'Private reply count exhausted'); const raw = JSON.parse(text.slice(prefix.length));
+          const recordRaw = raw.operation === 'commandPresentationSnapshot' ? extractNativeCommandFixtureRecord(text) : JSON.stringify(raw.record);
           assert.deepEqual(Object.keys(raw).sort(), ['producer', 'version', 'pid', 'windowId', 'sequence', 'operation', 'record'].sort());
           assert.equal(raw.producer, 'aux-native-fixture-reply'); assert.equal(raw.version, 1); assert.equal(raw.pid, pid);
           assert.ok(Number.isInteger(raw.windowId) && raw.windowId > 0 && operations.has(raw.operation));
@@ -99,7 +120,16 @@ export function createPerformanceMailbox({ userDataDir, pid, generation }) {
             assert.equal(raw.record.preparedWindowId, raw.windowId);
             assert.ok(Number.isInteger(raw.record.windowId) && raw.record.windowId > 0 && raw.record.windowId !== raw.windowId);
           } else if (raw.record.windowId !== undefined) assert.equal(raw.record.windowId, raw.windowId, 'Native wrapper scope mismatch');
-          verify(); lastReceipt = { raw: text, sequence: raw.sequence, operation: raw.operation, pid, generation, recordRaw: JSON.stringify(raw.record) }; const waiter = pending; pending = undefined; clearTimeout(waiter.timer); waiter.resolve(JSON.stringify(raw.record));
+          if (raw.operation === 'commandPresentationSnapshot') {
+            if (raw.record.status === 'measured') {
+              assert.ok(pending.commandReady, 'Measured command without original readiness');
+              decodeNativeCommandPresentation(recordRaw, pending.commandReady.raw);
+            } else {
+              assert.equal(raw.record.status, 'refused'); assert.equal(raw.record.measured, false);
+              pending.readyReject?.(new Error('Original native command preparation refused'));
+            }
+          }
+          verify(); lastReceipt = { ...(pending.commandReady ? { commandReady: structuredClone(pending.commandReady) } : {}), raw: text, sequence: raw.sequence, operation: raw.operation, pid, generation, recordRaw }; const waiter = pending; pending = undefined; clearTimeout(waiter.timer); waiter.resolve(recordRaw);
         }
         assert.ok(Buffer.byteLength(partial) <= 16384, 'Private partial reply overflow');
       } catch (error) { fail(error); }

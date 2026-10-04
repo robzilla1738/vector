@@ -1,0 +1,21 @@
+{
+  "schema": "l10-cold-startup-admission-request/v1",
+  "baselineCommit": "7060ab113b03aedd30d1fff9266b306c45d0a9e1",
+  "patchSha256": "e0f8cf20d88950df60fedf8ae32405fb008ecde3125915c8a4184207f763a990",
+  "rows": [
+    {
+      "path": "tests/host/lib/native-cold-startup-admission.mjs",
+      "beforeSha256": null,
+      "afterSha256": "8ed9fb77e66397ea39e8d0a32c51e033ca3b6ddb628d40678d433419dadb93b3"
+    },
+    {
+      "path": "tests/host/lib/native-cold-startup-admission.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "80f2fa8feb1724d21fc539dcfc88ecd8d4c4f5341b07c57bf968e02f59a45757"
+    }
+  ],
+  "replay": "independent forward/reverse/forward exact",
+  "controls": "4 Node falsification controls PASS",
+  "nativeExecuted": false,
+  "callerWired": false
+}

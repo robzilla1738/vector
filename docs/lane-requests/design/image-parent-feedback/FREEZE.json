@@ -1,0 +1,26 @@
+{
+  "originalPacket": "f9b56706",
+  "patchSha256": "f97cf0ea0b7577aaa93d95e3ac006b33e879ff79b44eb4308ba3be179a229ff1",
+  "files": [
+    {
+      "path": "apps/shell/src/components/ConversationImages.tsx",
+      "beforeSha256": "3e115ecedc7f4f2f58e35aa37ecc54fc2f5829653474e55445d20c5eddcc932e",
+      "afterSha256": "88a6a10c1188868853868262336140abfdabcb98ae6ad377aaecb8fa8c597c7d"
+    },
+    {
+      "path": "apps/shell/src/components/Composer.image-parent-feedback.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "d08f4701a3270854efe89af4c796c07f28f26e4d3ac79088bec3702b008fae28"
+    }
+  ],
+  "controls": {
+    "originalRetirementCases": 4,
+    "originalComposerContextLifecycleCases": 13,
+    "actualParentFeedbackCases": 1,
+    "originalParentFeedbackRefuses": true,
+    "forwardReverseForward": true
+  },
+  "nativeExecuted": false,
+  "newCommandRows": 0,
+  "acceptedF21Cells": 0
+}

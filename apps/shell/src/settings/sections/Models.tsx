@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MODEL_PROVIDER_NAMES, type ModelConnectionStatus, type ModelProvider } from "@aux/contracts";
 import { ModelConnections } from "./ModelConnections";
 import "./ModelProbeStatus.css";
@@ -182,6 +182,12 @@ export function ModelsSettings({
     setProbe(saved ? { ...saved, error: saved.ok ? undefined : "Last connection test failed" } : null);
   }, [settings.modelProbe, provider]);
   const [probing, setProbing] = useState(false);
+  const operationOwner = useRef({ active: true, keyPending: false, probePending: false });
+  useLayoutEffect(() => {
+    const owner = { active: true, keyPending: false, probePending: false };
+    operationOwner.current = owner;
+    return () => { owner.active = false; };
+  }, [active, provider]);
   const connection = (settings.modelConnections as ModelConnectionStatus[] | undefined)?.find(
     (item) => item.provider === provider,
   );
@@ -210,10 +216,17 @@ export function ModelsSettings({
     };
   }, [active, provider, settings.compatibleEndpoint, settings.modelApiKey]);
 
+  const keyProvider = useRef(provider);
   useEffect(() => {
-    setKey("");
+    if (keyProvider.current !== provider) {
+      keyProvider.current = provider;
+      setKey("");
+    }
+    setSavingKey(false);
+    setProbing(false);
+    setConnectionError("");
     probeSequence.current++;
-  }, [provider]);
+  }, [active, provider]);
   useEffect(() => {
     setModelDraft(plannerModelSelection(settings, provider));
   }, [settings.plannerModel, provider]);
@@ -266,37 +279,47 @@ export function ModelsSettings({
   };
 
   const saveKey = async () => {
-    if (savingKey || !key.trim() || key === KEY_MASK) return;
+    const owner = operationOwner.current;
+    if (!owner.active || owner.keyPending || savingKey || !key.trim() || key === KEY_MASK) return;
+    owner.keyPending = true;
     setSavingKey(true);
     setConnectionError("");
     try {
       const ok = await set({ modelCredential: { provider, key: key.trim() } });
+      if (!owner.active) return;
       if (ok) setKey("");
       else
         setConnectionError(
           "The key was not saved. Your entry is still here; resolve the storage error and try again.",
         );
     } catch {
+      if (!owner.active) return;
       setConnectionError(
         "The key was not saved. Your entry is still here; resolve the storage error and try again.",
       );
     } finally {
-      setSavingKey(false);
+      owner.keyPending = false;
+      if (owner.active) setSavingKey(false);
     }
   };
 
   const runProbe = async () => {
+    const owner = operationOwner.current;
+    if (!owner.active || owner.probePending) return;
+    owner.probePending = true;
     const sequence = ++probeSequence.current;
     setProbing(true);
     setProbe(null);
     try {
       const result = await call("models.probe", { modelId: (settings.plannerModel as string) || undefined });
-      if (sequence === probeSequence.current) setProbe({ ...result, checkedAt: Date.now() });
+      if (owner.active && sequence === probeSequence.current) setProbe({ ...result, checkedAt: Date.now() });
     } catch (e) {
-      if (sequence === probeSequence.current)
+      if (owner.active && sequence === probeSequence.current)
         setProbe({ ok: false, modelId: "", error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      owner.probePending = false;
+      if (owner.active) setProbing(false);
     }
-    setProbing(false);
   };
 
   const discoverModels = async () => {

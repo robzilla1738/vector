@@ -1,7 +1,7 @@
 import { hostOf } from "../workspace";
 import { ImagePreview } from "./ImageSnapshot";
 import { createPortal } from "react-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ConversationImage, PageContextRef, PageTarget } from "@aux/contracts";
 import { call, errToast, useStore } from "../store";
 import { bridge } from "../bridge";
@@ -9,6 +9,8 @@ import { shellIconClose } from "./icons";
 
 type Rect = { x: number; y: number; width: number; height: number };
 type Capture = { dataUrl: string; sourceUrl?: string; sourcePage?: PageContextRef; title: string; filename?: string };
+type OperationOwner = { active: boolean; chatId: string | null | undefined; locked: boolean; release: (() => void) | null };
+
 type Bounds = { left: number; top: number; width: number; height: number };
 
 function stageBounds(): Bounds | null {
@@ -67,12 +69,28 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
   const lassoTrigger = useRef<HTMLButtonElement>(null);
   useEffect(() => { review.current?.scrollIntoView({ block: "nearest" }); }, [capture, preview]);
   const request = useRef(0);
-  const locked = useRef(false);
+  const operationOwner = useRef<OperationOwner>({ active: true, chatId, locked: false, release: null });
   const start = useRef<{ x: number; y: number } | null>(null);
   const currentChat = useRef(chatId);
   currentChat.current = chatId;
-  useEffect(() => { setCapture(null); setRegion(null); setPreview(null); setError(""); setLasso(null); if (useStore.getState().overlay === "capture") useStore.getState().setOverlay(null); ++request.current; }, [chatId]);
-  useEffect(() => () => { ++request.current; if (useStore.getState().overlay === "capture") useStore.getState().setOverlay(null); }, []);
+  useLayoutEffect(() => {
+    const previous = operationOwner.current;
+    if (previous.chatId !== chatId) {
+      previous.active = false;
+      const release = previous.release; previous.release = null; release?.();
+      operationOwner.current = { active: true, chatId, locked: false, release: null };
+      setBusy(false);
+    }
+    setCapture(null); setRegion(null); setPreview(null); setError(""); setLasso(null);
+    if (useStore.getState().overlay === "capture") useStore.getState().setOverlay(null);
+    ++request.current;
+  }, [chatId]);
+  useLayoutEffect(() => () => {
+    const owner = operationOwner.current;
+    owner.active = false; const release = owner.release; owner.release = null; release?.();
+    ++request.current;
+    if (useStore.getState().overlay === "capture") useStore.getState().setOverlay(null);
+  }, []);
   useEffect(() => { if (lasso && overlay !== "capture") { setLasso(null); setCapture(null); setRegion(null); } }, [lasso, overlay]);
   useEffect(() => {
     if (!lasso || overlay !== "capture") return;
@@ -88,13 +106,18 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, [!!lasso]);
-  const perform = async (action: (version: number) => Promise<void>) => {
-    if (locked.current) return;
-    locked.current = true; setBusy(true); onBusy(true); setError("");
+  const perform = async (action: (version: number, owner: OperationOwner) => Promise<void>) => {
+    const owner = operationOwner.current;
+    if (!owner.active || owner.locked) return;
+    owner.locked = true; owner.release = () => onBusy(false);
+    setBusy(true); onBusy(true); setError("");
     const version = ++request.current;
-    try { await action(version); }
-    catch (reason) { if (request.current === version) setError(reason instanceof Error ? reason.message : String(reason)); }
-    finally { locked.current = false; setBusy(false); onBusy(false); }
+    try { await action(version, owner); }
+    catch (reason) { if (owner.active && request.current === version) setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally {
+      owner.locked = false; const release = owner.release; owner.release = null; release?.();
+      if (owner.active) setBusy(false);
+    }
   };
   useEffect(() => {
     if (!incomingFile) return;
@@ -147,15 +170,17 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     }
     setPreview(null); setRegion(null); setCapture({ dataUrl: result.dataUrl, sourceUrl: page.url, sourcePage: { pageId: page.pageId, url: page.url, documentEpoch: page.documentEpoch, sessionId: page.sessionId, selectedAt: Date.now() }, title: page.title || "Page" });
   });
-  const saveCapture = () => perform(async version => {
+  const saveCapture = () => perform(async (version, owner) => {
     if (!capture) return;
     const dataUrl = await cropImage(capture.dataUrl, region);
     if (version !== request.current) return;
     const target = ensureChatId();
+    if (!owner.active) return;
     // Creating a conversation changes the prop before the save finishes.
+    owner.chatId = target;
     currentChat.current = target;
-    const result = await call("conversations.images.add", { chatId: target, filename: capture.filename ? (region ? `${capture.filename.replace(/\.png$/i, "")} region.png` : capture.filename) : `${capture.title.slice(0, 100)}${region ? " region" : " capture"}.png`, dataUrl, sourceUrl: capture.sourceUrl, sourcePage: capture.sourcePage }).catch(error => { if (request.current !== version && currentChat.current === target) errToast(error); throw error; });
-    if (currentChat.current === target) { onChange(target, result.images); setCapture(null); setRegion(null); setLasso(null); if (useStore.getState().overlay === "capture") { useStore.getState().setOverlay(null); requestAnimationFrame(() => lassoTrigger.current?.focus()); } }
+    const result = await call("conversations.images.add", { chatId: target, filename: capture.filename ? (region ? `${capture.filename.replace(/\.png$/i, "")} region.png` : capture.filename) : `${capture.title.slice(0, 100)}${region ? " region" : " capture"}.png`, dataUrl, sourceUrl: capture.sourceUrl, sourcePage: capture.sourcePage }).catch(error => { if (owner.active && request.current !== version && currentChat.current === target) errToast(error); throw error; });
+    if (owner.active && currentChat.current === target) { onChange(target, result.images); setCapture(null); setRegion(null); setLasso(null); if (useStore.getState().overlay === "capture") { useStore.getState().setOverlay(null); requestAnimationFrame(() => lassoTrigger.current?.focus()); } }
   });
   const cancelCapture = () => { setCapture(null); setRegion(null); setLasso(null); if (useStore.getState().overlay === "capture") { useStore.getState().setOverlay(null); requestAnimationFrame(() => lassoTrigger.current?.focus()); } };
   const change = (imageId: string, included?: boolean) => perform(async version => {

@@ -24,7 +24,7 @@ export async function observeAuxWarmWindow({ startup, ax, readInputHelperIdentit
     assert.equal(ax.helperPid, before.pid); assert.equal(ax.targetPid, measured.record.browserPid);
     const inputPair = pairWarmWindowInput(originalInput, measured.record, ready.record,
       { kind: 'aux', inputHelper: before, coldKernel: measured.cold.record });
-    return Object.freeze({ ...measured, inputPair, originalHelperBefore: Object.freeze(before),
+    return Object.freeze({ ...measured, coldPresentation: cold, inputPair, originalHelperBefore: Object.freeze(before),
       originalHelperAfter: Object.freeze(after), observationOnly: true, compiledHelperProven: false,
       acPowerProven: false, cohortProven: false, relativeComparisonProven: false });
   } catch (primary) {

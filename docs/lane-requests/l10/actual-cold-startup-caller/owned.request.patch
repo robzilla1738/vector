@@ -1,0 +1,198 @@
+diff --git a/tests/host/lib/native-aux-cold-caller.mjs b/tests/host/lib/native-aux-cold-caller.mjs
+new file mode 100644
+index 000000000..2fd36a099
+--- /dev/null
++++ b/tests/host/lib/native-aux-cold-caller.mjs
+@@ -0,0 +1,109 @@
++import assert from 'node:assert/strict';
++import { randomBytes } from 'node:crypto';
++import { execFileSync } from 'node:child_process';
++import { realpathSync } from 'node:fs';
++import { createJourneyApp } from './app.mjs';
++import { retainPackagedRuntimePair, readPackagedRuntimePairBytes } from './packaged-runtime-pair-artifact.mjs';
++import { retainStartupHelperArtifact } from './startup-helper-artifact.mjs';
++import { retainStartupBrowserArtifact } from './startup-browser-artifact.mjs';
++import { launchAuxStartupHelper, readAuxStartupAttachment } from './startup-helper-launch.mjs';
++import { verifyColdStartupCohort } from './native-cold-startup-admission.mjs';
++const quarantine = new Set();
++export const auxColdCleanupDebtCount = () => quarantine.size;
++const artifactIdentity = pair => ({runtime:pair.productIdentity,native:pair.native});
++/** Sole native operator entrypoint. Import performs no launch or filesystem read.
++ * The branded canonical pair and fixed helper/browser descriptors precede AC
++ * and every launch. Pre-launch identity is explicitly artifact identity; live
++ * runtime identity is read only after original hardware and owner attachment. */
++export async function collectAuxColdStartup({pairAdmission, helper, compilerAudit, metadataWriter, browser,
++  signal, trials=20, readPower=()=>execFileSync('/usr/bin/pmset',['-g','batt'],{encoding:'utf8',timeout:5000})}) {
++  assert.equal(quarantine.size,0,'Original cold cleanup debt retains admission');
++  assert.ok(signal instanceof AbortSignal);signal.throwIfAborted();
++  assert.ok(Number.isInteger(trials)&&trials>=20&&trials<=100,'20–100 actual original AC trials required');
++  const report={schema:1,producer:'aux-cold-startup-caller',classification:'cold-original-process',attempts:[],
++    status:'running',nativeQualificationProven:false,firstFrameProven:false,ordinaryNavigationTimingProven:false};
++  const state={pair:undefined,helperLease:undefined,browserLease:undefined,startup:undefined,launchEntered:false,cleanup:undefined};
++  let held=false;
++  const release=()=>{state.browserLease?.release();state.helperLease?.release();state.pair?.release();quarantine.delete(state);};
++  const validate=()=>{signal.throwIfAborted();state.pair.validate();state.helperLease.validate();state.browserLease.validate();};
++  const isReaped=result=>result?.cleanupDebt===false&&result.nativeSlotRetained===false;
++  const retryCleanup=async()=>{
++    assert.ok(state.startup,'No original startup owner returned; original failure debt remains');
++    const result=await state.startup.stop(state.primary);state.cleanup=result;
++    if(isReaped(result))release();return result;
++  };
++  try {
++    state.pair=retainPackagedRuntimePair(pairAdmission);
++    const pair=readPackagedRuntimePairBytes(state.pair);
++    state.helperLease=retainStartupHelperArtifact(helper,compilerAudit);
++    assert.equal(browser.imageUuid,pair.image.imageUuid,'Original paired browser image changed');
++    state.browserLease=retainStartupBrowserArtifact(pair.bundle,browser);
++    validate();
++    const candidate={productIdentity:pair.productIdentity,native:pair.native};
++    report.candidate=structuredClone(candidate);report.pairArtifact=structuredClone(pair.artifact);
++    report.helperArtifact={identity:state.helperLease.identity,compile:state.helperLease.compile};
++    report.browserArtifact=state.browserLease.identity;
++    for(let index=0;index<trials;index++) {
++      const attempt={trial:index+1,status:'running'};report.attempts.push(attempt);
++      state.startup=undefined;state.launchEntered=false;state.cleanup=undefined;
++      let primary;
++      try {
++        validate();
++        attempt.preLaunchArtifact=structuredClone({identity:artifactIdentity(pair),bundle:pair.bundle,image:pair.image,shellDigest:pair.shellDigest});
++        attempt.identityBefore=attempt.preLaunchArtifact.identity;
++        attempt.identityBeforeKind='retained-packaged-artifacts';
++        attempt.powerBefore=await readPower();assert.match(attempt.powerBefore,/Now drawing from 'AC Power'/,'Original pre-launch AC required');
++        validate();
++        const app=createJourneyApp({appPath:pair.bundle});
++        validate();
++        state.launchEntered=true;
++        state.startup=await launchAuxStartupHelper({bundle:pair.bundle,fixtureRoot:realpathSync(app.profileRoot),
++          trial:randomBytes(16).toString('hex'),helper,compilerAudit,metadataWriter,browser,signal});
++        const presentation=await state.startup.presentation();validate();
++        attempt.coldPresentation=presentation;
++        const launch=presentation.originalLaunch;
++        assert.ok(launch?.raw&&presentation.cold?.raw&&presentation.raw,'Original cold receipt chain missing');
++        attempt.originalCold={trial:launch.record.trial,launcherPid:launch.record.launcherPid,
++          launchRaw:launch.raw,kernelRaw:presentation.cold.raw,presentationRaw:presentation.raw};
++        await app.attachStartup(state.startup);validate();
++        const attachment=readAuxStartupAttachment(state.startup);attachment.assertLive();
++        assert.equal(app.pid,launch.record.browserPid);
++        attempt.identityAfter=structuredClone(await app.identity());
++        attachment.assertLive();validate();
++        assert.deepEqual(attempt.identityAfter.runtime,candidate.productIdentity);
++        for(const key of ['sourceCommit','buildId','manifestHash'])assert.equal(attempt.identityAfter.native?.[key],candidate.native[key]);
++        // Runtime advertises additional fields; retain them, comparing complete
++        // original artifact identity only where both genuine producers overlap.
++        attempt.identityAfterKind='original-live-runtime';
++        attempt.artifactAfter=structuredClone(artifactIdentity(pair));
++        attempt.powerAfter=await readPower();assert.match(attempt.powerAfter,/Now drawing from 'AC Power'/,'Original post-presentation AC required');
++        attachment.assertLive();validate();
++      } catch(error) {primary=error;attempt.primary=error;}
++      if(state.startup) {
++        try {
++          attempt.browserCleanup=state.cleanup=await state.startup.stop(primary);
++          assert.ok(isReaped(state.cleanup),'Original cold browser cleanup debt');
++          assert.ok(!state.cleanup.primary&&!state.cleanup.cleanup,'Original cold cleanup failed');
++        } catch(cleanup) {attempt.browserCleanupFailure=cleanup;primary=primary?new AggregateError([primary,cleanup],'Cold measurement and original cleanup failed',{cause:primary}):cleanup;}
++      } else if(state.launchEntered) {
++        attempt.browserCleanup=state.cleanup=primary?.cleanup && {...primary.cleanup,nativeSlotRetained:primary.nativeSlotRetained};
++        if(!isReaped(state.cleanup))held=true;
++      }
++      if(state.startup&&!isReaped(state.cleanup))held=true;
++      if(primary){attempt.status='failed';throw primary;}
++      attempt.status='observed';validate();
++    }
++    report.admission=verifyColdStartupCohort(report.attempts,{candidate,
++      helper:{binarySha256:helper.sha256,sourceSha256:helper.sourceSha256,imageUuid:helper.imageUuid},browser:state.browserLease.identity});
++    report.status='observed';release();return report;
++  } catch(primary) {
++    report.status='failed';report.primary=primary;state.primary=primary;
++    if(held||(state.launchEntered&&!isReaped(state.cleanup))) {
++      quarantine.add(state);report.cleanupDebt=true;
++    } else release();
++    const failure=new Error('Original cold startup cohort refused',{cause:primary});
++    failure.report=report;
++    if(quarantine.has(state))failure.coldCleanupOwner=Object.freeze({retryCleanup});
++    throw failure;
++  }
++}
+diff --git a/tests/host/lib/native-aux-cold-caller.test.mjs b/tests/host/lib/native-aux-cold-caller.test.mjs
+new file mode 100644
+index 000000000..b15f19a1a
+--- /dev/null
++++ b/tests/host/lib/native-aux-cold-caller.test.mjs
+@@ -0,0 +1,77 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {readFileSync} from 'node:fs';
++import vm from 'node:vm';
++import ts from 'typescript';
++// Execute actual source caller with controlled original-owner dependencies.
++// No native helper, child, filesystem admission or performance trial executes.
++function fixture({failure, debt=false}={}) {
++  const events=[],signal=new AbortController(),originalFailure=new Error('original attach refused');let trial=0,releases=0,admitted;
++  const identity={runtime:{commit:'a'.repeat(40)},native:{sourceCommit:'a'.repeat(40),buildId:'build',manifestHash:'b'.repeat(64)}};
++  const pair={bundle:'/controlled/Aux.app',productIdentity:identity.runtime,native:identity.native,image:{imageUuid:'c'.repeat(32)},shellDigest:'d'.repeat(64),artifact:{manifest:{sha256:'e'.repeat(64)}},
++    validate(){events.push('pair validate');assert.equal(releases,0);},release(){events.push('pair release');releases++;}};
++  const lease=(name,extra)=>({...extra,validate(){events.push(name+' validate');assert.equal(releases,0);},release(){events.push(name+' release');}});
++  const browser=lease('browser',{identity:{sha256:'f'.repeat(64),imageUuid:'c'.repeat(32),device:'1',inode:'2'}});
++  const helper=lease('helper',{identity:{},compile:{originalManifestSha256:'1'.repeat(64)}});
++  const app={profileRoot:'/controlled/root',get pid(){return 200+trial;},async attachStartup(owner){events.push('attach');assert.equal(owner,current);if(failure==='attach')throw originalFailure;},async identity(){events.push('live identity');return {...structuredClone(identity),native:{...identity.native,extraNativeField:'kept'}};}};
++  let current;
++  const dependencies={
++    'node:assert/strict':{...assert,deepEqual(a,b,message){assert.deepEqual(JSON.parse(JSON.stringify(a)),JSON.parse(JSON.stringify(b)),message);}},
++    'node:crypto':{randomBytes:()=>Buffer.alloc(16,trial)},'node:child_process':{execFileSync(){throw new Error('unexpected real power call');}},'node:fs':{realpathSync:p=>p},
++    './app.mjs':{createJourneyApp(options){events.push('app');assert.equal(options.appPath,pair.bundle);return app;}},
++    './packaged-runtime-pair-artifact.mjs':{retainPackagedRuntimePair(){events.push('pair admission');return pair;},readPackagedRuntimePairBytes(p){assert.equal(p,pair);return pair;}},
++    './startup-helper-artifact.mjs':{retainStartupHelperArtifact(){events.push('helper admission');return helper;}},
++    './startup-browser-artifact.mjs':{retainStartupBrowserArtifact(bundle){events.push('browser admission');assert.equal(bundle,pair.bundle);return browser;}},
++    './startup-helper-launch.mjs':{async launchAuxStartupHelper(options){events.push('launch');trial++;
++      assert.equal(options.bundle,pair.bundle);assert.equal(options.fixtureRoot,app.profileRoot);assert.equal(options.signal,signal.signal);
++      if(failure==='launch'){const error=new Error('original launch failed');error.cleanup={cleanupDebt:true,nativeSlotRetained:true};throw error;}
++      current={async presentation(){events.push('hardware');if(failure==='abort')signal.abort(new Error('original abort'));
++        return {raw:'original hardware '+trial,cold:{raw:'original kernel '+trial},originalLaunch:{raw:'original launch '+trial,record:{trial:String(trial),launcherPid:100,browserPid:200+trial}}};},
++        async stop(){events.push('stop');return {cleanupDebt:debt,nativeSlotRetained:debt};}};return current;},
++      readAuxStartupAttachment(owner){assert.equal(owner,current);return {assertLive(){events.push('owner live');}};}},
++    './native-cold-startup-admission.mjs':{verifyColdStartupCohort(attempts,pins){events.push('cohort admit');admitted=attempts;
++      assert.equal(attempts.length,20);assert.equal(pins.browser,browser.identity);return {count:attempts.length,nativeQualificationProven:false};}},
++  };
++  const exports={},code=ts.transpileModule(readFileSync(new URL('./native-aux-cold-caller.mjs',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
++  vm.runInNewContext(code,{exports,Buffer,AbortSignal,structuredClone,Object,require(name){assert.ok(dependencies[name],name);return dependencies[name];}});
++  let reads=0;
++  const configuration={pairAdmission:{},helper:{sha256:'2'.repeat(64),sourceSha256:'3'.repeat(64),imageUuid:'4'.repeat(32)},compilerAudit:{},metadataWriter:{},browser:{sha256:'f'.repeat(64),imageUuid:'c'.repeat(32)},signal:signal.signal,
++    async readPower(){reads++;events.push('AC '+reads);return failure==='prepower'||(failure==='postpower'&&reads===2)?"Now drawing from 'Battery Power'":"Now drawing from 'AC Power'";}};
++  return {collect:()=>exports.collectAuxColdStartup(configuration),events,signal,originalFailure,debtCount:exports.auxColdCleanupDebtCount,
++    setDebt(value){debt=value;},get admitted(){return admitted;},get releases(){return releases;}};
++}
++test('original artifact+AC admission precedes all twenty launches and actual runtime identity follows hardware',async()=>{
++  const f=fixture(),report=await f.collect();assert.equal(report.attempts.length,20);assert.equal(report.status,'observed');
++  assert.ok(f.events.indexOf('pair admission')<f.events.indexOf('AC 1'));assert.ok(f.events.indexOf('AC 1')<f.events.indexOf('launch'));
++  assert.ok(f.events.indexOf('hardware')<f.events.indexOf('live identity'));assert.ok(f.events.indexOf('AC 2')<f.events.indexOf('stop'));
++  assert.equal(f.events.filter(e=>e==='launch').length,20);assert.equal(f.events.filter(e=>e==='stop').length,20);
++  assert.equal(report.attempts[0].identityBeforeKind,'retained-packaged-artifacts');assert.equal(report.attempts[0].identityAfterKind,'original-live-runtime');
++  assert.equal(report.attempts[0].identityAfter.native.extraNativeField,'kept');assert.equal(report.attempts[0].originalCold.presentationRaw,'original hardware 1');
++  assert.equal(report.attempts,f.admitted);assert.equal(report.nativeQualificationProven,false);assert.equal(f.releases,1);assert.equal(f.debtCount(),0);
++});
++test('battery before original launch refuses with retained attempt and no child effects',async()=>{
++  const f=fixture({failure:'prepower'});await assert.rejects(f.collect(),error=>{assert.equal(error.report.attempts[0].status,'failed');return true;});
++  assert.ok(!f.events.includes('launch'));assert.equal(f.releases,1);assert.equal(f.debtCount(),0);
++});
++test('post-presentation AC refusal stops exact original owner and preserves original failure',async()=>{
++  const f=fixture({failure:'postpower'});await assert.rejects(f.collect(),error=>{assert.match(error.cause.message,/AC/);assert.equal(error.report.attempts[0].browserCleanup.cleanupDebt,false);return true;});
++  assert.equal(f.events.filter(e=>e==='stop').length,1);assert.equal(f.releases,1);
++});
++test('abort after original hardware still stops owned child and never attaches a replacement',async()=>{
++  const f=fixture({failure:'abort'});await assert.rejects(f.collect(),error=>{assert.equal(error.cause,f.signal.signal.reason);return true;});
++  assert.ok(!f.events.includes('attach'));assert.equal(f.events.filter(e=>e==='stop').length,1);assert.equal(f.releases,1);
++});
++test('original cleanup debt retains pair/helper/browser leases and refuses new effects until exact retry reaps',async()=>{
++  const f=fixture({failure:'attach',debt:true});let original;
++  await assert.rejects(f.collect(),error=>{original=error;assert.equal(error.cause.errors[0],f.originalFailure);assert.equal(error.report.attempts[0].primary,f.originalFailure);return true;});
++  assert.equal(f.releases,0);assert.equal(f.debtCount(),1);const count=f.events.length;
++  await assert.rejects(f.collect(),/cleanup debt/);assert.equal(f.events.length,count);
++  f.setDebt(false);assert.equal((await original.coldCleanupOwner.retryCleanup()).cleanupDebt,false);
++  assert.equal(f.releases,1);assert.equal(f.debtCount(),0);assert.equal(original.report.status,'failed');
++});
++test('launch failure without a returned owner retains unknown original debt, never rediscovers a PID',async()=>{
++  const f=fixture({failure:'launch'});let original;await assert.rejects(f.collect(),error=>{original=error;return true;});
++  assert.equal(f.releases,0);assert.equal(f.debtCount(),1);
++  await assert.rejects(original.coldCleanupOwner.retryCleanup(),/No original startup owner/);
++  assert.equal(f.debtCount(),1);assert.ok(!f.events.includes('stop'));
++});

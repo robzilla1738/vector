@@ -1,0 +1,38 @@
+diff --git a/tests/host/lib/native-cold-startup-admission.test.mjs b/tests/host/lib/native-cold-startup-admission.test.mjs
+index 74c2d3f48..9043d3973 100644
+--- a/tests/host/lib/native-cold-startup-admission.test.mjs
++++ b/tests/host/lib/native-cold-startup-admission.test.mjs
+@@ -75,3 +75,33 @@ test('refuses missing HW completion, foreign composer document and altered retai
+     mutate(r);a[0].originalCold.presentationRaw=`AUX_NATIVE_STARTUP_V1 ${JSON.stringify(r)}\n`;assert.throws(()=>verify(a));
+   }
+ });
++
++test('actual warm observation retains the identical original cold hardware/launch object instead of only the kernel receipt', async () => {
++  const {observeAuxWarmWindow}=await import('./native-aux-warm-observation.mjs');
++  const uuid='b'.repeat(32), helperUuid='c'.repeat(32), nonce='d'.repeat(32);
++  const helperIdentity={pid:101,imageUuid:helperUuid,processStartMachTicks:'2000',binarySha256:'a'.repeat(64),sourceSha256:'a'.repeat(64)};
++  const kernel={record:{browserPid:100,browserImageUuid:uuid,browserStartMachTicks:'1000'}};
++  const coldPresentation={record:{browserPid:100},raw:'original cold hardware bytes',cold:kernel,
++    originalLaunch:{raw:'original launch bytes',record:{browserPid:100}}};
++  const input={producer:'aux-native-warm-window-input',version:1,targetPid:100,helperPid:101,originalWindowNumber:200,
++    targetProcessUuid:uuid,targetProcessStartMachTicks:'1000',helperProcessUuid:helperUuid,helperProcessStartMachTicks:'2000',
++    cgTimestampNs:'9000000000',postBeforeNs:'9000000000',postReturnedNs:'9000000010',releaseNs:'9020000000',keyCode:45,
++    flags:'1048576',sourcePid:'101',sourceState:'-1',autorepeat:false,transport:'cghidEventTap'};
++  const native={producer:'aux-native-warm-window',version:1,status:'measured',measured:true,earliestPresentationProven:true,
++    inputLineageProven:false,browserProcessUuid:uuid,browserProcessStart:'1000',preparedWindowId:300,
++    browserPid:100,requestNonce:nonce,preparedUs:'8999000',originalInputUs:'9000000',inputWindowNumber:200,inputKeyCode:45,
++    inputSourcePid:'101',inputSourceState:'-1',inputCgFlags:'1048576',inputModifierFlags:'1048576',originalCgTimestampNs:'9000000000'};
++  const ready={record:{producer:'aux-native-warm-window',version:1,status:'ready',requestNonce:nonce,browserPid:100,
++    browserProcessUuid:uuid,browserProcessStart:'1000',windowId:300,preparedUs:'8999000'}};
++  const order=[];
++  const observed=await observeAuxWarmWindow({signal:new AbortController().signal,
++    startup:{async presentation(){order.push('cold');return coldPresentation;},async prepareWarmWindow(){order.push('ready');return ready;},
++      async completeWarmWindow(){order.push('warm');return {record:native,cold:kernel};},async stop(){throw new Error('unexpected cleanup');}},
++    ax:{helperPid:101,targetPid:100,async request(operation){order.push(operation);return input;}},
++    readInputHelperIdentity:async()=>helperIdentity});
++  assert.equal(observed.coldPresentation,coldPresentation);
++  assert.equal(observed.coldPresentation.originalLaunch,coldPresentation.originalLaunch);
++  assert.equal(observed.cold,kernel);assert.equal(observed.record,native);
++  assert.deepEqual(order,['cold','ready','warmWindowKeyReceipt','warm']);
++  assert.equal(observed.cohortProven,false);assert.equal(observed.compiledHelperProven,false);
++});

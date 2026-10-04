@@ -1,0 +1,32 @@
+{
+  "beforeCommit": "7060ab113b03aedd30d1fff9266b306c45d0a9e1",
+  "patchSha256": "5497ded437d920bb1536e1c6e0d9f31d23ed11f1d350c3509d3ee2be1d03e11e",
+  "files": [
+    {
+      "path": "apps/shell/src/settings/sections/Models.tsx",
+      "beforeSha256": "c72881bb369e665dcd853a5f06b358bf7c3a3c5e0d850d4e58ee950c3d924d57",
+      "afterSha256": "5ac3c8fa68c080ef133e9fec22e940af76698796d3b775adf9569216d3745d57"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Models.retirement.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "8422428d1a22b41abdd6b309b2995be4ae291858a9be89f82a3ce0489c8af19a"
+    }
+  ],
+  "reference": {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/extension/assets_globals-D6PBr-GP.css",
+    "sha256": "2c2b198d715f3894d41c96b88ef9a32a4f61404891baf954d7e4e5a33d976e79"
+  },
+  "controls": {
+    "originalProbe": 2,
+    "heldOwner": 5,
+    "shellTypes": true,
+    "originalLintWarnings": 7,
+    "resultLintWarnings": 7,
+    "forwardReverseForward": true
+  },
+  "newCommandRows": 0,
+  "newDependencies": 0,
+  "nativeExecuted": false,
+  "acceptedF21Cells": 0
+}

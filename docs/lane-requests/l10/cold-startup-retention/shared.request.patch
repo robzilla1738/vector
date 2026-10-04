@@ -1,0 +1,26 @@
+diff --git a/tests/host/lib/native-aux-warm-observation.mjs b/tests/host/lib/native-aux-warm-observation.mjs
+index 88534cb02..7ab2ccd50 100644
+--- a/tests/host/lib/native-aux-warm-observation.mjs
++++ b/tests/host/lib/native-aux-warm-observation.mjs
+@@ -24,7 +24,7 @@ export async function observeAuxWarmWindow({ startup, ax, readInputHelperIdentit
+     assert.equal(ax.helperPid, before.pid); assert.equal(ax.targetPid, measured.record.browserPid);
+     const inputPair = pairWarmWindowInput(originalInput, measured.record, ready.record,
+       { kind: 'aux', inputHelper: before, coldKernel: measured.cold.record });
+-    return Object.freeze({ ...measured, inputPair, originalHelperBefore: Object.freeze(before),
++    return Object.freeze({ ...measured, coldPresentation: cold, inputPair, originalHelperBefore: Object.freeze(before),
+       originalHelperAfter: Object.freeze(after), observationOnly: true, compiledHelperProven: false,
+       acPowerProven: false, cohortProven: false, relativeComparisonProven: false });
+   } catch (primary) {
+diff --git a/tests/host/lib/startup-helper-launch.mjs b/tests/host/lib/startup-helper-launch.mjs
+index 811d9493e..5b320da96 100644
+--- a/tests/host/lib/startup-helper-launch.mjs
++++ b/tests/host/lib/startup-helper-launch.mjs
+@@ -106,7 +106,7 @@ export async function launchAuxStartupHelper({ bundle, fixtureRoot, trial, helpe
+           retained.validate(); browserLease.validate();
+           const measured = await stream.measured(launch, { helperImageUuid: helper.imageUuid });
+           retained.validate(); browserLease.validate();
+-          coldPresentation = Object.freeze({ ...measured, cold });
++          coldPresentation = Object.freeze({ ...measured, cold, originalLaunch: launch });
+           return coldPresentation;
+         } catch (error) {
+           stream.refuse(error);
