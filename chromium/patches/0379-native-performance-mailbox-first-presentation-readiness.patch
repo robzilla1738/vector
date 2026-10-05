@@ -1,0 +1,85 @@
+--- a/chrome/browser/ui/aux/native_performance_mailbox.h
++++ b/chrome/browser/ui/aux/native_performance_mailbox.h
+@@ -18,6 +18,8 @@
+ #include "content/public/browser/weak_document_ptr.h"
+ class WebUIBrowserUI;
+ class BrowserWindowInterface;
++namespace ui { class Compositor; }
++namespace viz { struct FrameTimingDetails; }
+ namespace aux {
+ // No caller path, selector or effect. Reads only fixed owned-fixture metadata.
+ // Pure native inventory comparison; caller must obtain permitted target from
+@@ -40,6 +42,10 @@
+  private:
+   class WatchState;
+   bool Stable() const;
++  void NextReady(Reply reply);
++  void Presented(content::WeakDocumentPtr original_document,
++                 ui::Compositor* original_compositor,
++                 const viz::FrameTimingDetails& details);
+   void Received(std::optional<base::DictValue> request);
+   void Refuse();
+   base::WeakPtr<WebUIBrowserUI> ui_;
+--- a/chrome/browser/ui/aux/native_performance_mailbox.cc
++++ b/chrome/browser/ui/aux/native_performance_mailbox.cc
+@@ -33,6 +33,8 @@
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_ui.h"
++#include "ui/compositor/compositor.h"
++#include "ui/views/widget/widget.h"
+ namespace aux {
+ namespace {
+ constexpr char kMailbox[] = "performance-request.json";
+@@ -226,6 +228,40 @@
+ }
+ void NativePerformanceMailbox::Next(Reply reply) {
+   if (failed_ || pending_ || expected_ || running_ || sequence_ >= 4000) { std::move(reply).Run(Invalid()); return; }
++  if (owner_) { NextReady(std::move(reply)); return; }
++  auto* web_ui = ui_ ? ui_->web_ui() : nullptr;
++  auto* shell = web_ui ? web_ui->GetWebContents() : nullptr;
++  auto* frame = shell ? shell->GetPrimaryMainFrame() : nullptr;
++  auto* window = shell ? WebUIBrowserWindow::FromWebShellWebContents(shell) : nullptr;
++  auto* compositor = window && window->widget() ? window->widget()->GetCompositor() : nullptr;
++  if (!frame || frame != web_ui->GetRenderFrameHost() || !compositor) {
++    std::move(reply).Run(Invalid()); return;
++  }
++  // Capabilities can arrive before the first visible native frame. Bind the
++  // original document and compositor once; presentation does not admit an owner.
++  document_ = frame->GetWeakDocumentPtr();
++  pending_ = std::move(reply);
++  timeout_.Start(FROM_HERE, base::Seconds(30), base::BindOnce(&NativePerformanceMailbox::Refuse, weak_factory_.GetWeakPtr()));
++  compositor->RequestSuccessfulPresentationTimeForNextFrame(base::BindOnce(
++      &NativePerformanceMailbox::Presented, weak_factory_.GetWeakPtr(), document_, compositor));
++  compositor->ScheduleDraw();
++}
++void NativePerformanceMailbox::Presented(content::WeakDocumentPtr original_document,
++    ui::Compositor* original_compositor, const viz::FrameTimingDetails&) {
++  if (!pending_ || failed_) return;
++  auto* frame = original_document.AsRenderFrameHostIfValid();
++  auto* web_ui = ui_ ? ui_->web_ui() : nullptr;
++  auto* shell = web_ui ? web_ui->GetWebContents() : nullptr;
++  auto* window = shell ? WebUIBrowserWindow::FromWebShellWebContents(shell) : nullptr;
++  if (!frame || !web_ui || frame != web_ui->GetRenderFrameHost() ||
++      !shell || frame != shell->GetPrimaryMainFrame() ||
++      !window || !window->widget() ||
++      window->widget()->GetCompositor() != original_compositor) { Refuse(); return; }
++  auto reply = std::move(pending_);
++  NextReady(std::move(reply));
++}
++void NativePerformanceMailbox::NextReady(Reply reply) {
++  if (failed_ || pending_ || expected_ || running_ || sequence_ >= 4000) { std::move(reply).Run(Invalid()); return; }
+   if (!owner_) {
+     owner_ = UniqueOwner(ui_);
+     const base::FilePath profile(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("user-data-dir"));
+@@ -236,7 +272,9 @@
+   }
+   if (!Stable()) { std::move(reply).Run(Invalid()); return; }
+   pending_ = std::move(reply);
+-  timeout_.Start(FROM_HERE, base::Seconds(30), base::BindOnce(&NativePerformanceMailbox::Refuse, weak_factory_.GetWeakPtr()));
++  // The first poll retains its original deadline across presentation readiness.
++  if (!timeout_.IsRunning())
++    timeout_.Start(FROM_HERE, base::Seconds(30), base::BindOnce(&NativePerformanceMailbox::Refuse, weak_factory_.GetWeakPtr()));
+   watcher_.AsyncCall(&WatchState::Wait).WithArgs(root_, sequence_, root_device_, root_inode_,
+       base::BindPostTaskToCurrentDefault(base::BindOnce(&NativePerformanceMailbox::Received, weak_factory_.GetWeakPtr())));
+ }
