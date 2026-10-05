@@ -893,16 +893,20 @@ func childFrames(_ needle: String) -> [ChildFrame]? {
   }
 }
 
-func isGuestWebArea(_ element: AXUIElement, role: String) -> Bool {
+func isGuestWebArea(_ element: AXUIElement, role: String, reportScope: ((String) -> Void)? = nil) -> Bool {
   guard role == "AXWebArea" else { return false }
-  for key in [kAXURLAttribute, "AXDocument", kAXDescriptionAttribute, kAXValueAttribute] {
+  for (index, key) in [kAXURLAttribute, "AXDocument", kAXDescriptionAttribute, kAXValueAttribute].enumerated() {
     var value: CFTypeRef?
     if AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success {
       let text = (value as? URL)?.absoluteString ?? (value as? NSURL)?.absoluteString ?? (value as? String) ?? ""
-      if text.contains("chrome://aux/") { return false }
-      if !text.isEmpty { return true }
+      if text.contains("chrome://aux/") { reportScope?("shell-url"); return false }
+      if !text.isEmpty {
+        reportScope?(["urlguest", "documentguest", "descriptionguest", "valueguest"][index])
+        return true
+      }
     }
   }
+  reportScope?("empty")
   return false
 }
 
@@ -1168,11 +1172,14 @@ func queryElements(_ selector: [String: Any]) throws -> [(AXUIElement, Int)] {
   }
   return found
 }
-func elementRecord(_ element: AXUIElement, depth: Int) -> [String: Any] {
+func elementRecord(_ element: AXUIElement, depth: Int, includeWebAreaScope: Bool = false) -> [String: Any] {
   var result: [String: Any] = ["role": axString(element, kAXRoleAttribute),
     "name": protocolNames(element).first(where: { !$0.isEmpty }) ?? "", "names": protocolNames(element),
     "enabled": axAttribute(element, kAXEnabledAttribute) as? Bool ?? false,
     "focused": axAttribute(element, kAXFocusedAttribute) as? Bool ?? false, "depth": depth]
+  if includeWebAreaScope, result["role"] as? String == "AXWebArea" {
+    _ = isGuestWebArea(element, role: "AXWebArea", reportScope: { result["webAreaScopeCategory"] = $0 })
+  }
   let subrole = axString(element, kAXSubroleAttribute)
   if !subrole.isEmpty { result["subrole"] = subrole }
   if ["AXCheckBox", "AXRadioButton"].contains(axString(element, kAXRoleAttribute)),
@@ -1652,7 +1659,7 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
   case "windows": return windowInventory()
   case "query", "dump":
     let selector = request["selector"] as? [String: Any] ?? [:]
-    return try queryElements(selector).map { elementRecord($0.0, depth: $0.1) }
+    return try queryElements(selector).map { elementRecord($0.0, depth: $0.1, includeWebAreaScope: command == "dump") }
   case "waitFor":
     guard let selector = request["selector"] as? [String: Any] else { throw protocolError("selector required") }
     let state = request["state"] as? String ?? "present"
