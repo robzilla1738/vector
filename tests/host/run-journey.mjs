@@ -312,7 +312,8 @@ async function execute() {
       const candidate = { productIdentity: manifest.productIdentity, native: manifest.native,
         shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 };
       return measurePerformance('hardware', () => collectGuestPresentations({ ...options, trials: 20, candidate,
-        ax: observedAx, transport: app.configurePerformanceMailbox(), readIdentity: () => app.identity() }));
+        ax: observedAx, compilerArtifact: appearancePair?.compilerArtifact ?? compilerArtifact,
+        transport: app.configurePerformanceMailbox(), readIdentity: () => app.identity() }));
     },
     async measureOrganizationWork(options) {
       const { collectNativeOrganizationWork } = await import('./lib/native-organization-performance.mjs');

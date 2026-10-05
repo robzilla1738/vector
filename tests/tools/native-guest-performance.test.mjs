@@ -121,3 +121,57 @@ test('unrounded split-drop150.001ms and divider16.701ms remain failures', async 
     await assert.rejects(collectGuestPresentations(f.options), error => { assert.equal(error.report.samplesMs.length, 20); assert.equal(error.report.gatedMs, elapsed / 1000); return true; });
   }
 });
+
+import vm from 'node:vm';
+import { createRequire } from 'node:module';
+import ts from 'typescript';
+async function admittedCollector(lease, { retireAt = Infinity } = {}) {
+  const require = createRequire(import.meta.url), exports = {};
+  const dependency = Object.fromEntries(await Promise.all([
+    './guest-original-record.mjs', './appearance-provenance.mjs', './native-little-performance-protocol.mjs',
+  ].map(async name => [name, await import(new URL(`../host/lib/${name.slice(2)}`, import.meta.url))])));
+  let checks = 0;
+  dependency['./native-window-compiler-artifact.mjs'] = {
+    readNativeWindowCompilerExecutable(actual, helperSource) {
+      assert.equal(actual, lease, 'Foreign input-helper compiler artifact');
+      assert.ok(++checks < retireAt, 'Retired input-helper artifact lease');
+      assert.equal(helperSource, source); return lease.decoded.manifest.output.path;
+    },
+  };
+  const code = ts.transpileModule(readFileSync(new URL('../host/lib/native-guest-performance.mjs', import.meta.url), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+  }).outputText;
+  vm.runInNewContext(code, { exports, process, Buffer, structuredClone,
+    require(name) { return dependency[name] ?? require(name); } });
+  return { collect: exports.collectGuestPresentations, checks: () => checks };
+}
+const customHelper = join(directory, `${basenameForArtifact()}-target27-015`);
+function basenameForArtifact() { return `native-window-${createHash('sha256').update('synthetic source').digest('hex').slice(0, 12)}`; }
+writeFileSync(customHelper, readFileSync(executable));
+function compilerLease() {
+  return { decoded: { manifest: { output: { path: customHelper } } },
+    artifact: { sourceSha256: createHash('sha256').update(readFileSync(source)).digest('hex'), binarySha256: createHash('sha256').update(readFileSync(customHelper)).digest('hex') },
+    matchOriginalClient(ax) { assert.equal(ax.helperExecutable, customHelper); assert.equal(ax.helperSource, source); } };
+}
+test('retained compiler output accepts its exact target-qualified executable for all original 20 trials', async () => {
+  const lease = compilerLease(), original = await admittedCollector(lease);
+  const f = fixture({ compilerArtifact: lease }); f.options.ax.helperExecutable = customHelper;
+  const report = await original.collect(f.options);
+  assert.equal(report.samplesMs.length, 20); assert.equal(report.gatedMs, 1);
+  assert.equal(report.helper.executable, realpathSync(customHelper)); assert.ok(original.checks() >= 42);
+});
+test('a target-qualified executable without branded compiler admission refuses before input', async () => {
+  const f = fixture(); f.options.ax.helperExecutable = customHelper;
+  await assert.rejects(collectGuestPresentations(f.options)); assert.deepEqual(f.actions, []);
+  f.options.compilerArtifact = compilerLease();
+  await assert.rejects(collectGuestPresentations(f.options), /Foreign input-helper compiler artifact/);
+  assert.deepEqual(f.actions, []);
+});
+test('retired compiler admission and a changed binary digest refuse before physical input', async () => {
+  const lease = compilerLease(), original = await admittedCollector(lease, { retireAt: 3 });
+  const f = fixture({ compilerArtifact: lease }); f.options.ax.helperExecutable = customHelper;
+  await assert.rejects(original.collect(f.options), /Retired input-helper artifact lease/); assert.deepEqual(f.actions, []);
+  const changed = compilerLease(); changed.artifact.binarySha256 = '0'.repeat(64);
+  const second = await admittedCollector(changed), g = fixture({ compilerArtifact: changed }); g.options.ax.helperExecutable = customHelper;
+  await assert.rejects(second.collect(g.options)); assert.deepEqual(g.actions, []);
+});

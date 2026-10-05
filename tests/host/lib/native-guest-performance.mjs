@@ -1,3 +1,4 @@
+import { readNativeWindowCompilerExecutable } from './native-window-compiler-artifact.mjs';
 import { decodeOriginalGuestRecord, extractOriginalGuestFixtureRecord } from './guest-original-record.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -71,7 +72,7 @@ export function validateGuestPresentationPair(readyText, measuredText, metric) {
 }
 
 // transport must invoke the genuine private owned-fixture channel, never runtime RPC.
-export async function collectGuestPresentations({ transport, ax, candidate, readIdentity, readPower = () => execFileSync('/usr/bin/pmset', ['-g', 'batt'], { encoding: 'utf8', timeout: 5000 }), setup, input, cleanup, metric, onReady, trials = 20 }) {
+export async function collectGuestPresentations({ transport, ax, compilerArtifact, candidate, readIdentity, readPower = () => execFileSync('/usr/bin/pmset', ['-g', 'batt'], { encoding: 'utf8', timeout: 5000 }), setup, input, cleanup, metric, onReady, trials = 20 }) {
   const report = { schema: 1, endpoint: metric === 'little-window' ? 'native external Arm → exact created Little root/guest hardware upperbound' : 'actual NSEvent → matching root/guest hardware presentation', metric, candidate: structuredClone(candidate), attempts: [], samplesMs: [], status: 'running' };
   try {
     validateAppearanceCandidate(candidate);
@@ -87,7 +88,18 @@ export async function collectGuestPresentations({ transport, ax, candidate, read
     assert.ok(Number.isInteger(ax?.pid) && ax.pid > 0 && Number.isInteger(ax.helperPid) && ax.helperPid > 0, 'Missing actual helper process metadata');
     const digest = path => createHash('sha256').update(readFileSync(path)).digest('hex');
     const pins = { targetPid: ax.pid, helperPid: ax.helperPid, source: realpathSync(ax.helperSource), executable: realpathSync(ax.helperExecutable), sourceSha256: digest(ax.helperSource), executableSha256: digest(ax.helperExecutable) };
-    assert.equal(basename(pins.source), 'native-window.swift'); assert.equal(basename(pins.executable), `native-window-${pins.sourceSha256.slice(0, 12)}`);
+    assert.equal(basename(pins.source), 'native-window.swift');
+    const verifyCompiler = () => {
+      if (compilerArtifact === undefined) {
+        assert.equal(basename(pins.executable), `native-window-${pins.sourceSha256.slice(0, 12)}`);
+      } else {
+        assert.equal(realpathSync(readNativeWindowCompilerExecutable(compilerArtifact, ax.helperSource)), pins.executable);
+        compilerArtifact.matchOriginalClient(ax);
+        assert.equal(pins.sourceSha256, compilerArtifact.artifact.sourceSha256);
+        assert.equal(pins.executableSha256, compilerArtifact.artifact.binarySha256);
+      }
+    };
+    verifyCompiler();
     report.helper = pins;
     const writer = structuredClone(transport.writer);
     assert.deepEqual(Object.keys(writer ?? {}).sort(), ['source', 'sourceSha256', 'interpreter', 'interpreterSha256'].sort());
@@ -102,6 +114,7 @@ export async function collectGuestPresentations({ transport, ax, candidate, read
       }
     };
     const verifyHelper = () => {
+      verifyCompiler();
       verifyWriter();
       assert.equal(ax.pid, pins.targetPid); assert.equal(ax.helperPid, pins.helperPid);
       for (const [path, expected] of [[pins.source, pins.sourceSha256], [pins.executable, pins.executableSha256]]) {
