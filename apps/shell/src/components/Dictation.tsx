@@ -6,6 +6,7 @@ import { setDictationDraft, useDictationDrafts } from "../dictation-drafts";
 import { bridge } from "../bridge";
 import { parseVoiceCommand, runVoiceCommand, voiceCommandLabels } from "../voice-commands";
 import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
+import { nativePoliteLiveProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** Dictated words remain a local, editable preview until the user inserts them. */
 export function Dictation({
@@ -216,7 +217,7 @@ export function Dictation({
       }}
     >
       <div className="dictation-heading">
-        <strong aria-live="polite">
+        <strong {...nativePoliteLiveProps}>
           {phase === "recording"
             ? "Listening…"
             : phase === "starting"
@@ -228,7 +229,7 @@ export function Dictation({
         <span>{statusHint}</span>
       </div>
       {error && (
-        <p role="alert" {...auxClassErrorHintProps}>
+        <p {...nativeAlertRoleProps} {...auxClassErrorHintProps}>
           {error}
         </p>
       )}

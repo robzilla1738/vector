@@ -15,6 +15,7 @@ import { bridge } from "../bridge";
 import { MemoryNoteButton, useMemoryNoteControl } from "./MemoryNoteControls";
 import { useMemoryDrafts } from "../memory-drafts";
 import { staticMetadataKeyProps as auxClassMetadataKeyProps, staticMetadataValueProps as auxClassMetadataValueProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type NoteDraft = { itemId: string; content: string; sourceUrl: string; expires: string; selectionTruncated?: boolean };
 type Scope = {active:boolean;identity:object;pending:boolean};
@@ -140,7 +141,7 @@ export function MemoryItems({ memory, disabled, onSaved }: { memory: WorkspaceMe
       <label>Use until <span {...staticHintProps}>leave blank to keep using</span><input type="date" aria-label="Memory expiry date" value={draft.expires} disabled={disabled || busy} onChange={event => write({ ...draft!, expires: event.target.value })}/></label>
       <div className="capture-actions"><MemoryNoteButton command="discard-memory-note-draft" scopeId={memory.workspaceId} {...smallGhostButtonProps} disabled={busy} invoke={()=>{current();if(busy)throw new Error("Wait for the original save.");write(null);setError("");setLatest(null);}}>Discard draft</MemoryNoteButton><button {...smallButtonProps} disabled={disabled || busy || !!latest}>{busy ? "Saving…" : "Save note"}</button></div>
     </form>}
-    {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+    {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}</p>}
     {latest && <div className="memory-conflict"><strong>Memory changed elsewhere</strong><p>Your draft is preserved. Latest saved version of this note:</p><pre>{latest.items?.find(item => item.itemId === draft?.itemId)?.content ?? "This note is not in the saved list."}</pre><div {...staticRowProps}><MemoryNoteButton command="load-latest-memory-notes" scopeId={memory.workspaceId} {...smallButtonProps} disabled={busy||disabled} invoke={()=>{current();if(busy||latest.workspaceId!==memory.workspaceId)throw new Error("Review the current saved list.");if(draft)write(draft,latest.revision);setLatest(null);setError("");onSaved(latest);}}>Load latest list</MemoryNoteButton>{draft && <MemoryNoteButton command="save-memory-note-against-latest" scopeId={memory.workspaceId} {...smallButtonProps} disabled={busy||disabled} invoke={()=>{current();if(busy||latest.workspaceId!==memory.workspaceId)throw new Error("Review the current saved list.");return save(latest);}}>Save my note against latest</MemoryNoteButton>}</div></div>}
     <MemoryExclusions memory={memory} disabled={disabled || busy || !!draft} onSaved={saved => {
       current();if(saved.workspaceId!==memory.workspaceId)throw new Error("The memory Space changed.");

@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
 import { PreferenceAction, usePreferenceCommand } from "./preference-command";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 const read = () => bridge.languagePreferences();
 const write = (selected: string[]) =>
   bridge.languagePreferences(selected).then((value) => ({ ack: value, value }));
@@ -207,7 +208,7 @@ export function LanguagesSetting({ active }: { active: boolean }) {
         </form>
       </div>
       {message && (
-        <span role="alert" {...staticFieldErrorProps}>
+        <span {...nativeAlertRoleProps} {...staticFieldErrorProps}>
           {message} {retry}
         </span>
       )}

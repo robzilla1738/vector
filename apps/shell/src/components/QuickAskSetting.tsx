@@ -11,6 +11,7 @@ import { bridge, inNativeHost } from "../bridge";
 import { useSettingsStatusOwner } from "../settings/sections/use-settings-status-owner";
 import { useShortcutLabels } from "../use-shortcut-label";
 import "./QuickAskSetting.css";
+import { nativeCheckboxTypeProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Status = { enabled: boolean; registered: boolean; error: string };
 export function QuickAskSetting() {
@@ -68,7 +69,7 @@ export function QuickAskSetting() {
         <label className="memory-use-toggle">
           <input
             ref={toggleRef}
-            type="checkbox"
+            {...nativeCheckboxTypeProps}
             disabled={busy || !inNativeHost}
             checked={status.enabled}
             onChange={(event) => run("toggle-quick-ask-shortcut", event)}
@@ -82,7 +83,7 @@ export function QuickAskSetting() {
         </label>
       )}
       {(error || status?.error) && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error || status?.error}{" "}
           <button
             ref={retryRef}

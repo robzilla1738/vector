@@ -12,6 +12,7 @@ import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
 import { staticButtonProps as auxClassButtonProps, staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** The person confirms a page action. Allow decides the approval once. */
 export function ActionConfirmation() {
@@ -69,7 +70,7 @@ function Confirm({ confirmation }: { confirmation: TrustConfirmation }) {
         <h3 id="action-confirm-title">{handoff ? "Take over this action" : "Allow this action"}</h3>
         <p>{confirmation.instruction}</p>
         {site && <p {...staticHintProps}>{site}</p>}
-        {error && <p role="alert">{error}</p>}
+        {error && <p {...nativeAlertRoleProps}>{error}</p>}
         <div className="sheet-acts">
           <button ref={decline} {...auxNativeButtonTypeProps} {...auxClassButtonProps} disabled={busy} data-command-id="deny-agent-action" onClick={() => void decide("decline")}>{handoff ? "Close" : "Deny"}</button>
           {sitePermissions && preapprovable && <button {...auxNativeButtonTypeProps} {...auxClassButtonProps} disabled={busy} data-command-id="allow-agent-action-for-origin" onClick={() => void decide("acceptForOrigin")}>Always allow on {site.replace(/\/$/, "")}</button>}

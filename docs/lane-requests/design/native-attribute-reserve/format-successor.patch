@@ -1,0 +1,43 @@
+--- a/apps/shell/src/components/FilterListManager.tsx
++++ b/apps/shell/src/components/FilterListManager.tsx
+@@ -8,7 +8,11 @@
+ import { bridge, type FilterListStatus } from "../bridge";
+ import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
+ import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/deferred-class-props";
+-import { nativeStatusRoleProps, nativeGroupRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
++import {
++  nativeStatusRoleProps,
++  nativeGroupRoleProps,
++  nativeAlertRoleProps,
++} from "../ui/native-attribute-props";
+ 
+ const messageOf = (reason: unknown) => errorMessage(reason);
+ 
+--- a/apps/shell/src/components/ReviewedConnectors.tsx
++++ b/apps/shell/src/components/ReviewedConnectors.tsx
+@@ -10,7 +10,11 @@
+   staticDrawerSectionProps as auxClassDrawerSectionProps,
+   staticErrorHintProps as auxClassErrorHintProps,
+ } from "../ui/deferred-class-props";
+-import { nativePoliteLiveProps, nativeGroupRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
++import {
++  nativePoliteLiveProps,
++  nativeGroupRoleProps,
++  nativeAlertRoleProps,
++} from "../ui/native-attribute-props";
+ 
+ type Kind = ConnectorEntry["kind"];
+ type Review = {
+@@ -357,7 +361,11 @@
+         entry?.kind === "calendar" &&
+         task?.taskId === review.taskId &&
+         task.revision === review.revision && (
+-          <div className="reviewed-connectors-confirm" {...nativeGroupRoleProps} aria-label="Calendar grant review">
++          <div
++            className="reviewed-connectors-confirm"
++            {...nativeGroupRoleProps}
++            aria-label="Calendar grant review"
++          >
+             <strong>{review.kind === "grant" ? "Grant Calendar access?" : "Revoke Calendar access?"}</strong>
+             <p>
+               {entry.label} · {entry.accountKey} · {task.title} · revision {task.revision}

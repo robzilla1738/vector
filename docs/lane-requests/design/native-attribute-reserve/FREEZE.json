@@ -1,0 +1,14 @@
+{
+  "sourceCommit": "18958b75b9e5cc595e60809041d935e0cd40e2f5",
+  "patchSha": "e9f17468e5ba541adafced50dcbc44c36548bfa862aafc910481aae0ac8e6b4b",
+  "leaves": 140,
+  "spans": 342,
+  "sourceInverse": true,
+  "fullNative154ConstructorASTInverse": true,
+  "controls": "78 PASS / 6 suites",
+  "types": "PASS",
+  "lint": "PASS existing warnings",
+  "format": "PASS affected ratchet",
+  "nativeQualification": "pending",
+  "netBytes": "unmeasured"
+}

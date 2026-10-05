@@ -23,6 +23,8 @@ import {
 } from "@aux/contracts/model-registry";
 import { call } from "../../store";
 import { SettingsField as IndexedField, SettingsSection } from "../primitives";
+import { staticGrowProps as auxReuseStaticGrowProps, staticDrawerSectionProps as auxReuseStaticDrawerSectionProps } from "../../ui/class-props";
+import { nativeAutocompleteOffProps as auxReuseNativeAutocompleteOffProps, nativeNumberTypeProps as auxReuseNativeNumberTypeProps } from "../../ui/native-attribute-props";
 
 /** what settings.get returns in place of the real key */
 const KEY_MASK = "••••••••";
@@ -87,7 +89,7 @@ function ModelRoleField({
     <IndexedField label={`${role.label} model`} hint={role.hint}>
       <div {...staticRowProps}>
         <input
-          className="grow"
+          {...auxReuseStaticGrowProps}
           aria-label={`${role.label} model ID`}
           list={`model-options-${role.id}`}
           value={modelId}
@@ -598,7 +600,7 @@ export function ModelsSettings({
           <div {...staticRowProps} ref={endpointControlRef}>
             <input
               ref={endpointInputRef}
-              className="grow"
+              {...auxReuseStaticGrowProps}
               aria-label="OpenAI-compatible endpoint"
               inputMode="url"
               autoComplete="url"
@@ -685,9 +687,9 @@ export function ModelsSettings({
             }}
             type="password"
             aria-label="Provider API key"
-            autoComplete="off"
+            {...auxReuseNativeAutocompleteOffProps}
             disabled={savingKey || probing || switchingProvider}
-            className="grow"
+            {...auxReuseStaticGrowProps}
             value={key}
             placeholder={
               hasKey
@@ -734,7 +736,7 @@ export function ModelsSettings({
       >
         <div {...staticRowProps} ref={plannerControlRef}>
           <input
-            className="grow"
+            {...auxReuseStaticGrowProps}
             ref={(node) => {
               modelInput.current = node;
               plannerInputRef(node);
@@ -848,7 +850,7 @@ export function ModelsSettings({
         />
       </IndexedField>
 
-      <h3 className="drawer-section">Model roles</h3>
+      <h3 {...auxReuseStaticDrawerSectionProps}>Model roles</h3>
       <p className="field hint">
         Automatic follows the planner model for Fast and Standard, the recovery model for Deep, and the vision
         model for Visual. Save a specific model ID and reasoning level to override one role.
@@ -875,7 +877,7 @@ export function ModelsSettings({
         <IndexedField label="Parallel worker pages">
           <input
             aria-label="Parallel worker pages"
-            type="number"
+            {...auxReuseNativeNumberTypeProps}
             min={1}
             max={16}
             defaultValue={(settings.maxWorkers as number) ?? 4}

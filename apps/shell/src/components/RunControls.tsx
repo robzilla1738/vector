@@ -12,6 +12,7 @@ import { performStopWork } from "../features/native-cdp-measurement/stop";
 import { shellIconHand, shellIconHandSm, shellIconPause, shellIconPlay, shellIconSquare } from "./icons";
 import { RunPanelDisclosure } from "./RunPanelAction";
 import "./RunControls.css";
+import { nativeStatusRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Control = "take" | "return" | "stop" | "pause" | "resume" | "open";
 
@@ -79,8 +80,8 @@ export function RunControls({ runId, compact = false }: { runId: string; compact
       {live && <button className="icon-btn sm danger" disabled={busy === "stop"} title="Stop" aria-label={busy === "stop" ? "Stopping run" : "Stop run"} data-command-id="stop-run" data-native-stop-run={runId} onClick={event => dispatch("stop-run", event)}>{shellIconSquare}</button>}
     </span></div>
     {!!isolated.length && <div className="run-held" role="note"><span>Aux uses separate temporary tabs for this run. Sign in there if needed. Existing cookies and saved sign-ins are not copied; cookie transfer is unavailable.</span><button {...smallButtonProps} disabled={!!busy || !temporaryHere} title={!temporaryHere ? "Open this run’s temporary tab in its original browser window." : undefined} data-command-id="open-run-tab" onClick={event => dispatch("open-run-tab", event)}>Open temporary tab</button></div>}
-    {!!held.length && <div className="run-held" role="status">{shellIconHand}<span>{run.status === "interrupted" ? "This program stopped when you took control. Review its checkpoint before another run." : held.length > 1 ? `${held.length} pages are held. Return each page when you’re ready.` : "Aux is paused while you use this page."}{uncertain > 0 ? ` ${uncertain} action${uncertain === 1 ? "" : "s"} may have taken effect and need review.` : ""}</span><button {...smallButtonProps} disabled={!!busy} data-command-id="return-run-control" onClick={event => dispatch("return-run-control", event)}>{busy === "return" ? "Returning…" : held.length > 1 ? "Return this page" : run.status === "interrupted" ? "Return page" : "Return and resume"}</button></div>}
+    {!!held.length && <div className="run-held" {...nativeStatusRoleProps}>{shellIconHand}<span>{run.status === "interrupted" ? "This program stopped when you took control. Review its checkpoint before another run." : held.length > 1 ? `${held.length} pages are held. Return each page when you’re ready.` : "Aux is paused while you use this page."}{uncertain > 0 ? ` ${uncertain} action${uncertain === 1 ? "" : "s"} may have taken effect and need review.` : ""}</span><button {...smallButtonProps} disabled={!!busy} data-command-id="return-run-control" onClick={event => dispatch("return-run-control", event)}>{busy === "return" ? "Returning…" : held.length > 1 ? "Return this page" : run.status === "interrupted" ? "Return page" : "Return and resume"}</button></div>}
     {(!!held.length || takeoverCheckpoint) && run.config?.checkpoint && <RunPanelDisclosure run={run} command="toggle-run-takeover-checkpoint" className="run-held-checkpoint" summary="Takeover checkpoint"><p>{run.statusMessage ?? "The page is under your control."}</p><p>{uncertain ? `${uncertain} uncertain action${uncertain === 1 ? "" : "s"} ${uncertain === 1 ? "requires" : "require"} review before completion.` : run.status === "interrupted" ? "This stopped program will not replay when the page is returned." : "The next agent turn will inspect the page again before acting."}</p></RunPanelDisclosure>}
-    {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+    {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}</p>}
   </section>;
 }

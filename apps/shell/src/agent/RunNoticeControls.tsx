@@ -21,6 +21,7 @@ import {
   writeInAppNoticePreference,
 } from "./run-notice-preference";
 import "./RunNoticeControls.css";
+import { nativePoliteLiveProps } from "../ui/native-attribute-props";
 
 type NoticeCommand =
   | "toggle-task-notices"
@@ -134,7 +135,7 @@ export function RunNoticeBanner({
   onDismiss(): void;
 }) {
   return (
-    <aside className="run-failure run-notice-banner" aria-live="polite" aria-label="Task notice">
+    <aside className="run-failure run-notice-banner" {...nativePoliteLiveProps} aria-label="Task notice">
       <div>
         <strong>{notice.title}</strong>
         <p {...staticHintProps}>{notice.body}</p>

@@ -1,6 +1,7 @@
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
 import { executeCommand } from "../../commands";
 import { useNightReview } from "./state";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 export function OvernightCard() {
   const summary = useNightReview(state => state.summary);
   if (!summary) return null;
@@ -22,6 +23,6 @@ export function MorningReviewInbox() {
       {item.status === "needs_review" && item.runId && <button {...smallButtonProps} disabled={busy} onClick={() => void executeCommand("review-overnight-item", { payload: { id: item.id, decision: "apply" } })}>Apply</button>}
       {!["done", "failed", "discarded"].includes(item.status) && <button {...smallGhostButtonProps} disabled={busy} onClick={() => void executeCommand("review-overnight-item", { payload: { id: item.id, decision: "discard" } })}>Discard</button>}
     </li>)}</ul>
-    {error && <p role="alert">{error}</p>}
+    {error && <p {...nativeAlertRoleProps}>{error}</p>}
   </section>;
 }

@@ -22,6 +22,7 @@ import { Menu } from "../ui/dialog";
 import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
+import { staticSpacerProps as auxReuseStaticSpacerProps, staticButtonProps as auxReuseStaticButtonProps } from "../ui/class-props";
 export { mergeHistory };
 export function cursor(run: Run) { return { createdAt: run.createdAt, runId: run.runId }; }
 export function conversationCursor(item: ConversationSummary) { return { updatedAt: item.updatedAt, chatId: item.chatId }; }
@@ -139,7 +140,7 @@ export function ConversationHistory() {
     finally { pending.current = false; setSaving(false); }
   };
   return <section className="conversation conversation-history" aria-label="Conversation history">
-    <header className="conversation-head"><h1>Chats</h1><div className="sp"/><Tabs<"active" | "archived"> label="Conversation state" value={archived ? "archived" : "active"} onChange={value => setArchived(value === "archived")}
+    <header className="conversation-head"><h1>Chats</h1><div {...auxReuseStaticSpacerProps}/><Tabs<"active" | "archived"> label="Conversation state" value={archived ? "archived" : "active"} onChange={value => setArchived(value === "archived")}
       panelId="conversation-history-panel" className="history-segment" items={[{ value: "active", label: "Active", disabled: saving }, { value: "archived", label: "Archived", disabled: saving }]} /></header>
     <div id="conversation-history-panel" role="tabpanel" aria-labelledby={`conversation-history-panel-${archived ? "archived" : "active"}`} className="conversation-history-list" ref={list} onKeyDown={event=>moveListFocus(event,".history-conversation")}>
       <div className="history-toolbar">
@@ -175,7 +176,7 @@ export function ConversationHistory() {
       {loading && (rows.length ? <output data-block {...auxReserveStaticHintProps}>Loading conversations…</output> : <SkeletonRows label="Loading conversations…" rows={5} tall />)}
       {!loading && !error && !rows.length && <p {...auxReserveStaticHintProps}>{query.trim() ? "No conversations match your search." : archived ? "No archived conversations." : workspaceId ? "No saved conversations in this Space yet." : "Your conversations will appear here."}</p>}
       {error && <p role="alert">{error} <button {...smallButtonProps} onClick={() => void load(retryAppend.current,retryRefresh.current)}>Try again</button></p>}
-      {more && !error && <button className="btn" disabled={loading} onClick={() => void load(true)}>Load more conversations</button>}
+      {more && !error && <button {...auxReuseStaticButtonProps} disabled={loading} onClick={() => void load(true)}>Load more conversations</button>}
     </div>
   </section>;
 }

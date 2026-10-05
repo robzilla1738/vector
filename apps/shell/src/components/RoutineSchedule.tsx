@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { RoutineTrigger } from "@aux/contracts";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { nativeNumberTypeProps } from "../ui/native-attribute-props";
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -159,7 +160,7 @@ export function RoutineSchedule({
             <label>
               Minutes before event
               <input
-                type="number"
+                {...nativeNumberTypeProps}
                 min={0}
                 max={1440}
                 step={1}
@@ -210,7 +211,7 @@ export function RoutineSchedule({
               <label>
                 Minimum minutes between runs
                 <input
-                  type="number"
+                  {...nativeNumberTypeProps}
                   min={5}
                   max={1440}
                   step={1}
@@ -279,7 +280,7 @@ export function RoutineSchedule({
           <label>
             Every (minutes)
             <input
-              type="number"
+              {...nativeNumberTypeProps}
               required
               min={5}
               max={1440}

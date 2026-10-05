@@ -7,6 +7,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "@aux/contracts/search-engine";
 import { bridge } from "../bridge";
 import { staticGrowProps as auxClassGrowProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 export interface EngineRow {
   keyword: string;
   name: string;
@@ -159,7 +160,7 @@ export function SearchEnginesSetting({
         </p>
       </div>
       {error && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}

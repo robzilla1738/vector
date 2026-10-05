@@ -14,7 +14,9 @@ import { ExtensionLocalButton, ExtensionPermissions, useExtensionsOwner } from "
 import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
-import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticButtonProps as auxClassButtonProps, staticGhostButtonProps as auxClassGhostButtonProps, staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
+import { staticButtonProps as auxClassButtonProps, staticGhostButtonProps as auxClassGhostButtonProps } from "../ui/class-props";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
+import { nativeAutocompleteOffProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export function Extensions() {
   const available = useFeature("extensions");
@@ -77,7 +79,7 @@ export function Extensions() {
           value={storeInput}
           onChange={(event) => setStoreInput(event.target.value)}
           placeholder="Paste a Chrome Web Store link"
-          autoComplete="off"
+          {...nativeAutocompleteOffProps}
           spellCheck={false}
         />
         <button
@@ -107,7 +109,7 @@ export function Extensions() {
       </p>
       {message && <output {...staticHintProps}>{message}</output>}
       {error && (
-        <p {...auxClassErrorHintProps} role="alert">
+        <p {...auxClassErrorHintProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}

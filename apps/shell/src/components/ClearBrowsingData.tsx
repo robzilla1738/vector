@@ -5,6 +5,7 @@ import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { bridge } from "../bridge";
 import { call, toast } from "../store";
+import { nativeCheckboxTypeProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 const ranges = [
   { value: "hour", label: "Last hour", duration: 60 * 60 * 1000 },
@@ -97,11 +98,11 @@ export function ClearBrowsingData({ active }: { active: boolean }) {
       {ranges.map(item => <button key={item.value} {...smallGhostButtonProps} aria-pressed={range === item.value} disabled={busy}
         onClick={() => { setRange(item.value); setError(""); }}>{item.label}</button>)}
     </div>
-    <label><input type="checkbox" aria-label={historyLabel} checked={selected.history} disabled={busy} onChange={event => setSelected(value => ({ ...value, history: event.target.checked }))} /> {historyLabel}</label>
-    <label><input type="checkbox" aria-label={cookiesLabel} checked={selected.cookies} disabled={busy} onChange={event => setSelected(value => ({ ...value, cookies: event.target.checked }))} /> {cookiesLabel}</label>
-    <label><input type="checkbox" aria-label={cacheLabel} checked={selected.cache} disabled={busy} onChange={event => setSelected(value => ({ ...value, cache: event.target.checked }))} /> {cacheLabel}</label>
+    <label><input {...nativeCheckboxTypeProps} aria-label={historyLabel} checked={selected.history} disabled={busy} onChange={event => setSelected(value => ({ ...value, history: event.target.checked }))} /> {historyLabel}</label>
+    <label><input {...nativeCheckboxTypeProps} aria-label={cookiesLabel} checked={selected.cookies} disabled={busy} onChange={event => setSelected(value => ({ ...value, cookies: event.target.checked }))} /> {cookiesLabel}</label>
+    <label><input {...nativeCheckboxTypeProps} aria-label={cacheLabel} checked={selected.cache} disabled={busy} onChange={event => setSelected(value => ({ ...value, cache: event.target.checked }))} /> {cacheLabel}</label>
     <p>Clearing cookies can sign you out. Bookmarks, downloads, saved work and Aux memory stay in place.</p>
-    {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+    {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}</p>}
     <div {...staticRowProps}>
       <button {...smallButtonProps} disabled={busy} onClick={() => { setCutoff(null); setPreview(null); setError(""); }}>Cancel</button>
       <button className="btn sm danger" disabled={busy || !preview || !amount} onClick={() => void clear()}>{busy ? "Clearing…" : "Clear selected data"}</button>

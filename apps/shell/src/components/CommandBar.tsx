@@ -51,8 +51,8 @@ import { openCommandSurface, type CommandSurfaceMode } from "../command-surface-
 import "./CommandBar.css";
 import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
-  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
 } from "../ui/native-attribute-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 const askBreaker = new AskCircuitBreaker();
 let pendingAsk: Promise<Run | null> | null = null;
 
@@ -1458,7 +1458,7 @@ export function CommandBar({
             </p>
           )}
           {browserError && (
-            <div className="cb-provider-error" role="alert">
+            <div className="cb-provider-error" {...nativeAlertRoleProps}>
               Browser suggestions couldn’t load. You can still search.
               <PreferenceAction type="button" command="retry-browser-autocomplete" scopeId={listId} invoke={retryAutocomplete}>
                 Try again
@@ -1503,7 +1503,7 @@ export function CommandBar({
                     }}
                     trailing={
                       s.hint === "↵" ? (
-                        <span className="cb-go" {...auxNativeAriaHiddenProps}>
+                        <span className="cb-go" aria-hidden="true">
                           {shellIconSend}
                         </span>
                       ) : s.hint ? (

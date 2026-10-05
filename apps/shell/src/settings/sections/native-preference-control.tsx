@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { bridge } from "../../bridge";
 import { Switch } from "../../ui";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 type Preference = { enabled: boolean; managed: boolean };
 /** Fixed native preference producers share original-window and ACK delivery rules. */
 export function NativePreferenceControl<T extends Preference>({
@@ -61,7 +62,7 @@ export function NativePreferenceControl<T extends Preference>({
       )}
       {value && hint(value)}
       {error && (
-        <span role="alert" {...staticFieldErrorProps}>
+        <span {...nativeAlertRoleProps} {...staticFieldErrorProps}>
           {error} <NativePreferenceRetry command={retry} scopeId={scopeId} disabled={busy} read={refresh} />
         </span>
       )}

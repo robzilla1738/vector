@@ -1,5 +1,6 @@
 import type { RunTranscriptItem } from "@aux/contracts";
 import "./TranscriptActivity.css";
+import { nativePoliteLiveProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Waiting = Extract<RunTranscriptItem, { kind: "waiting" }>;
 type Tool = Extract<RunTranscriptItem, { kind: "tool" }>;
@@ -27,7 +28,7 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 export function WaitingItem({ item }: { item: Waiting }) {
-  return <output className="transcript-waiting" aria-live="polite" data-run-state={item.state}>
+  return <output className="transcript-waiting" {...nativePoliteLiveProps} data-run-state={item.state}>
     {item.label}
   </output>;
 }
@@ -46,7 +47,7 @@ export function ToolFold({ tools, summary }: { tools: readonly Tool[]; summary?:
 }
 
 export function ErrorItem({ item }: { item: ErrorItem }) {
-  return <section className="transcript-error" role="alert" aria-label={`${CATEGORY_LABELS[item.category]} error`}>
+  return <section className="transcript-error" {...nativeAlertRoleProps} aria-label={`${CATEGORY_LABELS[item.category]} error`}>
     <strong>{CATEGORY_LABELS[item.category]} error</strong>
     <p>{item.message}</p>
     <p>{ACTION_GUIDANCE[item.action]}</p>

@@ -12,6 +12,7 @@ import { TextProposal } from "./TextProposal";
 import { ErrorItem, ToolFold, WaitingItem } from "./TranscriptActivity";
 import { IsolatedArtifactHtml } from "./IsolatedArtifactHtml";
 import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 const MAX_TEXT_BYTES = 128 * 1024;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -163,7 +164,7 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
   return <section className="run-section transcript-details" aria-label="Run evidence and recovery">
     {waiting && waiting.state !== "needs_input" && <WaitingItem item={waiting} />}
     {run.status === "needs_input" && <SuspensionPanel run={run} suspension={suspension} hydrated={hydrated} question={question} readOnly={readOnly} answerInComposer={answerInComposer} />}
-    {run.status === "needs_input" && loadError && <p role="alert">{loadError} <RunPanelAction command="retry-run-evidence" run={run} {...smallButtonProps} invoke={() => setRefresh((value) => value + 1)}>Retry loading</RunPanelAction></p>}
+    {run.status === "needs_input" && loadError && <p {...nativeAlertRoleProps}>{loadError} <RunPanelAction command="retry-run-evidence" run={run} {...smallButtonProps} invoke={() => setRefresh((value) => value + 1)}>Retry loading</RunPanelAction></p>}
     {proposals.map((item, index) => <TextProposal key={`${run.runId}-${index}`} run={run} proposal={item} readOnly={readOnly} />)}
     <ToolFold tools={tools} summary={toolSummary} />
     {citations.length > 0 && <RunPanelDisclosure command="toggle-run-citations" run={run} className="transcript-citations" summary={<>Verified evidence · {citations.length}</>}>
@@ -189,7 +190,7 @@ export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readO
       {preview?.source && <RunPanelAction command="open-run-cited-page" run={run} {...smallButtonProps} disabled={openingSource} invoke={current => openSource(current)}>
         {openingSource ? "Checking cited page…" : "Open cited page"}
       </RunPanelAction>}
-      {error && <p role="alert">{error}</p>}
+      {error && <p {...nativeAlertRoleProps}>{error}</p>}
     </ViewerFrame>}
   </section>;
 }

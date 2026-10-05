@@ -12,6 +12,7 @@ import { useStore, call, errToast } from '../store';
 import { openPeekLink } from '../peek-link';
 import { useFeature } from '../use-feature';
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
+import { nativeStatusRoleProps } from "../ui/native-attribute-props";
 
 const tags = new Set(['div','span','p','h1','h2','h3','h4','h5','h6','blockquote','pre','code','ul','ol','li','strong','em','b','i','a','br','hr','table','thead','tbody','tr','th','td','figcaption']);
 function renderNode(node: ReaderNode, key = 'article'): ReactNode {
@@ -152,7 +153,7 @@ export function ReaderView() {
       }
       void openBrowserLink(link.href, backgroundLink(event)).catch(errToast);
     }}>
-      {error ? <div className="reader-empty" role="status"><h2>Reader view isn’t available</h2><p>{error}</p><button {...smallButtonProps} onClick={()=>setRefresh(value=>value+1)}>Try again</button></div> : !article ? <output className="reader-empty" data-block>Preparing article…</output> : <article className="reader-article" data-find-surface="reader">
+      {error ? <div className="reader-empty" {...nativeStatusRoleProps}><h2>Reader view isn’t available</h2><p>{error}</p><button {...smallButtonProps} onClick={()=>setRefresh(value=>value+1)}>Try again</button></div> : !article ? <output className="reader-empty" data-block>Preparing article…</output> : <article className="reader-article" data-find-surface="reader">
         <div className="reader-meta">{offlineSavedAt ? `Offline copy · saved ${new Date(offlineSavedAt).toLocaleString()} · ` : ""}{article.site} · {article.minutes} min read</div>
         <h1>{article.title}</h1>
         {article.byline && <p className="reader-byline">{article.byline}</p>}

@@ -1,4 +1,6 @@
 import "./CommandRankingDebug.css";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
+import { nativeButtonTypeProps as auxReuseNativeButtonTypeProps } from "../ui/native-attribute-props";
 
 export interface RankingDebugRow {
   id: string;
@@ -62,8 +64,8 @@ export default function CommandRankingDebug({
       <p>
         {choices} learned choice{choices === 1 ? "" : "s"} in this Profile.
       </p>
-      {error && <p role="alert">Ranking unavailable: {error}</p>}
-      <button type="button" onClick={onClear}>
+      {error && <p {...nativeAlertRoleProps}>Ranking unavailable: {error}</p>}
+      <button {...auxReuseNativeButtonTypeProps} onClick={onClear}>
         Clear learned ranking
       </button>
     </section>

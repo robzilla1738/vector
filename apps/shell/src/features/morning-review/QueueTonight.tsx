@@ -7,6 +7,7 @@ import { executeCommand } from "../../commands";
 import { Dialog } from "../../ui/dialog";
 import { useNightReview } from "./state";
 import { staticButtonProps as auxClassButtonProps } from "../../ui/class-props";
+import { nativeNumberTypeProps, nativeAlertRoleProps } from "../../ui/native-attribute-props";
 export default function QueueTonight({ active = true }: { active?: boolean }) {
   const [spaces, setSpaces] = useState<Workspace[]>([]), [workspaceId, setWorkspaceId] = useState("");
   const [goals, setGoals] = useState<Goal[]>([]), [skills, setSkills] = useState<Routine[]>([]);
@@ -32,7 +33,7 @@ export default function QueueTonight({ active = true }: { active?: boolean }) {
     {kind === "goal" && <label>Goal<select value={id} onChange={event => setId(event.target.value)}><option value="">Choose a saved goal</option>{goals.map(goal => <option key={goal.goalId} value={goal.goalId}>{goal.objective.slice(0, 100)}</option>)}</select></label>}
     {kind === "routine" && <label>Skill<select value={id} onChange={event => { setId(event.target.value); setParameters({}); }}><option value="">Choose a ready Skill</option>{skills.map(skill => <option key={skill.routineId} value={skill.routineId}>{skill.title}</option>)}</select></label>}
     {kind === "routine" && skill?.parameters.map(parameter => <label key={parameter.name}>{parameter.name}<input aria-label={`Overnight value for ${parameter.name}`} value={parameters[parameter.name] ?? parameter.value ?? ""} onChange={event => setParameters(prior => ({ ...prior, [parameter.name]: event.target.value }))}/></label>)}
-    <label>Task limit ($)<input type="number" min="0.01" step="0.01" value={budgetUsd} onChange={event => setBudget(event.target.valueAsNumber)}/></label>
+    <label>Task limit ($)<input {...nativeNumberTypeProps} min="0.01" step="0.01" value={budgetUsd} onChange={event => setBudget(event.target.valueAsNumber)}/></label>
     <button {...auxClassButtonProps} disabled={pending || !!missingVariables || !workspaceId || (kind === "goal" || kind === "routine") && !id || !Number.isFinite(budgetUsd) || budgetUsd <= 0} onClick={async () => {
       if (pending) return;
       setPending(true); setError("");
@@ -41,6 +42,6 @@ export default function QueueTonight({ active = true }: { active?: boolean }) {
       try { await executeCommand("queue-for-tonight", { payload: { queue: { payload, budgetUsd } } }); }
       catch (reason) { setError(errorMessage(reason)); }
       finally { setPending(false); }
-    }}>Queue for tonight</button>{error && <p role="alert">{error}</p>}
+    }}>Queue for tonight</button>{error && <p {...nativeAlertRoleProps}>{error}</p>}
   </Dialog>;
 }

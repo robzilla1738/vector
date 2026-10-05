@@ -14,6 +14,7 @@ import { call } from "../store";
 import { bridge } from "../bridge";
 import "./ImportDataSetting.css";
 import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
+import { nativeCheckboxTypeProps, nativeAlertRoleProps, nativePoliteLiveProps } from "../ui/native-attribute-props";
 
 type Selection = Record<string, Record<string, Partial<Record<ImportCategory, boolean>>>>;
 
@@ -270,7 +271,7 @@ export function ImportDataSetting() {
                 return (
                   <label className="import-row" key={entry.category}>
                     <input
-                      type="checkbox"
+                      {...nativeCheckboxTypeProps}
                       disabled={!usable || running || loading}
                       checked={usable && !!selection[source.id]?.[profile.profileId]?.[entry.category]}
                       onChange={(event) =>
@@ -312,14 +313,14 @@ export function ImportDataSetting() {
           </button>
         )}
         {error && (
-          <span role="alert" {...auxClassErrorHintProps}>
+          <span {...nativeAlertRoleProps} {...auxClassErrorHintProps}>
             {error}
           </span>
         )}
       </div>
       {job && (
         <section aria-label="Import progress">
-          <output {...staticHintProps} aria-live="polite">
+          <output {...staticHintProps} {...nativePoliteLiveProps}>
             {completion(job)}
           </output>
           {job.error && <p {...auxClassErrorHintProps}>{job.error}</p>}
@@ -341,7 +342,7 @@ export function ImportDataSetting() {
             </ul>
           )}
           {progressError && (
-            <p role="alert" {...auxClassErrorHintProps}>
+            <p {...nativeAlertRoleProps} {...auxClassErrorHintProps}>
               {progressError}{" "}
               <button {...smallGhostButtonProps} onClick={() => void syncProgress(job.jobId)}>
                 Check progress

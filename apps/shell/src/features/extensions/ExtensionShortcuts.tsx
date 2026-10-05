@@ -7,6 +7,7 @@ import { bridge, inNativeHost } from "../../bridge";
 import { useFeature } from "../../use-feature";
 import { executeCommand } from "../../commands";
 import { staticErrorHintProps as auxClassErrorHintProps } from "../../ui/class-props";
+import { nativeAutocompleteOffProps, nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 type ExtensionCommand = HostMethodResult<"extensionCommands">[number];
 function CommandShortcut({ command, refresh }: { command: ExtensionCommand; refresh: () => Promise<void> }) {
@@ -43,7 +44,7 @@ function CommandShortcut({ command, refresh }: { command: ExtensionCommand; refr
           value={shortcut}
           onChange={(event) => setShortcut(event.target.value)}
           disabled={busy}
-          autoComplete="off"
+          {...nativeAutocompleteOffProps}
           spellCheck={false}
           placeholder={bridge.platform === "mac" ? "Command+Shift+U" : "Ctrl+Shift+U"}
         />
@@ -57,7 +58,7 @@ function CommandShortcut({ command, refresh }: { command: ExtensionCommand; refr
         Save shortcut
       </button>
       {error && (
-        <p role="alert" {...auxClassErrorHintProps}>
+        <p {...nativeAlertRoleProps} {...auxClassErrorHintProps}>
           {error}
         </p>
       )}
@@ -110,7 +111,7 @@ export function ExtensionShortcuts({ active = true }: { active?: boolean }) {
         Aux shortcuts take priority. Enter a Chromium shortcut, or leave it empty to unbind.
       </p>
       {error && (
-        <p {...auxClassErrorHintProps} role="alert">
+        <p {...auxClassErrorHintProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}

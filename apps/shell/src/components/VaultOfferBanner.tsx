@@ -5,6 +5,7 @@ import { errorMessage } from "../error-message";
 import { useState } from "react";
 import { bridge } from "../bridge";
 import { call, toast, useStore } from "../store";
+import { nativeAutocompleteOffProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /**
  * Non-modal "save this sign-in?" card — Chrome-style. The credential itself
@@ -48,10 +49,10 @@ export function VaultOfferBanner() {
       <strong>{offer.kind === "update" ? "Update sign-in?" : "Save sign-in?"}</strong>
       <span {...staticHintProps}>{offer.username ? `${offer.username} · ` : ""}{offer.origin}</span>
       {offer.locked && <>
-        <input type="password" {...staticFieldInputProps} autoComplete="off" aria-label="Vault passphrase" placeholder="Vault passphrase" value={passphrase} disabled={busy}
+        <input type="password" {...staticFieldInputProps} {...nativeAutocompleteOffProps} aria-label="Vault passphrase" placeholder="Vault passphrase" value={passphrase} disabled={busy}
           onChange={event => setPassphrase(event.target.value)}
           onKeyDown={event => { if (event.key === "Enter") void act(true); }} />
-        {error && <span {...staticFieldErrorProps} role="alert">{error}</span>}
+        {error && <span {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}</span>}
       </>}
     </div>
     <div {...staticRowProps}>

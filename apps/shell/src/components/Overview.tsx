@@ -26,6 +26,7 @@ import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
+import { nativeAlertRoleProps, nativeCheckboxTypeProps } from "../ui/native-attribute-props";
 
 /** A searchable, keyboard-accessible place to organize several tabs together. */
 export function Overview() {
@@ -363,7 +364,7 @@ export function Overview() {
       <div {...staticRowProps}><button {...smallButtonProps} disabled={busy||!folderName.trim()||(savingFolder === "tabs" && !folderSpace)}>{savingFolder === "tabs" ? "Create folder" : "Save folder"}</button><button {...auxNativeButtonTypeProps} {...smallGhostButtonProps} disabled={busy} onClick={()=>setSavingFolder(false)}>Cancel</button></div>
     </form>}
     {progress && <output className="hint ov-progress" data-block>{progress}</output>}
-    {error && <p role="alert" {...staticFieldErrorProps}>{error}</p>}
+    {error && <p {...nativeAlertRoleProps} {...staticFieldErrorProps}>{error}</p>}
     {!visible.length && <div className="empty-state ov-empty"><span className="empty-ico">{query ? shellIconSearch : shellIconGrid}</span><h2>{query ? "No matching tabs" : "Room for something new"}</h2><p>{query ? "Try another title or address, or look in all spaces." : "Open a page to start browsing in this space."}</p></div>}
     <div role="group" className="ov-grid" aria-label="Open tabs" aria-description="Arrow keys move between tabs. Space selects a tab. Enter opens it.">
       {visible.map(page => {
@@ -375,7 +376,7 @@ export function Overview() {
             <div className="ov-shot">{shot ? <img src={shot} alt="" loading="lazy" /> : <span className="ov-fallback"><FavIcon url={page.url} src={page.favicon} className="ov-bigfav" /></span>}</div>
             <TabCardCaption page={page} space={!spaceId ? owner?.name : undefined} pinned={!!owner && isPinned(layout, owner.id, page.url)} />
           </button>
-          <input className="ov-check" type="checkbox" disabled={busy} tabIndex={focusedId === page.pageId ? 0 : -1} checked={selected.has(page.pageId)} aria-label={`Select ${title}`} onChange={() => select(page.pageId, false)} />
+          <input className="ov-check" {...nativeCheckboxTypeProps} disabled={busy} tabIndex={focusedId === page.pageId ? 0 : -1} checked={selected.has(page.pageId)} aria-label={`Select ${title}`} onChange={() => select(page.pageId, false)} />
           <button className="ov-close icon-btn sm" disabled={busy} tabIndex={focusedId === page.pageId ? 0 : -1} aria-label={`Close ${title}`} onClick={() => void useStore.getState().closeTab(page.pageId)}>{shellIconClose}</button>
         </article>;
       })}

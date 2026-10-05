@@ -7,6 +7,7 @@ import { useStore } from "../store";
 import { bridge } from "../bridge";
 import { FilterListManager } from "./FilterListManager";
 import { useFeature } from "../use-feature";
+import { nativeAlertRoleProps, nativeCheckboxTypeProps } from "../ui/native-attribute-props";
 
 type Decisions = Record<string, Record<string, "allow" | "deny">>;
 const labels: Record<string, string> = {
@@ -142,8 +143,8 @@ export function SitePermissions({ query = "" }: { query?: string }) {
     <p {...staticHintProps}>Manage saved website access for the shared human and agent browsing profile. Resetting a decision makes the site ask again; it does not clear cookies or sign you out.</p>
     {contentBlockingAvailable && <section className="site-data-group" aria-label="Privacy">
       <header><strong>Privacy</strong></header>
-      {privacyError && <p role="alert">Couldn’t refresh blocking settings. {privacyError}</p>}
-      <label className="memory-use-toggle"><input type="checkbox" checked={privacy?.trackerBlock ?? false} disabled={!!busy||!privacy} onChange={() => void toggleTracking()}/><span>Block trackers and ads<small>{!privacy ? "Load privacy settings to see the current state." : privacy.trackerBlock === false ? "Off. Advertising and tracking domains load on every website." : `Known tracker, ad and telemetry domains can't load on any website${privacy.blocked > 0 ? ` — ${privacy.blocked} request${privacy.blocked === 1 ? "" : "s"} blocked this session` : ""}.`}</small></span></label>
+      {privacyError && <p {...nativeAlertRoleProps}>Couldn’t refresh blocking settings. {privacyError}</p>}
+      <label className="memory-use-toggle"><input {...nativeCheckboxTypeProps} checked={privacy?.trackerBlock ?? false} disabled={!!busy||!privacy} onChange={() => void toggleTracking()}/><span>Block trackers and ads<small>{!privacy ? "Load privacy settings to see the current state." : privacy.trackerBlock === false ? "Off. Advertising and tracking domains load on every website." : `Known tracker, ad and telemetry domains can't load on any website${privacy.blocked > 0 ? ` — ${privacy.blocked} request${privacy.blocked === 1 ? "" : "s"} blocked this session` : ""}.`}</small></span></label>
       {privacy?.allowedHosts?.length ? <div className="filter-exceptions"><strong {...staticHintProps}>Sites where blocking is paused</strong>
         {privacy.allowedHosts.map(host => <div className="site-permission-row" key={host}><span>{host}</span><span {...staticHintProps}>Blocking paused</span><button {...smallButtonProps} aria-label={`Resume blocking on ${host}`} disabled={!!busy} onClick={() => void removeAllowed(host)}>{busy === `allow-${host}` ? "Resuming…" : "Resume blocking"}</button></div>)}
       </div> : null}
@@ -165,12 +166,12 @@ export function SitePermissions({ query = "" }: { query?: string }) {
         <button className="btn sm danger" disabled={!!busy} onClick={() => void clearData()}>{busy===chosenPage?.pageId?"Clearing…":"Clear cookies and storage"}</button>
         <button {...smallButtonProps} disabled={!!busy} onClick={() => setSiteDataReview("")}>Cancel</button>
       </div>}
-      {currentSiteDataError && currentSiteDataCount && <p role="alert">{currentSiteDataError}</p>}
+      {currentSiteDataError && currentSiteDataCount && <p {...nativeAlertRoleProps}>{currentSiteDataError}</p>}
     </section>
     <input ref={searchInput} aria-label="Search site permissions" placeholder="Search websites or permissions" value={search} onChange={event => setSearch(event.target.value)} />
     {loading && <output data-block>Loading site permissions…</output>}
-    {error && <p role="alert">{error}</p>}
-    {loadError && <div role="alert"><p>Couldn’t refresh permissions. {loadError}</p><button {...smallButtonProps} disabled={loading||!!busy} onClick={() => void load()}>Refresh permissions</button></div>}
+    {error && <p {...nativeAlertRoleProps}>{error}</p>}
+    {loadError && <div {...nativeAlertRoleProps}><p>Couldn’t refresh permissions. {loadError}</p><button {...smallButtonProps} disabled={loading||!!busy} onClick={() => void load()}>Refresh permissions</button></div>}
     {notice && <output {...staticHintProps} data-block>{notice}</output>}
     {!loading && !loadError && !sites.length && <p {...staticHintProps}>{Object.keys(decisions).length ? "No matching websites." : "No saved website permissions. Websites ask when they need access."}</p>}
     {sites.map(([origin, permissions]) => <section className="site-permission-group" key={origin} aria-label={origin}>

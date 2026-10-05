@@ -7,6 +7,7 @@ import type { CommandEscalationRequest, Workspace, WorkspaceFolder, WorkspaceFol
 import { call } from "../../store";
 import { SettingsField, SettingsSection } from "../primitives";
 import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
+import { nativeAlertRoleProps, nativeGroupRoleProps } from "../../ui/native-attribute-props";
 
 export function WorkspacesSettings({ active }: { active: boolean }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -62,7 +63,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
 
   return <SettingsSection name="Workspaces" title="Workspaces" hidden={!active}>
     <p {...staticHintProps}>Bind local folders to a Space. Read access lets the agent inspect files; read and write access also lets it change them. Network access stays off by default.</p>
-    {error && <p role="alert">{error}</p>}
+    {error && <p {...nativeAlertRoleProps}>{error}</p>}
     <SettingsField label="Space" hint="Folder access and AGENTS.md context apply only to runs in this Space.">
       <select aria-label="Folder Space" value={workspaceId} onChange={event => { setWorkspaceId(event.target.value); setReview(null); setFolders([]); }}>
         {workspaces.map(item => <option key={item.workspaceId} value={item.workspaceId}>{item.name}</option>)}
@@ -80,7 +81,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
         })}>Review folder</button>
       </div>
     </SettingsField>
-    {review && <div {...staticFieldProps} role="group" aria-label="Folder access review">
+    {review && <div {...staticFieldProps} {...nativeGroupRoleProps} aria-label="Folder access review">
       <strong>Review folder access</strong>
       <p>Space: {workspaces.find(item => item.workspaceId === review.workspaceId)?.name} · {review.access === "read" ? "Read only" : "Read and write"}</p>
       <p>Canonical path: <code>{review.path}</code></p>

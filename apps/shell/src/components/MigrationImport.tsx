@@ -7,6 +7,7 @@ import { applyReviewedMigration } from "../migration-import";
 import { Dialog } from "../ui";
 import { adoptImportedOrganization } from "../store/persistence";
 import { useStore } from "../store";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** Explicit human review for a seed already staged in this Chromium Profile. */
 export function MigrationImport() {
@@ -73,7 +74,7 @@ export function MigrationImport() {
         </button>
       </div>
       {error && (
-        <output {...staticHintProps} role="alert">
+        <output {...staticHintProps} {...nativeAlertRoleProps}>
           {error}
         </output>
       )}
@@ -132,7 +133,7 @@ export function MigrationImport() {
               This migration was already applied to this Profile.
             </output>
           )}
-          {error && <p role="alert">{error}</p>}
+          {error && <p {...nativeAlertRoleProps}>{error}</p>}
           <div {...staticRowProps}>
             {review.status !== "applied" && (
               <button {...smallButtonProps} disabled={busy} onClick={() => void apply()}>

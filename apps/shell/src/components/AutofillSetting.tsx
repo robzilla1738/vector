@@ -10,6 +10,7 @@ import { useScopedCommandControls } from "../scoped-command-controls";
 import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 const FIELDS: { key: keyof AutofillProfile; label: string; auto?: string }[] = [
   { key: "name", label: "Name", auto: "name" },
   { key: "email", label: "Email", auto: "email" },
@@ -171,7 +172,7 @@ export function AutofillSetting({
             </button>
           </div>
           {error && (
-            <p {...staticFieldErrorProps} role="alert">
+            <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
               {error}
             </p>
           )}

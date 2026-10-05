@@ -4,7 +4,9 @@ import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import type { Goal } from "@aux/contracts";
 import { call } from "../store";
-import { staticGrowProps as auxClassGrowProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { staticGrowProps as auxClassGrowProps } from "../ui/class-props";
+import { nativeAlertRoleProps, nativeNumberTypeProps } from "../ui/native-attribute-props";
 
 type Props = {
   workspaceId: string;
@@ -101,7 +103,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
         limit for a local model without a price. You can pause or cancel at any time.
       </p>
       {chatId && <p {...staticHintProps}>{unfinishedHere ? "Finish or cancel this conversation’s current Goal before creating another." : "New Goals belong to the current conversation."}</p>}
-      {error && <p role="alert">{error}</p>}
+      {error && <p {...nativeAlertRoleProps}>{error}</p>}
       {showForm && (
         <div className="goals-form">
           <label>
@@ -118,7 +120,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
               Maximum tokens
               <input
                 aria-label="Goal maximum tokens"
-                type="number"
+                {...nativeNumberTypeProps}
                 min="1"
                 max="10000000"
                 step="1"
@@ -130,7 +132,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
               Maximum cost (USD)
               <input
                 aria-label="Goal maximum cost"
-                type="number"
+                {...nativeNumberTypeProps}
                 min="0.01"
                 max="50"
                 step="0.01"
@@ -142,7 +144,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
               Time limit (minutes)
               <input
                 aria-label="Goal time limit"
-                type="number"
+                {...nativeNumberTypeProps}
                 min="1"
                 max="43200"
                 step="1"

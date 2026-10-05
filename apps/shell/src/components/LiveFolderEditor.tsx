@@ -8,6 +8,7 @@ import { call, useStore } from "../store";
 import { executeCommand } from "../commands";
 import { Dialog } from "../ui/dialog";
 import { staticGhostButtonProps as auxClassGhostButtonProps, staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export function LiveFolderEditor({ folderId, onClose }: { folderId: string; onClose: () => void }) {
   const folder = useStore(state => state.layout.folders.find(folder => folder.id === folderId));
@@ -51,7 +52,7 @@ export function LiveFolderEditor({ folderId, onClose }: { folderId: string; onCl
     {(kind === "github" || kind === "calendar") && <label>Account<select {...staticFieldInputProps} value={connectionId} onChange={event => setConnectionId(event.target.value)}><option value="">Choose a connected account</option>{accounts.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}</select>{!accounts.length && <span {...staticHintProps}>Connect an account in Settings before adding this source.</span>}</label>}
     {kind === "github" && <><label>Items<select {...staticFieldInputProps} value={source} onChange={event => setSource(event.target.value as typeof source)}><option value="awaiting-review">Awaiting my review</option><option value="open-prs">My open PRs</option><option value="assigned-issues">Assigned issues</option><option value="query">Custom query</option></select></label>{source === "query" && <label>GitHub search query<input {...staticFieldInputProps} value={query} maxLength={1000} onChange={event => setQuery(event.target.value)} placeholder="is:pr is:open repo:owner/project" /></label>}</>}
     {kind === "routine" && <label>Routine<select {...staticFieldInputProps} value={routineId} onChange={event => setRoutineId(event.target.value)}><option value="">Choose a routine that returns URL rows</option>{routines.map(routine => <option key={routine.id} value={routine.id}>{routine.name}</option>)}</select></label>}
-    {error && <p role="alert" className="error-text">{error}</p>}
+    {error && <p {...nativeAlertRoleProps} className="error-text">{error}</p>}
     <div className="dialog-actions"><button {...auxClassGhostButtonProps} onClick={onClose}>Cancel</button><button {...auxClassPrimaryButtonProps} data-command-id="save-live-folder" disabled={busy || !folder} onClick={() => void save()}>{busy ? "Saving…" : "Save live folder"}</button></div>
   </Dialog>;
 }

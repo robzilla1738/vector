@@ -8,6 +8,7 @@ import { bridge } from "../../bridge";
 import { mergeHistory } from "../../run-history";
 import { call, useStore } from "../../store";
 import { SettingsField, SettingsSection } from "../primitives";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 const PAGE_SIZE = 40;
 
@@ -106,7 +107,7 @@ export function ArchivedChatsSettings({ active }: { active: boolean }) {
           }}
         />
       </SettingsField>
-      {error && <p role="alert" {...staticFieldErrorProps}>{error} <button {...smallButtonProps} onClick={() => void load(false)}>Try again</button></p>}
+      {error && <p {...nativeAlertRoleProps} {...staticFieldErrorProps}>{error} <button {...smallButtonProps} onClick={() => void load(false)}>Try again</button></p>}
       <div className="settings-archived-list" aria-busy={loading}>
         {rows.map(item => <div className="settings-archived-row" key={item.chatId}>
           <button className="settings-archived-open" disabled={busyId !== null} onClick={() => {

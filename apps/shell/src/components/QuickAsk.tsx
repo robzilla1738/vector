@@ -7,6 +7,7 @@ import { useStore, errToast } from "../store";
 import { shellIconOpen } from "./icons";
 import "./QuickAsk.css";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
+import { nativePoliteLiveProps } from "../ui/native-attribute-props";
 
 const QuickAskToast = memo(function QuickAskToast({ id }: { id: number }) {
   const toast = useStore(state => state.toasts.find(item => item.id === id));
@@ -24,7 +25,7 @@ export function QuickAsk({onExpand}:{onExpand():void}) {
       <header className="quick-ask-header"><strong>Ask Aux</strong><div {...auxClassSpacerProps}/><button {...smallGhostButtonProps} onClick={()=>{useStore.getState().openConversationDraft(crypto.randomUUID());}}>New chat</button><button {...smallGhostButtonProps} onClick={onExpand} title="Continue in a full browser window">Expand {shellIconOpen}</button></header>
       {!connected&&<output className="quick-ask-connection" data-block>Connecting to Aux… Your draft stays here.</output>}
       <Conversation embedded composerRef={composer}/>
-      <div className="toasts" aria-live="polite">{toastIds.map(id=><QuickAskToast key={id} id={id}/>)}</div>
+      <div className="toasts" {...nativePoliteLiveProps}>{toastIds.map(id=><QuickAskToast key={id} id={id}/>)}</div>
     </div>
   </main>;
 }

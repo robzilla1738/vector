@@ -1,6 +1,7 @@
 import { staticHintProps } from "../ui/class-props";
 import { lazy, Suspense } from "react";
 
+
 const WorkbookPreview = lazy(() => import("./WorkbookPreview").then(module => ({ default: module.WorkbookPreview })));
 
 export function DocumentExtractionNote({ filename }: { filename: string }) {

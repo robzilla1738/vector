@@ -13,6 +13,7 @@ import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
 import { staticGhostButtonProps as auxClassGhostButtonProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** Shared session organization for both sidebar layouts. Folder entries belong to this browser profile. */
 export function ChatSessions({ compact = false }: { compact?: boolean }) {
@@ -164,6 +165,6 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
     {compact && rows.length > 3 && <button className="sb-link sb-show-all" onClick={showHistory}>All chats {shellIconRight}</button>}
     {loading && !rows.length && <output className="session-empty" data-block>Loading chats…</output>}
     {!loading && !error && !rows.length && <p className="session-empty">{archived ? "No archived chats." : "Your sessions will appear here."}</p>}
-    {error && <p className="session-empty" role="alert">{error}<button {...auxClassGhostButtonProps} onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
+    {error && <p className="session-empty" {...nativeAlertRoleProps}>{error}<button {...auxClassGhostButtonProps} onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
   </div>;
 }

@@ -30,6 +30,7 @@ import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
 import { staticSpacerProps as auxClassSpacerProps, staticTextProps as auxClassTextProps } from "../ui/class-props";
+import { nativeCheckboxTypeProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type SavedPage = { nodeId?: string; url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean };
 const bookmarkKey = (item: SavedPage) => item.nodeId ?? item.url;
@@ -70,7 +71,7 @@ const SavedPageRow = memo(function SavedPageRow({ view, itemKey, position, selec
   if (!item || bookmarkKey(item) !== itemKey) return null;
   const title = item.title || hostOf(item.url);
   return <div className={`library-item${selected ? " selected" : ""}${view === "reading" && item.readAt ? " read" : ""}`}>
-    {view === "bookmarks" && selecting && <input className="library-select" type="checkbox" aria-label={`Select ${title}`} checked={selected} disabled={busy} onChange={() => onSelect(item)} />}
+    {view === "bookmarks" && selecting && <input className="library-select" {...nativeCheckboxTypeProps} aria-label={`Select ${title}`} checked={selected} disabled={busy} onChange={() => onSelect(item)} />}
     <button ref={firstResult} className="library-open" disabled={busy} onClick={event => view === "bookmarks" && selecting ? onSelect(item) : onOpen(item, backgroundLink(event), event.currentTarget)}
       onAuxClick={event => { if (event.button === 1) { event.preventDefault(); if (!selecting) onOpen(item, true, event.currentTarget); } }} title={`${title} — ${item.url}`}>
       <span className="library-row-heading"><span className="library-title">{title}</span></span><span className="library-url">{item.url}</span>
@@ -435,7 +436,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false, onClo
         <button {...smallButtonProps} disabled={busy || !folderEditor.name.trim()}>{folderEditor.mode === "create" ? "Create folder" : "Rename"}</button>
         <button {...smallButtonProps} {...auxNativeButtonTypeProps} onClick={cancelEditor}>Cancel</button>
       </form>}
-      {error && <p className="library-message" role="alert">{error} {failedLoad && <LibraryButton command="retry-library-load" current={current} {...smallButtonProps} disabled={loading || loadingMore} invoke={() => failedLoad === "more" ? loadMoreHistory() : setRefresh(value => value + 1)}>Retry</LibraryButton>}</p>}
+      {error && <p className="library-message" {...nativeAlertRoleProps}>{error} {failedLoad && <LibraryButton command="retry-library-load" current={current} {...smallButtonProps} disabled={loading || loadingMore} invoke={() => failedLoad === "more" ? loadMoreHistory() : setRefresh(value => value + 1)}>Retry</LibraryButton>}</p>}
       {notice && <output className="library-message" data-block>{notice}</output>}
       {removed && <div className="library-tools"><span {...staticHintProps}>Removed {removed.title || hostOf(removed.url)}</span><button {...smallButtonProps} disabled={busy} onClick={() => void action(async () => { await save(removed, true); setRemoved(null); setNotice("Bookmark restored."); })}>Undo remove</button></div>}
       <div ref={results} className="library-list" id="library-results" role="tabpanel" aria-labelledby={`library-${view}`} aria-busy={loading} onKeyDown={event => moveListFocus(event, ".library-folder, .library-open")}>

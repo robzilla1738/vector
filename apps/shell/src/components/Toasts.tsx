@@ -2,6 +2,7 @@ import { memo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { Toast } from "../ui/toast";
+import { nativePoliteLiveProps } from "../ui/native-attribute-props";
 
 const ToastRow = memo(function ToastRow({ id }: { id: number }) {
   const toast = useStore(state => state.toasts.find(item => item.id === id));
@@ -12,7 +13,7 @@ const ToastRow = memo(function ToastRow({ id }: { id: number }) {
 export const Toasts = memo(function Toasts() {
   const toastIds = useStore(useShallow(state => state.toasts.map(item => item.id)));
   return (
-    <div className="toasts" aria-live="polite">
+    <div className="toasts" {...nativePoliteLiveProps}>
       {toastIds.map(id => <ToastRow key={id} id={id} />)}
     </div>
   );

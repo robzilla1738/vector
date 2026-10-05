@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { bridge } from "../../bridge";
 import { call } from "../../store";
 import { SiteAgentAccess, type SitePermissionData } from "./SiteAgentAccess";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 export function SiteRulesTable() {
   const [data, setData] = useState<SitePermissionData | null>(null);
@@ -49,7 +50,7 @@ export function SiteRulesTable() {
       <p {...staticHintProps}>
         Change a website's agent access from its site controls. Saved grants apply only to this Profile.
       </p>
-      {error && <p role="alert">{error}</p>}
+      {error && <p {...nativeAlertRoleProps}>{error}</p>}
       {!data && !error && <output>Loading site permissions…</output>}
       {data && !origins.length && <p>No saved site rules or grants.</p>}
       {data &&

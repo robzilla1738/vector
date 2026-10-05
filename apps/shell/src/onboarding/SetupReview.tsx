@@ -13,6 +13,7 @@ import {
 } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call } from "../store";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Receipt = { state: "loading" | "none" | "unavailable" } | { state: "ready"; job: ImportJobStatus };
 const categories = { bookmarks: "Bookmarks", history: "History entries", tabs: "Open tabs" } as const;
@@ -146,7 +147,7 @@ export function SetupReview({
           </p>
         )}
         {receipt.state === "unavailable" && (
-          <p role="alert">
+          <p {...nativeAlertRoleProps}>
             Import progress is unavailable. Nothing was retried; review the saved receipt before assuming an
             import finished.
           </p>

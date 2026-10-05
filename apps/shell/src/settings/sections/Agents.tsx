@@ -6,6 +6,7 @@ import { SettingsField, SettingsSection } from "../primitives";
 import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../../ui/native-attribute-props";
+import { nativeGroupRoleProps } from "../../ui/native-attribute-props";
 
 export function AgentsSettings({
   active,
@@ -23,7 +24,7 @@ export function AgentsSettings({
         label="What the agent may do"
         hint="These are the permissions used when you start a run. Turn Write off for read-only work. Navigation and Evaluate require separate grants. Page content and models cannot add permissions."
       >
-        <div className="seg wrap" role="group" aria-label="Agent effect grants" data-testid="effect-grants">
+        <div className="seg wrap" {...nativeGroupRoleProps} aria-label="Agent effect grants" data-testid="effect-grants">
           {([
             ["effect:read", "Read", true],
             ["effect:write", "Write", false],

@@ -11,6 +11,7 @@ import {
   SEARCH_ENGINE_TEMPLATE_ERROR,
 } from "@aux/contracts/search-engine";
 import { bridge } from "../bridge";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 const ENGINES = [
   { name: "DuckDuckGo", url: DEFAULT_SEARCH_ENGINE },
   { name: "Google", url: "https://www.google.com/search?q=%s" },
@@ -135,7 +136,7 @@ export function SearchEngineSetting({
         </div>
       )}
       {error && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}

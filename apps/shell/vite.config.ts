@@ -1,4 +1,5 @@
 import { realpathSync } from "node:fs";
+import { conservativeRendererMinify } from "../../scripts/conservative-renderer-minify.mjs";
 import { contractSchemaPurityPlugin } from "../../scripts/contract-schema-purity.mjs";
 import { preloadPathPrefix } from "../../scripts/preload-path-prefix.mjs";
 import { reactNamedValueAliases } from "../../scripts/react-named-value-aliases.mjs";
@@ -71,7 +72,7 @@ export default defineConfig({
     // Emitted .js siblings must not shadow the TypeScript the typechecker ships.
     extensions: [".mjs", ".mts", ".ts", ".tsx", ".jsx", ".js", ".json"],
   },
-  plugins: [preloadPathPrefix(), reactConstructorAliases(), reactNamedValueAliases(join(import.meta.dirname, "src")), react(), chromiumHostBootstrap(), shellCsp(), preloadApp(), contractSchemaPurityPlugin(realpathSync(join(import.meta.dirname, "../../packages/contracts/dist")))],
+  plugins: [conservativeRendererMinify(), preloadPathPrefix(), reactConstructorAliases(), reactNamedValueAliases(join(import.meta.dirname, "src")), react(), chromiumHostBootstrap(), shellCsp(), preloadApp(), contractSchemaPurityPlugin(realpathSync(join(import.meta.dirname, "../../packages/contracts/dist")))],
   build: {
     outDir: join(import.meta.dirname, "dist"),
     emptyOutDir: true,
@@ -79,7 +80,7 @@ export default defineConfig({
     target: process.env.AUX_CHROMIUM_SHELL_BUILD === "1" ? "chrome154" : "chrome150",
     // scripts/check-budgets.mjs walks the manifest to measure startup bytes
     manifest: true,
-    rollupOptions: { output: { chunkFileNames: chunk => ["App", "MockPage", "xterm"].includes(chunk.name) ? "assets/[name]-[hash].js" : "assets/[hash].js" } },
+    rollupOptions: { output: { compact: true, chunkFileNames: chunk => ["App", "MockPage", "xterm"].includes(chunk.name) ? "assets/[name]-[hash].js" : "assets/[hash].js" } },
   },
   server: {
     port: 5197,

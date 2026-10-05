@@ -17,6 +17,7 @@ import { bridge } from "../bridge";
 import type { ShellCommandId } from "@aux/contracts";
 import "./SpaceMemoryEditor.css";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 function MemoryControl({ command, scopeId, action, disabled = false, children, summary = false, checkbox = false, checked = false, className, onError, inputId }: {
   command: ShellCommandId; scopeId: string; onError(reason: unknown): void; action(): unknown; disabled?: boolean; children?: ReactNode;
@@ -126,7 +127,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
     <BrowsingMemory key={memory.workspaceId} memory={memory}/>
     <ContentMemory key={`content-${memory.workspaceId}`} memory={memory}/>
     {storageError && <output data-block {...staticHintProps}>Your draft is available in this window but could not be saved for restart.</output>}
-    {error && errorSnapshot === snapshot && <p role="alert" {...staticFieldErrorProps}>{error}</p>}
+    {error && errorSnapshot === snapshot && <p {...nativeAlertRoleProps} {...staticFieldErrorProps}>{error}</p>}
     {currentConflict && currentConflict.workspaceId === memory.workspaceId && <div className="memory-conflict"><strong>These notes changed elsewhere</strong><p>Your draft is preserved. Review the latest saved notes before choosing which version to keep.</p><pre>{currentConflict.content || "No saved notes"}</pre><div {...staticRowProps}>
       <MemoryControl onError={controlError} command="use-saved-space-memory" scopeId={memory.workspaceId} disabled={disabled || busy} action={() => { assertDraft(); useMemoryDrafts.getState().write(memory.workspaceId, null); onSaved(currentConflict); setConflict(null); setError(""); }}>Use saved notes</MemoryControl>
       <MemoryControl onError={controlError} command="overwrite-space-memory" scopeId={memory.workspaceId} disabled={disabled || busy} action={() => save(currentConflict.revision)}>Save my notes instead</MemoryControl>

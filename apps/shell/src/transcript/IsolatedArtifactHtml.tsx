@@ -2,6 +2,7 @@ import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { bridge, inNativeHost } from "../bridge";
 import { isolatedHtmlDocument } from "../isolated-html";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 const PREVIEW_URL = /^aux-result:\/\/preview\/[0-9a-f]{48}$/i;
 
@@ -21,7 +22,7 @@ export function IsolatedArtifactHtml({ html }: { html: string }) {
     }).catch((reason) => { if (live) setError(errorMessage(reason)); });
     return () => { live = false; if (registered) void bridge.releaseResultPreview(registered); };
   }, [html]);
-  if (error) return <p role="alert">{error}</p>;
+  if (error) return <p {...nativeAlertRoleProps}>{error}</p>;
   if (!inNativeHost) return <iframe title="Inert HTML artifact" sandbox="" referrerPolicy="no-referrer"
     srcDoc={isolatedHtmlDocument(html)} />;
   return url ? <iframe title="Isolated HTML artifact" sandbox="allow-scripts" referrerPolicy="no-referrer" src={url} />

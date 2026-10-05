@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { bridge } from "../../bridge";
 import { runCommand } from "../../commands";
 import { SettingsField, SettingsSection } from "../../settings/primitives";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 export function ExternalLinksSetting() {
   const [target, setTarget] = useState<"little" | "main" | null>(null);
   const [error, setError] = useState("");
@@ -19,6 +20,6 @@ export function ExternalLinksSetting() {
     }}>
       {target === null && <option value="">Loading preference…</option>}
       <option value="little">Little window</option><option value="main">Main window</option>
-    </select>{error && <p role="alert">{error}</p>}
+    </select>{error && <p {...nativeAlertRoleProps}>{error}</p>}
   </SettingsField></SettingsSection>;
 }

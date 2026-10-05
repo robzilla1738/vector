@@ -5,6 +5,7 @@ import { executeCommand } from "../../commands";
 import { Dialog } from "../../ui/dialog";
 import { useRecording } from "./state";
 import { staticButtonProps as auxClassButtonProps, staticGhostButtonProps as auxClassGhostButtonProps } from "../../ui/class-props";
+import { nativeAutocompleteOffProps, nativeAlertRoleProps, nativeCheckboxTypeProps } from "../../ui/native-attribute-props";
 export default function ReviewRecording() {
   const { demonstration: demo, busy, error, exported } = useRecording();
   const [tasks, setTasks] = useState<Task[]>([]), [taskId, setTaskId] = useState("");
@@ -26,7 +27,7 @@ export default function ReviewRecording() {
   return <Dialog label="Review demonstration" onClose={() => useRecording.setState({ review: false })}>
     <h2>Review your demonstration</h2>
     <p>Confirm each field’s variable and an unambiguous target. Review dates, personal identifiers and reused values independently. Passwords use the separate secure approval flow; payment and one-time codes need you at the browser.</p>
-    <label>Skill name<input autoComplete="off" value={title} onChange={event => setTitle(event.target.value)}/></label>
+    <label>Skill name<input {...nativeAutocompleteOffProps} value={title} onChange={event => setTitle(event.target.value)}/></label>
     <label>Saved task<select value={taskId} onChange={event => setTaskId(event.target.value)}><option value="">Choose the task that includes this tab</option>{tasks.map(task => <option key={task.taskId} value={task.taskId}>{task.title}</option>)}</select></label>
     {!tasks.length && <p>Save a task with this tab as a reviewed resource, then reopen this review.</p>}
     <ol>{demo.steps.map((step, index) => <li key={index}>
@@ -35,12 +36,12 @@ export default function ReviewRecording() {
         <label>Target<select value={selectors[index] ?? ""} onChange={event => { setSelectors({ ...selectors, [index]: event.target.value }); setConfirmed({ ...confirmed, [index]: false }); }}>
           <option value="">Choose one exact target</option>{step.target.candidates.map(candidate => <option key={candidate.selector} value={candidate.selector} disabled={candidate.matches !== 1}>{candidate.selector} · {candidate.matches} matches</option>)}
         </select></label>
-        {step.target.candidates.every(candidate => candidate.matches !== 1) && <p role="alert">All targets are ambiguous. Give this control a unique label or record a clearer target before saving.</p>}
-        {step.kind === "input" && <><p>Recorded value: {step.value}</p><label>Variable name<input autoComplete="off" value={names[index] ?? ""} onChange={event => { setNames({ ...names, [index]: event.target.value }); setConfirmed({ ...confirmed, [index]: false }); }}/></label></>}
-        <label><input type="checkbox" checked={!!confirmed[index]} onChange={event => setConfirmed({ ...confirmed, [index]: event.target.checked })}/>I reviewed this target{step.kind === "input" ? " and variable" : ""}</label>
+        {step.target.candidates.every(candidate => candidate.matches !== 1) && <p {...nativeAlertRoleProps}>All targets are ambiguous. Give this control a unique label or record a clearer target before saving.</p>}
+        {step.kind === "input" && <><p>Recorded value: {step.value}</p><label>Variable name<input {...nativeAutocompleteOffProps} value={names[index] ?? ""} onChange={event => { setNames({ ...names, [index]: event.target.value }); setConfirmed({ ...confirmed, [index]: false }); }}/></label></>}
+        <label><input {...nativeCheckboxTypeProps} checked={!!confirmed[index]} onChange={event => setConfirmed({ ...confirmed, [index]: event.target.checked })}/>I reviewed this target{step.kind === "input" ? " and variable" : ""}</label>
       </>}
     </li>)}</ol>
-    <label>Final success element<input autoComplete="off" placeholder="#success" value={oracle} onChange={event => setOracle(event.target.value)}/></label>
+    <label>Final success element<input {...nativeAutocompleteOffProps} placeholder="#success" value={oracle} onChange={event => setOracle(event.target.value)}/></label>
     <p>The Skill stays paused until a replay test passes with fresh values and you review activation.</p>
     <button {...auxClassButtonProps} disabled={busy || !ready} onClick={() => {
       const review = { inputs: demo.steps.flatMap((step, index) => step.kind === "input" ? [{ step: index, parameter: names[index]!, confirmed: true as const }] : []),
@@ -52,6 +53,6 @@ export default function ReviewRecording() {
     <button {...auxClassGhostButtonProps} disabled={busy} onClick={() => void executeCommand("export-demonstration").catch(() => {})}>Export demonstration</button>
     <button {...auxClassGhostButtonProps} disabled={busy} onClick={() => void executeCommand("discard-demonstration")}>Discard</button>
     {exported && <><output>Skill saved. Open the saved task to run its replay test.</output><label>SKILL.md<textarea readOnly value={exported} rows={8}/></label></>}
-    {(error || loadError) && <p role="alert">{error || loadError}</p>}
+    {(error || loadError) && <p {...nativeAlertRoleProps}>{error || loadError}</p>}
   </Dialog>;
 }

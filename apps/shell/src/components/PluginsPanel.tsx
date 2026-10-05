@@ -8,6 +8,7 @@ import type { MethodResult, Plugin, PluginAsset, PluginSkillGrant, Workspace } f
 import { bridge } from "../bridge";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Inspection = MethodResult<"plugins.inspect"> & { path: string };
 const messageOf = (reason: unknown) => errorMessage(reason);
@@ -187,7 +188,7 @@ export function PluginsPanel() {
         </fieldset>
       )}
       {error && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}

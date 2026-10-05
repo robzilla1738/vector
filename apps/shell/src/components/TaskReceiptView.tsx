@@ -10,6 +10,8 @@ import { bridge } from "../bridge";
 import { call } from "../store";
 import { taskReceiptMarkdown } from "../task-receipt-export";
 import type { TaskReceipt, MethodName, RpcArgs } from "@aux/contracts";
+import { staticGrowProps as auxReuseStaticGrowProps } from "../ui/class-props";
+import { nativeCheckboxTypeProps as auxReuseNativeCheckboxTypeProps } from "../ui/native-attribute-props";
 
 const STATUS = { in_progress: "In progress", uncertain: "Outcome uncertain", accepted: "Accepted by you", not_met: "Criteria not met", needs_review: "Needs review" };
 
@@ -193,7 +195,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
       <h4>Browser form changes · {receipt.browserChanges.length}</h4>
       <p {...staticHintProps}>These are the values Aux observed before agent input. A failed step may still have changed the page; review its outcome before retrying.</p>
       {receipt.browserChanges.map(change => <div className="row" key={change.stepId}>
-        <span className="grow"><strong>{change.op}</strong> · {change.status === "ok" ? "completed" : "outcome uncertain"}
+        <span {...auxReuseStaticGrowProps}><strong>{change.op}</strong> · {change.status === "ok" ? "completed" : "outcome uncertain"}
           {change.target ? <> · <code>{change.target}</code></> : null}
           {change.before && <span> · Before: {change.before.checked !== undefined ? String(change.before.checked)
             : change.before.selected !== undefined ? change.before.selected : change.before.value ?? "unavailable"}</span>}
@@ -210,7 +212,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
     {!!receipt.tabChanges.length && <section {...staticFieldProps} aria-label="Tab changes">
       <h4>Agent tab changes · {receipt.tabChanges.length}</h4>
       {receipt.tabChanges.map(change => <div className="row" key={change.stepId}>
-        <span className="grow">{change.op === "tab.open" ? "Opened" : "Closed"} run-owned tab · {change.status === "ok" ? "completed" : "outcome uncertain"}
+        <span {...auxReuseStaticGrowProps}>{change.op === "tab.open" ? "Opened" : "Closed"} run-owned tab · {change.status === "ok" ? "completed" : "outcome uncertain"}
           {change.url && <> · <code>{change.url}</code></>}
           {change.undoneAt && <> · Undone {new Date(change.undoneAt).toLocaleString()}</>}
           <span {...staticHintProps}> · run {change.runId} · revision {change.taskRevision}</span>
@@ -228,7 +230,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
     {!!receipt.bookmarkChanges.length && <section {...staticFieldProps} aria-label="Bookmark changes">
       <h4>Agent bookmark changes · {receipt.bookmarkChanges.length}</h4>
       {receipt.bookmarkChanges.map(change => <div className="row" key={change.stepId}>
-        <span className="grow">Saved bookmark · {change.status === "ok" ? "completed" : "outcome uncertain"}
+        <span {...auxReuseStaticGrowProps}>Saved bookmark · {change.status === "ok" ? "completed" : "outcome uncertain"}
           {change.title && <> · {change.title}</>}{change.url && <> · <code>{change.url}</code></>}
           {change.undoneAt && <> · Undone {new Date(change.undoneAt).toLocaleString()}</>}
           <span {...staticHintProps}> · run {change.runId} · revision {change.taskRevision}</span>
@@ -241,7 +243,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
       <h4>Downloads during agent runs · {receipt.downloadChanges.length}</h4>
       <p {...staticHintProps}>A download occurred in a run-controlled tab. Completed files can be moved to recoverable Trash only while their recorded bytes and identity still match. Started or interrupted downloads need review.</p>
       {receipt.downloadChanges.map(change => <div className="row" key={change.stepId}>
-        <span className="grow">Download · {change.status}
+        <span {...auxReuseStaticGrowProps}>Download · {change.status}
           {change.filename && <> · {change.filename}</>}
           {change.size !== undefined && <> · {change.size.toLocaleString()} bytes</>}
           {change.path && <> · <code>{change.path}</code></>}
@@ -256,7 +258,7 @@ function ReceiptSession({receipt,pageId,submit,onChanged,readOnly=false}:Receipt
       <h4>History visits during agent runs · {receipt.historyChanges.length}</h4>
       <p {...staticHintProps}>These exact visits were recorded by Chromium while an agent controlled the page. Removing a visit cannot be undone. A changed visit is refused.</p>
       {receipt.historyChanges.map(change => <div className="row" key={change.stepId}>
-        <span className="grow">History visit
+        <span {...auxReuseStaticGrowProps}>History visit
           {change.title && <> · {change.title}</>}
           {change.url && <> · <code>{change.url}</code></>}
           {change.visitedAt !== undefined && <> · {new Date(change.visitedAt).toLocaleString()}</>}
@@ -467,7 +469,7 @@ function ReceiptExportControls({ owner }: { owner: ReceiptReadOwner }) {
         <input
           ref={inputRef}
           data-command-id="toggle-task-receipt-captured-text"
-          type="checkbox"
+          {...auxReuseNativeCheckboxTypeProps}
           checked={include}
           onChange={toggle}
         />{" "}
@@ -670,7 +672,7 @@ function ReceiptChoice({
       [owner, invoke],
     ),
   );
-  return <input {...props} type="checkbox" ref={ref} data-command-id={command} onChange={run} />;
+  return <input {...props} {...auxReuseNativeCheckboxTypeProps} ref={ref} data-command-id={command} onChange={run} />;
 }
 function ReceiptSelection({
   owner,

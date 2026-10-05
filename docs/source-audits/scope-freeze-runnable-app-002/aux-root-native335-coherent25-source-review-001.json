@@ -1,0 +1,10 @@
+{
+  "scope": "source-only",
+  "actual25Rows": true,
+  "actual7ComponentPins": true,
+  "aggregateForwardReverseForwardExact": true,
+  "requiredOriginal524Retained": true,
+  "required19Targets534Cases": true,
+  "exactTemporaryDiagnosticRemoval": true,
+  "finalRendererAndNativeControllerPending": true
+}

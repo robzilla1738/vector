@@ -1,6 +1,7 @@
 import { staticHintProps } from "../ui/class-props";
 import { useId, type ReactNode } from "react";
 import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/class-props";
+import { nativeGroupRoleProps } from "../ui/native-attribute-props";
 
 export function SettingsSection({
   name,
@@ -51,7 +52,7 @@ export function SettingsField({
       data-settings-description={description ?? (typeof hint === "string" ? hint : "")}
       data-settings-terms={JSON.stringify(searchTerms)}
       tabIndex={-1}
-      role="group"
+      {...nativeGroupRoleProps}
       aria-labelledby={`${id}-label`}
       aria-describedby={supportingText ? `${id}-hint` : undefined}
     >

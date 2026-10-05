@@ -13,7 +13,9 @@ import type { OutboundMcpGrant, OutboundMcpServer, OutboundMcpTool, Task, Worksp
 import { bridge } from "../bridge";
 import { call } from "../store";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
-import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/class-props";
+import { nativeNumberTypeProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type BundleInspection = {
   path: string;
@@ -845,7 +847,7 @@ export function OutboundMcpSettings() {
                       <label>
                         Maximum output tokens
                         <input
-                          type="number"
+                          {...nativeNumberTypeProps}
                           min={1}
                           max={32000}
                           value={outputTokenLimit}
@@ -1044,7 +1046,7 @@ export function OutboundMcpSettings() {
         </>
       )}
       {error && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}

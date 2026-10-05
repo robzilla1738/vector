@@ -1,0 +1,445 @@
+diff --git a/apps/shell/src/components/ConversationAttachmentControls.tsx b/apps/shell/src/components/ConversationAttachmentControls.tsx
+index bc72e9b38..38d2a1a0c 100644
+--- a/apps/shell/src/components/ConversationAttachmentControls.tsx
++++ b/apps/shell/src/components/ConversationAttachmentControls.tsx
+@@ -1,26 +1,17 @@
+-import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes } from "react";
+-import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { guardCommandCompletion } from "../command-completion";
++import { useMemo, type ButtonHTMLAttributes, type InputHTMLAttributes } from "react";
++import { useCommittedConversationOwner, useCurrentConversationCommand } from "./conversation-control-construction";
+ import { errToast } from "../store";
+ 
+ type AttachmentCommand = "preview-conversation-document" | "toggle-conversation-document" | "remove-conversation-document" | "preview-conversation-result" | "toggle-conversation-result";
+ export function useConversationAttachmentOwner(current: () => boolean, records: object[]) {
+   const snapshot = JSON.stringify(records);
+   const identity = useMemo(() => ({ current, records: new Set((JSON.parse(snapshot) as object[]).map(value => JSON.stringify(value))) }), [snapshot,current]);
+-  const committed = useRef<{ identity: typeof identity; active: boolean } | null>(null);
+-  useLayoutEffect(() => { const original = { identity, active: true }; committed.current = original; return () => { original.active = false; }; }, [identity]);
+-  return useCallback((record: object) => {
+-    const original = committed.current;
+-    if (!original?.active || original.identity !== identity) return false;
+-    if (identity.current() && identity.records.has(JSON.stringify(record))) return true;
+-    original.active = false; return false;
++  return useCommittedConversationOwner(identity, (record: object) => {
++    return (identity.current() && identity.records.has(JSON.stringify(record)));
+   }, [current,identity]);
+ }
+ function useAttachmentControl<T extends HTMLButtonElement | HTMLInputElement>(command: AttachmentCommand, current: () => boolean, invoke: (element: T,event?: Event) => unknown) {
+-  const scope = useId();
+-  const [ref, run] = usePreferenceCommand<T>(command,scope,(element,event) => current() ? invoke(element,event) : guardCommandCompletion(Promise.reject(new Error("Choose the original conversation attachment.")),current), error => { if (current()) errToast(error); });
+-
+-  return [ref,run] as const;
++  return useCurrentConversationCommand<T>(command, current, invoke, "Choose the original conversation attachment.", true, error => { if (current()) errToast(error); });
+ }
+ export function ConversationAttachmentAction({command,current,invoke,...props}: Omit<ButtonHTMLAttributes<HTMLButtonElement>,"onClick"> & {command: AttachmentCommand; current(): boolean; invoke(): unknown}) {
+   const [ref,run] = useAttachmentControl<HTMLButtonElement>(command,current,invoke);
+diff --git a/apps/shell/src/components/ConversationLiveControls.tsx b/apps/shell/src/components/ConversationLiveControls.tsx
+index 6ebb78bd0..c3fcaa9af 100644
+--- a/apps/shell/src/components/ConversationLiveControls.tsx
++++ b/apps/shell/src/components/ConversationLiveControls.tsx
+@@ -1,7 +1,8 @@
+-import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes } from "react";
++import { useId, useMemo, type ButtonHTMLAttributes } from "react";
+ import type { Run, Suspension } from "@aux/contracts";
+ import { useStore } from "../store";
+ import { PreferenceAction } from "../settings/sections/preference-command";
++import { useCommittedConversationOwner } from "./conversation-control-construction";
+ 
+ type LiveCommand = "select-conversation-answer" | "select-conversation-steer" | "select-conversation-queue" | "reload-conversation-request";
+ 
+@@ -11,20 +12,11 @@ export function useConversationLiveOwner(current: () => boolean, chatId: string
+   const requestId = request?.suspensionId, requestKind = request?.kind, requestState = request?.state;
+   const identity = useMemo(() => ({ current, chatId, runId, status, statusMessage, request, requestId, requestKind, requestState }),
+     [current, chatId, runId, status, statusMessage, request, requestId, requestKind, requestState]);
+-  const committed = useRef<{ active: boolean; identity: typeof identity } | null>(null);
+-  useLayoutEffect(() => {
+-    const original = { active: true, identity }; committed.current = original;
+-    return () => { original.active = false; };
+-  }, [identity]);
+-  return useCallback(() => {
+-    const original = committed.current;
+-    if (!original?.active || original.identity !== identity) return false;
++  return useCommittedConversationOwner(identity, () => {
+     const latest = useStore.getState().runs.filter(value => (value.config?.chatId ?? value.runId) === chatId)
+       .sort((a, b) => a.createdAt - b.createdAt).at(-1);
+-    if (current() && latest?.runId === runId && latest?.status === status && latest?.statusMessage === statusMessage &&
+-        request?.suspensionId === requestId && request?.kind === requestKind && request?.state === requestState) return true;
+-    original.active = false;
+-    return false;
++    return (current() && latest?.runId === runId && latest?.status === status && latest?.statusMessage === statusMessage &&
++        request?.suspensionId === requestId && request?.kind === requestKind && request?.state === requestState);
+   }, [identity, current, chatId, runId, status, statusMessage, request, requestId, requestKind, requestState]);
+ }
+ 
+diff --git a/apps/shell/src/components/ConversationPreviewControls.tsx b/apps/shell/src/components/ConversationPreviewControls.tsx
+index 204d05149..c209f48b6 100644
+--- a/apps/shell/src/components/ConversationPreviewControls.tsx
++++ b/apps/shell/src/components/ConversationPreviewControls.tsx
+@@ -1,7 +1,6 @@
+-import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type RefObject } from "react";
++import { useCallback, useMemo, type ButtonHTMLAttributes, type RefObject } from "react";
+ import type { PageTarget } from "@aux/contracts";
+-import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { guardCommandCompletion } from "../command-completion";
++import { useCommittedConversationOwner, useCurrentConversationCommand } from "./conversation-control-construction";
+ import { errToast } from "../store";
+ import {
+   nativeButtonTypeProps as auxNativeButtonTypeProps,
+@@ -14,24 +13,15 @@ export function previewPageIdentity(page: PageTarget | undefined) {
+ export function useConversationPreviewOwner(current: () => boolean, page: PageTarget | undefined, selection: string, layoutIdentity: string, read: () => PageTarget | undefined) {
+   const pageIdentity = previewPageIdentity(page);
+   const identity = useMemo(() => [current, pageIdentity, selection, layoutIdentity], [current, pageIdentity, selection, layoutIdentity]);
+-  const committed = useRef<{ active: boolean; identity: typeof identity } | null>(null);
+-  useLayoutEffect(() => { const original = { active: true, identity }; committed.current = original; return () => { original.active = false; }; }, [identity]);
+-  return useCallback(() => {
+-    const original = committed.current;
+-    if (!original?.active || original.identity !== identity) return false;
+-    if (current() && pageIdentity !== null && previewPageIdentity(read()) === pageIdentity) return true;
+-    original.active = false; return false;
++  return useCommittedConversationOwner(identity, () => {
++    return (current() && pageIdentity !== null && previewPageIdentity(read()) === pageIdentity);
+   }, [identity, current, pageIdentity, read]);
+ }
+ export function ConversationPreviewAction({ command, current, invoke, controlRef, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
+   command: "toggle-conversation-preview-menu" | "activate-conversation-preview-page" | "split-conversation-preview-page";
+   current(): boolean; invoke(): unknown; controlRef?: RefObject<HTMLButtonElement | null>;
+ }) {
+-  const scopeId = useId();
+-  const [ref, run] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
+-    if (!current()) return guardCommandCompletion(Promise.reject(new Error("Choose the current conversation preview page.")), current);
+-    return invoke();
+-  }, original => { if (current()) errToast(original); });
++  const [ref, run] = useCurrentConversationCommand<HTMLButtonElement>(command, current, () => invoke(), "Choose the current conversation preview page.", true, original => { if (current()) errToast(original); });
+   const originalRef = useCallback((node: HTMLButtonElement | null) => { ref(node); if (controlRef) controlRef.current = node; }, [ref, controlRef]);
+   return <button {...props} {...auxNativeButtonTypeProps} ref={originalRef} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/ConversationQueuedControls.tsx b/apps/shell/src/components/ConversationQueuedControls.tsx
+index 7bd7c4537..aee20ce95 100644
+--- a/apps/shell/src/components/ConversationQueuedControls.tsx
++++ b/apps/shell/src/components/ConversationQueuedControls.tsx
+@@ -1,6 +1,6 @@
+-import { useCallback, useId, useLayoutEffect, useMemo, useRef } from "react";
++import { useMemo } from "react";
+ import type { RunMessage } from "@aux/contracts";
+-import { usePreferenceCommand } from "../settings/sections/preference-command";
++import { useCommittedConversationOwner, useCurrentConversationCommand } from "./conversation-control-construction";
+ import { errToast } from "../store";
+ import {
+   nativeButtonTypeProps as auxNativeButtonTypeProps,
+@@ -11,16 +11,8 @@ export function ConversationQueuedControls({ message, current, disabled, onCance
+   onCancel(message: RunMessage, edit: boolean, current: () => boolean): unknown;
+ }) {
+   const identity = useMemo(() => ({ message, current, snapshot: JSON.stringify(message) }), [message, current]);
+-  const committed = useRef<{ active: boolean; identity: typeof identity } | null>(null);
+-  useLayoutEffect(() => {
+-    const original = { active: true, identity }; committed.current = original;
+-    return () => { original.active = false; };
+-  }, [identity]);
+-  const delivering = useCallback(() => {
+-    const original = committed.current;
+-    if (!original?.active || original.identity !== identity) return false;
+-    if (current() && JSON.stringify(message) === identity.snapshot) return true;
+-    original.active = false; return false;
++  const delivering = useCommittedConversationOwner(identity, () => {
++    return (current() && JSON.stringify(message) === identity.snapshot);
+   }, [identity, current, message]);
+   return <><QueuedAction edit message={message} current={delivering} disabled={disabled} onCancel={onCancel}/><QueuedAction edit={false} message={message} current={delivering} disabled={disabled} onCancel={onCancel}/></>;
+ }
+@@ -28,11 +20,7 @@ function QueuedAction({ edit, message, current, disabled, onCancel }: {
+   edit: boolean; message: RunMessage; current(): boolean; disabled?: boolean;
+   onCancel(message: RunMessage, edit: boolean, current: () => boolean): unknown;
+ }) {
+-  const scopeId = useId();
+   const command = edit ? "edit-conversation-queued-message" : "remove-conversation-queued-message";
+-  const [controlRef, run] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
+-    if (!current()) throw new Error("Choose the current queued conversation message.");
+-    return onCancel(message, edit, current);
+-  }, errToast);
++  const [controlRef, run] = useCurrentConversationCommand<HTMLButtonElement>(command, current, () => onCancel(message, edit, current), "Choose the current queued conversation message.", false, errToast);
+   return <button {...auxNativeButtonTypeProps} ref={controlRef} disabled={disabled} data-command-id={command} onClick={run}>{edit ? "Edit" : "Remove"}</button>;
+ }
+diff --git a/apps/shell/src/components/ConversationRecoveryControls.tsx b/apps/shell/src/components/ConversationRecoveryControls.tsx
+index 63a4e0306..63bde8265 100644
+--- a/apps/shell/src/components/ConversationRecoveryControls.tsx
++++ b/apps/shell/src/components/ConversationRecoveryControls.tsx
+@@ -1,8 +1,8 @@
+ import {
+   smallButtonProps as auxReserveSmallButtonProps,
+ } from "../ui/button-props";
+-import { useId, type ButtonHTMLAttributes } from "react";
+-import { usePreferenceCommand } from "../settings/sections/preference-command";
++import { type ButtonHTMLAttributes } from "react";
++import { useCurrentConversationCommand } from "./conversation-control-construction";
+ import { errToast } from "../store";
+ import {
+   nativeButtonTypeProps as auxNativeButtonTypeProps,
+@@ -12,10 +12,6 @@ export function ConversationRecoveryAction({ command, current, invoke, ...props
+   command: "restore-archived-conversation" | "reopen-conversation-page";
+   current(): boolean; invoke(): unknown;
+ }) {
+-  const scopeId = useId();
+-  const [controlRef, run] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
+-    if (!current()) throw new Error("Choose the current conversation recovery control.");
+-    return invoke();
+-  }, errToast);
++  const [controlRef, run] = useCurrentConversationCommand<HTMLButtonElement>(command, current, () => invoke(), "Choose the current conversation recovery control.", false, errToast);
+   return <button {...props} {...auxNativeButtonTypeProps} {...auxReserveSmallButtonProps} ref={controlRef} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/ConversationSourceControls.tsx b/apps/shell/src/components/ConversationSourceControls.tsx
+index 9c52b06fe..6414b3fc8 100644
+--- a/apps/shell/src/components/ConversationSourceControls.tsx
++++ b/apps/shell/src/components/ConversationSourceControls.tsx
+@@ -1,7 +1,6 @@
+-import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type RefObject, type ReactNode } from "react";
++import { useCallback, useMemo, type ButtonHTMLAttributes, type RefObject, type ReactNode } from "react";
+ import type { ConversationSource } from "@aux/contracts";
+-import { usePreferenceCommand } from "../settings/sections/preference-command";
+-import { guardCommandCompletion } from "../command-completion";
++import { useCommittedConversationOwner, useCurrentConversationCommand } from "./conversation-control-construction";
+ import { errToast } from "../store";
+ import { SourceRow } from "./SourceRow";
+ import {
+@@ -13,23 +12,12 @@ type SourceCommand = "toggle-conversation-sources" | "select-conversation-source
+ export function useConversationSourcesOwner(current: () => boolean, sources: ConversationSource[]) {
+   const snapshot = JSON.stringify(sources);
+   const identity = useMemo(() => ({ current, snapshot, records: new Set((JSON.parse(snapshot) as ConversationSource[]).map(value => JSON.stringify(value))) }), [current, snapshot]);
+-  const committed = useRef<{ active: boolean; identity: typeof identity } | null>(null);
+-  useLayoutEffect(() => { const original = { active: true, identity }; committed.current = original; return () => { original.active = false; }; }, [identity]);
+-  return useCallback((source?: ConversationSource) => {
+-    const original = committed.current;
+-    if (!original?.active || original.identity !== identity) return false;
+-    if (current() && (!source || identity.records.has(JSON.stringify(source)))) return true;
+-    original.active = false; return false;
++  return useCommittedConversationOwner(identity, (source?: ConversationSource) => {
++    return (current() && (!source || identity.records.has(JSON.stringify(source))));
+   }, [identity, current]);
+ }
+ function useSourceControl(command: SourceCommand, current: () => boolean, invoke: (element: HTMLElement, event?: Event) => unknown) {
+-  const scopeId = useId();
+-  const [ref, run] = usePreferenceCommand<HTMLElement>(command, scopeId, (element, event) => {
+-    if (!current()) return guardCommandCompletion(Promise.reject(new Error("Choose the original recorded conversation source.")), current);
+-    return invoke(element, event);
+-  }, error => { if (current()) errToast(error); });
+-
+-  return [ref, run] as const;
++  return useCurrentConversationCommand<HTMLElement>(command, current, invoke, "Choose the original recorded conversation source.", true, error => { if (current()) errToast(error); });
+ }
+ export function ConversationSourceAction({ command, current, invoke, controlRef, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
+   command: SourceCommand; current(): boolean; invoke(): unknown; controlRef?: RefObject<HTMLButtonElement | null>;
+diff --git a/apps/shell/src/components/ConversationViewControls.tsx b/apps/shell/src/components/ConversationViewControls.tsx
+index 590e653f7..ee08e3f01 100644
+--- a/apps/shell/src/components/ConversationViewControls.tsx
++++ b/apps/shell/src/components/ConversationViewControls.tsx
+@@ -1,5 +1,5 @@
+-import { useId, type ButtonHTMLAttributes } from "react";
+-import { usePreferenceCommand } from "../settings/sections/preference-command";
++import { type ButtonHTMLAttributes } from "react";
++import { useCurrentConversationCommand } from "./conversation-control-construction";
+ import { errToast } from "../store";
+ import {
+   nativeButtonTypeProps as auxNativeButtonTypeProps,
+@@ -9,10 +9,6 @@ export function ConversationViewAction({ command, current, invoke, ...props }: O
+   command: "export-conversation-markdown" | "continue-conversation-in-rail" | "toggle-conversation-browser-preview" | "jump-conversation-to-latest";
+   current(): boolean; invoke(): unknown;
+ }) {
+-  const scopeId = useId();
+-  const [controlRef, run] = usePreferenceCommand<HTMLButtonElement>(command, scopeId, () => {
+-    if (!current()) throw new Error("Choose the current conversation view control.");
+-    return invoke();
+-  }, errToast);
++  const [controlRef, run] = useCurrentConversationCommand<HTMLButtonElement>(command, current, () => invoke(), "Choose the current conversation view control.", false, errToast);
+   return <button {...props} {...auxNativeButtonTypeProps} ref={controlRef} data-command-id={command} onClick={run}/>;
+ }
+diff --git a/apps/shell/src/components/conversation-control-construction.test.tsx b/apps/shell/src/components/conversation-control-construction.test.tsx
+new file mode 100644
+index 000000000..84c9043d4
+--- /dev/null
++++ b/apps/shell/src/components/conversation-control-construction.test.tsx
+@@ -0,0 +1,128 @@
++// @vitest-environment jsdom
++import { act, useMemo } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { executeCommand } from "../commands";
++import { useStore } from "../store";
++import {
++  useCommittedConversationOwner,
++  useCurrentConversationCommand,
++} from "./conversation-control-construction";
++
++vi.mock("../bridge", async (original) => ({
++  ...(await original<typeof import("../bridge")>()),
++  inMock: true,
++}));
++const initial = useStore.getState();
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
++    { width: 100 },
++  ] as unknown as DOMRectList);
++  host = document.createElement("div");
++  document.body.append(host);
++  root = createRoot(host);
++});
++afterEach(async () => {
++  await act(async () => root.unmount());
++  host.remove();
++  useStore.setState(initial, true);
++  vi.restoreAllMocks();
++  vi.unstubAllGlobals();
++});
++
++it("retains each committed callback, exact predicate arguments, and newer owner after stale callback refusal", async () => {
++  const callbacks: ((value: object) => boolean)[] = [];
++  const admitted = vi.fn((_value: object) => true),
++    record = {};
++  function Owner({ revision }: { revision: string }) {
++    const identity = useMemo(() => ({ revision }), [revision]);
++    callbacks.push(useCommittedConversationOwner(identity, admitted, [identity, admitted]));
++    return null;
++  }
++  await act(async () => root.render(<Owner revision="a" />));
++  const a = callbacks.at(-1)!;
++  expect(a(record)).toBe(true);
++  expect(admitted.mock.calls.at(-1)).toEqual([record]);
++  await act(async () => root.render(<Owner revision="a" />));
++  expect(callbacks.at(-1)).toBe(a);
++  await act(async () => root.render(<Owner revision="b" />));
++  const b = callbacks.at(-1)!;
++  admitted.mockClear();
++  expect(a(record)).toBe(false);
++  expect(admitted).not.toHaveBeenCalled();
++  expect(b(record)).toBe(true);
++  admitted.mockReturnValueOnce(false);
++  expect(b(record)).toBe(false);
++  admitted.mockClear();
++  expect(b(record)).toBe(false);
++  expect(admitted).not.toHaveBeenCalled();
++  await act(async () => root.render(<Owner revision="a" />));
++  expect(a(record)).toBe(false);
++  expect(callbacks.at(-1)!(record)).toBe(true);
++});
++
++it("dispatches actual original event/ref and retains admitted result and rejection identity", async () => {
++  const original = new Event("click", { bubbles: true });
++  const result = {},
++    reason = new Error("original failure");
++  const invoke = vi.fn((_element: HTMLButtonElement, _event?: Event): unknown => result);
++  function Control() {
++    const [ref, run] = useCurrentConversationCommand<HTMLButtonElement>(
++      "toggle-conversation-preview-menu",
++      () => true,
++      invoke,
++      "refusal",
++      true,
++      vi.fn(),
++    );
++    return (
++      <button ref={ref} data-command-id="toggle-conversation-preview-menu" onClick={run}>
++        Original
++      </button>
++    );
++  }
++  await act(async () => root.render(<Control />));
++  const button = host.querySelector("button")!;
++  await act(async () => button.dispatchEvent(original));
++  expect(invoke).toHaveBeenCalledWith(button, original);
++  button.focus();
++  await act(async () => {
++    expect(await executeCommand("toggle-conversation-preview-menu")).toBe(result);
++  });
++  invoke.mockImplementation(() => Promise.reject(reason));
++  await act(async () => {
++    await expect(executeCommand("toggle-conversation-preview-menu")).rejects.toBe(reason);
++  });
++});
++
++it("preserves guarded versus synchronous refusal reporting on real mounted pointer dispatch", async () => {
++  const invoke = vi.fn(),
++    report = vi.fn();
++  function Control({ guarded }: { guarded: boolean }) {
++    const [ref, run] = useCurrentConversationCommand<HTMLButtonElement>(
++      "toggle-conversation-preview-menu",
++      () => false,
++      invoke,
++      "original refusal",
++      guarded,
++      report,
++    );
++    return (
++      <button ref={ref} data-command-id="toggle-conversation-preview-menu" onClick={run}>
++        Original
++      </button>
++    );
++  }
++  await act(async () => root.render(<Control guarded />));
++  await act(async () => host.querySelector("button")!.click());
++  expect(invoke).not.toHaveBeenCalled();
++  expect(report).not.toHaveBeenCalled();
++  await act(async () => root.render(<Control guarded={false} />));
++  await act(async () => host.querySelector("button")!.click());
++  expect(invoke).not.toHaveBeenCalled();
++  expect(report).toHaveBeenCalledTimes(1);
++  expect(report.mock.calls[0]![0]).toBeInstanceOf(Error);
++  expect((report.mock.calls[0]![0] as Error).message).toBe("original refusal");
++});
+diff --git a/apps/shell/src/components/conversation-control-construction.ts b/apps/shell/src/components/conversation-control-construction.ts
+new file mode 100644
+index 000000000..e45b51f0c
+--- /dev/null
++++ b/apps/shell/src/components/conversation-control-construction.ts
+@@ -0,0 +1,52 @@
++import { useCallback, useId, useLayoutEffect, useRef, type DependencyList } from "react";
++import type { ShellCommandId } from "@aux/contracts";
++import { usePreferenceCommand } from "../settings/sections/preference-command";
++import { guardCommandCompletion } from "../command-completion";
++
++/** Each caller retains its own committed identity and original admission predicate. */
++export function useCommittedConversationOwner<A extends unknown[]>(
++  identity: object,
++  admitted: (...args: A) => boolean,
++  dependencies: DependencyList,
++) {
++  const committed = useRef<{ active: boolean; identity: object } | null>(null);
++  useLayoutEffect(() => {
++    const original = { active: true, identity };
++    committed.current = original;
++    return () => {
++      original.active = false;
++    };
++  }, [identity]);
++  return useCallback((...args: A) => {
++    const original = committed.current;
++    if (!original?.active || original.identity !== identity) return false;
++    if (admitted(...args)) return true;
++    original.active = false;
++    return false;
++  }, dependencies);
++}
++
++/** Original synchronous refusals and guarded rejections remain distinct. */
++export function useCurrentConversationCommand<T extends HTMLElement>(
++  command: ShellCommandId,
++  current: () => boolean,
++  invoke: (element: T, event?: Event) => unknown,
++  refusal: string,
++  guarded: boolean,
++  report: (reason: unknown) => void,
++) {
++  const scope = useId();
++  return usePreferenceCommand<T>(
++    command,
++    scope,
++    (element, event) => {
++      if (!current()) {
++        const reason = new Error(refusal);
++        if (guarded) return guardCommandCompletion(Promise.reject(reason), current);
++        throw reason;
++      }
++      return invoke(element, event);
++    },
++    report,
++  );
++}

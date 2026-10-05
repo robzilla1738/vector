@@ -8,6 +8,7 @@ import { WorkbookSnapshotSchema } from "@aux/contracts/workbook-snapshot";
 import { workbookColumnLabel, workbookSheetCsv } from "../workbook-sheet";
 import { bridge } from "../bridge";
 import { toast } from "../store";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export function WorkbookPreview({ content }: { content: string }) {
   const [selected, setSelected] = useState(0);
@@ -47,7 +48,7 @@ export function WorkbookPreview({ content }: { content: string }) {
         <button {...smallGhostButtonProps} aria-pressed={source} onClick={() => setSource(value => !value)}>{source ? "Show table" : "Show full source"}</button>
       </div></details>
     </div>
-    {error&&<p {...staticFieldErrorProps} role="alert">{error}</p>}
+    {error&&<p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}</p>}
     <p {...staticHintProps}>Exports keep saved cell values and coordinates. Formulas stay text. Source hyperlinks are included only when a cell stores a safe http(s) address.</p>
     {source ? <pre role="group" tabIndex={0} aria-label="Workbook snapshot source">{content}</pre> : sheet.rows.length ? <div role="group" className="structured-result-table workbook-table" tabIndex={0} aria-label={`${sheet.name} cell values`}><table><thead><tr><th scope="col" aria-label="Row number" />{visibleColumns.map(column => <th scope="col" key={column}>{workbookColumnLabel(column)}</th>)}</tr></thead><tbody>{sheet.rows.slice(0, 100).map(row => {
       const values = new Map(row.cells.map(cell => [cell.column, cell]));

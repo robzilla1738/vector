@@ -22,6 +22,7 @@ import {
 } from "../features/commands/shortcut-settings";
 import { FeatureSettings } from "../features/registry";
 import { COMMANDS } from "@aux/contracts";
+import { nativeStatusRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export { bindingFromKeydown } from "../features/commands/shortcut-settings";
 
@@ -188,7 +189,7 @@ export function ShortcutsSetting({
         onChange={(event) => setQuery(event.target.value)}
       />
       {!visibleDefs.length && (
-        <p {...staticHintProps} role="status">
+        <p {...staticHintProps} {...nativeStatusRoleProps}>
           No matching shortcuts. Try another command name.
         </p>
       )}
@@ -239,7 +240,7 @@ export function ShortcutsSetting({
       </ul>
       {active && <FeatureSettings category="Keyboard shortcuts" />}
       {pending && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {bindingLabel(pending.binding, platform)} is used by{" "}
           {pending.rivals.map((def) => `“${def.label}”`).join(", ")}.
           <button {...smallButtonProps} disabled={busy} onClick={() => steal(pending)}>
@@ -251,7 +252,7 @@ export function ShortcutsSetting({
         </p>
       )}
       {conflicts.length > 0 && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {conflicts
             .map(
               (entry) =>
@@ -263,7 +264,7 @@ export function ShortcutsSetting({
       )}
       {notice && <output {...staticHintProps}>{notice}</output>}
       {error && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}

@@ -13,6 +13,7 @@ import { SettingsField, SettingsSection } from "../primitives";
 import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../../ui/native-attribute-props";
+import { nativeNumberTypeProps, nativeAlertRoleProps, nativeStatusRoleProps, nativePoliteLiveProps } from "../../ui/native-attribute-props";
 
 const effectiveCap = (routine: Routine) => routine.spendCapUsd ?? 50;
 
@@ -133,10 +134,10 @@ function CreateAutomationDialog({ workspaceId, onClose, onCreated }: {
         <input aria-label="New automation name" value={title} maxLength={200} onChange={(event) => setTitle(event.target.value)} disabled={busy} placeholder="Use task title" />
       </label>
       <label>Model spend cap (USD)
-        <input aria-label="New automation model spend cap" type="number" min="0.01" max="50" step="0.01" value={cap} onChange={(event) => setCap(event.target.value)} disabled={busy} />
+        <input aria-label="New automation model spend cap" {...nativeNumberTypeProps} min="0.01" max="50" step="0.01" value={cap} onChange={(event) => setCap(event.target.value)} disabled={busy} />
       </label>
       <RoutineSchedule mode="create" trigger={{ kind: "schedule", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", hour: 9, minute: 0, days: [1, 2, 3, 4, 5] }} calendar={calendar} disabled={busy || !taskId} onSave={(trigger) => void create(trigger)} />
-      {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+      {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}</p>}
       <button {...smallGhostButtonProps} {...auxNativeButtonTypeProps} onClick={onClose} disabled={busy}>Cancel</button>
     </dialog>, document.body,
   );
@@ -315,7 +316,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
               )}
             </div>
             {routine.pauseCause === "unread_results" && (
-              <div {...staticFieldProps} role="status">
+              <div {...staticFieldProps} {...nativeStatusRoleProps}>
                 <span>Paused after three unread results over at least a day while model work was recorded. Review the results before continuing; the model spend cap still applies.</span>
                 <div {...staticRowProps}>
                   <button {...smallButtonProps} disabled={!!busyId} onClick={() => void changeRoutine(routine, { paused: false })}>Keep running</button>
@@ -347,7 +348,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                   <input
                     name="spendCapUsd"
                     aria-label={`${routine.title} model spend cap`}
-                    type="number"
+                    {...nativeNumberTypeProps}
                     min="0.01"
                     max="50"
                     step="0.01"
@@ -403,7 +404,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                   .catch((reason) => setError(errorMessage(reason)))
                   .finally(() => setOutcomeBusy(""));
               }}>View result</button>}
-            {outcome?.run.routineRunId === item.run.routineRunId && <div aria-live="polite" {...staticHintProps}>
+            {outcome?.run.routineRunId === item.run.routineRunId && <div {...nativePoliteLiveProps} {...staticHintProps}>
               <div>Linked run: <code>{outcome.run.runId ?? "unavailable"}</code> · {outcome.linkedRunFound ? "Saved run available" : "Linked run unavailable"}</div>
               {outcome.criteria.map(entry => <div key={entry.criterion.criterionId}>
                 {entry.criterion.description}: {entry.status.replaceAll("_", " ")} · {entry.evidence.length} evidence record{entry.evidence.length === 1 ? "" : "s"}
@@ -412,7 +413,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
           </div>
         ))}
       </SettingsField>
-      {error && <p {...staticHintProps} role="alert">{error}</p>}
+      {error && <p {...staticHintProps} {...nativeAlertRoleProps}>{error}</p>}
       {creating && workspaceId && <CreateAutomationDialog workspaceId={workspaceId} onClose={() => setCreating(false)} onCreated={(routine) => {
         setRoutines((items) => items.some((item) => item.routineId === routine.routineId)
           ? items.map((item) => item.routineId === routine.routineId ? routine : item)

@@ -14,6 +14,7 @@ import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
 
+
 /** Home uses the real composer and durable draft/context services. Loaded only when the home composer is needed. */
 export default function HomeAsk({ onSearch, current }: { onSearch?(): unknown; current?(): boolean }) {
   const ownCurrent = useHomeEntryOwner(!!onSearch);

@@ -8,6 +8,7 @@ import { bridge } from "../../bridge";
 import { call, errToast, toast } from "../../store";
 import { SettingsField, SettingsSection } from "../primitives";
 import { usageReportCsv } from "../usage-csv";
+import { nativeNumberTypeProps, nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 type Caps = { runUsd?: number; dayUsd?: number; routineUsd?: number };
 const usd = (value: number) => `$${value.toFixed(value < 0.01 && value > 0 ? 4 : 2)}`;
@@ -167,7 +168,7 @@ export function UsageBudgetsSettings({
               <input
                 name="runUsd"
                 aria-label="Per run budget"
-                type="number"
+                {...nativeNumberTypeProps}
                 min="0.01"
                 max="100000"
                 step="0.01"
@@ -179,7 +180,7 @@ export function UsageBudgetsSettings({
               <input
                 name="dayUsd"
                 aria-label="Per day budget"
-                type="number"
+                {...nativeNumberTypeProps}
                 min="0.01"
                 max="100000"
                 step="0.01"
@@ -191,7 +192,7 @@ export function UsageBudgetsSettings({
               <input
                 name="routineUsd"
                 aria-label="Per routine budget"
-                type="number"
+                {...nativeNumberTypeProps}
                 min="0.01"
                 max="100000"
                 step="0.01"
@@ -203,7 +204,7 @@ export function UsageBudgetsSettings({
             </button>
           </div>
           {capError && (
-            <p role="alert" {...staticFieldErrorProps}>
+            <p {...nativeAlertRoleProps} {...staticFieldErrorProps}>
               {capError}
             </p>
           )}
@@ -222,7 +223,7 @@ export function UsageBudgetsSettings({
           </button>
         </div>
         {error && (
-          <p role="alert" {...staticFieldErrorProps}>
+          <p {...nativeAlertRoleProps} {...staticFieldErrorProps}>
             {error}
           </p>
         )}

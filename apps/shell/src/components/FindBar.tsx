@@ -8,6 +8,7 @@ import { useStore, call } from "../store";
 import { shellIconClose, shellIconDown, shellIconFind, shellIconUp } from "./icons";
 import { bridge } from "../bridge";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
+import { nativePoliteLiveProps } from "../ui/native-attribute-props";
 
 /** ⌘F — in-flow strip above the page so highlighting stays live. */
 export function FindBar({ scope, inputRef, returnFocusRef }: {scope?: "reader"; inputRef?: RefObject<HTMLInputElement | null>; returnFocusRef?: RefObject<HTMLDivElement | null>} = {}) {
@@ -121,7 +122,7 @@ export function FindBar({ scope, inputRef, returnFocusRef }: {scope?: "reader"; 
         }}
       />
       {text && <button {...staticSmallIconButtonProps} aria-label="Clear search" title="Clear search" onClick={() => { onChange(""); ref.current?.focus(); }}>{shellIconClose}</button>}
-      <span className={`fb-n nums ${error || res?.matches === 0 ? "none" : ""}`} aria-live="polite" title={error || undefined}>
+      <span className={`fb-n nums ${error || res?.matches === 0 ? "none" : ""}`} {...nativePoliteLiveProps} title={error || undefined}>
         {error ? "Search unavailable" : res ? (res.matches === 0 ? "No results" : res.activeMatch ? `${res.activeMatch} of ${res.matches}` : `${res.matches} matches`) : text && (inShell || activePageId) && !composing.current ? "Searching…" : ""}
       </span>
       {error && <button {...smallGhostButtonProps} title={error} aria-label={`Retry search: ${error}`} disabled={!text || (!inShell && (!activePageId || !!loading))} onClick={() => {

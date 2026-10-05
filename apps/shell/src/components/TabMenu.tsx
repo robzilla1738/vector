@@ -16,6 +16,7 @@ import { shellIconAgentSm, shellIconClose, shellIconCopy, shellIconFolder, shell
 import { useShortcutLabels } from "../use-shortcut-label";
 import { useFeature } from "../use-feature";
 import { staticTextProps as auxClassTextProps } from "../ui/class-props";
+import { nativeMenuItemRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, onClose: finishClose }: { page: PageTarget; selectedPages?: PageTarget[]; onSelectionDone?: () => void; x: number; y: number; onClose: () => void }) {
   const key = useShortcutLabels();
@@ -190,7 +191,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
     if (moving && (event.key === "Escape" || (event.key === "ArrowLeft" && !(event.target instanceof HTMLInputElement)))) { event.preventDefault(); event.stopPropagation(); setMoving(false); setQuery(""); return; }
   }}>
     {naming ? <>
-      <button className="menu-item tab-menu-back" role="menuitem" onClick={closeNaming}>{shellIconLeft}<span {...auxClassTextProps}>Back to tab actions</span></button>
+      <button className="menu-item tab-menu-back" {...nativeMenuItemRoleProps} onClick={closeNaming}>{shellIconLeft}<span {...auxClassTextProps}>Back to tab actions</span></button>
       <div className="menu-label">Name this tab</div>
       <p className="menu-empty">Use a short label in your tab strip. The page title stays unchanged.</p>
       <input ref={nameInput} className="tab-menu-search" aria-label="Tab label" maxLength={60} value={nameDraft} disabled={nameBusy}
@@ -199,18 +200,18 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
           event.preventDefault(); saveName();
         } }} />
       {aiNamingEnabled && <p className="menu-empty">AI sees this page title and site domain. Review its suggestion before saving.</p>}
-      {nameError && <p className="menu-empty" role="alert">{nameError}</p>}
+      {nameError && <p className="menu-empty" {...nativeAlertRoleProps}>{nameError}</p>}
       {suggestion && <p className="menu-empty">Suggested from “{suggestion.sourceTitle}” · {hostOf(suggestion.sourceUrl)}</p>}
-      {aiNamingEnabled && <button {...staticMenuItemProps} role="menuitem" disabled={nameBusy} onClick={() => void suggestName()}>{shellIconAgentSm}<span {...auxClassTextProps}>{nameBusy ? "Suggesting…" : "Suggest with AI"}</span></button>}
-      <button {...staticMenuItemProps} role="menuitem" disabled={nameBusy || !normalizeTabName(nameDraft)} onClick={saveName}>Save tab label</button>
-      {layout.tabNames?.[page.pageId]?.url === page.url && <button {...staticMenuItemProps} role="menuitem" onClick={() => action(() => useStore.getState().setTabName(page.pageId, page.url, null))}>Use page title again</button>}
+      {aiNamingEnabled && <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} disabled={nameBusy} onClick={() => void suggestName()}>{shellIconAgentSm}<span {...auxClassTextProps}>{nameBusy ? "Suggesting…" : "Suggest with AI"}</span></button>}
+      <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} disabled={nameBusy || !normalizeTabName(nameDraft)} onClick={saveName}>Save tab label</button>
+      {layout.tabNames?.[page.pageId]?.url === page.url && <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => action(() => useStore.getState().setTabName(page.pageId, page.url, null))}>Use page title again</button>}
     </> : remembering ? <>
       <div className="menu-label">Remember page content</div>
       <p className="menu-empty">Save readable article text from {hostOf(page.url)} in {space?.name}. This allows this site in the Space until you remove it in Space memory. Aux checks the captured text for financial, health, login and identity details before saving it. Forms and private pages are excluded.</p>
-      <button ref={rememberButton} {...staticMenuItemProps} role="menuitem" onClick={() => action(rememberPage)}>Remember this article</button>
-      <button {...staticMenuItemProps} role="menuitem" onClick={() => setRemembering(false)}>Cancel</button>
+      <button ref={rememberButton} {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => action(rememberPage)}>Remember this article</button>
+      <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => setRemembering(false)}>Cancel</button>
     </> : moving ? <>
-      <button className="menu-item tab-menu-back" role="menuitem" onClick={() => { setMoving(false); setQuery(""); }}>{shellIconLeft}<span {...auxClassTextProps}>{bulk ? `Move ${selectedIds.length} tabs` : "Move tab"}</span></button>
+      <button className="menu-item tab-menu-back" {...nativeMenuItemRoleProps} onClick={() => { setMoving(false); setQuery(""); }}>{shellIconLeft}<span {...auxClassTextProps}>{bulk ? `Move ${selectedIds.length} tabs` : "Move tab"}</span></button>
       <input ref={moveSearch} className="tab-menu-search" aria-label="Find a folder, Space or window" placeholder="Find a destination…" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
         if (event.key === "ArrowDown") { event.preventDefault(); firstDestination.current?.focus(); }
         if (event.key === "Enter" && !event.nativeEvent.isComposing && query.trim()) {
@@ -220,24 +221,24 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
       }} />
       {otherFolders.length > 0 && <div className="menu-label">Folders in this Space</div>}
       {otherFolders.map(folder => <button ref={firstDestinationKey === `folder:${folder.id}` ? firstDestination : undefined} className="menu-item" role="menuitem" data-destination key={folder.id} onClick={() => action(() => move(spaceId, folder.id))}>{shellIconFolderClosed}<span {...auxClassTextProps}>{folder.name}</span></button>)}
-      {hasFolder && matches("Remove from folder") && <button ref={firstDestinationKey === "remove" ? firstDestination : undefined} {...staticMenuItemProps} role="menuitem" data-destination onClick={() => action(() => move(spaceId, null))}>Remove from folder</button>}
+      {hasFolder && matches("Remove from folder") && <button ref={firstDestinationKey === "remove" ? firstDestination : undefined} {...staticMenuItemProps} {...nativeMenuItemRoleProps} data-destination onClick={() => action(() => move(spaceId, null))}>Remove from folder</button>}
       {otherSpaces.length > 0 && <div className="menu-label">Spaces</div>}
       {otherSpaces.map(space => <button ref={firstDestinationKey === `space:${space.id}` ? firstDestination : undefined} className="menu-item" role="menuitem" data-destination key={space.id} data-space={space.color} onClick={() => action(() => move(space.id))}><span className="space-dot"/><span {...auxClassTextProps}>{space.name}</span></button>)}
       {canMoveWindow && <>
         <div className="menu-label">Windows</div>
-        {matches("New window") && <button ref={firstDestinationKey === "new-window" ? firstDestination : undefined} {...staticMenuItemProps} role="menuitem" data-destination onClick={() => action(() => moveWindow())}>{shellIconPlusSm}<span {...auxClassTextProps}>New window</span></button>}
-        {otherWindows.map(window => <button key={window.id} ref={firstDestinationKey === `window:${window.id}` ? firstDestination : undefined} {...staticMenuItemProps} role="menuitem" data-destination title={window.title} onClick={() => action(() => moveWindow(window.id))}><span {...auxClassTextProps}>{window.title}</span><span className="muted">{window.tabCount} tabs</span></button>)}
+        {matches("New window") && <button ref={firstDestinationKey === "new-window" ? firstDestination : undefined} {...staticMenuItemProps} {...nativeMenuItemRoleProps} data-destination onClick={() => action(() => moveWindow())}>{shellIconPlusSm}<span {...auxClassTextProps}>New window</span></button>}
+        {otherWindows.map(window => <button key={window.id} ref={firstDestinationKey === `window:${window.id}` ? firstDestination : undefined} {...staticMenuItemProps} {...nativeMenuItemRoleProps} data-destination title={window.title} onClick={() => action(() => moveWindow(window.id))}><span {...auxClassTextProps}>{window.title}</span><span className="muted">{window.tabCount} tabs</span></button>)}
       </>}
       {!otherFolders.length && !otherSpaces.length && !(hasFolder && matches("Remove from folder")) && !(canMoveWindow && (otherWindows.length || matches("New window"))) && <p className="menu-empty">No matching destinations</p>}
     </> : <>
 
     {bulk && <div className="menu-label">{selectedIds.length} tabs selected</div>}
     {!bulk && <>
-    <button {...staticMenuItemProps} role="menuitem" onClick={() => action(() => tabCommand({ kind: "reload", pageId: page.pageId }))}>{shellIconReloadSm}<span {...auxClassTextProps}>Reload</span>{key("reload") && <kbd>{key("reload")}</kbd>}</button>
-    {recordEnabled && web && !page.ownedByRuntime && <button {...staticMenuItemProps} role="menuitem" disabled={page.controller === "agent" || page.controller === "external"} data-command-id="record-demonstration" onClick={() => action(() => executeCommand("record-demonstration", { payload: { pageId: page.pageId } }))}>Record a demonstration</button>}
+    <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => action(() => tabCommand({ kind: "reload", pageId: page.pageId }))}>{shellIconReloadSm}<span {...auxClassTextProps}>Reload</span>{key("reload") && <kbd>{key("reload")}</kbd>}</button>
+    {recordEnabled && web && !page.ownedByRuntime && <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} disabled={page.controller === "agent" || page.controller === "external"} data-command-id="record-demonstration" onClick={() => action(() => executeCommand("record-demonstration", { payload: { pageId: page.pageId } }))}>Record a demonstration</button>}
     <TabAudioButton pageId={page.pageId} title={tabLabel(layout, page)} menu onDone={finishClose} />
     {lifecycleEnabled && inNativeHost && !bridge.privateMode && web && page.pageId !== activePageId && !page.ownedByRuntime && page.lifecycle !== "discarded" &&
-      <button {...staticMenuItemProps} role="menuitem" disabled={!!tabSound?.audible || page.controller === "agent" || page.controller === "external"}
+      <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} disabled={!!tabSound?.audible || page.controller === "agent" || page.controller === "external"}
         title="Sleep a clean background tab. It reloads when opened. Unsaved work and audio stay awake."
         onClick={() => action(async () => {
           const result = await bridge.tabSleep(page.pageId, page.url);
@@ -245,24 +246,24 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
           toast("Tab sleeping. It will reload when you open it.");
         })}>{shellIconPause}<span {...auxClassTextProps}>Sleep tab</span></button>}
     {web && <>
-      <button {...staticMenuItemProps} role="menuitem" onClick={openNaming}>{shellIconAgentSm}<span {...auxClassTextProps}>Name tab…</span></button>
-      <button {...staticMenuItemProps} role="menuitem" onClick={() => action(() => useStore.getState().duplicateTab(page.pageId))}>{shellIconCopy}<span {...auxClassTextProps}>Duplicate tab</span></button>
-      <button {...staticMenuItemProps} role="menuitem" onClick={() => action(async () => { await navigator.clipboard.writeText(page.url); toast("URL copied"); })}>{shellIconCopy}<span {...auxClassTextProps}>Copy URL</span></button>
-      <button {...staticMenuItemProps} role="menuitem" onClick={() => action(() => useStore.getState().togglePin({ url: page.url, title: page.title || hostOf(page.url) }, spaceId))}>{shellIconPin}<span {...auxClassTextProps}>{pinned ? "Unpin" : "Pin to space"}</span></button>
+      <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={openNaming}>{shellIconAgentSm}<span {...auxClassTextProps}>Name tab…</span></button>
+      <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => action(() => useStore.getState().duplicateTab(page.pageId))}>{shellIconCopy}<span {...auxClassTextProps}>Duplicate tab</span></button>
+      <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => action(async () => { await navigator.clipboard.writeText(page.url); toast("URL copied"); })}>{shellIconCopy}<span {...auxClassTextProps}>Copy URL</span></button>
+      <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => action(() => useStore.getState().togglePin({ url: page.url, title: page.title || hostOf(page.url) }, spaceId))}>{shellIconPin}<span {...auxClassTextProps}>{pinned ? "Unpin" : "Pin to space"}</span></button>
     </>}
-    {rememberable && <button {...staticMenuItemProps} role="menuitem" onClick={() => setRemembering(true)}>{shellIconCopy}<span {...auxClassTextProps}>Remember article in {space?.name}…</span></button>}
-    {activePageId && activePageId !== page.pageId && spaceId === layout.activeSpaceId && (splitPageId === page.pageId || (canSplitPage(page) && canSplitPage(activePage))) && <button {...staticMenuItemProps} role="menuitem" data-command-id={splitPageId === page.pageId ? "split-separate" : "split-add"} onClick={() => action(() => runCommand(splitPageId === page.pageId ? "split-separate" : "split-add", { payload: { pageId: page.pageId } }))}>{shellIconSplit}<span {...auxClassTextProps}>{splitPageId === page.pageId ? "Close split view" : "Open beside current tab"}</span></button>}
+    {rememberable && <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => setRemembering(true)}>{shellIconCopy}<span {...auxClassTextProps}>Remember article in {space?.name}…</span></button>}
+    {activePageId && activePageId !== page.pageId && spaceId === layout.activeSpaceId && (splitPageId === page.pageId || (canSplitPage(page) && canSplitPage(activePage))) && <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} data-command-id={splitPageId === page.pageId ? "split-separate" : "split-add"} onClick={() => action(() => runCommand(splitPageId === page.pageId ? "split-separate" : "split-add", { payload: { pageId: page.pageId } }))}>{shellIconSplit}<span {...auxClassTextProps}>{splitPageId === page.pageId ? "Close split view" : "Open beside current tab"}</span></button>}
     </>}
-    {horizontal && <button {...staticMenuItemProps} role="menuitem" onClick={() => action(() => { useStore.getState().moveTabs(selectedIds, spaceId, { name: "New group" }); onSelectionDone?.(); })}>{shellIconFolderClosed}<span {...auxClassTextProps}>New tab group</span></button>}
-    {canMove && <button ref={moveButton} {...staticMenuItemProps} role="menuitem" aria-haspopup="menu" onClick={() => setMoving(true)} onKeyDown={event => { if (event.key === "ArrowRight") { event.preventDefault(); setMoving(true); } }}>{shellIconFolder}<span {...auxClassTextProps}>{bulk ? "Move selected tabs…" : "Move tab…"}</span>{shellIconRight}</button>}
-    <button {...staticMenuItemProps} role="menuitem" onClick={() => action(() => call("settings.set", { tabLayout: horizontal ? "vertical" : "horizontal" }))}>{shellIconSidebarSm}<span {...auxClassTextProps}>{horizontal ? "Show Tabs Vertically" : "Show Tabs Horizontally"}</span></button>
+    {horizontal && <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => action(() => { useStore.getState().moveTabs(selectedIds, spaceId, { name: "New group" }); onSelectionDone?.(); })}>{shellIconFolderClosed}<span {...auxClassTextProps}>New tab group</span></button>}
+    {canMove && <button ref={moveButton} {...staticMenuItemProps} {...nativeMenuItemRoleProps} aria-haspopup="menu" onClick={() => setMoving(true)} onKeyDown={event => { if (event.key === "ArrowRight") { event.preventDefault(); setMoving(true); } }}>{shellIconFolder}<span {...auxClassTextProps}>{bulk ? "Move selected tabs…" : "Move tab…"}</span>{shellIconRight}</button>}
+    <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => action(() => call("settings.set", { tabLayout: horizontal ? "vertical" : "horizontal" }))}>{shellIconSidebarSm}<span {...auxClassTextProps}>{horizontal ? "Show Tabs Vertically" : "Show Tabs Horizontally"}</span></button>
     <div className="menu-sep" />
-    {bulk ? <button {...staticMenuItemProps} role="menuitem" onClick={() => action(async () => {
+    {bulk ? <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => action(async () => {
       if (await useStore.getState().closeTabs(selectedIds)) onSelectionDone?.();
     })}>{shellIconClose}<span {...auxClassTextProps}>Close selected tabs</span></button> : <>
-    <button {...staticMenuItemProps} role="menuitem" onClick={() => action(() => useStore.getState().closeTab(page.pageId))}>{shellIconClose}<span {...auxClassTextProps}>Close tab</span>{key("close-tab") && <kbd>{key("close-tab")}</kbd>}</button>
-    <button {...staticMenuItemProps} role="menuitem" disabled={closing || spaceTabIds.length < 2} onClick={() => action(() => closeRelated(false))}>{shellIconClose}<span {...auxClassTextProps}>Close other tabs</span></button>
-    {horizontal && pageIndex >= 0 && pageIndex < spaceTabIds.length - 1 && <button {...staticMenuItemProps} role="menuitem" disabled={closing} onClick={() => action(() => closeRelated(true))}>{shellIconClose}<span {...auxClassTextProps}>Close tabs to the right</span></button>}
+    <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => action(() => useStore.getState().closeTab(page.pageId))}>{shellIconClose}<span {...auxClassTextProps}>Close tab</span>{key("close-tab") && <kbd>{key("close-tab")}</kbd>}</button>
+    <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} disabled={closing || spaceTabIds.length < 2} onClick={() => action(() => closeRelated(false))}>{shellIconClose}<span {...auxClassTextProps}>Close other tabs</span></button>
+    {horizontal && pageIndex >= 0 && pageIndex < spaceTabIds.length - 1 && <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} disabled={closing} onClick={() => action(() => closeRelated(true))}>{shellIconClose}<span {...auxClassTextProps}>Close tabs to the right</span></button>}
     </>}
     </>}
   </Menu>;

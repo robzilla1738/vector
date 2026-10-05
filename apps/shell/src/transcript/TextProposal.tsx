@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { InlineAssistCapture, Run, RunTranscriptItem } from "@aux/contracts";
 import { call, useStore } from "../store";
 import "./TextProposal.css";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Proposal = Extract<RunTranscriptItem, { kind: "text-proposal" }>;
 
@@ -69,13 +70,13 @@ export function TextProposal({ run, proposal, readOnly = false }: { run: Run; pr
       <p>Insert into <strong>{capture.fieldLabel}</strong> on {capture.origin}. {capture.mode === "selection" ? "The selected text will be replaced." : "The field text will be replaced."}</p>
       <div><strong>Current text</strong><pre>{capture.sourceText || "(empty field)"}</pre></div>
       {capture.maxReplacementLength !== undefined && proposal.text.length > capture.maxReplacementLength &&
-        <p role="alert">This proposal is too long for the focused field.</p>}
-      {stale && <p role="alert">The page changed. Review the field again.</p>}
+        <p {...nativeAlertRoleProps}>This proposal is too long for the focused field.</p>}
+      {stale && <p {...nativeAlertRoleProps}>The page changed. Review the field again.</p>}
       <button className="btn sm primary" disabled={busy || stale || readOnly || proposal.text.length > (capture.maxReplacementLength ?? 12_000)}
         onClick={() => void insert()}>{busy ? "Inserting…" : "Insert text"}</button>
       <button {...smallGhostButtonProps} disabled={busy} onClick={() => { setCapture(null); setError(""); }}>Cancel</button>
     </div>}
     {inserted && <output>Inserted into the page. Use Undo in that field (⌘Z) to revert the change.</output>}
-    {error && <p role="alert">{error}</p>}
+    {error && <p {...nativeAlertRoleProps}>{error}</p>}
   </section>;
 }

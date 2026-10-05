@@ -17,6 +17,7 @@ import { call, useStore } from "../store";
 import { guardCommandCompletion } from "../command-completion";
 import { PreferenceAction, usePreferenceCommand } from "../settings/sections/preference-command";
 import { TaskReceiptView } from "./TaskReceiptView";
+import { staticSpacerProps as auxReuseStaticSpacerProps } from "../ui/class-props";
 
 class HistoryOwner {
   #live = true;
@@ -174,7 +175,7 @@ function HistorySession({ taskId, onClose }: { taskId: string; onClose: () => vo
         <h3 ref={heading} tabIndex={-1}>
           Saved task history
         </h3>
-        <span className="sp" />
+        <span {...auxReuseStaticSpacerProps} />
         <PreferenceAction command="close-task-history" scopeId={scopeId} {...smallButtonProps} invoke={close}>
           Back to current task
         </PreferenceAction>

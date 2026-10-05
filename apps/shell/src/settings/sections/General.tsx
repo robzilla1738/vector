@@ -29,6 +29,7 @@ import { RestoreBackupControls } from "./RestoreBackupControls";
 import { BackupSettings } from "./BackupSettings";
 import { DiagnosticsStorage } from "./DiagnosticsStorage";
 import { SetupProgress } from "../../onboarding/SetupProgress";
+import { nativeStatusRoleProps } from "../../ui/native-attribute-props";
 
 export function GeneralSettings({
   active,
@@ -85,7 +86,7 @@ export function GeneralSettings({
               <option value="30">After 30 minutes</option>
               <option value="60">After 1 hour</option>
             </select>
-            {memoryCycles.length > 0 && <small role="status" aria-label="Memory saver cycle report">
+            {memoryCycles.length > 0 && <small {...nativeStatusRoleProps} aria-label="Memory saver cycle report">
               {memorySummary.slept} {memorySummary.slept === 1 ? "tab" : "tabs"} slept in the last {memoryCycles.length} cycles.
               {memorySummary.measured > 0 ? ` About ${Math.round(memorySummary.estimatedSavedBytes / 1024 / 1024)} MB estimated at sleep time across ${memorySummary.measured} measured cycles; this is not current memory use.` : " Memory estimate unavailable."}
             </small>}

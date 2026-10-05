@@ -13,6 +13,7 @@ import type { ConversationImage, PageContextRef, PageTarget } from "@aux/contrac
 import { call, errToast, useStore } from "../store";
 import { bridge } from "../bridge";
 import { shellIconClose } from "./icons";
+import { staticExtraSmallIconButtonProps as auxReuseStaticExtraSmallIconButtonProps } from "../ui/class-props";
 
 type Rect = { x: number; y: number; width: number; height: number };
 type Capture = { dataUrl: string; sourceUrl?: string; sourcePage?: PageContextRef; title: string; filename?: string };
@@ -259,14 +260,14 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     {images.length >= 4 && <p {...auxReserveStaticHintProps}>Four images attached. Remove one to add another.</p>}
     {error && <p {...auxReserveStaticFieldErrorProps} role="alert">{error}</p>}
     {busy && <output {...auxReserveStaticHintProps} data-block>Preparing image…</output>}
-    {showAttachedImages && images.map(item => <div className="conversation-document" key={item.imageId}><label htmlFor={`${imageScope}-${item.imageId}`}><ConversationImageChoice id={`${imageScope}-${item.imageId}`} checked={item.included} disabled={disabled || busy} current={() => imageCurrent(item)} invoke={included => change(item.imageId, included)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><ConversationImageAction command="preview-conversation-image" {...smallGhostButtonProps} disabled={busy} current={() => imageCurrent(item)} invoke={() => inspect(item.imageId)}>Preview</ConversationImageAction><ConversationImageAction command="remove-conversation-image" className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} current={() => imageCurrent(item)} invoke={() => change(item.imageId)}>{shellIconClose}</ConversationImageAction></div>)}
+    {showAttachedImages && images.map(item => <div className="conversation-document" key={item.imageId}><label htmlFor={`${imageScope}-${item.imageId}`}><ConversationImageChoice id={`${imageScope}-${item.imageId}`} checked={item.included} disabled={disabled || busy} current={() => imageCurrent(item)} invoke={included => change(item.imageId, included)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><ConversationImageAction command="preview-conversation-image" {...smallGhostButtonProps} disabled={busy} current={() => imageCurrent(item)} invoke={() => inspect(item.imageId)}>Preview</ConversationImageAction><ConversationImageAction command="remove-conversation-image" {...auxReuseStaticExtraSmallIconButtonProps} aria-label={`Remove ${item.filename}`} disabled={disabled || busy} current={() => imageCurrent(item)} invoke={() => change(item.imageId)}>{shellIconClose}</ConversationImageAction></div>)}
     {capture && !lasso && <div className="capture-editor" ref={review}>
       <p {...auxReserveStaticHintProps}>{capture.title} · {capture.sourceUrl ? hostOf(capture.sourceUrl) : "Local image"}</p>
       <p {...auxReserveStaticHintProps}>Drag to select a region. Editable fields are hidden in page captures. Keyboard: arrows move it; Shift + arrows resize it. Escape clears the selection.</p>
       {selection}
       {captureActions}
     </div>}
-    {preview && <div ref={review}><ImagePreview snapshot={preview} current={current} onClose={() => setPreview(null)} closeControl={<ConversationImageAction command="cancel-conversation-image" className="icon-btn xs" aria-label="Close image preview" current={current} invoke={() => setPreview(null)}>{shellIconClose}</ConversationImageAction>} /></div>}
+    {preview && <div ref={review}><ImagePreview snapshot={preview} current={current} onClose={() => setPreview(null)} closeControl={<ConversationImageAction command="cancel-conversation-image" {...auxReuseStaticExtraSmallIconButtonProps} aria-label="Close image preview" current={current} invoke={() => setPreview(null)}>{shellIconClose}</ConversationImageAction>} /></div>}
     </div>}
   </section>{capture && lasso && overlay === "capture" && createPortal(<div className="page-lasso" role="dialog" aria-modal="true" aria-label="Select an area of the captured page">
     <div className="page-lasso-image" style={{ left: lasso.bounds.left + (lasso.bounds.width - Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.width) / 2, top: lasso.bounds.top + (lasso.bounds.height - Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.height) / 2, width: Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.width, height: Math.min(lasso.bounds.width / lasso.width, lasso.bounds.height / lasso.height) * lasso.height }}>{selection}</div>

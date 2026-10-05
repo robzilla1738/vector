@@ -7,6 +7,7 @@ import { SkillRepairProposalSchema, type Routine, type Run } from "@aux/contract
 import { executeCommand } from "../commands";
 import type { z } from "zod";
 import { call } from "../store";
+import { nativeStatusRoleProps, nativeAutocompleteOffProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** Owner-reviewed source substitutions and a separate, durable replay test. */
 export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
@@ -49,7 +50,7 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
   return <section {...staticFieldProps} aria-label="Skill replay" aria-busy={busy}>
     <strong>Tested replay</strong>
     <p {...staticHintProps}>Save a verified browser trace from this task. Source values are replaced with named parameters before the replay is saved. The Skill stays paused until a separate test passes and you review activation.</p>
-    {replay && <p role="status">{replay.state === "tested" ? "Tested replay ready for review" : replay.state === "needs_repair" ? "Needs repair before reuse" : replay.state === "testing" ? "Replay test in progress" : "Replay needs a test"} · {replay.siteOrigin} · {replay.steps.length} steps</p>}
+    {replay && <p {...nativeStatusRoleProps}>{replay.state === "tested" ? "Tested replay ready for review" : replay.state === "needs_repair" ? "Needs repair before reuse" : replay.state === "testing" ? "Replay test in progress" : "Replay needs a test"} · {replay.siteOrigin} · {replay.steps.length} steps</p>}
     {replay?.testRunId && <p {...staticHintProps}>Test run {replay.testRunId}{replay.testedAt ? ` · passed ${new Date(replay.testedAt).toLocaleString()}` : ""}</p>}
     <label>Completed source run
       <select aria-label="Completed source run" value={sourceRunId} disabled={disabled || busy} onChange={event => setSourceRunId(event.target.value)}>
@@ -58,7 +59,7 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
       </select>
     </label>
     {routine.parameters.map(item => <label key={`source:${item.name}`}>Recorded source value for {item.label}
-      <input aria-label={`Recorded source value for ${item.label}`} type="text" autoComplete="off" value={samples[item.name] ?? ""}
+      <input aria-label={`Recorded source value for ${item.label}`} type="text" {...nativeAutocompleteOffProps} value={samples[item.name] ?? ""}
         disabled={disabled || busy} onChange={event => setSamples(current => ({ ...current, [item.name]: event.target.value }))}/>
     </label>)}
     <button {...smallButtonProps} disabled={disabled || busy || !readySamples || !pageId || !source?.pageIds.includes(pageId)}
@@ -70,7 +71,7 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
     {replay && <>
       <p {...staticHintProps}>Test on the current tab at the same site using fresh values. Browser writes still need their normal approval.</p>
       {routine.parameters.map(item => <label key={`test:${item.name}`}>Test value for {item.label}
-        <input aria-label={`Test value for ${item.label}`} type="text" autoComplete="off" value={values[item.name] ?? ""}
+        <input aria-label={`Test value for ${item.label}`} type="text" {...nativeAutocompleteOffProps} value={values[item.name] ?? ""}
           disabled={disabled || busy} onChange={event => setValues(current => ({ ...current, [item.name]: event.target.value }))}/>
       </label>)}
       <button {...smallButtonProps} disabled={disabled || busy || !pageId || !readyValues || replay.state === "testing"}
@@ -83,7 +84,7 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
     {replay?.state === "needs_repair" && <>
       <p>A changed selector pauses this Skill. Propose a target from the current page, review the exact diff, then run a fresh test.</p>
       <label>Step to repair<select value={repairStep} onChange={event => { setRepairStep(event.target.value); setProposal(null); }}><option value="">Choose a step</option>{replay.steps.filter(step => "target" in step).map(step => <option key={step.id} value={step.id}>{step.id} · {step.op} · {"target" in step ? step.target : ""}</option>)}</select></label>
-      <label>Proposed selector<input autoComplete="off" value={repairTarget} onChange={event => { setRepairTarget(event.target.value); setProposal(null); }}/></label>
+      <label>Proposed selector<input {...nativeAutocompleteOffProps} value={repairTarget} onChange={event => { setRepairTarget(event.target.value); setProposal(null); }}/></label>
       <button {...smallButtonProps} disabled={busy || disabled || !pageId || !repairStep || !repairTarget} onClick={() => void act(async current => {
         const result = await executeCommand("propose-skill-repair", { payload: { proposeRepair: { routineId: routine.routineId, expectedRevision: routine.revision,
           pageId: pageId!, changes: [{ stepId: repairStep, selector: repairTarget }] } } });
@@ -94,6 +95,6 @@ export function SkillReplayPanel({ routine, pageId, disabled, onChanged }: {
           await executeCommand("approve-skill-repair", { payload: { applyRepair: { proposalId: proposal.proposalId, expectedRevision: routine.revision } } }); if (current()) setProposal(null);
         })}>Approve this diff and require retest</button></>}
     </>}
-    {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+    {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}</p>}
   </section>;
 }

@@ -24,6 +24,7 @@ import { RoutineSchedule, routineScheduleSummary, type CalendarTriggerAccounts }
 import { SkillMetadata } from "./SkillMetadata";
 import { SkillReplayPanel } from "./SkillReplayPanel";
 import { staticGhostButtonProps as auxClassGhostButtonProps } from "../ui/class-props";
+import { nativeAlertRoleProps, nativeStatusRoleProps, nativeCheckboxTypeProps } from "../ui/native-attribute-props";
 
 export function Routines({ workspaceId, task }: { workspaceId: string; task?: Task }) {
   const currentPageUrl = useStore(
@@ -439,7 +440,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
         </div>
       )}
       {error && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}
@@ -599,7 +600,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             </div>
           </div>
           {selected.routine.activationReview && (
-            <div {...staticFieldProps} role="status">
+            <div {...staticFieldProps} {...nativeStatusRoleProps}>
               <strong>Review before activation</strong>
               <span {...staticHintProps}>
                 {selected.routine.activationReview === "imported" ? "Imported Skill" :
@@ -877,7 +878,7 @@ function RoutineOutcome({ run }: { run: RoutineRun }) {
             </output>
           )}
           {error && (
-            <p {...staticFieldErrorProps} role="alert">
+            <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
               {error}{" "}
               <button {...smallGhostButtonProps} onClick={() => void load()}>
                 Retry
@@ -1321,7 +1322,7 @@ function RoutineAccounts({
         empty list means any account. Label vault items in Vault settings.
       </p>
       {loadError && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           Vault labels could not be loaded. {loadError}
         </p>
       )}
@@ -1333,7 +1334,7 @@ function RoutineAccounts({
       {choices.map((label) => (
         <label className="routine-account" key={label}>
           <input
-            type="checkbox"
+            {...nativeCheckboxTypeProps}
             checked={picked.includes(label)}
             disabled={disabled}
             onChange={(event) => toggle(label, event.target.checked)}
@@ -1395,7 +1396,7 @@ function RoutineCalendarGrants({
       </p>
       {!routine.sourceTaskId && <p {...staticHintProps}>Bind a saved task before selecting Calendar accounts.</p>}
       {error && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           Calendar grants could not be loaded. {error}
         </p>
       )}
@@ -1405,7 +1406,7 @@ function RoutineCalendarGrants({
       {grants?.map((grant) => (
         <label className="routine-account" key={grant.grantId}>
           <input
-            type="checkbox"
+            {...nativeCheckboxTypeProps}
             checked={picked.includes(grant.grantId)}
             disabled={disabled}
             onChange={(event) => toggle(grant.grantId, event.target.checked)}

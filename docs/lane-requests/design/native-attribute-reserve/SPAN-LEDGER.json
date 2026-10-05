@@ -1,0 +1,4066 @@
+{
+  "root": "/private/tmp/aux-design-native-attribute-reserve",
+  "values": [
+    [
+      "role",
+      "alert",
+      "nativeAlertRoleProps"
+    ],
+    [
+      "role",
+      "menuitem",
+      "nativeMenuItemRoleProps"
+    ],
+    [
+      "role",
+      "group",
+      "nativeGroupRoleProps"
+    ],
+    [
+      "role",
+      "status",
+      "nativeStatusRoleProps"
+    ],
+    [
+      "aria-live",
+      "polite",
+      "nativePoliteLiveProps"
+    ],
+    [
+      "type",
+      "checkbox",
+      "nativeCheckboxTypeProps"
+    ],
+    [
+      "type",
+      "number",
+      "nativeNumberTypeProps"
+    ],
+    [
+      "autoComplete",
+      "off",
+      "nativeAutocompleteOffProps"
+    ]
+  ],
+  "files": [
+    {
+      "path": "apps/shell/src/App.tsx",
+      "before": "49cd99db8e51d8a5ffb1386aaffe74bc31993c4e302a9415a87c4a7de3aa3f40",
+      "after": "df79d61bce297e5679006773fea3c928b82b9c17ecdcd2e1a3f2e6697e5d8fec",
+      "importPosition": 2721,
+      "importText": "\nimport { nativePoliteLiveProps } from \"./ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 31320,
+          "end": 31338,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/agent/AgentOverlay.tsx",
+      "before": "150a01bd84d523aee0626dadb53b55c2baff76062443315ba81dbe6ff6fa5635",
+      "after": "0fd43e1f74b6949309e1bdf3b37a63de95bb5f4b3db9270ed8f2987855c338db",
+      "importPosition": 422,
+      "importText": "\nimport { nativeStatusRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3273,
+          "end": 3286,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/agent/RunAttentionFeed.tsx",
+      "before": "e8780768d7815e98e8cb04b3a69ed6cfbbe707c0365106d893b44687c46791a0",
+      "after": "cd3950fb39eba7d64f416a21f5845807cfcc152114306de8b051813190eff12d",
+      "importPosition": 343,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4688,
+          "end": 4700,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/agent/RunNoticeControls.tsx",
+      "before": "fd3558afdcfa13a7faa6d6da931c72b4deabd02483c4cb0bf01e28efbb6b33ae",
+      "after": "18a71e2262ecf77f3cc4afb4e7b2c9370329921cc2c206263bef5c759c9f450d",
+      "importPosition": 771,
+      "importText": "\nimport { nativePoliteLiveProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4322,
+          "end": 4340,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ActionConfirmation.tsx",
+      "before": "54e40ced603ac233a816a63c338faa6ee9a21980701768770b40cd6fd94d6fd5",
+      "after": "bd61c5b13c3da819690980ca34a4426441f69f905228a6b6dbea2d8bc61954cb",
+      "importPosition": 702,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3592,
+          "end": 3604,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/AnswerMarkdown.tsx",
+      "before": "b3d56575f633b87550781a743c45d376440e33d06d4fca64366a86d3d3e64be3",
+      "after": "ebef4cb49eb61060d308a2927b598b58328b8519c06e37866b0c3da47419167b",
+      "importPosition": 773,
+      "importText": "\nimport { nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2028,
+          "end": 2040,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/AttachmentTray.tsx",
+      "before": "06016aa04e8e2fb1fe0cfa2aa151d0a94adafb648f7c10a540b32879a58f9e9c",
+      "after": "ffd6a4155ca09a296b800ec3023ea9628cafbf89f290f241eb31ad67af2f5408",
+      "importPosition": 359,
+      "importText": "\nimport { nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1300,
+          "end": 1312,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/AutofillSetting.tsx",
+      "before": "88c99dac93922224b9ff45e27fefb96210e0d075e3119113daa0884e09619673",
+      "after": "9e005ef476371cf431103fe1f490850cf915e5b32e8ce5fe58b06b6f6e261a0e",
+      "importPosition": 737,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 6931,
+          "end": 6943,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextTray.tsx",
+      "before": "4261117085d27e165d998011cb2b74734525d3c1016254957ce31e84e54ed477",
+      "after": "2d85e558de2ea71b3709aff69bb0bfec46f16886459f0c72f5244f4c00c66583",
+      "importPosition": 1071,
+      "importText": "\nimport { nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 14333,
+          "end": 14345,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 13816,
+          "end": 13828,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowserProfiles.tsx",
+      "before": "90452744fd9ab892b9b67e54025e915ac9ca69e545deb5c1f6166176eb4eec3b",
+      "after": "457fe8dc634149aa337e550a7fc2ce352dc1443fba2819fff605bf9f4e59b945",
+      "importPosition": 910,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 9770,
+          "end": 9782,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowsingMemory.tsx",
+      "before": "34af5bfe94f35bb544e28f78230610f437dfe411d1ce92ddcd2516a1e945869f",
+      "after": "07d689d3499bf57e4d5838961a6e6aa254d673874110aa9d7aa3efdf33c4e857",
+      "importPosition": 1089,
+      "importText": "\nimport { nativeCheckboxTypeProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 15675,
+          "end": 15687,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 11561,
+          "end": 11576,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CalendarConnections.tsx",
+      "before": "4ef507366689213f16a5335ad21bef0c10985d6e7e9ebbf914f4552f4b4ad51a",
+      "after": "f70658476ac1eb9b0196650a86fc59f8aec4d77c5cb3158a06ef4e7200a44b86",
+      "importPosition": 521,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 7721,
+          "end": 7733,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CalendarTaskGrants.tsx",
+      "before": "891a5fb0d36340bf286174199e2143ed105dccb490f9a61980f1649baa836bdb",
+      "after": "225f70752a5ac7481e69de4f4bc0e1eb4c04c1ca7e739d279d404fe59e14e61c",
+      "importPosition": 484,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 6270,
+          "end": 6282,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ChatSessions.tsx",
+      "before": "b4db2ac56307605099c85484f1607d83a8c1e546e94cc4829b3e42708386c407",
+      "after": "9fc8556e17bb56284498cbf8c255cd4d45cb69dea206815e07c37bd0d4fbcc21",
+      "importPosition": 964,
+      "importText": "\nimport { nativeStatusRoleProps, nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 13986,
+          "end": 13998,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 10357,
+          "end": 10369,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 7768,
+          "end": 7781,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearBrowsingData.tsx",
+      "before": "a01796f7e53ea5333ef0d2eb4d85b90976b420b7a91fc1f86963968df0baef53",
+      "after": "ee4580801958c5d5047e60b28d40332a9da19d21a5bea00ef19dc5a9dbe909e3",
+      "importPosition": 358,
+      "importText": "\nimport { nativeGroupRoleProps, nativeCheckboxTypeProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5953,
+          "end": 5965,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 5609,
+          "end": 5624,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 5392,
+          "end": 5407,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 5175,
+          "end": 5190,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 4876,
+          "end": 4888,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 4663,
+          "end": 4675,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearHistory.tsx",
+      "before": "0c410777c11f11ae55cb47b725d11bc68de421c68b9640c6dc9584fb057f6f73",
+      "after": "6a7839dc2d5dd537af4e967760d799f1f3eaee86e79d8286c128523b30156bba",
+      "importPosition": 322,
+      "importText": "\nimport { nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2714,
+          "end": 2726,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2163,
+          "end": 2175,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 1924,
+          "end": 1936,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CommandBar.tsx",
+      "before": "e5bc7c2cb5e638eda14869f64f9e318be30339692b6123872171d6e374027b0d",
+      "after": "8b4c67b1e5fe692e4bd31680e9c8e82b4fa605a510a17f5e4f8e208b1f9b3823",
+      "importPosition": 2352,
+      "importText": "\nimport { nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 55387,
+          "end": 55399,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 53413,
+          "end": 53425,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 48677,
+          "end": 48689,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CommandRankingDebug.tsx",
+      "before": "882980deb83dd8170ab74fa97cc3c179707f653f5bf401ebf14a45f0dbdb21d9",
+      "after": "467031768a2f98f79dcb789c027d00844302a42aff97c152e77d825ace4aa300",
+      "importPosition": 35,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1566,
+          "end": 1578,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ContentMemory.tsx",
+      "before": "847a61b1e43d58198d6e39a7c8223184a8c368a5e84ea2b6e8b2236d25c4a70f",
+      "after": "c31be6bea875df5eaf8205e27ec102d9b403b4f4b99db1b101322898ab57ee99",
+      "importPosition": 1069,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 22934,
+          "end": 22946,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Dictation.tsx",
+      "before": "70ddcbe0cac80ba0517aec4b169b6e4bdf026d41d22553490949bded9b37d024",
+      "after": "0e5388fc67bf881b16eb9e233a5bf3fc190b0e4fd3296a6901f226b9f937d106",
+      "importPosition": 532,
+      "importText": "\nimport { nativePoliteLiveProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 8200,
+          "end": 8212,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 7845,
+          "end": 7863,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/DocumentContent.tsx",
+      "before": "e866fb30bcb7fa498ef1fa2b05087de1b00a297b94a3b8611839f2debb7f491b",
+      "after": "0503bc02052e2134cdcfcb6837827f3e6fd411d92078e93695b03282ae1ef288",
+      "importPosition": 92,
+      "importText": "\nimport { nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1221,
+          "end": 1233,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/DocumentSnapshot.tsx",
+      "before": "39cf16754fff3774f0870b25c18a4a4bf32bd397083d1c346298f2c3f28f9b79",
+      "after": "2a4f8637cc03060aede28c2585f1637fc7e5df2acfb06a402b1374a263a9ca45",
+      "importPosition": 805,
+      "importText": "\nimport { nativeAlertRoleProps, nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4326,
+          "end": 4338,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 3107,
+          "end": 3119,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Downloads.tsx",
+      "before": "0453648c5129cbb38f56f3569bd3126e84eb7f43269e7490db307e474adcaa17",
+      "after": "6dc3efc62d4015c96c9b41790ee4a29d717384e961df9614f503e9a6cf000daa",
+      "importPosition": 866,
+      "importText": "\nimport { nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 15153,
+          "end": 15165,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 14171,
+          "end": 14183,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 13940,
+          "end": 13952,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 13551,
+          "end": 13563,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 6931,
+          "end": 6943,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2979,
+          "end": 2991,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ExtensionActions.tsx",
+      "before": "c2da30343d19fe83d5f04f569880d3bed43066e738b9035c869a2eb3336031c3",
+      "after": "7b016ad2312780eb8d837767af0dc7ff757323d0e156b0b61523551551c17579",
+      "importPosition": 731,
+      "importText": "\nimport { nativeAlertRoleProps, nativeMenuItemRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4624,
+          "end": 4639,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 3418,
+          "end": 3433,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 3024,
+          "end": 3036,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Extensions.tsx",
+      "before": "cfb427b0db675a2b59123d9619c38c4b96fa295fcd170802040ecacb99a7582e",
+      "after": "4cfee2e60bf6acfcabf5c294823d629a2d2b54b56f6e40e504ae4857f6037408",
+      "importPosition": 1175,
+      "importText": "\nimport { nativeAutocompleteOffProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4729,
+          "end": 4741,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 3648,
+          "end": 3666,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgentOversight.tsx",
+      "before": "18e91b4b997f72cba87e4e98dfb2e40a90e16fc3d51526477afbb55dd15c3803",
+      "after": "71893387a4474db11edcf93a03827e804d56d216a7123fc80cb28e83b3f37168",
+      "importPosition": 348,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5415,
+          "end": 5427,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgents.tsx",
+      "before": "7e9647be442ba7955cab647b0dbef13c4c3bfe654cfa16246ae82d44f9dd07d9",
+      "after": "8d69532de9aaf62e05c957a9e169c3fd62faa3565b48c7dfb14227388e56aa7d",
+      "importPosition": 692,
+      "importText": "\nimport { nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 8766,
+          "end": 8778,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 7106,
+          "end": 7118,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 6378,
+          "end": 6390,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 5085,
+          "end": 5097,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/FilterListManager.tsx",
+      "before": "fd43d8298492a1e718f8d74df48524f75d0bae21a725a42cd579b099f63d2340",
+      "after": "dceeaea69f61ca430a2e796ec254b2b62bb2ce1fd195e57e1ca2ffbe7e86009f",
+      "importPosition": 641,
+      "importText": "\nimport { nativeStatusRoleProps, nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 10235,
+          "end": 10247,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 8690,
+          "end": 8702,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 4902,
+          "end": 4915,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/FindBar.tsx",
+      "before": "851953c2c5cecffb1fe5f39a66fa4d80aaf1ff5d45c12fbb3639a11b259c75c9",
+      "after": "975e416c43a3154888e41860385b160f8fdd0fa7ef800ee006004c64e2da968a",
+      "importPosition": 588,
+      "importText": "\nimport { nativePoliteLiveProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 6665,
+          "end": 6683,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/GeneratedResultPreview.tsx",
+      "before": "0557eb4670da73568d9c466a9b7280ae22aa9066aa121c5d2632e9540df104b0",
+      "after": "4cd0ebecd8f60d056d24f5615816908b4f558791d92b3427311cfe97b7acfc98",
+      "importPosition": 1108,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 6512,
+          "end": 6524,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/GithubConnections.tsx",
+      "before": "627b16b6ef67f8b157df1b258fe20e6f97cc3380716dbcc730a665340c14f431",
+      "after": "d6057a9cf657ae0998f5d6e2450205900dc68777686c601fc30d0b489c5dd7cb",
+      "importPosition": 453,
+      "importText": "\nimport { nativeAutocompleteOffProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2880,
+          "end": 2892,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2737,
+          "end": 2755,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Goals.tsx",
+      "before": "a64e4149529292eb0f7df9ad2dac4e3e6003a6dbc9227039b9bf85bd20dbab54",
+      "after": "304ea26c00471542e83099fc75a8f99eb54688c9ea28227428f642fb89b7ef00",
+      "importPosition": 455,
+      "importText": "\nimport { nativeAlertRoleProps, nativeNumberTypeProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5328,
+          "end": 5341,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        },
+        {
+          "start": 4964,
+          "end": 4977,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        },
+        {
+          "start": 4596,
+          "end": 4609,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        },
+        {
+          "start": 4084,
+          "end": 4096,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/HomeAsk.tsx",
+      "before": "04c58eb7993010fc8f355bde6af7f35c7641a041bdcac30f865df65e7d8122ff",
+      "after": "bbb2771ecd57fe416830e3ae5bebf38dc549c8bf76b0e20c906261326102bf04",
+      "importPosition": 658,
+      "importText": "\nimport { nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1966,
+          "end": 1978,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Hooks.tsx",
+      "before": "b2e6f838d605e3fb4f5bb21eae9ab23553ebfd96df7998722d9a0dfab62e068f",
+      "after": "e084b319b9a05ee4e69ba8190046c364287be3fffcb6f9a1170caf091993c180",
+      "importPosition": 447,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4272,
+          "end": 4284,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/HorizontalPins.tsx",
+      "before": "bc8631a4137be9b224513a2e15376b4d25116c747f0d06c8ac0bd408599f49bd",
+      "after": "8d43a891ebc9ed517d857746ee4e344153a2b42478501f4251ec77032a34c30f",
+      "importPosition": 547,
+      "importText": "\nimport { nativeGroupRoleProps, nativeMenuItemRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3815,
+          "end": 3830,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 1610,
+          "end": 1622,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/HttpAuthPrompt.tsx",
+      "before": "3edad4654a011ca0ca256248e0b30639d5b6975047c2dcd0a2f74f42e42500dd",
+      "after": "94aa7c86792bb431636f19c7593e104021338d5e1e84ccf285da3d1511195241",
+      "importPosition": 570,
+      "importText": "\nimport { nativeAlertRoleProps, nativeAutocompleteOffProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3418,
+          "end": 3430,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 3153,
+          "end": 3171,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        },
+        {
+          "start": 2953,
+          "end": 2971,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        },
+        {
+          "start": 2667,
+          "end": 2679,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ImageSnapshot.tsx",
+      "before": "3df591e7abd95114ca3e92de67ca075ce490ef4e44d6caaef930d58a81d1ad6f",
+      "after": "b40d9d5554097177f29a293b0f63f515e6a6737d3eb7053cc1b18bf45d5bc822",
+      "importPosition": 697,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3999,
+          "end": 4011,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 1889,
+          "end": 1901,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ImageViewer.tsx",
+      "before": "5401b78ad9d78d5072773abe08e0759be9231db34c5494a20d93bcb851184ca2",
+      "after": "486d4e819c82d4a9752d86086a218fb3d5d9d31c32c6e8258449a790e22f2816",
+      "importPosition": 302,
+      "importText": "\nimport { nativeGroupRoleProps, nativePoliteLiveProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1564,
+          "end": 1582,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        },
+        {
+          "start": 860,
+          "end": 872,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ImportDataSetting.tsx",
+      "before": "cffca2aaa1f6d56014166bcdeb0cccd6e6ecbf6d68abd6b24bb524736cb9ec12",
+      "after": "168ed770e798bcf4394be5dc2ba4fb2040219538561e812a7d8f489b8d5401ea",
+      "importPosition": 632,
+      "importText": "\nimport { nativeCheckboxTypeProps, nativeAlertRoleProps, nativePoliteLiveProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 13314,
+          "end": 13326,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 12332,
+          "end": 12350,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        },
+        {
+          "start": 12126,
+          "end": 12138,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 10352,
+          "end": 10367,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/InlineAssist.tsx",
+      "before": "ad0c785fc3a95693bfe498fd4a45bf4030bc42ac4b849c1df3a2a7f4d2e9e928",
+      "after": "73b61aaab29e789051ab9018184e3f650f1d58dfb472b7cc9f75543621e252cd",
+      "importPosition": 619,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 6658,
+          "end": 6670,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 5940,
+          "end": 5952,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 5849,
+          "end": 5861,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Inspector.tsx",
+      "before": "9e89f737384a7fa6349c2223475c121667eaf1efe036317b75e855a8b5628bed",
+      "after": "ebd885cc7b3d9be5f12bd0dc9cc6e34657e296ce426f1f307cf0670c07c767d6",
+      "importPosition": 585,
+      "importText": "\nimport { nativeAlertRoleProps, nativePoliteLiveProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3020,
+          "end": 3038,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        },
+        {
+          "start": 2764,
+          "end": 2776,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "before": "99a6245dfda60574f5741254faabbac678d1b6e1dbfdc4dc1e6eb1bdd297435b",
+      "after": "c388f9dce4b52a0e8b2c63c792ebd23d95df07cb4546e75d42123546d3b8e410",
+      "importPosition": 2007,
+      "importText": "\nimport { nativeCheckboxTypeProps, nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 35654,
+          "end": 35666,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 29029,
+          "end": 29041,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 4800,
+          "end": 4815,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/LittleWindow.tsx",
+      "before": "0621065cd9e35bd4314ae06b2bcfa6594749bccb0f79643aeb9878950e269984",
+      "after": "7877fffcd95227ffa6dd08787c8f9357c4594b5a32459de0004fca42237f0212",
+      "importPosition": 867,
+      "importText": "\nimport { nativeAlertRoleProps, nativeMenuItemRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4876,
+          "end": 4891,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 4631,
+          "end": 4643,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/LiveFolderEditor.tsx",
+      "before": "6ccc2b2154de28fabd8fd01e8213035dd482688908a33cda8c8d09db961c6bea",
+      "after": "b444b38c7a097461484946940e6b128a07cd13f7311a2224dbfdf84071199cd5",
+      "importPosition": 586,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5794,
+          "end": 5806,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryExclusions.tsx",
+      "before": "11f27b293199b7287b0ca2d096c82de370cb1173c7c700cc4c45356558d1b68e",
+      "after": "2123234b44b5d0b4f814c076dd74ae99e246b88cc99798bae18889d4769ac56e",
+      "importPosition": 660,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 6343,
+          "end": 6355,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryItems.tsx",
+      "before": "fb23f3e49b68187103634d9af6d1859f5076130b48046dd7efc0b836a43abed0",
+      "after": "179ebfdfd7ef7669f35c8b5ca7ace1b5507ae659cd731c983b11eec737a933fe",
+      "importPosition": 1118,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 16730,
+          "end": 16742,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemoryPasteImport.tsx",
+      "before": "4c0ecabcc56258d74351b28be43428cedd61ad0a9a20f479381345ff1f8fec1a",
+      "after": "15c9866dbf90f619e5bae60d918db4c6ed706fde396749d006be9f68d8b95b86",
+      "importPosition": 679,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 11988,
+          "end": 12000,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 11858,
+          "end": 11870,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemorySettings.tsx",
+      "before": "92684982d41369fa52bd96d91e1a9668c2717bdeba4dbcf4732909b9952e208f",
+      "after": "97aeb700f897c8f6003c6d1b7cf0a95885c0e76aa54d9dab818f9ecd000d0a1a",
+      "importPosition": 634,
+      "importText": "\nimport { nativeAlertRoleProps, nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5661,
+          "end": 5673,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 4623,
+          "end": 4635,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 4269,
+          "end": 4281,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MigrationImport.tsx",
+      "before": "963c631db32cdfad13892a2457f109258ea2abd03f45994c2e78959e9e7bd0e5",
+      "after": "b30e720779a708032d3e4cb15c074d1fa06be45d960f8518fa8239fb568dd7c1",
+      "importPosition": 508,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5288,
+          "end": 5300,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2676,
+          "end": 2688,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MovedTabPlaceholder.tsx",
+      "before": "da749be5ba64791a9a8cefd9a55f0725c6ae11c0fbf325f1d8b84cee30eb40d5",
+      "after": "ee78e0deabbb119f19266f1d5df7e5ce4ebee43f6ac76b5105bed68f1e0b2e2c",
+      "importPosition": 480,
+      "importText": "\nimport { nativePoliteLiveProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 891,
+          "end": 909,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/OpenBookmarkFolder.tsx",
+      "before": "02f6c8fe87be04abad96f9a9d9ae7cd7e450c51f2ea65f1ad67b5dba69056505",
+      "after": "bca29a90d3bf52622c7216e68231c69b1d8c4a49a3fe45a66a994f365cc25b06",
+      "importPosition": 409,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4562,
+          "end": 4574,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
+      "before": "9149cf48b4a5abf417e2fea3747dce2df30c3bf84149077528e635fbffd6e6e2",
+      "after": "08bd16d38f6afb6e50f5e7644bf740ebf7d52a1156c9900b3ec6bebc3f77f812",
+      "importPosition": 871,
+      "importText": "\nimport { nativeNumberTypeProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 44982,
+          "end": 44994,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 34904,
+          "end": 34917,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "before": "d6be46e239af8f52fcbe47caed1f2406713c39e5c0c581d1280eceb526167069",
+      "after": "51b9f12dac2a40ac39e8b3dfac7ad83e1c1f18d0aac97c95858858a9b80fe3c1",
+      "importPosition": 1673,
+      "importText": "\nimport { nativeAlertRoleProps, nativeGroupRoleProps, nativeCheckboxTypeProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 28031,
+          "end": 28046,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 26631,
+          "end": 26643,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 26239,
+          "end": 26251,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PageRecovery.tsx",
+      "before": "3cf15fdd4278605915d8096a9ef94ab7a5cbd3aea945175978b25125f04a6d0d",
+      "after": "2738b99338e6d66ad130e49cde5ac7833004e79c98162997d869c7062ec40474",
+      "importPosition": 677,
+      "importText": "\nimport { nativeStatusRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 7785,
+          "end": 7797,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 6339,
+          "end": 6352,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PageSurface.tsx",
+      "before": "cbd04d34595a1a787c935b141d807f74b6cc42343f779fb25ada54f07cf5f2f6",
+      "after": "f25b1d1a1992268b7ee3bd533e34ed54e6cb1da1dc68bb15cfe471fece8f5035",
+      "importPosition": 494,
+      "importText": "\nimport { nativeStatusRoleProps, nativePoliteLiveProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2374,
+          "end": 2392,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        },
+        {
+          "start": 2360,
+          "end": 2373,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PageZoom.tsx",
+      "before": "fd57803c396dec37b2d15bf3ebe753c80a11a7c8af86a9918e437065bf1fc9da",
+      "after": "bdd14b144b93b934cbf91ee71ce31518b6cac002a4cca78585b920be0b09ef98",
+      "importPosition": 267,
+      "importText": "\nimport { nativePoliteLiveProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2599,
+          "end": 2611,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2176,
+          "end": 2194,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PaneBoundary.tsx",
+      "before": "cff33a1493a6c6f39d63da485ccf281a9432d81e0086d383658df599b07c3e52",
+      "after": "7215fd94e840312739f8c2142404cfb9fbce6b76aafc1d0bb427ae4b86c87fd2",
+      "importPosition": 105,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 958,
+          "end": 970,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PasswordTransferSetting.tsx",
+      "before": "e2a8641e0968281511e7bf703d9d79f0a0e163880c8b6bc04ea17ba3600ad37f",
+      "after": "be0284a060b5e4d93075fdeb71b504b68bba174fd3210d49306ff79c65f851bb",
+      "importPosition": 377,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2579,
+          "end": 2591,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PinMenu.tsx",
+      "before": "d5970fa3c26fe487ada291023efc7ee6e23c71eb2d68b09815f931eb5b1d3778",
+      "after": "559c3463c918ad9992a76444977810f06c6469e3fe86aaf0099ad12fbde1aa2d",
+      "importPosition": 332,
+      "importText": "\nimport { nativeMenuItemRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2595,
+          "end": 2610,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 2449,
+          "end": 2464,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 2261,
+          "end": 2276,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 2116,
+          "end": 2131,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 1737,
+          "end": 1752,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 1579,
+          "end": 1594,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 1447,
+          "end": 1462,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 1325,
+          "end": 1340,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/PluginsPanel.tsx",
+      "before": "58c1d02319e078577060631945df9880904f813f0a88b65b8e82e962d3736736",
+      "after": "20b76c3cfe41a16df1822fd6520be33b989fe6aa53683e30355e590c71962024",
+      "importPosition": 665,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 6986,
+          "end": 6998,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/QuickAsk.tsx",
+      "before": "31ad6b92d0711c0f42c17a19dbaf0c755deb812858d543da7300942e461428db",
+      "after": "8f608f4b3bc054835844f699530086cb88e29e69bf5cfb3a14e3db2c7708e920",
+      "importPosition": 443,
+      "importText": "\nimport { nativePoliteLiveProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1934,
+          "end": 1952,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/QuickAskSetting.tsx",
+      "before": "039b59ba9ff350b19f0281f37477d1712934326149cfc5295032ccbdc183cfaa",
+      "after": "4d22102b7188279470e4a1b275015502fc11dbea529507655801569e920469c6",
+      "importPosition": 554,
+      "importText": "\nimport { nativeCheckboxTypeProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3492,
+          "end": 3504,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2971,
+          "end": 2986,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ReaderView.tsx",
+      "before": "9b938fed125c2fd16ebfa9f0a70f9a61708f49b3f8d4d0674c1bd9131f162720",
+      "after": "d2a3d595d9930feb4638e30930827c818ea7ab36b75de0634289ecb896fcbdbd",
+      "importPosition": 844,
+      "importText": "\nimport { nativeStatusRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 9629,
+          "end": 9642,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RecentWork.tsx",
+      "before": "bb3573732a64ed8eaf50899d13a9eecc68e7843ef4a98df17b8c1b339fda6015",
+      "after": "935c41dfd9fcfb8d3f3d27566994f8e669903558ee2f461c579eb91138bc4dc8",
+      "importPosition": 737,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5217,
+          "end": 5229,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ReviewedConnectors.tsx",
+      "before": "262c313085a9431d696df3b337bf20710308339a855f7dab25f4e67f12edaa3f",
+      "after": "865851fb6dd294baff0f093d3c6bfb307fadf9a7c406fdafc986112f539139ac",
+      "importPosition": 649,
+      "importText": "\nimport { nativePoliteLiveProps, nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 14755,
+          "end": 14767,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 13599,
+          "end": 13611,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 8697,
+          "end": 8715,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RoutineSchedule.tsx",
+      "before": "550beab25c1d2e3aedae6512b1f1a187a7a193404f2124ef6bd685ada242fdd1",
+      "after": "c1693b87d071e8d6ac347a549a9685eb8574f721b09465d40da44faa11a2b9af",
+      "importPosition": 453,
+      "importText": "\nimport { nativeNumberTypeProps, nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 11186,
+          "end": 11199,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        },
+        {
+          "start": 10049,
+          "end": 10061,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 8781,
+          "end": 8794,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        },
+        {
+          "start": 6954,
+          "end": 6967,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "before": "e07d3f3fee4bac0fe81b5b64c48c884e8e21e0ee855ab0c177173e5ee4fe9ffc",
+      "after": "32085f49173f1cd845b067480ce78794c305638120963341117a439a989dc9c6",
+      "importPosition": 1024,
+      "importText": "\nimport { nativeAlertRoleProps, nativeGroupRoleProps, nativeStatusRoleProps, nativeCheckboxTypeProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 54831,
+          "end": 54846,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 54481,
+          "end": 54493,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 52178,
+          "end": 52193,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 51767,
+          "end": 51779,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 36778,
+          "end": 36790,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 25014,
+          "end": 25027,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        },
+        {
+          "start": 20053,
+          "end": 20065,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 18627,
+          "end": 18639,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunControls.tsx",
+      "before": "93dbc23e648b4b310b26204109f4867bf284890a1729fa36c4675965f969a167",
+      "after": "dda7e81dd5c07378d7d68b901b7e4e317e50f3d593a151825b3881ebe1b6b3b8",
+      "importPosition": 832,
+      "importText": "\nimport { nativeStatusRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 8905,
+          "end": 8917,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 7545,
+          "end": 7558,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunImages.tsx",
+      "before": "bcf5ce28899c80d05483a520788b16cd8f7ea68ccca1b05b01904e31d4743c86",
+      "after": "94174ef6ee92144d29a36b22a721be89857eea00e1d9b81ab4a032b5031ab67e",
+      "importPosition": 543,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2930,
+          "end": 2942,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 1167,
+          "end": 1179,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RunPanel.tsx",
+      "before": "5f082f8ffa24b9de9f88db0a42c383d2c42df2a29ebd46ec70c89eeb97f44071",
+      "after": "8412dc22595d14b6b01075e42493fe2f1c903aba4ce79fd01035c1f7817ace69",
+      "importPosition": 1433,
+      "importText": "\nimport { nativePoliteLiveProps, nativeStatusRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 23376,
+          "end": 23388,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 19036,
+          "end": 19049,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        },
+        {
+          "start": 16977,
+          "end": 16990,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        },
+        {
+          "start": 16363,
+          "end": 16376,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        },
+        {
+          "start": 7467,
+          "end": 7485,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SaveConversationTask.tsx",
+      "before": "d9e6ef35a5e3f064c7c466672db3bf8ee141d2fdcee2451f1dc75c938ea4be4a",
+      "after": "cf5c88ce680a7d946d093425db2c6001dab6eb0b8bc871337de669b405d97a4c",
+      "importPosition": 548,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3542,
+          "end": 3554,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SavedResultPreview.tsx",
+      "before": "797e31881a3ea2b662cb6cd91aee8af59333ae59b459a8533f7a89ad6e043b0b",
+      "after": "347994e78fe486c80916f9c2c67a481c9a6b4d1387d056a947dba858a472e90a",
+      "importPosition": 1258,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 12754,
+          "end": 12766,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 12668,
+          "end": 12680,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 12475,
+          "end": 12487,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 10826,
+          "end": 10838,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2103,
+          "end": 2115,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SearchEngineSetting.tsx",
+      "before": "b02c70b96273c42da30dd8b215c21081138ef3b216440990959dafb542d4070f",
+      "after": "a3c556fbb2426d132e9770c1bf981308a54b3a2ff0eb41e9e92e100126ef5c90",
+      "importPosition": 739,
+      "importText": "\nimport { nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5833,
+          "end": 5845,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 3402,
+          "end": 3414,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SearchEnginesSetting.tsx",
+      "before": "6d08351521e6de2e26ff092b048d5e14eb382dac4857d39dc3cddf2fea8ef3ad",
+      "after": "ee6431263f4212f2798db5d2e2ef4b87f08365399155511315c391ebef777a78",
+      "importPosition": 662,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 6767,
+          "end": 6779,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SessionRecovery.tsx",
+      "before": "fb205e8a8c19ab99d85c93b54136e551e97741f255ce85f061878af1cb7b88ba",
+      "after": "d59e7c8d3e4a4d70b954181578c55cb94cfd52e98b2b8f46725070e3fc40356b",
+      "importPosition": 443,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4946,
+          "end": 4958,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 4452,
+          "end": 4464,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Settings.tsx",
+      "before": "c012080b73fa944dd0a17511369971e7ecdf6504e8100b5b4fd57f96c9344f6b",
+      "after": "5e5d25b877c036b0f42d5b6a781f262bde40eba60b9f076a81f030ac78985161",
+      "importPosition": 2524,
+      "importText": "\nimport { nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 17711,
+          "end": 17723,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ShortcutsSetting.tsx",
+      "before": "58629a9492247118109e732d4f0fff0c690fc8b5d4e52f758ba009beffd09768",
+      "after": "8ba876a2d75efcca57a62be039a1f1743bac477352db9eac2d47cc9682749d6e",
+      "importPosition": 835,
+      "importText": "\nimport { nativeStatusRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 9526,
+          "end": 9538,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 9045,
+          "end": 9057,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 8514,
+          "end": 8526,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 6609,
+          "end": 6622,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "before": "2746410a10a9fb5aa2b0fb6b0b8b290553d3161ef147892d3de83d3c71f3393f",
+      "after": "50277e3e9e61c876ed4419498cbd3e58346825c1b8a69abed38122693576fc22",
+      "importPosition": 2944,
+      "importText": "\nimport { nativeMenuItemRoleProps, nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 51071,
+          "end": 51086,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 50901,
+          "end": 50916,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 50327,
+          "end": 50339,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 49879,
+          "end": 49891,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 49620,
+          "end": 49635,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 46586,
+          "end": 46601,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 46359,
+          "end": 46374,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 45961,
+          "end": 45976,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 45640,
+          "end": 45655,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 45390,
+          "end": 45405,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 45133,
+          "end": 45148,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 44908,
+          "end": 44923,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 44656,
+          "end": 44671,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 39584,
+          "end": 39596,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 36602,
+          "end": 36614,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 16394,
+          "end": 16409,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 15908,
+          "end": 15923,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 15490,
+          "end": 15505,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 15201,
+          "end": 15216,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 15001,
+          "end": 15016,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SiteControls.tsx",
+      "before": "b2b134f50f93b4ffa0987c6a3c46df468846909ba5e0fa555d74cd5b029db60d",
+      "after": "2ff34a088c32b5b83e72bb6cde408480d8d4b74cf14ff76649cbae3df1a7e901",
+      "importPosition": 752,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 7776,
+          "end": 7788,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 7398,
+          "end": 7410,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SiteCustomization.tsx",
+      "before": "7effb1d67a6c93e42ebf737b484ec2afb68685e50114f8607102a85404f5b64b",
+      "after": "f8d79769d1ab80317bbe0f859db8a19b872a5e86494b8f88ff62da02cb74948d",
+      "importPosition": 674,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 6295,
+          "end": 6307,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SitePermissions.tsx",
+      "before": "5c38c1496522d0e497ea30d512580d5d8d540b9756397349c454547354af73db",
+      "after": "e7a8fd0d2cf2053b07fc9e90f962dbbb321643f8a38e866108d2357084775969",
+      "importPosition": 436,
+      "importText": "\nimport { nativeAlertRoleProps, nativeCheckboxTypeProps, nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 12085,
+          "end": 12097,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 12036,
+          "end": 12048,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 11713,
+          "end": 11725,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 11089,
+          "end": 11101,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 8462,
+          "end": 8477,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 8343,
+          "end": 8355,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SkillMetadata.tsx",
+      "before": "656048d2b2f1f4457c8d351189e1e466f385907ad9e8f4daec7f2c21d62ca322",
+      "after": "57cd328146f4c06aeec3118789118990b75154b498ae6e832ba46ba598d7ba78",
+      "importPosition": 265,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3674,
+          "end": 3686,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SkillReplayPanel.tsx",
+      "before": "45a6c6f12acbfbcbefe557d7035a2df9a71a6f70099be683e9e12d50189dd160",
+      "after": "f43f848b2755d403b4a91b4e7e4017024661b91d5a7e887613f3e8648b34791e",
+      "importPosition": 502,
+      "importText": "\nimport { nativeStatusRoleProps, nativeAutocompleteOffProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 8007,
+          "end": 8019,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 6770,
+          "end": 6788,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        },
+        {
+          "start": 5255,
+          "end": 5273,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        },
+        {
+          "start": 4139,
+          "end": 4157,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        },
+        {
+          "start": 3087,
+          "end": 3100,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SpaceEditor.tsx",
+      "before": "d8d7b2e791b0ba028fbca744181641cdd550098fa5b7f1855d7b6e76eb7cfb35",
+      "after": "3c71cf8d7aaa25bb14721e024d0773bdd16596394d5700c111c321fc71e47fc8",
+      "importPosition": 930,
+      "importText": "\nimport { nativeCheckboxTypeProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 7947,
+          "end": 7959,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 6437,
+          "end": 6452,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SpaceMemoryEditor.tsx",
+      "before": "620594077f622bc9ada3301a8710d81782b584b8836ba7529527de7df0d0bf0b",
+      "after": "4e32d57ea5376dc4fb1b3fadc9cdb384b241a32ddfcf74244f2c12667feecf6a",
+      "importPosition": 994,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 10254,
+          "end": 10266,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/StartPage.tsx",
+      "before": "ac1baa47eb803b0b3b04e30a85ae5932ca3af3530d034f9b3056699672ff1462",
+      "after": "b2bdae56141d23146e389390ae88f1f407936acc9c7535d6529cba8eedab8b50",
+      "importPosition": 777,
+      "importText": "\nimport { nativeStatusRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2525,
+          "end": 2538,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        },
+        {
+          "start": 2191,
+          "end": 2204,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/StructuredResult.tsx",
+      "before": "368b7d8669a8c1de7b4c182c7a9c5645c41ef52572a27feda9e3d386a268bc94",
+      "after": "3c9db7deaca3d5e045ee5138233af2084c4363aa4068e5a757883a974dab352b",
+      "importPosition": 687,
+      "importText": "\nimport { nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3131,
+          "end": 3143,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/TabMenu.tsx",
+      "before": "3d1a88f5b1b9a637c603146067e118777c19fde5adfebbb648b9e4979994af7d",
+      "after": "e103294f5d21aab2d1aa97c063837b6293ed79385f0b08b70a71a8215efad702",
+      "importPosition": 1246,
+      "importText": "\nimport { nativeMenuItemRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 20890,
+          "end": 20905,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 20593,
+          "end": 20608,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 20346,
+          "end": 20361,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 20082,
+          "end": 20097,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 19752,
+          "end": 19767,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 19420,
+          "end": 19435,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 19125,
+          "end": 19140,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 18687,
+          "end": 18702,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 18331,
+          "end": 18346,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 18030,
+          "end": 18045,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 17798,
+          "end": 17813,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 17593,
+          "end": 17608,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 17444,
+          "end": 17459,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 16811,
+          "end": 16826,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 16242,
+          "end": 16257,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 15942,
+          "end": 15957,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 15330,
+          "end": 15345,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 15012,
+          "end": 15027,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 14257,
+          "end": 14272,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 12860,
+          "end": 12875,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 12718,
+          "end": 12733,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 12595,
+          "end": 12610,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 11997,
+          "end": 12012,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 11794,
+          "end": 11809,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 11573,
+          "end": 11588,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 11357,
+          "end": 11369,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 10477,
+          "end": 10492,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Toasts.tsx",
+      "before": "739891dd266c23168278159819cedce9f45b8a91296724256fc3208d06f0d2d4",
+      "after": "bf24dd8b32f29bba684b407c8b6a7c0f6065f276dcea35d648b2c557b2be4614",
+      "importPosition": 155,
+      "importText": "\nimport { nativePoliteLiveProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 641,
+          "end": 659,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/VaultOfferBanner.tsx",
+      "before": "f1c71cc48a5fe78d32f66447e5e79863d1592b94b36b481059b06eb7a4d3dc37",
+      "after": "2a87af619d4bb29f8a4ec85b0b333fd163b64e01b7e661db1eae5fce3fc13abb",
+      "importPosition": 379,
+      "importText": "\nimport { nativeAutocompleteOffProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2741,
+          "end": 2753,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2430,
+          "end": 2448,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/VaultSettings.tsx",
+      "before": "a7218bdc3128aededa4109c54159d9a505e50c762b1ae540fa2d1307034c5c15",
+      "after": "6024ae1b7290285c8a87c46be0900572c3b57d6700e97a267dfb63f192a3c778",
+      "importPosition": 645,
+      "importText": "\nimport { nativeAlertRoleProps, nativeAutocompleteOffProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4734,
+          "end": 4752,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        },
+        {
+          "start": 3027,
+          "end": 3045,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        },
+        {
+          "start": 2912,
+          "end": 2924,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/WebsiteSizes.tsx",
+      "before": "d13ed3b6486dcd9da30e810637b3535c9a2655fc1b301918c194c366548b4351",
+      "after": "618424898aa76e059384dec6e38f9678a2e3aa5487f77d0984facb7f9c8827c9",
+      "importPosition": 245,
+      "importText": "\nimport { nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2950,
+          "end": 2962,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2443,
+          "end": 2455,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/WorkbookPreview.tsx",
+      "before": "dde5987b1948465d526b98c4fdf24a74e50caa9f9c4306e6edfae929c23a603b",
+      "after": "31ad34592e1736dc9ae39584228c3c5b945610da61d35d7e57eb7d6209fdf1af",
+      "importPosition": 510,
+      "importText": "\nimport { nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3976,
+          "end": 3988,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 3869,
+          "end": 3881,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 3645,
+          "end": 3657,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2131,
+          "end": 2143,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/composer/SuspensionPanel.tsx",
+      "before": "9c471ac2fba09b2729dbc155af7f629dcaefac36a28649153972e47e84cc515e",
+      "after": "3b59521a5ff70734e13fe891452c2d096a5d7a2164345269a68da3eed2d8b318",
+      "importPosition": 300,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4743,
+          "end": 4755,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/apple-script/preference.tsx",
+      "before": "a8ee7a5a748fb41edf9ef0b54c12c0be340df9164cbb7daaebcd8f3efee073e7",
+      "after": "42a66280c90b7b62f64537bb5dc04c52b045d56d8f42265696289fb1a29dc07c",
+      "importPosition": 356,
+      "importText": "\nimport { nativeCheckboxTypeProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1326,
+          "end": 1341,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/commands/ExtensionShortcuts.tsx",
+      "before": "3b39fbeee832267e864e370601decfe759316edf69df5de6e0c29f1d3f6c88c5",
+      "after": "308ee027355a8790b93900074fbb9383b62c8ab5e4c64e39c207b600b872a982",
+      "importPosition": 537,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4612,
+          "end": 4624,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 3368,
+          "end": 3380,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/demonstration/RecorderControls.tsx",
+      "before": "9b26bc9060ed868e8daaa5574e0887a531cfef0543e0a9fce5f6c1191c3bafb7",
+      "after": "2808e08c6c039ccaa7167061aa55743a5b6493ec85258d52b13f7effcfce77b6",
+      "importPosition": 209,
+      "importText": "\nimport { nativePoliteLiveProps, nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1562,
+          "end": 1574,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 893,
+          "end": 911,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/demonstration/ReviewRecording.tsx",
+      "before": "3c058c1dbc3e1004f7a534f21544bf826bf2eda8c061216df5e3c632925caaa0",
+      "after": "dbd307dcd7a48b89341da1c43bf4a1d985aa0d0c9ec22b34a897e4bd3ae66332",
+      "importPosition": 388,
+      "importText": "\nimport { nativeAutocompleteOffProps, nativeAlertRoleProps, nativeCheckboxTypeProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5953,
+          "end": 5965,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 4318,
+          "end": 4336,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        },
+        {
+          "start": 4046,
+          "end": 4061,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 3839,
+          "end": 3857,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        },
+        {
+          "start": 3621,
+          "end": 3633,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2191,
+          "end": 2209,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/download-naming/Settings.tsx",
+      "before": "87192427448babeaca81472c92951a465d296259433353ecd305b136752a6c5d",
+      "after": "0026d5dd11c6304dbe6c82934887cc3f89bd27a6404bf4ede67382817750cd6e",
+      "importPosition": 425,
+      "importText": "\nimport { nativeCheckboxTypeProps, nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4035,
+          "end": 4047,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2350,
+          "end": 2365,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/extensions/ExtensionShortcuts.tsx",
+      "before": "2392dcc56e074bfb3a10d3f7143c6976fffbc7def9bf5903db6f271e54812410",
+      "after": "13d3c15b1b43815732323983eae75888cd8f9a9c38d529df23accc9ab56e08a0",
+      "importPosition": 533,
+      "importText": "\nimport { nativeAutocompleteOffProps, nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3924,
+          "end": 3936,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2115,
+          "end": 2127,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 1692,
+          "end": 1710,
+          "original": "autoComplete=\"off\"",
+          "symbol": "nativeAutocompleteOffProps",
+          "name": "autoComplete",
+          "value": "off"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/little-window/ExternalLinksSetting.tsx",
+      "before": "6671dea020b90a579c33c942fb4fa21841d35c8334f93e64781a3aa85ad1f868",
+      "after": "0b31b03c120af1f2c40d94e284badf6f14e8805ce3440429cb9359e0bea751d8",
+      "importPosition": 204,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1601,
+          "end": 1613,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/MorningReview.tsx",
+      "before": "66feb375c1c39ee8305c6533c8fa79ae5c397bbaaac931e9d48296f8f610cd4b",
+      "after": "95d2c8e078efd680af516fe82db5b80e86683ca3b8bfdb9547cc2f22116f2edd",
+      "importPosition": 171,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1878,
+          "end": 1890,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/NightRunOverflow.tsx",
+      "before": "22a80fc25a2af53c43ff5a5f54a9eb431150ffb045e28441b2187a689b301e9c",
+      "after": "3081413ba27e9cdc53efaf3ca57e2b73be4e077a63326b798a7203dc532c693f",
+      "importPosition": 340,
+      "importText": "\nimport { nativeMenuItemRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1039,
+          "end": 1054,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/NightSettings.tsx",
+      "before": "d4b4bf14e2eead3e6b042ebe5c6c76f4a7d631e1e23401b578b6a7fca1d1bcdc",
+      "after": "b2aed987e289088efbd427725257fc47fad52f7238fae22050423614f5a4e379",
+      "importPosition": 623,
+      "importText": "\nimport { nativeCheckboxTypeProps, nativeNumberTypeProps, nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 6317,
+          "end": 6329,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 5622,
+          "end": 5635,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        },
+        {
+          "start": 5419,
+          "end": 5432,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        },
+        {
+          "start": 2386,
+          "end": 2401,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/QueueTonight.tsx",
+      "before": "6b2294a16bfe9afc1b0bcc4bb77aae206c264b447ac61d453bb18a15147d39ec",
+      "after": "a625c64008c24f2d8915eee484be3fc0b4f724732fc6b2f44a191a5ab6293bc0",
+      "importPosition": 464,
+      "importText": "\nimport { nativeNumberTypeProps, nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4991,
+          "end": 5003,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 4104,
+          "end": 4117,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/trust/SiteAgentAccess.tsx",
+      "before": "1d7c9db1232c1ec27ab7f7731f1cc36a6a42755c2b3fd8474f44a0a9f46fd924",
+      "after": "4febed0e3f5743ea47ff79fcc0bf39c46854358a3bf428b2b465091bfa08e947",
+      "importPosition": 466,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4004,
+          "end": 4016,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/features/trust/SiteRulesTable.tsx",
+      "before": "f73dde457b7fd6c579a47040c8f2180bb53986eac83575b5e78b0302a9a148bd",
+      "after": "29b5c987b26375dcec5c343354c081b0edd6e0dff34bb5bebf764f7b6540407e",
+      "importPosition": 305,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1877,
+          "end": 1889,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/main.tsx",
+      "before": "8f2e4692f9661eceb77c79deb4d87b56bec5054caf325d2b7bf1e5eeabd99762",
+      "after": "4f6cccd323361b92a1f1f4e385dab14d720b98e51eeb39a92da244da93a0c52a",
+      "importPosition": 415,
+      "importText": "\nimport { nativeAlertRoleProps } from \"./ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 621,
+          "end": 633,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/onboarding/OnboardingFlow.tsx",
+      "before": "dbd928a7dd2db90a4b97cb3ca68ab5b2459e1f5d9db56c9e22a0f979ed7aba9f",
+      "after": "4224e847c57b643de70f1a9ec75f335644d139a7f6bd851040f27ae5731bee99",
+      "importPosition": 1345,
+      "importText": "\nimport { nativeCheckboxTypeProps, nativeGroupRoleProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 29623,
+          "end": 29635,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 29175,
+          "end": 29187,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 25602,
+          "end": 25614,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 23886,
+          "end": 23901,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/onboarding/SetupReview.tsx",
+      "before": "b381ec0b50b86e014dc527375a97ec6bbc6c4e256651b115e998cca34a26d094",
+      "after": "58ddabdd7c92f55b4ed238fe854d40e797fbb2e96aa65d9b00e25ca8db503df0",
+      "importPosition": 473,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5052,
+          "end": 5064,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/primitives.tsx",
+      "before": "cea8df9b3cda5fdd28bb5cc96adcaa69ecfc2109bf0da67053235c1174350925",
+      "after": "f125a80a907221cb0e7560be4556490699ca9c6fc7908bfc0bc0a932a53e7640",
+      "importPosition": 200,
+      "importText": "\nimport { nativeGroupRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1376,
+          "end": 1388,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/AboutAux.tsx",
+      "before": "3012cc239e1b810d687da9c5f5eb8bdbb9d77a8f434f0a562249b700129086e1",
+      "after": "9eaa5455a263b831afbb5f4a6ebdc159e452694f4cffa2585cf86631f78c015b",
+      "importPosition": 608,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4657,
+          "end": 4669,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Agents.tsx",
+      "before": "7a2dcf9fe03845028e916742ff33b024452712cd5ebd30157f059ebb9e5ea82d",
+      "after": "c953392b3905ada6d1065497117d50ff73384ddd47b3fdd50807367bd68ddc27",
+      "importPosition": 374,
+      "importText": "\nimport { nativeGroupRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1084,
+          "end": 1096,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/ArchivedChats.tsx",
+      "before": "3b114e6bfb04a8d273ab2b54a5bd8a045b557b0378e60be8f4e4bda3c3deb2ce",
+      "after": "0e0d16fbd97d27514973eaef892d7ef8f90a8c3339bfdcaaaac2bde58653c479",
+      "importPosition": 561,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4353,
+          "end": 4365,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Automations.tsx",
+      "before": "90949968fbeaf51f8ae9f8384e61873d0f29e9032efa8f399c9fc37403a7947d",
+      "after": "e8eec3ebf043b76cc4ff4fdf72f0aad5bb7dd4e654751244c26d9b6d2845bf4b",
+      "importPosition": 913,
+      "importText": "\nimport { nativeNumberTypeProps, nativeAlertRoleProps, nativeStatusRoleProps, nativePoliteLiveProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 20677,
+          "end": 20689,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 20086,
+          "end": 20104,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        },
+        {
+          "start": 16925,
+          "end": 16938,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        },
+        {
+          "start": 14889,
+          "end": 14902,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        },
+        {
+          "start": 6821,
+          "end": 6833,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 6361,
+          "end": 6374,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/BackgroundRuntime.tsx",
+      "before": "54df1e2c0bf2a65652ab90c7400b7881f0316c35d041b8748d780c106af30e42",
+      "after": "1cf252459815363bcddd648b97e15c842bb129fb512f4c0b0046a92a2d831268",
+      "importPosition": 376,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2485,
+          "end": 2497,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CookieControls.tsx",
+      "before": "8790c7e5a5699163e9c7fb1ac9aacf7be83341ace6bc8933690f6d6f21eebfc6",
+      "after": "d4f7533a9a3cfac51602084651fa3949e3a45d344e0fa284b2f4a4d8bdbfb74f",
+      "importPosition": 389,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2366,
+          "end": 2378,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/CrashReporting.tsx",
+      "before": "59fa6dfa2feb4f07447396525a6064aebd868766d2ade2f24904322a38f07035",
+      "after": "c754fad4ea6c8cac36ac4921bba8d9239159ae2a4b0210eb2c2b0681ababf61a",
+      "importPosition": 407,
+      "importText": "\nimport { nativeGroupRoleProps, nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3115,
+          "end": 3127,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 2691,
+          "end": 2703,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DefaultPageZoom.tsx",
+      "before": "88252ca0a73e322544baeb71cdb5d0694845b8cd66221206879d64ec088f9f23",
+      "after": "5b7185afcf2861d633d1b20103a89d0a20c4fcf1039b1a38569d7b747b4ffa97",
+      "importPosition": 341,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 3011,
+          "end": 3023,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/DownloadFolder.tsx",
+      "before": "7635ed48d9f0e97157a8c4f5ad816052ffb2b02b50fca3a8e6ab90340b3bf405",
+      "after": "68674915c22e96b72bea7a5d919359ec3f49dce62d7a44471e7147146c02ee78",
+      "importPosition": 419,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2680,
+          "end": 2692,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/General.tsx",
+      "before": "e87935d1ce5f10b7d97885411c8ac4c54b44083157acb669d8e23dc4c8a037b9",
+      "after": "b9cf7b205705d213001fee095ca75137444c082aa470b586bffa9fac1183b49d",
+      "importPosition": 2021,
+      "importText": "\nimport { nativeStatusRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4433,
+          "end": 4446,
+          "original": "role=\"status\"",
+          "symbol": "nativeStatusRoleProps",
+          "name": "role",
+          "value": "status"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Languages.tsx",
+      "before": "80bee33d25ac42b90b7a6c9baf82781b5dc2934aa66431a563d358fab36cfec8",
+      "after": "52d8f26246a31fe1311d3dcc4b9793d584c05ad2752ff75aa70c2bcb85e12d78",
+      "importPosition": 482,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 7469,
+          "end": 7481,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/LinkRouting.tsx",
+      "before": "9edb5607f1000ced20b8585a4d245746d02641499d4d6fe1df0aeb577f95b8d0",
+      "after": "4b3edc1796727c7540846691b3f217616e5244021b412c8560a8d4b29eb2c13d",
+      "importPosition": 602,
+      "importText": "\nimport { nativeCheckboxTypeProps, nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 12163,
+          "end": 12178,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 10025,
+          "end": 10037,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 8427,
+          "end": 8442,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 6539,
+          "end": 6554,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 4502,
+          "end": 4517,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/ModelConnections.tsx",
+      "before": "6e438231d8923d226ad5b3621c251d8f3a5a4da2e4f5cfa4bb84a41097355b12",
+      "after": "2190f3feba29afa37f0fe8e9cc679d07d495cef45f418fa00e16cdc05ac8d4d3",
+      "importPosition": 695,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 6109,
+          "end": 6121,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PasswordsAutofill.tsx",
+      "before": "8331580d37d5e29eb4c19e5878cc99cff264dfae03f9805a1e32f9ec45fe0470",
+      "after": "2fba88faac3aef7dd4844609420530bd10119a2c61695ea49f905a8d99d72223",
+      "importPosition": 736,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5394,
+          "end": 5406,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 3726,
+          "end": 3738,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/PictureInPicture.tsx",
+      "before": "2db58fc27508abf47dd621db848080e243a2969a4d84a66171149b938b8ecf06",
+      "after": "ce6b6fedd06c99f178dde3e05b8682355b330ceec4b15572eef922df881255d5",
+      "importPosition": 341,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2796,
+          "end": 2808,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SelectionCapture.tsx",
+      "before": "d95e2670c24409cdde9215f30c16f1a984814c33c93c23f6f40d15f304fa8b50",
+      "after": "4a7482f0bde52063af95130e218a7be8ef547e4fc8bf1beb701902b874ea9fee",
+      "importPosition": 1161,
+      "importText": "\nimport { nativeAlertRoleProps, nativeCheckboxTypeProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 15570,
+          "end": 15582,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 15524,
+          "end": 15536,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 15448,
+          "end": 15460,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 15284,
+          "end": 15296,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 14893,
+          "end": 14908,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 4086,
+          "end": 4101,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 3426,
+          "end": 3438,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SidebarOptions.tsx",
+      "before": "ceb10b6998fbb572cdaa72a35e8be81fbe083eed44cb588846785756079b70db",
+      "after": "6598d6dd8647ce900bc1fbff4072a881d10a65c90d315bb81aeeb2d21ce3e91e",
+      "importPosition": 268,
+      "importText": "\nimport { nativeCheckboxTypeProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2346,
+          "end": 2361,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 1277,
+          "end": 1292,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 970,
+          "end": 985,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/SpaceMemory.tsx",
+      "before": "50f4b543d08cd9a44a660dc33bb71403da41ab4957e7381e06ab0223401d1567",
+      "after": "c779c0250d428387c1eb61a364306cde8f0f8da942dff9b76bb6fe78b6c13d08",
+      "importPosition": 1096,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 11395,
+          "end": 11407,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Startup.tsx",
+      "before": "ce164d3b14372043ee27041b2a271d1066aea0d790f788b11d82bcd0141d28b9",
+      "after": "dbf199aa2b597210af6fe932203b56be2c4b9aa5169b09ea20d11af9b00e99ef",
+      "importPosition": 482,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 7355,
+          "end": 7367,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/UsageBudgets.tsx",
+      "before": "ee42f8468f84f862faad758d08ca78cabe51e69d723e47b8b720cbfbb98aed4a",
+      "after": "292138b22de74065455bf8748f403da63a11594474c31367940f680c628e465e",
+      "importPosition": 589,
+      "importText": "\nimport { nativeNumberTypeProps, nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 7328,
+          "end": 7340,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 6573,
+          "end": 6585,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 6224,
+          "end": 6237,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        },
+        {
+          "start": 5868,
+          "end": 5881,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        },
+        {
+          "start": 5524,
+          "end": 5537,
+          "original": "type=\"number\"",
+          "symbol": "nativeNumberTypeProps",
+          "name": "type",
+          "value": "number"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "before": "3a6695fb65c655a2a6fdae2263728b0c304db04ae7fa91f780538af802d72e1b",
+      "after": "9dfc777fd8ec5fe34d55c4bd04d2bd40eb0b888546e5a096b6064a45925cefb5",
+      "importPosition": 607,
+      "importText": "\nimport { nativeAlertRoleProps, nativeGroupRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 4429,
+          "end": 4441,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        },
+        {
+          "start": 3019,
+          "end": 3031,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/settings/sections/native-preference-control.tsx",
+      "before": "ba249a52825e5b064ccec3ccf0b2f6b40530e994078043d1a3b31b6b60b99056",
+      "after": "c969e9d6423b545a1d4485e464ecf7b335bfa28f3835e5829bcdc6704930b255",
+      "importPosition": 394,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2226,
+          "end": 2238,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/transcript/IsolatedArtifactHtml.tsx",
+      "before": "7aec8f957ce421ea509d8fbc6e7afd8be7d10e3f20b6db371b014c99e2f756a4",
+      "after": "dee950b56a94d9ab012e3bdd2f9f9eb9bc7872503ee9aea9c7736e4abc35da67",
+      "importPosition": 200,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 1120,
+          "end": 1132,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/transcript/RunTranscriptDetails.tsx",
+      "before": "e07770624173182be527de9861f3e639eb75e906cad457b2334accf115c0cbe6",
+      "after": "55a755581c3a8640274287904b73ef643b6d748f4a9d0f1d57fac1540c8070a5",
+      "importPosition": 946,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 14120,
+          "end": 14132,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 10920,
+          "end": 10932,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/transcript/TextProposal.tsx",
+      "before": "ee79650f9ca75cae5f5f21f7849c0c2c50159ce3cec77f574d109919b7073455",
+      "after": "45c7b21936b2fb0f74aa2f467db2f3566dcb23f0df8e36dcedf790ff10a04f13",
+      "importPosition": 334,
+      "importText": "\nimport { nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 5043,
+          "end": 5055,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 4490,
+          "end": 4502,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 4404,
+          "end": 4416,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/transcript/TranscriptActivity.tsx",
+      "before": "da962c16bde968437c34922aae0a4d1f83ca6a1c255632d1bd0452666abe46bb",
+      "after": "52c3b7a0289cfe8fae2c60faf2a9d313c43d2fa50faf0161231c4ba115da00f8",
+      "importPosition": 91,
+      "importText": "\nimport { nativePoliteLiveProps, nativeAlertRoleProps } from \"../ui/native-attribute-props\";",
+      "edits": [
+        {
+          "start": 2480,
+          "end": 2492,
+          "original": "role=\"alert\"",
+          "symbol": "nativeAlertRoleProps",
+          "name": "role",
+          "value": "alert"
+        },
+        {
+          "start": 1586,
+          "end": 1604,
+          "original": "aria-live=\"polite\"",
+          "symbol": "nativePoliteLiveProps",
+          "name": "aria-live",
+          "value": "polite"
+        }
+      ]
+    },
+    {
+      "path": "apps/shell/src/ui/index.tsx",
+      "before": "cbf786c2ab5bffc27d235ca8fb25c44b3ffa03895de23235409cfe14dff32998",
+      "after": "8b70d93f667919fc4750ee405f19446c919474e9fc7c7c7570e4e69f58b441f7",
+      "importPosition": 748,
+      "importText": "\nimport { nativeGroupRoleProps, nativeCheckboxTypeProps, nativeMenuItemRoleProps } from \"./native-attribute-props\";",
+      "edits": [
+        {
+          "start": 10278,
+          "end": 10293,
+          "original": "role=\"menuitem\"",
+          "symbol": "nativeMenuItemRoleProps",
+          "name": "role",
+          "value": "menuitem"
+        },
+        {
+          "start": 4754,
+          "end": 4769,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 4471,
+          "end": 4486,
+          "original": "type=\"checkbox\"",
+          "symbol": "nativeCheckboxTypeProps",
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "start": 3744,
+          "end": 3756,
+          "original": "role=\"group\"",
+          "symbol": "nativeGroupRoleProps",
+          "name": "role",
+          "value": "group"
+        }
+      ]
+    }
+  ],
+  "excluded": [
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "start": 37774,
+      "reason": "key after attribute"
+    },
+    {
+      "path": "apps/shell/src/components/TabMenu.tsx",
+      "start": 13913,
+      "reason": "key after attribute"
+    },
+    {
+      "path": "apps/shell/src/components/TabMenu.tsx",
+      "start": 14587,
+      "reason": "key after attribute"
+    },
+    {
+      "path": "apps/shell/src/settings/sections/Workspaces.tsx",
+      "start": 7007,
+      "reason": "key after attribute"
+    }
+  ],
+  "helper": {
+    "path": "apps/shell/src/ui/native-attribute-props.ts",
+    "before": "5d948e735fde550cc7016c58fff5d43ba2b45c6a3cf23d09bfcf136f58241cc4",
+    "after": "fd573313cbfe1b1deb42ff373953b9f1ccc7e190a74d1763ffb9fa9ad1876608"
+  },
+  "guardExceptions": [
+    {
+      "path": "apps/shell/src/components/CommandBar.tsx",
+      "before": "<span className=\"cb-go\" {...auxNativeAriaHiddenProps}>",
+      "after": "<span className=\"cb-go\" aria-hidden=\"true\">",
+      "reason": "Retain original chrome-tokens.test.ts source assertion"
+    },
+    {
+      "path": "apps/shell/src/components/CommandBar.tsx",
+      "before": "import {\n  nativeButtonTypeProps as auxNativeButtonTypeProps,\n  nativeAriaHiddenProps as auxNativeAriaHiddenProps,\n} from \"../ui/native-attribute-props\";",
+      "after": "import {\n  nativeButtonTypeProps as auxNativeButtonTypeProps,\n} from \"../ui/native-attribute-props\";",
+      "reason": "Remove only alias unused by literal guard restoration"
+    }
+  ]
+}

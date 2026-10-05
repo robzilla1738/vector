@@ -37,6 +37,7 @@
     "oxlint": "1.83.0",
     "prettier": "3.9.9",
     "pngjs": "7.0.0",
+    "terser": "5.44.0",
     "typescript": "catalog:",
     "vite": "7.3.6",
     "vitest": "catalog:"

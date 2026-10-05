@@ -3,6 +3,7 @@ import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
 import { usePreferenceCommand } from "./preference-command";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 type Preference = Awaited<ReturnType<typeof bridge.defaultPageZoom>>;
 const CHOICES = [50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200];
 const availableNow = () => inNativeHost || inMock;
@@ -73,7 +74,7 @@ export function DefaultPageZoomSetting({ active }: { active: boolean }) {
       </select>
       {value.managed && <span {...staticHintProps}>Managed by your organization</span>}
       {error && (
-        <span role="alert" {...staticFieldErrorProps}>
+        <span {...nativeAlertRoleProps} {...staticFieldErrorProps}>
           {error}{" "}
           <NativePreferenceRetry
             command="retry-default-page-zoom"

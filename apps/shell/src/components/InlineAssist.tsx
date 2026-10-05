@@ -8,6 +8,7 @@ import { shellIconAgentSm, shellIconClose } from "./icons";
 import { bridge } from "../bridge";
 import "./inline-assist.css";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** In-flow editor; the browser page remains visible while a person reviews the draft. */
 export function InlineAssist() {
@@ -84,15 +85,15 @@ export function InlineAssist() {
           onChange={event => setInstruction(event.target.value)} /></label>
         {drafted && <label className="inline-assist-label">Review and edit the draft<textarea aria-label="Proposed field text" value={replacement}
           maxLength={Math.min(12_000, capture.maxReplacementLength ?? 12_000)} disabled={busy !== null || stale} onChange={event => setReplacement(event.target.value)} /></label>}
-        {stale && <p role="alert">The page changed. Select the field and start again.</p>}
-        {error && <p role="alert">{error}</p>}
+        {stale && <p {...nativeAlertRoleProps}>The page changed. Select the field and start again.</p>}
+        {error && <p {...nativeAlertRoleProps}>{error}</p>}
         <div className="inline-assist-actions">
           <button {...smallButtonProps} disabled={busy !== null || stale || instruction.trim().length < 2} onClick={() => void draft()}>{busy === "draft" ? "Drafting…" : drafted ? "Redraft" : "Draft with AI"}</button>
           {drafted && <button className="btn sm primary" disabled={busy !== null || stale || !InlineAssistTextSchema.safeParse(replacement).success || replacement.length > (capture.maxReplacementLength ?? 12_000)}
             onClick={() => void apply()}>{busy === "apply" ? "Applying…" : "Apply to field"}</button>}
           <button {...smallGhostButtonProps} onClick={close}>Cancel</button>
         </div>
-      </> : <><p role="alert">{error || "No editable field was found."}</p><button {...smallButtonProps} onClick={close}>Close</button></>}
+      </> : <><p {...nativeAlertRoleProps}>{error || "No editable field was found."}</p><button {...smallButtonProps} onClick={close}>Close</button></>}
     </div>
   </section>;
 }

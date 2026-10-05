@@ -1,0 +1,175 @@
+{
+  "originalLintFailureRetained": true,
+  "rows": [
+    {
+      "path": "apps/shell/src/components/Settings.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/HomeAsk.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextTray.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/CommandBar.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ReviewedConnectors.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/MemorySettings.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ExternalAgents.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ImageViewer.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/HorizontalPins.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/AttachmentTray.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SearchEngineSetting.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/WebsiteSizes.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/DocumentSnapshot.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearBrowsingData.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/FilterListManager.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/SitePermissions.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/RoutineSchedule.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/StructuredResult.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/AnswerMarkdown.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/DocumentContent.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Sidebar.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ChatSessions.tsx",
+      "removedUnusedImports": [
+        "nativeStatusRoleProps",
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/ClearHistory.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Routines.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Library.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/WorkbookPreview.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Overview.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    },
+    {
+      "path": "apps/shell/src/components/Downloads.tsx",
+      "removedUnusedImports": [
+        "nativeGroupRoleProps"
+      ]
+    }
+  ],
+  "runtimeAttributesUntouched": true
+}

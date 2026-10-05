@@ -28,6 +28,7 @@ import { CalendarTaskGrants } from "./CalendarTaskGrants";
 import { bridge } from "../bridge";
 import { RunAttentionFeed, selectAttentionRuns } from "../agent/RunAttentionFeed";
 import { RunNoticePreference } from "../agent/RunNoticeControls";
+import { staticSpacerProps as auxReuseStaticSpacerProps, staticPrimaryButtonProps as auxReuseStaticPrimaryButtonProps, staticGhostButtonProps as auxReuseStaticGhostButtonProps, staticButtonProps as auxReuseStaticButtonProps, staticGrowProps as auxReuseStaticGrowProps } from "../ui/class-props";
 
 type Details = {
   task: Task;
@@ -434,7 +435,7 @@ export function Tasks() {
       <div className={`task-content ${!selected && !creating ? "task-index" : ""}`}>
         <div className="drawer-head">
           <h3>{creating ? "New task" : selected ? selected.task.title : "Tasks"}</h3>
-          <span className="sp" />
+          <span {...auxReuseStaticSpacerProps} />
           <button ref={closeButton} {...staticIconButtonProps} aria-label="Close tasks" onClick={() => close(null)}>
             {shellIconClose}
           </button>
@@ -500,7 +501,7 @@ export function Tasks() {
                   value={taskQuery}
                   onChange={(event) => setTaskQuery(event.target.value)}
                 />
-                <button className="btn primary" disabled={!workspaceId} onClick={() => reset()}>
+                <button {...auxReuseStaticPrimaryButtonProps} disabled={!workspaceId} onClick={() => reset()}>
                   {shellIconPlusSm}New task
                 </button>
               </div>
@@ -560,7 +561,7 @@ export function Tasks() {
               {!busy && !tasks.length && (
                 <div className="home-empty">
                   <p>No saved tasks yet.</p>
-                  <button className="btn ghost" disabled={!workspaceId} onClick={() => reset()}>
+                  <button {...auxReuseStaticGhostButtonProps} disabled={!workspaceId} onClick={() => reset()}>
                     Create your first task
                   </button>
                 </div>
@@ -569,7 +570,7 @@ export function Tasks() {
                 <div className="home-empty" role="status">
                   <p>No tasks match these filters.</p>
                   <button
-                    className="btn ghost"
+                    {...auxReuseStaticGhostButtonProps}
                     onClick={() => {
                       setTaskQuery("");
                       setTaskFilter("all");
@@ -655,7 +656,7 @@ export function Tasks() {
                     </ul>
                   </details>
                   <button
-                    className="btn"
+                    {...auxReuseStaticButtonProps}
                     onClick={() => {
                       setDraftRevision(selected.task.revision);
                       try {
@@ -695,7 +696,7 @@ export function Tasks() {
               {selected && !!selected.children.length && (
                 <section {...staticFieldProps} aria-label="Coordinated child tasks">
                   <div {...staticRowProps}>
-                    <h4 className="grow">Coordinated work</h4>
+                    <h4 {...auxReuseStaticGrowProps}>Coordinated work</h4>
                     <button
                       {...smallButtonProps}
                       onClick={() => void action(() => exportCoordinationPlan(selected))}
@@ -761,7 +762,7 @@ export function Tasks() {
               </div>
               <div className="field row">
                 <button
-                  className="btn"
+                  {...auxReuseStaticButtonProps}
                   disabled={conflict || !title.trim() || !objective.trim() || !criteria.trim()}
                   onClick={() => void action(save)}
                 >
@@ -769,7 +770,7 @@ export function Tasks() {
                 </button>
                 {selected && (
                   <button
-                    className="btn"
+                    {...auxReuseStaticButtonProps}
                     onClick={() =>
                       void action(async () => {
                         await refresh(selected.task.taskId, false);
@@ -784,7 +785,7 @@ export function Tasks() {
               {!selected && (title || objective || criteria) && (
                 <div {...staticFieldProps}>
                   <button
-                    className="btn"
+                    {...auxReuseStaticButtonProps}
                     onClick={() =>
                       void action(async () => {
                         writeTaskDraft(newDraftKey(), null);
@@ -811,7 +812,7 @@ export function Tasks() {
                   )}
                   <div className="field row">
                     <button
-                      className="btn"
+                      {...auxReuseStaticButtonProps}
                       disabled={
                         needsSetup || conflict || dirty || !activePageId || selected.task.state === "archived"
                       }
@@ -833,7 +834,7 @@ export function Tasks() {
                       ["queued", "planning", "running", "paused", "needs_input"].includes(run.status),
                     ) && (
                       <button
-                        className="btn"
+                        {...auxReuseStaticButtonProps}
                         disabled={needsSetup || conflict || dirty || selected.task.state === "archived"}
                         onClick={() =>
                           void action(async () => {
@@ -851,7 +852,7 @@ export function Tasks() {
                       </button>
                     )}
                     <button
-                      className="btn"
+                      {...auxReuseStaticButtonProps}
                       disabled={dirty || conflict}
                       onClick={() =>
                         void action(async () => {

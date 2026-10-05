@@ -1,7 +1,6 @@
-import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes, type RefObject, type ReactNode } from "react";
+import { useCallback, useMemo, type ButtonHTMLAttributes, type RefObject, type ReactNode } from "react";
 import type { ConversationSource } from "@aux/contracts";
-import { usePreferenceCommand } from "../settings/sections/preference-command";
-import { guardCommandCompletion } from "../command-completion";
+import { useCommittedConversationOwner, useCurrentConversationCommand } from "./conversation-control-construction";
 import { errToast } from "../store";
 import { SourceRow } from "./SourceRow";
 import {
@@ -13,23 +12,12 @@ type SourceCommand = "toggle-conversation-sources" | "select-conversation-source
 export function useConversationSourcesOwner(current: () => boolean, sources: ConversationSource[]) {
   const snapshot = JSON.stringify(sources);
   const identity = useMemo(() => ({ current, snapshot, records: new Set((JSON.parse(snapshot) as ConversationSource[]).map(value => JSON.stringify(value))) }), [current, snapshot]);
-  const committed = useRef<{ active: boolean; identity: typeof identity } | null>(null);
-  useLayoutEffect(() => { const original = { active: true, identity }; committed.current = original; return () => { original.active = false; }; }, [identity]);
-  return useCallback((source?: ConversationSource) => {
-    const original = committed.current;
-    if (!original?.active || original.identity !== identity) return false;
-    if (current() && (!source || identity.records.has(JSON.stringify(source)))) return true;
-    original.active = false; return false;
+  return useCommittedConversationOwner(identity, (source?: ConversationSource) => {
+    return (current() && (!source || identity.records.has(JSON.stringify(source))));
   }, [identity, current]);
 }
 function useSourceControl(command: SourceCommand, current: () => boolean, invoke: (element: HTMLElement, event?: Event) => unknown) {
-  const scopeId = useId();
-  const [ref, run] = usePreferenceCommand<HTMLElement>(command, scopeId, (element, event) => {
-    if (!current()) return guardCommandCompletion(Promise.reject(new Error("Choose the original recorded conversation source.")), current);
-    return invoke(element, event);
-  }, error => { if (current()) errToast(error); });
-
-  return [ref, run] as const;
+  return useCurrentConversationCommand<HTMLElement>(command, current, invoke, "Choose the original recorded conversation source.", true, error => { if (current()) errToast(error); });
 }
 export function ConversationSourceAction({ command, current, invoke, controlRef, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
   command: SourceCommand; current(): boolean; invoke(): unknown; controlRef?: RefObject<HTMLButtonElement | null>;

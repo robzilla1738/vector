@@ -39,6 +39,7 @@ import { moveListFocus } from "../keyboard-list";
 import { useFeature } from "../use-feature";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 
+
 const categoryDescriptions: Record<string, string> = {
   Downloads: "File names, exclusions and smart downloads.",
   General: "Search, shortcuts, and your browsing data.",

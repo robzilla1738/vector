@@ -14,6 +14,7 @@ import { SettingsField } from "../primitives";
 import { MemoryPasteImport } from "../../components/MemoryPasteImport";
 import { MemoryRecoveryNotice } from "../../components/MemoryRecoveryNotice";
 import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 type Source = { runId: string; goal: string; endedAt: number };
 type Revision = { revisionId: string; capturedAt: number; claimCount: number; summary: string; sourceRunIds: string[] };
@@ -133,7 +134,7 @@ function SpaceMemoryContent({ workspaceId, includePasteImport }: { workspaceId: 
   }
   return <SettingsField label="Space memory" hint="Eligible completed runs produce encrypted notes for your review. Only accepted notes appear in later runs. Memory is off by default.">
     {preview ? <p {...staticHintProps}>Space memory is in preview in this build.</p> : <>
-    {error && <p role="alert">{error}</p>}
+    {error && <p {...nativeAlertRoleProps}>{error}</p>}
     <label htmlFor={enabledId}><PipelineControl inputId={enabledId} command="toggle-space-memory-pipeline" scopeId={workspaceId} kind="checkbox" checked={enabled} disabled={!snapshot || busy || bridge.privateMode} onError={report} action={() => act(() => call("memory.pipeline.setPolicy", { workspaceId, enabled: !enabled }))}/> Enable memory for this Space</label>
     {includePasteImport && <><PipelineControl command="toggle-space-memory-import" expanded={showPasteImport} scopeId={workspaceId} {...smallGhostButtonProps} disabled={!snapshot || bridge.privateMode} onError={report} action={() => { assertCurrent(); setShowPasteImport(value => !value); }}>Import pasted assistant notes</PipelineControl>
       {showPasteImport && <MemoryPasteImport workspaceId={workspaceId} />}</>}

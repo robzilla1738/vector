@@ -4,6 +4,7 @@ import { usePreferenceCommand } from "./preference-command";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { Switch } from "../../ui";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 const read = () => bridge.keepRuntimeInBackground();
 const write = (enabled: boolean) =>
   bridge.keepRuntimeInBackground(enabled).then((value) => ({ ack: value, value }));
@@ -62,7 +63,7 @@ export function BackgroundRuntimeSetting({ active }: { active: boolean }) {
       {value.managed && <span {...staticHintProps}>Managed by your organization</span>}
       {!value.available && <span {...staticHintProps}>Browser background mode is disabled.</span>}
       {error && (
-        <span role="alert" {...staticFieldErrorProps}>
+        <span {...nativeAlertRoleProps} {...staticFieldErrorProps}>
           {error}{" "}
           <NativePreferenceRetry
             command="retry-background-runtime"

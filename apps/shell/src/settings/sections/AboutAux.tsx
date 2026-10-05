@@ -7,6 +7,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useState } fro
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { guardCommandCompletion } from "../../command-completion";
 import { PreferenceAction, usePreferenceCommand } from "./preference-command";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 type Build = { buildId: string; sourceCommit: string };
 class BuildOwner {
@@ -71,7 +72,7 @@ export function AboutAuxSetting({ active }: { active: boolean }) {
   const [errorRef, errorInput] = usePreferenceCommand<HTMLElement>("toggle-installed-build-error-details", scopeId, toggleError);
   const [featureRef, featureInput] = usePreferenceCommand<HTMLElement>("toggle-installed-feature-availability", scopeId, toggleFeatures);
   if (!available) return <span {...staticHintProps}>Available in the Aux desktop app.</span>;
-  if (error) return <div role="alert" {...staticFieldErrorProps}>
+  if (error) return <div {...nativeAlertRoleProps} {...staticFieldErrorProps}>
     <span>Could not read the installed build.</span>{" "}
     <PreferenceAction command="retry-installed-build" scopeId={scopeId} invoke={retry} {...smallGhostButtonProps}>Retry</PreferenceAction>
     <details open={expandedError === error}>

@@ -3,6 +3,7 @@ import { smallButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { bridge } from "../bridge";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export function WebsiteSizes() {
   const [sites, setSites] = useState<{origin: string; percentage: number}[]>([]);
@@ -52,7 +53,7 @@ export function WebsiteSizes() {
     <p {...staticHintProps}>Saved page sizes for this profile. Reset applies to open tabs too; cookies and website permissions stay unchanged.</p>
     {sites.length > 0 && <input ref={searchInput} aria-label="Search website sizes" placeholder="Find a website…" value={query} onChange={event => setQuery(event.target.value)} />}
     {loading && <output {...staticHintProps} data-block>Loading website sizes…</output>}
-    {error && <p role="alert">{error} <button {...smallButtonProps} disabled={loading||!!busy} onClick={() => void load()}>Refresh sizes</button></p>}
+    {error && <p {...nativeAlertRoleProps}>{error} <button {...smallButtonProps} disabled={loading||!!busy} onClick={() => void load()}>Refresh sizes</button></p>}
     {notice && <output {...staticHintProps} data-block>{notice}</output>}
     {!loading && !error && !matching.length && <p {...staticHintProps}>{sites.length ? "No matching websites." : "Websites use the default size. Sizes you change appear here."}</p>}
     {matching.map(site => <div className="site-permission-row" key={site.origin}><span title={site.origin}>{site.origin}</span><span className="hint nums">{site.percentage}%</span><button {...smallButtonProps} aria-label={`Reset size for ${site.origin}`} disabled={!!busy} onClick={() => void reset(site.origin)}>{busy === site.origin ? "Resetting…" : "Reset"}</button></div>)}

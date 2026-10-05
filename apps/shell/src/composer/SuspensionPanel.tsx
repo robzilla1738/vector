@@ -4,6 +4,7 @@ import { errorMessage } from "../error-message";
 import { useRef, useState } from "react";
 import type { Run, Suspension } from "@aux/contracts";
 import { call, useStore } from "../store";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 const TITLE: Record<Suspension["kind"], string> = {
   "ask-user-question": "Aux needs your answer",
@@ -68,6 +69,6 @@ export function SuspensionPanel({ run, suspension, hydrated, question, readOnly 
         {busy || answerPending ? "Sending…" : kind === "handoff" ? "I’m done, continue" : "Send"}
       </button>
     </div>}
-    {error && <p {...staticFieldErrorProps} role="alert">{error} Your answer is kept.</p>}
+    {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error} Your answer is kept.</p>}
   </section>;
 }

@@ -3,6 +3,7 @@ import { staticHintProps } from "../ui/class-props";
 import { smallButtonProps } from "../ui/button-props";
 import { useState } from "react";
 import type { Routine } from "@aux/contracts";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export type SkillMetadataValues = Pick<Routine, "description" | "icon" | "autoInject">;
 
@@ -110,7 +111,7 @@ export function SkillMetadata({
       </label>
       <p {...staticHintProps}>URL matches require the exact site origin and a matching path segment.</p>
       {error && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}

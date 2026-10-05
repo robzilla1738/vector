@@ -6,6 +6,7 @@ import { canClaim } from "../tab-window-transfer";
 import { movedSelection, observeMovedSelection } from "../features/window-sync/moved-selection";
 import "./MovedTabPlaceholder.css";
 import { staticButtonProps as auxClassButtonProps, staticGhostButtonProps as auxClassGhostButtonProps } from "../ui/class-props";
+import { nativePoliteLiveProps } from "../ui/native-attribute-props";
 
 export function MovedTabPlaceholder() {
   const moved = useSyncExternalStore(observeMovedSelection, movedSelection);
@@ -13,7 +14,7 @@ export function MovedTabPlaceholder() {
   const stage = document.querySelector(".stage-wrap");
   if (!moved || !page || !stage) return null;
   const working = !canClaim(page);
-  return createPortal(<section className="moved-tab-placeholder" aria-live="polite">
+  return createPortal(<section className="moved-tab-placeholder" {...nativePoliteLiveProps}>
     <div className="empty-state">
       <strong>{working ? `Aux is working in this tab in Window ${moved.windowId}` : `This tab moved to Window ${moved.windowId}`}</strong>
       <p>{working ? "Show its window to follow along. Take control there before moving this tab." : "Your page, history and media are still together. Bring the tab here to continue."}</p>

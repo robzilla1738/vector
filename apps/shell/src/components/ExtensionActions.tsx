@@ -12,6 +12,7 @@ import "../features/extensions/extensions.css";
 import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
+import { nativeAlertRoleProps, nativeMenuItemRoleProps } from "../ui/native-attribute-props";
 
 type Action = HostMethodResult<"extensionActions">[number];
 function ActionIcon({ action }: { action: Action }) {
@@ -73,7 +74,7 @@ export function ExtensionActions() {
           className="menu ctx-menu extension-actions-menu"
         >
           {error && (
-            <p className="menu-empty" role="alert">
+            <p className="menu-empty" {...nativeAlertRoleProps}>
               {error}
             </p>
           )}
@@ -84,7 +85,7 @@ export function ExtensionActions() {
             <fieldset key={item.id} aria-label={item.name}>
               <button
                 {...auxNativeButtonTypeProps}
-                role="menuitem"
+                {...nativeMenuItemRoleProps}
                 {...staticMenuItemProps}
                 disabled={!item.enabled}
                 data-command-id="extension-action"
@@ -115,7 +116,7 @@ export function ExtensionActions() {
           ))}
           <button
             {...auxNativeButtonTypeProps}
-            role="menuitem"
+            {...nativeMenuItemRoleProps}
             {...staticMenuItemProps}
             data-command-id="show-extensions"
             onClick={() => {

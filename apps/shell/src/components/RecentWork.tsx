@@ -12,6 +12,7 @@ import { openSavedTask } from "../task-navigation";
 import { shellIconRight } from "./icons";
 import { RecentWorkEmpty } from "./RecentWorkEmpty";
 import { Tabs } from "../ui";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** Home previews use durable chat titles and results, never invented activity. */
 export function RecentWork() {
@@ -75,6 +76,6 @@ export function RecentWork() {
     </div>
     {tab === "chats" && <ConversationDrafts limit={3} compact exclude={items.map(item => item.chatId)} />}
     {loading && !count && <output {...staticHintProps} data-block>Loading recent work…</output>}
-    {error && <p {...staticFieldErrorProps} role="alert">Recent work couldn’t be loaded. <button {...smallGhostButtonProps} title={error} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
+    {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>Recent work couldn’t be loaded. <button {...smallGhostButtonProps} title={error} onClick={() => setRefresh(value => value + 1)}>Retry</button></p>}
   </section>;
 }

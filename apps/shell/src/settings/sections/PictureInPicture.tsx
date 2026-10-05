@@ -3,6 +3,7 @@ import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { usePreferenceCommand } from "./preference-command";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 type Preference = Awaited<ReturnType<typeof bridge.automaticPictureInPicture>>;
 const read = () => bridge.automaticPictureInPicture();
 const write = (mode: Preference["mode"]) =>
@@ -63,7 +64,7 @@ export function PictureInPictureSetting({ active }: { active: boolean }) {
       </select>
       {value.managed && <span {...staticHintProps}>Managed by your organization</span>}
       {error && (
-        <span role="alert" {...staticFieldErrorProps}>
+        <span {...nativeAlertRoleProps} {...staticFieldErrorProps}>
           {error}{" "}
           <NativePreferenceRetry
             command="retry-auto-picture-in-picture"

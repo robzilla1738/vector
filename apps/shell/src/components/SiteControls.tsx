@@ -19,6 +19,7 @@ import { PageZoom } from "./PageZoom";
 import { siteControlsOpener } from "../site-controls-opener";
 import { Dialog } from "../ui";
 import "./SiteControls.css";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 const labels: Record<string, string> = {
   "media:audio": "Microphone",
@@ -215,7 +216,7 @@ export function SiteControls() {
         </button>
       </header>
       {error && (
-        <div className="site-controls-error" role="alert">
+        <div className="site-controls-error" {...nativeAlertRoleProps}>
           <span>{error}</span>
           <button
             {...smallButtonProps}
@@ -227,7 +228,7 @@ export function SiteControls() {
         </div>
       )}
       {actionError && (
-        <p className="site-controls-error" role="alert">
+        <p className="site-controls-error" {...nativeAlertRoleProps}>
           {actionError}
         </p>
       )}

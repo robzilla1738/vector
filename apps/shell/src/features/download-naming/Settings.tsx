@@ -5,6 +5,7 @@ import { DEFAULT_DOWNLOAD_NAMING, DownloadNamingSettingsSchema, type DownloadNam
 import { useStore } from "../../store";
 import { executeCommand } from "../../commands";
 import { SettingsField, SettingsSection } from "../../settings/primitives";
+import { nativeCheckboxTypeProps, nativeAlertRoleProps } from "../../ui/native-attribute-props";
 export function DownloadNamingSettings() {
   const saved = useStore((state) => state.settings.downloadNaming);
   const [draft, setDraft] = useState<DownloadNamingSettings | null>(null);
@@ -54,7 +55,7 @@ export function DownloadNamingSettings() {
         description="Uses your Profile’s fast model route. Sends only the filename, source host, page title, MIME type, and up to 2 KB of first-page text. URL paths and queries stay on your Mac."
       >
         <input
-          type="checkbox"
+          {...nativeCheckboxTypeProps}
           aria-label="Use AI for download names"
           checked={settings.useAi}
           disabled={busy}
@@ -99,7 +100,7 @@ export function DownloadNamingSettings() {
           />
         </SettingsField>
       ))}
-      {error && <p role="alert">{error}</p>}
+      {error && <p {...nativeAlertRoleProps}>{error}</p>}
       <button
         {...smallButtonProps}
         data-command-id="set-download-naming"

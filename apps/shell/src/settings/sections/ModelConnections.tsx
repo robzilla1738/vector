@@ -17,6 +17,7 @@ import {
   type ModelControlOwner,
 } from "./models-command-controls";
 import { staticGrowProps as auxClassGrowProps } from "../../ui/class-props";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 export function ModelConnections({
   settings,
@@ -159,7 +160,7 @@ export function ModelConnections({
             />
           ))
         )}
-        {error && <p role="alert">{error}</p>}
+        {error && <p {...nativeAlertRoleProps}>{error}</p>}
       </SettingsField>
       <SettingsField
         label="Image-generation model"

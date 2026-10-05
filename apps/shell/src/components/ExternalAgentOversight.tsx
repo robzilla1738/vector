@@ -4,6 +4,7 @@ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { useEffect, useState } from "react";
 import type { AgentConnection, Run } from "@aux/contracts";
 import { call, useStore } from "../store";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 function safeStatus(run: Run): string {
   const message = run.statusMessage;
@@ -73,6 +74,6 @@ export function ExternalAgentOversight({ connections }: { connections: readonly 
         <ol>{activity.calls.map((call, index) => <li key={`${call.op}:${index}`}>{call.op} · {call.status}</li>)}</ol>
       </details>}
     </div>)}
-    {error && <p role="alert">{error}</p>}
+    {error && <p {...nativeAlertRoleProps}>{error}</p>}
   </section>;
 }

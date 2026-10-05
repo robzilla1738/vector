@@ -9,6 +9,7 @@ import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "./native-attribute-props";
 import { staticTextProps as auxClassTextProps } from "./class-props";
+import { nativeGroupRoleProps, nativeCheckboxTypeProps, nativeMenuItemRoleProps } from "./native-attribute-props";
 
 export { Dialog, Menu } from "./dialog";
 
@@ -62,7 +63,7 @@ export function ScrollArea({ className = "", children, onScroll, tabIndex, ...pr
 
 export function SettingsRow({ label, hint, children, compact = false }: { label: string; hint?: ReactNode; children: ReactNode; compact?: boolean }) {
   const id = useId();
-  return <div className={`field ui-setting${compact ? " compact" : ""}`} data-setting={label} tabIndex={-1} role="group" aria-labelledby={`${id}-label`} aria-describedby={hint ? `${id}-hint` : undefined}>
+  return <div className={`field ui-setting${compact ? " compact" : ""}`} data-setting={label} tabIndex={-1} {...nativeGroupRoleProps} aria-labelledby={`${id}-label`} aria-describedby={hint ? `${id}-hint` : undefined}>
     <span id={`${id}-label`} className="setting-label">{label}</span>
     <div className="ui-setting-control">{children}</div>
     {hint && <span id={`${id}-hint`} {...staticHintProps}>{hint}</span>}
@@ -74,10 +75,10 @@ export function SettingsGroup({ title, children }: { title: string; children: Re
 }
 
 export function Switch({controlRef,...props}: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "role"> & {controlRef?:(node:HTMLInputElement|null)=>void}) {
-  return <input {...props} ref={controlRef} type="checkbox" role="switch" className={`ui-switch ${props.className ?? ""}`} />;
+  return <input {...props} ref={controlRef} {...nativeCheckboxTypeProps} role="switch" className={`ui-switch ${props.className ?? ""}`} />;
 }
 export function Checkbox({controlRef,...props}: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {controlRef?:(node:HTMLInputElement|null)=>void}) {
-  return <input {...props} ref={controlRef} type="checkbox" className={`ui-checkbox ${props.className ?? ""}`} />;
+  return <input {...props} ref={controlRef} {...nativeCheckboxTypeProps} className={`ui-checkbox ${props.className ?? ""}`} />;
 }
 export function TextField(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`ui-text-field ${props.className ?? ""}`} />;
@@ -150,7 +151,7 @@ export function ActionMenu({ label, actions, children = shellIconMore, triggerRe
     <button ref={node => { trigger.current = node; triggerRef?.(node); triggerControl?.(node,activate); }} {...auxNativeButtonTypeProps} className="icon-btn ui-menu-trigger" aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} onClick={event => requestTrigger(event,"toggle")} onKeyDown={event => {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); requestTrigger(event,event.key === "ArrowUp"?"last":"first"); }
     }}>{children}</button>
-    {open && <Menu id={id} label={label} onClose={close} anchor={trigger} returnFocus={trigger} atEnd={openAtEnd.current} className="menu ctx-menu ui-action-menu">{actions.map(action => <button key={action.label} ref={action.controlRef} {...auxNativeButtonTypeProps} role="menuitem" className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={event => { close(); trigger.current?.focus({ preventScroll: true }); action.onSelect(event); }}>
+    {open && <Menu id={id} label={label} onClose={close} anchor={trigger} returnFocus={trigger} atEnd={openAtEnd.current} className="menu ctx-menu ui-action-menu">{actions.map(action => <button key={action.label} ref={action.controlRef} {...auxNativeButtonTypeProps} {...nativeMenuItemRoleProps} className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={event => { close(); trigger.current?.focus({ preventScroll: true }); action.onSelect(event); }}>
       <span className="menu-ico">{action.icon}</span><span {...auxClassTextProps}>{action.label}</span>{action.shortcut && <Kbd>{action.shortcut}</Kbd>}
     </button>)}</Menu>}
   </>;

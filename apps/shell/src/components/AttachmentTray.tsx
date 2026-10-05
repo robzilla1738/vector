@@ -7,6 +7,7 @@ import {
   nativeAriaHiddenProps as auxNativeAriaHiddenProps,
 } from "../ui/native-attribute-props";
 
+
 export type AttachmentItem = {
   key: string;
   name: string;

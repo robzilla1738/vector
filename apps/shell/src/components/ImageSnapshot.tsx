@@ -11,6 +11,7 @@ import { ConversationImageAction } from "./ConversationImageControl";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
 import { ViewerFrame } from "./ViewerFrame";
 import { ImageViewer } from "./ImageViewer";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export type SavedImageSnapshot = {image:ConversationImage;dataUrl:string};
 export function ImagePreview({snapshot,onClose,closeControl,current}:{snapshot:SavedImageSnapshot;onClose():void;closeControl?:ReactNode;current?():boolean}) {
@@ -24,7 +25,7 @@ export function ImagePreview({snapshot,onClose,closeControl,current}:{snapshot:S
   const [failed,setFailed]=useState(false);
   useEffect(()=>setFailed(false),[snapshot.dataUrl]);
   return <ViewerFrame label="Image snapshot" title={snapshot.image.filename} onClose={onClose} closeControl={closeControl} closeLabel="Close image preview" metadata={`${snapshot.image.width} × ${snapshot.image.height} · ${snapshot.image.included ? "Included in new replies" : "Excluded from new replies"}`}>
-    {failed ? <p role="alert">This saved image could not be displayed.</p> : <ImageViewer current={current} src={snapshot.dataUrl} alt={snapshot.image.filename} onError={()=>setFailed(true)}/>}
+    {failed ? <p {...nativeAlertRoleProps}>This saved image could not be displayed.</p> : <ImageViewer current={current} src={snapshot.dataUrl} alt={snapshot.image.filename} onError={()=>setFailed(true)}/>}
     <details className="image-viewer-metadata"><summary ref={summaryRef} data-command-id="toggle-conversation-image-details" onClick={disclose}>Image details</summary><p>Saved {new Date(snapshot.image.createdAt).toLocaleString()}</p>
     {snapshot.image.sourcePage && <p>Captured from {snapshot.image.sourcePage.url} at {new Date(snapshot.image.sourcePage.selectedAt ?? snapshot.image.createdAt).toLocaleString()}. This image remains a snapshot if the tab changes.</p>}</details>
   </ViewerFrame>;
@@ -50,6 +51,6 @@ export function ImageSnapshot({chatId,imageId,onClose,closeControl,current}:{cha
   },[chatId,imageId,retry,readCurrent]);
   if(snapshot)return <ImagePreview snapshot={snapshot} onClose={onClose} closeControl={closeControl} current={readCurrent}/>;
   return <ViewerFrame label="Image snapshot" title="Image reference" onClose={onClose} closeControl={closeControl} closeLabel="Close image preview">
-    {error?<p role="alert">{error} <ConversationImageAction command="retry-conversation-image-preview" current={()=>readCurrent() && !!error && !pending.current} {...smallButtonProps} invoke={()=>{pending.current=true;setRetry(value=>value+1);}}>Retry</ConversationImageAction></p>:<output {...auxReserveStaticHintProps} data-block>Loading image…</output>}
+    {error?<p {...nativeAlertRoleProps}>{error} <ConversationImageAction command="retry-conversation-image-preview" current={()=>readCurrent() && !!error && !pending.current} {...smallButtonProps} invoke={()=>{pending.current=true;setRetry(value=>value+1);}}>Retry</ConversationImageAction></p>:<output {...auxReserveStaticHintProps} data-block>Loading image…</output>}
   </ViewerFrame>;
 }

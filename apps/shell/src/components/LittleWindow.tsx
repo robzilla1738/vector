@@ -13,6 +13,7 @@ import { ownPages } from "../tab-window-transfer";
 import { CommandBar } from "./CommandBar";
 import { littlePanel, observeLittlePanel } from "../features/little-window/ui";
 import "./LittleWindow.css";
+import { nativeAlertRoleProps, nativeMenuItemRoleProps } from "../ui/native-attribute-props";
 const PageSurface = lazy(() => import("./PageSurface").then(module => ({ default: module.PageSurface })));
 const Downloads = lazy(() => import("./Downloads").then(module => ({ default: module.Downloads })));
 
@@ -63,9 +64,9 @@ export function LittleWindow() {
       <button ref={downloadsTrigger} {...staticSmallIconButtonProps} data-command-id="little-downloads" aria-haspopup="dialog" aria-label="Downloads for this page" aria-expanded={panel === "downloads"} onClick={() => runCommand("little-downloads")}>{shellIconDownloadSm}</button>
     </header>
     {panel === "spaces" && <Menu className="little-spaces menu" label="Open in Aux Space" anchor={spacesTrigger} returnFocus={spacesTrigger} menuRef={spacesMenu} initialFocusRef={firstSpace} onClose={() => runCommand("little-space-picker")}>
-      {spaceError && <p role="alert">{spaceError}</p>}
+      {spaceError && <p {...nativeAlertRoleProps}>{spaceError}</p>}
       {!spacesReady && !spaceError && <output>Loading Spaces…</output>}
-      {spacesReady && spaces.map((space, index) => <button ref={index === 0 ? firstSpace : undefined} key={space.id} {...staticMenuItemProps} role="menuitem" data-command-id="promote-tab" onClick={() => { runCommand("little-space-picker"); runCommand("promote-tab", { payload: { spaceId: space.id } }); }}>{space.name}</button>)}
+      {spacesReady && spaces.map((space, index) => <button ref={index === 0 ? firstSpace : undefined} key={space.id} {...staticMenuItemProps} {...nativeMenuItemRoleProps} data-command-id="promote-tab" onClick={() => { runCommand("little-space-picker"); runCommand("promote-tab", { payload: { spaceId: space.id } }); }}>{space.name}</button>)}
     </Menu>}
     {panel === "downloads" && <Dialog className="little-downloads popover" label="Downloads for this page" returnFocus={downloadsTrigger} onClose={() => runCommand("little-downloads")}><Suspense fallback={<output>Loading downloads…</output>}><Downloads tabUrl={page?.url ?? ""} onClose={() => runCommand("little-downloads")} /></Suspense></Dialog>}
     <section ref={pageSection} className="little-page" data-little-stage data-stage-dragging="false">

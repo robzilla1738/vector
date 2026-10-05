@@ -1,0 +1,14 @@
+{
+  "status": "source-only-request",
+  "count": 63,
+  "leaves": 11,
+  "patchSha": "e2c49b36348a9317af827e3549f6b19799dccc96d64e236cd6c497c184f1304c",
+  "sourcePinsSha": "96cf52a99b8e5ff45666dc2c078577c24529e11344a5a78a546cbea3b913a196",
+  "replaySha": "4e55216a192ec727baae821e666f4a782bf8606c409ac7471623699d53d7c897",
+  "lowering": "11/63 PASS chrome154 automatic aliases",
+  "controls": "53 affected +26 original source guards PASS",
+  "types": "shell source-only PASS",
+  "format": "changed migrated leaf PASS",
+  "lint": "originalwarnings/noerrors",
+  "budgetAndNative": "pending root"
+}

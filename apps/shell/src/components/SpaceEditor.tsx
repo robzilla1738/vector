@@ -14,7 +14,11 @@ import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
   nativeAriaHiddenProps as auxNativeAriaHiddenProps,
 } from "../ui/native-attribute-props";
-import { staticButtonProps as auxClassButtonProps, staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
+import {
+  staticButtonProps as auxClassButtonProps,
+  staticPrimaryButtonProps as auxClassPrimaryButtonProps,
+} from "../ui/class-props";
+import { nativeCheckboxTypeProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 const PRESET_HUE: Record<SpaceColor, number> = {
   blue: 250,
@@ -188,7 +192,7 @@ export default function SpaceEditor({
         </label>
         <label className="space-theme-invert">
           <input
-            type="checkbox"
+            {...nativeCheckboxTypeProps}
             checked={theme.inverted}
             onChange={(event) => changeTheme({ inverted: event.target.checked })}
           />{" "}
@@ -231,7 +235,7 @@ export default function SpaceEditor({
         </div>
       </div>
       {error && (
-        <p role="alert" {...staticFieldErrorProps}>
+        <p {...nativeAlertRoleProps} {...staticFieldErrorProps}>
           {error}
         </p>
       )}

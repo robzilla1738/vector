@@ -5,6 +5,7 @@ import { errorMessage } from "../error-message";
 import { useState } from "react";
 import { bridge, inNativeHost } from "../bridge";
 import { toast, useStore } from "../store";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export function PasswordTransferSetting() {
   const [passphrase, setPassphrase] = useState("");
@@ -40,6 +41,6 @@ export function PasswordTransferSetting() {
       <button {...smallButtonProps} disabled={busy || !inNativeHost || passphrase.length < 12} onClick={() => void transfer("export")}>Export…</button>
       <button {...smallButtonProps} disabled={busy || !inNativeHost || passphrase.length < 12} onClick={() => void transfer("import")}>Import…</button>
     </div>
-    {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+    {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}</p>}
   </div>;
 }

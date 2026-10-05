@@ -17,6 +17,7 @@ import { PreferenceAction } from "./preference-command";
 import { bindingFromKeydown } from "../../components/ShortcutsSetting";
 import { SettingsField, SettingsSection } from "../primitives";
 import { staticPrimaryButtonProps as auxClassPrimaryButtonProps, staticGhostButtonProps as auxClassGhostButtonProps } from "../../ui/class-props";
+import { nativeAlertRoleProps, nativeCheckboxTypeProps } from "../../ui/native-attribute-props";
 
 export interface SelectionCaptureNativeStatus {
   /** A native registration result is meaningful only for the current saved revision. */
@@ -47,7 +48,7 @@ function Hotkey({ label, value, disabled, active, onChange, current, scopeId }: 
         onChange(parsed.data); setRecording(false); setError("");
       }}>{recording ? "Press shortcut · Esc cancels" : "Record shortcut"}</PreferenceAction>
     {value && <PreferenceAction command="disable-selection-capture-shortcut" scopeId={scopeId} {...smallGhostButtonProps} disabled={disabled} invoke={() => { requireCurrent(); onChange(null); }}>Turn off</PreferenceAction>}
-    {error && <span role="alert">{error}</span>}
+    {error && <span {...nativeAlertRoleProps}>{error}</span>}
   </div>;
 }
 
@@ -59,7 +60,7 @@ function ActionRow({action,index,count,disabled,scopeId,publish,run,toggle,chang
 }) {
   return <li {...auxReserveStaticFieldProps}>
           <div className="row wrap">
-            <label><input type="checkbox" checked={action.enabled} disabled={disabled} ref={element => publish(`enabled:${action.id}`, "toggle-selection-action", element, () => toggle(action.id))} onChange={event => run("toggle-selection-action", event)}/> Enabled</label>
+            <label><input {...nativeCheckboxTypeProps} checked={action.enabled} disabled={disabled} ref={element => publish(`enabled:${action.id}`, "toggle-selection-action", element, () => toggle(action.id))} onChange={event => run("toggle-selection-action", event)}/> Enabled</label>
             <input aria-label={`Action ${index + 1} name`} maxLength={60} value={action.name} disabled={disabled} onChange={event => change(action.id, { name: event.target.value })}/>
             <PreferenceAction command="move-selection-action-up" scopeId={scopeId} {...smallGhostButtonProps} aria-label={`Move ${action.name || "action"} up`} disabled={disabled || index === 0} invoke={() => move(action.id, -1)}>↑</PreferenceAction>
             <PreferenceAction command="move-selection-action-down" scopeId={scopeId} {...smallGhostButtonProps} aria-label={`Move ${action.name || "action"} down`} disabled={disabled || index === count - 1} invoke={() => move(action.id, 1)}>↓</PreferenceAction>
@@ -165,12 +166,12 @@ export function SelectionCaptureSettings({ active, settings, onSave, nativeStatu
       <output {...staticHintProps}>{registration("regionCapture")}</output>
     </SettingsField>
     <SettingsField label="Inline assist" hint="On explicit request, read a non-sensitive editable web field, draft a replacement, and apply it only after your review. Turn off to block new capture, drafting and insertion.">
-      <label><input type="checkbox" checked={draft.inlineAssist} disabled={busy || unavailable} ref={element => publish("inline", "toggle-inline-assist", element, () => update({ inlineAssist: !draftRef.current.inlineAssist }))} data-command-id="toggle-inline-assist" onChange={event => run("toggle-inline-assist", event)}/> Enable inline assist</label>
+      <label><input {...nativeCheckboxTypeProps} checked={draft.inlineAssist} disabled={busy || unavailable} ref={element => publish("inline", "toggle-inline-assist", element, () => update({ inlineAssist: !draftRef.current.inlineAssist }))} data-command-id="toggle-inline-assist" onChange={event => run("toggle-inline-assist", event)}/> Enable inline assist</label>
     </SettingsField>
-    {changedElsewhere && dirty && <p role="alert">These settings changed in another window. Your edits are preserved; reload the saved version before editing again.</p>}
-    {!validation.success && <p role="alert">{validation.error.issues[0]?.message}</p>}
-    {conflict && <p role="alert">{conflict}</p>}
-    {error && <p role="alert">{error}</p>}
+    {changedElsewhere && dirty && <p {...nativeAlertRoleProps}>These settings changed in another window. Your edits are preserved; reload the saved version before editing again.</p>}
+    {!validation.success && <p {...nativeAlertRoleProps}>{validation.error.issues[0]?.message}</p>}
+    {conflict && <p {...nativeAlertRoleProps}>{conflict}</p>}
+    {error && <p {...nativeAlertRoleProps}>{error}</p>}
     {message && <output>{message}</output>}
     <div className="row wrap"><PreferenceAction command="save-selection-capture-settings" scopeId={scopeId} {...auxClassPrimaryButtonProps} disabled={busy || unavailable || !dirty || changedElsewhere || !validation.success || !!conflict} invoke={save}>{busy ? "Saving…" : "Save Selection & Capture"}</PreferenceAction>
       {(dirty || changedElsewhere) && <PreferenceAction command="reload-selection-capture-settings" scopeId={scopeId} {...auxClassGhostButtonProps} disabled={busy || unavailable} invoke={() => { requireCurrent(); draftRef.current = saved; setDraft(saved); setBaseKey(savedKey); setError(""); setMessage("Saved settings reloaded. Unsaved edits discarded."); }}>Reload saved settings</PreferenceAction>}</div>

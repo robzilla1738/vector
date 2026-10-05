@@ -8,6 +8,7 @@ import { bridge } from "../../bridge";
 import { executeCommand } from "../../commands";
 import { guardCommandCompletion, reportCommandCompletionFailure } from "../../command-completion";
 import { registerScopedControl } from "../../scoped-control-commands";
+import { nativeCheckboxTypeProps, nativeNumberTypeProps, nativeAlertRoleProps } from "../../ui/native-attribute-props";
 type Draft = ReturnType<typeof NightShiftSettingsSchema.parse>;
 type Command = "save-night-shift-draft" | "toggle-night-shift-enabled" | "toggle-night-shift-ac";
 class NightOwner {
@@ -31,7 +32,7 @@ function NightControl({ command, scopeId, invoke, disabled, checked, children }:
   };
   return checked === undefined
     ? <button ref={node => { element.current = node; }} {...smallButtonProps} data-command-id={command} disabled={disabled} onClick={event => run(event.nativeEvent)}>{children}</button>
-    : <label><input ref={node => { element.current = node; }} data-command-id={command} disabled={disabled} type="checkbox" checked={checked} onChange={event => run(event.nativeEvent)}/>{children}</label>;
+    : <label><input ref={node => { element.current = node; }} data-command-id={command} disabled={disabled} {...nativeCheckboxTypeProps} checked={checked} onChange={event => run(event.nativeEvent)}/>{children}</label>;
 }
 export function NightSettings() {
   const saved = useStore(state => state.settings.nightShift);
@@ -75,11 +76,11 @@ export function NightSettings() {
     <NightControl command="toggle-night-shift-enabled" scopeId={scopeId} disabled={busy} checked={draft.enabled} invoke={() => edit({ ...draft, enabled: !draft.enabled })}>Enable overnight work</NightControl>
     <label>Start<input disabled={busy} type="time" value={draft.start} onChange={event => edit({ ...draft, start: event.target.value })}/></label>
     <label>End<input disabled={busy} type="time" value={draft.end} onChange={event => edit({ ...draft, end: event.target.value })}/></label>
-    <label>Nightly limit ($)<input disabled={busy} type="number" min="0.01" step="0.01" value={draft.nightlyUsd} onChange={event => edit({ ...draft, nightlyUsd: event.target.valueAsNumber })}/></label>
-    <label>Per-task limit ($)<input disabled={busy} type="number" min="0.01" step="0.01" value={draft.perTaskUsd} onChange={event => edit({ ...draft, perTaskUsd: event.target.valueAsNumber })}/></label>
+    <label>Nightly limit ($)<input disabled={busy} {...nativeNumberTypeProps} min="0.01" step="0.01" value={draft.nightlyUsd} onChange={event => edit({ ...draft, nightlyUsd: event.target.valueAsNumber })}/></label>
+    <label>Per-task limit ($)<input disabled={busy} {...nativeNumberTypeProps} min="0.01" step="0.01" value={draft.perTaskUsd} onChange={event => edit({ ...draft, perTaskUsd: event.target.valueAsNumber })}/></label>
     <NightControl command="toggle-night-shift-ac" scopeId={scopeId} disabled={busy} checked={draft.requireAC} invoke={() => edit({ ...draft, requireAC: !draft.requireAC })}>Require AC power</NightControl>
     <p {...staticHintProps}>Allow Aux to continue in the background in Profile settings. Aux does not schedule a wake or change your Mac’s power settings.</p>
     <NightControl command="save-night-shift-draft" scopeId={scopeId} disabled={busy} invoke={save}>{busy ? "Saving…" : "Save night shift settings"}</NightControl>
-    {error && <p role="alert">{error}</p>}
+    {error && <p {...nativeAlertRoleProps}>{error}</p>}
   </section>;
 }

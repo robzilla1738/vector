@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
 import { PreferenceAction, usePreferenceCommand } from "./preference-command";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 type Startup = Awaited<ReturnType<typeof bridge.startupPreferences>>;
 type Mode = Startup["mode"];
 const MODES: Mode[] = ["new-tab", "continue", "pages", "continue-and-pages"];
@@ -192,7 +193,7 @@ export function StartupSetting({ active }: { active: boolean }) {
         </form>
       </div>
       {message && (
-        <span role="alert" {...staticFieldErrorProps}>
+        <span {...nativeAlertRoleProps} {...staticFieldErrorProps}>
           {message} {retry}
         </span>
       )}

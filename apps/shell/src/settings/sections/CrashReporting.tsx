@@ -5,6 +5,7 @@ import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import { bridge, inNativeHost } from "../../bridge";
 import { Switch } from "../../ui";
+import { nativeGroupRoleProps, nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 type CrashReporting = { available: boolean; decided: boolean; consent: boolean };
 
@@ -53,11 +54,11 @@ export function CrashReportingSetting({ active }: { active: boolean }) {
       {value && !value.available && <span {...staticHintProps}>Off — this build has no crash-report destination. Reports stay on this device.</span>}
       {value?.available && !value.decided && <span {...staticHintProps}>Choose whether Aux may upload future crash reports.</span>}
     </div>
-    {confirming && <div {...staticRowProps} role="group" aria-label="Confirm crash reports">
+    {confirming && <div {...staticRowProps} {...nativeGroupRoleProps} aria-label="Confirm crash reports">
       <span>Crash reports can contain diagnostic details. Allow future uploads to this build’s configured destination?</span>
       <button {...smallButtonProps} disabled={busy} onClick={() => void save(true)}>Allow uploads</button>
       <button {...smallGhostButtonProps} disabled={busy} onClick={() => setConfirming(false)}>Cancel</button>
     </div>}
-    {error && <span role="alert" {...staticFieldErrorProps}>{error} <button {...smallGhostButtonProps} onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
+    {error && <span {...nativeAlertRoleProps} {...staticFieldErrorProps}>{error} <button {...smallGhostButtonProps} onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
   </div>;
 }

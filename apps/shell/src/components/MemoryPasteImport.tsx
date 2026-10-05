@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useMemo, useCallback, useState, type ReactN
 import { MEMORY_PASTE_MAX_BYTES, type MemoryPastePreview, type MemoryPasteStatus, type ShellCommandId,  } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 
 
@@ -305,10 +306,10 @@ export function MemoryPasteImport({
           Clear pasted draft
         </PasteControl>
       </div>
-      {error && <p role="alert">{error}</p>}
+      {error && <p {...nativeAlertRoleProps}>{error}</p>}
       {preview?.workspaceId === destinationId &&
         (preview.status === "blocked" ? (
-          <p role="alert">{preview.reason} No notes were saved.</p>
+          <p {...nativeAlertRoleProps}>{preview.reason} No notes were saved.</p>
         ) : (
           <fieldset disabled={busy}>
             <legend>Review notes for {destination?.name}</legend>

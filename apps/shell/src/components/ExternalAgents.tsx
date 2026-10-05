@@ -6,7 +6,9 @@ import type { AgentConnection, AgentConnectionScope, Task, Workspace } from "@au
 import { mcpCatalogGrouped, type McpCatalogTool } from "@aux/contracts/mcp-catalog";
 import { bridge } from "../bridge";
 import { ExternalAgentOversight } from "./ExternalAgentOversight";
-import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Config = Awaited<ReturnType<typeof bridge.agentConfig>>;
 type Installation=Awaited<ReturnType<typeof bridge.agentClients>>[number];
@@ -95,7 +97,7 @@ export function ExternalAgents() {
       {scopeKind === "task" && <label>Task<select aria-label="Connection task" value={taskId} onChange={event => { setTaskId(event.target.value); setConfig(null); }}>{availableTasks.map(task => <option key={task.taskId} value={task.taskId}>{task.title}</option>)}</select></label>}
       <button {...auxClassButtonProps} disabled={busy || !name.trim() || !workspaceId || (scopeKind === "task" && !taskId)} onClick={() => void create()}>Create scoped connection</button>
     </>}
-    {error && <p role="alert">{error}</p>}
+    {error && <p {...nativeAlertRoleProps}>{error}</p>}
     {config && <>
       <span {...staticHintProps}>{client === "codex" ? "Merge this server entry into Codex config.toml." : "Merge this server entry into your project .mcp.json or another supported Claude Code scope."} Keep existing entries. This token is shown once; create a replacement if it is lost.</span>
       <textarea aria-label="Agent configuration" readOnly rows={12} value={snippet} spellCheck={false} className="mono" />

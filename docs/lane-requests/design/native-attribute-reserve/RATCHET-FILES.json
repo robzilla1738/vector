@@ -1,0 +1,14 @@
+[
+  "apps/shell/src/components/Dictation.tsx",
+  "apps/shell/src/components/PageSurface.tsx",
+  "apps/shell/src/components/CommandRankingDebug.tsx",
+  "apps/shell/src/components/SpaceEditor.tsx",
+  "apps/shell/src/components/RoutineSchedule.tsx",
+  "apps/shell/src/components/OutboundMcpSettings.tsx",
+  "apps/shell/src/components/SiteControls.tsx",
+  "apps/shell/src/components/SiteCustomization.tsx",
+  "apps/shell/src/components/ReviewedConnectors.tsx",
+  "apps/shell/src/components/PluginsPanel.tsx",
+  "apps/shell/src/components/SkillMetadata.tsx",
+  "apps/shell/src/components/FilterListManager.tsx"
+]

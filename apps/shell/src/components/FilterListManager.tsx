@@ -8,6 +8,7 @@ import { filterSourceUrl } from "@aux/contracts";
 import { bridge, type FilterListStatus } from "../bridge";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { staticDrawerSectionProps as auxClassDrawerSectionProps } from "../ui/class-props";
+import { nativeStatusRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 const messageOf = (reason: unknown) => errorMessage(reason);
 
@@ -112,7 +113,7 @@ export function FilterListManager() {
                   : "No downloaded copy yet."}
               </span>
               {selected.meta?.error && (
-                <p {...staticFieldErrorProps} role="status">
+                <p {...staticFieldErrorProps} {...nativeStatusRoleProps}>
                   Last update: {selected.meta.error}. The previous copy remains available.
                 </p>
               )}
@@ -260,7 +261,7 @@ export function FilterListManager() {
         )}
       </div>
       {error && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}

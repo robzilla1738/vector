@@ -5,6 +5,7 @@ import { errorMessage } from "../../error-message";
 import { useEffect, useRef, useState } from "react";
 import { bridge, inNativeHost } from "../../bridge";
 import { Switch } from "../../ui";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 type CookieControls = { blockThirdParty: boolean; managed: boolean };
 
@@ -48,6 +49,6 @@ export function CookieControlsSetting({ active }: { active: boolean }) {
       disabled={busy || value.managed} onChange={event => void change(event.target.checked)} />
       : <span {...staticHintProps}>Reading cookie setting…</span>}
     {value?.managed && <span {...staticHintProps}>Managed by your organization</span>}
-    {error && <span role="alert" {...staticFieldErrorProps}>{error} <button {...smallGhostButtonProps} onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
+    {error && <span {...nativeAlertRoleProps} {...staticFieldErrorProps}>{error} <button {...smallGhostButtonProps} onClick={() => setRetry(current => current + 1)}>Retry</button></span>}
   </div>;
 }

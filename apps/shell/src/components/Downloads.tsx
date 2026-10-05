@@ -12,6 +12,7 @@ import { bridge } from "../bridge";
 import { shellIconClose, shellIconDownloadSm, shellIconSearch } from "./icons";
 import { canDismissDownload, mergeDownloadSnapshot } from "../downloads";
 import { staticNumericCountProps as auxClassNumericCountProps, staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 function fmtSize(bytes: number | undefined): string {
   if (bytes === undefined) return "";
@@ -77,7 +78,7 @@ const DownloadRow = memo(function DownloadRow({ id, busy, rowError, retried, act
             {rename && <button {...smallGhostButtonProps} data-command-id="undo-download-rename" disabled={busy !== null} title={`Restore ${rename.originalName}`} onClick={() => void action(d.id, () => executeCommand("undo-download-rename", { payload: { receiptId: rename.receiptId } }), true)}>Undo rename</button>}
             {canDismissDownload(d) && <button {...staticSmallIconButtonProps} disabled={busy!==null} aria-label={`Remove ${d.filename} from downloads`} title="Remove from list; keep file" onClick={()=>void dismissDownloads([d.id])}>{shellIconClose}</button>}
             </div>
-            {rowError&&<p className="dl-error" role="alert">{rowError}</p>}
+            {rowError&&<p className="dl-error" {...nativeAlertRoleProps}>{rowError}</p>}
           </div>
   );
 });
@@ -192,8 +193,8 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
           {([["all","All"],["active","In progress"],["finished","Finished"],["attention","Needs attention"]] as const).map(([value,label])=><button key={value} {...smallGhostButtonProps} aria-pressed={filter===value} onClick={()=>setFilter(value)}>{label}</button>)}
         </div>
       </div>
-      {loadError && <p className="download-error" role="alert">Couldn’t refresh downloads. {loadError} <button {...smallGhostButtonProps} disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Try again</button></p>}
-      {error && <p className="download-error" role="alert">{error}</p>}
+      {loadError && <p className="download-error" {...nativeAlertRoleProps}>Couldn’t refresh downloads. {loadError} <button {...smallGhostButtonProps} disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Try again</button></p>}
+      {error && <p className="download-error" {...nativeAlertRoleProps}>{error}</p>}
       {bridge.privateMode ? <p className="download-private-note">Choose a save location for each private download. Files remain on your computer after this window closes.</p> : showFolder&&<section className="download-location" aria-label="Download save location" aria-busy={folderLoading}>
         {folderLoading&&<output className="download-private-note" data-block>Loading save location…</output>}
         {folder&&<div className="download-folder">
@@ -201,7 +202,7 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
           <button {...smallGhostButtonProps} disabled={busy!==null} onClick={()=>void changeFolder()}>Change folder</button>
           {(folder.custom||folder.error)&&<button {...smallGhostButtonProps} disabled={busy!==null} onClick={()=>void changeFolder(true)}>Use default</button>}
         </div>}
-        {(folderError||folder?.error)&&<p className="download-error" role="alert">{folderError||folder?.error} <button {...smallGhostButtonProps} disabled={folderLoading||busy!==null} onClick={()=>setFolderRefresh(value=>value+1)}>Retry location</button></p>}
+        {(folderError||folder?.error)&&<p className="download-error" {...nativeAlertRoleProps}>{folderError||folder?.error} <button {...smallGhostButtonProps} disabled={folderLoading||busy!==null} onClick={()=>setFolderRefresh(value=>value+1)}>Retry location</button></p>}
       </section>}
       <div className="download-list" aria-busy={loading}>
       {loading&&!itemCount&&<output className="shelf-empty" data-block>Loading downloads…</output>}

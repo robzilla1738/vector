@@ -4,6 +4,7 @@ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useState } from "react";
 import { call, toast } from "../store";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 const ranges = [
   { value: "hour", label: "Last hour", duration: 60 * 60 * 1000 },
@@ -37,7 +38,7 @@ export function ClearHistory({ initiallyOpen = false }: { initiallyOpen?: boolea
     </div>
     <p>This cannot be undone. Cookies, bookmarks, downloads, saved work and Aux memory are kept.</p>
     <output>{count === null ? "Counting visits…" : `${count} ${count === 1 ? "visit" : "visits"} in this period`}</output>
-    {error && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+    {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}</p>}
     <div {...staticRowProps}><button {...smallButtonProps} disabled={busy} onClick={() => { setCutoff(null); setError(""); }}>Cancel</button>
       <button className="btn sm danger" disabled={busy || count === null || count === 0} onClick={() => {
         setBusy(true); setError("");

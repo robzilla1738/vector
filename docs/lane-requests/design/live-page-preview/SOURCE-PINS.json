@@ -1,0 +1,34 @@
+{
+  "rows": [
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "before": "31bdc0134d97cbb8e09e5140d6c3e1d9a2aa00fae1fbf9973495af7ea49ee85c",
+      "after": "70948c4993d636176406fb9219d96c2e0bf88fd21d0db908df869a68fc1caf10"
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.live-page.test.tsx",
+      "before": null,
+      "after": "9f2287ae4474ad1765c8c8067033005d39fc2a0fd378a0b2ab9b91148b3b5ad1"
+    }
+  ],
+  "rootCurrentBeforeMatched": true,
+  "patchSha": "ce89e67e374f39d191cb0c676dc5338d36aa4d405c32b9077e223734224fb57e",
+  "unchangedSourcePins": [
+    {
+      "path": "/private/tmp/aux-root-sidebar-selection-next/apps/shell/src/conversation-page.ts",
+      "sha256": "79adf78ba36797c4b0c1c0ada2088c30da0e66c75542b7364094d4481bcd8ad6"
+    },
+    {
+      "path": "/private/tmp/aux-root-sidebar-selection-next/apps/shell/src/components/Conversation.preview-controls.test.tsx",
+      "sha256": "0233cbb0bf56b8992c991948e5176dfef407f57b0f5cf2f7c1ddbfab200667af"
+    },
+    {
+      "path": "/private/tmp/aux-root-sidebar-selection-next/apps/shell/src/mock/fixtures.ts",
+      "sha256": "7fa4f6c322aeee626d5d09f8ebe5b64ffe4792f6259a618a0ca4efb2926e08b7"
+    },
+    {
+      "path": "/private/tmp/aux-root-sidebar-selection-next/packages/contracts/src/api.ts",
+      "sha256": "5953bdd787cdc36cc7afc03024a27e9071ef3ef8f037fd028e678fc071093333"
+    }
+  ]
+}

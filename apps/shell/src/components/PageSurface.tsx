@@ -7,6 +7,7 @@ import { MockPage } from "./surfaces";
 import "./PageSurface.css";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { nativeStatusRoleProps, nativePoliteLiveProps } from "../ui/native-attribute-props";
 
 type SurfaceState = {
   pageId: string;
@@ -67,7 +68,7 @@ export function PageSurface({ page }: { page: PageTarget }) {
     );
 
   return (
-    <div className="page-surface-status" role="status" aria-live="polite">
+    <div className="page-surface-status" {...nativeStatusRoleProps} {...nativePoliteLiveProps}>
       {resolved ? (
         <>
           <p>

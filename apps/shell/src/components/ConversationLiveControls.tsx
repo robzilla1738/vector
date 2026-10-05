@@ -1,7 +1,8 @@
-import { useCallback, useId, useLayoutEffect, useMemo, useRef, type ButtonHTMLAttributes } from "react";
+import { useId, useMemo, type ButtonHTMLAttributes } from "react";
 import type { Run, Suspension } from "@aux/contracts";
 import { useStore } from "../store";
 import { PreferenceAction } from "../settings/sections/preference-command";
+import { useCommittedConversationOwner } from "./conversation-control-construction";
 
 type LiveCommand = "select-conversation-answer" | "select-conversation-steer" | "select-conversation-queue" | "reload-conversation-request";
 
@@ -11,20 +12,11 @@ export function useConversationLiveOwner(current: () => boolean, chatId: string 
   const requestId = request?.suspensionId, requestKind = request?.kind, requestState = request?.state;
   const identity = useMemo(() => ({ current, chatId, runId, status, statusMessage, request, requestId, requestKind, requestState }),
     [current, chatId, runId, status, statusMessage, request, requestId, requestKind, requestState]);
-  const committed = useRef<{ active: boolean; identity: typeof identity } | null>(null);
-  useLayoutEffect(() => {
-    const original = { active: true, identity }; committed.current = original;
-    return () => { original.active = false; };
-  }, [identity]);
-  return useCallback(() => {
-    const original = committed.current;
-    if (!original?.active || original.identity !== identity) return false;
+  return useCommittedConversationOwner(identity, () => {
     const latest = useStore.getState().runs.filter(value => (value.config?.chatId ?? value.runId) === chatId)
       .sort((a, b) => a.createdAt - b.createdAt).at(-1);
-    if (current() && latest?.runId === runId && latest?.status === status && latest?.statusMessage === statusMessage &&
-        request?.suspensionId === requestId && request?.kind === requestKind && request?.state === requestState) return true;
-    original.active = false;
-    return false;
+    return (current() && latest?.runId === runId && latest?.status === status && latest?.statusMessage === statusMessage &&
+        request?.suspensionId === requestId && request?.kind === requestKind && request?.state === requestState);
   }, [identity, current, chatId, runId, status, statusMessage, request, requestId, requestKind, requestState]);
 }
 

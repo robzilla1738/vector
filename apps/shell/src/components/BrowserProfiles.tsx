@@ -14,6 +14,7 @@ import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
 import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export function BrowserProfiles() {
   const [profiles,setProfiles]=useState<BrowserProfile[]>([]);
@@ -106,7 +107,7 @@ export function BrowserProfiles() {
       <p {...staticHintProps}>Archiving hides a profile from this list. Browsing data stays on this Mac, and open windows keep working.</p>
       {profiles.filter(profile=>profile.archived&&!profile.current).map(profileRow)}
     </details>}
-    {error&&<div role="alert"><p {...auxClassErrorHintProps}>{error}</p><button {...smallGhostButtonProps} disabled={busy} onClick={()=>void action(async(valid)=>{const items=await commandResult("refresh-browser-profiles",HostMethods.browserProfiles.result);if(valid()){setProfiles(items);setRefresh(value=>value+1);}})}>Refresh profiles</button></div>}
+    {error&&<div {...nativeAlertRoleProps}><p {...auxClassErrorHintProps}>{error}</p><button {...smallGhostButtonProps} disabled={busy} onClick={()=>void action(async(valid)=>{const items=await commandResult("refresh-browser-profiles",HostMethods.browserProfiles.result);if(valid()){setProfiles(items);setRefresh(value=>value+1);}})}>Refresh profiles</button></div>}
     {message&&<output {...staticHintProps} data-block>{message}</output>}
   </div>;
 }

@@ -9,6 +9,7 @@ import { StructuredResultControl, StructuredResultRow } from "./StructuredResult
 import { csvPreview } from "../csv-preview";
 import { staticMetadataKeyProps as auxClassMetadataKeyProps, staticMetadataValueProps as auxClassMetadataValueProps } from "../ui/class-props";
 
+
 const admitted = () => true;
 export function StructuredResult({
   content,

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { Run, Suspension } from "@aux/contracts";
 import { call } from "../store";
 import "./RunAttentionFeed.css";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Attention = { run: Run; suspension: Suspension };
 
@@ -86,6 +87,6 @@ export function RunAttentionFeed({ runs, onOpenRun, limit = 8 }: {
       </div>
     </article>)}
     {items.length > visible.length && <p {...staticHintProps}>More tasks need your input in Tasks.</p>}
-    {error && <p role="alert">{error}</p>}
+    {error && <p {...nativeAlertRoleProps}>{error}</p>}
   </section>;
 }

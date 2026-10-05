@@ -8,6 +8,7 @@ import { call, useStore } from "../store";
 import { ImageViewer } from "./ImageViewer";
 import { shellIconResult } from "./icons";
 import { staticNumericCountProps as auxClassNumericCountProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 function RunImage({artifact}:{artifact:Artifact}) {
   const [url,setUrl]=useState("");
@@ -21,7 +22,7 @@ function RunImage({artifact}:{artifact:Artifact}) {
     return()=>{live=false;};
   },[artifact.artifactId,artifact.mediaType,retry]);
   return <figure className="conversation-image">
-    {error ? <p {...staticFieldErrorProps} role="alert">Couldn’t load this image. {error} <button {...smallGhostButtonProps} onClick={()=>setRetry(value=>value+1)}>Retry image</button></p>
+    {error ? <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>Couldn’t load this image. {error} <button {...smallGhostButtonProps} onClick={()=>setRetry(value=>value+1)}>Retry image</button></p>
       : url ? <ImageViewer src={url} alt="Saved image from this turn" onError={()=>setError("The saved image could not be displayed.")}/>
       : <output {...staticHintProps} data-block>Loading image…</output>}
     <figcaption>Saved {new Date(artifact.createdAt).toLocaleString()}</figcaption>
@@ -50,7 +51,7 @@ export function RunImages({runId}:{runId:string}) {
   return <details className="conversation-sources conversation-images" onToggle={event=>setOpen(event.currentTarget.open)}>
     <summary>{shellIconResult}<span>Images</span>{artifacts.length>0 && <span {...auxClassNumericCountProps}>{artifacts.length}</span>}</summary>
     {open && <div>
-      {error && <p {...staticFieldErrorProps} role="alert">Couldn’t refresh images. {error} <button {...smallGhostButtonProps} onClick={()=>setRetry(value=>value+1)}>Retry</button></p>}
+      {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>Couldn’t refresh images. {error} <button {...smallGhostButtonProps} onClick={()=>setRetry(value=>value+1)}>Retry</button></p>}
       {previews.slice(0,limit).map(artifact=><RunImage key={artifact.artifactId} artifact={artifact}/>)}
       {large>0 && <p {...staticHintProps}>{large} {large===1 ? "image exceeds" : "images exceed"} the 8 MB inline preview limit.</p>}
       {previews.length>limit && <button {...smallGhostButtonProps} onClick={()=>setLimit(value=>value+3)}>Show more images · {previews.length-limit} remaining</button>}

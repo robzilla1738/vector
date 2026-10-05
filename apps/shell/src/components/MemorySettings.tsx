@@ -9,6 +9,7 @@ import { call, useStore } from "../store";
 import { MemorySettingsControl } from "./MemorySettingsControl";
 import { SpaceMemoryEditor } from "./SpaceMemoryEditor";
 import { SpaceMemory } from "../settings/sections/SpaceMemory";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export function MemorySettings() {
   const layout = useStore(state => state.layout);
@@ -60,14 +61,14 @@ export function MemorySettings() {
     <p {...staticHintProps}>Keep useful preferences and project context in one place. Write notes yourself or opt in to remembering page titles and addresses below. Browsing memory is off by default.</p>
     <label className="memory-space-search">Search saved memory<input {...staticFieldInputProps} aria-label="Search Space names and saved notes" value={query} placeholder="Search Space names and saved notes…" onChange={event => setQuery(event.target.value)} /></label>
     {searching&&<output {...staticHintProps} data-block>Searching saved notes…</output>}
-    {searchError&&<p {...staticFieldErrorProps} role="alert">{searchError} <MemorySettingsControl {...smallGhostButtonProps} command="retry-memory-search" scopeId={query} invoke={()=>{if(selectedSpaceId)currentSpace(selectedSpaceId,selectedWorkspaceId);setRefresh(value=>value+1);}}>Retry</MemorySettingsControl></p>}
+    {searchError&&<p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{searchError} <MemorySettingsControl {...smallGhostButtonProps} command="retry-memory-search" scopeId={query} invoke={()=>{if(selectedSpaceId)currentSpace(selectedSpaceId,selectedWorkspaceId);setRefresh(value=>value+1);}}>Retry</MemorySettingsControl></p>}
     <div className={`memory-space-list ${query.trim()?"memory-search-results":""}`} role="group" aria-label="Space memory selection">
       {matchingSpaces.map(item => {const {id,workspaceId}=item;return <MemorySettingsControl key={item.id} {...smallButtonProps} aria-pressed={item.id === space?.id} command="select-memory-space" scopeId={item.id} invoke={() => {currentSpace(id,workspaceId);setSpaceId(id);}}><span>{item.name}{layout.archivedSpaces?.some(archived => archived.id === item.id) ? " · Archived" : ""}</span>{query.trim()&&<small>{matches.find(match=>match.workspaceId===item.workspaceId)?.excerpt||"No saved notes"}{matches.find(match=>match.workspaceId===item.workspaceId)?.enabled===false?" · Paused":""}</small>}</MemorySettingsControl>;})}
       {!!spaces.length && !matchingSpaces.length && !searching && !searchError && <output {...staticHintProps} data-block>No saved memory matches “{query.trim()}”.</output>}
     </div>
     {space && <h4>{space.name}</h4>}
     {loading && !memory && <output {...staticHintProps} data-block>Loading saved notes…</output>}
-    {error && <p {...staticFieldErrorProps} role="alert">{error} <MemorySettingsControl {...smallButtonProps} command="retry-memory-load" scopeId={selectedWorkspaceId??""} invoke={() => {if(!selectedSpaceId)throw new Error("Choose a Space.");currentSpace(selectedSpaceId,selectedWorkspaceId);setRefresh(value=>value+1);}}>Retry</MemorySettingsControl></p>}
+    {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error} <MemorySettingsControl {...smallButtonProps} command="retry-memory-load" scopeId={selectedWorkspaceId??""} invoke={() => {if(!selectedSpaceId)throw new Error("Choose a Space.");currentSpace(selectedSpaceId,selectedWorkspaceId);setRefresh(value=>value+1);}}>Retry</MemorySettingsControl></p>}
     {memory && <SpaceMemoryEditor key={`editor:${memory.workspaceId}`} memory={memory} onSaved={value=>{if(value.workspaceId!==selectedWorkspace.current)return;setMemory(value);if(query.trim())setRefresh(current=>current+1);}} />}
     {space?.workspaceId && <SpaceMemory key={`pipeline:${space.workspaceId}`} workspaceId={space.workspaceId} />}
     {!spaces.length && <p {...staticHintProps}>Create a Space to save shared notes.</p>}

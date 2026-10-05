@@ -13,6 +13,7 @@ import { call, errToast, useStore } from "../store";
 import { useBrowsingMemoryControl } from "./BrowsingMemoryControls";
 import { MemoryRecoveryNotice } from "./MemoryRecoveryNotice";
 import { staticMetadataKeyProps as auxClassMetadataKeyProps, staticMetadataValueProps as auxClassMetadataValueProps } from "../ui/class-props";
+import { nativeCheckboxTypeProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Owner = { active: boolean; workspaceId: string; revision: number; privateMode: boolean; loadScope: object };
 type Saved = { workspaceId: string; policy: BrowsingMemoryPolicy; pages: BrowsingMemoryPage[] };
@@ -117,7 +118,7 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
     <p {...staticHintProps}>Optionally remember page titles and addresses from foreground tabs in this Space. Query strings and fragments are removed. Page contents and forms are not read. Private windows and agent tabs are excluded.</p>
     {needsFreshBackup && <MemoryRecoveryNotice />}
     {saved ? <>
-      <label className="memory-use-toggle"><input ref={toggleAttach} type="checkbox" checked={saved.policy.enabled} disabled={busy} onChange={toggleRun}/><span>Remember pages I browse<small>{saved.policy.enabled ? "Recent page references may be included in new replies in this Space." : "Off. No new visits are remembered or included in replies."}</small></span></label>
+      <label className="memory-use-toggle"><input ref={toggleAttach} {...nativeCheckboxTypeProps} checked={saved.policy.enabled} disabled={busy} onChange={toggleRun}/><span>Remember pages I browse<small>{saved.policy.enabled ? "Recent page references may be included in new replies in this Space." : "Off. No new visits are remembered or included in replies."}</small></span></label>
       {saved.policy.enabled && memory.enabled === false && <p {...staticHintProps}>Space memory is paused above. Recording and use are paused too.</p>}
       <label className="browsing-retention">Keep remembered pages for<select ref={retentionAttach} aria-label="Browsing memory retention" disabled={busy} value={saved.policy.retentionDays} onChange={retentionRun}><option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option></select></label>
       <p {...staticHintProps}>Up to 200 recent pages per Space. Shortening retention removes older entries. Pausing keeps saved entries until they expire. Excluded sites are not remembered or used.</p>
@@ -137,6 +138,6 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
         <p {...staticHintProps}>Revisiting a forgotten page can remember it again. Exclude its site to prevent this. Earlier replies retain the context they used.</p>
       </details>
     </> : !error && <output {...staticHintProps} data-block>Loading browsing memory…</output>}
-    {error && <p {...staticFieldErrorProps} role="alert">{error} <button {...smallGhostButtonProps} disabled={busy} ref={retryAttach} onClick={retryRun}>Retry</button></p>}
+    {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error} <button {...smallGhostButtonProps} disabled={busy} ref={retryAttach} onClick={retryRun}>Retry</button></p>}
   </section>;
 }

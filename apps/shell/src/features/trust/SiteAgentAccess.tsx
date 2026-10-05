@@ -7,6 +7,7 @@ import { executeCommand } from "../../commands";
 import { bridge } from "../../bridge";
 import { DEFAULT_SITE_ACCESS } from "./actions";
 import { call } from "../../store";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 const effects: readonly [Effect, string][] = [
   ["read", "Read"],
@@ -111,7 +112,7 @@ export function SiteAgentAccess({
           </button>
         )}
       </div>
-      {error && <p role="alert">{error}</p>}
+      {error && <p {...nativeAlertRoleProps}>{error}</p>}
       {!snapshot && !error && <output>Loading agent access…</output>}
       {snapshot &&
         effects.map(([effect, label]) => (

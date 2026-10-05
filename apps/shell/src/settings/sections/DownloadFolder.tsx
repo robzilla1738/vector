@@ -5,6 +5,7 @@ import { bridge, inMock, inNativeHost } from "../../bridge";
 
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
 import { PreferenceAction } from "./preference-command";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 type Folder = { path: string; custom: boolean; error?: string };
 const availableNow = () => inNativeHost || inMock;
 const read = () => bridge.downloadFolder();
@@ -70,7 +71,7 @@ export function DownloadFolderSetting({ active }: { active: boolean }) {
         </div>
       )}
       {(error || folder?.error) && (
-        <p role="alert" {...staticFieldErrorProps}>
+        <p {...nativeAlertRoleProps} {...staticFieldErrorProps}>
           {error || folder?.error}{" "}
           <NativePreferenceRetry
             command="retry-download-folder"

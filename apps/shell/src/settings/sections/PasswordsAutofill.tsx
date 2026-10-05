@@ -9,6 +9,7 @@ import { bridge, inNativeHost } from "../../bridge";
 import { SettingsField, SettingsSection } from "../primitives";
 import { useNativePreference, NativePreferenceRetry } from "./use-native-preference";
 import { useScopedCommandControls } from "../../scoped-command-controls";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 const availableNow = () => inNativeHost;
 const read = async () => ({ profile: await bridge.autofillProfile() });
 type Write = { profile: AutofillProfile; legacy?: string };
@@ -85,7 +86,7 @@ export function PasswordsAutofillSettings({
           <output {...staticHintProps}>Loading Chromium personal info…</output>
         ) : error ? (
           <div>
-            <p {...staticFieldErrorProps} role="alert">
+            <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
               {error}
             </p>
             <NativePreferenceRetry
@@ -123,7 +124,7 @@ export function PasswordsAutofillSettings({
             </button>
           )}
         {importing === legacySnapshot && native.value && native.error && (
-          <p {...staticFieldErrorProps} role="alert">
+          <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
             {native.error}
           </p>
         )}

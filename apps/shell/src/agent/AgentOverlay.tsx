@@ -11,6 +11,7 @@ import "./AgentOverlay.css";
 import {
   nativeAriaHiddenProps as auxNativeAriaHiddenProps,
 } from "../ui/native-attribute-props";
+import { nativeStatusRoleProps } from "../ui/native-attribute-props";
 
 const COPY = "Finish this step in the page, then return to Aux.";
 
@@ -94,7 +95,7 @@ export function HandoffCutoutFrame({
       data-cutout-h={cutout.h}
     >
       <div className="agent-handoff-shield" style={{ clipPath: cutoutClip(cutout) }} {...auxNativeAriaHiddenProps} />
-      <p className="agent-handoff-copy" role="status">
+      <p className="agent-handoff-copy" {...nativeStatusRoleProps}>
         {COPY}
       </p>
     </div>

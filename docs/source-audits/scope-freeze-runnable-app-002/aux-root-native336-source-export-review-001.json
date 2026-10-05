@@ -1,0 +1,22 @@
+{
+  "status": "SOURCE_ONLY_EXPORT_REVIEW_PASS",
+  "exportSHA256": "65f4aa9b055949dab31e31fd9938eb66803dfde13b445e6a054ddd90c6b63270",
+  "head": "1553809e9d8b535db8058354af503f3904f7ba34",
+  "identity": {
+    "commit": "1553809e9d8b535db8058354af503f3904f7ba34",
+    "tree": "ca9965f46da47d71f7b151fc8dbb633a5d3b55af",
+    "dirty": false,
+    "label": "1553809e9d8b535db8058354af503f3904f7ba34"
+  },
+  "actualNativeFiles": 744,
+  "actualOrderedPackets": 336,
+  "actualOwnCompiledFiles": 1843,
+  "actualShellFiles": 174,
+  "actualDependencyRows": 286,
+  "ownWorkspaceJoins": 75,
+  "originalChildren": 7,
+  "remainingOriginalRows": [],
+  "generatedTemplateDerivation": true,
+  "executionAdmission": false,
+  "StableWritten": false
+}

@@ -39,6 +39,7 @@ import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
 import { staticTextProps as auxClassTextProps, staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps, staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
+import { nativeMenuItemRoleProps } from "../ui/native-attribute-props";
 
 const IDLE_DRAG = { folderId: null as string | null, from: -1, to: null as number | null, pageId: "", over: null as string | null };
 
@@ -274,16 +275,16 @@ export function SpaceMenu({ anchor, spaces, active, onPick, onNew, onNewFolder, 
           <span className="space-dot" /><span {...auxClassTextProps}>{space.name}</span>
         </button>
         <span className="menu-acts" role="none">
-          <button {...auxClassExtraSmallIconButtonProps} role="menuitem" aria-label={`Edit ${space.name}`} onClick={() => choose(() => onEdit(space))}>{shellIconPencil}</button>
-          {spaces.length > 1 && <button {...auxClassExtraSmallIconButtonProps} role="menuitem" aria-label={`${bridge.privateMode ? "Delete" : "Archive"} ${space.name}`}
+          <button {...auxClassExtraSmallIconButtonProps} {...nativeMenuItemRoleProps} aria-label={`Edit ${space.name}`} onClick={() => choose(() => onEdit(space))}>{shellIconPencil}</button>
+          {spaces.length > 1 && <button {...auxClassExtraSmallIconButtonProps} {...nativeMenuItemRoleProps} aria-label={`${bridge.privateMode ? "Delete" : "Archive"} ${space.name}`}
             onClick={() => choose(() => onDelete(space.id))}>{shellIconTrash}</button>}
         </span>
       </div>)}
       {archivedSpaces.length > 0 && <>
-        <button {...staticMenuItemProps} role="menuitem" aria-expanded={showArchived} onClick={() => setShowArchived(value => !value)}>
+        <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} aria-expanded={showArchived} onClick={() => setShowArchived(value => !value)}>
           <span className="menu-ico">{shellIconReload}</span><span {...auxClassTextProps}>Archived spaces</span><span className="muted">{archivedSpaces.length}</span>
         </button>
-        {showArchived && archivedSpaces.filter(matchesSpace).map(space => <button key={space.id} className="menu-item space-restore-item" role="menuitem"
+        {showArchived && archivedSpaces.filter(matchesSpace).map(space => <button key={space.id} className="menu-item space-restore-item" {...nativeMenuItemRoleProps}
           onClick={() => choose(() => onRestore(space.id))} title="Restore this space and its saved work">
           <span {...auxClassTextProps}>{space.name}</span><span className="muted">Restore</span>
         </button>)}
@@ -291,7 +292,7 @@ export function SpaceMenu({ anchor, spaces, active, onPick, onNew, onNewFolder, 
       <div className="menu-sep" role="separator" />
       {actions.map(action => <div key={action.label} role="none">
         {action.separator && <div className="menu-sep" role="separator" />}
-        <button {...staticMenuItemProps} role="menuitem" onClick={() => choose(action.run)}>
+        <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => choose(action.run)}>
           <span className="menu-ico">{action.icon}</span><span {...auxClassTextProps}>{action.label}</span>{action.key && <kbd>{action.key}</kbd>}
         </button>
       </div>)}
@@ -778,15 +779,15 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
         <div className="sb-more">
           <button ref={moreTrigger} {...staticIconButtonProps} aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More" title={withShortcut("More", key("toggle-sidebar-more"))} data-command-id="toggle-sidebar-more" onClick={more}>{shellIconMore}</button>
           {moreOpen && <Menu className="sidebar-native-menu sb-more-menu" label="Browser tools" anchor={moreTrigger} placement="above-end" returnFocus={moreTrigger} onClose={() => setMoreOpen(false)}>
-            <button role="menuitem" aria-label="Chats" data-command-id="open-chat-history" onClick={() => chooseMore("open-chat-history")}>{shellIconAgentSm}<span>Chats</span>{key("open-chat-history") && <kbd>{key("open-chat-history")}</kbd>}</button>
-            <button role="menuitem" aria-label="Tasks" data-command-id="open-tasks" onClick={() => chooseMore("open-tasks")}>{shellIconLayersSm}<span>Tasks</span>{key("open-tasks") && <kbd>{key("open-tasks")}</kbd>}</button>
-            <button role="menuitem" aria-label="Library" data-command-id="command-bookmarks" onClick={() => chooseMore("command-bookmarks")}>{shellIconBookmark}<span>Library</span>{key("command-bookmarks") && <kbd>{key("command-bookmarks")}</kbd>}</button>
-            <button role="menuitem" aria-label="Downloads" data-command-id="downloads" onClick={() => chooseMore("downloads")}>{shellIconDownloadSm}<span>Downloads</span>{key("downloads") && <kbd>{key("downloads")}</kbd>}</button>
+            <button {...nativeMenuItemRoleProps} aria-label="Chats" data-command-id="open-chat-history" onClick={() => chooseMore("open-chat-history")}>{shellIconAgentSm}<span>Chats</span>{key("open-chat-history") && <kbd>{key("open-chat-history")}</kbd>}</button>
+            <button {...nativeMenuItemRoleProps} aria-label="Tasks" data-command-id="open-tasks" onClick={() => chooseMore("open-tasks")}>{shellIconLayersSm}<span>Tasks</span>{key("open-tasks") && <kbd>{key("open-tasks")}</kbd>}</button>
+            <button {...nativeMenuItemRoleProps} aria-label="Library" data-command-id="command-bookmarks" onClick={() => chooseMore("command-bookmarks")}>{shellIconBookmark}<span>Library</span>{key("command-bookmarks") && <kbd>{key("command-bookmarks")}</kbd>}</button>
+            <button {...nativeMenuItemRoleProps} aria-label="Downloads" data-command-id="downloads" onClick={() => chooseMore("downloads")}>{shellIconDownloadSm}<span>Downloads</span>{key("downloads") && <kbd>{key("downloads")}</kbd>}</button>
             <hr />
-            <button role="menuitem" aria-label={saved ? "Remove bookmark" : "Bookmark this page"} disabled={!web} data-command-id="bookmark" onClick={() => chooseMore("bookmark")}>{shellIconBookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span>{key("bookmark") && <kbd>{key("bookmark")}</kbd>}</button>
-            <button role="menuitem" aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"} disabled={!web} data-command-id="command-reading-list" onClick={() => chooseMore("command-reading-list")}>{shellIconClock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span>{key("command-reading-list") && <kbd>{key("command-reading-list")}</kbd>}</button>
-            <button role="menuitem" aria-label="Tab overview" data-command-id="overview" onClick={() => chooseMore("overview")}>{shellIconGrid}<span>Tab overview</span>{key("overview") && <kbd>{key("overview")}</kbd>}</button>
-            <button role="menuitem" aria-label="Settings" data-command-id="settings" onClick={() => chooseMore("settings")}>{shellIconGear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>
+            <button {...nativeMenuItemRoleProps} aria-label={saved ? "Remove bookmark" : "Bookmark this page"} disabled={!web} data-command-id="bookmark" onClick={() => chooseMore("bookmark")}>{shellIconBookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span>{key("bookmark") && <kbd>{key("bookmark")}</kbd>}</button>
+            <button {...nativeMenuItemRoleProps} aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"} disabled={!web} data-command-id="command-reading-list" onClick={() => chooseMore("command-reading-list")}>{shellIconClock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span>{key("command-reading-list") && <kbd>{key("command-reading-list")}</kbd>}</button>
+            <button {...nativeMenuItemRoleProps} aria-label="Tab overview" data-command-id="overview" onClick={() => chooseMore("overview")}>{shellIconGrid}<span>Tab overview</span>{key("overview") && <kbd>{key("overview")}</kbd>}</button>
+            <button {...nativeMenuItemRoleProps} aria-label="Settings" data-command-id="settings" onClick={() => chooseMore("settings")}>{shellIconGear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>
           </Menu>}
         </div>
         </>}
@@ -851,7 +852,7 @@ export function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename
   const updateFolder = useStore((s) => s.updateFolder);
   return (
     <Menu className="menu ctx-menu" label={group ? "Tab group actions" : "Folder actions"} point={{ x, y }} onClose={finishClose} returnFocus={trigger}>
-      <button {...staticMenuItemProps} role="menuitem" data-command-id="make-live-folder" onClick={() => { finishClose(); void executeCommand("make-live-folder", { payload: { folderId: folder.id } }).catch(errToast); }}>{folder.live ? "Edit live folder…" : "Make live folder…"}</button>
+      <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} data-command-id="make-live-folder" onClick={() => { finishClose(); void executeCommand("make-live-folder", { payload: { folderId: folder.id } }).catch(errToast); }}>{folder.live ? "Edit live folder…" : "Make live folder…"}</button>
       <div role="group" className="menu-swatches" aria-label="Folder colour">
         {SPACE_COLORS.map((color) => (
           <button key={color} role="menuitemradio" aria-checked={folder.color === color} aria-label={color} data-space={color}
@@ -869,10 +870,10 @@ export function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename
           );
         })}
       </div>
-      <button {...staticMenuItemProps} role="menuitem" onClick={() => { onRename(); finishClose(); }}>
+      <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => { onRename(); finishClose(); }}>
         <span {...auxClassTextProps}>Rename</span>
       </button>
-      <button {...staticMenuItemProps} role="menuitem" onClick={() => { onDelete(); finishClose(); }}>
+      <button {...staticMenuItemProps} {...nativeMenuItemRoleProps} onClick={() => { onDelete(); finishClose(); }}>
         <span {...auxClassTextProps}>{group ? "Ungroup tabs" : `Delete “${folder.name}”`}</span>
       </button>
     </Menu>

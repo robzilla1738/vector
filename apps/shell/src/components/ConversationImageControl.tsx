@@ -1,5 +1,6 @@
 import { useId, type ButtonHTMLAttributes, type RefObject, type InputHTMLAttributes } from "react";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
+import { nativeCheckboxTypeProps as auxReuseNativeCheckboxTypeProps } from "../ui/native-attribute-props";
 export function ConversationImageAction({ command, current, invoke, originalRef, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & {
   command: string; current(): boolean; invoke(original: HTMLButtonElement): unknown; originalRef?: RefObject<HTMLButtonElement | null>;
 }) {
@@ -18,5 +19,5 @@ export function ConversationImageChoice({ current, invoke, ...props }: Omit<Inpu
     if (!current()) throw new Error("Choose the current image choice.");
     return invoke(event?.type === "click" || event?.type === "change" ? original.checked : !original.checked);
   });
-  return <input {...props} type="checkbox" ref={publish} data-command-id="toggle-conversation-image" onChange={run} />;
+  return <input {...props} {...auxReuseNativeCheckboxTypeProps} ref={publish} data-command-id="toggle-conversation-image" onChange={run} />;
 }

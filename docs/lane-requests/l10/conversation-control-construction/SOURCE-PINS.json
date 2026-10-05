@@ -1,0 +1,50 @@
+{
+  "files": [
+    {
+      "path": "apps/shell/src/components/ConversationAttachmentControls.tsx",
+      "beforeSha256": "65fa91ef8ef90966a238a9f42463f32deed192ff0a20c6ee0c8950480c7ff785",
+      "afterSha256": "b1f19f489ce88440974805f6b14f14d78ea037a76695f05232b84de35b7283a3"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationSourceControls.tsx",
+      "beforeSha256": "f5a304573c9f50a21935e8b3ff03d3d01238871877a2679692cfba71e3edbeed",
+      "afterSha256": "3bc569127a75ddf298b4fe4dd1eb0b8f439d963179c3891ec91549b3ede778dc"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationPreviewControls.tsx",
+      "beforeSha256": "39d4646938a003579e0329691263a71e9140d5629f534abc21feecc02a5881a0",
+      "afterSha256": "59eed28a22c59f43ea64f4f6b1ef0e3c3081c49d28b7f5ac3ad6310096fcc1a0"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationQueuedControls.tsx",
+      "beforeSha256": "e611e1fd46bf574f8a8dc0d17afa49cee8546f84320d26a52c3a993ed989407b",
+      "afterSha256": "8dc44398c254b1dc9265a79a67ac6a382c95ddb9752ca549d94cb82691a35696"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationLiveControls.tsx",
+      "beforeSha256": "4e0c26bc7b994ba43dfaacb4040284b6eed7ce06b3629072b9e5fb2154822ee4",
+      "afterSha256": "09114d7102507c90c857a91ccd821d9003b4ebb63bfd31ba95bb3ed0a115e2a2"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationViewControls.tsx",
+      "beforeSha256": "f965ce71be3067ee22356604afb1f6bcd7ef20f4a874a49b02f0643d4aeaf5a3",
+      "afterSha256": "fd29720228206643e55e44553a2fe7c46fac67fe54dbc3d3ea4f88dbfadf09d3"
+    },
+    {
+      "path": "apps/shell/src/components/ConversationRecoveryControls.tsx",
+      "beforeSha256": "505a42f55caa92a6153233ec0779f123ed9d8687d799a3bd3c3e3d1caa53eedc",
+      "afterSha256": "4d127332ddeb9e8696240abca90f1dfd35c9b427394c257a5c33ef8d8d882135"
+    },
+    {
+      "path": "apps/shell/src/components/conversation-control-construction.ts",
+      "beforeSha256": null,
+      "afterSha256": "910d3c65c4a5190a3cb844fc8bcc6c51907917f6e9f294e4e222cc58e58aef3d"
+    },
+    {
+      "path": "apps/shell/src/components/conversation-control-construction.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "f1c89afcba38afb54a6c5c6abfdbcb7e84987a7c907e663b3ae0b5b3c2692435"
+    }
+  ],
+  "patchSha256": "f7150bc6e17082a5df4e74be7d6a101da452e38391135f23ff0ad7cb3800fdc6"
+}

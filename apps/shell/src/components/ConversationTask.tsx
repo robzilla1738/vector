@@ -13,6 +13,7 @@ import { call, errToast, useStore } from "../store";
 import { openSavedTask } from "../task-navigation";
 import { readTaskDraft, taskDraftKey } from "../task-drafts";
 import { BrowserContextPicker } from "./BrowserContextPicker";
+import { staticButtonProps as auxReuseStaticButtonProps } from "../ui/class-props";
 
 export function ConversationTask({ taskId, live, disabled, page, context, linkedPageId, onContext, onStarted }: {
   taskId: string; live: boolean; disabled: boolean; page?: PageTarget; context: string;
@@ -73,7 +74,7 @@ export function ConversationTask({ taskId, live, disabled, page, context, linked
       {unsaved && <p {...auxReserveStaticHintProps}>You have unsaved task edits. Open Details to save or discard them before running.</p>}
       <div className="conversation-task-actions">
         <BrowserContextPicker value={context} linkedPageId={linkedPageId} onChange={onContext} disabled={busy || disabled} />
-        <button className="btn" disabled={busy || disabled || !task || unsaved || missingContext} onClick={() => void start()}>{busy ? "Starting…" : needsSetup ? "Set up model" : "Run task"}</button>
+        <button {...auxReuseStaticButtonProps} disabled={busy || disabled || !task || unsaved || missingContext} onClick={() => void start()}>{busy ? "Starting…" : needsSetup ? "Set up model" : "Run task"}</button>
         {task && <button {...smallGhostButtonProps} disabled={busy || disabled} onClick={() => { useStore.getState().setOverlay("tasks"); }}>Make a routine</button>}
       </div>
       {missingContext && <p {...auxReserveStaticHintProps}>Choose an available tab or New browser tab to continue.</p>}

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { Hook, HookInvocation, OutboundMcpGrant, OutboundMcpServer, WorkspaceFolder } from "@aux/contracts";
 import { call } from "../store";
 import { staticGrowProps as auxClassGrowProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type GrantChoice = { grant: OutboundMcpGrant; server: OutboundMcpServer };
 
@@ -109,7 +110,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
         A run lifecycle Hook calls a granted MCP tool or a sandboxed local command. Review its exact handler
         before approving it; revoking its grant, folder, or Hook stops future calls.
       </p>
-      {error && <p role="alert">{error}</p>}
+      {error && <p {...nativeAlertRoleProps}>{error}</p>}
       {handlerType === "mcp_tool" && !choices.length && !error && <p {...staticHintProps}>No standing MCP tool grants in this Space. Create one in MCP &amp; Connectors.</p>}
       <label>Handler
         <select aria-label="Hook handler" value={handlerType} onChange={event => setHandlerType(event.target.value as "mcp_tool" | "command")}>

@@ -38,6 +38,7 @@ import { recoverPeekLink } from "./peek-link";
 import { deliverRunAttention, foregroundRunId, matchesRunAttentionActivation, RunNotificationGate, type OwnerNotice } from "./agent/run-notifications";
 import { onInAppNoticePreferenceChange, readInAppNoticePreference, readSystemTaskNotices, readTaskFocusMode } from "./agent/run-notice-preference";
 import { RunNoticeBanner } from "./agent/RunNoticeControls";
+import { nativePoliteLiveProps } from "./ui/native-attribute-props";
 
 const ReaderView = deferNamedSurface(() => import("./components/ReaderView"), "ReaderView", "Reader");
 const Settings = deferNamedSurface(() => import("./components/Settings"), "Settings", "Settings");
@@ -500,7 +501,7 @@ export function App() {
       }}
     >
       {!connected && !bridge.privateMode && (
-        <output className="degraded" data-block aria-live="polite">
+        <output className="degraded" data-block {...nativePoliteLiveProps}>
           {shellIconAlert}
           <span>Runtime reconnecting — tabs keep working</span>
         </output>

@@ -9,6 +9,7 @@ import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { guardCommandCompletion } from "../command-completion";
 import { MemoryExclusionButton, useMemoryExclusionControl } from "./MemoryExclusionControls";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 type Owner={active:boolean;identity:object;pending:boolean};
 function ownerKey(layout:ReturnType<typeof useStore.getState>["layout"],workspaceId:string){const matches=[...layout.spaces,...(layout.archivedSpaces??[])].filter(space=>space.workspaceId===workspaceId);return matches.length===1&&typeof matches[0]?.id==="string"&&matches[0].id?matches[0].id:null;}
 export function MemoryExclusions({ memory, disabled, onSaved }: { memory: WorkspaceMemory; disabled: boolean; onSaved(memory: WorkspaceMemory): void }) {
@@ -53,6 +54,6 @@ export function MemoryExclusions({ memory, disabled, onSaved }: { memory: Worksp
     <form className="memory-exclusion-form" ref={formRef} onSubmit={event=>{event.preventDefault();exclude(event);}}><input type="url" aria-label="Site to exclude from memory" placeholder="https://example.com" value={address} maxLength={2048} disabled={blocked || busy} onChange={event => setAddress(event.target.value)}/><button {...smallButtonProps} disabled={blocked || busy || !address.trim() || origins.length >= 100}>Exclude site</button></form>
     {origins.map(origin => <div className="memory-excluded-site" key={origin}><span>{origin}</span><MemoryExclusionButton command="allow-memory-site" scopeId={scopeId} invoke={()=>save(origins.filter(value => value !== origin))} {...smallGhostButtonProps} disabled={blocked || busy} aria-label={`Allow memory from ${origin}`}>Allow</MemoryExclusionButton></div>)}
     {busy && <output {...staticHintProps} data-block>Updating exclusions…</output>}
-    {error && <p {...staticFieldErrorProps} role="alert">{error}{stale && <MemoryExclusionButton command="reload-memory-exclusions" scopeId={scopeId} invoke={()=>update()} {...smallGhostButtonProps} disabled={blocked || busy}>Reload saved memory</MemoryExclusionButton>}</p>}
+    {error && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}{stale && <MemoryExclusionButton command="reload-memory-exclusions" scopeId={scopeId} invoke={()=>update()} {...smallGhostButtonProps} disabled={blocked || busy}>Reload saved memory</MemoryExclusionButton>}</p>}
   </details>;
 }

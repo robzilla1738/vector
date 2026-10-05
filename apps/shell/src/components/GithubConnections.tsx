@@ -4,7 +4,9 @@ import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState } from "react";
 import { call } from "../store";
 import { executeCommand } from "../commands";
-import { staticGrowProps as auxClassGrowProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { staticGrowProps as auxClassGrowProps } from "../ui/class-props";
+import { nativeAutocompleteOffProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 export function GithubConnections() {
   const [accounts, setAccounts] = useState<Awaited<ReturnType<typeof load>>>([]);
@@ -29,8 +31,8 @@ export function GithubConnections() {
       setBusy(true); void executeCommand("revoke-github", { payload: { connectionId: account.id } }).then(async () => { const accounts = await load(); if (alive.current.value) setAccounts(accounts); }).catch((error: unknown) => { if (alive.current.value) setError(errorMessage(error)); }).finally(() => { if (alive.current.value) setBusy(false); });
     }}>Disconnect</button></div>)}
     <label>Connection name<input {...staticFieldInputProps} value={name} maxLength={200} disabled={busy} onChange={event => setName(event.target.value)} placeholder="Work GitHub" /></label>
-    <label>Personal access token<input {...staticFieldInputProps} type="password" autoComplete="off" value={token} maxLength={1000} disabled={busy} onChange={event => setToken(event.target.value)} /></label>
-    {error && <p role="alert" className="error-text">{error}</p>}
+    <label>Personal access token<input {...staticFieldInputProps} type="password" {...nativeAutocompleteOffProps} value={token} maxLength={1000} disabled={busy} onChange={event => setToken(event.target.value)} /></label>
+    {error && <p {...nativeAlertRoleProps} className="error-text">{error}</p>}
     <button {...auxClassButtonProps} data-command-id="connect-github" disabled={busy || !name.trim() || !token} onClick={() => void connect()}>{busy ? "Connecting…" : "Connect GitHub"}</button>
   </section>;
 }

@@ -9,7 +9,11 @@ import { siteControlsOpener } from "../site-controls-opener";
 import { Dialog } from "../ui";
 import { shellIconClose } from "./icons";
 import "./SiteCustomization.css";
-import { staticButtonProps as auxClassButtonProps, staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
+import {
+  staticButtonProps as auxClassButtonProps,
+  staticPrimaryButtonProps as auxClassPrimaryButtonProps,
+} from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 function pageOrigin(url: string | null | undefined): string | null {
   try {
@@ -186,7 +190,7 @@ export function SiteCustomization() {
       </header>
       <div className="zap-content">
         {error && (
-          <p className="zap-error" role="alert">
+          <p className="zap-error" {...nativeAlertRoleProps}>
             {error}
           </p>
         )}

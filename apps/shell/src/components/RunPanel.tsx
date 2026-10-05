@@ -20,6 +20,7 @@ import { RunTranscriptDetails } from "../transcript/RunTranscriptDetails";
 
 import { STATUS_LABEL } from "../run-status";
 import { staticSpacerProps as auxClassSpacerProps, staticNumericCountProps as auxClassNumericCountProps } from "../ui/class-props";
+import { nativePoliteLiveProps, nativeStatusRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** Ticks on its own so a live run's clock never re-renders the whole panel. */
 function Elapsed({ run }: { run: Run }) {
@@ -132,7 +133,7 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
     if (current()) setCopied(true);
   });
   // Streamed text is plain until the run settles; markdown parses once, at the end.
-  if (isLive(run) && !run.error) return stream ? <section className="answer" aria-live="polite" aria-busy="true"><p className="answer-text answer-stream">{stream}</p></section> : null;
+  if (isLive(run) && !run.error) return stream ? <section className="answer" {...nativePoliteLiveProps} aria-busy="true"><p className="answer-text answer-stream">{stream}</p></section> : null;
   if (conversation) {
     if (!reply && !retry && !(run.error && !run.failure)) return null;
     return (
@@ -263,11 +264,11 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
                 : null)}
         </span>
       </div>}
-      {!live && latestConversationTurn && !run.config?.taskId && !retryAvailable && retryPage && (!run.failure || run.failure.retryable) && <section className="run-failure" role="status">
+      {!live && latestConversationTurn && !run.config?.taskId && !retryAvailable && retryPage && (!run.failure || run.failure.retryable) && <section className="run-failure" {...nativeStatusRoleProps}>
         <div className="run-failure-copy"><strong>The original tab is unavailable</strong><p>Retry using {retryPage.title || retryPage.url}. The saved request and context stay the same; the browser page changes.</p></div>
         <RunPanelAction command="retry-run-selected-tab" run={run} {...smallButtonProps} disabled={readOnly || retrying} invoke={() => retryRun(run.runId, retryPage.pageId)}>{retrying ? "Retrying…" : "Retry in selected tab"}</RunPanelAction>
       </section>}
-      {!live && latestConversationTurn && !run.config?.taskId && multiTabBlocked && <section className="run-failure" role="status">
+      {!live && latestConversationTurn && !run.config?.taskId && multiTabBlocked && <section className="run-failure" {...nativeStatusRoleProps}>
         <div className="run-failure-copy"><strong>Original tabs are missing</strong><p>This turn used {run.pageIds.length} tabs. Restore those tabs before retrying. Aux will not retry a subset.</p></div>
       </section>}
       {!controlsInComposer && <RunControls runId={runId} compact/>}
@@ -284,7 +285,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
       </RunPanelDisclosure>}
 
       {run.failure && (
-        <section className="run-failure" role="status">
+        <section className="run-failure" {...nativeStatusRoleProps}>
           <span className="run-failure-icon">{shellIconAlert}</span>
           <div className="run-failure-copy">
             <strong>{run.failure.action === "model_settings" ? "Connection needs attention" : run.failure.action === "permission_settings" ? "Permission needed" : "This turn stopped"}</strong>
@@ -327,7 +328,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
             <span>Page</span>
             {obs && <span {...auxClassNumericCountProps}>{obs.refs.length}</span>}
           </RunPanelAction>
-          {showObs && (obsLoading ? <output {...staticHintProps} data-block>Loading saved page…</output> : obsError ? <p {...staticFieldErrorProps} role="alert">{obsError} {(inspectedArtifact || observationArtifact) && <RunPanelAction command="retry-run-page-observation" run={run} {...smallButtonProps} invoke={(current)=>inspect((inspectedArtifact || observationArtifact)!, current)}>Retry</RunPanelAction>}</p> : obs ? <ObservationPanel compact obs={obs} /> : null)}
+          {showObs && (obsLoading ? <output {...staticHintProps} data-block>Loading saved page…</output> : obsError ? <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{obsError} {(inspectedArtifact || observationArtifact) && <RunPanelAction command="retry-run-page-observation" run={run} {...smallButtonProps} invoke={(current)=>inspect((inspectedArtifact || observationArtifact)!, current)}>Retry</RunPanelAction>}</p> : obs ? <ObservationPanel compact obs={obs} /> : null)}
         </section>
       )}
     </div>

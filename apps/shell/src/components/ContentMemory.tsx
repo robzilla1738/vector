@@ -13,6 +13,7 @@ import { reportCommandCompletionFailure } from "../command-completion";
 import { executeCommand } from "../commands";
 import { registerScopedControl } from "../scoped-control-commands";
 import { MemoryRecoveryNotice } from "./MemoryRecoveryNotice";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type InputEvent = React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement> | React.ChangeEvent<HTMLInputElement | HTMLSelectElement>;
 class ControlBinding {
@@ -241,6 +242,6 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
         close={() => { assertCurrent(); ++readSequence.current; setDocument(null); requestAnimationFrame(() => { if (current() && detailOpener.current?.isConnected) detailOpener.current.focus(); }); }} />}
       <div {...staticRowProps}>{confirmClear ? <><span {...staticHintProps}>Forget all saved articles in this Space?</span><ContentControl command="clear-content-memory" scopeId={memory.workspaceId} disabled={busy} onError={report} action={() => forget()}>Forget all</ContentControl><ContentControl command="cancel-clear-content-memory" scopeId={memory.workspaceId} disabled={busy} {...smallGhostButtonProps} onError={report} action={() => { assertCurrent(); setConfirmClear(false); }}>Cancel</ContentControl></> : <ContentControl command="confirm-clear-content-memory" scopeId={memory.workspaceId} disabled={busy} {...smallGhostButtonProps} onError={report} action={() => { assertCurrent(); setConfirmClear(true); }}>Forget all remembered articles…</ContentControl>}</div>
     </>}
-    {error && (errorScope === scope || errorScope === loadScope) && <p {...staticFieldErrorProps} role="alert">{error}</p>}
+    {error && (errorScope === scope || errorScope === loadScope) && <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>{error}</p>}
   </section>;
 }

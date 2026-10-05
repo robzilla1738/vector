@@ -13,6 +13,7 @@ import {
 import { bridge } from "../../bridge";
 import { useStore } from "../../store";
 import { bindingFromKeydown, reservedShortcut } from "./shortcut-settings";
+import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
 
 export type ExtensionCommand = { extensionId: string; name: string; description: string; shortcut: string };
 export function ExtensionShortcuts({
@@ -92,7 +93,7 @@ export function ExtensionShortcuts({
       <h3>Extensions</h3>
       {loading && <output {...staticHintProps}>Loading extension shortcuts…</output>}
       {loadError && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {loadError}
         </p>
       )}
@@ -125,7 +126,7 @@ export function ExtensionShortcuts({
         ))}
       </ul>
       {error && (
-        <p {...staticFieldErrorProps} role="alert">
+        <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}

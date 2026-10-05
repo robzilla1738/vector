@@ -6,6 +6,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { bookmarkWebUrl } from "../bookmark-files";
 import { bridge } from "../bridge";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Bookmark = { url: string; title: string; folderPath?: string[] };
 
@@ -64,6 +65,6 @@ export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[
         : <button ref={done} {...smallGhostButtonProps} onClick={() => { setExpanded(false); setRemaining(null); setMessage(""); setError(""); }}>Done</button>}
     </div>
     {message && <output {...staticHintProps} data-block>{message}</output>}
-    {error && <p {...staticHintProps} role="alert">{error}</p>}
+    {error && <p {...staticHintProps} {...nativeAlertRoleProps}>{error}</p>}
   </section>;
 }

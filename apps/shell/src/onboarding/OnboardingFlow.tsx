@@ -27,6 +27,7 @@ import { PastedMemorySetup } from "./PastedMemorySetup";
 import { SetupReview } from "./SetupReview";
 import { usePreferenceCommand } from "../settings/sections/preference-command";
 import { staticGhostButtonProps as auxClassGhostButtonProps, staticButtonProps as auxClassButtonProps } from "../ui/class-props";
+import { nativeCheckboxTypeProps, nativeGroupRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 const TITLES = {
   welcome: "Welcome to Aux",
@@ -627,7 +628,7 @@ export function OnboardingFlow({
                   {page && availableOnboardingPage(page) && (
                     <label>
                       <input
-                        type="checkbox"
+                        {...nativeCheckboxTypeProps}
                         checked={pageReviewed}
                         disabled={busy}
                         onChange={(event) =>
@@ -661,7 +662,7 @@ export function OnboardingFlow({
                         <h2>{card.question}</h2>
                         <p>{card.prompt}</p>
                         {/* chrome:// web UI fatals when aria-label is on a generic div. */}
-                        <div {...staticRowProps} role="group" aria-label="Tools for this question">
+                        <div {...staticRowProps} {...nativeGroupRoleProps} aria-label="Tools for this question">
                           {card.tools.map((tool) => (
                             <Badge key={tool} label={tool} />
                           ))}
@@ -736,7 +737,7 @@ export function OnboardingFlow({
           )}
         </fieldset>
         {error && (
-          <div role="alert">
+          <div {...nativeAlertRoleProps}>
             <p>{error}</p>
             <button
               {...smallButtonProps}
@@ -752,7 +753,7 @@ export function OnboardingFlow({
           </div>
         )}
         {restoreStatus === "unavailable" && (
-          <p role="alert">
+          <p {...nativeAlertRoleProps}>
             Recovery readiness is unavailable. New chat starts are blocked until it can be checked.{" "}
             <button
               {...smallGhostButtonProps}

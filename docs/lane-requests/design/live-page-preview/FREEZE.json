@@ -1,0 +1,14 @@
+{
+  "status": "source-only-request",
+  "ownedPaths": [
+    "apps/shell/src/components/Conversation.tsx",
+    "apps/shell/src/components/Conversation.live-page.test.tsx"
+  ],
+  "patchSha": "ce89e67e374f39d191cb0c676dc5338d36aa4d405c32b9077e223734224fb57e",
+  "sourcePinsSha": "034df9a4f2e93d85fd220b391f25698b579411a11b21e7c2dbfd2f4e20aa5538",
+  "replaySha": "a78cdae850498c0698b65d31a3954730b228731aca239d58faacdd26aa32ef5d",
+  "original": "3 RED",
+  "intermediate": "2 RED/18 PASS; missing documentEpoch subscription",
+  "result": "20 PASS; source-only tsc PASS; lint original warnings/no errors",
+  "nativeAndBudget": "pending"
+}

@@ -1,5 +1,6 @@
 import { smallButtonProps } from "../ui/button-props";
 import { Component, type ReactNode } from "react";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /**
  * A render failure inside one pane (a conversation, the agent rail) leaves
@@ -14,7 +15,7 @@ export class PaneBoundary extends Component<{ label: string; resetKey?: unknown;
   }
   override render() {
     if (!this.state.error) return this.props.children;
-    return <div className="pane-failure" role="alert">
+    return <div className="pane-failure" {...nativeAlertRoleProps}>
       <p><b>{this.props.label} couldn’t be shown.</b> Your tabs and other work are unaffected.</p>
       <button {...smallButtonProps} onClick={() => this.setState({ error: null })}>Try again</button>
     </div>;

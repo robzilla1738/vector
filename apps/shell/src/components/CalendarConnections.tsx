@@ -6,6 +6,7 @@ import type { CalendarConnection, CalendarEvent } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call } from "../store";
 import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type ConnectionList = Awaited<ReturnType<typeof call<"calendar.connections.list">>>;
 type EventPage = { events: CalendarEvent[]; nextPageToken?: string; fetchedAt: number };
@@ -115,6 +116,6 @@ export function CalendarConnections() {
         {page?.connectionId === connection.connectionId && <div {...staticFieldProps}><strong>Upcoming events</strong>{page.value.events.length ? page.value.events.map(event => <div className="field" key={`${event.source.connectionId}:${event.eventId}`}><strong>{event.title}</strong><span {...staticHintProps}>{new Date(event.start).toLocaleString()} · {event.source.accountKey}</span></div>) : <p {...staticHintProps}>No events in this range.</p>}{page.value.nextPageToken && <button {...smallButtonProps} disabled={busy} onClick={() => void read(connection, page.value.nextPageToken)}>Load more</button>}</div>}</>}
     </>}
     {message && <output {...staticHintProps} data-block>{message}</output>}
-    {error && <p {...auxClassErrorHintProps} role="alert">{error}</p>}
+    {error && <p {...auxClassErrorHintProps} {...nativeAlertRoleProps}>{error}</p>}
   </section>;
 }

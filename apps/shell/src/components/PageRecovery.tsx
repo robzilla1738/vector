@@ -8,6 +8,7 @@ import { guardCommandCompletion } from "../command-completion";
 import { useScopedCommandControls } from "../scoped-command-controls";
 import { shellIconAlert, shellIconGlobe } from "./icons";
 import { staticPrimaryButtonProps as auxClassPrimaryButtonProps, staticGhostButtonProps as auxClassGhostButtonProps } from "../ui/class-props";
+import { nativeStatusRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 type Owner = { active: boolean; pending: boolean; identity: object };
 /** UI ownership only; the original native navigation/interstitial producer authorizes recovery. */
 export function PageRecovery({ page }: { page: PageTarget }) {
@@ -141,7 +142,7 @@ export function PageRecovery({ page }: { page: PageTarget }) {
   }
   return (
     <div className="stage-message">
-      <div className="empty-state navigation-error" role="status">
+      <div className="empty-state navigation-error" {...nativeStatusRoleProps}>
         <span className={`empty-ico ${crashed ? "err" : ""}`}>
           {crashed ? shellIconAlert : shellIconGlobe}
         </span>
@@ -155,7 +156,7 @@ export function PageRecovery({ page }: { page: PageTarget }) {
           {httpFallback && <RecoveryButton control={[publish, run, "http", "continue-page-over-http", () => proceed(true)]} disabled={busy !== null}>{busy === "proceed" ? "Continuing…" : "Continue over HTTP"}</RecoveryButton>}
           {insecure && <RecoveryButton control={[publish, run, "certificate", "proceed-page-certificate", () => proceed(false)]} {...auxClassGhostButtonProps} disabled={busy !== null}>{busy === "proceed" ? "Proceeding…" : "Proceed anyway (unsafe)"}</RecoveryButton>}
         </div>
-        {actionError && <p role="alert">{actionError}</p>}
+        {actionError && <p {...nativeAlertRoleProps}>{actionError}</p>}
         {error && !crashed && (
           <details
             className="navigation-error-details"

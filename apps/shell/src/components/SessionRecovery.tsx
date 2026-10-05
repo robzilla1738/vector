@@ -6,6 +6,7 @@ import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { hostOf } from "../workspace";
 import { staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
+import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type SavedTab = {pageId:string;url:string;title:string;windowId:string;error?:string;retrying:boolean};
 
@@ -74,13 +75,13 @@ export function SessionRecovery({compact=false}:{compact?:boolean}) {
       <p {...staticHintProps}>Their addresses and places in your sidebar have been kept. Retry restores each tab in its original window.</p>
       <div className="session-recovery-list">{tabs.map(tab=><div className="session-recovery-row" key={tab.pageId}>
         <div><span>{tab.title||hostOf(tab.url)||"New tab"}</span><small title={tab.url}>{tab.url}</small>
-          {rowErrors[tab.pageId]?<p {...auxClassErrorHintProps} role="alert">{rowErrors[tab.pageId]}</p>
+          {rowErrors[tab.pageId]?<p {...auxClassErrorHintProps} {...nativeAlertRoleProps}>{rowErrors[tab.pageId]}</p>
             :tab.error&&<details><summary>Why it couldn’t reopen</summary><p {...staticHintProps}>{tab.error}</p></details>}
         </div>
         <button {...smallButtonProps} disabled={!!busy||tab.retrying} onClick={()=>void retry([tab])}>{busy===tab.pageId||tab.retrying?"Restoring…":"Retry"}</button>
       </div>)}</div>
     </>}
     {message&&<output {...staticHintProps} data-block>{message}</output>}
-    {error&&<p {...auxClassErrorHintProps} role="alert">{error} <button {...smallGhostButtonProps} disabled={!!busy} onClick={()=>{setError("");setRefresh(value=>value+1);}}>Refresh</button></p>}
+    {error&&<p {...auxClassErrorHintProps} {...nativeAlertRoleProps}>{error} <button {...smallGhostButtonProps} disabled={!!busy} onClick={()=>{setError("");setRefresh(value=>value+1);}}>Refresh</button></p>}
   </section>;
 }

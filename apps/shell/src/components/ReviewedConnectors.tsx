@@ -6,7 +6,11 @@ import { useEffect, useState } from "react";
 import type { ConnectorCatalog, ConnectorEntry, Task, Workspace } from "@aux/contracts";
 import { call } from "../store";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
-import { staticDrawerSectionProps as auxClassDrawerSectionProps, staticErrorHintProps as auxClassErrorHintProps } from "../ui/class-props";
+import {
+  staticDrawerSectionProps as auxClassDrawerSectionProps,
+  staticErrorHintProps as auxClassErrorHintProps,
+} from "../ui/class-props";
+import { nativePoliteLiveProps, nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 type Kind = ConnectorEntry["kind"];
 type Review = {
@@ -249,7 +253,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                 </button>
               ))}
             </aside>
-            <div className="reviewed-connectors-detail" aria-live="polite">
+            <div className="reviewed-connectors-detail" {...nativePoliteLiveProps}>
               {loading && <p {...staticHintProps}>Loading connector access…</p>}
               {!loading && !entry && <p {...staticHintProps}>Choose a connection to review.</p>}
               {entry && (
@@ -379,7 +383,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
           </div>
         )}
       {error && (
-        <p {...auxClassErrorHintProps} role="alert">
+        <p {...auxClassErrorHintProps} {...nativeAlertRoleProps}>
           {error}
         </p>
       )}
