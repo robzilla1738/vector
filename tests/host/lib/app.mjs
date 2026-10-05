@@ -480,20 +480,20 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       throw new Error(message, { cause: error });
     }
   }
-  async function quit() {
+  async function quit(gracefulRestart = false) {
     if (credentialLaunch) credentialLaunch.active = false;
     stoppedCommandDeadline ??= Date.now() + 10000;
     const originalChild = child, originalGeneration = generation, originalEpoch = stoppedProfileEpoch;
     if (appearanceReservation) appearanceReservation.active = false;
     try {
-      const result = await quitOwned();
+      const result = await quitOwned(gracefulRestart);
       if (child === originalChild && generation === originalGeneration && stoppedProfileEpoch === originalEpoch)
         successfulQuitGeneration = originalGeneration;
       return result;
     }
     catch (error) { launchQuarantine?.retire(); throw error; }
   }
-  async function quitOwned() {
+  async function quitOwned(gracefulRestart = false) {
     disposeAppearance(Boolean(fileAppearance && externalPid)); disposePerformance();
     if (credentialPreparationFailure) throw new AggregateError([credentialPreparationFailure],
       'Fixed credential preparation has original retained owner debt; slot and generated Profile retained', { cause: credentialPreparationFailure });
@@ -518,7 +518,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
     if (launchUncertain) throw new Error(`LaunchServices receipt unavailable: inspect the owned disposable profile ${userDataDir} and bundle ${bundle} before releasing the native batch.`);
     if (running()) {
-      if (externalPid) execFileSync(urlLauncher, ["terminate", bundle, String(externalPid), String(externalGeneration)], { timeout: 2000, stdio: "pipe" }); else child.kill('SIGTERM');
+      if (externalPid) execFileSync(urlLauncher, ["terminate", bundle, String(externalPid), String(externalGeneration)], { timeout: 2000, stdio: "pipe" }); else child.kill(gracefulRestart ? 'SIGINT' : 'SIGTERM');
       const deadline = Date.now() + 5000;
       while (running() && Date.now() < deadline) await delay(50);
       if (running()) {
@@ -801,7 +801,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       acceptance.markers.push(...added.markers);
       return {profileId, restartRequired:true};
     },
-    start, async restart(options) { if (credentialArtifact) throw new Error("Fixed credential observation cannot restart or rearm"); if (startupAttachment || privatePair) throw new Error("Attached startup cannot use another launcher"); await quit(); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
+    start, async restart(options) { if (credentialArtifact) throw new Error("Fixed credential observation cannot restart or rearm"); if (startupAttachment || privatePair) throw new Error("Attached startup cannot use another launcher"); if (externalPid || launchUncertain) throw new Error("Graceful restart requires the original direct child launcher"); await quit(true); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
     async openExternal(url) { if (startupAttachment || privatePair) throw new Error("Attached startup is observation-only"); if (!running()) throw new Error("Disposable Aux is not running"); return launchUrl(url, [], api.pid); },
     async openAux(url, {cold = false, background = false} = {}) {
       if (startupAttachment || privatePair) throw new Error("Attached startup is observation-only");
