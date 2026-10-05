@@ -1,0 +1,1 @@
+import{m as s,o,p}from"./App-DVgPSu2f.js";const a=s(s=>o(s,p("M18.25 15.25V5.75M18.25 5.75H8.75M18.25 5.75L6 18")),"sm");export{a as s};
