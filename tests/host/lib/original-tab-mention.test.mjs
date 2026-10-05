@@ -10,11 +10,11 @@ function fixture(original) {
   } };
 }
 test('read and act use genuine keyboard option focus and original labels', async () => {
-  for (const act of [false, true]) { const original = originalTabMention([page], page.title, act), t = fixture(original); await openOriginalTabMention(t, original); await selectOriginalTabMention(t, original); assert.deepEqual(t.keys, act ? ['arrowdown', 'end', 'enter'] : ['arrowdown', 'enter']); }
+  for (const act of [false, true]) { const original = originalTabMention([page], page.title, act), t = fixture(original); await openOriginalTabMention(t, original); await selectOriginalTabMention(t, original); assert.deepEqual(t.keys, act ? ['down', 'end', 'enter'] : ['down', 'enter']); }
 });
 test('document replacement after opening refuses before Enter', async () => {
   const original = originalTabMention([page], page.title), t = fixture(original); await openOriginalTabMention(t, original); t.rpc = async () => [{ ...page, documentEpoch: 2 }]; await assert.rejects(selectOriginalTabMention(t, original)); assert.deepEqual(t.keys, []);
 });
 test('foreign or ambiguous native focused option refuses before Enter', async () => {
-  const original = originalTabMention([page], page.title), t = fixture(original); t.ax.query = async () => [{ focused: true, name: original.label }]; await assert.rejects(selectOriginalTabMention(t, original)); assert.deepEqual(t.keys, ['arrowdown']);
+  const original = originalTabMention([page], page.title), t = fixture(original); t.ax.query = async () => [{ focused: true, name: original.label }]; await assert.rejects(selectOriginalTabMention(t, original)); assert.deepEqual(t.keys, ['down']);
 });

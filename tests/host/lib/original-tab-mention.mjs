@@ -33,7 +33,7 @@ export async function selectOriginalTabMention(t, original) {
   requireOriginalMention(await t.rpc('pages.list'), original);
   // Exact URL query offers read then act for this sole original page. Move
   // actual focus first; Enter on an option invokes its registered command.
-  await t.ax.key('arrowdown', 'hid');
+  await t.ax.key('down', 'hid');
   if (original.access === 'act') await t.ax.key('end', 'hid');
   await t.until('exact original mention option owns native focus', async () => {
     const focused = (await t.ax.query({ name: original.label, match: 'contains', scope: 'shell' })).filter(row => row.focused);
