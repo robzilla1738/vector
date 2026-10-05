@@ -26,7 +26,8 @@ export default function HomeAsk({ onSearch, current }: { onSearch?(): unknown; c
   useEffect(() => {
     if (railOpen) return;
     let active = true;
-    void bridge.focusShell().then(() => { if (active) composer.current?.focus(); }).catch(errToast);
+    const previous = document.activeElement;
+    void bridge.focusShell().then(() => { if (active && (document.activeElement === previous || document.activeElement === document.body)) composer.current?.focus(); }).catch(error => { if (active) errToast(error); });
     return () => { active = false; };
   }, [focusRequest, railOpen]);
   useEffect(()=>bridge.onEvent(event=>{if(event.type==="conversation.deleted" && event.payload.chatId===chatId){setChatId(null);try{if(localStorage.getItem(HOME_DRAFT_CHAT_KEY)===chatId)localStorage.removeItem(HOME_DRAFT_CHAT_KEY);}catch{/* The mounted composer still forgets the deleted chat. */}}}),[chatId]);
