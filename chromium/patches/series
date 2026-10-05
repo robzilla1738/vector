@@ -345,3 +345,4 @@ aux/runtime/0337-original-appearance-channel-retirement.patch
 0375-native-capture-viewport-observation-and-bounded-refusal-opacity-witnesses.patch
 0376-native-opacity-witness-inline-definition-header.patch
 0377-native-capture-opacity-diagnostic-cleanup-and-viewport-failure-observation.patch
+0378-native-egress-request-evidence-lease-field-projection.patch

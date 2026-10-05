@@ -1,0 +1,10 @@
+--- a/chrome/browser/ui/aux/egress_controller.cc
++++ b/chrome/browser/ui/aux/egress_controller.cc
+@@ -2152,6 +2152,7 @@
+     }
+   }
+   auto evidence = lease.Clone();
++  evidence.Remove("controlGeneration");
+   evidence.Remove("sourceOrigin");
+   evidence.Remove("initialDestination");
+   evidence.Remove("recipientOrigins");
