@@ -8,7 +8,7 @@ import { captureFreshChat } from '../lib/chat-settings-capture.mjs';
 import { captureHomeJourneyState } from '../lib/home-capture.mjs';
 import { withFailureEvidence } from '../lib/journey-diagnostics.mjs';
 import { fixturePage } from '../lib/fixture.mjs';
-import { configureModel, finished, mentionedRun, newChat, observations, tool } from '../lib/l10-trust-fixtures.mjs';
+import { configureModel, finished, mentionedRun, newChat, objects, observations, tool } from '../lib/l10-trust-fixtures.mjs';
 
 export const journey = {
   id: 'first-chat', title: 'Answer and retry without a page; open a real page only through a tool',
@@ -53,7 +53,7 @@ export async function run(t) {
   t.fixture.route('/first-chat/opened', fixturePage('Aux first-chat tool page', '<p>Explicit tool destination ready.</p>'));
   t.fixture.route('/first-chat/context', fixturePage('Aux first-chat optional context', '<p>Optional context evidence: copper-467.</p>'));
   const heldAnswer = t.model.holdText('Page-free answer', ' violet-271.');
-  let phase = 'answer', contextTurns = 0, openTurns = 0, openContinuationReached = false;
+  let phase = 'answer', contextTurns = 0, openContinuationReached = false;
   const decisions = [];
   let releaseOpen;
   const openGate = new Promise(resolve => { releaseOpen = resolve; });
@@ -69,7 +69,9 @@ export async function run(t) {
     }
     if (phase === 'open') {
       await openGate;
-      if (++openTurns === 1)
+      const opened = objects({ messages: payload.messages.filter(message => message.role === 'tool' && message.tool_call_id === 'first-chat-open-real-url') })
+        .some(value => typeof value.pageId === 'string' && value.pageId.length > 0 && value.url === openedUrl && value.owned === true);
+      if (!opened)
         return tool('repl', { code: `const opened = openTab(${JSON.stringify(openedUrl)}); display(opened);` }, 'first-chat-open-real-url');
       openContinuationReached = true;
       await openCompletionGate;
