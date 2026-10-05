@@ -30,6 +30,23 @@ async function send(t, text) {
 }
 
 export async function run(t) {
+  const pageIdentity = pages => pages.map(({ pageId, url, documentEpoch }) => ({ pageId, url, documentEpoch }));
+  const captureInitialPages = async () => {
+    const pages = await t.rpc('pages.list');
+    t.assert.ok(pages.length === 0 || pages.length === 1, 'Fresh launch has only its optional native new-tab singleton');
+    for (const page of pages) {
+      t.assert.equal(page.url, 'chrome://newtab/', 'Only the exact native startup new tab is permitted');
+      t.assert.equal(page.ownedByRuntime, false);
+      t.assert.ok(typeof page.pageId === 'string' && page.pageId.length > 0);
+      t.assert.ok(Number.isInteger(page.documentEpoch));
+    }
+    return pageIdentity(pages);
+  };
+  let initialPageIdentity = await captureInitialPages();
+  const requireInitialPages = pages => {
+    t.assert.equal(pages.filter(page => /^https?:/.test(page.url)).length, 0, 'Page-free chat has no eligible website context');
+    t.assert.deepEqual(pageIdentity(pages), initialPageIdentity, 'Page-free actions retain only the exact initial native page identity');
+  };
   await configureModel(t);
   const openedUrl = `http://aux-recovery.fixture.test/first-chat/opened`;
   const contextUrl = `${t.fixture.url}/first-chat/context`;
@@ -62,9 +79,9 @@ export async function run(t) {
   });
   let first;
   await t.step('send first chat with no page and observe the streamed answer', { kind: 'ui', features: ['electronMigration'] }, async () => {
-    t.assert.deepEqual(await t.rpc('pages.list'), [], 'Fresh chat must start with no public page');
+    requireInitialPages(await t.rpc('pages.list'));
     await newChat(t);
-    t.assert.deepEqual(await t.rpc('pages.list'), [], 'Opening the composer must not create a blank page');
+    requireInitialPages(await t.rpc('pages.list'));
     const freshAppearance = await captureFreshChat(t);
     let partial;
     try {
@@ -74,14 +91,14 @@ export async function run(t) {
       partial = await t.rpc('runs.get', { runId: first.runId });
       t.assert.ok(['running', 'planning'].includes(partial.run.status), 'Partial native answer must be visible before the real run becomes terminal');
       t.assert.deepEqual(partial.run.pageIds, []);
-      t.assert.deepEqual(await t.rpc('pages.list'), [], 'Incremental answer must remain page-free');
+      requireInitialPages(await t.rpc('pages.list'));
       t.assert.equal((await t.ax.query(selector('Page-free answer violet-271.'))).length, 0, 'The held suffix must not be visible yet');
       await captureHomeJourneyState(t, 'first-chat-held-partial-answer', 'first-chat-held-partial-answer');
     } finally { heldAnswer.release(); }
     const details = await finished(t, first.runId);
     await t.ax.waitFor(selector('Page-free answer violet-271.'));
     t.assert.deepEqual(details.run.pageIds, []);
-    t.assert.deepEqual(await t.rpc('pages.list'), [], 'Answering must not create any page');
+    requireInitialPages(await t.rpc('pages.list'));
     t.assert.ok(decisions.some(row => row.phase === 'answer' && row.stream));
     await captureHomeJourneyState(t, 'first-chat-page-free-answer', 'first-chat-page-free-answer');
     return { freshAppearance, ax: await t.ax.dump(), rpc: { partial, details, pages: await t.rpc('pages.list'), decisions } };
@@ -100,7 +117,7 @@ export async function run(t) {
     const details = await finished(t, retried.runId);
     await t.ax.waitFor(selector('Page-free retry amber-839.'));
     t.assert.deepEqual(details.run.pageIds, []);
-    t.assert.deepEqual(await t.rpc('pages.list'), [], 'Retry must remain page-free');
+    requireInitialPages(await t.rpc('pages.list'));
     return { ax: await t.ax.dump(), rpc: { details, decisions } };
   });
   let requested;
@@ -110,16 +127,19 @@ export async function run(t) {
     try {
       await t.until('the actual model request reaches the held explicit open decision', async () => decisions.some(row => row.phase === 'open'), 30000);
       t.assert.deepEqual(requested.pageIds, [], 'Sending the request must not eagerly open a page');
-      t.assert.deepEqual(await t.rpc('pages.list'), [], 'No page may exist before the model actually issues openTab');
+      requireInitialPages(await t.rpc('pages.list'));
     } finally { releaseOpen(); }
     const allow = selector('Allow once', 'AXButton');
     await t.ax.waitFor(allow);
-    t.assert.deepEqual(await t.rpc('pages.list'), [], 'The intended destination must wait for real person consent');
+    requireInitialPages(await t.rpc('pages.list'));
     await t.ax.press(allow);
     const details = await finished(t, requested.runId);
     const pages = await t.until('the one tool-opened real URL finishes loading', async () => {
       const pages = await t.rpc('pages.list');
-      return pages.length === 1 && pages[0].url === openedUrl && !pages[0].loading && pages;
+      const retained = pages.filter(page => initialPageIdentity.some(initial => initial.pageId === page.pageId));
+      const opened = pages.filter(page => !initialPageIdentity.some(initial => initial.pageId === page.pageId));
+      t.assert.deepEqual(pageIdentity(retained), initialPageIdentity, 'The tool must retain the exact initial native page');
+      return opened.length === 1 && opened[0].url === openedUrl && !opened[0].loading && opened;
     }, 30000);
     t.assert.equal(pages[0].ownedByRuntime, true);
     t.assert.ok(!pages.some(page => page.url === 'about:blank'));

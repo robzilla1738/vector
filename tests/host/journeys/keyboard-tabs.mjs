@@ -8,6 +8,19 @@ export const journey = {
 };
 
 export async function run(t) {
+  const pageIdentity = pages => pages.map(({ pageId, url, documentEpoch }) => ({ pageId, url, documentEpoch }));
+  const captureInitialPages = async () => {
+    const pages = await t.rpc('pages.list');
+    t.assert.ok(pages.length === 0 || pages.length === 1, 'Fresh launch has only its optional native new-tab singleton');
+    for (const page of pages) {
+      t.assert.equal(page.url, 'chrome://newtab/', 'Only the exact native startup new tab is permitted');
+      t.assert.equal(page.ownedByRuntime, false);
+      t.assert.ok(typeof page.pageId === 'string' && page.pageId.length > 0);
+      t.assert.ok(Number.isInteger(page.documentEpoch));
+    }
+    return pageIdentity(pages);
+  };
+  const initialPageIdentity = await captureInitialPages();
   const red = await t.rpc('pages.open', { url: `${t.fixture.url}/red`, activate: true });
   const blue = await t.rpc('pages.open', { url: `${t.fixture.url}/blue`, activate: true });
   await t.until('Blue selected', async () => (await t.rpc('workspace.get')).activePageId === blue.pageId);
@@ -47,7 +60,10 @@ export async function run(t) {
     }
     const idle = async () => {
       const pages = await t.rpc('pages.list');
-      return pages.length === 10 && pages.every(page => expected.has(page.pageId) && !page.loading &&
+      const baseline = pages.filter(page => initialPageIdentity.some(initial => initial.pageId === page.pageId));
+      t.assert.deepEqual(pageIdentity(baseline), initialPageIdentity, 'Footprint workload retains only the exact initial native page');
+      const fixtures = pages.filter(page => expected.has(page.pageId));
+      return pages.length === 10 + initialPageIdentity.length && fixtures.length === 10 && fixtures.every(page => !page.loading &&
         [ `${t.fixture.url}/red`, `${t.fixture.url}/blue` ].includes(page.url)) && pages;
     };
     await t.until('all ten actual fixture tabs finish loading', idle);

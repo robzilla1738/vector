@@ -16,6 +16,23 @@ const composer = shell('Reply to conversation');
 const greeting = shell('What would you like to work on?');
 
 export async function run(t) {
+  const pageIdentity = pages => pages.map(({ pageId, url, documentEpoch }) => ({ pageId, url, documentEpoch }));
+  const captureInitialPages = async () => {
+    const pages = await t.rpc('pages.list');
+    t.assert.ok(pages.length === 0 || pages.length === 1, 'Fresh launch has only its optional native new-tab singleton');
+    for (const page of pages) {
+      t.assert.equal(page.url, 'chrome://newtab/', 'Only the exact native startup new tab is permitted');
+      t.assert.equal(page.ownedByRuntime, false);
+      t.assert.ok(typeof page.pageId === 'string' && page.pageId.length > 0);
+      t.assert.ok(Number.isInteger(page.documentEpoch));
+    }
+    return pageIdentity(pages);
+  };
+  let initialPageIdentity = await captureInitialPages();
+  const requireInitialPages = pages => {
+    t.assert.equal(pages.filter(page => /^https?:/.test(page.url)).length, 0, 'Page-free chat has no eligible website context');
+    t.assert.deepEqual(pageIdentity(pages), initialPageIdentity, 'Page-free actions retain only the exact initial native page identity');
+  };
   const draft = 'Keep this Home draft without opening or attaching a browser page.';
   const decisions = [];
   t.model.respond(payload => {
@@ -29,7 +46,7 @@ export async function run(t) {
     await t.ax.waitFor(composer, 'enabled');
     t.assert.equal((await t.rpc('settings.get')).modelConfigured, false, 'Fresh fixture must genuinely lack a configured model');
     await t.ax.waitFor(shell('Connect an AI model', 'AXButton'));
-    t.assert.deepEqual(await t.rpc('pages.list'), []);
+    requireInitialPages(await t.rpc('pages.list'));
     await captureHomeJourneyState(t, 'home-model-missing', 'home-model-missing');
     await t.ax.type(draft, composer);
     t.assert.equal((await t.ax.query(composer))[0]?.value, draft);
@@ -67,7 +84,7 @@ export async function run(t) {
       const activeSpace = () => JSON.parse(readFileSync(join(t.app.userDataDir, 'Default/Preferences'), 'utf8')).aux?.organization?.v2?.window?.activeSpaceId;
       const originalSpace = activeSpace(), originalWorkspace = await t.rpc('workspace.get'), originalRuns = await t.rpc('runs.list');
       t.assert.equal(typeof originalSpace, 'string', 'Actual original active Space required');
-      t.assert.deepEqual(originalWorkspace.pages, []);
+      requireInitialPages(originalWorkspace.pages);
       let pageId;
       await captureTemporaryAppearanceState(t, { name: 'home-long-context-picker', state: 'home-long-context-picker-owned-fixture',
         prepare: async owned => {
@@ -89,7 +106,7 @@ export async function run(t) {
             t.assert.ok(page && page.url === url, 'Exact temporary page identity must remain owned before cleanup');
             await owned(() => t.rpc('pages.close', { pageId }));
           }
-          await owned(() => t.until('temporary context page removed', async () => (await t.rpc('pages.list')).length === 0));
+          await owned(() => t.until('temporary context page removed', async () => JSON.stringify(pageIdentity(await t.rpc('pages.list'))) === JSON.stringify(initialPageIdentity)));
           t.assert.equal(activeSpace(), originalSpace);
           t.assert.equal((await owned(() => t.rpc('workspace.get'))).activePageId, originalWorkspace.activePageId);
           t.assert.deepEqual(await owned(() => t.rpc('runs.list')), originalRuns);
@@ -106,15 +123,16 @@ export async function run(t) {
     t.assert.equal((await t.ax.query(shell('Add context', 'AXButton')))[0]?.focused, true, 'Escape from parent must restore the composer context trigger');
     if (t.appearanceEnabled) await captureHomeJourneyState(t, 'home-context-trigger-focus-returned', 'home-context-trigger-focus-returned');
     t.assert.equal((await t.ax.query(composer))[0]?.value, draft);
-    t.assert.deepEqual(await t.rpc('pages.list'), [], 'Opening context controls must not manufacture a page');
+    requireInitialPages(await t.rpc('pages.list'));
     return { ax: await t.ax.dump(), rpc: { pages: await t.rpc('pages.list') } };
   });
   await t.restart();
+  initialPageIdentity = await captureInitialPages();
   await t.step('a real Home remount restores the draft then sends without browser context', { kind: 'ui', features: ['electronMigration'] }, async () => {
     await t.ax.waitFor(greeting);
     await t.ax.waitFor(composer, 'enabled');
     t.assert.equal((await t.ax.query(composer))[0]?.value, draft, 'Original Home draft must survive actual browser restart');
-    t.assert.deepEqual(await t.rpc('pages.list'), []);
+    requireInitialPages(await t.rpc('pages.list'));
     await captureHomeJourneyState(t, 'home-draft-remounted', 'home-draft-remounted');
     const old = new Set((await t.rpc('runs.list')).map(run => run.runId));
     await t.ax.click(shell('Send message', 'AXButton'));
@@ -124,7 +142,7 @@ export async function run(t) {
     const details = await finished(t, requested.runId);
     await t.ax.waitFor(shell('Home page-free answer indigo-593.'));
     t.assert.deepEqual(details.run.pageIds, []);
-    t.assert.deepEqual(await t.rpc('pages.list'), []);
+    requireInitialPages(await t.rpc('pages.list'));
     t.assert.ok(decisions.length > 0); t.assert.equal(t.model.errors.length, 0);
     await captureHomeJourneyState(t, 'home-submitted-page-free-answer', 'page-free-answer-after-home-submit');
     return { ax: await t.ax.dump(), rpc: { details, pages: await t.rpc('pages.list'), decisions } };
