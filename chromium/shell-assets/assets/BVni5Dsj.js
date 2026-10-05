@@ -1,1 +1,0 @@
-import{o,a,l as n,n as s,b as r,s as e}from"./CEktPxd8.js";const t=o({column:s().int().positive().max(16384),value:e(),hyperlink:e().max(2048).optional()}),l=o({format:n("aux.workbook.v1"),sheets:a(o({name:e(),hidden:r(),rows:a(o({number:s().int().positive(),cells:a(t)}))}))});export{l as W};

@@ -1,0 +1,1 @@
+import{u as n}from"./App-D6OKY7fI.js";function d(r){n.setState(n=>{const t=new Set(n.runs.map(n=>n.runId)),s=r.filter(n=>!t.has(n.runId));return s.length?{runs:[...n.runs,...s]}:n})}export{d as m};

@@ -1,0 +1,1 @@
+import{s as e}from"./D-kwrypX.js";const a=e().min(1).max(12e3).refine(e=>!/[\p{Cc}\p{Cf}]/u.test(e.replace(/[\n\t]/g,"")),"Only plain text, tabs, and line breaks are allowed");export{a as I};

@@ -1,1 +1,0 @@
-import{j as a}from"./index-B9aaX0jv.js";function m(){return a("span",{className:"aux-mark aux-brand-mark",role:"img","aria-label":"Aux"})}export{m as A};
