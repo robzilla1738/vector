@@ -352,3 +352,32 @@ it("preserves installed fixed-reader refusal instead of silently borrowing drive
  await expect(f.opener.open({url:"https://person.test/",background:true,ownedByRuntime:false})).rejects.toBe(reason);
  expect(f.attach).not.toHaveBeenCalled();expect(f.pages.live.size).toBe(0);
 });
+
+ it("retries a superseded document read while the original native opening remains current", async () => {
+  const f = fixture(false);
+  let reads = 0;
+  const documentId = randomUUID(), sessionId = randomUUID();
+  f.personReadContext.mockImplementation(async pageId => {
+    if (++reads === 2) f.sync.onNativeNavigated(pageId, "https://person.test/");
+    return { pageId, documentId, sessionId, producerSha256: createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex"), url: "https://person.test/" };
+  });
+  const target = await f.opener.open({ url: "https://person.test/", background: true, ownedByRuntime: false });
+  expect(target.url).toBe("https://person.test/");
+  expect(target.sessionId).toBe(sessionId);
+  expect(f.pages.live.get(target.pageId)?.target).toBe(target);
+  expect(reads).toBeGreaterThan(2);
+  expect(f.tabCommand.mock.calls.filter(([input]) => input.command.kind === "close")).toHaveLength(0);
+ });
+
+it("keeps original read-owner retirement fatal even when its document also changes", async () => {
+ const f = fixture(false), pageId = randomUUID();
+ const target = await f.opener.registerExternal({ pageId, marker: `atab-${pageId}`, url: "https://person.test/", backend: "aux", ownedByRuntime: false });
+ let release!: (value: Awaited<ReturnType<typeof f.personReadContext>>) => void;
+ f.personReadContext.mockImplementationOnce(async () => new Promise(resolve => { release = resolve; }));
+ const work = f.pages.prepareReadPage(pageId);
+ target.documentEpoch++;
+ target.controllerEpoch++;
+ release({ pageId, documentId: randomUUID(), sessionId: randomUUID(), producerSha256: createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex"), url: target.url });
+ await expect(work).rejects.toMatchObject({ code: "target_detached" });
+ expect(target.sessionId).toBeUndefined();
+});

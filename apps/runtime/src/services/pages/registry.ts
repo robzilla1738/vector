@@ -147,10 +147,12 @@ export class PageRegistry {
     const epoch = lp.target.documentEpoch, control = lp.target.controllerEpoch, url = lp.target.url;
     const raw = await prepare.call(this.deps.native, pageId);
     if (this.live.get(pageId) !== lp || this.closing || lp.driver ||
-        lp.target.documentEpoch !== epoch || lp.target.controllerEpoch !== control || lp.target.url !== url ||
+        lp.target.controllerEpoch !== control ||
         lp.target.ownedByRuntime || lp.target.agentIsolation ||
         !["human", "none"].includes(lp.target.controller) || ["detached", "crashed"].includes(lp.target.viewStatus))
       throw new AuxError("target_detached", "This tab changed while preparing its context.");
+    if (lp.target.documentEpoch !== epoch || lp.target.url !== url)
+      throw new AuxError("ref_stale", "This tab navigated before its context was ready.");
     const context = parsePersonReadContext(pageId, raw);
     if (context.url !== lp.target.url)
       throw new AuxError("ref_stale", "This tab navigated before its context was ready.");
