@@ -75,7 +75,7 @@ export function BrowserContextPicker({ value, onChange, linkedPageId, disabled =
       }} disabled={disabled || unavailable} title={subtitle ? `${title}\n${subtitle}` : title} selected={value === key} onSelect={select}>
       <span><strong>{title}</strong>{subtitle && <small>{subtitle}</small>}</span>
     </ContextChoice>;
-    return <><input type="search" aria-label="Find browser context" placeholder="Find a tab…" value={query} onChange={event => setQuery(event.target.value)}/>
+    return <><input type="search" autoComplete="off" aria-label="Find browser context" placeholder="Find a tab…" value={query} onChange={event => setQuery(event.target.value)}/>
       {!query && <>{allowNew && choice("none", "No browser context", "Chat without attaching a tab")}{choice("active", "Current tab", active?.title || "No website open", !active)}{(linked || value === "linked") && choice("linked", "Conversation tab", linked?.title || "Unavailable", !linked)}</>}
       <section className="context-picker-group" aria-label="Open browser tabs"><p>Open tabs</p>{matches.map(pageId => <BrowserContextChoice key={pageId} pageId={pageId} value={value} onSelect={select} disabled={disabled} />)}{!matches.length && <p>No matching available tabs.</p>}</section>
     </>;

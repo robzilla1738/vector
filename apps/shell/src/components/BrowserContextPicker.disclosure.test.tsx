@@ -33,6 +33,8 @@ it("discloses the full original long title and URL without changing the selected
   const changed = vi.fn();
   await act(async () => root.render(<BrowserContextPicker value="none" onChange={changed}/>));
   const panel = await open();
+  const search = panel.querySelector<HTMLInputElement>('[aria-label="Find browser context"]')!;
+  expect(search.getAttribute("autocomplete")).toBe("off");
   const row = panel.querySelector<HTMLButtonElement>('.context-picker-group button')!;
   expect(row.title).toBe(`${title}\n${url}`);
   expect(row.querySelector("strong")!.textContent).toBe(title);
