@@ -12,7 +12,7 @@ export const PRODUCT_PATHSPEC = [
 
 /** Docs and evidence can advance HEAD without invalidating the tested product. */
 export function productIdentity(root = resolve(import.meta.dirname, '../..')) {
-  const git = args => execFileSync('git', args, { cwd: root });
+  const git = args => execFileSync('git', args, { cwd: root, maxBuffer: 64 * 1024 * 1024 });
   const commit = git(['log', '-1', '--format=%H', '--', ...PRODUCT_PATHSPEC]).toString().trim();
   if (!/^[a-f0-9]{40}$/.test(commit)) throw new Error('Cannot identify the product commit');
   // ls-tree does not support exclusion magic. Select the same paths from its
