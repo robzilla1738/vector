@@ -451,3 +451,83 @@ it("keeps saved-work failure and Retry outside the editing row and retries the c
   expect(input.value).toBe("a long current query that must remain editable");
   expect(document.activeElement).toBe(input);
 });
+
+it("queries saved work only in All or Work, retaining current failures and Retry there", async () => {
+  const featureWindow = window as Window & { auxChromiumHost?: { featureStages: { automations: "on" } } };
+  const previousHost = featureWindow.auxChromiumHost;
+  featureWindow.auxChromiumHost = { featureStages: { automations: "on" } };
+  try {
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async method => {
+    if (["results.search", "routines.list", "conversations.list"].includes(method)) throw new Error("current saved work unavailable");
+    return [] as never;
+  });
+  const workCalls = () => invoke.mock.calls.filter(([method]) => ["results.search", "routines.list", "conversations.list"].includes(method));
+  const wait = () => act(async () => new Promise(resolve => setTimeout(resolve, 150)));
+  await act(async () => root.render(<CommandBar surfaceMode="new-tab" />));
+  const input = host.querySelector("input")!;
+  await act(async () => type(input, "@"));
+  await act(async () => type(input, "Aux native Red"));
+  await wait();
+  expect(workCalls()).toHaveLength(0);
+  expect(host.textContent).not.toContain("Some saved work couldn’t be searched.");
+  await act(async () => root.render(<CommandBar key="command" surfaceMode="command" />));
+  await act(async () => type(host.querySelector("input")!, "split"));
+  await wait();
+  expect(workCalls()).toHaveLength(0);
+  expect(host.textContent).not.toContain("Some saved work couldn’t be searched.");
+  await act(async () => root.render(<CommandBar key="all" surfaceMode="new-tab" />));
+  const all = host.querySelector("input")!;
+  await act(async () => type(all, "project"));
+  await wait();
+  expect(workCalls()).toHaveLength(3);
+  expect(host.textContent).toContain("Some saved work couldn’t be searched.");
+  const retry = [...host.querySelectorAll("button")].find(button => button.textContent === "Retry")!;
+  await act(async () => retry.click());
+  await wait();
+  expect(workCalls()).toHaveLength(6);
+  await act(async () => key(all, "2", { altKey: true }));
+  expect(host.textContent).not.toContain("Some saved work couldn’t be searched.");
+  await wait();
+  expect(workCalls()).toHaveLength(6);
+  await act(async () => key(all, "8", { altKey: true }));
+  await wait();
+  expect(workCalls()).toHaveLength(9);
+  expect(host.textContent).toContain("Some saved work couldn’t be searched.");
+  } finally { featureWindow.auxChromiumHost = previousHost; }
+});
+it("does not query unavailable routines or fabricate a saved-work failure on a fresh Profile", async () => {
+  const featureWindow = window as Window & { auxChromiumHost?: { featureStages: { automations: "preview" } } };
+  const previousHost = featureWindow.auxChromiumHost;
+  featureWindow.auxChromiumHost = { featureStages: { automations: "preview" } };
+  try {
+    const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async method => {
+      if (method === "routines.list") throw new Error("not qualified");
+      return [] as never;
+    });
+    await act(async () => root.render(<CommandBar surfaceMode="new-tab" />));
+    await act(async () => type(host.querySelector("input")!, "project"));
+    await act(async () => new Promise(resolve => setTimeout(resolve, 150)));
+    expect(invoke.mock.calls.some(([method]) => method === "routines.list")).toBe(false);
+    expect(invoke.mock.calls.some(([method]) => method === "results.search")).toBe(true);
+    expect(invoke.mock.calls.some(([method]) => method === "conversations.list")).toBe(true);
+    expect(host.textContent).not.toContain("Some saved work couldn’t be searched.");
+    expect(host.textContent).not.toContain("Searching saved work…");
+  } finally { featureWindow.auxChromiumHost = previousHost; }
+});
+
+it("hides retained routine results immediately when their trusted feature stage becomes unavailable", async () => {
+  const featureWindow = window as Window & { auxChromiumHost?: { featureStages: { automations: "on" | "preview" } } };
+  const previousHost = featureWindow.auxChromiumHost;
+  featureWindow.auxChromiumHost = { featureStages: { automations: "on" } };
+  try {
+    vi.spyOn(bridge, "invoke").mockImplementation(async method => method === "routines.list"
+      ? [{ routineId: "routine-current", title: "Project current skill", objective: "project", workspaceId: "workspace-current" }] as never : [] as never);
+    await act(async () => root.render(<CommandBar surfaceMode="new-tab" />));
+    await act(async () => type(host.querySelector("input")!, "project"));
+    await act(async () => new Promise(resolve => setTimeout(resolve, 150)));
+    expect(host.textContent).toContain("Project current skill");
+    featureWindow.auxChromiumHost = { featureStages: { automations: "preview" } };
+    await act(async () => root.render(<CommandBar surfaceMode="new-tab" />));
+    expect(host.textContent).not.toContain("Project current skill");
+  } finally { featureWindow.auxChromiumHost = previousHost; }
+});

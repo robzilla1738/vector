@@ -535,10 +535,12 @@ export function CommandBar({
 
   const [workStatus, setWorkStatus] = useState({ query: "", pending: 0, failed: false });
   const [workRetry, setWorkRetry] = useState(0);
+  const workSearch = (providerScope === "all" || providerScope === "work") && scopePrefix !== "@" && intent.kind !== "command";
+  const skillsEnabled = featureStage("automations") === "on";
   // Saved work joins after immediate local matches. Old responses never paint
   // a new query, and private browsing never queries the regular Profile.
   useEffect(() => {
-    if (bridge.privateMode || !typedSomething || raw.length < 2 || raw.length > 300 || /^[/@]/.test(raw))
+    if (bridge.privateMode || !typedSomething || raw.length < 2 || raw.length > 300 || !workSearch)
       return;
     let live = true;
     const timer = window.setTimeout(() => {
@@ -549,22 +551,22 @@ export function CommandBar({
           ...patch,
         }));
       };
-      setWorkStatus({ query: raw, pending: 3, failed: false });
+      setWorkStatus({ query: raw, pending: skillsEnabled ? 3 : 2, failed: false });
       const accept = <K extends keyof Omit<typeof workResult, "query">>(key: K, promise: Promise<(typeof workResult)[K]>) => {
         void promise.then(value => update({ [key]: value })).catch(() => {
           if (live) setWorkStatus(status => ({ ...status, failed: true }));
         }).finally(() => { if (live) setWorkStatus(status => ({ ...status, pending: status.pending - 1 })); });
       };
       accept("results", call("results.search", { query: raw, limit: 3 }));
-      accept("skills", call("routines.list", { query: raw, limit: 3 }));
+      if (skillsEnabled) accept("skills", call("routines.list", { query: raw, limit: 3 }));
       accept("chats", call("conversations.list", { query: raw, limit: 5, archived: false }));
     }, 100);
     return () => {
       live = false;
       window.clearTimeout(timer);
     };
-  }, [raw, typedSomething, workRetry]);
-  const savedWork = workResult.query === raw ? workResult : null;
+  }, [raw, typedSomething, workRetry, workSearch, skillsEnabled]);
+  const savedWork = workResult.query === raw ? { ...workResult, skills: skillsEnabled ? workResult.skills : [] } : null;
 
   // Remote suggestions — opt-in preference, never in private mode, and never
   // for probable private/intranet addresses or keyword-engine input.
@@ -1387,7 +1389,7 @@ export function CommandBar({
           }}
           onMouseDown={(e) => e.preventDefault()}
         >
-          {(askBreaker.unavailable() || preferSearchOffer || (workStatus.query === raw && (workStatus.pending > 0 || workStatus.failed))) && (
+          {(askBreaker.unavailable() || preferSearchOffer || (workSearch && workStatus.query === raw && (workStatus.pending > 0 || workStatus.failed))) && (
             <div className="cb-query-status">
               {askBreaker.unavailable() && typedSomething && (
                 <output className="cb-suggestion-privacy">Ask unavailable — searching</output>
@@ -1405,8 +1407,8 @@ export function CommandBar({
                   Prefer search?
                 </button>
               )}
-              {workStatus.query === raw && workStatus.pending > 0 && <output className="cb-suggestion-privacy">Searching saved work…</output>}
-              {workStatus.query === raw && workStatus.failed && <output className="cb-suggestion-privacy">Some saved work couldn’t be searched. <button {...auxReserveSmallGhostButtonProps} onClick={() => setWorkRetry(value => value + 1)}>Retry</button></output>}
+              {workSearch && workStatus.query === raw && workStatus.pending > 0 && <output className="cb-suggestion-privacy">Searching saved work…</output>}
+              {workSearch && workStatus.query === raw && workStatus.failed && <output className="cb-suggestion-privacy">Some saved work couldn’t be searched. <button {...auxReserveSmallGhostButtonProps} onClick={() => setWorkRetry(value => value + 1)}>Retry</button></output>}
             </div>
           )}
           <div className="cb-provider-scopes" role="group" aria-label="Search providers">
