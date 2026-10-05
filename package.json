@@ -31,15 +31,18 @@
   "devDependencies": {
     "@types/jsdom": "21.1.7",
     "@types/node": "catalog:",
+    "@types/pngjs": "6.0.5",
+    "ai": "7.0.93",
     "exceljs": "4.4.0",
     "jsdom": "catalog:",
     "jszip": "3.10.1",
     "oxlint": "1.83.0",
-    "prettier": "3.9.9",
     "pngjs": "7.0.0",
+    "prettier": "3.9.9",
     "terser": "5.44.0",
     "typescript": "catalog:",
     "vite": "7.3.6",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   }
 }
