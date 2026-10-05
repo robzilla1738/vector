@@ -45,11 +45,11 @@ export async function savedSourceRecovery(t) {
     await t.until('original saved-source person document ready', async () => (await t.rpc('pages.list')).some(row => row.pageId === page.pageId && row.url === url && row.sessionId && !row.loading));
     const original = retainMentionPage(await t.rpc('pages.list'), page.pageId, url); originals[0] = original;
     await newChat(t);
-    await t.ax.press(shell('Add context', 'AXButton'));
-    await t.ax.press(shell('Browser context', 'AXButton'));
+    await t.ax.press(shell('Add context', 'AXPopUpButton'));
+    await t.ax.press(shell('Browser context', 'AXPopUpButton'));
     await t.ax.press({ name: 'No browser context', role: 'AXCheckBox', match: 'contains', scope: 'shell' });
     await t.ax.key('escape', 'hid');
-    await t.ax.press(shell('Add context', 'AXButton'));
+    await t.ax.press(shell('Add context', 'AXPopUpButton'));
     await t.ax.press(shell('Add browser tabs', 'AXButton'));
     const choice = { name: title, role: 'AXCheckBox', match: 'contains', scope: 'shell' };
     await t.ax.waitFor(choice);
@@ -70,7 +70,7 @@ export async function savedSourceRecovery(t) {
     assert.deepEqual(await t.rpc('runs.list'), runs, 'Unsent source drift must not create a run');
     assert.equal(t.model.calls.length, calls, 'Unsent source drift must not dispatch a model');
     await captureSavedSourceState(t, 'first-chat-saved-source-changed-kept-draft', draft, false);
-    await t.ax.press(shell('Add context', 'AXButton'));
+    await t.ax.press(shell('Add context', 'AXPopUpButton'));
     await t.ax.waitFor(shell(`Remove ${nextTitle}`, 'AXButton'));
     await t.ax.press(shell(`Remove ${nextTitle}`, 'AXButton'));
     await t.ax.key('escape', 'hid');

@@ -67,10 +67,10 @@ export async function run(t) {
     await t.until('loopback model configuration becomes real', async () => (await t.rpc('settings.get')).modelConfigured === true);
     await t.ax.waitFor(shell('Connect an AI model', 'AXButton'), 'absent');
     t.assert.equal((await t.ax.query(composer))[0]?.value, draft);
-    await t.ax.click(shell('Add context', 'AXButton'));
-    await t.ax.waitFor(shell('Browser context', 'AXButton'));
+    await t.ax.click(shell('Add context', 'AXPopUpButton'));
+    await t.ax.waitFor(shell('Browser context', 'AXPopUpButton'));
     await captureHomeJourneyState(t, 'home-add-context', 'home-add-context-menu');
-    await t.ax.click(shell('Browser context', 'AXButton'));
+    await t.ax.click(shell('Browser context', 'AXPopUpButton'));
     const search = shell('Find browser context');
     await t.ax.waitFor(search);
     await t.ax.focus(search);
@@ -116,11 +116,11 @@ export async function run(t) {
     }
     await t.ax.key('escape', 'hid');
     await t.ax.waitFor(search, 'absent');
-    t.assert.equal((await t.ax.query(shell('Browser context', 'AXButton')))[0]?.focused, true, 'Escape from child must return to the parent trigger');
+    t.assert.equal((await t.ax.query(shell('Browser context', 'AXPopUpButton')))[0]?.focused, true, 'Escape from child must return to the parent trigger');
     if (t.appearanceEnabled) await captureHomeJourneyState(t, 'home-context-parent-focus-returned', 'home-context-parent-focus-returned');
     await t.ax.key('escape', 'hid');
-    await t.ax.waitFor(shell('Browser context', 'AXButton'), 'absent');
-    t.assert.equal((await t.ax.query(shell('Add context', 'AXButton')))[0]?.focused, true, 'Escape from parent must restore the composer context trigger');
+    await t.ax.waitFor(shell('Browser context', 'AXPopUpButton'), 'absent');
+    t.assert.equal((await t.ax.query(shell('Add context', 'AXPopUpButton')))[0]?.focused, true, 'Escape from parent must restore the composer context trigger');
     if (t.appearanceEnabled) await captureHomeJourneyState(t, 'home-context-trigger-focus-returned', 'home-context-trigger-focus-returned');
     t.assert.equal((await t.ax.query(composer))[0]?.value, draft);
     requireInitialPages(await t.rpc('pages.list'));

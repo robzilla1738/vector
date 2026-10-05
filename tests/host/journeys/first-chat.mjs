@@ -176,8 +176,8 @@ export async function run(t) {
   let recoveredClosedContext;
   await t.step('remove closed explicit context and send the preserved draft without a page', { kind: 'ui', features: ['electronMigration'] }, async () => {
     await newChat(t);
-    const context = selector('Browser context', 'AXButton');
-    await t.ax.press(selector('Add context', 'AXButton'));
+    const context = selector('Browser context', 'AXPopUpButton');
+    await t.ax.press(selector('Add context', 'AXPopUpButton'));
     await t.ax.press(context);
     await t.ax.press({ name: 'Aux first-chat optional context', role: 'AXCheckBox', match: 'contains', scope: 'shell', index: 0 });
     await t.ax.key('escape', 'hid');
@@ -193,7 +193,7 @@ export async function run(t) {
     t.assert.equal(submit?.enabled, false, 'Closed explicit context must not silently fall back to another page');
     requireClosedContextUnsent(closedProof, await t.rpc('pages.list'), await t.rpc('runs.list'), t.model.calls);
     await captureHomeJourneyState(t, 'first-chat-closed-context-kept-draft', 'first-chat-closed-context-kept-draft');
-    await t.ax.press(selector('Add context', 'AXButton'));
+    await t.ax.press(selector('Add context', 'AXPopUpButton'));
     await t.ax.press(context);
     await t.ax.press({ name: 'No browser context', role: 'AXCheckBox', match: 'contains', scope: 'shell', index: 0 });
     await t.ax.key('escape', 'hid');

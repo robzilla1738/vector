@@ -130,7 +130,7 @@ export async function captureComposerImageRejection(t) {
   let primary, cleanup, result;
   try {
     await fixture.validate(); stable();
-    await ax.click(shell('Add context', 'AXButton'));
+    await ax.click(shell('Add context', 'AXPopUpButton'));
     await ax.waitFor(shell('Image', 'AXButton'), 'enabled');
     await ax.click(shell('Image', 'AXButton'));
     await fixture.validate(); stable();
@@ -142,7 +142,7 @@ export async function captureComposerImageRejection(t) {
     await captureHomeState(t, 'home-image-native-rejection', 'home-image-native-chooser-rejection');
     stable();
     if (!(await ax.query(shell('Image', 'AXButton'))).length) {
-      await ax.click(shell('Add context', 'AXButton'));
+      await ax.click(shell('Add context', 'AXPopUpButton'));
       await ax.waitFor(shell('Image', 'AXButton'), 'enabled');
     }
     await ax.click(shell('Image', 'AXButton'));
