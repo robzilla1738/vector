@@ -53,10 +53,12 @@ export async function run(t) {
   t.fixture.route('/first-chat/opened', fixturePage('Aux first-chat tool page', '<p>Explicit tool destination ready.</p>'));
   t.fixture.route('/first-chat/context', fixturePage('Aux first-chat optional context', '<p>Optional context evidence: copper-467.</p>'));
   const heldAnswer = t.model.holdText('Page-free answer', ' violet-271.');
-  let phase = 'answer', contextTurns = 0;
+  let phase = 'answer', contextTurns = 0, openTurns = 0, openContinuationReached = false;
   const decisions = [];
   let releaseOpen;
   const openGate = new Promise(resolve => { releaseOpen = resolve; });
+  let releaseOpenCompletion;
+  const openCompletionGate = new Promise(resolve => { releaseOpenCompletion = resolve; });
   t.model.respond(async payload => {
     if (!payload.tools?.length) return { content: phase === 'closed-recovery' ? RESTORED_CHAT_TITLE : 'Aux synthetic first chat' };
     decisions.push({ phase, stream: payload.stream === true, observations: observations(payload) });
@@ -67,7 +69,11 @@ export async function run(t) {
     }
     if (phase === 'open') {
       await openGate;
-      return tool('repl', { code: `const opened = openTab(${JSON.stringify(openedUrl)}); display(opened); submitResult("Explicit tool destination opened.");` }, 'first-chat-open-real-url');
+      if (++openTurns === 1)
+        return tool('repl', { code: `const opened = openTab(${JSON.stringify(openedUrl)}); display(opened);` }, 'first-chat-open-real-url');
+      openContinuationReached = true;
+      await openCompletionGate;
+      return tool('submit_result', { report: 'Explicit tool destination opened.' }, 'first-chat-complete-real-url');
     }
     if (++contextTurns === 1) return tool('snapshot', {}, 'first-chat-explicit-context');
     const observed = observations(payload).find(item => item.text.includes('copper-467'));
@@ -133,18 +139,25 @@ export async function run(t) {
     await t.ax.waitFor(allow);
     requireInitialPages(await t.rpc('pages.list'));
     await t.ax.press(allow);
+    let pages;
+    try {
+      await t.until('the model continuation follows the genuine tool open', async () => openContinuationReached, 30000);
+      pages = await t.until('the one tool-opened real URL finishes loading', async () => {
+        const pages = await t.rpc('pages.list');
+        const retained = pages.filter(page => initialPageIdentity.some(initial => initial.pageId === page.pageId));
+        const opened = pages.filter(page => !initialPageIdentity.some(initial => initial.pageId === page.pageId));
+        t.assert.deepEqual(pageIdentity(retained), initialPageIdentity, 'The tool must retain the exact initial native page');
+        return opened.length === 1 && opened[0].url === openedUrl && !opened[0].loading && opened;
+      }, 30000);
+      const active = await t.rpc('runs.get', { runId: requested.runId });
+      t.assert.ok(['running', 'planning'].includes(active.run.status), 'Observe the original page before terminal authority retirement');
+      t.assert.equal(pages[0].ownedByRuntime, true);
+      t.assert.ok(!pages.some(page => page.url === 'about:blank'));
+      t.assert.equal(t.model.errors.length, 0);
+      await captureHomeJourneyState(t, 'first-chat-explicit-tool-open', 'first-chat-explicit-tool-open');
+    } finally { releaseOpenCompletion(); }
     const details = await finished(t, requested.runId);
-    const pages = await t.until('the one tool-opened real URL finishes loading', async () => {
-      const pages = await t.rpc('pages.list');
-      const retained = pages.filter(page => initialPageIdentity.some(initial => initial.pageId === page.pageId));
-      const opened = pages.filter(page => !initialPageIdentity.some(initial => initial.pageId === page.pageId));
-      t.assert.deepEqual(pageIdentity(retained), initialPageIdentity, 'The tool must retain the exact initial native page');
-      return opened.length === 1 && opened[0].url === openedUrl && !opened[0].loading && opened;
-    }, 30000);
-    t.assert.equal(pages[0].ownedByRuntime, true);
-    t.assert.ok(!pages.some(page => page.url === 'about:blank'));
-    t.assert.equal(t.model.errors.length, 0);
-    await captureHomeJourneyState(t, 'first-chat-explicit-tool-open', 'first-chat-explicit-tool-open');
+    t.assert.equal(details.run.result.report, 'Explicit tool destination opened.');
     return { ax: await t.ax.dump(), rpc: { details, pages, decisions } };
   }, async () => {
     const details = requested ? await t.rpc('runs.get', { runId: requested.runId }) : null;
