@@ -1713,9 +1713,11 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
     let flags = try eventFlags(request["modifiers"] as? [String] ?? [])
     try mouseEvent(.mouseMoved, at: point, flags: flags)
     if command != "hover" {
+      usleep(40_000)
       let count = min(max(request["count"] as? Int ?? 1, 1), 3)
       for i in 1...count {
         try mouseEvent(button == .right ? .rightMouseDown : button == .center ? .otherMouseDown : .leftMouseDown, at: point, button: button, flags: flags, count: i)
+        usleep(40_000)
         try mouseEvent(button == .right ? .rightMouseUp : button == .center ? .otherMouseUp : .leftMouseUp, at: point, button: button, flags: flags, count: i)
         usleep(30_000)
       }
