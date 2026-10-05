@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import {
   smallGhostButtonProps as auxReserveSmallGhostButtonProps,
 } from "../ui/button-props";
@@ -432,7 +433,7 @@ export function CommandBar({
         if (live) setProviderBuilder(() => module.buildCommandProviderRows);
       })
       .catch((error) => {
-        if (live) setRankingError(error instanceof Error ? error.message : String(error));
+        if (live) setRankingError(errorMessage(error));
       });
     return () => {
       live = false;
@@ -450,7 +451,7 @@ export function CommandBar({
         }
       })
       .catch((error) => {
-        if (live) setRankingError(error instanceof Error ? error.message : String(error));
+        if (live) setRankingError(errorMessage(error));
       });
     return () => {
       live = false;
@@ -492,7 +493,7 @@ export function CommandBar({
             query: raw,
             generation: queryGeneration,
             items: [],
-            error: error instanceof Error ? error.message : String(error),
+            error: errorMessage(error),
           });
       });
     return () => {
@@ -676,7 +677,7 @@ export function CommandBar({
                   ...current.filter((item) => item.candidateKey !== candidateKey),
                 ]);
               } catch (error) {
-                setRankingError(error instanceof Error ? error.message : String(error));
+                setRankingError(errorMessage(error));
               }
             }
           }
@@ -986,7 +987,7 @@ export function CommandBar({
       ]);
       setRankingError(null);
     } catch (error) {
-      setRankingError(error instanceof Error ? error.message : String(error));
+      setRankingError(errorMessage(error));
     }
   };
   const clearRanking = async () => {
@@ -995,7 +996,7 @@ export function CommandBar({
       setRankingEntries([]);
       setRankingError(null);
     } catch (error) {
-      setRankingError(error instanceof Error ? error.message : String(error));
+      setRankingError(errorMessage(error));
     }
   };
 

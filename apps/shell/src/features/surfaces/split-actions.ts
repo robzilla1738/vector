@@ -10,18 +10,21 @@ export const localSplitPage = (pageId: string) => {
   return page && isLocal(page) && !page.ownedByRuntime && page.controller === "none" && canSplitPage(page) ? page : undefined;
 };
 
+const changedTabsMessage = "The tabs changed. Try splitting them again.";
+const unavailableTabsMessage = "The split tabs moved or became unavailable.";
+
 let splitOperations: Promise<unknown> = Promise.resolve();
 const resizeOrigins = new Map<string, Layout>();
 const nativePair = (group: SplitGroup) => JSON.stringify([group.panes, group.layout, group.ratios[0]]);
 
 async function synchronizePairs(before: SplitGroup[], after: SplitGroup[], valid = () => true) {
-  if (!valid()) throw new Error("The tabs changed. Try splitting them again.");
+  if (!valid()) throw new Error(changedTabsMessage);
   for (const group of before) if (group.panes.length === 2 && !after.some(next => next.id === group.id && next.panes.length === 2)) {
-    if (!valid()) throw new Error("The tabs changed. Try splitting them again.");
+    if (!valid()) throw new Error(changedTabsMessage);
     await tabCommand({ kind: "unsplit", pageId: group.panes[0]! });
   }
   for (const group of after) {
-    if (!valid()) throw new Error("The tabs changed. Try splitting them again.");
+    if (!valid()) throw new Error(changedTabsMessage);
     const old = before.find(item => item.id === group.id);
     if (group.panes.length === 2 && (!old || nativePair(group) !== nativePair(old)))
       await tabCommand({ kind: "split", pageIds: [group.panes[0]!, group.panes[1]!], layout: group.layout as "row" | "column", ratio: group.ratios[0]! });
@@ -40,11 +43,11 @@ export function commitSplit(layout: Layout, previous = useStore.getState().layou
       return [before, nativeBefore].some(groups => JSON.stringify(groups.find(item => item.id === group.id)) !== JSON.stringify(next));
     });
     const available = () => valid() && changed.every(group => group.panes.every(id => localSplitPage(id) && useStore.getState().layout.tabSpace[id] === previous.tabSpace[id]));
-    if (JSON.stringify(useStore.getState().layout.splitGroups ?? []) !== signature || !available()) throw new Error("The tabs changed. Try splitting them again.");
+    if (JSON.stringify(useStore.getState().layout.splitGroups ?? []) !== signature || !available()) throw new Error(changedTabsMessage);
     try {
       await synchronizePairs(nativeBefore, after, available);
       const current = useStore.getState().layout;
-      if (JSON.stringify(current.splitGroups ?? []) !== signature || !available()) throw new Error("The tabs changed. Try splitting them again.");
+      if (JSON.stringify(current.splitGroups ?? []) !== signature || !available()) throw new Error(changedTabsMessage);
       const next = { ...current, splitGroups: after };
       persistLayout(next);
       useStore.setState({ layout: next });
@@ -56,7 +59,7 @@ export function commitSplit(layout: Layout, previous = useStore.getState().layou
       const affected = new Set(changed.flatMap(group => group.panes));
       if (!affected.size) throw reason;
       try {
-        if (![...affected].every(localSplitPage)) throw new Error("The split tabs moved or became unavailable.");
+        if (![...affected].every(localSplitPage)) throw new Error(unavailableTabsMessage);
         let current = useStore.getState().layout;
         if (nativePrevious !== previous && JSON.stringify(current.splitGroups ?? []) === signature) {
           current = { ...current, splitGroups: nativeBefore };
@@ -64,14 +67,14 @@ export function commitSplit(layout: Layout, previous = useStore.getState().layou
         }
         const restore = current.splitGroups ?? [];
         for (const group of restore) if (group.panes.some(id => affected.has(id)) && !group.panes.every(localSplitPage))
-          throw new Error("The split tabs moved or became unavailable.");
+          throw new Error(unavailableTabsMessage);
         const representatives = new Set([...nativeBefore, ...after].filter(group => group.panes.length === 2 && group.panes.some(id => affected.has(id))).map(group => group.panes[0]!));
         const restoring = restore.filter(group => group.panes.some(id => affected.has(id)));
         const restoredPanes = new Set([...affected, ...restoring.flatMap(group => group.panes)]);
         const restoreSignature = JSON.stringify(restore);
         const available = () => valid() && JSON.stringify(useStore.getState().layout.splitGroups ?? []) === restoreSignature && [...restoredPanes].every(id => localSplitPage(id) && useStore.getState().layout.tabSpace[id] === current.tabSpace[id]);
         for (const pageId of representatives) {
-          if (!available()) throw new Error("The split tabs moved or became unavailable.");
+          if (!available()) throw new Error(unavailableTabsMessage);
           await tabCommand({ kind: "unsplit", pageId });
         }
         await synchronizePairs([], restoring, available);

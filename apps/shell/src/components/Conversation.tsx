@@ -1,3 +1,4 @@
+import { errorMessage } from "../error-message";
 import { ConversationSourceAction, ConversationSourceRow, ConversationSourcesSummary, useConversationSourcesOwner } from "./ConversationSourceControls";
 import { ConversationPreviewAction, previewPageIdentity, useConversationPreviewOwner } from "./ConversationPreviewControls";
 import { useConversationContextControls } from "./ConversationContextControls";
@@ -543,7 +544,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       call("conversations.workspace.get", { chatId: id }),
       call("conversations.sources.get", { chatId: id }),
     ]).then(([imageReferences, documents, workspace, sourceList]) => { if (current()) { loadedContextChat.current = id; setImages(imageReferences.images); setAttachments(documents.attachments); setWorkspaceContext(workspace); setConversationSources(sourceList.sources); } })
-      .catch(error => { if (current()) setContextError(error instanceof Error ? error.message : String(error)); })
+      .catch(error => { if (current()) setContextError(errorMessage(error)); })
       .finally(() => { if (current()) setContextLoading(false); });
     return () => { cancelled = true; };
   }, [id, turns.length, last?.status, connected, contextRefresh, attachmentSaving, conversationCurrent]);
@@ -732,7 +733,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       restoreDraft();
       if (activeChat.current === id) {
         setSendError("Your message couldn’t be sent. Try sending it again.");
-        setSendErrorDetails(error instanceof Error ? error.message : String(error));
+        setSendErrorDetails(errorMessage(error));
       }
     }
     finally { sendPending.current = false; setSending(false); setSendingChat(null); }
