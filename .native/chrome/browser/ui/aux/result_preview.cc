@@ -294,8 +294,7 @@ std::optional<url::Origin> GetAdmittedResultPreviewOrigin(
   }
   // The precursor is the destination, never the privileged shell initiator.
   // Only a fresh opaque derivative can leave this private admission boundary.
-  return url::Origin::CreateFromNormalizedTuple(kResultPreviewScheme, "preview", 0)
-      .DeriveNewOpaqueOrigin();
+  return url::Origin::CreateOpaqueAuxResultPreviewOrigin();
 }
 
 mojo::PendingRemote<network::mojom::URLLoaderFactory>

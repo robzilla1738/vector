@@ -3694,6 +3694,7 @@ class CONTENT_EXPORT NavigationRequest
   // One opaque identity per original admitted non-network navigation. No
   // authority is implied by this cached identity; final commit re-admits it.
   std::optional<url::Origin> admitted_non_network_origin_;
+  std::optional<url::Origin> admitted_non_network_sandbox_origin_;
   GURL admitted_non_network_url_;
   WeakDocumentPtr admitted_non_network_parent_;
   bool admitted_non_network_refused_ = false;

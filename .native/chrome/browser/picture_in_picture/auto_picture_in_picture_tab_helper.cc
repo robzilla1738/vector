@@ -37,6 +37,7 @@
 #include "components/permissions/permission_decision_auto_blocker.h"
 #include "content/public/browser/media_session.h"
 #include "content/public/browser/media_session_service.h"
+#include "content/public/browser/picture_in_picture_user_authority.h"
 #include "content/public/browser/render_frame_host.h"
 #include "media/base/media_switches.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -619,9 +620,14 @@ bool AutoPictureInPictureTabHelper::RevalidateAutoPictureInPicture(
   if (!helper || !helper->web_contents() ||
       document.AsRenderFrameHostIfValid() != helper->web_contents()->GetPrimaryMainFrame() ||
       Profile::FromBrowserContext(helper->web_contents()->GetBrowserContext()) != profile ||
-      helper->tab_observer_helper_->IsTabActivated() ||
-      helper->clock_->NowTicks() >= helper->auto_picture_in_picture_activation_time_ ||
-      (helper->window_occlusion_helper_ &&
+      helper->tab_observer_helper_->IsTabActivated()) return false;
+  if (helper->clock_->NowTicks() >=
+      helper->auto_picture_in_picture_activation_time_) {
+    content::RecordExpiredAutomaticPictureInPictureDocument(
+        *document.AsRenderFrameHostIfValid());
+    return false;
+  }
+  if ((helper->window_occlusion_helper_ &&
        helper->window_occlusion_helper_->GetOcclusionState() == OcclusionState::kOccluded)) return false;
 #if BUILDFLAG(ENABLE_AUX_SHELL)
   auto* identity = aux::PageIdentity::FromWebContents(helper->web_contents());

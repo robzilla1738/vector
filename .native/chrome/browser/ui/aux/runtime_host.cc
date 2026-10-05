@@ -566,6 +566,9 @@ void AuxRuntimeHost::OnCdpMessage(uint64_t connection_generation,
 void AuxRuntimeHost::OnCdpAuthorityChanged() {
   if (shutting_down_ || !admitted_native_generation_ ||
       admitted_native_generation_ <= retired_native_generation_) return;
+  // Installed fixture transport has no Worker connection. Keep authority
+  // notifications on that transport, just as CallApi already does.
+  if (test_dispatch_) return;
   worker_.AsyncCall(&Worker::SendCdpAuthorityChanged).WithArgs(admitted_native_generation_);
   SchedulePump();
 }
@@ -631,9 +634,8 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
   // original admitting controller, if it still exists; never recreate it.
   auto original_egress = native_connection_egress_;
   native_connection_egress_.reset();
-  if (original_egress)
-    original_egress->Disconnect();
-  if (!retirement_weak) return;
+  // Detach every original host slot before Disconnect notifies observers.
+  // A retirement callback may synchronously publish a replacement connection.
   native_person_connection_id_.clear();
   ++native_recorder_session_generation_;
   auto recorder = native_recorder_;
@@ -644,6 +646,9 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
   const auto weak = weak_factory_.GetWeakPtr();
   auto captures = std::move(native_person_captures_);
   native_person_captures_.clear();
+  if (original_egress)
+    original_egress->Disconnect();
+  if (!retirement_weak) return;
   for (const auto& [id, capture] : captures) {
     if (capture) capture->Retire();
     if (!weak) return;

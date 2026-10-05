@@ -1,0 +1,561 @@
+--- a/cc/trees/property_tree.cc
++++ b/cc/trees/property_tree.cc
+@@ -17,7 +17,6 @@
+ #include "base/check_op.h"
+ #include "base/debug/crash_logging.h"
+ #include "base/feature_list.h"
+-#include "base/logging.h"
+ #include "base/memory/ptr_util.h"
+ #include "base/numerics/checked_math.h"
+ #include "base/numerics/safe_conversions.h"
+@@ -2710,14 +2709,6 @@
+             effect_tree_mutable().set_needs_update(true);
+           }
+         } else {
+-          LOG(ERROR) << "Aux opacity diagnostic running="
+-                     << state.currently_running[property]
+-                     << " potential=" << state.potentially_animating[property]
+-                     << " needs_rebuild=" << needs_rebuild()
+-                     << " effect_node_count=" << effect_tree().size()
+-                     << " effect_element_count="
+-                     << effect_tree().element_id_to_node_index().size()
+-                     << " animation_property_count=" << element_id_map.size();
+           DCHECK_NODE_EXISTENCE(check_node_existence, state, property,
+                                 needs_rebuild())
+               << "Attempting to animate opacity on non existent effect node";
+--- a/chrome/browser/ui/aux/native_creator_close_receipt.cc
++++ b/chrome/browser/ui/aux/native_creator_close_receipt.cc
+@@ -108,12 +108,14 @@
+   if (token == token_ && !retired_ && !detaching_)
+     original_ack_pending_ = true;
+ }
+-void NativeCreatorCloseReceipt::OriginalAck(const base::UnguessableToken& token) {
+-  if (token != token_) return;
++bool NativeCreatorCloseReceipt::OriginalAck(const base::UnguessableToken& token) {
++  if (token != token_) return false;
+   original_ack_pending_ = false;
++  const bool human_close = static_cast<bool>(human_close_);
+   if (human_close_)
+     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+         FROM_HERE, std::move(human_close_));
++  return human_close;
+ }
+ void NativeCreatorCloseReceipt::Finish(bool closed) {
+   if (!completion_) return;
+--- a/chrome/browser/ui/aux/native_creator_close_receipt.h
++++ b/chrome/browser/ui/aux/native_creator_close_receipt.h
+@@ -34,7 +34,8 @@
+   // retire; it never takes over that callback's token or current metadata.
+   bool QueueHumanClose(base::OnceClosure close);
+   void AwaitOriginalAck(const base::UnguessableToken& token);
+-  void OriginalAck(const base::UnguessableToken& token);
++  // Returns whether this exact ACK releases a separately queued human close.
++  bool OriginalAck(const base::UnguessableToken& token);
+   bool MayContinue(const base::UnguessableToken& token);
+   base::WeakPtr<NativeCreatorCloseReceipt> GetWeakPtr();
+ 
+--- a/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
++++ b/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
+@@ -12,9 +12,6 @@
+ #include "chrome/browser/profiles/profile_manager_observer.h"
+ #include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
+-#include "base/logging.h"
+-#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+-#include "components/javascript_dialogs/app_modal_dialog_queue.h"
+ #include "base/run_loop.h"
+ #include "base/timer/timer.h"
+ #include "base/test/test_future.h"
+@@ -192,19 +189,7 @@
+     generation_ = AuxCreatorCloseBrowserTestPeer::Publish(host_);
+     original_count_ = browser()->GetTabStripModel()->count();
+   }
+-  void ObserveHumanCloseDebt(const char* phase) {
+-    auto* queue = javascript_dialogs::AppModalDialogQueue::GetInstance();
+-    auto* active = queue->active_dialog();
+-    LOG(ERROR) << "AUX_CREATOR_HUMAN_CLOSE_STATE phase=" << phase
+-        << " browserCount=" << GlobalBrowserCollection::GetInstance()->GetSize()
+-        << " originalPageLive=" << static_cast<bool>(page_)
+-        << " originalHostHeld=" << (host_ != nullptr)
+-        << " activeDialog=" << (active != nullptr)
+-        << " activeDialogView=" << (active && active->view())
+-        << " queuedDialog=" << (queue->begin() != queue->end());
+-  }
+   void TearDownOnMainThread() override {
+-    if (observe_human_close_debt_) ObserveHumanCloseDebt("teardown_before_cleanup");
+     broker_.reset();
+     if (host_) AuxCreatorCloseBrowserTestPeer::Retire(host_, generation_);
+     if (page_ && page_->GetDelegate()) {
+@@ -212,7 +197,6 @@
+       if (dialogs) dialogs->CancelDialogs(page_.get(), true);
+     }
+     base::RunLoop().RunUntilIdle();
+-    if (observe_human_close_debt_) ObserveHumanCloseDebt("teardown_after_idle");
+     host_ = nullptr;
+     controller_ = nullptr;
+     page_.reset();
+@@ -371,7 +355,6 @@
+   base::test::TestFuture<AuxRuntimeHost::Response> owner_resume_;
+   std::unique_ptr<CdpBroker> broker_;
+   base::test::TestFuture<base::DictValue> attached_, native_ready_;
+-  bool observe_human_close_debt_ = false;
+   base::DictValue native_lease_;
+   std::string native_attachment_id_;
+   double native_expiry_ = 0;
+@@ -844,7 +827,6 @@
+ 
+ IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
+                        IndependentHumanCloseNeverBecomesAgentSuccess) {
+-  observe_human_close_debt_ = true;
+   ASSERT_NO_FATAL_FAILURE(Create());
+   ASSERT_NO_FATAL_FAILURE(InstallBeforeUnload());
+   Close();
+@@ -852,15 +834,12 @@
+   ASSERT_NE(dialog, nullptr);
+   ASSERT_NE(dialog->view(), nullptr);
+   EXPECT_FALSE(close_.IsReady());
+-  ObserveHumanCloseDebt("before_human_close");
+   browser()->GetTabStripModel()->CloseWebContents(page_.get(), TabCloseTypes::CLOSE_NONE);
+   EXPECT_NE(close_.Get().FindDict("error"), nullptr);
+   EXPECT_TRUE(page_);
+-  ObserveHumanCloseDebt("after_original_error");
+   dialog->view()->AcceptAppModalDialog();
+   base::RunLoop().RunUntilIdle();
+   EXPECT_FALSE(page_);
+-  ObserveHumanCloseDebt("after_dialog_accept_idle");
+ }
+ 
+ class RetireCreatorAtFinalObserver : public TabStripModelObserver {
+--- a/chrome/browser/ui/aux/native_person_capture_controller.cc
++++ b/chrome/browser/ui/aux/native_person_capture_controller.cc
+@@ -4,7 +4,6 @@
+ #include <algorithm>
+ #include <ranges>
+ #include "base/base64.h"
+-#include "base/logging.h"
+ #include "base/functional/bind.h"
+ #include "base/task/bind_post_task.h"
+ #include "mojo/public/cpp/bindings/callback_helpers.h"
+@@ -109,7 +108,6 @@
+   }
+ }
+ void NativePersonCaptureController::ScriptDone(std::string phase, size_t index, bool accepted) {
+-  LOG(ERROR) << "Aux capture diagnostic script phase=" << phase << " index=" << index << " accepted=" << accepted;
+   if (!accepted) {
+     if (phase == "restore") {
+       auto* frame = frames_[index].AsRenderFrameHostIfValid();
+@@ -181,7 +179,6 @@
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool admitted = token && widget && frame && frame->GetRenderWidgetHost() == widget.get() && Current();
+   if (!weak) return;
+-  LOG(ERROR) << "Aux capture diagnostic submitted admitted=" << admitted;
+   if (!admitted) { Painted(false); return; }
+   frame = frames_[index].AsRenderFrameHostIfValid();
+   if (!frame || !widget || frame->GetRenderWidgetHost() != widget.get()) { Painted(false); return; }
+@@ -195,7 +192,6 @@
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool admitted = token && !time.is_null() && widget && frame && frame->GetRenderWidgetHost() == widget.get() && Current();
+   if (!weak) return;
+-  LOG(ERROR) << "Aux capture diagnostic activated admitted=" << admitted;
+   if (!admitted) { Painted(false); return; }
+   frame = frames_[index].AsRenderFrameHostIfValid();
+   if (!frame || !widget || frame->GetRenderWidgetHost() != widget.get()) { Painted(false); return; }
+@@ -217,14 +213,12 @@
+   else Dispatch("current");
+ }
+ void NativePersonCaptureController::Copy() {
+-  LOG(ERROR) << "Aux capture diagnostic copy entered";
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool admitted = Current();
+   if (!weak) return;
+   if (!admitted) { failed_ = true; Cleanup(); return; }
+   auto* view = web_contents()->GetRenderWidgetHostView();
+   if (!view || !view->IsShowing()) { failed_ = true; Cleanup(); return; }
+-  LOG(ERROR) << "Aux capture diagnostic copy_route child_frame=" << static_cast<content::RenderWidgetHostViewBase*>(view)->IsRenderWidgetHostViewChildFrame();
+   scale_ = view->GetDeviceScaleFactor();
+   viewport_width_ = view->GetVisibleViewportSize().width();
+   viewport_height_ = view->GetVisibleViewportSize().height();
+@@ -249,8 +243,6 @@
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool admitted = !failed_ && Current();
+   if (!weak) return;
+-  LOG(ERROR) << "Aux capture diagnostic copied admitted=" << admitted << " same_surfaces=" << same_surfaces << " has_result=" << result.has_value();
+-  if (!result.has_value()) LOG(ERROR) << "Aux capture diagnostic copy_error=" << static_cast<int>(result.error());
+   if (!admitted || !same_surfaces || !result.has_value()) { failed_ = true; Cleanup(); return; }
+   auto* view = web_contents()->GetRenderWidgetHostView();
+   if (!view || view->GetVisibleViewportSizeDevicePx() != viewport_pixels_ ||
+@@ -282,7 +274,6 @@
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool accepted = !failed_ && !cleanup_debt_ && Current() && !png_.empty();
+   if (!weak) return;
+-  LOG(ERROR) << "Aux capture diagnostic finish accepted=" << accepted << " failed=" << failed_ << " cleanup_debt=" << cleanup_debt_ << " has_png=" << !png_.empty();
+   const bool debt = cleanup_debt_;
+   auto callback = std::move(reply_);
+   auto result = Fault(debt);
+--- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
++++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+@@ -929,7 +929,14 @@
+   auto* receipt = aux::NativeCreatorCloseReceipt::FromWebContents(source);
+   if (!receipt) return;
+   auto original = receipt->GetWeakPtr();
+-  receipt->OriginalAck(invocation);
++  const bool human_close = receipt->OriginalAck(invocation);
++  // The agent remains retired. An accepted ACK for this exact document may
++  // complete the separate queued human close through ordinary unload handling.
++  if (human_close && proceed && original &&
++      original_document.AsRenderFrameHostIfValid() == source->GetPrimaryMainFrame()) {
++    unload_controller_->BeforeUnloadFired(source, proceed, proceed_to_fire_unload);
++    return;
++  }
+   if (!original || invocation.is_empty() ||
+       original_document.AsRenderFrameHostIfValid() != source->GetPrimaryMainFrame() ||
+       !original->MayContinue(invocation)) {
+--- a/components/viz/service/display/surface_aggregator.cc
++++ b/components/viz/service/display/surface_aggregator.cc
+@@ -1571,27 +1571,15 @@
+ bool SurfaceAggregator::MeetsAuxPersonCaptureFrames(ResolvedFrameData& source, const CopyOutputRequest& request) {
+   const auto& required = request.aux_person_capture_surfaces();
+   const auto& tokens = request.aux_person_capture_tokens();
+-  // Diagnostic only: at most one marker for this original eligibility call.
+-  // Never include surface IDs, frame tokens, URLs, or copied pixels.
+-  bool refusal_reported = false;
+-  const auto refuse = [&](int category, size_t index = 64) {
+-    if (!refusal_reported) {
+-      refusal_reported = true;
+-      LOG(ERROR) << "Original Capture Viz refusal=" << category
+-                 << " required_index=" << index
+-                 << " required_count=" << required.size();
+-    }
+-    return false;
+-  };
+   if (required.empty()) return tokens.empty();
+-  if (required.size() > 64 || required.size() != tokens.size()) return refuse(1);
++  if (required.size() > 64 || required.size() != tokens.size()) return false;
+   std::map<SurfaceId,uint32_t> selected;
+   std::set<SurfaceId> ancestors;
+   size_t examined = 0;
+   std::function<bool(ResolvedFrameData&,size_t)> visit = [&](ResolvedFrameData& frame, size_t depth) {
+-    if (!frame.is_valid() || depth > 64 || ancestors.contains(frame.surface_id())) return refuse(2);
++    if (!frame.is_valid() || depth > 64 || ancestors.contains(frame.surface_id())) return false;
+     if (selected.contains(frame.surface_id())) return true;
+-    if (selected.size() >= 64) return refuse(3);
++    if (selected.size() >= 64) return false;
+     selected.emplace(frame.surface_id(), frame.GetMetadata().frame_token);
+     ancestors.insert(frame.surface_id());
+     // Only passes reachable from the original root contribute pixels. An
+@@ -1599,37 +1587,37 @@
+     std::set<CompositorRenderPassId> active_passes, visited_passes;
+     std::function<bool(const ResolvedPassData&,size_t)> visit_pass = [&](const ResolvedPassData& pass, size_t pass_depth) {
+       const auto id = pass.render_pass().id;
+-      if (pass_depth > 64 || active_passes.contains(id)) return refuse(4);
++      if (pass_depth > 64 || active_passes.contains(id)) return false;
+       if (visited_passes.contains(id)) return true;
+-      if (visited_passes.size() >= 64) return refuse(5);
++      if (visited_passes.size() >= 64) return false;
+       active_passes.insert(id);
+       for (const auto* quad : pass.render_pass().quad_list) {
+-        if (++examined > 10000) return refuse(6);
++        if (++examined > 10000) return false;
+         if (const auto* pass_quad = quad->DynamicCast<CompositorRenderPassDrawQuad>()) {
+           const ResolvedPassData* referenced = nullptr;
+           for (const auto& candidate : frame.GetResolvedPasses())
+             if (candidate.render_pass().id == pass_quad->render_pass_id) referenced = &candidate;
+-          if (!referenced || !visit_pass(*referenced,pass_depth+1)) return refuse(7);
++          if (!referenced || !visit_pass(*referenced,pass_depth+1)) return false;
+         } else if (quad->material == DrawQuad::Material::kSurfaceContent) {
+           const auto* surface_quad = SurfaceDrawQuad::MaterialCast(quad);
+           // The same cached range resolution is used by EmitSurfaceContent.
+           auto* child = GetResolvedFrame(surface_quad->surface_range);
+-          if (!child || !visit(*child,depth+1)) return refuse(8);
++          if (!child || !visit(*child,depth+1)) return false;
+         }
+       }
+       active_passes.erase(id); visited_passes.insert(id); return true;
+     };
+-    if (!visit_pass(frame.GetRootRenderPassData(),0)) return refuse(9);
++    if (!visit_pass(frame.GetRootRenderPassData(),0)) return false;
+     ancestors.erase(frame.surface_id()); return true;
+   };
+-  if (!visit(source,0)) return refuse(9);
++  if (!visit(source,0)) return false;
+   for (size_t i = 0; i < required.size(); ++i) {
+-    if (!required[i].is_valid() || !tokens[i]) return refuse(10, i);
+-    for (size_t j = 0; j < i; ++j) if (required[i].frame_sink_id() == required[j].frame_sink_id()) return refuse(11, i);
++    if (!required[i].is_valid() || !tokens[i]) return false;
++    for (size_t j = 0; j < i; ++j) if (required[i].frame_sink_id() == required[j].frame_sink_id()) return false;
+     auto actual = selected.find(required[i]);
+     // Serial-number comparison refuses older and ambiguous half-range tokens,
+     // including wraparound; never accept zero as an activated masked frame.
+-    if (actual == selected.end() || !actual->second || static_cast<uint32_t>(actual->second-tokens[i]) >= 0x80000000u) return refuse(actual == selected.end() ? 12 : !actual->second ? 13 : 14, i);
++    if (actual == selected.end() || !actual->second || static_cast<uint32_t>(actual->second-tokens[i]) >= 0x80000000u) return false;
+   }
+   return true;
+ }
+--- a/content/browser/media/session/media_session_impl.cc
++++ b/content/browser/media/session/media_session_impl.cc
+@@ -76,6 +76,7 @@
+   uint64_t consumed_sequence = 0;
+   bool requires_ui_receipt = false;
+   base::TimeTicks input_at;
++  base::TimeTicks automatic_at;
+  private:
+   explicit PictureInPictureUserAuthority(RenderFrameHost* frame)
+       : DocumentUserData(frame) {}
+@@ -131,6 +132,7 @@
+   if (!CurrentPictureInPictureDocument(frame)) return;
+   auto* state = PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&frame);
+   state->automatic_sequence = ++pip_input_sequence;
++  state->automatic_at = base::TimeTicks::Now();
+ }
+ bool TransferPictureInPictureUserInput(RenderFrameHost& source,
+                                       RenderFrameHost& target) {
+@@ -157,8 +159,10 @@
+       ->RecordPictureInPictureUserInvocation(target, false);
+   return true;
+ }
+-bool ConsumePictureInPictureUserInput(RenderFrameHost& frame) {
++bool ConsumePictureInPictureUserInput(RenderFrameHost& frame,
++                                     bool* expired_automatic_lineage) {
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (expired_automatic_lineage) *expired_automatic_lineage = false;
+   auto* contents = WebContents::FromRenderFrameHost(&frame);
+   if (!frame.IsActive() || !frame.IsRenderFrameLive() || !contents) return false;
+   auto* primary = contents->GetPrimaryMainFrame();
+@@ -169,7 +173,13 @@
+   auto* state = PictureInPictureUserAuthority::GetForCurrentDocument(primary);
+   if (!state || (!state->automatic_sequence && !state->requires_ui_receipt))
+     return true;
+-  if (!HasLaterPictureInPictureInput(*state, state->automatic_sequence)) return false;
++  if (!HasLaterPictureInPictureInput(*state, state->automatic_sequence)) {
++    if (expired_automatic_lineage)
++      *expired_automatic_lineage = state->automatic_sequence &&
++          !state->automatic_at.is_null() &&
++          base::TimeTicks::Now() >= state->automatic_at + blink::kActivationLifespan;
++    return false;
++  }
+   state->consumed_sequence = state->input_sequence;
+   return true;
+ }
+--- a/content/browser/renderer_host/delegated_frame_host.cc
++++ b/content/browser/renderer_host/delegated_frame_host.cc
+@@ -11,7 +11,6 @@
+ #include "base/check.h"
+ #include "base/command_line.h"
+ #include "base/debug/crash_logging.h"
+-#include "base/logging.h"
+ #include "base/debug/dump_without_crashing.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+@@ -184,9 +183,7 @@
+ void DelegatedFrameHost::CopyAuxPersonCaptureSurface(const viz::SurfaceId& surface,
+       const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens,
+     base::TimeDelta timeout, base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
+-  LOG(ERROR) << "Original Capture copy branch=0 required_count=" << required_surfaces.size();
+   if (!surface.is_valid() || required_surfaces.empty() || required_surfaces.front() != surface || surface != GetCurrentSurfaceId() || !CanCopyFromCompositingSurface()) {
+-    LOG(ERROR) << "Original Capture copy branch=1 preflight_accepted=0";
+     std::move(callback).Run(base::unexpected(CopyFromSurfaceError::kUnknownVizError)); return;
+   }
+   ui::Compositor::ScopedKeepSurfaceAliveCallback keep_alive;
+@@ -225,7 +222,6 @@
+   auto request = std::make_unique<viz::CopyOutputRequest>(format, destination,
+                                                           std::move(callback));
+   if (!request->SetAuxPersonCaptureFrames(required_surfaces, required_tokens)) {
+-    if (!required_surfaces.empty()) LOG(ERROR) << "Original Capture copy branch=2 setter_accepted=0 required_count=" << required_surfaces.size();
+     request->SendError(viz::CopyOutputResult::Error::kUnknown); return;
+   }
+   // Run result callback on the current thread in case `callback` needs to run
+@@ -238,10 +234,8 @@
+   // It is possible for us to not have a valid surface to copy from. Such as
+   // if a navigation fails to complete. In such a case do not attempt to request
+   // a copy.
+-  if (!CanCopyFromCompositingSurface()) {
+-    if (!required_surfaces.empty()) LOG(ERROR) << "Original Capture copy branch=3 copy_eligible=0";
+-    return;
+-  }
++  if (!CanCopyFromCompositingSurface())
++    return;
+ 
+   if (!src_subrect.IsEmpty()) {
+     request->set_area(
+@@ -268,7 +262,6 @@
+         gfx::Vector2d(output_size.width(), output_size.height()));
+   }
+   CHECK(host_frame_sink_manager_);
+-  if (!required_surfaces.empty()) LOG(ERROR) << "Original Capture copy branch=4 setter_accepted=1 dispatched=1 required_count=" << required_surfaces.size();
+   host_frame_sink_manager_->RequestCopyOfOutput(
+       surface_id, std::move(request), /*capture_exact_surface_id=*/exact_surface,
+       timeout);
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -10622,8 +10622,6 @@
+   // TODO(crbug.com/487768779): Move all `params` validation from this function
+   // into VerifyCreateNewWindowParams.
+   if (!VerifyCreateNewWindowParams(*this, *params)) {
+-    if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE)
+-      LOG(ERROR) << "AUX_PIP_WINDOW_DENIAL category=verify_params";
+     std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
+     return;
+   }
+@@ -10664,8 +10662,6 @@
+     if (bypass_allowed) {
+       effective_transient_activation_state = true;
+     } else {
+-      if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE)
+-        LOG(ERROR) << "AUX_PIP_WINDOW_DENIAL category=popup_bypass";
+       std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
+       return;
+     }
+@@ -10687,19 +10683,20 @@
+   // If this frame isn't allowed to create a window, return early (before we
+   // consume transient user activation).
+   if (!can_create_window) {
+-    if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE)
+-      LOG(ERROR) << "AUX_PIP_WINDOW_DENIAL category=can_create_window";
+     std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
+     return;
+   }
+ 
+   // Automatic provenance survives consumed/expired renderer activation and
+   // BFCache. A synthetic newer activation cannot turn it into attended PiP.
++  bool expired_automatic_lineage = false;
+   if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE &&
+-      !ConsumePictureInPictureUserInput(*this)) {
+-    if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE)
+-      LOG(ERROR) << "AUX_PIP_WINDOW_DENIAL category=native_pip_receipt";
+-    std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
++      !ConsumePictureInPictureUserInput(*this, &expired_automatic_lineage)) {
++    std::move(callback).Run(
++        expired_automatic_lineage
++            ? mojom::CreateNewWindowStatus::kBlockedExpiredAutomaticLineage
++            : mojom::CreateNewWindowStatus::kBlocked,
++        nullptr);
+     return;
+   }
+ 
+@@ -10708,8 +10705,6 @@
+     GetContentClient()->browser()->OnNativeManualDocumentPictureInPicture(*this);
+     if (original_document.AsRenderFrameHostIfValid() != this ||
+         !IsActive() || !is_render_frame_created()) {
+-      if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE)
+-        LOG(ERROR) << "AUX_PIP_WINDOW_DENIAL category=manual_callback_retired";
+       std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
+       return;
+     }
+--- a/content/browser/renderer_host/render_widget_host_view_child_frame.cc
++++ b/content/browser/renderer_host/render_widget_host_view_child_frame.cc
+@@ -1007,6 +1007,41 @@
+ 
+ #endif  // BUILDFLAG(IS_MAC)
+ 
++void RenderWidgetHostViewChildFrame::CopyAuxPersonCaptureSurface(
++    const viz::SurfaceId& surface,
++    const std::vector<viz::SurfaceId>& required_surfaces,
++    const std::vector<uint32_t>& required_tokens,
++    base::TimeDelta timeout,
++    base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
++  if (!surface.is_valid() || required_surfaces.empty() ||
++      required_surfaces.front() != surface || surface != GetCurrentSurfaceId() ||
++      !IsShowing() || !IsSurfaceAvailableForCopy()) {
++    std::move(callback).Run(
++        base::unexpected(CopyFromSurfaceError::kUnknownVizError));
++    return;
++  }
++  auto request = std::make_unique<viz::CopyOutputRequest>(
++      viz::CopyOutputRequest::ResultFormat::RGBA,
++      viz::CopyOutputRequest::ResultDestination::kSystemMemory,
++      base::BindOnce(
++          [](base::OnceCallback<void(const content::CopyFromSurfaceResult&)>
++                 callback,
++             std::unique_ptr<viz::CopyOutputResult> result) {
++            std::move(callback).Run(ToCopyFromSurfaceResult(
++                result->ScopedAccessSkBitmap().GetOutScopedBitmapAndMetadata()));
++          },
++          std::move(callback)));
++  if (!request->SetAuxPersonCaptureFrames(required_surfaces, required_tokens)) {
++    request->SendError(viz::CopyOutputResult::Error::kUnknown);
++    return;
++  }
++  request->set_result_task_runner(
++      base::SingleThreadTaskRunner::GetCurrentDefault());
++  request->set_area(gfx::Rect(GetCompositorViewportPixelSize()));
++  GetHostFrameSinkManager()->RequestCopyOfOutput(
++      surface, std::move(request), /*capture_exact_surface_id=*/true, timeout);
++}
++
+ void RenderWidgetHostViewChildFrame::CopyFromSurface(
+     const gfx::Rect& src_subrect,
+     const gfx::Size& output_size,
+--- a/content/browser/renderer_host/render_widget_host_view_child_frame.h
++++ b/content/browser/renderer_host/render_widget_host_view_child_frame.h
+@@ -89,6 +89,13 @@
+   void Focus() override;
+   bool HasFocus() override;
+   bool IsSurfaceAvailableForCopy() override;
++  void CopyAuxPersonCaptureSurface(
++      const viz::SurfaceId& surface,
++      const std::vector<viz::SurfaceId>& required_surfaces,
++      const std::vector<uint32_t>& required_tokens,
++      base::TimeDelta timeout,
++      base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback)
++      override;
+   void CopyFromSurface(
+       const gfx::Rect& src_rect,
+       const gfx::Size& output_size,
+--- a/content/browser/renderer_host/render_widget_host_view_mac.mm
++++ b/content/browser/renderer_host/render_widget_host_view_mac.mm
+@@ -1211,7 +1211,6 @@
+ void RenderWidgetHostViewMac::CopyAuxPersonCaptureSurface(const viz::SurfaceId& surface,
+       const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens,
+     base::TimeDelta timeout, base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
+-  LOG(ERROR) << "Aux capture diagnostic copy_route is_mac=1";
+   browser_compositor_->GetDelegatedFrameHost()->CopyAuxPersonCaptureSurface(surface, required_surfaces, required_tokens, timeout, std::move(callback));
+ }
+ 
+--- a/content/common/frame.mojom
++++ b/content/common/frame.mojom
+@@ -637,6 +637,9 @@
+   kReuse,
+   // Create a new window using the corresponding params in |reply|.
+   kSuccess,
++  // A native automatic-document lineage expired without later person input.
++  // Still denied; the renderer reports invalid document state, not a new grant.
++  kBlockedExpiredAutomaticLineage,
+ };
+ 
+ // All routing IDs in this struct must be set to a valid routing ID.
+--- a/content/public/browser/picture_in_picture_user_authority.h
++++ b/content/public/browser/picture_in_picture_user_authority.h
+@@ -18,6 +18,9 @@
+ // upstream behavior; an explicit browser UI action retains document provenance.
+ CONTENT_EXPORT bool TransferPictureInPictureUserInput(RenderFrameHost& source,
+                                                      RenderFrameHost& target);
+-CONTENT_EXPORT bool ConsumePictureInPictureUserInput(RenderFrameHost& frame);
++// Optional result classifies a denied expired automatic lineage only; it does
++// not grant input or change the receipt-consumption predicates.
++CONTENT_EXPORT bool ConsumePictureInPictureUserInput(
++    RenderFrameHost& frame, bool* expired_automatic_lineage = nullptr);
+ }  // namespace content
+ #endif
+--- a/content/public/test/browser_test_utils.cc
++++ b/content/public/test/browser_test_utils.cc
+@@ -4343,7 +4343,8 @@
+           std::move(params),
+           base::BindLambdaForTesting([&](mojom::CreateNewWindowStatus status,
+                                          mojom::CreateNewWindowReplyPtr reply) {
+-            is_blocked = (status == mojom::CreateNewWindowStatus::kBlocked);
++            is_blocked = (status == mojom::CreateNewWindowStatus::kBlocked ||
++                          status == mojom::CreateNewWindowStatus::kBlockedExpiredAutomaticLineage);
+             run_loop.Quit();
+           }));
+   run_loop.Run();
+--- a/content/renderer/render_frame_impl.cc
++++ b/content/renderer/render_frame_impl.cc
+@@ -7206,6 +7206,8 @@
+   // have user activation), return before consuming user activation. A frame
+   // that isn't allowed to open a window  shouldn't be able to consume the
+   // activation for the rest of the frame tree.
++  if (status == mojom::CreateNewWindowStatus::kBlockedExpiredAutomaticLineage)
++    return nullptr;
+   if (status == mojom::CreateNewWindowStatus::kBlocked) {
+     if (policy_blocked)
+       *policy_blocked = true;

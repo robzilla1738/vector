@@ -182,6 +182,10 @@ class VIZ_COMMON_EXPORT CompositorFrameMetadata {
   // wants to do something after a particular frame is processed.
   bool send_frame_token_to_embedder = false;
 
+  // Renderer-local request, consumed by the metadata observer before transport.
+  // Only the exact Capture swap frame asks for its real activation token.
+  bool aux_person_capture_activation_requested = false;
+
   // These limits can be used together with the scroll/scale fields above to
   // determine if scrolling/scaling in a particular direction is possible.
   float min_page_scale_factor = 0.f;

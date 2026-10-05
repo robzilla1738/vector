@@ -14,10 +14,21 @@
 #include "chrome/common/chrome_isolated_world_ids.h"
 #include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "content/public/browser/render_frame_host.h"
+#include "content/browser/renderer_host/render_widget_host_view_base.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/gfx/codec/png_codec.h"
 namespace aux {
 namespace {
+gfx::Size OriginalWidgetViewport(content::RenderWidgetHostViewBase* view) {
+  // Ordinary OOPIF child views have no owner_delegate and their visible-viewport
+  // methods are only valid for nested WebContents. Keep their actual local size.
+  return view->IsRenderWidgetHostViewChildFrame()
+      ? view->GetViewBounds().size() : view->GetVisibleViewportSize();
+}
+gfx::Size OriginalWidgetPixelViewport(content::RenderWidgetHostViewBase* view) {
+  return view->IsRenderWidgetHostViewChildFrame()
+      ? view->GetCompositorViewportPixelSize() : view->GetVisibleViewportSizeDevicePx();
+}
 base::DictValue Fault(bool debt) {
   return base::DictValue().Set("error", base::DictValue()
       .Set("code", "target_detached").Set("message", debt ?
@@ -48,8 +59,8 @@ bool NativePersonCaptureController::Current() {
       auto* frame = frames_[i].AsRenderFrameHostIfValid();
       if (!frame || !widgets_[i] || frame->GetRenderWidgetHost() != widgets_[i].get()) return false;
       auto* view = widgets_[i]->GetView();
-      if (!view || view->GetVisibleViewportSize() != widget_viewports_[i] ||
-          view->GetVisibleViewportSizeDevicePx() != widget_pixel_viewports_[i] ||
+      if (!view || OriginalWidgetViewport(view) != widget_viewports_[i] ||
+          OriginalWidgetPixelViewport(view) != widget_pixel_viewports_[i] ||
           (surfaces_[i].is_valid() && view->GetAuxPersonCaptureSurfaceId() != surfaces_[i])) return false;
     }
   }
@@ -136,8 +147,8 @@ void NativePersonCaptureController::Paint() {
     auto* view = widget ? widget->GetView() : nullptr;
     if (!widget || !view) { failed_ = true; Cleanup(); return; }
     widgets_[i] = widget->GetWeakPtr();
-    widget_viewports_[i] = view->GetVisibleViewportSize();
-    widget_pixel_viewports_[i] = view->GetVisibleViewportSizeDevicePx();
+    widget_viewports_[i] = OriginalWidgetViewport(view);
+    widget_pixel_viewports_[i] = OriginalWidgetPixelViewport(view);
     // Same-process frames share a widget and one submitted frame token. Never
     // enqueue duplicate callbacks for that token in the original frame queue.
     if (i && widget != widgets_[0].get() && std::ranges::none_of(children, [&](size_t prior) { return widgets_[prior].get() == widget; })) children.push_back(i);

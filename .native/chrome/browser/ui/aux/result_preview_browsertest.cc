@@ -4,6 +4,8 @@
 
 #include "chrome/browser/ui/aux/result_preview.h"
 
+#include <cstdint>
+#include <map>
 #include <optional>
 
 #include <string>
@@ -21,6 +23,7 @@
 #include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/common/content_client.h"
@@ -43,7 +46,14 @@ class PreviewFixtureNavigationDiagnostic final : public content::WebContentsObse
  public:
   explicit PreviewFixtureNavigationDiagnostic(content::WebContents* contents)
       : content::WebContentsObserver(contents) {}
+  void ReadyToCommitNavigation(content::NavigationHandle* navigation) override {
+    // Capture the independent browser origin while its policy container is
+    // still owned by the request. Commit transfers that container to the RFH.
+    browser_origins_.insert_or_assign(navigation->GetNavigationId(),
+                                     navigation->GetOriginToCommit());
+  }
   void DidFinishNavigation(content::NavigationHandle* navigation) override {
+    const auto captured = browser_origins_.extract(navigation->GetNavigationId());
     if (records_.size() >= 8) return;
     auto* parent = navigation->GetParentFrame();
     const auto& initiator_token = navigation->GetInitiatorFrameToken();
@@ -54,10 +64,10 @@ class PreviewFixtureNavigationDiagnostic final : public content::WebContentsObse
     const auto& initiator_origin = navigation->GetInitiatorOrigin();
     auto* committed_frame = navigation->HasCommitted()
         ? navigation->GetRenderFrameHost() : nullptr;
-    // This getter is valid only after response processing. Never query it for
-    // an uncommitted cancellation or substitute a supplied expected origin.
+    // Never query the moved request policy container after commit, or
+    // substitute a supplied expected origin for the actual browser value.
     const auto browser_origin = navigation->HasCommitted() && !navigation->IsErrorPage()
-        ? navigation->GetOriginToCommit() : std::nullopt;
+        && !captured.empty() ? captured.mapped() : std::nullopt;
     const auto destination_precursor = [](const url::Origin& origin) {
       const auto& tuple = origin.GetTupleOrPrecursorTupleIfOpaque();
       return tuple.scheme() == kResultPreviewScheme && tuple.host() == "preview";
@@ -85,6 +95,7 @@ class PreviewFixtureNavigationDiagnostic final : public content::WebContentsObse
   }
   std::string Describe() const { return records_.DebugString(); }
  private:
+  std::map<int64_t, std::optional<url::Origin>> browser_origins_;
   base::ListValue records_;
 };
 
@@ -285,7 +296,19 @@ IN_PROC_BROWSER_TEST_F(ResultPreviewBrowserTest,
   content::TestNavigationManager pending(shell, preview);
   ASSERT_TRUE(BeginPreview(shell, preview));
   ASSERT_TRUE(pending.WaitForResponse()) << diagnostic.Describe();
-  ASSERT_TRUE(content::NavigateToURL(shell, GURL("chrome://aux/"))) << diagnostic.Describe();
+  // NavigateToURL first waits for every previous load to stop. The original
+  // preview response is intentionally held here, so issue the genuine parent
+  // replacement without that preliminary wait; keep the child paused until
+  // its original document is replaced.
+  const GURL parent_url("chrome://aux/");
+  content::TestNavigationManager parent_replacement(shell, parent_url);
+  shell->GetController().LoadURLWithParams(
+      content::NavigationController::LoadURLParams(parent_url));
+  shell->Focus();
+  ASSERT_TRUE(parent_replacement.WaitForNavigationFinished())
+      << diagnostic.Describe();
+  ASSERT_TRUE(parent_replacement.was_successful()) << diagnostic.Describe();
+  ASSERT_EQ(parent_url, shell->GetPrimaryMainFrame()->GetLastCommittedURL());
   ASSERT_TRUE(pending.WaitForNavigationFinished()) << diagnostic.Describe();
   EXPECT_FALSE(pending.was_successful()) << diagnostic.Describe();
   EXPECT_NE(original.AsRenderFrameHostIfValid(), shell->GetPrimaryMainFrame());

@@ -906,6 +906,28 @@ base::DictValue EgressController::ConsumeRunResume(const std::string& run_id,
     return Fault("Original local-person run resume is unavailable");
   resume->second->consumed = true;
   intent->second->stopped = false;
+  const auto deadline = resume->second->deadline;
+  const auto expires = base::Time::Now().InMillisecondsSinceUnixEpoch() +
+      (deadline - base::TimeTicks::Now()).InMilliseconds();
+  for (const auto& [page_id, state] : pages_) {
+    auto creator = creators_.find(page_id);
+    auto* frame = state->document.AsRenderFrameHostIfValid();
+    const auto* isolation = frame ? IsolationForPage(page_id, frame) : nullptr;
+    if (creator == creators_.end() || !isolation || !LiveFrame(frame) ||
+        creator->second->closing || creator->second->consumed ||
+        creator->second->connection_generation != generation ||
+        creator->second->runtime_owner_incarnation != runtime_owner_incarnation_ ||
+        state->person_controlled || !state->lease.empty() ||
+        creator->second->document.AsRenderFrameHostIfValid() != frame ||
+        isolation->connection_generation != generation ||
+        isolation->runtime_owner_incarnation != runtime_owner_incarnation_ ||
+        std::ranges::find(isolation->ancestry, run_id) == isolation->ancestry.end())
+      continue;
+    // Only the consumed original local-person ticket renews publication.
+    // Install still requires CurrentCreator and its unchanged owner guards.
+    RefreshCreatorProof(page_id, "resumed_control", state->document,
+        static_cast<double>(expires), deadline);
+  }
   return Result(base::DictValue().Set("accepted", true));
 }
 bool EgressController::FinishRunResume(const std::string& ticket_id, bool success) {
@@ -1488,6 +1510,15 @@ base::DictValue EgressController::ConsumePersonResume(
   }
   const auto remaining = ticket->second->deadline - base::TimeTicks::Now();
   const auto expires_at = base::Time::Now().InMillisecondsSinceUnixEpoch() + remaining.InMilliseconds();
+  auto creator = creators_.find(page_id);
+  if (creator != creators_.end() && !creator->second->closing &&
+      !creator->second->consumed &&
+      creator->second->connection_generation == connection_generation &&
+      creator->second->runtime_owner_incarnation == runtime_owner_incarnation_ &&
+      creator->second->document.AsRenderFrameHostIfValid() == frame) {
+    RefreshCreatorProof(page_id, "resumed_control", ticket->second->document,
+        static_cast<double>(expires_at), ticket->second->deadline);
+  }
   auto result = Result(base::DictValue().Set("accepted", true).Set("context", value->Clone())
       .Set("expiresAt", static_cast<double>(expires_at)));
   authority_observers_.Notify();

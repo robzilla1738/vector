@@ -1,7 +1,23 @@
 // Copyright 2026 The Aux Authors
 #include "chrome/browser/ui/aux/native_person_capture_controller.h"
 #include "base/base64.h"
+#include "base/logging.h"
+#include "base/debug/stack_trace.h"
+#include "net/base/net_errors.h"
+#include "base/callback_list.h"
+#include "base/json/json_reader.h"
+#include "base/scoped_observation.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_manager.h"
+#include "chrome/browser/profiles/profile_manager_observer.h"
+#include "chrome/browser/ui/aux/runtime_host.h"
+#include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include <memory>
+#include <optional>
+#include "base/strings/string_number_conversions.h"
+#include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/web_contents_observer.h"
 #include "base/command_line.h"
 #include "content/public/common/content_switches.h"
 #include "net/dns/mock_host_resolver.h"
@@ -16,6 +32,8 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/browser/render_widget_host_view.h"
+#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/weak_document_ptr.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
@@ -24,6 +42,28 @@
 #include "net/test/embedded_test_server/http_response.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/gfx/codec/png_codec.h"
+#include "ui/base/base_window.h"
+// Only the fresh synthetic Profile's empty Zap policy is supplied by this
+// fixture. Real Zap validation, renderer acknowledgement and commit remain.
+class AuxRuntimeHostTestPeer {
+ public:
+  static void InstallEmptyFixturePolicy(Profile* profile) {
+    AuxRuntimeHost::InstallTestDispatch(profile, base::BindRepeating(
+        [](std::string original_profile, bool internal, std::string method,
+           std::string json, AuxRuntimeHost::ResponseCallback reply) {
+          const auto params = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
+          if (internal && method == "zap.snapshot" && params &&
+              params->FindString("profileId") &&
+              *params->FindString("profileId") == original_profile) {
+            std::move(reply).Run({true, "[]", "", ""});
+          } else {
+            std::move(reply).Run({false, "", "unsupported",
+                "No runtime API is supplied by the original Capture fixture"});
+          }
+        }, profile->GetPath().BaseName().AsUTF8Unsafe()));
+  }
+};
+
 namespace aux {
 class NativePersonCaptureControllerTestPeer {
  public:
@@ -31,6 +71,39 @@ class NativePersonCaptureControllerTestPeer {
 };
 namespace {
 struct CaptureGuardLifetime { bool active = true; };
+class OriginalCaptureNavigationObserver final : public content::WebContentsObserver {
+ public:
+  OriginalCaptureNavigationObserver(content::WebContents* page, const GURL& expected,
+                                    base::DictValue* facts)
+      : content::WebContentsObserver(page), expected_(expected), facts_(facts) {}
+  void DidStartNavigation(content::NavigationHandle* navigation) override {
+    if (original_id_ || !navigation->IsInPrimaryMainFrame() ||
+        navigation->GetURL() != expected_) return;
+    original_id_ = navigation->GetNavigationId();
+    facts_->Set("originalNavigationId", base::NumberToString(*original_id_));
+    facts_->Set("originalAttemptURL", navigation->GetURL().spec());
+  }
+  void DidFinishNavigation(content::NavigationHandle* navigation) override {
+    if (!original_id_ || navigation->GetNavigationId() != *original_id_ ||
+        !navigation->IsInPrimaryMainFrame()) return;
+    facts_->Set("originalAttemptFinished", true);
+    facts_->Set("originalFinishedURL", navigation->GetURL().spec());
+    facts_->Set("originalHasCommitted", navigation->HasCommitted());
+    facts_->Set("originalIsErrorPage", navigation->IsErrorPage());
+    facts_->Set("originalNetErrorCode", navigation->GetNetErrorCode());
+    const auto discard_reason = navigation->GetNavigationDiscardReason();
+    facts_->Set("originalDiscardReasonPresent", discard_reason.has_value());
+    if (discard_reason)
+      facts_->Set("originalDiscardReason", static_cast<int>(*discard_reason));
+    if (navigation->GetNetErrorCode() == net::ERR_ABORTED)
+      facts_->Set("originalDidFinishAbortStack", base::debug::StackTrace(16).ToString());
+  }
+ private:
+  const GURL expected_;
+  raw_ptr<base::DictValue> facts_;
+  std::optional<int64_t> original_id_;
+};
+
 constexpr char kStyle[] = "position:absolute;left:20px;top:20px;width:160px;height:60px;border:0;padding:0;background:rgb(255,0,0)";
 std::unique_ptr<net::test_server::HttpResponse> Fixture(const net::test_server::HttpRequest& request) {
   auto response = std::make_unique<net::test_server::BasicHttpResponse>();
@@ -42,25 +115,83 @@ std::unique_ptr<net::test_server::HttpResponse> Fixture(const net::test_server::
   response->set_content(html); return response;
 }
 }  // namespace
-class NativePersonCaptureControllerBrowserTest : public InProcessBrowserTest {
+class NativePersonCaptureControllerBrowserTest : public InProcessBrowserTest,
+                                               public ProfileManagerObserver {
  protected:
+  void SetUpInProcessBrowserTestFixture() override {
+    InProcessBrowserTest::SetUpInProcessBrowserTestFixture();
+    profile_creation_ = BrowserContextDependencyManager::GetInstance()
+        ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+            [](NativePersonCaptureControllerBrowserTest* fixture, content::BrowserContext*) {
+              if (!fixture->profile_manager_observation_.IsObserving()) {
+                fixture->profile_manager_observation_.Observe(
+                    g_browser_process->profile_manager());
+              }
+            }, base::Unretained(this)));
+  }
+  void OnProfileAdded(Profile* profile) override {
+    if (!profile->IsOffTheRecord())
+      AuxRuntimeHostTestPeer::InstallEmptyFixturePolicy(profile);
+  }
+  void OnProfileManagerDestroying() override { profile_manager_observation_.Reset(); }
+  void TearDownInProcessBrowserTestFixture() override {
+    profile_creation_ = {};
+    profile_manager_observation_.Reset();
+    InProcessBrowserTest::TearDownInProcessBrowserTestFixture();
+  }
+  base::CallbackListSubscription profile_creation_;
+  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
+      profile_manager_observation_{this};
   void SetUpCommandLine(base::CommandLine* command_line) override { command_line->AppendSwitch(switches::kSitePerProcess); }
   void SetUpOnMainThread() override {
     host_resolver()->AddRule("*","127.0.0.1");
     embedded_test_server()->RegisterRequestHandler(base::BindRepeating(&Fixture));
     ASSERT_TRUE(embedded_test_server()->Start());
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), embedded_test_server()->GetURL("/frame-parent")));
+    OriginalCaptureNavigationObserver original_attempt(
+        browser()->tab_strip_model()->GetActiveWebContents(),
+        embedded_test_server()->GetURL("/frame-parent"), &original_navigation_facts_);
+    auto* original_navigation = ui_test_utils::NavigateToURL(browser(), embedded_test_server()->GetURL("/frame-parent"));
+    ASSERT_TRUE(original_navigation);
+    original_navigation_document_ = original_navigation->GetWeakDocumentPtr();
     page_ = browser()->tab_strip_model()->GetActiveWebContents();
     NativePersonCaptureController::CreateForWebContents(page_);
     owner_ = NativePersonCaptureController::FromWebContents(page_);
   }
+  std::string OriginalFixtureScope() {
+    base::DictValue scope;
+    auto* original = original_navigation_document_.AsRenderFrameHostIfValid();
+    auto* current = page_ ? page_->GetPrimaryMainFrame() : nullptr;
+    scope.Set("originalNavigationDocumentLive", original != nullptr);
+    scope.Set("originalNavigationAttempt", original_navigation_facts_.Clone());
+    if (current) scope.Set("selectedCommittedURL", current->GetLastCommittedURL().spec());
+    scope.Set("selectedPrimaryIsOriginalNavigation", current && current == original);
+    scope.Set("selectedPageIsActive", page_ && browser()->tab_strip_model()->GetActiveWebContents() == page_);
+    scope.Set("selectedOriginalFixtureURL", current && current->GetLastCommittedURL() == embedded_test_server()->GetURL("/frame-parent"));
+    scope.Set("selectedFrameActive", current && current->IsActive());
+    scope.Set("selectedFrameLive", current && current->IsRenderFrameLive());
+    if (current && current->IsActive() && current->IsRenderFrameLive()) {
+      auto secret = content::EvalJs(current, "!!document.querySelector('#secret')");
+      auto iframe = content::EvalJs(current, "!!document.querySelector('iframe')");
+      scope.Set("originalSecretQuerySucceeded", secret.is_bool());
+      scope.Set("originalSecretPresent", secret.is_bool() && secret.ExtractBool());
+      scope.Set("originalIframeQuerySucceeded", iframe.is_bool());
+      scope.Set("originalIframePresent", iframe.is_bool() && iframe.ExtractBool());
+    }
+    return scope.DebugString();
+  }
   // This component fixture supplies an original local guard. It does not
   // qualify authenticated runtime/Egress admission or external App ownership.
   base::DictValue Capture(base::RepeatingCallback<bool()> guard) {
+    const std::string original_scope = OriginalFixtureScope();
     base::test::TestFuture<base::DictValue> reply;
     owner_->Capture({}, base::BindRepeating([](std::shared_ptr<CaptureGuardLifetime> lifetime, base::RepeatingCallback<bool()> original) {
       return lifetime->active && original.Run();
-    }, lifetime_,std::move(guard)), reply.GetCallback()); return reply.Take();
+    }, lifetime_,std::move(guard)), reply.GetCallback());
+    auto original_reply = reply.Take();
+    if (original_reply.FindDict("error"))
+      LOG(ERROR) << "Original Capture reply " << original_reply.DebugString()
+                 << " before=" << original_scope << " after=" << OriginalFixtureScope();
+    return original_reply;
   }
   bool Masked() { return content::EvalJs(page_, "document.querySelector('#secret').style.opacity === '0'").ExtractBool(); }
   void TearDownOnMainThread() override {
@@ -75,6 +206,8 @@ class NativePersonCaptureControllerBrowserTest : public InProcessBrowserTest {
     InProcessBrowserTest::TearDownOnMainThread();
   }
   std::shared_ptr<CaptureGuardLifetime> lifetime_ = std::make_shared<CaptureGuardLifetime>();
+  base::DictValue original_navigation_facts_;
+  content::WeakDocumentPtr original_navigation_document_;
   raw_ptr<content::WebContents> page_ = nullptr;
   raw_ptr<NativePersonCaptureController> owner_ = nullptr;
 };
@@ -124,10 +257,40 @@ IN_PROC_BROWSER_TEST_F(NativePersonCaptureControllerBrowserTest, OriginalDocumen
 }
 IN_PROC_BROWSER_TEST_F(NativePersonCaptureControllerBrowserTest, ActualViewportChangeAfterCopyRefusesExportAndRestoresMask) {
   auto resized = std::make_shared<bool>(false);
-  auto reply = Capture(base::BindLambdaForTesting([this,resized] {
-    if (!*resized && NativePersonCaptureControllerTestPeer::HasCopiedPixels(owner_)) {
-      *resized = true; auto* view = page_->GetRenderWidgetHostView(); auto size = view->GetVisibleViewportSize();
-      view->SetSize(gfx::Size(size.width()+80,size.height()+40));
+  auto attempted = std::make_shared<bool>(false);
+  auto reply = Capture(base::BindLambdaForTesting([this,resized,attempted] {
+    if (!*attempted && NativePersonCaptureControllerTestPeer::HasCopiedPixels(owner_)) {
+      *attempted = true; auto* view = page_->GetRenderWidgetHostView(); auto size = view->GetVisibleViewportSize();
+      const auto original_page = page_->GetWeakPtr();
+      const auto original_document = page_->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+      content::RenderFrameSubmissionObserver viewport(page_);
+      auto bounds = browser()->GetWindow()->GetBounds();
+      bounds.set_width(bounds.width() - 80);
+      bounds.set_height(bounds.height() - 40);
+      ui_test_utils::SetAndWaitForBounds(*browser(), bounds);
+      // Failure detail only: observe the first false original short-circuit
+      // predicate at the same reads; never query a replacement or stale view.
+      int viewport_exit = 0;
+      const auto unchanged_original_view = [&] {
+        if (!original_page) { viewport_exit = 1; return false; }
+        if (original_document.AsRenderFrameHostIfValid() != original_page->GetPrimaryMainFrame()) {
+          viewport_exit = 2; return false;
+        }
+        if (original_page->GetRenderWidgetHostView() != view) {
+          viewport_exit = 3; return false;
+        }
+        if (view->GetVisibleViewportSize() != size) {
+          viewport_exit = 4; return false;
+        }
+        return true;
+      };
+      while (unchanged_original_view())
+        viewport.WaitForMetadataChange();
+      *resized = original_page &&
+          original_document.AsRenderFrameHostIfValid() == original_page->GetPrimaryMainFrame() &&
+          original_page->GetRenderWidgetHostView() == view &&
+          view->GetVisibleViewportSize() != size;
+      EXPECT_TRUE(*resized) << "viewport-observation-exit=" << viewport_exit;
     }
     return true;
   }));

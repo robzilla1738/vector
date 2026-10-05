@@ -1,0 +1,777 @@
+--- a/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
++++ b/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
+@@ -37,6 +37,7 @@
+ #include "content/public/browser/javascript_dialog_manager.h"
+ #include "content/public/test/browser_test.h"
+ #include "content/public/test/browser_test_utils.h"
++#include "net/test/embedded_test_server/embedded_test_server.h"
+ 
+ // The connection generation is deliberately synthetic. This peer invokes the
+ // real native factories and publication/retirement, never Current or readiness.
+@@ -180,6 +181,7 @@
+     InProcessBrowserTest::TearDownInProcessBrowserTestFixture();
+   }
+   void SetUpOnMainThread() override {
++    ASSERT_TRUE(embedded_test_server()->Start());
+     TabCatalog::EnsureFactoryBuilt();
+     profile_ = browser()->GetProfile();
+     host_ = AuxRuntimeHost::ForProfile(profile_);
+@@ -253,6 +255,10 @@
+     lease.Set("taskId", "creator-browser-task");
+     lease.Set("taskRevision", 3);
+     lease.Set("documentEpoch", 1);
++    if (value->FindString("sourceOrigin") &&
++        *value->FindString("sourceOrigin") == "aux://blank") {
++      lease.Set("initialDestination", embedded_test_server()->GetURL("/empty.html").spec());
++    }
+     lease.Set("isolationId", isolation_id);
+     lease.Set("issuedAt", now);
+     lease.Set("expiresAt", now + 30000);
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -634,9 +634,8 @@
+   // original admitting controller, if it still exists; never recreate it.
+   auto original_egress = native_connection_egress_;
+   native_connection_egress_.reset();
+-  if (original_egress)
+-    original_egress->Disconnect();
+-  if (!retirement_weak) return;
++  // Detach every original host slot before Disconnect notifies observers.
++  // A retirement callback may synchronously publish a replacement connection.
+   native_person_connection_id_.clear();
+   ++native_recorder_session_generation_;
+   auto recorder = native_recorder_;
+@@ -647,6 +646,9 @@
+   const auto weak = weak_factory_.GetWeakPtr();
+   auto captures = std::move(native_person_captures_);
+   native_person_captures_.clear();
++  if (original_egress)
++    original_egress->Disconnect();
++  if (!retirement_weak) return;
+   for (const auto& [id, capture] : captures) {
+     if (capture) capture->Retire();
+     if (!weak) return;
+--- a/chrome/renderer/aux_recorder_agent.cc
++++ b/chrome/renderer/aux_recorder_agent.cc
+@@ -18,6 +18,7 @@
+ #include "third_party/blink/public/web/web_script_source.h"
+ #include "v8/include/v8-context.h"
+ #include "v8/include/v8-function.h"
++#include "v8/include/v8-microtask-queue.h"
+ #include "v8/include/v8-object.h"
+ 
+ namespace chrome {
+@@ -87,6 +88,9 @@
+     return;
+   }
+   auto context = global.As<v8::Object>()->GetCreationContextChecked();
++  v8::MicrotasksScope microtasks_scope(
++      isolate, context->GetMicrotaskQueue(),
++      v8::MicrotasksScope::kDoNotRunMicrotasks);
+   v8::Context::Scope context_scope(context);
+   auto binding = gin::CreateFunctionTemplate(
+       isolate, base::BindRepeating(&AuxRecorderAgent::Capture,
+--- a/components/viz/service/display/surface_aggregator.cc
++++ b/components/viz/service/display/surface_aggregator.cc
+@@ -1571,15 +1571,27 @@
+ bool SurfaceAggregator::MeetsAuxPersonCaptureFrames(ResolvedFrameData& source, const CopyOutputRequest& request) {
+   const auto& required = request.aux_person_capture_surfaces();
+   const auto& tokens = request.aux_person_capture_tokens();
++  // Diagnostic only: at most one marker for this original eligibility call.
++  // Never include surface IDs, frame tokens, URLs, or copied pixels.
++  bool refusal_reported = false;
++  const auto refuse = [&](int category, size_t index = 64) {
++    if (!refusal_reported) {
++      refusal_reported = true;
++      LOG(ERROR) << "Original Capture Viz refusal=" << category
++                 << " required_index=" << index
++                 << " required_count=" << required.size();
++    }
++    return false;
++  };
+   if (required.empty()) return tokens.empty();
+-  if (required.size() > 64 || required.size() != tokens.size()) return false;
++  if (required.size() > 64 || required.size() != tokens.size()) return refuse(1);
+   std::map<SurfaceId,uint32_t> selected;
+   std::set<SurfaceId> ancestors;
+   size_t examined = 0;
+   std::function<bool(ResolvedFrameData&,size_t)> visit = [&](ResolvedFrameData& frame, size_t depth) {
+-    if (!frame.is_valid() || depth > 64 || ancestors.contains(frame.surface_id())) return false;
++    if (!frame.is_valid() || depth > 64 || ancestors.contains(frame.surface_id())) return refuse(2);
+     if (selected.contains(frame.surface_id())) return true;
+-    if (selected.size() >= 64) return false;
++    if (selected.size() >= 64) return refuse(3);
+     selected.emplace(frame.surface_id(), frame.GetMetadata().frame_token);
+     ancestors.insert(frame.surface_id());
+     // Only passes reachable from the original root contribute pixels. An
+@@ -1587,37 +1599,37 @@
+     std::set<CompositorRenderPassId> active_passes, visited_passes;
+     std::function<bool(const ResolvedPassData&,size_t)> visit_pass = [&](const ResolvedPassData& pass, size_t pass_depth) {
+       const auto id = pass.render_pass().id;
+-      if (pass_depth > 64 || active_passes.contains(id)) return false;
++      if (pass_depth > 64 || active_passes.contains(id)) return refuse(4);
+       if (visited_passes.contains(id)) return true;
+-      if (visited_passes.size() >= 64) return false;
++      if (visited_passes.size() >= 64) return refuse(5);
+       active_passes.insert(id);
+       for (const auto* quad : pass.render_pass().quad_list) {
+-        if (++examined > 10000) return false;
++        if (++examined > 10000) return refuse(6);
+         if (const auto* pass_quad = quad->DynamicCast<CompositorRenderPassDrawQuad>()) {
+           const ResolvedPassData* referenced = nullptr;
+           for (const auto& candidate : frame.GetResolvedPasses())
+             if (candidate.render_pass().id == pass_quad->render_pass_id) referenced = &candidate;
+-          if (!referenced || !visit_pass(*referenced,pass_depth+1)) return false;
++          if (!referenced || !visit_pass(*referenced,pass_depth+1)) return refuse(7);
+         } else if (quad->material == DrawQuad::Material::kSurfaceContent) {
+           const auto* surface_quad = SurfaceDrawQuad::MaterialCast(quad);
+           // The same cached range resolution is used by EmitSurfaceContent.
+           auto* child = GetResolvedFrame(surface_quad->surface_range);
+-          if (!child || !visit(*child,depth+1)) return false;
++          if (!child || !visit(*child,depth+1)) return refuse(8);
+         }
+       }
+       active_passes.erase(id); visited_passes.insert(id); return true;
+     };
+-    if (!visit_pass(frame.GetRootRenderPassData(),0)) return false;
++    if (!visit_pass(frame.GetRootRenderPassData(),0)) return refuse(9);
+     ancestors.erase(frame.surface_id()); return true;
+   };
+-  if (!visit(source,0)) return false;
++  if (!visit(source,0)) return refuse(9);
+   for (size_t i = 0; i < required.size(); ++i) {
+-    if (!required[i].is_valid() || !tokens[i]) return false;
+-    for (size_t j = 0; j < i; ++j) if (required[i].frame_sink_id() == required[j].frame_sink_id()) return false;
++    if (!required[i].is_valid() || !tokens[i]) return refuse(10, i);
++    for (size_t j = 0; j < i; ++j) if (required[i].frame_sink_id() == required[j].frame_sink_id()) return refuse(11, i);
+     auto actual = selected.find(required[i]);
+     // Serial-number comparison refuses older and ambiguous half-range tokens,
+     // including wraparound; never accept zero as an activated masked frame.
+-    if (actual == selected.end() || !actual->second || static_cast<uint32_t>(actual->second-tokens[i]) >= 0x80000000u) return false;
++    if (actual == selected.end() || !actual->second || static_cast<uint32_t>(actual->second-tokens[i]) >= 0x80000000u) return refuse(actual == selected.end() ? 12 : !actual->second ? 13 : 14, i);
+   }
+   return true;
+ }
+--- a/content/browser/renderer_host/delegated_frame_host.cc
++++ b/content/browser/renderer_host/delegated_frame_host.cc
+@@ -11,6 +11,7 @@
+ #include "base/check.h"
+ #include "base/command_line.h"
+ #include "base/debug/crash_logging.h"
++#include "base/logging.h"
+ #include "base/debug/dump_without_crashing.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+@@ -183,7 +184,9 @@
+ void DelegatedFrameHost::CopyAuxPersonCaptureSurface(const viz::SurfaceId& surface,
+       const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens,
+     base::TimeDelta timeout, base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
++  LOG(ERROR) << "Original Capture copy branch=0 required_count=" << required_surfaces.size();
+   if (!surface.is_valid() || required_surfaces.empty() || required_surfaces.front() != surface || surface != GetCurrentSurfaceId() || !CanCopyFromCompositingSurface()) {
++    LOG(ERROR) << "Original Capture copy branch=1 preflight_accepted=0";
+     std::move(callback).Run(base::unexpected(CopyFromSurfaceError::kUnknownVizError)); return;
+   }
+   ui::Compositor::ScopedKeepSurfaceAliveCallback keep_alive;
+@@ -222,6 +225,7 @@
+   auto request = std::make_unique<viz::CopyOutputRequest>(format, destination,
+                                                           std::move(callback));
+   if (!request->SetAuxPersonCaptureFrames(required_surfaces, required_tokens)) {
++    if (!required_surfaces.empty()) LOG(ERROR) << "Original Capture copy branch=2 setter_accepted=0 required_count=" << required_surfaces.size();
+     request->SendError(viz::CopyOutputResult::Error::kUnknown); return;
+   }
+   // Run result callback on the current thread in case `callback` needs to run
+@@ -234,8 +238,10 @@
+   // It is possible for us to not have a valid surface to copy from. Such as
+   // if a navigation fails to complete. In such a case do not attempt to request
+   // a copy.
+-  if (!CanCopyFromCompositingSurface())
+-    return;
++  if (!CanCopyFromCompositingSurface()) {
++    if (!required_surfaces.empty()) LOG(ERROR) << "Original Capture copy branch=3 copy_eligible=0";
++    return;
++  }
+ 
+   if (!src_subrect.IsEmpty()) {
+     request->set_area(
+@@ -262,6 +268,7 @@
+         gfx::Vector2d(output_size.width(), output_size.height()));
+   }
+   CHECK(host_frame_sink_manager_);
++  if (!required_surfaces.empty()) LOG(ERROR) << "Original Capture copy branch=4 setter_accepted=1 dispatched=1 required_count=" << required_surfaces.size();
+   host_frame_sink_manager_->RequestCopyOfOutput(
+       surface_id, std::move(request), /*capture_exact_surface_id=*/exact_surface,
+       timeout);
+--- a/chrome/browser/ui/aux/native_person_capture_controller.cc
++++ b/chrome/browser/ui/aux/native_person_capture_controller.cc
+@@ -4,6 +4,7 @@
+ #include <algorithm>
+ #include <ranges>
+ #include "base/base64.h"
++#include "base/logging.h"
+ #include "base/functional/bind.h"
+ #include "base/task/bind_post_task.h"
+ #include "mojo/public/cpp/bindings/callback_helpers.h"
+@@ -108,6 +109,7 @@
+   }
+ }
+ void NativePersonCaptureController::ScriptDone(std::string phase, size_t index, bool accepted) {
++  LOG(ERROR) << "Aux capture diagnostic script phase=" << phase << " index=" << index << " accepted=" << accepted;
+   if (!accepted) {
+     if (phase == "restore") {
+       auto* frame = frames_[index].AsRenderFrameHostIfValid();
+@@ -179,6 +181,7 @@
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool admitted = token && widget && frame && frame->GetRenderWidgetHost() == widget.get() && Current();
+   if (!weak) return;
++  LOG(ERROR) << "Aux capture diagnostic submitted admitted=" << admitted;
+   if (!admitted) { Painted(false); return; }
+   frame = frames_[index].AsRenderFrameHostIfValid();
+   if (!frame || !widget || frame->GetRenderWidgetHost() != widget.get()) { Painted(false); return; }
+@@ -192,6 +195,7 @@
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool admitted = token && !time.is_null() && widget && frame && frame->GetRenderWidgetHost() == widget.get() && Current();
+   if (!weak) return;
++  LOG(ERROR) << "Aux capture diagnostic activated admitted=" << admitted;
+   if (!admitted) { Painted(false); return; }
+   frame = frames_[index].AsRenderFrameHostIfValid();
+   if (!frame || !widget || frame->GetRenderWidgetHost() != widget.get()) { Painted(false); return; }
+@@ -213,6 +217,7 @@
+   else Dispatch("current");
+ }
+ void NativePersonCaptureController::Copy() {
++  LOG(ERROR) << "Aux capture diagnostic copy entered";
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool admitted = Current();
+   if (!weak) return;
+@@ -243,6 +248,7 @@
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool admitted = !failed_ && Current();
+   if (!weak) return;
++  LOG(ERROR) << "Aux capture diagnostic copied admitted=" << admitted << " same_surfaces=" << same_surfaces << " has_result=" << result.has_value();
+   if (!admitted || !same_surfaces || !result.has_value()) { failed_ = true; Cleanup(); return; }
+   auto* view = web_contents()->GetRenderWidgetHostView();
+   if (!view || view->GetVisibleViewportSizeDevicePx() != viewport_pixels_ ||
+@@ -274,6 +280,7 @@
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool accepted = !failed_ && !cleanup_debt_ && Current() && !png_.empty();
+   if (!weak) return;
++  LOG(ERROR) << "Aux capture diagnostic finish accepted=" << accepted << " failed=" << failed_ << " cleanup_debt=" << cleanup_debt_ << " has_png=" << !png_.empty();
+   const bool debt = cleanup_debt_;
+   auto callback = std::move(reply_);
+   auto result = Fault(debt);
+--- a/chrome/browser/ui/aux/native_input_ack_browsertest.mm
++++ b/chrome/browser/ui/aux/native_input_ack_browsertest.mm
+@@ -7,6 +7,7 @@
+ #include "chrome/browser/profiles/profile_manager.h"
+ #include "chrome/browser/profiles/profile_manager_observer.h"
+ #include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
+ #include "components/keyed_service/content/browser_context_dependency_manager.h"
+ #include "chrome/browser/ui/aux/runtime_host.h"
+ #include "base/memory/raw_ptr.h"
+@@ -54,6 +55,25 @@
+ // This peer cannot set readiness or replace any current-document predicate.
+ class NativeInputAcknowledgementTestPeer {
+  public:
++  static std::string AdmissionState(RenderWidgetHostViewMac* view,
++                                    const content::WeakDocumentPtr& document) {
++    auto* frame = document.AsRenderFrameHostIfValid();
++    const auto state = base::DictValue()
++        .Set("category", "replacement-input-admission")
++        .Set("hasView", !!view)
++        .Set("originalDocumentLive", !!frame)
++        .Set("originalDocumentActive", frame && frame->IsActive())
++        .Set("originalRendererLive", frame && frame->IsRenderFrameLive())
++        .Set("sameBoundDocument",
++             view && frame && view->native_input_document_.AsRenderFrameHostIfValid() == frame)
++        .Set("boundDocumentLive",
++             view && !!view->native_input_document_.AsRenderFrameHostIfValid())
++        .Set("hasBinding", view && !view->native_input_binding_.empty())
++        .Set("hasNativeView", view && !!view->ns_view_)
++        .Set("ready", view && view->native_input_ready_)
++        .Set("hasWaiters", view && !view->native_input_waiters_.empty());
++    return base::WriteJson(state).value_or("diagnostic serialization failed");
++  }
+   static void Hold(RenderWidgetHostViewMac* view,
+                    base::OnceCallback<void(base::OnceClosure)> callback) {
+     CHECK(!view->native_input_ack_hold_for_testing_);
+@@ -156,7 +176,9 @@
+   const auto replacement = page_->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+   base::test::TestFuture<bool> current;
+   View()->AwaitNativeInputAdmissionForDocument(replacement, current.GetCallback());
+-  EXPECT_TRUE(current.Get());
++  EXPECT_TRUE(current.Get())
++      << content::NativeInputAcknowledgementTestPeer::AdmissionState(
++             static_cast<content::RenderWidgetHostViewMac*>(View()), replacement);
+ }
+ 
+ IN_PROC_BROWSER_TEST_F(NativeInputAcknowledgementBrowserTest,
+--- a/url/scheme_host_port.cc
++++ b/url/scheme_host_port.cc
+@@ -17,6 +17,7 @@
+ #include "base/notreached.h"
+ #include "base/numerics/safe_conversions.h"
+ #include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
+ #include "base/trace_event/memory_usage_estimator.h"
+ #include "url/gurl.h"
+ #include "url/third_party/mozilla/url_parse.h"
+@@ -68,6 +69,10 @@
+                   SchemeHostPort::ConstructPolicy policy) {
+   // Empty schemes are never valid.
+   if (scheme.empty())
++    return false;
++
++  // The reserved preview precursor is opaque-only, including case variants.
++  if (base::EqualsCaseInsensitiveASCII(scheme, "aux-result"))
+     return false;
+ 
+   // about:blank and other no-access schemes translate into an opaque origin.
+--- a/url/origin_unittest.cc
++++ b/url/origin_unittest.cc
+@@ -864,8 +864,13 @@
+ 
+ TEST_F(OriginTest, AuxResultOpaquePrecursorRequiresClosedRegistration) {
+   EXPECT_FALSE(Origin::CreateOpaqueAuxResultPreviewOrigin());
++  {
++    ScopedSchemeRegistryForTests unregistered;
++    AddStandardScheme("aux-result", SchemeType::SCHEME_WITH_HOST);
++    EXPECT_FALSE(Origin::CreateOpaqueAuxResultPreviewOrigin());
++  }
++  ScopedSchemeRegistryForTests registered;
+   AddStandardScheme("aux-result", SchemeType::SCHEME_WITH_HOST);
+-  EXPECT_FALSE(Origin::CreateOpaqueAuxResultPreviewOrigin());
+   AddNoAccessScheme("aux-result");
+   auto first = Origin::CreateOpaqueAuxResultPreviewOrigin();
+   auto second = Origin::CreateOpaqueAuxResultPreviewOrigin();
+@@ -880,6 +885,9 @@
+   EXPECT_EQ("preview", tuple.host());
+   EXPECT_EQ(0, tuple.port());
+   EXPECT_FALSE(SchemeHostPort("aux-result", "preview", 0).IsValid());
++  EXPECT_FALSE(SchemeHostPort("AUX-RESULT", "preview", 0).IsValid());
++  EXPECT_FALSE(Origin::UnsafelyCreateTupleOriginWithoutNormalization(
++      "AUX-RESULT", "preview", 0));
+   EXPECT_FALSE(Origin::UnsafelyCreateTupleOriginWithoutNormalization(
+       "aux-result", "preview", 0));
+   EXPECT_FALSE(Origin::CreateFromNormalizedTuple(
+--- a/content/browser/security/cpsp/child_process_security_policy_unittest.cc
++++ b/content/browser/security/cpsp/child_process_security_policy_unittest.cc
+@@ -52,6 +52,7 @@
+ #include "third_party/blink/public/common/storage_key/storage_key.h"
+ #include "url/gurl.h"
+ #include "url/origin.h"
++#include "url/url_util.h"
+ 
+ namespace content {
+ namespace {
+@@ -1727,6 +1728,45 @@
+   p->Remove(kRendererProcess);
+ }
+ 
++TEST_P(ChildProcessSecurityPolicyTest, AuxResultHostsOnlyExactCommittedNonce) {
++  url::ScopedSchemeRegistryForTests registry;
++  url::AddStandardScheme("aux-result", url::SchemeType::SCHEME_WITH_HOST);
++  url::AddNoAccessScheme("aux-result");
++  auto original = url::Origin::CreateOpaqueAuxResultPreviewOrigin();
++  auto foreign = url::Origin::CreateOpaqueAuxResultPreviewOrigin();
++  ASSERT_TRUE(original);
++  ASSERT_TRUE(foreign);
++  auto* p = ChildProcessSecurityPolicyImpl::GetInstance();
++  using AccessType = ChildProcessSecurityPolicyImpl::AccessType;
++  for (int mode = 0; mode < 3; ++mode) {
++    SCOPED_TRACE(mode);
++    TestBrowserContext context;
++    p->AddForTesting(kRendererProcess, &context);
++    UrlInfoInit info(GURL("https://foo.com"));
++    if (mode == 1)
++      info.WithSandbox(true);
++    if (mode == 2)
++      info.WithEmbedderIsolationInfo(EmbedderIsolationInfo::CreateForPdf());
++    auto instance = SiteInstanceImpl::CreateForUrlInfo(
++        &context, UrlInfo(info), /*is_guest=*/false,
++        /*is_fenced=*/false, /*is_fixed_storage_partition=*/false);
++    p->LockProcess(instance->GetIsolationContext(), kRendererProcess,
++                   /*is_process_used=*/false,
++                   ProcessLock::FromSiteInfo(instance->GetSiteInfo()));
++    EXPECT_FALSE(p->HostsOrigin(kRendererID, *original));
++    p->AddCommittedOrigin(kRendererID, *original);
++    EXPECT_TRUE(p->HostsOrigin(kRendererID, *original));
++    EXPECT_FALSE(p->HostsOrigin(kRendererID, *foreign));
++    EXPECT_FALSE(p->HostsOrigin(kRendererID, original->DeriveNewOpaqueOrigin()));
++    EXPECT_FALSE(p->CanAccessOrigin(
++        kRendererID, *original, AccessType::kCanAccessDataForCommittedOrigin));
++    EXPECT_FALSE(p->HostsOrigin(
++        kRendererID, url::Origin::Create(GURL("https://uncommitted.test"))));
++    p->Remove(kRendererProcess);
++    EXPECT_FALSE(p->HostsOrigin(kRendererID, *original));
++  }
++}
++
+ TEST_P(ChildProcessSecurityPolicyTest, SandboxedProcessEnforcements) {
+   ChildProcessSecurityPolicyImpl* p =
+       ChildProcessSecurityPolicyImpl::GetInstance();
+--- a/content/browser/security/cpsp/child_process_security_policy_impl.h
++++ b/content/browser/security/cpsp/child_process_security_policy_impl.h
+@@ -1183,7 +1183,8 @@
+   bool CanAccessMaybeOpaqueOrigin(ChildProcessId child_id,
+                                   const GURL& url,
+                                   bool url_is_precursor_of_opaque_origin,
+-                                  AccessType access_type);
++                                  AccessType access_type,
++                                  const url::Origin* original_closed_opaque_origin = nullptr);
+ 
+   // Helper used by CanAccessOrigin to impose additional restrictions on a
+   // sandboxed process locked to `process_lock`.
+--- a/content/browser/security/cpsp/child_process_security_policy_impl.cc
++++ b/content/browser/security/cpsp/child_process_security_policy_impl.cc
+@@ -687,6 +687,11 @@
+     return str;
+   }
+ 
++  bool MatchesCommittedAuxResultOrigin(const url::Origin& origin) const {
++    return origin.HasAuxResultPreviewOpaquePrecursor() &&
++           committed_origins_.contains(origin);
++  }
++
+   bool MatchesCommittedOrigin(const GURL& url,
+                               bool url_is_for_precursor_origin) const {
+     for (auto& origin : committed_origins_) {
+@@ -2508,7 +2513,11 @@
+   }
+   bool success =
+       CanAccessMaybeOpaqueOrigin(ChildProcessId::FromUnsafeValue(child_id),
+-                                 url_to_check, origin.opaque(), access_type);
++                                 url_to_check, origin.opaque(), access_type,
++                                 access_type == AccessType::kHostsOrigin &&
++                                         origin.HasAuxResultPreviewOpaquePrecursor()
++                                     ? &origin
++                                     : nullptr);
+   if (success) {
+     return true;
+   }
+@@ -2870,7 +2879,8 @@
+     ChildProcessId child_id,
+     const GURL& url,
+     bool url_is_precursor_of_opaque_origin,
+-    AccessType access_type) {
++    AccessType access_type,
++    const url::Origin* original_closed_opaque_origin) {
+   base::AutoLock lock(lock_);
+ 
+   const ProcessState* process_state =
+@@ -2909,8 +2919,12 @@
+           // even for origins that have previously committed in a process. In
+           // other words, PDF and sandboxed processes should never be allowed to
+           // access data, even to their own committed origins.
+-          if (process_state->MatchesCommittedOrigin(
+-                  url, url_is_precursor_of_opaque_origin)) {
++          if (original_closed_opaque_origin
++                  ? access_type == AccessType::kHostsOrigin &&
++                        process_state->MatchesCommittedAuxResultOrigin(
++                            *original_closed_opaque_origin)
++                  : process_state->MatchesCommittedOrigin(
++                        url, url_is_precursor_of_opaque_origin)) {
+             return true;
+           }
+           failure_reason = "no_matching_committed_origin";
+--- a/third_party/blink/public/web/web_local_frame_client.h
++++ b/third_party/blink/public/web/web_local_frame_client.h
+@@ -881,6 +881,8 @@
+   // could be fulfilled.  The client should not load the request.
+   // The policy parameter indicates how the new view will be displayed in
+   // LocalMainFrameHost::ShowCreatedWidget.
++  // Optional synchronous output, set only when the browser reports policy
++  // blocking. Callers initialize it to false; no output pointer is retained.
+   virtual WebView* CreateNewWindow(
+       const WebURLRequest& request,
+       const WebWindowFeatures& features,
+@@ -891,7 +893,8 @@
+       const SessionStorageNamespaceId& session_storage_namespace_id,
+       bool& consumed_user_gesture,
+       const std::optional<WebPictureInPictureWindowOptions>& pip_options,
+-      const WebURL& base_url) {
++      const WebURL& base_url,
++      bool* policy_blocked = nullptr) {
+     return nullptr;
+   }
+ 
+--- a/content/renderer/render_frame_impl.h
++++ b/content/renderer/render_frame_impl.h
+@@ -655,7 +655,8 @@
+       const blink::SessionStorageNamespaceId& session_storage_namespace_id,
+       bool& consumed_user_gesture,
+       const std::optional<blink::WebPictureInPictureWindowOptions>& pip_options,
+-      const blink::WebURL& base_url) override;
++      const blink::WebURL& base_url,
++      bool* policy_blocked = nullptr) override;
+ 
+   base::ScopedClosureRunner CreateScopedClientNavigationThrottler() override;
+ 
+--- a/content/renderer/render_frame_impl.cc
++++ b/content/renderer/render_frame_impl.cc
+@@ -7075,8 +7075,11 @@
+     const blink::SessionStorageNamespaceId& session_storage_namespace_id,
+     bool& consumed_user_gesture,
+     const std::optional<blink::WebPictureInPictureWindowOptions>& pip_options,
+-    const blink::WebURL& base_url) {
++    const blink::WebURL& base_url,
++    bool* policy_blocked) {
+   consumed_user_gesture = false;
++  if (policy_blocked)
++    *policy_blocked = false;
+   mojom::CreateNewWindowParamsPtr params = mojom::CreateNewWindowParams::New();
+ 
+   // The user activation check is done at the browser process through
+@@ -7204,6 +7207,8 @@
+   // that isn't allowed to open a window  shouldn't be able to consume the
+   // activation for the rest of the frame tree.
+   if (status == mojom::CreateNewWindowStatus::kBlocked) {
++    if (policy_blocked)
++      *policy_blocked = true;
+     return nullptr;
+   }
+ 
+--- a/third_party/blink/renderer/core/frame/frame_test_helpers.h
++++ b/third_party/blink/renderer/core/frame/frame_test_helpers.h
+@@ -567,7 +567,8 @@
+       const SessionStorageNamespaceId&,
+       bool& consumed_user_gesture,
+       const std::optional<WebPictureInPictureWindowOptions>&,
+-      const WebURL& base_url) override;
++      const WebURL& base_url,
++      bool* = nullptr) override;
+ 
+   int VisuallyNonEmptyLayoutCount() const {
+     return visually_non_empty_layout_count_;
+--- a/third_party/blink/renderer/core/frame/frame_test_helpers.cc
++++ b/third_party/blink/renderer/core/frame/frame_test_helpers.cc
+@@ -1014,7 +1014,8 @@
+     const SessionStorageNamespaceId&,
+     bool& consumed_user_gesture,
+     const std::optional<WebPictureInPictureWindowOptions>&,
+-    const WebURL&) {
++    const WebURL&,
++    bool*) {
+   auto webview_helper = std::make_unique<WebViewHelper>();
+   WebView* result = webview_helper->InitializeWithOpener(frame_);
+   child_web_views_.push_back(std::move(webview_helper));
+--- a/third_party/blink/renderer/core/frame/web_frame_test.cc
++++ b/third_party/blink/renderer/core/frame/web_frame_test.cc
+@@ -7929,7 +7929,8 @@
+       const SessionStorageNamespaceId&,
+       bool& consumed_user_gesture,
+       const std::optional<WebPictureInPictureWindowOptions>&,
+-      const WebURL&) override {
++      const WebURL&,
++      bool*) override {
+     EXPECT_TRUE(expect_create_new_window_);
+     did_call_create_new_window_ = true;
+     new_window_sandbox_flags_ = sandbox_flags;
+--- a/third_party/blink/renderer/core/exported/web_view_test.cc
++++ b/third_party/blink/renderer/core/exported/web_view_test.cc
+@@ -5342,7 +5342,8 @@
+       const SessionStorageNamespaceId&,
+       bool& consumed_user_gesture,
+       const std::optional<WebPictureInPictureWindowOptions>&,
+-      const WebURL&) override {
++      const WebURL&,
++      bool*) override {
+     return web_view_helper_.InitializeWithOpener(Frame());
+   }
+   WebView* CreatedWebView() const { return web_view_helper_.GetWebView(); }
+@@ -5441,7 +5442,8 @@
+       const SessionStorageNamespaceId&,
+       bool& consumed_user_gesture,
+       const std::optional<WebPictureInPictureWindowOptions>&,
+-      const WebURL&) override {
++      const WebURL&,
++      bool*) override {
+     return web_view_;
+   }
+ 
+--- a/third_party/blink/renderer/core/page/chrome_client_impl_test.cc
++++ b/third_party/blink/renderer/core/page/chrome_client_impl_test.cc
+@@ -113,11 +113,24 @@
+       const SessionStorageNamespaceId&,
+       bool& consumed_user_gesture,
+       const std::optional<WebPictureInPictureWindowOptions>&,
+-      const WebURL& creator_base_url) override {
++      const WebURL& creator_base_url,
++      bool* policy_blocked) override {
++    if (refuse_window_) {
++      if (policy_blocked)
++        *policy_blocked = policy_blocked_;
++      return nullptr;
++    }
+     return web_view_helper_.InitializeWithOpener(Frame());
+   }
+ 
++  void RefuseWindow(bool policy_blocked) {
++    refuse_window_ = true;
++    policy_blocked_ = policy_blocked;
++  }
++
+  private:
++  bool refuse_window_ = false;
++  bool policy_blocked_ = false;
+   frame_test_helpers::WebViewHelper web_view_helper_;
+ };
+ 
+@@ -149,6 +162,47 @@
+                          frame, request, g_empty_atom, features,
+                          network::mojom::blink::WebSandboxFlags::kNone, "",
+                          consumed_user_gesture));
++}
++
++TEST_F(CreateWindowTest, ExplicitPolicyBlockIsReturnedOnOriginalRequest) {
++  web_frame_client_.RefuseWindow(true);
++  LocalFrame* frame = To<WebLocalFrameImpl>(main_frame_.get())->GetFrame();
++  FrameLoadRequest request(frame->DomWindow(), ResourceRequest());
++  request.SetNavigationPolicy(kNavigationPolicyPictureInPicture);
++  bool consumed = false;
++  EXPECT_EQ(nullptr, chrome_client_impl_->CreateWindow(
++      frame, request, g_empty_atom, WebWindowFeatures(),
++      network::mojom::blink::WebSandboxFlags::kNone, "", consumed));
++  EXPECT_TRUE(request.WindowCreationPolicyBlocked());
++}
++
++TEST_F(CreateWindowTest, GenericWindowFailureDoesNotClaimPolicyBlock) {
++  web_frame_client_.RefuseWindow(false);
++  LocalFrame* frame = To<WebLocalFrameImpl>(main_frame_.get())->GetFrame();
++  FrameLoadRequest request(frame->DomWindow(), ResourceRequest());
++  request.SetNavigationPolicy(kNavigationPolicyPictureInPicture);
++  bool consumed = false;
++  EXPECT_EQ(nullptr, chrome_client_impl_->CreateWindow(
++      frame, request, g_empty_atom, WebWindowFeatures(),
++      network::mojom::blink::WebSandboxFlags::kNone, "", consumed));
++  EXPECT_FALSE(request.WindowCreationPolicyBlocked());
++}
++
++TEST_F(CreateWindowTest, NewInvocationResetsPriorPolicyBlockBeforeEarlyRefusal) {
++  web_frame_client_.RefuseWindow(true);
++  LocalFrame* frame = To<WebLocalFrameImpl>(main_frame_.get())->GetFrame();
++  FrameLoadRequest request(frame->DomWindow(), ResourceRequest());
++  request.SetNavigationPolicy(kNavigationPolicyPictureInPicture);
++  bool consumed = false;
++  EXPECT_EQ(nullptr, chrome_client_impl_->CreateWindow(
++      frame, request, g_empty_atom, WebWindowFeatures(),
++      network::mojom::blink::WebSandboxFlags::kNone, "", consumed));
++  ASSERT_TRUE(request.WindowCreationPolicyBlocked());
++  ScopedPagePauser pauser;
++  EXPECT_EQ(nullptr, chrome_client_impl_->CreateWindow(
++      frame, request, g_empty_atom, WebWindowFeatures(),
++      network::mojom::blink::WebSandboxFlags::kNone, "", consumed));
++  EXPECT_FALSE(request.WindowCreationPolicyBlocked());
+ }
+ 
+ class NewWindowUrlCapturingChromeClient : public EmptyChromeClient {
+--- a/third_party/blink/renderer/core/page/chrome_client_impl.cc
++++ b/third_party/blink/renderer/core/page/chrome_client_impl.cc
+@@ -426,13 +426,16 @@
+   NotifyPopupOpeningObservers();
+   const AtomicString& frame_name =
+       !EqualIgnoringAsciiCase(name, "_blank") ? name : g_empty_atom;
++  bool policy_blocked = false;
+   WebViewImpl* new_view =
+       static_cast<WebViewImpl*>(web_frame->Client()->CreateNewWindow(
+           WrappedResourceRequest(r.GetResourceRequest()), features, frame_name,
+           requested_screen_rect,
+           static_cast<WebNavigationPolicy>(r.GetNavigationPolicy()),
+           sandbox_flags, session_storage_namespace_id, consumed_user_gesture,
+-          r.GetPictureInPictureWindowOptions(), r.GetRequestorBaseURL()));
++          r.GetPictureInPictureWindowOptions(), r.GetRequestorBaseURL(),
++          &policy_blocked));
++  r.SetWindowCreationPolicyBlocked(policy_blocked);
+   if (!new_view) {
+     return nullptr;
+   }
+--- a/third_party/blink/renderer/core/loader/frame_load_request.h
++++ b/third_party/blink/renderer/core/loader/frame_load_request.h
+@@ -175,6 +175,14 @@
+     picture_in_picture_window_options_ = options;
+   }
+ 
++  // Synchronous per-request output; no pointer or callback is retained.
++  bool WindowCreationPolicyBlocked() const {
++    return window_creation_policy_blocked_;
++  }
++  void SetWindowCreationPolicyBlocked(bool blocked) const {
++    window_creation_policy_blocked_ = blocked;
++  }
++
+   void SetNoOpener() { window_features_.noopener = true; }
+   void SetExplicitOpener() { window_features_.explicit_opener = true; }
+ 
+@@ -266,6 +274,7 @@
+   mojom::RequestContextFrameType frame_type_ =
+       mojom::RequestContextFrameType::kNone;
+   WebWindowFeatures window_features_;
++  mutable bool window_creation_policy_blocked_ = false;
+   std::optional<WebPictureInPictureWindowOptions>
+       picture_in_picture_window_options_;
+   std::optional<LocalFrameToken> initiator_frame_token_;
+--- a/third_party/blink/renderer/core/frame/local_dom_window.h
++++ b/third_party/blink/renderer/core/frame/local_dom_window.h
+@@ -429,7 +429,8 @@
+ 
+   DOMWindow* openPictureInPictureWindow(
+       v8::Isolate*,
+-      const WebPictureInPictureWindowOptions&);
++      const WebPictureInPictureWindowOptions&,
++      bool& policy_blocked);
+ 
+   FrameConsole* GetFrameConsole() const;
+ 
+--- a/third_party/blink/renderer/core/frame/local_dom_window.cc
++++ b/third_party/blink/renderer/core/frame/local_dom_window.cc
+@@ -2603,7 +2603,9 @@
+ 
+ DOMWindow* LocalDOMWindow::openPictureInPictureWindow(
+     v8::Isolate* isolate,
+-    const WebPictureInPictureWindowOptions& options) {
++    const WebPictureInPictureWindowOptions& options,
++    bool& policy_blocked) {
++  policy_blocked = false;
+   LocalDOMWindow* entered_window = EnteredDOMWindow(isolate);
+   DCHECK(IsSecureContext());
+ 
+@@ -2627,6 +2629,7 @@
+   FrameTree::FindResult result =
+       GetFrame()->Tree().FindOrCreateFrameForNavigation(frame_request,
+                                                         AtomicString("_blank"));
++  policy_blocked = frame_request.WindowCreationPolicyBlocked();
+   if (!result.frame) {
+     return nullptr;
+   }
+--- a/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.cc
++++ b/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.cc
+@@ -500,12 +500,16 @@
+     return;
+   }
+ 
++  bool policy_blocked = false;
+   auto* dom_window = opener.openPictureInPictureWindow(
+-      script_state->GetIsolate(), web_options);
++      script_state->GetIsolate(), web_options, policy_blocked);
+ 
+   if (!dom_window) {
+-    resolver->RejectWithDOMException(DOMExceptionCode::kInvalidStateError,
+-                                     "Internal error: no window");
++    resolver->RejectWithDOMException(
++        policy_blocked ? DOMExceptionCode::kNotAllowedError
++                       : DOMExceptionCode::kInvalidStateError,
++        policy_blocked ? "Document PiP window creation was blocked"
++                       : "Internal error: no window");
+     return;
+   }
+ 
+--- a/third_party/blink/renderer/core/page/chrome_client.cc
++++ b/third_party/blink/renderer/core/page/chrome_client.cc
+@@ -81,6 +81,7 @@
+     network::mojom::blink::WebSandboxFlags sandbox_flags,
+     const SessionStorageNamespaceId& session_storage_namespace_id,
+     bool& consumed_user_gesture) {
++  r.SetWindowCreationPolicyBlocked(false);
+   if (!CanOpenUIElementIfDuringPageDismissal(
+           frame->Tree().Top(), UIElementType::kPopup, g_empty_string)) {
+     return nullptr;

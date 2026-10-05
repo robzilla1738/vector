@@ -1,0 +1,1 @@
+let n=null;function r(l){n=l instanceof HTMLElement?l:null}function o(){const l=n?.isConnected?n:null,e=[...document.querySelectorAll('[aria-label="Site controls"]')].find(n=>null!==n.offsetParent);return l??e??null}export{r,o as s};

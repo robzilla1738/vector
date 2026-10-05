@@ -3,13 +3,16 @@
 #include "base/functional/bind.h"
 #include "base/test/bind.h"
 #include "content/public/test/browser_task_environment.h"
-#include "content/public/test/test_browser_context.h"
+#include "chrome/test/base/testing_profile.h"
+#include "content/public/test/test_renderer_host.h"
 #include "content/public/test/web_contents_tester.h"
 #include "testing/gtest/include/gtest/gtest.h"
 namespace aux {
 namespace {
 TEST(NativePersonCaptureOwnerTest, ReservesBeforeOriginalGuardCanReenter) {
-  content::BrowserTaskEnvironment tasks; content::TestBrowserContext context;
+  content::BrowserTaskEnvironment tasks;
+  content::RenderViewHostTestEnabler renderer_hosts;
+  TestingProfile context;
   auto contents = content::WebContentsTester::CreateTestWebContents(&context, nullptr);
   NativePersonCaptureController::CreateForWebContents(contents.get());
   auto* owner = NativePersonCaptureController::FromWebContents(contents.get());
@@ -27,7 +30,9 @@ TEST(NativePersonCaptureOwnerTest, ReservesBeforeOriginalGuardCanReenter) {
   EXPECT_EQ(2, original_replies);
 }
 TEST(NativePersonCaptureOwnerTest, OriginalGuardMayDestroyItsController) {
-  content::BrowserTaskEnvironment tasks; content::TestBrowserContext context;
+  content::BrowserTaskEnvironment tasks;
+  content::RenderViewHostTestEnabler renderer_hosts;
+  TestingProfile context;
   auto contents = content::WebContentsTester::CreateTestWebContents(&context, nullptr);
   NativePersonCaptureController::CreateForWebContents(contents.get());
   auto* owner = NativePersonCaptureController::FromWebContents(contents.get());
@@ -37,7 +42,9 @@ TEST(NativePersonCaptureOwnerTest, OriginalGuardMayDestroyItsController) {
   EXPECT_FALSE(weak); EXPECT_EQ(1, replies);
 }
 TEST(NativePersonCaptureOwnerTest, DirectOwnerRemovalInvalidatesWeakBeforeOriginalFailureReply) {
-  content::BrowserTaskEnvironment tasks; content::TestBrowserContext context;
+  content::BrowserTaskEnvironment tasks;
+  content::RenderViewHostTestEnabler renderer_hosts;
+  TestingProfile context;
   auto contents = content::WebContentsTester::CreateTestWebContents(&context, nullptr);
   NativePersonCaptureController::CreateForWebContents(contents.get());
   auto* owner = NativePersonCaptureController::FromWebContents(contents.get());

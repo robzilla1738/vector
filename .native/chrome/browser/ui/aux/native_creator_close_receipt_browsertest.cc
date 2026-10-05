@@ -37,6 +37,8 @@
 #include "content/public/browser/javascript_dialog_manager.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "content/public/test/test_utils.h"
+#include "net/test/embedded_test_server/embedded_test_server.h"
 
 // The connection generation is deliberately synthetic. This peer invokes the
 // real native factories and publication/retirement, never Current or readiness.
@@ -98,6 +100,7 @@ class AuxCreatorCloseBrowserTestPeer {
   }
   static void Destroy(Profile* profile) { AuxRuntimeHost::RemoveTestDispatch(profile); }
   static uint64_t Admitted(AuxRuntimeHost* host) { return host->admitted_native_generation_; }
+  static bool PumpScheduled(AuxRuntimeHost* host) { return host->pump_scheduled_; }
   static base::DictValue ConsumeResume(AuxRuntimeHost* host, const std::string& page_id) {
     return host->HandleNativeCall("native.egressResumePerson",
         base::DictValue().Set("pageId", page_id).Set("ticketId", "not-native-minted"), host->admitted_native_generation_);
@@ -179,6 +182,7 @@ class NativeCreatorCloseReceiptBrowserTest : public InProcessBrowserTest,
     InProcessBrowserTest::TearDownInProcessBrowserTestFixture();
   }
   void SetUpOnMainThread() override {
+    ASSERT_TRUE(embedded_test_server()->Start());
     TabCatalog::EnsureFactoryBuilt();
     profile_ = browser()->GetProfile();
     host_ = AuxRuntimeHost::ForProfile(profile_);
@@ -252,6 +256,10 @@ class NativeCreatorCloseReceiptBrowserTest : public InProcessBrowserTest,
     lease.Set("taskId", "creator-browser-task");
     lease.Set("taskRevision", 3);
     lease.Set("documentEpoch", 1);
+    if (value->FindString("sourceOrigin") &&
+        *value->FindString("sourceOrigin") == "aux://blank") {
+      lease.Set("initialDestination", embedded_test_server()->GetURL("/empty.html").spec());
+    }
     lease.Set("isolationId", isolation_id);
     lease.Set("issuedAt", now);
     lease.Set("expiresAt", now + 30000);
@@ -354,6 +362,32 @@ class NativeCreatorCloseReceiptBrowserTest : public InProcessBrowserTest,
 };
 
 IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
+                       InstalledTestDispatchAuthorityEventsCannotStartWorkerPump) {
+  ASSERT_TRUE(AuxCreatorCloseBrowserTestPeer::Current(host_->GetWeakPtr(), generation_));
+  ASSERT_FALSE(AuxCreatorCloseBrowserTestPeer::PumpScheduled(host_));
+  ASSERT_TRUE(controller_->CheckRunResume("creator-browser-run", generation_).FindDict("result"));
+  // The real native authority observer is invoked by the actual owner fence.
+  // No readiness setter, replacement generation or fake Disconnect is used.
+  const auto mutation = controller_->owner_mutations().Begin();
+  ASSERT_TRUE(mutation);
+  EXPECT_FALSE(AuxCreatorCloseBrowserTestPeer::PumpScheduled(host_));
+  ASSERT_TRUE(controller_->owner_mutations().End(*mutation, true));
+  EXPECT_FALSE(AuxCreatorCloseBrowserTestPeer::PumpScheduled(host_));
+  EXPECT_TRUE(AuxCreatorCloseBrowserTestPeer::Current(host_->GetWeakPtr(), generation_));
+  EXPECT_TRUE(controller_->CheckRunResume("creator-browser-run", generation_).FindDict("result"));
+  // Admission must still yield the real original renderer blank commit and
+  // native cleanup receipt, rather than merely leaving a flag unchanged.
+  ASSERT_NO_FATAL_FAILURE(Create());
+  ASSERT_TRUE(page_);
+  EXPECT_TRUE(page_->GetPrimaryMainFrame()->GetLastCommittedURL().IsAboutBlank());
+  EXPECT_TRUE(controller_->CreatorCleanupProof(base::DictValue()
+      .Set("pageId", page_id_).Set("creationId", creation_id_), generation_).FindDict("result"));
+  AuxCreatorCloseBrowserTestPeer::Retire(host_, generation_);
+  EXPECT_FALSE(AuxCreatorCloseBrowserTestPeer::Current(host_->GetWeakPtr(), generation_));
+  EXPECT_FALSE(controller_->CheckRunResume("creator-browser-run", generation_).FindDict("result"));
+}
+
+IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
                        TakeoverPreparationWaitsForRealOriginalFinalDispatch) {
   ASSERT_NO_FATAL_FAILURE(Create());
   auto lease = InstallOriginalLease();
@@ -385,9 +419,10 @@ IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
           if (index >= 0) model->DetachAndDeleteWebContentsAt(index);
         }
       }, browser()->GetWeakPtr(), page_)));
-  content::TestNavigationManager navigation(page_.get(), GURL("about:blank"));
+  const GURL pending_url(*native_lease_.FindString("initialDestination"));
+  content::TestNavigationManager navigation(page_.get(), pending_url);
   auto started = broker_->StartControlledNavigation(page_id_, native_attachment_id_, 71,
-      "about:blank", native_expiry_, generation_);
+      pending_url.spec(), native_expiry_, generation_);
   ASSERT_NE(started.FindDict("result"), nullptr) << started;
   ASSERT_TRUE(navigation.WaitForRequestStart());
   auto replacement = broker_->Attach(page_id_, "agent",
@@ -409,9 +444,10 @@ IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
         }
       }, page_)));
   const auto original_document = page_->GetPrimaryMainFrame()->GetWeakDocumentPtr();
-  content::TestNavigationManager navigation(page_.get(), GURL("about:blank"));
+  const GURL pending_url(*native_lease_.FindString("initialDestination"));
+  content::TestNavigationManager navigation(page_.get(), pending_url);
   auto started = broker_->StartControlledNavigation(page_id_, native_attachment_id_, 72,
-      "about:blank", native_expiry_, generation_);
+      pending_url.spec(), native_expiry_, generation_);
   ASSERT_NE(started.FindDict("result"), nullptr) << started;
   ASSERT_TRUE(navigation.WaitForRequestStart());
   auto replacement = broker_->Attach(page_id_, "agent",
@@ -505,6 +541,10 @@ IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
   lease.Set("taskId", "creator-browser-task");
   lease.Set("taskRevision", 3);
   lease.Set("documentEpoch", 1);
+  if (value->FindString("sourceOrigin") &&
+      *value->FindString("sourceOrigin") == "aux://blank") {
+    lease.Set("initialDestination", embedded_test_server()->GetURL("/empty.html").spec());
+  }
   lease.Set("isolationId", *isolation->FindString("isolationId"));
   lease.Set("issuedAt", now);
   lease.Set("expiresAt", now + 30000);
@@ -643,6 +683,14 @@ IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
       *retirement->original_scope.FindString("documentToken"));
   EXPECT_NE(AuxCreatorCloseBrowserTestPeer::ConsumeResume(host_, page_id_)
       .FindDict("error"), nullptr);
+  // The old creation receipt cannot consume the genuinely resumed owner.
+  Close();
+  EXPECT_NE(close_.Get().FindDict("error"), nullptr);
+  EXPECT_TRUE(page_);
+  const auto mutation = controller_->owner_mutations().Begin();
+  ASSERT_TRUE(mutation);
+  EXPECT_TRUE(InstallOriginalLease().empty());
+  ASSERT_TRUE(controller_->owner_mutations().End(*mutation, true));
   auto lease = InstallOriginalLease();
   EXPECT_FALSE(lease.empty());
 }
@@ -677,6 +725,12 @@ IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
   EXPECT_FALSE(controller_->HasStoppedRunIntent("registered-parent", generation_));
   // A local Return/Resume does not revive the original lease or old command.
   EXPECT_FALSE(controller_->RecordFinalCdpDispatch(original, lease));
+  EXPECT_NE(controller_->Install(base::DictValue().Set("lease", lease.Clone())
+      .Set("expectedUrl", "about:blank")).FindDict("error"), nullptr);
+  const auto mutation = controller_->owner_mutations().Begin();
+  ASSERT_TRUE(mutation);
+  EXPECT_TRUE(InstallOriginalLease().empty());
+  ASSERT_TRUE(controller_->owner_mutations().End(*mutation, true));
   auto fresh = InstallOriginalLease();
   ASSERT_FALSE(fresh.empty());
   EXPECT_NE(*fresh.FindString("controlGeneration"), *lease.FindString("controlGeneration"));
@@ -784,8 +838,10 @@ IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
   browser()->GetTabStripModel()->CloseWebContents(page_.get(), TabCloseTypes::CLOSE_NONE);
   EXPECT_NE(close_.Get().FindDict("error"), nullptr);
   EXPECT_TRUE(page_);
+  content::WebContentsDestroyedWatcher destroyed(page_.get());
   dialog->view()->AcceptAppModalDialog();
   base::RunLoop().RunUntilIdle();
+  destroyed.Wait();
   EXPECT_FALSE(page_);
 }
 

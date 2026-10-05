@@ -155,6 +155,8 @@ CompositorFrameMetadata::CompositorFrameMetadata(
       frame_token(other.frame_token),
       native_stock_ready(other.native_stock_ready),
       send_frame_token_to_embedder(other.send_frame_token_to_embedder),
+      aux_person_capture_activation_requested(
+          other.aux_person_capture_activation_requested),
       min_page_scale_factor(other.min_page_scale_factor),
       top_controls_visible_height(other.top_controls_visible_height),
       view_transition_deadline_in_frames(

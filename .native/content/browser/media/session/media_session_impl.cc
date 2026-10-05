@@ -76,6 +76,8 @@ class PictureInPictureUserAuthority final
   uint64_t consumed_sequence = 0;
   bool requires_ui_receipt = false;
   base::TimeTicks input_at;
+  base::TimeTicks automatic_at;
+  bool automatic_expired = false;
  private:
   explicit PictureInPictureUserAuthority(RenderFrameHost* frame)
       : DocumentUserData(frame) {}
@@ -131,6 +133,14 @@ void MarkAutomaticPictureInPictureDocument(RenderFrameHost& frame) {
   if (!CurrentPictureInPictureDocument(frame)) return;
   auto* state = PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&frame);
   state->automatic_sequence = ++pip_input_sequence;
+  state->automatic_at = base::TimeTicks::Now();
+  state->automatic_expired = false;
+}
+void RecordExpiredAutomaticPictureInPictureDocument(RenderFrameHost& frame) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  if (!CurrentPictureInPictureDocument(frame)) return;
+  auto* state = PictureInPictureUserAuthority::GetForCurrentDocument(&frame);
+  if (state && state->automatic_sequence) state->automatic_expired = true;
 }
 bool TransferPictureInPictureUserInput(RenderFrameHost& source,
                                       RenderFrameHost& target) {
@@ -157,8 +167,10 @@ bool TransferPictureInPictureUserInput(RenderFrameHost& source,
       ->RecordPictureInPictureUserInvocation(target, false);
   return true;
 }
-bool ConsumePictureInPictureUserInput(RenderFrameHost& frame) {
+bool ConsumePictureInPictureUserInput(RenderFrameHost& frame,
+                                     bool* expired_automatic_lineage) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  if (expired_automatic_lineage) *expired_automatic_lineage = false;
   auto* contents = WebContents::FromRenderFrameHost(&frame);
   if (!frame.IsActive() || !frame.IsRenderFrameLive() || !contents) return false;
   auto* primary = contents->GetPrimaryMainFrame();
@@ -169,7 +181,15 @@ bool ConsumePictureInPictureUserInput(RenderFrameHost& frame) {
   auto* state = PictureInPictureUserAuthority::GetForCurrentDocument(primary);
   if (!state || (!state->automatic_sequence && !state->requires_ui_receipt))
     return true;
-  if (!HasLaterPictureInPictureInput(*state, state->automatic_sequence)) return false;
+  if (!HasLaterPictureInPictureInput(*state, state->automatic_sequence)) {
+    if (expired_automatic_lineage)
+      *expired_automatic_lineage = state->automatic_sequence &&
+          (state->automatic_expired ||
+           (!state->automatic_at.is_null() &&
+            base::TimeTicks::Now() >=
+                state->automatic_at + blink::kActivationLifespan));
+    return false;
+  }
   state->consumed_sequence = state->input_sequence;
   return true;
 }

@@ -18,6 +18,7 @@
 #include "third_party/blink/public/web/web_script_source.h"
 #include "v8/include/v8-context.h"
 #include "v8/include/v8-function.h"
+#include "v8/include/v8-microtask-queue.h"
 #include "v8/include/v8-object.h"
 
 namespace chrome {
@@ -87,6 +88,9 @@ void AuxRecorderAgent::Start(
     return;
   }
   auto context = global.As<v8::Object>()->GetCreationContextChecked();
+  v8::MicrotasksScope microtasks_scope(
+      isolate, context->GetMicrotaskQueue(),
+      v8::MicrotasksScope::kDoNotRunMicrotasks);
   v8::Context::Scope context_scope(context);
   auto binding = gin::CreateFunctionTemplate(
       isolate, base::BindRepeating(&AuxRecorderAgent::Capture,

@@ -10689,9 +10689,14 @@ void RenderFrameHostImpl::CreateNewWindow(
 
   // Automatic provenance survives consumed/expired renderer activation and
   // BFCache. A synthetic newer activation cannot turn it into attended PiP.
+  bool expired_automatic_lineage = false;
   if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE &&
-      !ConsumePictureInPictureUserInput(*this)) {
-    std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
+      !ConsumePictureInPictureUserInput(*this, &expired_automatic_lineage)) {
+    std::move(callback).Run(
+        expired_automatic_lineage
+            ? mojom::CreateNewWindowStatus::kBlockedExpiredAutomaticLineage
+            : mojom::CreateNewWindowStatus::kBlocked,
+        nullptr);
     return;
   }
 

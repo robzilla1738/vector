@@ -1,0 +1,190 @@
+--- a/chrome/browser/ui/aux/native_creator_close_receipt_unittest.cc
++++ b/chrome/browser/ui/aux/native_creator_close_receipt_unittest.cc
+@@ -19,6 +19,8 @@
+ #include "content/public/browser/navigation_handle.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "base/strings/string_number_conversions.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/site_instance.h"
+ #include "content/public/browser/security_principal.h"
+@@ -29,6 +31,20 @@
+ #include "ui/base/page_transition_types.h"
+ 
+ namespace aux {
++class CreatorNavigationFinishObserver final : public content::WebContentsObserver {
++ public:
++  CreatorNavigationFinishObserver(content::WebContents* page, base::DictValue* diagnostic)
++      : content::WebContentsObserver(page), diagnostic_(diagnostic) {}
++  void DidFinishNavigation(content::NavigationHandle* navigation) override {
++    diagnostic_->Set("finishedNavigationId", base::NumberToString(navigation->GetNavigationId()));
++    diagnostic_->Set("finishedUrl", navigation->GetURL().spec());
++    diagnostic_->Set("hasCommitted", navigation->HasCommitted());
++    diagnostic_->Set("isErrorPage", navigation->IsErrorPage());
++    diagnostic_->Set("netErrorCode", navigation->GetNetErrorCode());
++  }
++ private:
++  raw_ptr<base::DictValue> diagnostic_;
++};
+ // These are genuine Profile/catalog/isolation/navigation/refusal controls. The supplied private connection generation is synthetic; this
+ // fixture does not qualify Worker Connect/socket authentication or Mac input.
+ class NativeCreatorCloseReceiptTest : public BrowserWithTestWindowTest {
+@@ -45,6 +61,7 @@
+         profile(), GURL("https://aux.invalid/"), partition);
+     auto contents = content::WebContentsTester::CreateTestWebContents(profile(), site);
+     page_ = contents->GetWeakPtr();
++    finish_observer_ = std::make_unique<CreatorNavigationFinishObserver>(page_.get(), &navigation_diagnostic_);
+     browser()->GetTabStripModel()->AppendWebContents(std::move(contents), true);
+     ASSERT_TRUE(controller_->RegisterIsolation(page_.get(), id, "creator-run", "creator-task", 3, {"creator-run", "registered-parent"}, kGeneration));
+     page_id_ = PageIdentity::GetOrCreate(profile(), page_.get());
+@@ -68,6 +85,7 @@
+     page_->GetController().LoadURLWithParams(blank);
+     navigation_ = content::NavigationSimulator::CreateFromPending(page_->GetController());
+     navigation_->ReadyToCommit();
++    navigation_diagnostic_.Set("originalNavigationId", base::NumberToString(navigation_->GetNavigationHandle()->GetNavigationId()));
+     const auto ready_scope = scope_snapshot();
+     auto created = controller_->RegisterCreatorPage(page_.get(),
+         navigation_->GetNavigationHandle()->GetNavigationId(), kGeneration, nullptr);
+@@ -86,6 +104,7 @@
+     creation_id_ = *id_value;
+   }
+   void TearDown() override {
++    finish_observer_.reset();
+     navigation_.reset();
+     early_navigation_.reset();
+     if (controller_) controller_->Disconnect();
+@@ -95,6 +114,7 @@
+     BrowserWithTestWindowTest::TearDown();
+   }
+   void Commit() {
++    ASSERT_TRUE(navigation_->GetNavigationHandle()) << "Original creator navigation finished before Commit: " << navigation_diagnostic_.DebugString();
+     navigation_->Commit();
+     navigation_.reset();
+   }
+@@ -114,6 +134,8 @@
+   raw_ptr<EgressController> controller_ = nullptr;
+   base::WeakPtr<content::WebContents> page_;
+   std::string page_id_, creation_id_, isolation_id_;
++  base::DictValue navigation_diagnostic_;
++  std::unique_ptr<CreatorNavigationFinishObserver> finish_observer_;
+   std::unique_ptr<content::NavigationSimulator> navigation_, early_navigation_;
+   std::optional<bool> ready_;
+   std::optional<base::DictValue> reply_, replay_;
+--- a/chrome/browser/ui/aux/native_person_capture_controller_unittest.cc
++++ b/chrome/browser/ui/aux/native_person_capture_controller_unittest.cc
+@@ -4,12 +4,15 @@
+ #include "base/test/bind.h"
+ #include "content/public/test/browser_task_environment.h"
+ #include "chrome/test/base/testing_profile.h"
++#include "content/public/test/test_renderer_host.h"
+ #include "content/public/test/web_contents_tester.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ namespace aux {
+ namespace {
+ TEST(NativePersonCaptureOwnerTest, ReservesBeforeOriginalGuardCanReenter) {
+-  content::BrowserTaskEnvironment tasks; TestingProfile context;
++  content::BrowserTaskEnvironment tasks;
++  content::RenderViewHostTestEnabler renderer_hosts;
++  TestingProfile context;
+   auto contents = content::WebContentsTester::CreateTestWebContents(&context, nullptr);
+   NativePersonCaptureController::CreateForWebContents(contents.get());
+   auto* owner = NativePersonCaptureController::FromWebContents(contents.get());
+@@ -27,7 +30,9 @@
+   EXPECT_EQ(2, original_replies);
+ }
+ TEST(NativePersonCaptureOwnerTest, OriginalGuardMayDestroyItsController) {
+-  content::BrowserTaskEnvironment tasks; TestingProfile context;
++  content::BrowserTaskEnvironment tasks;
++  content::RenderViewHostTestEnabler renderer_hosts;
++  TestingProfile context;
+   auto contents = content::WebContentsTester::CreateTestWebContents(&context, nullptr);
+   NativePersonCaptureController::CreateForWebContents(contents.get());
+   auto* owner = NativePersonCaptureController::FromWebContents(contents.get());
+@@ -37,7 +42,9 @@
+   EXPECT_FALSE(weak); EXPECT_EQ(1, replies);
+ }
+ TEST(NativePersonCaptureOwnerTest, DirectOwnerRemovalInvalidatesWeakBeforeOriginalFailureReply) {
+-  content::BrowserTaskEnvironment tasks; TestingProfile context;
++  content::BrowserTaskEnvironment tasks;
++  content::RenderViewHostTestEnabler renderer_hosts;
++  TestingProfile context;
+   auto contents = content::WebContentsTester::CreateTestWebContents(&context, nullptr);
+   NativePersonCaptureController::CreateForWebContents(contents.get());
+   auto* owner = NativePersonCaptureController::FromWebContents(contents.get());
+diff --git a/chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc b/chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc
+index 9413589..f15b555 100644
+--- a/chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc
++++ b/chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc
+@@ -3,6 +3,10 @@
+ #include "base/base64.h"
+ #include "base/logging.h"
+ #include <memory>
++#include <optional>
++#include "base/strings/string_number_conversions.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/web_contents_observer.h"
+ #include "base/command_line.h"
+ #include "content/public/common/content_switches.h"
+ #include "net/dns/mock_host_resolver.h"
+@@ -34,6 +38,33 @@ class NativePersonCaptureControllerTestPeer {
+ };
+ namespace {
+ struct CaptureGuardLifetime { bool active = true; };
++class OriginalCaptureNavigationObserver final : public content::WebContentsObserver {
++ public:
++  OriginalCaptureNavigationObserver(content::WebContents* page, const GURL& expected,
++                                    base::DictValue* facts)
++      : content::WebContentsObserver(page), expected_(expected), facts_(facts) {}
++  void DidStartNavigation(content::NavigationHandle* navigation) override {
++    if (original_id_ || !navigation->IsInPrimaryMainFrame() ||
++        navigation->GetURL() != expected_) return;
++    original_id_ = navigation->GetNavigationId();
++    facts_->Set("originalNavigationId", base::NumberToString(*original_id_));
++    facts_->Set("originalAttemptURL", navigation->GetURL().spec());
++  }
++  void DidFinishNavigation(content::NavigationHandle* navigation) override {
++    if (!original_id_ || navigation->GetNavigationId() != *original_id_ ||
++        !navigation->IsInPrimaryMainFrame()) return;
++    facts_->Set("originalAttemptFinished", true);
++    facts_->Set("originalFinishedURL", navigation->GetURL().spec());
++    facts_->Set("originalHasCommitted", navigation->HasCommitted());
++    facts_->Set("originalIsErrorPage", navigation->IsErrorPage());
++    facts_->Set("originalNetErrorCode", navigation->GetNetErrorCode());
++  }
++ private:
++  const GURL expected_;
++  raw_ptr<base::DictValue> facts_;
++  std::optional<int64_t> original_id_;
++};
++
+ constexpr char kStyle[] = "position:absolute;left:20px;top:20px;width:160px;height:60px;border:0;padding:0;background:rgb(255,0,0)";
+ std::unique_ptr<net::test_server::HttpResponse> Fixture(const net::test_server::HttpRequest& request) {
+   auto response = std::make_unique<net::test_server::BasicHttpResponse>();
+@@ -52,6 +83,9 @@ class NativePersonCaptureControllerBrowserTest : public InProcessBrowserTest {
+     host_resolver()->AddRule("*","127.0.0.1");
+     embedded_test_server()->RegisterRequestHandler(base::BindRepeating(&Fixture));
+     ASSERT_TRUE(embedded_test_server()->Start());
++    OriginalCaptureNavigationObserver original_attempt(
++        browser()->tab_strip_model()->GetActiveWebContents(),
++        embedded_test_server()->GetURL("/frame-parent"), &original_navigation_facts_);
+     auto* original_navigation = ui_test_utils::NavigateToURL(browser(), embedded_test_server()->GetURL("/frame-parent"));
+     ASSERT_TRUE(original_navigation);
+     original_navigation_document_ = original_navigation->GetWeakDocumentPtr();
+@@ -64,6 +98,8 @@ class NativePersonCaptureControllerBrowserTest : public InProcessBrowserTest {
+     auto* original = original_navigation_document_.AsRenderFrameHostIfValid();
+     auto* current = page_ ? page_->GetPrimaryMainFrame() : nullptr;
+     scope.Set("originalNavigationDocumentLive", original != nullptr);
++    scope.Set("originalNavigationAttempt", original_navigation_facts_.Clone());
++    if (current) scope.Set("selectedCommittedURL", current->GetLastCommittedURL().spec());
+     scope.Set("selectedPrimaryIsOriginalNavigation", current && current == original);
+     scope.Set("selectedPageIsActive", page_ && browser()->tab_strip_model()->GetActiveWebContents() == page_);
+     scope.Set("selectedOriginalFixtureURL", current && current->GetLastCommittedURL() == embedded_test_server()->GetURL("/frame-parent"));
+@@ -106,6 +142,7 @@ class NativePersonCaptureControllerBrowserTest : public InProcessBrowserTest {
+     InProcessBrowserTest::TearDownOnMainThread();
+   }
+   std::shared_ptr<CaptureGuardLifetime> lifetime_ = std::make_shared<CaptureGuardLifetime>();
++  base::DictValue original_navigation_facts_;
+   content::WeakDocumentPtr original_navigation_document_;
+   raw_ptr<content::WebContents> page_ = nullptr;
+   raw_ptr<NativePersonCaptureController> owner_ = nullptr;

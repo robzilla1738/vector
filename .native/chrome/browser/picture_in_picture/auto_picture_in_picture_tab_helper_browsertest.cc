@@ -122,6 +122,34 @@ using testing::_;
 using testing::AtLeast;
 using testing::Return;
 
+#include "base/callback_list.h"
+#include "base/json/json_reader.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/browser/profiles/profile_manager.h"
+#include "chrome/browser/profiles/profile_manager_observer.h"
+#include "chrome/browser/ui/aux/runtime_host.h"
+
+// Only the fresh synthetic Profile's empty Zap policy is supplied by this
+// fixture. Real Zap validation, renderer acknowledgement and commit remain.
+class AuxRuntimeHostTestPeer {
+ public:
+  static void InstallEmptyFixturePolicy(Profile* profile) {
+    AuxRuntimeHost::InstallTestDispatch(profile, base::BindRepeating(
+        [](std::string original_profile, bool internal, std::string method,
+           std::string json, AuxRuntimeHost::ResponseCallback reply) {
+          const auto params = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
+          if (internal && method == "zap.snapshot" && params &&
+              params->FindString("profileId") &&
+              *params->FindString("profileId") == original_profile) {
+            std::move(reply).Run({true, "[]", "", ""});
+          } else {
+            std::move(reply).Run({false, "", "unsupported",
+                "No runtime API is supplied by the original Capture fixture"});
+          }
+        }, profile->GetPath().BaseName().AsUTF8Unsafe()));
+  }
+};
+
 namespace {
 
 using UkmEntry = ukm::builders::
@@ -4226,8 +4254,33 @@ IN_PROC_BROWSER_TEST_F(AuxOrdinaryAutoPictureInPictureBrowserTest,
 }
 
 class AuxQueuedAutomaticPictureInPictureBrowserTest
-    : public AuxOrdinaryAutoPictureInPictureBrowserTest {
+    : public AuxOrdinaryAutoPictureInPictureBrowserTest,
+      public ProfileManagerObserver {
  public:
+  void SetUpInProcessBrowserTestFixture() override {
+    AuxOrdinaryAutoPictureInPictureBrowserTest::SetUpInProcessBrowserTestFixture();
+    profile_creation_ = BrowserContextDependencyManager::GetInstance()
+        ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+            [](AuxQueuedAutomaticPictureInPictureBrowserTest* fixture, content::BrowserContext*) {
+              if (!fixture->profile_manager_observation_.IsObserving()) {
+                fixture->profile_manager_observation_.Observe(
+                    g_browser_process->profile_manager());
+              }
+            }, base::Unretained(this)));
+  }
+  void OnProfileAdded(Profile* profile) override {
+    if (!profile->IsOffTheRecord())
+      AuxRuntimeHostTestPeer::InstallEmptyFixturePolicy(profile);
+  }
+  void OnProfileManagerDestroying() override { profile_manager_observation_.Reset(); }
+  void TearDownInProcessBrowserTestFixture() override {
+    profile_creation_ = {};
+    profile_manager_observation_.Reset();
+    AuxOrdinaryAutoPictureInPictureBrowserTest::TearDownInProcessBrowserTestFixture();
+  }
+  base::CallbackListSubscription profile_creation_;
+  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
+      profile_manager_observation_{this};
   void HoldActualAutomaticSession() {
     ASSERT_TRUE(content::GetContentClientForTesting()->browser()
         ->RequiresCurrentAutoPictureInPictureAuthority());
@@ -4744,8 +4797,33 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
 }
 
 class AuxAutoPictureInPictureEligibilityBrowserTest
-    : public AutoPictureInPictureWithVideoPlaybackBrowserTest {
+    : public AutoPictureInPictureWithVideoPlaybackBrowserTest,
+      public ProfileManagerObserver {
  public:
+  void SetUpInProcessBrowserTestFixture() override {
+    AutoPictureInPictureWithVideoPlaybackBrowserTest::SetUpInProcessBrowserTestFixture();
+    profile_creation_ = BrowserContextDependencyManager::GetInstance()
+        ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+            [](AuxAutoPictureInPictureEligibilityBrowserTest* fixture, content::BrowserContext*) {
+              if (!fixture->profile_manager_observation_.IsObserving()) {
+                fixture->profile_manager_observation_.Observe(
+                    g_browser_process->profile_manager());
+              }
+            }, base::Unretained(this)));
+  }
+  void OnProfileAdded(Profile* profile) override {
+    if (!profile->IsOffTheRecord())
+      AuxRuntimeHostTestPeer::InstallEmptyFixturePolicy(profile);
+  }
+  void OnProfileManagerDestroying() override { profile_manager_observation_.Reset(); }
+  void TearDownInProcessBrowserTestFixture() override {
+    profile_creation_ = {};
+    profile_manager_observation_.Reset();
+    AutoPictureInPictureWithVideoPlaybackBrowserTest::TearDownInProcessBrowserTestFixture();
+  }
+  base::CallbackListSubscription profile_creation_;
+  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
+      profile_manager_observation_{this};
   void PrepareOwnedVideo() {
     // Keep setup from entering PiP while the live shell publishes its stage
     // selection. The real native guard ends before eligibility is asserted.

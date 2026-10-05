@@ -1,0 +1,1043 @@
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -566,6 +566,9 @@
+ void AuxRuntimeHost::OnCdpAuthorityChanged() {
+   if (shutting_down_ || !admitted_native_generation_ ||
+       admitted_native_generation_ <= retired_native_generation_) return;
++  // Installed fixture transport has no Worker connection. Keep authority
++  // notifications on that transport, just as CallApi already does.
++  if (test_dispatch_) return;
+   worker_.AsyncCall(&Worker::SendCdpAuthorityChanged).WithArgs(admitted_native_generation_);
+   SchedulePump();
+ }
+--- a/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
++++ b/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
+@@ -98,6 +98,7 @@
+   }
+   static void Destroy(Profile* profile) { AuxRuntimeHost::RemoveTestDispatch(profile); }
+   static uint64_t Admitted(AuxRuntimeHost* host) { return host->admitted_native_generation_; }
++  static bool PumpScheduled(AuxRuntimeHost* host) { return host->pump_scheduled_; }
+   static base::DictValue ConsumeResume(AuxRuntimeHost* host, const std::string& page_id) {
+     return host->HandleNativeCall("native.egressResumePerson",
+         base::DictValue().Set("pageId", page_id).Set("ticketId", "not-native-minted"), host->admitted_native_generation_);
+@@ -352,6 +353,32 @@
+   std::string native_attachment_id_;
+   double native_expiry_ = 0;
+ };
++
++IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
++                       InstalledTestDispatchAuthorityEventsCannotStartWorkerPump) {
++  ASSERT_TRUE(AuxCreatorCloseBrowserTestPeer::Current(host_, generation_));
++  ASSERT_FALSE(AuxCreatorCloseBrowserTestPeer::PumpScheduled(host_));
++  ASSERT_TRUE(controller_->CheckRunResume("creator-browser-run", generation_).FindDict("result"));
++  // The real native authority observer is invoked by the actual owner fence.
++  // No readiness setter, replacement generation or fake Disconnect is used.
++  const auto mutation = controller_->owner_mutations().Begin();
++  ASSERT_TRUE(mutation);
++  EXPECT_FALSE(AuxCreatorCloseBrowserTestPeer::PumpScheduled(host_));
++  ASSERT_TRUE(controller_->owner_mutations().End(*mutation, true));
++  EXPECT_FALSE(AuxCreatorCloseBrowserTestPeer::PumpScheduled(host_));
++  EXPECT_TRUE(AuxCreatorCloseBrowserTestPeer::Current(host_, generation_));
++  EXPECT_TRUE(controller_->CheckRunResume("creator-browser-run", generation_).FindDict("result"));
++  // Admission must still yield the real original renderer blank commit and
++  // native cleanup receipt, rather than merely leaving a flag unchanged.
++  ASSERT_NO_FATAL_FAILURE(Create());
++  ASSERT_TRUE(page_);
++  EXPECT_TRUE(page_->GetPrimaryMainFrame()->GetLastCommittedURL().IsAboutBlank());
++  EXPECT_TRUE(controller_->CreatorCleanupProof(base::DictValue()
++      .Set("pageId", page_id_).Set("creationId", creation_id_), generation_).FindDict("result"));
++  AuxCreatorCloseBrowserTestPeer::Retire(host_, generation_);
++  EXPECT_FALSE(AuxCreatorCloseBrowserTestPeer::Current(host_, generation_));
++  EXPECT_FALSE(controller_->CheckRunResume("creator-browser-run", generation_).FindDict("result"));
++}
+ 
+ IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
+                        TakeoverPreparationWaitsForRealOriginalFinalDispatch) {
+--- a/chrome/browser/ui/aux/native_person_observer_controller_browsertest.cc
++++ b/chrome/browser/ui/aux/native_person_observer_controller_browsertest.cc
+@@ -4,6 +4,13 @@
+ #include <algorithm>
+ #include <array>
+ #include <memory>
++#include "components/keyed_service/content/browser_context_dependency_manager.h"
++#include "chrome/browser/profiles/profile_manager_observer.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/browser_process.h"
++#include "base/scoped_observation.h"
++#include "base/json/json_reader.h"
++#include "base/callback_list.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
+@@ -76,6 +83,27 @@
+   }
+ };
+ 
++// Only the fresh synthetic Profile's empty Zap policy is supplied by this
++// fixture. Real Zap validation, renderer acknowledgement and commit remain.
++class AuxRuntimeHostTestPeer {
++ public:
++  static void InstallEmptyFixturePolicy(Profile* profile) {
++    AuxRuntimeHost::InstallTestDispatch(profile, base::BindRepeating(
++        [](std::string original_profile, bool internal, std::string method,
++           std::string json, AuxRuntimeHost::ResponseCallback reply) {
++          const auto params = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
++          if (internal && method == "zap.snapshot" && params &&
++              params->FindString("profileId") &&
++              *params->FindString("profileId") == original_profile) {
++            std::move(reply).Run({true, "[]", "", ""});
++          } else {
++            std::move(reply).Run({false, "", "unsupported",
++                "No runtime API is supplied by the original Capture fixture"});
++          }
++        }, profile->GetPath().BaseName().AsUTF8Unsafe()));
++  }
++};
++
+ namespace aux {
+ namespace {
+ std::unique_ptr<net::test_server::HttpResponse> ReadFixture(
+@@ -96,8 +124,33 @@
+       .Set("maxElements", 20).Set("maxTextChars", 1000);
+ }
+ }  // namespace
+-class NativePersonObserverControllerBrowserTest : public InProcessBrowserTest {
++class NativePersonObserverControllerBrowserTest : public InProcessBrowserTest,
++                                                  public ProfileManagerObserver {
+  protected:
++  void SetUpInProcessBrowserTestFixture() override {
++    InProcessBrowserTest::SetUpInProcessBrowserTestFixture();
++    profile_creation_ = BrowserContextDependencyManager::GetInstance()
++        ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
++            [](NativePersonObserverControllerBrowserTest* fixture, content::BrowserContext*) {
++              if (!fixture->profile_manager_observation_.IsObserving()) {
++                fixture->profile_manager_observation_.Observe(
++                    g_browser_process->profile_manager());
++              }
++            }, base::Unretained(this)));
++  }
++  void OnProfileAdded(Profile* profile) override {
++    if (!profile->IsOffTheRecord())
++      AuxRuntimeHostTestPeer::InstallEmptyFixturePolicy(profile);
++  }
++  void OnProfileManagerDestroying() override { profile_manager_observation_.Reset(); }
++  void TearDownInProcessBrowserTestFixture() override {
++    profile_creation_ = {};
++    profile_manager_observation_.Reset();
++    InProcessBrowserTest::TearDownInProcessBrowserTestFixture();
++  }
++  base::CallbackListSubscription profile_creation_;
++  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
++      profile_manager_observation_{this};
+   void SetUpOnMainThread() override {
+     embedded_test_server()->RegisterRequestHandler(base::BindRepeating(&ReadFixture));
+     ASSERT_TRUE(embedded_test_server()->Start());
+--- a/chrome/browser/ui/aux/native_recorder_controller_browsertest.cc
++++ b/chrome/browser/ui/aux/native_recorder_controller_browsertest.cc
+@@ -2,6 +2,14 @@
+ #include "chrome/browser/ui/aux/native_recorder_controller.h"
+ 
+ #include <memory>
++#include "components/keyed_service/content/browser_context_dependency_manager.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/profiles/profile_manager_observer.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/browser_process.h"
++#include "base/scoped_observation.h"
++#include "base/json/json_reader.h"
++#include "base/callback_list.h"
+ #include <optional>
+ #include <string>
+ 
+@@ -29,6 +37,27 @@
+ #include "net/test/embedded_test_server/http_response.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ 
++// Only the fresh synthetic Profile's empty Zap policy is supplied by this
++// fixture. Real Zap validation, renderer acknowledgement and commit remain.
++class AuxRuntimeHostTestPeer {
++ public:
++  static void InstallEmptyFixturePolicy(Profile* profile) {
++    AuxRuntimeHost::InstallTestDispatch(profile, base::BindRepeating(
++        [](std::string original_profile, bool internal, std::string method,
++           std::string json, AuxRuntimeHost::ResponseCallback reply) {
++          const auto params = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
++          if (internal && method == "zap.snapshot" && params &&
++              params->FindString("profileId") &&
++              *params->FindString("profileId") == original_profile) {
++            std::move(reply).Run({true, "[]", "", ""});
++          } else {
++            std::move(reply).Run({false, "", "unsupported",
++                "No runtime API is supplied by the original Capture fixture"});
++          }
++        }, profile->GetPath().BaseName().AsUTF8Unsafe()));
++  }
++};
++
+ namespace aux {
+ namespace {
+ std::unique_ptr<net::test_server::HttpResponse> RecorderFixture(
+@@ -44,8 +73,33 @@
+   return response;
+ }
+ }  // namespace
+-class NativeRecorderControllerBrowserTest : public InProcessBrowserTest {
++class NativeRecorderControllerBrowserTest : public InProcessBrowserTest,
++                                            public ProfileManagerObserver {
+  protected:
++  void SetUpInProcessBrowserTestFixture() override {
++    InProcessBrowserTest::SetUpInProcessBrowserTestFixture();
++    profile_creation_ = BrowserContextDependencyManager::GetInstance()
++        ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
++            [](NativeRecorderControllerBrowserTest* fixture, content::BrowserContext*) {
++              if (!fixture->profile_manager_observation_.IsObserving()) {
++                fixture->profile_manager_observation_.Observe(
++                    g_browser_process->profile_manager());
++              }
++            }, base::Unretained(this)));
++  }
++  void OnProfileAdded(Profile* profile) override {
++    if (!profile->IsOffTheRecord())
++      AuxRuntimeHostTestPeer::InstallEmptyFixturePolicy(profile);
++  }
++  void OnProfileManagerDestroying() override { profile_manager_observation_.Reset(); }
++  void TearDownInProcessBrowserTestFixture() override {
++    profile_creation_ = {};
++    profile_manager_observation_.Reset();
++    InProcessBrowserTest::TearDownInProcessBrowserTestFixture();
++  }
++  base::CallbackListSubscription profile_creation_;
++  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
++      profile_manager_observation_{this};
+   void SetUpOnMainThread() override {
+     embedded_test_server()->RegisterRequestHandler(
+         base::BindRepeating(&RecorderFixture));
+--- a/components/viz/common/quads/compositor_frame_metadata.h
++++ b/components/viz/common/quads/compositor_frame_metadata.h
+@@ -182,6 +182,10 @@
+   // wants to do something after a particular frame is processed.
+   bool send_frame_token_to_embedder = false;
+ 
++  // Renderer-local request, consumed by the metadata observer before transport.
++  // Only the exact Capture swap frame asks for its real activation token.
++  bool aux_person_capture_activation_requested = false;
++
+   // These limits can be used together with the scroll/scale fields above to
+   // determine if scrolling/scaling in a particular direction is possible.
+   float min_page_scale_factor = 0.f;
+--- a/components/viz/common/quads/compositor_frame_metadata.cc
++++ b/components/viz/common/quads/compositor_frame_metadata.cc
+@@ -155,6 +155,8 @@
+       frame_token(other.frame_token),
+       native_stock_ready(other.native_stock_ready),
+       send_frame_token_to_embedder(other.send_frame_token_to_embedder),
++      aux_person_capture_activation_requested(
++          other.aux_person_capture_activation_requested),
+       min_page_scale_factor(other.min_page_scale_factor),
+       top_controls_visible_height(other.top_controls_visible_height),
+       view_transition_deadline_in_frames(
+--- a/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.cc
++++ b/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.cc
+@@ -8,6 +8,7 @@
+ AuxPersonCaptureSwapPromise::~AuxPersonCaptureSwapPromise() { if (reply_) std::move(reply_).Run(0); }
+ void AuxPersonCaptureSwapPromise::WillSwap(viz::CompositorFrameMetadata* metadata) {
+   token_ = metadata ? metadata->frame_token : 0;
++  if (token_) metadata->aux_person_capture_activation_requested = true;
+ }
+ void AuxPersonCaptureSwapPromise::DidSwap() { if (reply_) std::move(reply_).Run(token_); }
+ cc::SwapPromise::DidNotSwapAction AuxPersonCaptureSwapPromise::DidNotSwap(DidNotSwapReason reason, base::TimeTicks now) {
+--- a/third_party/blink/renderer/platform/widget/compositing/render_frame_metadata_observer_impl.cc
++++ b/third_party/blink/renderer/platform/widget/compositing/render_frame_metadata_observer_impl.cc
+@@ -41,6 +41,9 @@
+     const cc::RenderFrameMetadata& render_frame_metadata,
+     viz::CompositorFrameMetadata* compositor_frame_metadata,
+     bool force_send) {
++  const bool capture_activation_requested =
++      compositor_frame_metadata->aux_person_capture_activation_requested;
++  compositor_frame_metadata->aux_person_capture_activation_requested = false;
+   // By default only report metadata changes for fields which have a low
+   // frequency of change. However if there are changes in high frequency
+   // fields these can be reported while testing is enabled.
+@@ -68,6 +71,10 @@
+       needs_activation_notification = true;
+     }
+     send_metadata |= force_send;
++    if (capture_activation_requested) {
++      send_metadata = true;
++      needs_activation_notification = true;
++    }
+   }
+ 
+ #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+--- a/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise_test.cc
++++ b/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise_test.cc
+@@ -10,6 +10,7 @@
+   viz::CompositorFrameMetadata metadata; metadata.frame_token = 73;
+   promise.WillSwap(&metadata); promise.DidSwap(); promise.DidSwap();
+   EXPECT_EQ(73u, result); EXPECT_EQ(1, replies);
++  EXPECT_TRUE(metadata.aux_person_capture_activation_requested);
+ }
+ TEST(AuxPersonCaptureSwapPromiseTest, EveryNonSubmissionRefuses) {
+   for (auto reason : {cc::SwapPromise::SWAP_FAILS, cc::SwapPromise::COMMIT_FAILS,
+--- a/third_party/blink/renderer/platform/widget/compositing/render_frame_metadata_observer_impl_unittest.cc
++++ b/third_party/blink/renderer/platform/widget/compositing/render_frame_metadata_observer_impl_unittest.cc
+@@ -485,6 +485,34 @@
+ }
+ #endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+ 
++
++// Capture requests activation for its exact swap frame even if geometry is unchanged.
++TEST_F(RenderFrameMetadataObserverImplTest,
++       CaptureActivationRequestPreservesExactUnchangedFrameToken) {
++  cc::RenderFrameMetadata render_frame_metadata;
++  viz::CompositorFrameMetadata first;
++  first.frame_token = 72;
++  {
++    base::RunLoop loop;
++    EXPECT_CALL(client(), OnRenderFrameMetadataChanged(72u, render_frame_metadata))
++        .WillOnce(InvokeClosure(loop.QuitClosure()));
++    observer_impl().OnRenderFrameSubmission(render_frame_metadata, &first, false);
++    loop.Run();
++  }
++  viz::CompositorFrameMetadata capture;
++  capture.frame_token = 73;
++  capture.aux_person_capture_activation_requested = true;
++  {
++    base::RunLoop loop;
++    EXPECT_CALL(client(), OnRenderFrameMetadataChanged(73u, render_frame_metadata))
++        .WillOnce(InvokeClosure(loop.QuitClosure()));
++    observer_impl().OnRenderFrameSubmission(render_frame_metadata, &capture, false);
++    loop.Run();
++  }
++  EXPECT_TRUE(capture.send_frame_token_to_embedder);
++  EXPECT_FALSE(capture.aux_person_capture_activation_requested);
++}
++
+ // This test verifies that a request to force send metadata is respected.
+ TEST_F(RenderFrameMetadataObserverImplTest, ForceSendMetadata) {
+   const uint32_t expected_frame_token = 1337;
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
+@@ -122,6 +122,34 @@
+ using testing::AtLeast;
+ using testing::Return;
+ 
++#include "base/callback_list.h"
++#include "base/json/json_reader.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/profile_manager_observer.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++
++// Only the fresh synthetic Profile's empty Zap policy is supplied by this
++// fixture. Real Zap validation, renderer acknowledgement and commit remain.
++class AuxRuntimeHostTestPeer {
++ public:
++  static void InstallEmptyFixturePolicy(Profile* profile) {
++    AuxRuntimeHost::InstallTestDispatch(profile, base::BindRepeating(
++        [](std::string original_profile, bool internal, std::string method,
++           std::string json, AuxRuntimeHost::ResponseCallback reply) {
++          const auto params = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
++          if (internal && method == "zap.snapshot" && params &&
++              params->FindString("profileId") &&
++              *params->FindString("profileId") == original_profile) {
++            std::move(reply).Run({true, "[]", "", ""});
++          } else {
++            std::move(reply).Run({false, "", "unsupported",
++                "No runtime API is supplied by the original Capture fixture"});
++          }
++        }, profile->GetPath().BaseName().AsUTF8Unsafe()));
++  }
++};
++
+ namespace {
+ 
+ using UkmEntry = ukm::builders::
+@@ -4226,8 +4254,33 @@
+ }
+ 
+ class AuxQueuedAutomaticPictureInPictureBrowserTest
+-    : public AuxOrdinaryAutoPictureInPictureBrowserTest {
++    : public AuxOrdinaryAutoPictureInPictureBrowserTest,
++      public ProfileManagerObserver {
+  public:
++  void SetUpInProcessBrowserTestFixture() override {
++    AuxOrdinaryAutoPictureInPictureBrowserTest::SetUpInProcessBrowserTestFixture();
++    profile_creation_ = BrowserContextDependencyManager::GetInstance()
++        ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
++            [](AuxQueuedAutomaticPictureInPictureBrowserTest* fixture, content::BrowserContext*) {
++              if (!fixture->profile_manager_observation_.IsObserving()) {
++                fixture->profile_manager_observation_.Observe(
++                    g_browser_process->profile_manager());
++              }
++            }, base::Unretained(this)));
++  }
++  void OnProfileAdded(Profile* profile) override {
++    if (!profile->IsOffTheRecord())
++      AuxRuntimeHostTestPeer::InstallEmptyFixturePolicy(profile);
++  }
++  void OnProfileManagerDestroying() override { profile_manager_observation_.Reset(); }
++  void TearDownInProcessBrowserTestFixture() override {
++    profile_creation_ = {};
++    profile_manager_observation_.Reset();
++    AuxOrdinaryAutoPictureInPictureBrowserTest::TearDownInProcessBrowserTestFixture();
++  }
++  base::CallbackListSubscription profile_creation_;
++  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
++      profile_manager_observation_{this};
+   void HoldActualAutomaticSession() {
+     ASSERT_TRUE(content::GetContentClientForTesting()->browser()
+         ->RequiresCurrentAutoPictureInPictureAuthority());
+@@ -4744,8 +4797,33 @@
+ }
+ 
+ class AuxAutoPictureInPictureEligibilityBrowserTest
+-    : public AutoPictureInPictureWithVideoPlaybackBrowserTest {
++    : public AutoPictureInPictureWithVideoPlaybackBrowserTest,
++      public ProfileManagerObserver {
+  public:
++  void SetUpInProcessBrowserTestFixture() override {
++    AutoPictureInPictureWithVideoPlaybackBrowserTest::SetUpInProcessBrowserTestFixture();
++    profile_creation_ = BrowserContextDependencyManager::GetInstance()
++        ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
++            [](AuxAutoPictureInPictureEligibilityBrowserTest* fixture, content::BrowserContext*) {
++              if (!fixture->profile_manager_observation_.IsObserving()) {
++                fixture->profile_manager_observation_.Observe(
++                    g_browser_process->profile_manager());
++              }
++            }, base::Unretained(this)));
++  }
++  void OnProfileAdded(Profile* profile) override {
++    if (!profile->IsOffTheRecord())
++      AuxRuntimeHostTestPeer::InstallEmptyFixturePolicy(profile);
++  }
++  void OnProfileManagerDestroying() override { profile_manager_observation_.Reset(); }
++  void TearDownInProcessBrowserTestFixture() override {
++    profile_creation_ = {};
++    profile_manager_observation_.Reset();
++    AutoPictureInPictureWithVideoPlaybackBrowserTest::TearDownInProcessBrowserTestFixture();
++  }
++  base::CallbackListSubscription profile_creation_;
++  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
++      profile_manager_observation_{this};
+   void PrepareOwnedVideo() {
+     // Keep setup from entering PiP while the live shell publishes its stage
+     // selection. The real native guard ends before eligibility is asserted.
+--- a/url/scheme_host_port.h
++++ b/url/scheme_host_port.h
+@@ -169,6 +169,11 @@
+   std::string SerializeInternal(url::Parsed* parsed) const;
+ 
+  private:
++  friend class Origin;
++  // Fixed metadata for an opaque Origin only; public tuple constructors and
++  // SchemeHostPort IPC continue rejecting all no-access schemes.
++  static SchemeHostPort AuxResultPreviewOpaquePrecursor();
++
+   // Note: `port_` is declared first to control the sort order.
+   uint16_t port_ = 0;
+   std::string scheme_;
+--- a/url/scheme_host_port.cc
++++ b/url/scheme_host_port.cc
+@@ -146,6 +146,15 @@
+ 
+ SchemeHostPort::SchemeHostPort() = default;
+ 
++// Private to Origin: this fixed precursor never grants a tuple origin.
++SchemeHostPort SchemeHostPort::AuxResultPreviewOpaquePrecursor() {
++  SchemeHostPort result;
++  result.scheme_ = "aux-result";
++  result.host_ = "preview";
++  result.port_ = 0;
++  return result;
++}
++
+ SchemeHostPort::SchemeHostPort(std::string scheme,
+                                std::string host,
+                                uint16_t port,
+--- a/url/origin.h
++++ b/url/origin.h
+@@ -219,6 +219,11 @@
+   static Origin CreateFromNormalizedTuple(std::string scheme,
+                                           std::string host,
+                                           uint16_t port);
++
++  // Only a fresh opaque nonce can carry this fixed registered no-access
++  // destination. This factory accepts no caller tuple or nonce authority.
++  static std::optional<Origin> CreateOpaqueAuxResultPreviewOrigin();
++  bool HasAuxResultPreviewOpaquePrecursor() const;
+ 
+   ~Origin();
+ 
+--- a/url/origin.cc
++++ b/url/origin.cc
+@@ -32,6 +32,27 @@
+ #include "url/url_util.h"
+ 
+ namespace url {
++namespace {
++bool IsAuxResultPreviewOpaquePrecursor(std::string_view scheme,
++                                      std::string_view host,
++                                      uint16_t port) {
++  SchemeType type;
++  return scheme == "aux-result" && host == "preview" && port == 0 &&
++         GetStandardSchemeType("aux-result", &type) &&
++         std::ranges::contains(GetNoAccessSchemes(), "aux-result");
++}
++}  // namespace
++
++std::optional<Origin> Origin::CreateOpaqueAuxResultPreviewOrigin() {
++  if (!IsAuxResultPreviewOpaquePrecursor("aux-result", "preview", 0))
++    return std::nullopt;
++  return Origin(Nonce(), SchemeHostPort::AuxResultPreviewOpaquePrecursor());
++}
++
++bool Origin::HasAuxResultPreviewOpaquePrecursor() const {
++  return opaque() && IsAuxResultPreviewOpaquePrecursor(
++                         tuple_.scheme(), tuple_.host(), tuple_.port());
++}
+ 
+ Origin::Origin() : nonce_(Nonce()) {}
+ 
+@@ -97,6 +118,10 @@
+     std::string_view precursor_host,
+     uint16_t precursor_port,
+     const Origin::Nonce& nonce) {
++  if (IsAuxResultPreviewOpaquePrecursor(precursor_scheme, precursor_host,
++                                       precursor_port)) {
++    return Origin(nonce, SchemeHostPort::AuxResultPreviewOpaquePrecursor());
++  }
+   SchemeHostPort precursor(std::string(precursor_scheme),
+                            std::string(precursor_host), precursor_port,
+                            SchemeHostPort::CHECK_CANONICALIZATION);
+@@ -128,6 +153,10 @@
+     std::string precursor_host,
+     uint16_t precursor_port,
+     const Origin::Nonce& nonce) {
++  if (IsAuxResultPreviewOpaquePrecursor(precursor_scheme, precursor_host,
++                                       precursor_port)) {
++    return Origin(nonce, SchemeHostPort::AuxResultPreviewOpaquePrecursor());
++  }
+   SchemeHostPort precursor(std::move(precursor_scheme),
+                            std::move(precursor_host), precursor_port,
+                            SchemeHostPort::ALREADY_CANONICALIZED);
+@@ -187,6 +216,11 @@
+   // does not behave this way, therefore exclude it from this check.
+   if (std::ranges::contains(url::GetNoAccessSchemes(), url.GetScheme()) &&
+       !url.SchemeIs(kAboutScheme)) {
++    if (HasAuxResultPreviewOpaquePrecursor()) {
++      return url.SchemeIs("aux-result") && url.host_piece() == "preview" &&
++             url.port_piece().empty() && url.username_piece().empty() &&
++             url.password_piece().empty();
++    }
+     // If |this| is not opaque, definitely return false as the expectation
+     // is for opaque origin.
+     if (!opaque())
+@@ -382,6 +416,15 @@
+   std::optional<base::UnguessableToken> nonce_token =
+       base::UnguessableToken::Deserialize(nonce_high, nonce_low);
+ 
++  if (url.SchemeIs("aux-result")) {
++    if (pickled_url != "aux-result://preview" || !nonce_token ||
++        !IsAuxResultPreviewOpaquePrecursor("aux-result", "preview", 0)) {
++      return std::nullopt;
++    }
++    return Origin(Nonce(*nonce_token),
++                  SchemeHostPort::AuxResultPreviewOpaquePrecursor());
++  }
++
+   Origin::Nonce nonce;
+   if (nonce_token.has_value()) {
+     // The serialized nonce wasn't empty, so copy it here.
+--- a/third_party/blink/renderer/platform/weborigin/security_origin.h
++++ b/third_party/blink/renderer/platform/weborigin/security_origin.h
+@@ -481,6 +481,8 @@
+   String domain_ = g_empty_string;
+   const uint16_t port_ = 0;
+   const std::optional<url::Origin::Nonce> nonce_if_opaque_;
++  // Fixed metadata on an opaque origin, never a nonopaque precursor object.
++  bool aux_result_preview_opaque_precursor_ = false;
+   bool universal_access_ = false;
+   bool domain_was_set_in_dom_ = false;
+   bool can_load_local_resources_ = false;
+--- a/third_party/blink/renderer/platform/weborigin/security_origin.cc
++++ b/third_party/blink/renderer/platform/weborigin/security_origin.cc
+@@ -191,6 +191,8 @@
+       domain_(other->domain_),
+       port_(other->port_),
+       nonce_if_opaque_(other->nonce_if_opaque_),
++      aux_result_preview_opaque_precursor_(
++          other->aux_result_preview_opaque_precursor_),
+       universal_access_(other->universal_access_),
+       domain_was_set_in_dom_(other->domain_was_set_in_dom_),
+       can_load_local_resources_(other->can_load_local_resources_),
+@@ -211,6 +213,8 @@
+       domain_(other->domain_),
+       port_(other->port_),
+       nonce_if_opaque_(other->nonce_if_opaque_),
++      aux_result_preview_opaque_precursor_(
++          other->aux_result_preview_opaque_precursor_),
+       universal_access_(other->universal_access_),
+       domain_was_set_in_dom_(other->domain_was_set_in_dom_),
+       can_load_local_resources_(other->can_load_local_resources_),
+@@ -272,6 +276,12 @@
+ 
+ scoped_refptr<SecurityOrigin> SecurityOrigin::CreateFromUrlOrigin(
+     const url::Origin& origin) {
++  if (origin.HasAuxResultPreviewOpaquePrecursor()) {
++    auto result = base::AdoptRef(new SecurityOrigin(
++        url::Origin::Nonce(*origin.GetNonceForSerialization()), nullptr));
++    result->aux_result_preview_opaque_precursor_ = true;
++    return result;
++  }
+   const url::SchemeHostPort& tuple = origin.GetTupleOrPrecursorTupleIfOpaque();
+   DCHECK(String::FromUtf8(tuple.scheme()).ContainsOnlyAsciiOrEmpty());
+   DCHECK(String::FromUtf8(tuple.host()).ContainsOnlyAsciiOrEmpty());
+@@ -294,6 +304,11 @@
+ }
+ 
+ url::Origin SecurityOrigin::ToUrlOrigin() const {
++  if (aux_result_preview_opaque_precursor_) {
++    CHECK(nonce_if_opaque_);
++    return url::Origin::CreateOpaqueFromNormalizedPrecursorTuple(
++        "aux-result", "preview", 0, *nonce_if_opaque_);
++  }
+   const SecurityOrigin* unmasked = GetOriginOrPrecursorOriginIfOpaque();
+   std::string scheme = unmasked->protocol_.Utf8();
+   std::string host = unmasked->host_.Utf8();
+@@ -754,6 +769,12 @@
+ }
+ 
+ scoped_refptr<SecurityOrigin> SecurityOrigin::DeriveNewOpaqueOrigin() const {
++  if (aux_result_preview_opaque_precursor_) {
++    auto result = base::AdoptRef(new SecurityOrigin(
++        NewUniqueOpaque::kWithLazyInitNonce, nullptr));
++    result->aux_result_preview_opaque_precursor_ = true;
++    return result;
++  }
+   return base::AdoptRef(
+       new SecurityOrigin(NewUniqueOpaque::kWithLazyInitNonce,
+                          GetOriginOrPrecursorOriginIfOpaque()));
+--- a/chrome/browser/ui/aux/result_preview.cc
++++ b/chrome/browser/ui/aux/result_preview.cc
+@@ -294,8 +294,7 @@
+   }
+   // The precursor is the destination, never the privileged shell initiator.
+   // Only a fresh opaque derivative can leave this private admission boundary.
+-  return url::Origin::CreateFromNormalizedTuple(kResultPreviewScheme, "preview", 0)
+-      .DeriveNewOpaqueOrigin();
++  return url::Origin::CreateOpaqueAuxResultPreviewOrigin();
+ }
+ 
+ mojo::PendingRemote<network::mojom::URLLoaderFactory>
+--- a/url/origin_unittest.cc
++++ b/url/origin_unittest.cc
+@@ -862,6 +862,61 @@
+   EXPECT_FALSE(a_origin.CanBeDerivedFrom(another_scheme_url));
+ }
+ 
++TEST_F(OriginTest, AuxResultOpaquePrecursorRequiresClosedRegistration) {
++  EXPECT_FALSE(Origin::CreateOpaqueAuxResultPreviewOrigin());
++  AddStandardScheme("aux-result", SchemeType::SCHEME_WITH_HOST);
++  EXPECT_FALSE(Origin::CreateOpaqueAuxResultPreviewOrigin());
++  AddNoAccessScheme("aux-result");
++  auto first = Origin::CreateOpaqueAuxResultPreviewOrigin();
++  auto second = Origin::CreateOpaqueAuxResultPreviewOrigin();
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(second);
++  EXPECT_TRUE(first->opaque());
++  EXPECT_TRUE(first->HasAuxResultPreviewOpaquePrecursor());
++  EXPECT_NE(*first, *second);
++  EXPECT_EQ("null", first->Serialize());
++  const auto& tuple = first->GetTupleOrPrecursorTupleIfOpaque();
++  EXPECT_EQ("aux-result", tuple.scheme());
++  EXPECT_EQ("preview", tuple.host());
++  EXPECT_EQ(0, tuple.port());
++  EXPECT_FALSE(SchemeHostPort("aux-result", "preview", 0).IsValid());
++  EXPECT_FALSE(Origin::UnsafelyCreateTupleOriginWithoutNormalization(
++      "aux-result", "preview", 0));
++  EXPECT_FALSE(Origin::CreateFromNormalizedTuple(
++      "aux-result", "preview", 0).HasAuxResultPreviewOpaquePrecursor());
++  auto derived = first->DeriveNewOpaqueOrigin();
++  EXPECT_TRUE(derived.HasAuxResultPreviewOpaquePrecursor());
++  EXPECT_NE(*first, derived);
++  EXPECT_TRUE(first->CanBeDerivedFrom(GURL("aux-result://preview/item")));
++  EXPECT_FALSE(first->CanBeDerivedFrom(GURL("aux-result://foreign/item")));
++  EXPECT_FALSE(first->CanBeDerivedFrom(GURL("aux-result://user@preview/item")));
++  EXPECT_FALSE(first->CanBeDerivedFrom(GURL("https://preview/item")));
++}
++
++TEST_F(OriginTest, AuxResultOpaqueDecoderRejectsOtherNoAccessTuples) {
++  AddStandardScheme("aux-result", SchemeType::SCHEME_WITH_HOST);
++  AddNoAccessScheme("aux-result");
++  const auto nonce = CreateNonce(base::UnguessableToken::Create());
++  auto exact = UnsafelyCreateOpaqueOriginWithoutNormalization(
++      "aux-result", "preview", 0, nonce);
++  ASSERT_TRUE(exact);
++  EXPECT_TRUE(exact->HasAuxResultPreviewOpaquePrecursor());
++  EXPECT_FALSE(UnsafelyCreateOpaqueOriginWithoutNormalization(
++      "aux-result", "foreign", 0, nonce));
++  EXPECT_FALSE(UnsafelyCreateOpaqueOriginWithoutNormalization(
++      "aux-result", "preview", 1, nonce));
++  EXPECT_FALSE(UnsafelyCreateOpaqueOriginWithoutNormalization(
++      "AUX-RESULT", "preview", 0, nonce));
++  EXPECT_FALSE(UnsafelyCreateOpaqueOriginWithoutNormalization(
++      "standard-but-noaccess", "preview", 0, nonce));
++  auto serialized = SerializeWithNonce(*exact);
++  ASSERT_TRUE(serialized);
++  auto restored = Deserialize(*serialized);
++  ASSERT_TRUE(restored);
++  EXPECT_EQ(*exact, *restored);
++  EXPECT_TRUE(restored->HasAuxResultPreviewOpaquePrecursor());
++}
++
+ INSTANTIATE_TYPED_TEST_SUITE_P(UrlOrigin,
+                                AbstractOriginTest,
+                                UrlOriginTestTraits);
+--- a/url/mojom/url_gurl_mojom_traits_unittest.cc
++++ b/url/mojom/url_gurl_mojom_traits_unittest.cc
+@@ -3,12 +3,16 @@
+ // found in the LICENSE file.
+ 
+ #include <utility>
++#include "url/url_util.h"
+ 
+ #include "base/test/task_environment.h"
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+ #include "mojo/public/cpp/bindings/receiver.h"
+ #include "mojo/public/cpp/bindings/remote.h"
+ #include "testing/gtest/include/gtest/gtest.h"
++#include "mojo/public/cpp/test_support/test_utils.h"
++#include "url/mojom/origin.mojom.h"
++
+ #include "url/mojom/url_test.mojom.h"
+ 
+ namespace url {
+@@ -200,10 +204,54 @@
+   EXPECT_FALSE(output.opaque());
+ }
+ 
++TEST_F(MojoGURLStructTraitsTest, AuxResultOpaqueNonceSerialization) {
++  ScopedSchemeRegistryForTests registry;
++  AddStandardScheme("aux-result", SchemeType::SCHEME_WITH_HOST);
++  AddNoAccessScheme("aux-result");
++  auto input = Origin::CreateOpaqueAuxResultPreviewOrigin();
++  ASSERT_TRUE(input);
++  auto output = BounceOrigin(*input);
++  EXPECT_EQ(*input, output);
++  EXPECT_TRUE(output.opaque());
++  EXPECT_TRUE(output.HasAuxResultPreviewOpaquePrecursor());
++  EXPECT_EQ(*input->GetNonceForTesting(),
++            *output.GetNonceForTesting());
++  auto second = Origin::CreateOpaqueAuxResultPreviewOrigin();
++  ASSERT_TRUE(second);
++  EXPECT_NE(output, BounceOrigin(*second));
++}
++
+ // Test that the "kMaxURLChars" values are the same in url.mojom and
+ // url_constants.cc.
+ TEST_F(MojoGURLStructTraitsTest, TestMaxURLChars) {
+   EXPECT_EQ(kMaxURLChars, mojom::kMaxURLChars);
+ }
+ 
++TEST_F(MojoGURLStructTraitsTest, AuxResultOpaqueWireRejectsForeignOrMissingNonce) {
++  url::ScopedSchemeRegistryForTests registry;
++  url::AddStandardScheme("aux-result", url::SchemeType::SCHEME_WITH_HOST);
++  url::AddNoAccessScheme("aux-result");
++  auto wire = url::mojom::Origin::New();
++  wire->scheme = "aux-result";
++  wire->host = "preview";
++  wire->port = 0;
++  Origin output;
++  EXPECT_FALSE(mojo::test::SerializeAndDeserialize<url::mojom::Origin>(
++      wire, output));
++  wire->nonce_if_opaque = base::UnguessableToken::Create();
++  EXPECT_TRUE(mojo::test::SerializeAndDeserialize<url::mojom::Origin>(
++      wire, output));
++  wire->host = "foreign";
++  EXPECT_FALSE(mojo::test::SerializeAndDeserialize<url::mojom::Origin>(
++      wire, output));
++  wire->host = "preview";
++  wire->port = 1;
++  EXPECT_FALSE(mojo::test::SerializeAndDeserialize<url::mojom::Origin>(
++      wire, output));
++  wire->port = 0;
++  wire->scheme = "AUX-RESULT";
++  EXPECT_FALSE(mojo::test::SerializeAndDeserialize<url::mojom::Origin>(
++      wire, output));
++}
++
+ }  // namespace url
+--- a/third_party/blink/renderer/platform/weborigin/security_origin_test.cc
++++ b/third_party/blink/renderer/platform/weborigin/security_origin_test.cc
+@@ -1276,6 +1276,30 @@
+   }
+ }
+ 
++TEST_F(SecurityOriginTest, AuxResultOpaqueMetadataCannotGrantTupleAccess) {
++  url::ScopedSchemeRegistryForTests registry;
++  url::AddStandardScheme("aux-result", url::SchemeType::SCHEME_WITH_HOST);
++  url::AddNoAccessScheme("aux-result");
++  auto origin = url::Origin::CreateOpaqueAuxResultPreviewOrigin();
++  ASSERT_TRUE(origin);
++  auto security = SecurityOrigin::CreateFromUrlOrigin(*origin);
++  ASSERT_TRUE(security->IsOpaque());
++  EXPECT_EQ(*origin, security->ToUrlOrigin());
++  EXPECT_EQ(*origin, security->IsolatedCopy()->ToUrlOrigin());
++  auto derived = security->DeriveNewOpaqueOrigin();
++  EXPECT_TRUE(derived->IsOpaque());
++  EXPECT_TRUE(derived->ToUrlOrigin().HasAuxResultPreviewOpaquePrecursor());
++  EXPECT_NE(*origin, derived->ToUrlOrigin());
++  EXPECT_FALSE(security->CanAccess(derived.get()));
++  auto direct = SecurityOrigin::Create(KURL("aux-result://preview/item"));
++  EXPECT_TRUE(direct->IsOpaque());
++  EXPECT_FALSE(direct->ToUrlOrigin().HasAuxResultPreviewOpaquePrecursor());
++  EXPECT_FALSE(security->CanAccess(direct.get()));
++  EXPECT_EQ("null", security->ToString());
++  EXPECT_TRUE(security->Protocol().empty());
++  EXPECT_TRUE(security->Host().empty());
++}
++
+ }  // namespace blink
+ 
+ // Apparently INSTANTIATE_TYPED_TEST_SUITE_P needs to be used in the same
+--- a/third_party/blink/renderer/platform/mojo/security_origin_mojom_traits.h
++++ b/third_party/blink/renderer/platform/mojo/security_origin_mojom_traits.h
+@@ -19,6 +19,19 @@
+ namespace mojo {
+ 
+ struct UrlOriginAdapter {
++  static bool HasAuxResultPreviewOpaquePrecursor(
++      const scoped_refptr<const ::blink::SecurityOrigin>& origin) {
++    return origin->aux_result_preview_opaque_precursor_;
++  }
++  static scoped_refptr<const blink::SecurityOrigin> ReadAuxResultOpaque(
++      std::string_view scheme, std::string_view host, uint16_t port,
++      const base::UnguessableToken& nonce) {
++    auto origin = url::Origin::UnsafelyCreateOpaqueOriginWithoutNormalization(
++        scheme, host, port, url::Origin::Nonce(nonce));
++    if (!origin || !origin->HasAuxResultPreviewOpaquePrecursor())
++      return nullptr;
++    return blink::SecurityOrigin::CreateFromUrlOrigin(*origin);
++  }
+   static const base::UnguessableToken* nonce_if_opaque(
+       const scoped_refptr<const ::blink::SecurityOrigin>& origin) {
+     return origin->GetNonceForSerialization();
+@@ -50,15 +63,21 @@
+                     scoped_refptr<const ::blink::SecurityOrigin>> {
+   static blink::String scheme(
+       const scoped_refptr<const ::blink::SecurityOrigin>& origin) {
++    if (UrlOriginAdapter::HasAuxResultPreviewOpaquePrecursor(origin))
++      return "aux-result";
+     return UrlOriginAdapter::GetOriginOrPrecursorOriginIfOpaque(origin)
+         ->Protocol();
+   }
+   static blink::String host(
+       const scoped_refptr<const ::blink::SecurityOrigin>& origin) {
++    if (UrlOriginAdapter::HasAuxResultPreviewOpaquePrecursor(origin))
++      return "preview";
+     return UrlOriginAdapter::GetOriginOrPrecursorOriginIfOpaque(origin)->Host();
+   }
+   static uint16_t port(
+       const scoped_refptr<const ::blink::SecurityOrigin>& origin) {
++    if (UrlOriginAdapter::HasAuxResultPreviewOpaquePrecursor(origin))
++      return 0;
+     return UrlOriginAdapter::GetOriginOrPrecursorOriginIfOpaque(origin)->Port();
+   }
+   static mojo::OptionalAsPointer<const base::UnguessableToken> nonce_if_opaque(
+@@ -76,6 +95,15 @@
+     if (!data.ReadScheme(&scheme) || !data.ReadHost(&host) ||
+         !data.ReadNonceIfOpaque(&nonce_if_opaque))
+       return false;
++
++    if (nonce_if_opaque) {
++      auto closed = UrlOriginAdapter::ReadAuxResultOpaque(
++          scheme, host, data.port(), *nonce_if_opaque);
++      if (closed) {
++        *out = std::move(closed);
++        return true;
++      }
++    }
+ 
+     const url::SchemeHostPort& tuple =
+         url::SchemeHostPort(scheme, host, data.port());
+--- a/third_party/blink/renderer/platform/mojo/kurl_security_origin_test.cc
++++ b/third_party/blink/renderer/platform/mojo/kurl_security_origin_test.cc
+@@ -7,8 +7,13 @@
+ #include "mojo/public/cpp/bindings/receiver.h"
+ #include "mojo/public/cpp/bindings/remote.h"
+ #include "testing/gtest/include/gtest/gtest.h"
++#include "mojo/public/cpp/test_support/test_utils.h"
++#include "url/mojom/origin.mojom-blink.h"
++
+ #include "url/mojom/url_test.mojom-blink.h"
+ #include "url/url_constants.h"
++
++#include "url/url_util.h"
+ 
+ namespace blink {
+ namespace {
+@@ -89,4 +94,57 @@
+   EXPECT_TRUE(output->IsOpaque());
+ }
+ 
++TEST(KURLSecurityOriginStructTraitsTest, AuxResultOpaqueNonceRoundtrip) {
++  base::test::SingleThreadTaskEnvironment environment;
++  url::ScopedSchemeRegistryForTests registry;
++  url::AddStandardScheme("aux-result", url::SchemeType::SCHEME_WITH_HOST);
++  url::AddNoAccessScheme("aux-result");
++  mojo::Remote<url::mojom::blink::UrlTest> remote;
++  UrlTestImpl implementation(remote.BindNewPipeAndPassReceiver());
++  auto original = url::Origin::CreateOpaqueAuxResultPreviewOrigin();
++  ASSERT_TRUE(original);
++  scoped_refptr<const SecurityOrigin> input =
++      SecurityOrigin::CreateFromUrlOrigin(*original);
++  scoped_refptr<const SecurityOrigin> output;
++  ASSERT_TRUE(remote->BounceOrigin(input, &output));
++  ASSERT_TRUE(output);
++  EXPECT_TRUE(output->IsOpaque());
++  EXPECT_EQ(*original, output->ToUrlOrigin());
++  EXPECT_TRUE(output->ToUrlOrigin().HasAuxResultPreviewOpaquePrecursor());
++  EXPECT_TRUE(output->Protocol().empty());
++  EXPECT_TRUE(output->Host().empty());
++  auto second = url::Origin::CreateOpaqueAuxResultPreviewOrigin();
++  ASSERT_TRUE(second);
++  scoped_refptr<const SecurityOrigin> other =
++      SecurityOrigin::CreateFromUrlOrigin(*second);
++  EXPECT_FALSE(output->CanAccess(other.get()));
++}
++
++TEST(KURLSecurityOriginStructTraitsTest, AuxResultOpaqueWireRejectsForeignOrMissingNonce) {
++  url::ScopedSchemeRegistryForTests registry;
++  url::AddStandardScheme("aux-result", url::SchemeType::SCHEME_WITH_HOST);
++  url::AddNoAccessScheme("aux-result");
++  auto wire = url::mojom::blink::Origin::New();
++  wire->scheme = "aux-result";
++  wire->host = "preview";
++  wire->port = 0;
++  scoped_refptr<const SecurityOrigin> output;
++  EXPECT_FALSE(mojo::test::SerializeAndDeserialize<url::mojom::blink::Origin>(
++      wire, output));
++  wire->nonce_if_opaque = base::UnguessableToken::Create();
++  EXPECT_TRUE(mojo::test::SerializeAndDeserialize<url::mojom::blink::Origin>(
++      wire, output));
++  wire->host = "foreign";
++  EXPECT_FALSE(mojo::test::SerializeAndDeserialize<url::mojom::blink::Origin>(
++      wire, output));
++  wire->host = "preview";
++  wire->port = 1;
++  EXPECT_FALSE(mojo::test::SerializeAndDeserialize<url::mojom::blink::Origin>(
++      wire, output));
++  wire->port = 0;
++  wire->scheme = "AUX-RESULT";
++  EXPECT_FALSE(mojo::test::SerializeAndDeserialize<url::mojom::blink::Origin>(
++      wire, output));
++}
++
+ }  // namespace url
+--- a/chrome/browser/ui/aux/result_preview_unittest.cc
++++ b/chrome/browser/ui/aux/result_preview_unittest.cc
+@@ -7,11 +7,32 @@
+ #include "chrome/test/base/chrome_render_view_host_test_harness.h"
+ #include "content/public/test/web_contents_tester.h"
+ #include "testing/gtest/include/gtest/gtest.h"
++#include "url/origin.h"
++#include "url/scheme_host_port.h"
+ 
+ namespace aux {
+ namespace {
+ 
+ class ResultPreviewTest : public ChromeRenderViewHostTestHarness {};
++
++TEST_F(ResultPreviewTest, RegisteredDestinationPrecursorRemainsOpaqueOnly) {
++  auto first = url::Origin::CreateOpaqueAuxResultPreviewOrigin();
++  auto second = url::Origin::CreateOpaqueAuxResultPreviewOrigin();
++  ASSERT_TRUE(first);
++  ASSERT_TRUE(second);
++  EXPECT_TRUE(first->opaque());
++  EXPECT_TRUE(first->HasAuxResultPreviewOpaquePrecursor());
++  EXPECT_NE(*first, *second);
++  EXPECT_EQ("null", first->Serialize());
++  EXPECT_FALSE(url::SchemeHostPort("aux-result", "preview", 0).IsValid());
++  EXPECT_FALSE(url::Origin::UnsafelyCreateTupleOriginWithoutNormalization(
++      "aux-result", "preview", 0));
++  EXPECT_FALSE(url::Origin::CreateFromNormalizedTuple(
++      "aux-result", "preview", 0).HasAuxResultPreviewOpaquePrecursor());
++  EXPECT_TRUE(first->CanBeDerivedFrom(GURL("aux-result://preview/item")));
++  EXPECT_FALSE(first->CanBeDerivedFrom(GURL("aux-result://foreign/item")));
++  EXPECT_FALSE(first->CanBeDerivedFrom(GURL("https://preview/item")));
++}
+ 
+ TEST_F(ResultPreviewTest, URLMustBeCanonicalOpaquePreviewToken) {
+   const GURL valid(
+--- a/chrome/browser/ui/aux/native_person_capture_controller.cc
++++ b/chrome/browser/ui/aux/native_person_capture_controller.cc
+@@ -4,7 +4,6 @@
+ #include <algorithm>
+ #include <ranges>
+ #include "base/base64.h"
+-#include "base/logging.h"
+ #include "base/functional/bind.h"
+ #include "base/task/bind_post_task.h"
+ #include "mojo/public/cpp/bindings/callback_helpers.h"
+@@ -109,7 +108,6 @@
+   }
+ }
+ void NativePersonCaptureController::ScriptDone(std::string phase, size_t index, bool accepted) {
+-  LOG(ERROR) << "Original Capture script phase=" << phase << " frame_index=" << index << " accepted=" << accepted;
+   if (!accepted) {
+     if (phase == "restore") {
+       auto* frame = frames_[index].AsRenderFrameHostIfValid();
+@@ -181,7 +179,6 @@
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool admitted = token && widget && frame && frame->GetRenderWidgetHost() == widget.get() && Current();
+   if (!weak) return;
+-  LOG(ERROR) << "Original Capture submission frame_index=" << index << " token=" << token << " admitted=" << admitted;
+   if (!admitted) { Painted(false); return; }
+   frame = frames_[index].AsRenderFrameHostIfValid();
+   if (!frame || !widget || frame->GetRenderWidgetHost() != widget.get()) { Painted(false); return; }
+@@ -195,20 +192,17 @@
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool admitted = token && !time.is_null() && widget && frame && frame->GetRenderWidgetHost() == widget.get() && Current();
+   if (!weak) return;
+-  LOG(ERROR) << "Original Capture activation frame_index=" << index << " token=" << token << " time_nonnull=" << !time.is_null() << " admitted=" << admitted;
+   if (!admitted) { Painted(false); return; }
+   frame = frames_[index].AsRenderFrameHostIfValid();
+   if (!frame || !widget || frame->GetRenderWidgetHost() != widget.get()) { Painted(false); return; }
+   auto* view = widget->GetView();
+   const auto& metadata = widget->render_frame_metadata_provider()->LastRenderFrameMetadata();
+   const auto surface = view ? view->GetAuxPersonCaptureSurfaceId() : viz::SurfaceId();
+-  LOG(ERROR) << "Original Capture activation surface_valid=" << surface.is_valid() << " metadata_surface_present=" << metadata.local_surface_id.has_value() << " surface_matches=" << (metadata.local_surface_id && surface.local_surface_id() == *metadata.local_surface_id);
+   if (!surface.is_valid() || !metadata.local_surface_id || surface.local_surface_id() != *metadata.local_surface_id) { Painted(false); return; }
+   for (size_t i = 0; i < widgets_.size(); ++i) if (widgets_[i].get() == widget.get()) { surfaces_[i] = surface; submission_tokens_[i] = token; }
+   Painted(true);
+ }
+ void NativePersonCaptureController::Painted(bool accepted) {
+-  LOG(ERROR) << "Original Capture paint accepted=" << accepted;
+   if (!accepted) failed_ = true;
+   if (--pending_) return;
+   const auto weak = weak_factory_.GetWeakPtr();
+@@ -219,7 +213,6 @@
+   else Dispatch("current");
+ }
+ void NativePersonCaptureController::Copy() {
+-  LOG(ERROR) << "Original Capture copy requested";
+   const auto weak = weak_factory_.GetWeakPtr();
+   const bool admitted = Current();
+   if (!weak) return;
+@@ -243,7 +236,6 @@
+       base::BindPostTaskToCurrentDefault(base::BindOnce(&NativePersonCaptureController::Copied, weak_factory_.GetWeakPtr())));
+ }
+ void NativePersonCaptureController::Copied(const content::CopyFromSurfaceResult& result) {
+-  LOG(ERROR) << "Original Capture copy has_result=" << result.has_value();
+   pending_ = 0;
+   const bool same_surfaces = widgets_.size() == surfaces_.size() && std::ranges::all_of(std::views::iota(size_t{0}, widgets_.size()), [&](size_t i) {
+     return widgets_[i] && widgets_[i]->GetView() && widgets_[i]->GetView()->GetAuxPersonCaptureSurfaceId() == surfaces_[i];
+@@ -270,7 +262,6 @@
+   Dispatch("restore");
+ }
+ void NativePersonCaptureController::Deadline() {
+-  LOG(ERROR) << "Original Capture original deadline fired";
+   failed_ = true;
+   // Never clear the original busy/mask owner on a timeout. Late callbacks must
+   // still restore the exact original documents; new captures stay refused.

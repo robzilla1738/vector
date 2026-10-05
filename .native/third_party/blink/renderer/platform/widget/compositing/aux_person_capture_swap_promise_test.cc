@@ -10,6 +10,7 @@ TEST(AuxPersonCaptureSwapPromiseTest, ActualWillSwapTokenOnlyOnce) {
   viz::CompositorFrameMetadata metadata; metadata.frame_token = 73;
   promise.WillSwap(&metadata); promise.DidSwap(); promise.DidSwap();
   EXPECT_EQ(73u, result); EXPECT_EQ(1, replies);
+  EXPECT_TRUE(metadata.aux_person_capture_activation_requested);
 }
 TEST(AuxPersonCaptureSwapPromiseTest, EveryNonSubmissionRefuses) {
   for (auto reason : {cc::SwapPromise::SWAP_FAILS, cc::SwapPromise::COMMIT_FAILS,

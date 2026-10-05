@@ -9914,7 +9914,15 @@ url::Origin NavigationRequest::GetOriginForURLLoaderFactoryBeforeResponse(
       (sandbox_flags & network::mojom::WebSandboxFlags::kOrigin) ==
       network::mojom::WebSandboxFlags::kOrigin;
   if (use_opaque_origin) {
-    origin = origin.DeriveNewOpaqueOrigin();
+    if (admitted_non_network_origin_ &&
+        origin.HasAuxResultPreviewOpaquePrecursor()) {
+      // Security policy and final commit must share this navigation's nonce.
+      if (!admitted_non_network_sandbox_origin_)
+        admitted_non_network_sandbox_origin_ = origin.DeriveNewOpaqueOrigin();
+      origin = *admitted_non_network_sandbox_origin_;
+    } else {
+      origin = origin.DeriveNewOpaqueOrigin();
+    }
   }
 
   return origin;

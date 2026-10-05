@@ -1,0 +1,15 @@
+--- a/url/origin.cc
++++ b/url/origin.cc
+@@ -217,9 +217,9 @@
+   if (std::ranges::contains(url::GetNoAccessSchemes(), url.GetScheme()) &&
+       !url.SchemeIs(kAboutScheme)) {
+     if (HasAuxResultPreviewOpaquePrecursor()) {
+-      return url.SchemeIs("aux-result") && url.host_piece() == "preview" &&
+-             url.port_piece().empty() && url.username_piece().empty() &&
+-             url.password_piece().empty();
++      return url.SchemeIs("aux-result") && url.host() == "preview" &&
++             url.port().empty() && url.username().empty() &&
++             url.password().empty();
+     }
+     // If |this| is not opaque, definitely return false as the expectation
+     // is for opaque origin.

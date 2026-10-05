@@ -1,0 +1,186 @@
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
+@@ -37,6 +37,7 @@
+ #include "components/permissions/permission_decision_auto_blocker.h"
+ #include "content/public/browser/media_session.h"
+ #include "content/public/browser/media_session_service.h"
++#include "content/public/browser/picture_in_picture_user_authority.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "media/base/media_switches.h"
+ #include "mojo/public/cpp/bindings/remote.h"
+@@ -619,9 +620,14 @@
+   if (!helper || !helper->web_contents() ||
+       document.AsRenderFrameHostIfValid() != helper->web_contents()->GetPrimaryMainFrame() ||
+       Profile::FromBrowserContext(helper->web_contents()->GetBrowserContext()) != profile ||
+-      helper->tab_observer_helper_->IsTabActivated() ||
+-      helper->clock_->NowTicks() >= helper->auto_picture_in_picture_activation_time_ ||
+-      (helper->window_occlusion_helper_ &&
++      helper->tab_observer_helper_->IsTabActivated()) return false;
++  if (helper->clock_->NowTicks() >=
++      helper->auto_picture_in_picture_activation_time_) {
++    content::RecordExpiredAutomaticPictureInPictureDocument(
++        *document.AsRenderFrameHostIfValid());
++    return false;
++  }
++  if ((helper->window_occlusion_helper_ &&
+        helper->window_occlusion_helper_->GetOcclusionState() == OcclusionState::kOccluded)) return false;
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   auto* identity = aux::PageIdentity::FromWebContents(helper->web_contents());
+--- a/chrome/browser/ui/aux/native_creator_close_receipt.cc
++++ b/chrome/browser/ui/aux/native_creator_close_receipt.cc
+@@ -108,10 +108,12 @@
+   if (token == token_ && !retired_ && !detaching_)
+     original_ack_pending_ = true;
+ }
+-bool NativeCreatorCloseReceipt::OriginalAck(const base::UnguessableToken& token) {
++bool NativeCreatorCloseReceipt::OriginalAck(const base::UnguessableToken& token,
++                                          bool await_unload) {
+   if (token != token_) return false;
++  const bool human_close = static_cast<bool>(human_close_);
++  if (human_close && await_unload) return true;
+   original_ack_pending_ = false;
+-  const bool human_close = static_cast<bool>(human_close_);
+   if (human_close_)
+     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+         FROM_HERE, std::move(human_close_));
+--- a/chrome/browser/ui/aux/native_creator_close_receipt.h
++++ b/chrome/browser/ui/aux/native_creator_close_receipt.h
+@@ -34,8 +34,10 @@
+   // retire; it never takes over that callback's token or current metadata.
+   bool QueueHumanClose(base::OnceClosure close);
+   void AwaitOriginalAck(const base::UnguessableToken& token);
+-  // Returns whether this exact ACK releases a separately queued human close.
+-  bool OriginalAck(const base::UnguessableToken& token);
++  // Returns whether this ACK belongs to a separately queued human close.
++  // Accepted beforeunload keeps that close queued until its final unload ACK.
++  bool OriginalAck(const base::UnguessableToken& token,
++                   bool await_unload = false);
+   bool MayContinue(const base::UnguessableToken& token);
+   base::WeakPtr<NativeCreatorCloseReceipt> GetWeakPtr();
+ 
+--- a/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
++++ b/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
+@@ -37,6 +37,7 @@
+ #include "content/public/browser/javascript_dialog_manager.h"
+ #include "content/public/test/browser_test.h"
+ #include "content/public/test/browser_test_utils.h"
++#include "content/public/test/test_utils.h"
+ #include "net/test/embedded_test_server/embedded_test_server.h"
+ 
+ // The connection generation is deliberately synthetic. This peer invokes the
+@@ -837,8 +838,10 @@
+   browser()->GetTabStripModel()->CloseWebContents(page_.get(), TabCloseTypes::CLOSE_NONE);
+   EXPECT_NE(close_.Get().FindDict("error"), nullptr);
+   EXPECT_TRUE(page_);
++  content::WebContentsDestroyedWatcher destroyed(page_.get());
+   dialog->view()->AcceptAppModalDialog();
+   base::RunLoop().RunUntilIdle();
++  destroyed.Wait();
+   EXPECT_FALSE(page_);
+ }
+ 
+--- a/chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc
++++ b/chrome/browser/ui/aux/native_person_capture_controller_browsertest.cc
+@@ -27,6 +27,7 @@
+ #include "base/test/bind.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/test/test_future.h"
++#include "base/test/run_until.h"
+ #include "chrome/browser/ui/browser.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/test/base/in_process_browser_test.h"
+@@ -42,6 +43,7 @@
+ #include "net/test/embedded_test_server/http_response.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ #include "ui/gfx/codec/png_codec.h"
++#include "ui/base/base_window.h"
+ // Only the fresh synthetic Profile's empty Zap policy is supplied by this
+ // fixture. Real Zap validation, renderer acknowledgement and commit remain.
+ class AuxRuntimeHostTestPeer {
+@@ -256,10 +258,19 @@
+ }
+ IN_PROC_BROWSER_TEST_F(NativePersonCaptureControllerBrowserTest, ActualViewportChangeAfterCopyRefusesExportAndRestoresMask) {
+   auto resized = std::make_shared<bool>(false);
+-  auto reply = Capture(base::BindLambdaForTesting([this,resized] {
+-    if (!*resized && NativePersonCaptureControllerTestPeer::HasCopiedPixels(owner_)) {
+-      *resized = true; auto* view = page_->GetRenderWidgetHostView(); auto size = view->GetVisibleViewportSize();
+-      view->SetSize(gfx::Size(size.width()+80,size.height()+40));
++  auto attempted = std::make_shared<bool>(false);
++  auto reply = Capture(base::BindLambdaForTesting([this,resized,attempted] {
++    if (!*attempted && NativePersonCaptureControllerTestPeer::HasCopiedPixels(owner_)) {
++      *attempted = true; auto* view = page_->GetRenderWidgetHostView(); auto size = view->GetVisibleViewportSize();
++      auto bounds = browser()->GetWindow()->GetBounds();
++      bounds.set_width(bounds.width() - 80);
++      bounds.set_height(bounds.height() - 40);
++      ui_test_utils::SetAndWaitForBounds(*browser(), bounds);
++      *resized = base::test::RunUntil([this, view, size] {
++        return page_->GetRenderWidgetHostView() == view &&
++               view->GetVisibleViewportSize() != size;
++      });
++      EXPECT_TRUE(*resized);
+     }
+     return true;
+   }));
+--- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
++++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+@@ -929,7 +929,9 @@
+   auto* receipt = aux::NativeCreatorCloseReceipt::FromWebContents(source);
+   if (!receipt) return;
+   auto original = receipt->GetWeakPtr();
+-  const bool human_close = receipt->OriginalAck(invocation);
++  const bool human_close = receipt->OriginalAck(
++      invocation, proceed && original_document.AsRenderFrameHostIfValid() ==
++                                 source->GetPrimaryMainFrame());
+   // The agent remains retired. An accepted ACK for this exact document may
+   // complete the separate queued human close through ordinary unload handling.
+   if (human_close && proceed && original &&
+--- a/content/browser/media/session/media_session_impl.cc
++++ b/content/browser/media/session/media_session_impl.cc
+@@ -77,6 +77,7 @@
+   bool requires_ui_receipt = false;
+   base::TimeTicks input_at;
+   base::TimeTicks automatic_at;
++  bool automatic_expired = false;
+  private:
+   explicit PictureInPictureUserAuthority(RenderFrameHost* frame)
+       : DocumentUserData(frame) {}
+@@ -133,6 +134,13 @@
+   auto* state = PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&frame);
+   state->automatic_sequence = ++pip_input_sequence;
+   state->automatic_at = base::TimeTicks::Now();
++  state->automatic_expired = false;
++}
++void RecordExpiredAutomaticPictureInPictureDocument(RenderFrameHost& frame) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!CurrentPictureInPictureDocument(frame)) return;
++  auto* state = PictureInPictureUserAuthority::GetForCurrentDocument(&frame);
++  if (state && state->automatic_sequence) state->automatic_expired = true;
+ }
+ bool TransferPictureInPictureUserInput(RenderFrameHost& source,
+                                       RenderFrameHost& target) {
+@@ -176,8 +184,10 @@
+   if (!HasLaterPictureInPictureInput(*state, state->automatic_sequence)) {
+     if (expired_automatic_lineage)
+       *expired_automatic_lineage = state->automatic_sequence &&
+-          !state->automatic_at.is_null() &&
+-          base::TimeTicks::Now() >= state->automatic_at + blink::kActivationLifespan;
++          (state->automatic_expired ||
++           (!state->automatic_at.is_null() &&
++            base::TimeTicks::Now() >=
++                state->automatic_at + blink::kActivationLifespan));
+     return false;
+   }
+   state->consumed_sequence = state->input_sequence;
+--- a/content/public/browser/picture_in_picture_user_authority.h
++++ b/content/public/browser/picture_in_picture_user_authority.h
+@@ -13,6 +13,10 @@
+ // Browser embedding UI must validate actual native dispatch before calling.
+ CONTENT_EXPORT bool RecordPictureInPictureBrowserUIInput(RenderFrameHost& frame);
+ CONTENT_EXPORT void MarkAutomaticPictureInPictureDocument(RenderFrameHost& frame);
++// Records only an already-denied automatic deadline on its original document.
++// This does not create a ledger, grant input, or change consumption eligibility.
++CONTENT_EXPORT void RecordExpiredAutomaticPictureInPictureDocument(
++    RenderFrameHost& frame);
+ // Transfer one actual later source input to an exact target document. A trusted
+ // WebUI origin alone is never a receipt. Normal page manual entry keeps its
+ // upstream behavior; an explicit browser UI action retains document provenance.

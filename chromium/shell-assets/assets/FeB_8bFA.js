@@ -1,0 +1,1 @@
+import{c as o}from"./D78gwqsF.js";const c=o(window.auxChromiumHost?.testClockScale);export{c as clock};

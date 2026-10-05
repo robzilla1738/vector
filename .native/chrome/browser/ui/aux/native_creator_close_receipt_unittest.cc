@@ -5,7 +5,13 @@
 #include <atomic>
 #include <memory>
 #include <optional>
+#include <vector>
+#include "base/memory/weak_ptr.h"
+#include "content/common/navigation_client.mojom.h"
+#include "mojo/public/cpp/bindings/scoped_interface_endpoint_handle.h"
+#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "base/functional/bind.h"
+#include "base/debug/stack_trace.h"
 #include "base/run_loop.h"
 #include "base/test/task_environment.h"
 #include "chrome/browser/ui/aux/egress_controller.h"
@@ -17,7 +23,10 @@
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/testing_profile.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_observer.h"
+#include "base/strings/string_number_conversions.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/browser/security_principal.h"
@@ -25,8 +34,56 @@
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/web_contents_tester.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/base/page_transition_types.h"
 
 namespace aux {
+class CreatorNavigationFinishObserver final : public content::WebContentsObserver {
+ public:
+  CreatorNavigationFinishObserver(content::WebContents* page, base::DictValue* diagnostic)
+      : content::WebContentsObserver(page), diagnostic_(diagnostic) {}
+  ~CreatorNavigationFinishObserver() override {
+    weak_factory_.InvalidateWeakPtrs();
+    for (const auto& id : original_frames_) {
+      if (auto* frame = content::RenderFrameHost::FromID(id))
+        frame->GetRemoteAssociatedInterfaces()->OverrideBinderForTesting(
+            content::mojom::NavigationClient::Name_, {});
+    }
+  }
+  void ReadyToCommitNavigation(content::NavigationHandle* navigation) override {
+    auto* frame = navigation->GetRenderFrameHost();
+    const auto id = frame->GetGlobalId();
+    for (const auto& original : original_frames_)
+      if (original == id) return;
+    original_frames_.push_back(id);
+    // Match NavigationSimulator's retained unbound receiver: keep the actual
+    // original commit endpoint alive while mock time advances before Commit.
+    frame->GetRemoteAssociatedInterfaces()->OverrideBinderForTesting(
+        content::mojom::NavigationClient::Name_,
+        base::BindRepeating(&CreatorNavigationFinishObserver::RetainOriginalClient,
+                            weak_factory_.GetWeakPtr()));
+  }
+  void DidFinishNavigation(content::NavigationHandle* navigation) override {
+    diagnostic_->Set("finishedNavigationId", base::NumberToString(navigation->GetNavigationId()));
+    diagnostic_->Set("finishedUrl", navigation->GetURL().spec());
+    diagnostic_->Set("hasCommitted", navigation->HasCommitted());
+    diagnostic_->Set("isErrorPage", navigation->IsErrorPage());
+    diagnostic_->Set("netErrorCode", navigation->GetNetErrorCode());
+    const auto discard_reason = navigation->GetNavigationDiscardReason();
+    diagnostic_->Set("discardReasonObserved", discard_reason.has_value());
+    if (discard_reason)
+      diagnostic_->Set("discardReason", static_cast<int>(*discard_reason));
+    if (!navigation->HasCommitted() && navigation->GetNetErrorCode() != 0)
+      diagnostic_->Set("originalFinishStack", base::debug::StackTrace(32).ToString());
+  }
+ private:
+  void RetainOriginalClient(mojo::ScopedInterfaceEndpointHandle handle) {
+    original_clients_.push_back(std::move(handle));
+  }
+  raw_ptr<base::DictValue> diagnostic_;
+  std::vector<content::GlobalRenderFrameHostId> original_frames_;
+  std::vector<mojo::ScopedInterfaceEndpointHandle> original_clients_;
+  base::WeakPtrFactory<CreatorNavigationFinishObserver> weak_factory_{this};
+};
 // These are genuine Profile/catalog/isolation/navigation/refusal controls. The supplied private connection generation is synthetic; this
 // fixture does not qualify Worker Connect/socket authentication or Mac input.
 class NativeCreatorCloseReceiptTest : public BrowserWithTestWindowTest {
@@ -43,6 +100,7 @@ class NativeCreatorCloseReceiptTest : public BrowserWithTestWindowTest {
         profile(), GURL("https://aux.invalid/"), partition);
     auto contents = content::WebContentsTester::CreateTestWebContents(profile(), site);
     page_ = contents->GetWeakPtr();
+    finish_observer_ = std::make_unique<CreatorNavigationFinishObserver>(page_.get(), &navigation_diagnostic_);
     browser()->GetTabStripModel()->AppendWebContents(std::move(contents), true);
     ASSERT_TRUE(controller_->RegisterIsolation(page_.get(), id, "creator-run", "creator-task", 3, {"creator-run", "registered-parent"}, kGeneration));
     page_id_ = PageIdentity::GetOrCreate(profile(), page_.get());
@@ -60,8 +118,13 @@ class NativeCreatorCloseReceiptTest : public BrowserWithTestWindowTest {
           identity && identity->runtime_owned()};
     };
     const auto original_scope = scope_snapshot();
-    navigation_ = content::NavigationSimulator::CreateBrowserInitiated(GURL("about:blank"), page_.get());
+    content::NavigationController::LoadURLParams blank(GURL("about:blank"));
+    blank.source_site_instance = site;
+    blank.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
+    page_->GetController().LoadURLWithParams(blank);
+    navigation_ = content::NavigationSimulator::CreateFromPending(page_->GetController());
     navigation_->ReadyToCommit();
+    navigation_diagnostic_.Set("originalNavigationId", base::NumberToString(navigation_->GetNavigationHandle()->GetNavigationId()));
     const auto ready_scope = scope_snapshot();
     auto created = controller_->RegisterCreatorPage(page_.get(),
         navigation_->GetNavigationHandle()->GetNavigationId(), kGeneration, nullptr);
@@ -80,6 +143,7 @@ class NativeCreatorCloseReceiptTest : public BrowserWithTestWindowTest {
     creation_id_ = *id_value;
   }
   void TearDown() override {
+    finish_observer_.reset();
     navigation_.reset();
     early_navigation_.reset();
     if (controller_) controller_->Disconnect();
@@ -89,6 +153,7 @@ class NativeCreatorCloseReceiptTest : public BrowserWithTestWindowTest {
     BrowserWithTestWindowTest::TearDown();
   }
   void Commit() {
+    ASSERT_TRUE(navigation_->GetNavigationHandle()) << "Original creator navigation finished before Commit: " << navigation_diagnostic_.DebugString();
     navigation_->Commit();
     navigation_.reset();
   }
@@ -108,6 +173,8 @@ class NativeCreatorCloseReceiptTest : public BrowserWithTestWindowTest {
   raw_ptr<EgressController> controller_ = nullptr;
   base::WeakPtr<content::WebContents> page_;
   std::string page_id_, creation_id_, isolation_id_;
+  base::DictValue navigation_diagnostic_;
+  std::unique_ptr<CreatorNavigationFinishObserver> finish_observer_;
   std::unique_ptr<content::NavigationSimulator> navigation_, early_navigation_;
   std::optional<bool> ready_;
   std::optional<base::DictValue> reply_, replay_;
@@ -140,8 +207,12 @@ TEST_F(NativeCreatorCloseReceiptTest, EarlyBlankReadyRetirementCannotReuseOrigin
         controller->ReleaseIsolation(original_page_id);
       }, controller_, page_id, &ready_replies_, &ready_value_));
   EXPECT_EQ(ready_replies_, 0);
-  early_navigation_ = content::NavigationSimulator::CreateBrowserInitiated(
-      GURL("about:blank"), original_page.get());
+  content::NavigationController::LoadURLParams blank(GURL("about:blank"));
+  blank.source_site_instance = site;
+  blank.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
+  original_page->GetController().LoadURLWithParams(blank);
+  early_navigation_ = content::NavigationSimulator::CreateFromPending(
+      original_page->GetController());
   early_navigation_->ReadyToCommit();
   const auto navigation_id = early_navigation_->GetNavigationHandle()->GetNavigationId();
   early_navigation_->Commit();
