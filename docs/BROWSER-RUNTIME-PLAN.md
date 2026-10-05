@@ -1,3 +1,15 @@
+## Current delivery status — October 5, 2026 (America/Chicago)
+
+The frozen implementation is integrated for local-main delivery. Native352 compiled successfully and its native/runtime/helper pair matched; the focused ownership, permission, generation, mailbox and acknowledgement controls passed. Aux was launched and observed on Home and New chat with Aux branding and optional context. This is an **inspection preview**, not full roadmap or release qualification.
+
+Start with [the current inspection handoff](INSPECTION-BUILD-HANDOFF.md). It identifies the actual compiled product, retained evidence, launch ownership, known harness issue, completed fixes, and remaining gates. The [copied evidence index](evidence/inspection-build-2026-10-05/index.json) preserves existing results without running new checks.
+
+The renderer passes the unchanged budgets: startup JS **500637 / 501760 bytes**, CSS **179504 / 184320**, total JS **1842978 / 1843200**. Total JS has only 222 bytes of reserve. Current functional journeys, exhaustive performance and F21 visual matrices remain deferred. The user owns resize testing; historical full native qualification remains **541 successes and one viewport failure**, with `full542Passed=false` and `safetyPassed=false`. Never convert deferred work into a pass.
+
+Scope remains frozen. No feature/command expansion, repeated unchanged checks, automatic CI runs, push, signing or release is authorized by this checkpoint. Keep the supplied 06 source/capture design authority and Aux name/logo. Earlier progress entries below are historical and do not supersede this status.
+
+---
+
 ## Active continuation: resource controls complete; native safety running
 
 The isolated root6524f7724 source completes registered/remappable task-resource Open, Rename, Save/Cancel, Access, Remove, Attach page and Add URL. Original task/revision/window/page owners, acknowledgments, full labels and focus are retained. The parent now prevents retired resource updates from refreshing another selection or publishing errors/focus. Exact packet replay, contextual metadata composition, rebuilt workspace, whole unit suite, shell types, lint, ratchet formatting, bindings, bridge, inventory and journey checks pass. The existing static-record reserve retains exact JSX lowering and all command metadata/alias relationships. Following0cb398df remains the last passing product; this source batch is isolated until strict bundle gates pass.

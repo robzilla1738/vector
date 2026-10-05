@@ -1,0 +1,69 @@
+{
+  "terminalProof": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native352-source-001/release/test-artifacts/builder-native352-eda022bb-native-relevant17-assertion-batch-001/terminal-proof.json",
+    "sha256": "8c53c473836edd6279e5d490e1edd1b99a3aba33f100f525a0a3d30ff63ab343"
+  },
+  "outerTerminal": {
+    "path": "/private/tmp/aux-builder-native352-preparation-001/native352-relevant17-original-launch-001/original-terminal.json",
+    "sha256": "eaf4fc15ebaa04b8c80856c8c50bb6632ba801f5984956718f6d69ce7e3d31fa"
+  },
+  "actual17Statuses": {
+    "NativeCreatorCloseReceiptTest.OriginalConnectionCannotBeReplaced": [
+      "SUCCESS"
+    ],
+    "NativeCreatorCloseReceiptTest.OwnerMutationRefusesOriginalProofAndHumanCanClose": [
+      "SUCCESS"
+    ],
+    "NativePerformanceMailboxFileTest.ExtraSelectorOrSkippedSequenceRefuses": [
+      "SUCCESS"
+    ],
+    "NativePerformanceMailboxFileTest.FixedOwnedOperationAndHistoricalRequest": [
+      "SUCCESS"
+    ],
+    "NativePerformanceMailboxFileTest.ForeignPermissionAndRootIdentityRefuse": [
+      "SUCCESS"
+    ],
+    "NativePerformanceMailboxFileTest.LittleFixedOperationsCannotSelectWindowOrNavigation": [
+      "SUCCESS"
+    ],
+    "NativePerformanceMailboxFileTest.MemoryOperationCannotCarryAProcessSelector": [
+      "SUCCESS"
+    ],
+    "NativePerformanceMailboxFileTest.MissingFileIsIdle": [
+      "SUCCESS"
+    ],
+    "NativePerformanceMailboxFileTest.PipeIsRefusedWithoutWaitingForAWriter": [
+      "SUCCESS"
+    ],
+    "NativePerformanceMailboxFileTest.SymlinkCannotSelectAnyOtherFile": [
+      "SUCCESS"
+    ],
+    "NativePerformanceMailboxFileTest.UnknownOperationAndRecordBoundRefuse": [
+      "SUCCESS"
+    ],
+    "NativeCreatorCloseReceiptBrowserTest.GenuineCreationMacAckAndFinalDeletionAreOneUse": [
+      "SUCCESS"
+    ],
+    "NativeCreatorCloseReceiptBrowserTest.NativeInstalledLeaseWithoutRuntimeAckRetiresToCloseOnly": [
+      "SUCCESS"
+    ],
+    "NativeCreatorCloseReceiptBrowserTest.NativePersonRetirementRefusesOriginalCleanup": [
+      "SUCCESS"
+    ],
+    "NativeCreatorCloseReceiptBrowserTest.TakeoverPreparationWaitsForRealOriginalFinalDispatch": [
+      "SUCCESS"
+    ],
+    "NativePerformanceMailboxBrowserTest.ForeignNormalAndOtherLittleNeverBorrowCleanupPermit": [
+      "SUCCESS"
+    ],
+    "NativePerformanceMailboxBrowserTest.OnlyExactCreatedLittleCanCoexistWithOrigin": [
+      "SUCCESS"
+    ]
+  },
+  "naturalExitCode": 0,
+  "slotAbsent": true,
+  "ownerGroupEmpty": true,
+  "full542Passed": false,
+  "userOwnedResizeDeferred": true,
+  "canariesPending": true
+}

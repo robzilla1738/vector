@@ -1,0 +1,106 @@
+{
+  "rootSourceCommit": "9920ec992cd35b974f78cc5e7109dd5ae3164be5",
+  "checks": {
+    "typecheck": {
+      "argv": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "log": "/tmp/aux-root-native351-integrated-gates-001/typecheck.log"
+    },
+    "lint": {
+      "argv": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "exitCode": 0,
+      "log": "/tmp/aux-root-native351-integrated-gates-001/lint.log"
+    },
+    "format": {
+      "argv": [
+        "npm",
+        "run",
+        "format:check"
+      ],
+      "exitCode": 0,
+      "log": "/tmp/aux-root-native351-integrated-gates-001/format.log"
+    },
+    "focused": {
+      "argv": [
+        "npx",
+        "vitest",
+        "run",
+        "--project",
+        "unit",
+        "apps/shell/src/command-bar.test.tsx",
+        "apps/shell/src/features/surfaces/split-drag-lifetime.test.tsx",
+        "apps/shell/src/features/surfaces/split-actions.test.ts",
+        "apps/shell/src/features/surfaces/stage-cover.test.tsx",
+        "apps/shell/src/error-message.test.ts"
+      ],
+      "exitCode": 0,
+      "log": "/tmp/aux-root-native351-integrated-gates-001/focused.log"
+    },
+    "renderer": {
+      "argv": [
+        "npx",
+        "vite",
+        "build",
+        "--config",
+        "apps/shell/vite.config.ts"
+      ],
+      "exitCode": 0,
+      "log": "/tmp/aux-root-native351-integrated-gates-001/renderer.log"
+    }
+  },
+  "logs": [
+    {
+      "path": "/tmp/aux-root-native351-integrated-gates-001/typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    },
+    {
+      "path": "/tmp/aux-root-native351-integrated-gates-001/lint.log",
+      "sha256": "e65bbcbb8c51f8eb7282601c506874c6a5e249c56cf41ae550144d648fef2c4c"
+    },
+    {
+      "path": "/tmp/aux-root-native351-integrated-gates-001/format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    {
+      "path": "/tmp/aux-root-native351-integrated-gates-001/focused.log",
+      "sha256": "2fa4d24f6e014b31a1179ae4d02ba57dfb5b47fdb5f7c4c73e0ed6dfd7d5b86b"
+    },
+    {
+      "path": "/tmp/aux-root-native351-integrated-gates-001/renderer.log",
+      "sha256": "349cb0ed194989ff99865095faf31d9b003ddc5871e1effc50fb0404cda08f49"
+    }
+  ],
+  "budget": {
+    "path": "/tmp/aux-root-native351-strict-renderer-budget-001.json",
+    "sha256": "a4f21692ec40b5c12d41fec990e7cebd05d9723a5b96952990e6560a9e307aa8"
+  },
+  "strictBytes": {
+    "startupJS": 500637,
+    "startupCSS": 179504,
+    "totalJS": 1842978,
+    "manifestSha256": "1b6cce5d200a4caf2973f85502c31717a32ed87fccf6b8aa9c1073dbdcdbb05a",
+    "sourceCommit": "22394ff63",
+    "limits": {
+      "startupJS": 501760,
+      "startupCSS": 184320,
+      "totalJS": 1843200
+    },
+    "passed": true
+  },
+  "packagedAssets": {
+    "count": 174,
+    "sha256": "9e46953a3419116f15c1cb1a8fa3ff3013827c79fb4c9c5472facf82b4933371"
+  },
+  "runtimeSourceUnchanged": true,
+  "nativeAcceptance": "pending cached351 build, matching pair, selected original controls and journeys",
+  "resize": "user-owned; prior failure preserved",
+  "githubActionsUsed": false
+}

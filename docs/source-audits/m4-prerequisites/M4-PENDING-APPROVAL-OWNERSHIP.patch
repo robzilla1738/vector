@@ -1,0 +1,102 @@
+--- a/apps/runtime/src/safety/browser-egress.ts
++++ b/apps/runtime/src/safety/browser-egress.ts
+@@ -42,7 +42,7 @@
+   private readonly preparing = new Map<string, Promise<void>>();
+   private readonly authorityVersions = new Map<string, number>();
+   private readonly bindingSources = new Map<string, { runId: string; origin: string }>();
+-  private readonly pending = new Map<string, AbortController>();
++  private readonly pending = new Map<string, { active: ActivePage; controller: AbortController }>();
+   private readonly seen = new Map<string, number>();
+   private readonly retirementDebt = new Map<string, EgressLease>();
+   private readonly mutationBarriers = new Set<(runId: string) => boolean>();
+@@ -262,7 +262,7 @@
+     const run = this.deps.run(active.runId);
+     if (!run) return denied("revoked_lease");
+     const controller = new AbortController();
+-    this.pending.set(active.runId, controller);
++    this.pending.set(active.runId, { active, controller });
+     const timer = setTimeout(() => controller.abort(), 120_000);
+     timer.unref();
+     try {
+@@ -279,7 +279,7 @@
+       return result(this.guard.decide({ ...evidence, observedAt: this.now() }, "", true, request.projection));
+     } finally {
+       clearTimeout(timer);
+-      if (this.pending.get(active.runId) === controller) this.pending.delete(active.runId);
++      if (this.pending.get(active.runId)?.controller === controller) this.pending.delete(active.runId);
+     }
+   }
+ 
+@@ -287,7 +287,8 @@
+     active.released = true;
+     clearInterval(active.timer);
+     if (this.pages.get(active.pageId) === active) this.pages.delete(active.pageId);
+-    this.pending.get(active.runId)?.abort();
++    const pending = this.pending.get(active.runId);
++    if (pending?.active === active) pending.controller.abort();
+     this.guard.revoke(active.lease.leaseId);
+   }
+ 
+@@ -351,7 +352,7 @@
+   /** Pausing drops network authority but the run still remembers protected context. */
+   suspendRun(runId: string): void {
+     for (const page of this.pages.values()) if (page.runId === runId) this.revokePage(page.pageId, runId);
+-    this.pending.get(runId)?.abort();
++    this.pending.get(runId)?.controller.abort();
+   }
+ 
+   revokeRun(runId: string): void {
+--- a/tests/unit/browser-egress.test.ts
++++ b/tests/unit/browser-egress.test.ts
+@@ -12,7 +12,7 @@
+   let url = "https://source.test/page", controller = "none";
+   let isolation: AgentPageIsolation | undefined = { isolationId: "isolated-run", runId: "run", taskId: "task", taskRevision: 4, inMemory: true, cookies: "empty" };
+   const leases: EgressLease[] = [];
+-  const revoke = vi.fn(async () => ({ accepted: true as const }));
++  const revoke = vi.fn(async (_input: { leaseId: string }) => ({ accepted: true as const }));
+   const consent = vi.fn(approve);
+   const native = Object.assign(new NullNativeBridge(), {
+     egressContext: vi.fn(async () => ({ profileId: "profile", tabId: "tab", frameId: "process:frame", documentToken: token, sourceOrigin: url === "about:blank" ? "aux://blank" : new URL(url).origin, isolation })),
+@@ -429,3 +429,42 @@
+   expect(f.native.egressRevoke).toHaveBeenCalledTimes(3);
+   expect(f.native.egressRevoke).toHaveBeenNthCalledWith(3, { leaseId: f.leases[0]!.leaseId });
+ });
++
++
++it("late retired renewal preserves a replacement lease's held approval", async () => {
++  vi.useFakeTimers();
++  let approvalEntered!: () => void;
++  const approving = new Promise<void>(resolve => { approvalEntered = resolve; });
++  let allow!: (value: boolean) => void;
++  const approval = new Promise<boolean>(resolve => { allow = resolve; });
++  let approvalSignal: AbortSignal | undefined;
++  const f = fixture(async ({ signal }) => { approvalSignal = signal; approvalEntered(); return approval; });
++  await f.service.acquire("run", "tab");
++  const originalLeaseId = f.leases[0]!.leaseId;
++  const install = f.native.egressInstall.getMockImplementation()!;
++  let acknowledgeRenewal!: (value: { accepted: true }) => void;
++  const renewalAck = new Promise<{ accepted: true }>(resolve => { acknowledgeRenewal = resolve; });
++  let renewalEntered!: () => void;
++  const renewing = new Promise<void>(resolve => { renewalEntered = resolve; });
++  f.native.egressInstall.mockImplementationOnce(async input => { await install(input); renewalEntered(); return renewalAck; });
++  await vi.advanceTimersByTimeAsync(10_000);
++  await renewing;
++  await f.service.withAuthorityMutation(id => id === "run", async () => {});
++  await f.service.ensure("run", "tab");
++  const replacementLeaseId = f.leases.at(-1)!.leaseId;
++  expect(replacementLeaseId).not.toBe(originalLeaseId);
++  const request = f.service.request(f.request("https://recipient.test/path", "public content"));
++  await approving;
++  let cleanupEntered!: () => void;
++  const cleaning = new Promise<void>(resolve => { cleanupEntered = resolve; });
++  f.native.egressRevoke.mockImplementationOnce(async ({ leaseId }) => {
++    expect(leaseId).toBe(originalLeaseId); cleanupEntered(); return { accepted: true as const };
++  });
++  acknowledgeRenewal({ accepted: true });
++  await cleaning;
++  expect(approvalSignal?.aborted).toBe(false);
++  allow(true);
++  expect((await request).decision.status).toBe("allow");
++  expect(f.native.egressRevoke).toHaveBeenCalledTimes(2);
++  expect(f.native.egressRevoke).not.toHaveBeenCalledWith({ leaseId: replacementLeaseId });
++});

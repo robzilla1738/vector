@@ -1,0 +1,206 @@
+--- a/apps/runtime/src/main.ts
++++ b/apps/runtime/src/main.ts
+@@ -1,3 +1,4 @@
++import { checkNightShiftDispatch } from "./features/overnight-review/service.js";
+ import { SafetyAuthorityRevocation } from "./safety/authority-revocation.js";
+ import { z } from "zod";
+ import { createClock } from "@aux/contracts";
+@@ -1156,6 +1157,7 @@
+       run: runId => repo.getRun(runId),
+       page: pageId => pages.get(pageId),
+       standingOnly: runId => !!repo.getRun(runId)?.config?.nightShiftItemId,
++      assertDispatch: runId => checkNightShiftDispatch(repo, runId),
+       requiresTurn: (run, pageId) => run.config?.implementation !== "external-agent" ||
+         !!run.config?.mentions?.length || turnMentions.ownedPages(run.runId).includes(pageId),
+       sourceCheck: (runId, pageId) => {
+--- a/apps/runtime/src/safety/native-permission.ts
++++ b/apps/runtime/src/safety/native-permission.ts
+@@ -79,6 +79,7 @@
+       page(id: string): PageTarget;
+       sourceCheck(runId: string, pageId: string): () => void;
+       standingOnly(runId: string): boolean;
++      assertDispatch(runId: string): Promise<void>;
+       requiresTurn(run: Run, pageId: string): boolean;
+       now?: () => number;
+     },
+@@ -214,6 +215,7 @@
+             standingOnly: this.deps.standingOnly(input.runId),
+           },
+         );
++        await this.deps.assertDispatch(input.runId);
+         fence();
+       };
+       try {
+--- a/apps/runtime/src/services/pages/executor.ts
++++ b/apps/runtime/src/services/pages/executor.ts
+@@ -1,3 +1,4 @@
++import { checkNightShiftDispatch } from "../../features/overnight-review/service.js";
+ import { AuxError, isElementRef, type Condition, type Observation, type ObservationContent, type Program, type ProgramNode, type ProgramResult, type Step, type StepRecord, newStepId } from "@aux/contracts";
+ import { beginConsequentialWrite, settleWrite } from "../../agent/durable.js";
+ import { DEFAULT_GRANTS, authorizeProgram, classifyStep } from "../../agent/permissions.js";
+@@ -81,6 +82,7 @@
+       if (ctx.runId && allSteps.some(step => classifyStep(step.op) !== "read"))
+         await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
+       const authorize = async (step: Step, projectedOrigin?: string, phase: "preflight" | "dispatch" = "dispatch") => {
++        if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
+         ctx.taskRead?.check();
+         ctx.sourcePageCheck?.();
+         const access = classifyStep(step.op) === "read" ? "read" : "act";
+@@ -146,6 +148,7 @@
+               throw new AuxError("ref_stale", "The target frame changed while authorizing this action. Observe it again.");
+           }
+         }
++        if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
+         if (mentionTurn && ctx.runId) await this.pages.deps.turnMentions.assert(ctx.runId, pageId, access, mentionTurn);
+         ctx.taskRead?.check();
+         ctx.sourcePageCheck?.();
+--- a/tests/unit/native-permission-producer.test.ts
++++ b/tests/unit/native-permission-producer.test.ts
+@@ -14,7 +14,7 @@
+ import { TurnMentionService } from "../../apps/runtime/src/services/turn-mention-service.js";
+ const cleanup: Array<() => void> = [];
+ afterEach(() => cleanup.splice(0).forEach((dispose) => dispose()));
+-async function fixture(readOnly = false, external = false) {
++async function fixture(readOnly = false, external = false, assertDispatch: (runId: string) => Promise<void> = async () => {}, runId = "run") {
+   const db = openDb(":memory:");
+   cleanup.push(() => db.close());
+   const approvals = new ApprovalStore(db);
+@@ -46,7 +46,7 @@
+     lastActiveAt: 1,
+   });
+   const run = RunSchema.parse({
+-    runId: "run",
++    runId,
+     status: "running",
+     goal: "Review permissions",
+     pageIds: [page.pageId],
+@@ -131,6 +131,7 @@
+     page: () => page,
+     run: () => run,
+     standingOnly: () => onlyStanding,
++    assertDispatch,
+     requiresTurn: () => !external,
+     sourceCheck: () => () => {
+       if (!owns) throw new AuxError("permission_denied", "Lease owner retired.");
+@@ -375,3 +376,63 @@
+   expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "deny" });
+   expect(f.mentions.ownedPages("run")).toEqual([]);
+ });
++
++
++it("a real closed overnight window denies a standing native permission before scheduler reconciliation", async () => {
++  const { Repo } = await import("@aux/runtime");
++  const { SqliteColumnCipher } = await import("../../apps/runtime/src/store/sqlite-protection.js");
++  const { NightShiftService } = await import("../../apps/runtime/src/services/night-shift.js");
++  const { BudgetsService } = await import("../../apps/runtime/src/services/budgets.js");
++  const { installNightShift, checkNightShiftDispatch } = await import("../../apps/runtime/src/features/overnight-review/service.js");
++  const { createClock } = await import("@aux/contracts");
++  const { randomBytes, createHash } = await import("node:crypto");
++  const db = openDb(":memory:"); cleanup.push(() => db.close());
++  const stored = new Map<string, string>();
++  const secret = (key: string) => { if (!stored.has(key)) stored.set(key, randomBytes(32).toString("base64")); return { value: stored.get(key)! }; };
++  const cipher = await SqliteColumnCipher.create({ readSecret: async key => ({ value: stored.get(key) }),
++    storeSecret: async (key, value) => { stored.set(key, value); return { ok: true }; },
++    profileStorageRoot: async () => secret(`aux_root_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`), profileStorageFactor: async () => secret(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`) }, "fixture", false);
++  const repo = new Repo(db, cipher);
++  let now = new Date(2026, 9, 1, 1).getTime();
++  repo.setSetting("nightShift", { enabled: true, start: "00:00", end: "08:00", nightlyUsd: 2, perTaskUsd: 0.5, requireAC: true });
++  let f: Awaited<ReturnType<typeof fixture>> | undefined;
++  const service = new NightShiftService(repo, { backgroundEnabled: () => true, onAC: async () => true,
++    releaseActivity: async () => {}, powerActivity: async () => ({ active: true }), cancel: () => {}, resume: async () => {},
++    consolidate: async () => {}, reindex: async () => {}, start: async (_payload, item, runId) => {
++      f = await fixture(false, true, id => checkNightShiftDispatch(repo, id), runId);
++      f.run.config = { ...f.run.config, nightShiftItemId: item.id };
++      repo.saveRun(f.run); f.overnight(); return runId;
++    } }, new BudgetsService(db, () => ({})), createClock(1, () => now));
++  const remove = installNightShift({ repo } as import("../../apps/runtime/src/api/methods/context.js").Services, service);
++  try {
++    const item = service.queue({ payload: { kind: "goal", goalId: "fixture-goal" }, budgetUsd: 0.4 });
++    await service.tick();
++    const actual = f!;
++    const pending = await actual.controller.request(actual.request);
++    expect(pending.decision).toBe("pending");
++    actual.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: pending.approvalId! }, actual.run.runId);
++    expect(await actual.controller.request(actual.request)).toMatchObject({ decision: "allow" });
++    const next = { ...actual.request, batchId: "after-window" };
++    now = new Date(2026, 9, 1, 8).getTime();
++    expect(service.get(item.id).status).toBe("running");
++    expect(repo.getRun(actual.run.runId)?.status).toBe("running");
++    expect(await actual.controller.request(next)).toEqual({ batchId: next.batchId, decision: "deny" });
++    expect(actual.approvals.pending(actual.run.runId)).toEqual([]);
++    expect(actual.approvals.listGrants("profile")).toHaveLength(1);
++    // An unanswered exact batch may still report its actual pending approval;
++    // it does not dispatch an effect or consume overnight foreground consent.
++    actual.approvals.revoke({ profileId: "profile" });
++    now = new Date(2026, 9, 1, 1).getTime();
++    const unanswered = { ...actual.request, batchId: "parked-pending" };
++    const waiting = await actual.controller.request(unanswered);
++    expect(waiting.decision).toBe("pending");
++    repo.saveRun({ ...actual.run, status: "needs_input" });
++    await service.tick();
++    expect(service.get(item.id).status).toBe("parked");
++    expect(await actual.controller.request(unanswered)).toEqual(waiting);
++    now = new Date(2026, 9, 1, 8).getTime();
++    await service.tick();
++    expect(service.get(item.id).status).toBe("needs_review");
++    expect(await actual.controller.request(unanswered)).toEqual(waiting);
++  } finally { await remove(); }
++});
+--- a/tests/unit/autonomy-services.test.ts
++++ b/tests/unit/autonomy-services.test.ts
+@@ -379,3 +379,55 @@
+     expect(repo.listSteps(service.get(item.id).runId!)).toHaveLength(1);
+   } finally { await remove(); }
+ });
++
++
++it("the actual page executor stops later program steps when the overnight window closes", async () => {
++  const { repo, db } = await fixture();
++  const { EventBus, NullNativeBridge } = await import("@aux/runtime");
++  const { PageService } = await import("../../apps/runtime/src/services/pages.js");
++  const { fixtureTurnMentions } = await import("../fixtures/turn-mentions.js");
++  const { installNightShift } = await import("../../apps/runtime/src/features/overnight-review/service.js");
++  let now = new Date(2026, 9, 1, 1).getTime();
++  repo.setSetting("nightShift", { enabled: true, start: "00:00", end: "08:00", nightlyUsd: 2, perTaskUsd: 0.5, requireAC: true });
++  const dispatched: string[] = [];
++  const driver: import("@aux/chromium-driver").BrowserDriver = {
++    backend: "aux", connect: async () => {}, disconnect: async () => {}, isConnected: () => true,
++    listTargets: async () => [], createTarget: async () => "fixture-target",
++    attach: async (_targetId, pageId) => ({ identity: { pageId, targetId: "fixture-target", backend: "aux" },
++      url: () => "https://fixture.test/", title: async () => "Overnight fixture", isAttached: () => true,
++      navigate: async () => {}, setEvents: () => {}, dispose: async () => {},
++      waitFor: async (condition: import("@aux/contracts").Condition) => {
++        dispatched.push(condition.kind === "selector" ? condition.selector : condition.kind);
++        now = new Date(2026, 9, 1, 8).getTime(); return { ok: true, timedOut: false };
++      },
++    }) as unknown as import("@aux/chromium-driver").DriverPage,
++  };
++  const events = new EventBus(repo);
++  const mentions = fixtureTurnMentions(id => pages.get(id));
++  const pages = new PageService({ repo, events, turnMentions: mentions, native: new NullNativeBridge(),
++    drivers: () => ({ aux: driver, chrome: null }), grants: ["effect:read"] });
++  const page = await pages.open({ url: "https://fixture.test/", ownedByRuntime: true, background: true });
++  let runId = "";
++  const service = new NightShiftService(repo, { backgroundEnabled: () => true, onAC: async () => true,
++    releaseActivity: async () => {}, powerActivity: async () => ({ active: true }), cancel: () => {}, resume: async () => {},
++    consolidate: async () => {}, reindex: async () => {}, start: async (_payload, item, reserved) => {
++      runId = reserved;
++      repo.saveRun({ runId, goal: "Read overnight fixture", pageIds: [page.pageId], status: "running", createdAt: now,
++        config: { implementation: "builtin-agent", nightShiftItemId: item.id } });
++      await mentions.begin(runId, [], [page.pageId]); return runId;
++    } }, new BudgetsService(db, () => ({})), createClock(1, () => now));
++  const remove = installNightShift({ repo } as import("../../apps/runtime/src/api/methods/context.js").Services, service);
++  try {
++    const item = service.queue({ payload: { kind: "goal", goalId: "fixture-goal" }, budgetUsd: 0.4 });
++    await service.tick();
++    const result = await pages.execute({ pageId: page.pageId, steps: [
++      { id: "first", op: "waitFor", condition: { kind: "selector", selector: "#first", state: "visible" } },
++      { id: "later", op: "waitFor", condition: { kind: "selector", selector: "#later", state: "visible" } },
++    ] }, { runId });
++    expect(result.status).toBe("failed");
++    expect(result.steps[1]?.error).toMatchObject({ code: "permission_denied" });
++    expect(dispatched).toEqual(["#first"]);
++    expect(repo.getRun(runId)?.status).toBe("running");
++    expect(service.get(item.id).status).toBe("running");
++  } finally { await remove(); }
++});

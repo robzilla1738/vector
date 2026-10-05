@@ -1,0 +1,15 @@
+{
+  "status": "actual terminal/source/generated/artifact/PID/slot audit PASS; native graph FAILED",
+  "actualHashedNativeAndGeneratedPaths": 309,
+  "actualArtifactsHashed": 7,
+  "terminalProofSha256": "e64849f843f0d05c3482bdf869602d99a3c64d175ed17181a161cd70714c0ede",
+  "sourceGuard": "PASS",
+  "ownedProcessesAbsent": [
+    "23229",
+    "23241",
+    "23245",
+    "23246"
+  ],
+  "nativeSlotAbsent": true,
+  "runtimeHelperAppStaged": false
+}

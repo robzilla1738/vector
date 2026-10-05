@@ -1,0 +1,60 @@
+{
+  "status": "FROZEN at owner-requested pause; source-only, no new reviews/captures",
+  "sourceWorktree": "/tmp/aux-browser-runtime-root-polish",
+  "sourceCommit": "8be1d490f7b8e56416d0525aedf00101f6f9dfc9",
+  "reviewCommitBeforeCheckpoint": "0d5b37e8e8f88e53c0f70c0ad3c37fcef948bf8e",
+  "files": [
+    {
+      "path": "/private/tmp/aux-browser-runtime-root-polish/chromium/patches/aux/runtime/0198-native-performance-observer.patch",
+      "sha256": "eb1310c0be7ff6519f1d9bc51626a6e9d0ae79029348b8750967f67945bc71c1",
+      "status": "NEW-only native export; uncompiled/unrun"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-root-polish/chromium/patches/aux/runtime/0201-native-pip-appearance-registry.patch",
+      "sha256": "a7ea1693aa0fb5294a6cbc9a2adaaacb01b96f098042d3711ee388e63b3c6546",
+      "status": "NEW-only native export; uncompiled/unrun"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0198-0201-GN-DRAFT.request.patch",
+      "sha256": "afb03a84f00bf3cf6b4253d36ea4302c17932296015303b351dadd969b81cb2f",
+      "status": "unapplied exact shared request; independent root adoption review pending"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0198-command-session-hooks-DRAFT.request.patch",
+      "sha256": "8513c259321fb509da9ea1e5cd91633deb245de1657e65548491eaaff6998347",
+      "status": "unapplied exact shared request; independent root adoption review pending"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0198-exact-widget-feedback.request.patch",
+      "sha256": "dc2539b97495d5574a77c75510075ad9d0d6d63eba8a9df312ac3032be11a2be",
+      "status": "unapplied exact shared request; independent root adoption review pending"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0198-input-lifecycle.request.patch",
+      "sha256": "b6157184141880a94c7d97407937d0c304e0185a900b1aee2c764fe4791f692e",
+      "status": "unapplied exact shared request; independent root adoption review pending"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0198-private-widget-transport-DRAFT.request.patch",
+      "sha256": "bd8ea5938399cdab66ea5b26d77e2bcd2d5f1523615881f27c040db3bed64e40",
+      "status": "unapplied exact shared request; independent root adoption review pending"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0201-owner-lifecycle.request.patch",
+      "sha256": "c5b1d05c3ee8d8dc9c8de99a061b0527baa925e36e9f143383a04e935f4cfe5a",
+      "status": "unapplied exact shared request; independent root adoption review pending"
+    }
+  ],
+  "nativeCompiled": false,
+  "nativeTestsRun": false,
+  "qualification": false,
+  "visualFindings": "DR001\u2013007 and full F21 appearance/motion/focus/narrow/long-label matrix remain open",
+  "withdrawnRequest": "Settings search input extra ring withdrawn after actual Settings.css:67 parent .settings-search-box:focus-within 2px focus-line discovered. No source gap established; no extra nested ring requested. Actual pixels pending.",
+  "backgroundConcern": "Root exclusive organization work witness revised stale-mark freshness. Long-task durations are also privacy-clamped: retain raw values and require conservative actual TimeClamper maximum-duration upper bound, or zero overlapping longtask entries with actual coverage. Unknown/zero buffer alone cannot prove coverage or off-UI-thread execution. Separate typed work readout/GN/caller/native proof pending.",
+  "nextSteps": [
+    "Root review/adopt coherent 0198 NEW session/framework, exact-widget feedback, input lifecycle, 9-file private transport, 5-file command session shared hooks and GN requests. Generated private test-only contract/harness hookup remains unimplemented; never production advertisement/public debug.",
+    "Sole builder compile supported actual native targets/tests before any candidate run. Four session/raw-pair tests plus existing synthetic tests are definitions only.",
+    "Actual >=20 AC trials/native/runtime/helper/candidate pins, remaining paint metrics and RAM coverage remain required. No AX/RAF proxies count as paint.",
+    "Resume actual F21 capture reviews/polish only after owner resumes. Existing de90 split blank panes P1 and separate PiP appearance evidence gap remain open."
+  ]
+}

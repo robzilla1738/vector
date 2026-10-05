@@ -1,0 +1,25 @@
+{
+  "patchSha256": "6994586537b64a5c8ee086438b1b2819868b8b8f8f3bd2c24935a116406abad2",
+  "files": {
+    "apps/runtime/src/main.ts": {
+      "baseline": "b31cf6d98091f6e7efa7e4dba3c6ea99ecb7402aac5f90860645e8445ba0af61",
+      "result": "7baab669ac0c2a8d1103d9b875b491518b6d2b7c9e6a2827a38f086f461c2577"
+    },
+    "apps/runtime/src/safety/native-permission.ts": {
+      "baseline": "1776a73179a32b61337e81f6a1eae0f4b1a3bb141cc0aa221ea5045f43edfbac",
+      "result": "f7851b53314e24fc52036adcd2b3e47356efe400426098b8296beb3f0a436beb"
+    },
+    "apps/runtime/src/services/pages/executor.ts": {
+      "baseline": "c30d93c9f477a480847be8c22b27ad2e233e18ce9ad187fe09127ee896cd93a5",
+      "result": "d9169bfecc7740423ec6d876a6e8bec5422e6774eb2b0a84789542838ade1cd5"
+    },
+    "tests/unit/native-permission-producer.test.ts": {
+      "baseline": "cfccf9f0c8557eddb73f2f45c5b79a227070de284d5a99df2b79f8b69b23968c",
+      "result": "0bb996616f92028fc5cebab5545dd096ef25ce922eed3708ca291af80b710176"
+    },
+    "tests/unit/autonomy-services.test.ts": {
+      "baseline": "3c02fc172350686111a13b89e3632a40cbded44fda635d3991a02bf684c6d2c8",
+      "result": "91aa6fa0f0adc50f0abda30a3e1b8ef0ade0b5b792310c18b8b64aa42811c45a"
+    }
+  }
+}

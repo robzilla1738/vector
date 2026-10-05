@@ -1,0 +1,90 @@
+{
+  "status": "source-only; native compile/tests/private contract+harness pending",
+  "patch": "/tmp/aux-browser-runtime-root-polish/chromium/patches/aux/runtime/0198-native-performance-observer.patch",
+  "patchSha256": "eb1310c0be7ff6519f1d9bc51626a6e9d0ae79029348b8750967f67945bc71c1",
+  "files": [
+    {
+      "path": "cc/trees/aux_performance_content_frame.cc",
+      "sha256": "0fb732fea9eac6437d57cbee6a40a239797d23f0469fce1825cb679d44f1d162"
+    },
+    {
+      "path": "cc/trees/aux_performance_content_frame.h",
+      "sha256": "60818becea7e7cf0b8e5c5d1192d80e4834067503eac84c07a3a2c5cd7149f39"
+    },
+    {
+      "path": "cc/trees/aux_performance_swap_promise.cc",
+      "sha256": "2d9e024e7ddb80517e3738c4b9b7080fe07c825d496932d0b2e17849c1c1eb44"
+    },
+    {
+      "path": "cc/trees/aux_performance_swap_promise.h",
+      "sha256": "4a79fffd5b00bef85d3f40426c53339d233c255ea52b140845dccec8ae947634"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_command_presentation_session.cc",
+      "sha256": "1693739d9d6b8dbb73e74138bcf8144c47027fee7c7b293eaf8b27f5c160be18"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_command_presentation_session.h",
+      "sha256": "3a9cb81dfe6e8e64efa89eb2f2249b1d8b403c05439a78cd6ea49cc8df996027"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_command_presentation_session_unittest.cc",
+      "sha256": "6eac407ab99bc74eaf85670cec2e2056848b998d5eab342647cc7deee8259205"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_performance_input_mac.h",
+      "sha256": "8a4fd681418cbf4b3eff11e2eb64cdf2d6423f99bd88429bb65c0a44831dc8bc"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_performance_input_mac.mm",
+      "sha256": "88ea624205aaa54e291ad0f226c0d8b4fbcc5a8e303b964add43f8cb15ece3f0"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_performance_observer.cc",
+      "sha256": "96a34c01966d837fa713b86a671e5fd313cd9b6f46cfd410bab3d8268d187548"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_performance_observer.h",
+      "sha256": "a8955c6a511e0615542e2ab493c1d08ecf3c54b703f2b75849b597b53f82a991"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_performance_observer_unittest.cc",
+      "sha256": "4a53a9c3182aadee06a0ec4fc49cd90a5e118e042f729b3de178f069c47b6109"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/native_command_results_witness.cc",
+      "sha256": "3dc0607f41687a419452dc4175624f390530284f930cee655189ae827371436b"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/native_command_results_witness.h",
+      "sha256": "bc660246deedf18f3169c6b75679faf47757fb7269a7784fb4d000ab2e763ef8"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/native_command_results_witness_test.cc",
+      "sha256": "b95e3248849fae2a2c18b427887d708f37a8cb03a077c5f173850bc8f0684b35"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/native_performance_widget_measurement.cc",
+      "sha256": "8d1fa1de3143ad66aa51e396c6a0d403e93c4b065bf7fda8447ef216663b55cc"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/native_performance_widget_measurement.h",
+      "sha256": "355fa9352f183a22ee33aabd23f649d349161590ba95b1eec243f8cad4c91fb9"
+    }
+  ],
+  "verification": "17 NEW sources isolated apply/reverse/result bytes PASS. No native operations. 3 raw-pair tests + 1 missing-owner session test defined, uncompiled.",
+  "sharedRequests": [
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0198-private-widget-transport-DRAFT.request.patch",
+      "sha256": "bd8ea5938399cdab66ea5b26d77e2bcd2d5f1523615881f27c040db3bed64e40"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0198-0201-GN-DRAFT.request.patch",
+      "sha256": "afb03a84f00bf3cf6b4253d36ea4302c17932296015303b351dadd969b81cb2f"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0198-command-session-hooks-DRAFT.request.patch",
+      "sha256": "8513c259321fb509da9ea1e5cd91633deb245de1657e65548491eaaff6998347"
+    }
+  ]
+}

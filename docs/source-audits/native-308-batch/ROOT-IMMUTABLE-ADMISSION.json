@@ -1,0 +1,56 @@
+{
+  "scope": "Independent immutable admission and exact source-stage partial continuation review only; not compilation/qualification",
+  "product": "8f81679f5edc199102b8cd82fa5db09630f0624d",
+  "productTree": "5778cdb0cd2f3382c044d6e2616a479e51138565",
+  "receipts": [
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/source-proof-native308-8f81679f-003.json",
+      "sha256": "85d3b58594ec6d98acc8e840ec369830db1ca0469801702943c5aa0f9fa1c552"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/candidate-owned-dependency-view-003.json",
+      "sha256": "fbb9a0663ff16af6300a4f0a9d61d856a32401a1d85dbb119dc62b60ba819600"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/NATIVE308-STAGE-GN-FULL17-CONTROLLER-REQUEST-001.json",
+      "sha256": "61e6add3e591fbfccd35dbb57afaa6ff5bcbff211c75a20217e576493ea0d256"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/stage-native308-8f81679f-launch-001.json",
+      "sha256": "4204e13a25c56d1d4c4dbb6049d1ae1128b6bb54d2a72b149f0903ddbb0f8d92"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/native308-partial-stage-terminal-001.json",
+      "sha256": "5064fc4a127df93ad9abcf607e8b97be43e91e98381d6ba84642edbe2dfbe630"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/candidate-owned-dependency-task-state-and-bin-receipt-004.json",
+      "sha256": "31180aff9380e1ddf2c2fdc88c1dc3382e761e901883e6f275b8fb293c804fb5"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/NATIVE308-PARTIAL-STAGE-CONTINUATION-002-REQUEST.json",
+      "sha256": "2d671f4d991840c8af3fc99c33794b47b3c64e74a7e3fba7cf138d0e9eeed8ff"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/stage-native308-bindings-continuation-launch-002.json",
+      "sha256": "421106cfa23f8a96fadfc605b3a7bff64baee16569d8b9fa8376b37530584c2e"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/NATIVE308-DOWNSTREAM-CONTINUATION-PATH-ONLY-002.json",
+      "sha256": "adb98fdc2f947d23dc7b62b67eb2cf4823dd632f1dfdb37d4e2a28bd32d8d97e"
+    }
+  ],
+  "rootIndependentJoins": [
+    "Clean candidateHEAD8f/current690hydratednative/308packets/175resources size+SHA",
+    "Original source003 exact predecessor with3provenance-only additions",
+    "9own candidate dependency views/216literal links/72own package identities",
+    "Exact stage/GN/full17 previous-base deltas/hash/syntax; original lifecycle/17targets preserved",
+    "Actual52Stablebefore plus slot absence before firststage",
+    "Original partialstage native690/artifacts/generated3 still07/cachemetadata/processgroups absent",
+    "Candidate own0700 task-state+30 implicit pnpm binrewrite receipt bound; no broadcache/target mutation byroot",
+    "Exact remainingbindings continuation/envonly pnpm verifydeps=false; no transition/assets repeat",
+    "Exact downstream successors only stageproofpath"
+  ],
+  "status": "Solebuilder approved continuation002 once; await actual proof+cleanup then sequential GN/full17 audit; no App launch",
+  "retainedRefusal": "Firststage installed native52transition+175assets then bindings refused candidate self-linked pnpm taskstate before generatedwrites. Original source/failedraw/ownerdrain retained."
+}

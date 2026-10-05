@@ -1,0 +1,58 @@
+{
+  "patchSha256": "dcfe02d8d4e82f11cbaa54167e38773597146ad5fa979a20ab5286b41b13fd07",
+  "unresolvedBaselines": [],
+  "files": {
+    "apps/runtime/src/safety/native-permission.ts": {
+      "baselineSha256": "f7851b53314e24fc52036adcd2b3e47356efe400426098b8296beb3f0a436beb",
+      "resultSha256": "14d19551c8faea4c267380e53575675a6decf851210efc0588bc5c698d4ecaea"
+    },
+    "apps/runtime/src/main.ts": {
+      "baselineSha256": "7baab669ac0c2a8d1103d9b875b491518b6d2b7c9e6a2827a38f086f461c2577",
+      "resultSha256": "4e82654c343a22683549e0abb47fefffe350a9fc3d4dd612106a31a37030a656"
+    },
+    "apps/runtime/src/features/overnight-review/service.ts": {
+      "baselineSha256": "081b426ce3665c14fd3b82530afc6f61b7400a618b33a732cc96573df6e19dd0",
+      "resultSha256": "0602090975a6bc9976ccf2198fe90a7e6ec79b1096b6940cd122fadea6a78c9b"
+    },
+    "apps/runtime/src/services/night-shift.ts": {
+      "baselineSha256": "9cfdf87663859158eb87644a145e6f64933203c6a21b0bc233d59658a6712b13",
+      "resultSha256": "b81327ffbcfca48140abfb7b419b35ea59aec5442ba18de12f13a1894bf25a81"
+    },
+    "tests/unit/native-permission-producer.test.ts": {
+      "baselineSha256": "0bb996616f92028fc5cebab5545dd096ef25ce922eed3708ca291af80b710176",
+      "resultSha256": "5c48caf6d8d0673645c7891dc6f73a2ee345d898ca388bb1976b9dc7dafbaf38"
+    },
+    "apps/runtime/src/native.ts": {
+      "baselineSha256": "8deabd2d70495a3dbc49c57568236007226b33ac1857a8096f6dc3424c5e0dfd",
+      "resultSha256": "8b55f20682fad8540d04beacda7b0f4f988cd5005d0b8152daa4815673e83111"
+    },
+    "packages/contracts/src/host-methods.ts": {
+      "baselineSha256": "254933fe6bc870bd6e06ff600ca4624fe73d80c4a063fbfe09f1939f65ca9d50",
+      "resultSha256": "d721190a2952d318691011b9514875bede810acc45cc877e41807f438efcb621"
+    },
+    "tests/unit/handler-results.test.ts": {
+      "baselineSha256": "10eed3cdd2f1ccde1633bf034756458644c73325f1b300b6738a1e9a71c8ef31",
+      "resultSha256": "4f60cf1b93d70764ddc927c6bd0d7e40cd72ce969aee1a54f20759cef3140460"
+    },
+    "apps/runtime/src/api/methods/settings.ts": {
+      "baselineSha256": "b044f8d707d8d7ccfe2ed1f36717191c34c49743ef1f9d9509dd3c79140d2546",
+      "resultSha256": "bc204fea273a80912d511047739b44b497333de74fe931fd2f88f73acd7a6ff4"
+    },
+    "apps/runtime/src/features/overnight-review/runtime.ts": {
+      "baselineSha256": "af4eff99fdd72f7cc32695f2fa42c1c5bc776b276361f740bd039b4e60136816",
+      "resultSha256": "2e4d9780f7e5c7b82eb05ef12e05544aad53b23611a6874474a9a417fcb844cf"
+    },
+    "tests/unit/autonomy-services.test.ts": {
+      "baselineSha256": "91aa6fa0f0adc50f0abda30a3e1b8ef0ade0b5b792310c18b8b64aa42811c45a",
+      "resultSha256": "624059d6df85f76b6f2038a418797615d4f1b2c7d89f4a380d24b202b03a2cac"
+    },
+    "apps/runtime/src/services/overnight-authority.ts": {
+      "baselineSha256": null,
+      "resultSha256": "c2fc732d73e3ac34ed8d1464182deb16d94f66d7bbe031803f3d5d7d50279e57"
+    },
+    "tests/fixtures/overnight-authority.ts": {
+      "baselineSha256": null,
+      "resultSha256": "009d65fdbd1f2569930d0ec9eb2f158319e459a27df7b58f786e3fe5b213183a"
+    }
+  }
+}

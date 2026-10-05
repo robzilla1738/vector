@@ -1,3 +1,15 @@
+## Current delivery status — October 5, 2026 (America/Chicago)
+
+The frozen implementation is integrated for local-main delivery. Native352 compiled successfully and its native/runtime/helper pair matched; the focused ownership, permission, generation, mailbox and acknowledgement controls passed. Aux was launched and observed on Home and New chat with Aux branding and optional context. This is an **inspection preview**, not full roadmap or release qualification.
+
+Start with [the current inspection handoff](INSPECTION-BUILD-HANDOFF.md). It identifies the actual compiled product, retained evidence, launch ownership, known harness issue, completed fixes, and remaining gates. The [copied evidence index](evidence/inspection-build-2026-10-05/index.json) preserves existing results without running new checks.
+
+The renderer passes the unchanged budgets: startup JS **500637 / 501760 bytes**, CSS **179504 / 184320**, total JS **1842978 / 1843200**. Total JS has only 222 bytes of reserve. Current functional journeys, exhaustive performance and F21 visual matrices remain deferred. The user owns resize testing; historical full native qualification remains **541 successes and one viewport failure**, with `full542Passed=false` and `safetyPassed=false`. Never convert deferred work into a pass.
+
+Scope remains frozen. No feature/command expansion, repeated unchanged checks, automatic CI runs, push, signing or release is authorized by this checkpoint. Keep the supplied 06 source/capture design authority and Aux name/logo. Earlier progress entries below are historical and do not supersede this status.
+
+---
+
 ## Current scope freeze: runnable packaged app first
 
 Feature and command expansion remain stopped. The coherent source batch fixes stale page/document preview pixels and prevents late Home focus acknowledgements from stealing newer popover/outside focus or publishing retired errors. The strict Chromium154 renderer passes at500700 startupJS,179504 CSS,1843153 totalJS. Workspace rebuild, broad units, types, lint≤390, ratchet formatting, bindings, bridge, native inventory, journeys and budgets pass. Native337 staged and generated successfully but its cached full19 compile naturally failed solely on four outdated GURL getter names; original failure, cache, watcher and owner retirement are retained. Reviewed0368 replaces only those API spellings without changing validation. Next Native338 combines that correction with the Home fix and compiles the original19 targets plus genuine result_preview_unittests, retaining original524+10 cases across19 serial binaries. No runnable App, native safety or qualification pass is claimed. One native builder continues; all required safety, qualification, performance, design and final integration gates remain. Exhaustive matrices follow end-to-end operation. Supplied06 upstream/native/WebUI/token/font/material authority and Aux branding remain required. Earlier entries below are historical.

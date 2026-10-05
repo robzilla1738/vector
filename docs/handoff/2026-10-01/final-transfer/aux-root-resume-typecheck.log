@@ -1,0 +1,4 @@
+
+> aux-browser@0.1.0 typecheck
+> tsc -b tsconfig.json && tsc -p apps/shell/tsconfig.json
+

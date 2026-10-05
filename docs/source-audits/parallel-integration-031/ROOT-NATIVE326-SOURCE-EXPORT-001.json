@@ -1,0 +1,134 @@
+{
+  "sourceExport": {
+    "path": "/private/tmp/aux-builder-native326-preparation-001/NATIVE326-OWN-SOURCE-EXPORT-001.json",
+    "sha256": "8f4bf9c2b4b8fe76854a547ee365cd62af3b1f8e6c21885892da47af3d07e7e1"
+  },
+  "actualIdentity": {
+    "commit": "c1ba4013d3641b1cbe683247587d4ba26ad50607",
+    "tree": "72f907c2c3f6facbe934d083b44ed1dde1fd602a",
+    "dirty": false,
+    "label": "c1ba4013d3641b1cbe683247587d4ba26ad50607"
+  },
+  "changedNative": [
+    "chrome/browser/picture_in_picture/picture_in_picture_window_manager.cc",
+    "chrome/browser/ui/aux/native_person_capture_controller.cc",
+    "chrome/browser/ui/aux/native_disposable_model_credential_backend.mm"
+  ],
+  "nativeSourceFiles": 733,
+  "canonicalPackets": 326,
+  "exactOwnRendererFiles": 175,
+  "capturedOwnShellFiles": 174,
+  "rawChildren": [
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/clone.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/clone.stderr.log",
+      "sha256": "34d025bda4530b3fb6584af7021819e9ec4bbdb63db4fbcd1819e95446d69c5a"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/checkout.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/checkout.stderr.log",
+      "sha256": "37b4463901997b918f3d1cff1afb6fac238a8d210171d4452a4fa3974f6dd0e8"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/compiler-patch-check.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/compiler-patch-check.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/compiler-patch-apply.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/compiler-patch-apply.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/compiler-source-add.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/compiler-source-add.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/compiler-source-commit.stdout.log",
+      "sha256": "ebab49d53cb1f31d32f82a415d51e2b4bcedbf4a28000372ebe2e2808d01bc36"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/compiler-source-commit.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/workspace-build.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/workspace-build.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/native154-renderer-build.stdout.log",
+      "sha256": "c78044495044076562e8c27c3cda2a599aedd34fe967cdb1a3f3cfd95464f249"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/native154-renderer-build.stderr.log",
+      "sha256": "812252d36c89550c5ef9d80c0bf9e5a71f92ba63d69ead3ea8d0276ae9c06035"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/own-shell-capture.stdout.log",
+      "sha256": "e329239f1623494e25bd419c3eba12a0c44bf45abd62961bdc43fb11e81d7a4b"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/own-shell-capture.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/own-shell-verify.stdout.log",
+      "sha256": "774193cdf82c51015a17f6e8e8c44c482e232f32f6f95a541fa67fe2d246b449"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/own-shell-verify.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/own-assets-add.stdout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/own-assets-add.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/own-assets-commit.stdout.log",
+      "sha256": "f4902129d2b9cce74b79ffd000b9fcc44522e8992635d187f11301c19699e803"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/own-assets-commit.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/final-product-identity.stdout.log",
+      "sha256": "a2408ad2ec98b117a4f665d1dd03759804378c3877facf3bea045858914cfccc"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/final-product-identity.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "actualOriginalExportPidAndGroupsAbsent": true,
+  "guardAndHelperPins": "verified actual candidate",
+  "sourceGateReceipt": {
+    "path": "/tmp/aux-root-native326-selected-source-gates-001.json",
+    "sha256": "063d0a864f57f5e4d812ec8a7b288d4855f0bab06c4f8efc92b7a7a6682d723c"
+  },
+  "admission": "SOURCE_EXPORT_ONLY; actual generated-preview/Stable transition/stage controller still pending; no compilation or App qualification."
+}

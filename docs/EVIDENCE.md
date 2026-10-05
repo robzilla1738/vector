@@ -1,3 +1,15 @@
+## Current delivery status — October 5, 2026 (America/Chicago)
+
+The frozen implementation is integrated for local-main delivery. Native352 compiled successfully and its native/runtime/helper pair matched; the focused ownership, permission, generation, mailbox and acknowledgement controls passed. Aux was launched and observed on Home and New chat with Aux branding and optional context. This is an **inspection preview**, not full roadmap or release qualification.
+
+Start with [the current inspection handoff](INSPECTION-BUILD-HANDOFF.md). It identifies the actual compiled product, retained evidence, launch ownership, known harness issue, completed fixes, and remaining gates. The [copied evidence index](evidence/inspection-build-2026-10-05/index.json) preserves existing results without running new checks.
+
+The renderer passes the unchanged budgets: startup JS **500637 / 501760 bytes**, CSS **179504 / 184320**, total JS **1842978 / 1843200**. Total JS has only 222 bytes of reserve. Current functional journeys, exhaustive performance and F21 visual matrices remain deferred. The user owns resize testing; historical full native qualification remains **541 successes and one viewport failure**, with `full542Passed=false` and `safetyPassed=false`. Never convert deferred work into a pass.
+
+Scope remains frozen. No feature/command expansion, repeated unchanged checks, automatic CI runs, push, signing or release is authorized by this checkpoint. Keep the supplied 06 source/capture design authority and Aux name/logo. Earlier progress entries below are historical and do not supersede this status.
+
+---
+
 ## Current continuation — 2026-10-03 coherent chat and native correction batch
 
 Goal ACTIVE. Product freeze07f3bc96b484affdece44594fa1552be998c8c5e includes draft-preserving concise chat/context recovery, collapsed original diagnostics, and six registered remappable contextual run controls. Stop still supersedes an in-flight pause/takeover; original cancellation promises, page/run owners and error cleanup are preserved. Native0331 adds genuine original utility-window appearance ownership with caller lifetime/context reservations;0334 fixes compiler-required out-of-line defaults and exports while retaining real weak page/widget handles. Root independently reviewed/replayed the two changed packets; the unchanged complete300 provenance is joined without exhaustive re-audit. Actual union302 packets/665 touched leaves. Source and terminal proofs:docs/source-audits/native-302-batch.

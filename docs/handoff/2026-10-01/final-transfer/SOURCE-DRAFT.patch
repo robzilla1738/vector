@@ -1,0 +1,142 @@
+diff --git a/third_party/blink/renderer/core/frame/native_organization_work_witness.cc b/third_party/blink/renderer/core/frame/native_organization_work_witness.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..e5d35990f5a11e02cfb92ea236a2809a906e72f5
+--- /dev/null
++++ b/third_party/blink/renderer/core/frame/native_organization_work_witness.cc
+@@ -0,0 +1,85 @@
++// Copyright 2026 The Aux Authors
++#include "third_party/blink/renderer/core/frame/native_organization_work_witness.h"
++#include <algorithm>
++#include <cmath>
++#include "third_party/blink/renderer/core/dom/document.h"
++#include "third_party/blink/renderer/core/frame/local_dom_window.h"
++#include "third_party/blink/renderer/core/frame/local_frame.h"
++#include "third_party/blink/renderer/core/timing/dom_window_performance.h"
++#include "third_party/blink/renderer/core/timing/performance_entry.h"
++#include "third_party/blink/renderer/core/timing/window_performance.h"
++#include "third_party/blink/renderer/core/timing/time_clamper.h"
++#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
++namespace blink {
++namespace {
++const char* MeasureName(NativeOrganizationWork work) {
++  switch (work) {
++    case NativeOrganizationWork::kAutoArchive: return "aux:autoArchive:cycle";
++    case NativeOrganizationWork::kLiveFolderRefresh: return "aux:liveFolders:refresh";
++  }
++  return nullptr;
++}
++bool OwnedDocument(Document& document) {
++  return document.Url().Protocol() == "chrome" && document.Url().Host() == "aux" &&
++      document.domWindow() && document.GetFrame() &&
++      document.GetFrame()->GetDocument() == &document &&
++      document.GetFrame()->IsOutermostMainFrame();
++}
++}
++NativeOrganizationWorkWitness::NativeOrganizationWorkWitness(
++    Document& document, NativeOrganizationWork work) : document_(&document), work_(work) {
++  if (!OwnedDocument(document) || !MeasureName(work)) return;
++  // Construct the actual per-window producer before work begins. Chromium
++  // uses PerformanceMonitor or the actual WebFrameWidget LoAF monitor.
++  performance_ = DOMWindowPerformance::performance(*document.domWindow());
++  time_origin_ = performance_->GetTimeOriginInternal();
++  armed_at_ms_ = performance_->now();
++  const auto entries = performance_->getEntriesByName(AtomicString(MeasureName(work)), AtomicString("measure"));
++  if (time_origin_.is_null() || !std::isfinite(armed_at_ms_) || armed_at_ms_ < 0 || entries.size() > 20 ||
++      performance_->getBufferedEntriesByType(AtomicString("longtask")).size() >= 200) return;
++  for (const auto& entry : entries) previous_.emplace_back(entry.Get());
++  armed_ = true;
++}
++NativeOrganizationWorkWitness::~NativeOrganizationWorkWitness() = default;
++std::optional<NativeOrganizationWorkSample> NativeOrganizationWorkWitness::Read(Document& document) {
++  if (!armed_ || document_.Get() != &document || !OwnedDocument(document) || !performance_ ||
++      DOMWindowPerformance::performance(*document.domWindow()) != performance_ ||
++      performance_->GetTimeOriginInternal() != time_origin_) return std::nullopt;
++  const auto entries = performance_->getEntriesByName(AtomicString(MeasureName(work_)), AtomicString("measure"));
++  if (entries.size() > 20) return std::nullopt;
++  PerformanceEntry* selected = nullptr;
++  for (const auto& entry : entries) {
++    if (std::ranges::any_of(previous_, [entry](const auto& previous) { return previous.Get() == entry.Get(); })) continue;
++    if (selected || entry->source() != document.domWindow() || !entry->IsMeasure()) return std::nullopt;
++    selected = entry.Get();
++  }
++  if (!selected) return std::nullopt;
++  const double start = selected->startTime(), duration = selected->duration(), end = start + duration;
++  const double endpoint_error_ms = 2.0 * TimeClamper::kCoarseResolutionMicroseconds / 1000.0;
++  // A new measure can reuse old marks. Require work to have genuinely begun
++  // after preparation, even at the worst privacy-clamping endpoint error.
++  if (!std::isfinite(start) || start < armed_at_ms_ + endpoint_error_ms || !std::isfinite(duration) || duration < 0 ||
++      !std::isfinite(end) || end > performance_->now()) return std::nullopt;
++  const auto tasks = performance_->getBufferedEntriesByType(AtomicString("longtask"));
++  // The actual native buffer cap is200. Refuse a saturated history rather
++  // than claiming absent long tasks after Chromium has dropped entries.
++  if (tasks.size() >= 200) return std::nullopt;
++  const bool coverage = !RuntimeEnabledFeatures::LongTaskFromLongAnimationFrameEnabled() ||
++      document.GetFrame()->GetWidgetForLocalRoot();
++  NativeOrganizationWorkSample sample{start, duration, duration + endpoint_error_ms, coverage, 0, 0};
++  for (const auto& task : tasks) {
++    const double began = task->startTime(), elapsed = task->duration();
++    if (task->source() != document.domWindow() || !std::isfinite(began) || began < 0 ||
++        !std::isfinite(elapsed) || elapsed < 0 || !std::isfinite(began + elapsed)) return std::nullopt;
++    // Expand both intervals conservatively for privacy-clamped endpoints.
++    // A task close to the boundary must not disappear from the overlap gate.
++    if (began <= end + 2 * endpoint_error_ms &&
++        began + elapsed >= start - 2 * endpoint_error_ms) {
++      ++sample.overlapping_long_tasks;
++      sample.maximum_long_task_ms = std::max(sample.maximum_long_task_ms, elapsed);
++    }
++  }
++  armed_ = false;
++  return sample;
++}
++}  // namespace blink
+diff --git a/third_party/blink/renderer/core/frame/native_organization_work_witness.h b/third_party/blink/renderer/core/frame/native_organization_work_witness.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..9359d707ce175314fb9845609720089df55050a4
+--- /dev/null
++++ b/third_party/blink/renderer/core/frame/native_organization_work_witness.h
+@@ -0,0 +1,45 @@
++// Copyright 2026 The Aux Authors
++#ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_ORGANIZATION_WORK_WITNESS_H_
++#define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_ORGANIZATION_WORK_WITNESS_H_
++#include <optional>
++#include <vector>
++#include "base/time/time.h"
++#include "third_party/blink/renderer/platform/heap/persistent.h"
++namespace blink {
++class Document;
++class PerformanceEntry;
++class WindowPerformance;
++enum class NativeOrganizationWork { kAutoArchive, kLiveFolderRefresh };
++struct NativeOrganizationWorkSample {
++  double start_ms;
++  double duration_ms;
++  // DOM User Timing is privacy-clamped. Gate the conservative clock-resolution upper
++  // bound, never treat it as raw native clock precision.
++  double duration_upper_bound_ms;
++  bool long_task_coverage;
++  // Qualification requires actual coverage AND zero overlapping long tasks.
++  // The raw clamped maximum alone cannot prove a 50ms boundary.
++  unsigned overlapping_long_tasks;
++  double maximum_long_task_ms;
++};
++// Private browser fixture transport only. User Timing measures real whole
++// asynchronous work; these endpoints never establish compositor presentation.
++class NativeOrganizationWorkWitness {
++ public:
++  NativeOrganizationWorkWitness(Document&, NativeOrganizationWork);
++  ~NativeOrganizationWorkWitness();
++  NativeOrganizationWorkWitness(const NativeOrganizationWorkWitness&) = delete;
++  NativeOrganizationWorkWitness& operator=(const NativeOrganizationWorkWitness&) = delete;
++  bool armed() const { return armed_; }
++  std::optional<NativeOrganizationWorkSample> Read(Document&);
++ private:
++  WeakPersistent<Document> document_;
++  WeakPersistent<WindowPerformance> performance_;
++  NativeOrganizationWork work_;
++  base::TimeTicks time_origin_;
++  double armed_at_ms_ = 0;
++  std::vector<WeakPersistent<PerformanceEntry>> previous_;
++  bool armed_ = false;
++};
++}  // namespace blink
++#endif

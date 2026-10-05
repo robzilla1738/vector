@@ -1,3 +1,11 @@
+## Inspection checkpoint — October 5, 2026
+
+The source families below remain the design authority. Reference availability is not proof of complete adoption. Stable chat/start, composer, command filtering and split-drag fixes are in the inspection batch; exhaustive light/dark, layout, material, performance and F21 state matrices remain deferred. Keep Aux name, logo and product identity in every borrowed surface. Preserve explicit safety and accessibility differences. See [current handoff](../INSPECTION-BUILD-HANDOFF.md) for the delivery state.
+
+The required sources include all applicable files in `06/assets/upstream-src/` at Chromium tag `152.0.7977.83` (81 real files: 47 .cc, 33 .h, 1 .mm), the installed `06/assets/live-1.0.928/` capture and `06_COPYABLE-SURFACES.md` §§8–8c. Use layout constants, palette computation, vertical/horizontal tabs, frame/window/split containers, and omnibox source alongside the decoded product WebUI, 92 native semantic tokens, 409 resolved dark/light chrome tokens, globals theme sheet, continuous-corner/spacing/hairline recipes, fonts, icons and liquid-glass material. Upstream Chromium provides base mechanics; private product implementations are not present merely because their embedded source paths are indexed. The coverage table below records concrete source families and Aux destinations; remaining comparisons still require actual acceptance evidence.
+
+---
+
 # UI source coverage for Aux
 
 Owner direction, October 3, 2026: derive every applicable UI/design element from the available reference source, preserving Aux name, logo, app identity and product copy. Primary actual source: `/Users/rcourson/AI Blueprints/06/assets/upstream-src/`, Chromium tag `152.0.7977.83`. The checked inventory has **81 source files: 47 .cc, 33 .h, 1 .mm**; hashes and sizes are in `upstream-source-inventory.json`. Reference files stay outside Git. Inventory is evidence of availability, not completed adoption.

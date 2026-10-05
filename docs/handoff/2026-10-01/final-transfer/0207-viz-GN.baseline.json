@@ -1,0 +1,9 @@
+{
+  "status": "unapplied; root source compare/GN cycle/native compile pending",
+  "path": "components/viz/service/BUILD.gn",
+  "beforeSha256": "9a0b864684ec19c225eff46d78742ad001f84b858b1b04ffe2c4e75b91ba39dd",
+  "afterSha256": "38c3c37c30485e107d2e951f06b16f69f38e0f68dcd0993e43aa045561c9a6a6",
+  "patchSha256": "823c0f59be2bdcc51fc46d09f24e47c2b2f2997669b779c9f3063445e252e6b0",
+  "actualTargets": "viz_component service; viz_source_set unit_tests;4 synthetic tests defined not run",
+  "browserGN": "actual root Aux runtime add guest_owner.{h,cc} on top of reviewed0198/0201 GN shared request; content/browser deps already requested. Do not replace root sharedGN."
+}

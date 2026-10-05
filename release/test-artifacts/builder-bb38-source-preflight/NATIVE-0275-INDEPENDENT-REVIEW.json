@@ -1,0 +1,38 @@
+{
+  "baseHarness": "383ae75dd74bb3f2ef00e4d3fcdf36cb23b577b9",
+  "baseProduct": "65b89a6e49304eb2299bccdaba02e789cca1fd07",
+  "patch": "/tmp/aux-builder-native-0275/chromium/patches/aux/runtime/0275-organization-runtime-test-dict-index.patch",
+  "patchSha256": "06fe1c8a1f4cfbd01eded9cc32ab8668e4caa770b99bc6b1d0409a01e37a2274",
+  "nativePins": {
+    "chrome/browser/ui/aux/native_organization_runtime_unittest.cc": {
+      "before": "d85ad3876942f18531b89323d16f8244f0946aef465d1aaadc362e4ff71c32fe",
+      "after": "5e7fd11a4cf90badd03d75d3e8e9705aa5016f0b12fe97c71a63254c4b570d07",
+      "entireOriginalRestoration": true
+    }
+  },
+  "actualApiPins": {
+    "base/values.h": "bc6ffad749e2e84ed10dbd296f604570bde6bf9bc1e41c11a3f8207ae9000f81"
+  },
+  "fixtureBounds": {
+    "defaultCount": 2,
+    "onlyExplicitCount": 0,
+    "sameRowValues": true
+  },
+  "verification": {
+    "contextualForwardCheck": true,
+    "forwardExactResult": true,
+    "reverseCheck": true,
+    "reverseExactOriginal": true,
+    "allTestsAssertionsUnchanged": true
+  },
+  "stableWrites": false,
+  "compiled": false,
+  "rootIndependentReview": {
+    "actualApiHashAndOverloads": true,
+    "actualCallBounds0And2": true,
+    "actualBeforeAfterHashes": true,
+    "contextualForwardReverseChecks": true,
+    "wholeOriginalRestorationAfterOnlyCast": true,
+    "nativeCompiled": false
+  }
+}

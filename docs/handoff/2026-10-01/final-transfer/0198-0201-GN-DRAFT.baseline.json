@@ -1,0 +1,38 @@
+{
+  "status": "unapplied source-only DRAFT; inspect target deps/cycles before stage",
+  "rootReplayProofSha256": "c38a1972e33baa335ab91ba7b5d344f5febeb9a076a61d23a2927d244791582e",
+  "patchSha256": "afb03a84f00bf3cf6b4253d36ea4302c17932296015303b351dadd969b81cb2f",
+  "files": [
+    {
+      "path": "cc/BUILD.gn",
+      "authority": "stable read-only; parent hash confirmation pending",
+      "beforeSha256": "2b1b3c86ec12fcd5dd95bb5c94fcc42f49f8530359e682c1903a019268bdba06",
+      "afterSha256": "ac4f6c8ba85444c97781fd68141258b2c099ee54e14ca1ac683e010fc2a95d21"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/BUILD.gn",
+      "authority": "stable read-only; parent hash confirmation pending",
+      "beforeSha256": "1fb791dd0cc5208e889554a22feecfb7753f78c6adf1aca00c90d570e2b659fc",
+      "afterSha256": "f4e9435df4c9dbdc9b3e66c5b09c27c856d213a36d51afff05ab97493b91ded2"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/build.gni",
+      "authority": "stable read-only; parent hash confirmation pending",
+      "beforeSha256": "26a496559b2024086f91373015e4661a347c7a51793728dd1af7c6521fccdb7f",
+      "afterSha256": "853b455eb21498d662aba3058909e26208bae0ddf35404c766d7ef2ee7b566ea"
+    },
+    {
+      "path": "chrome/browser/ui/aux/BUILD.gn",
+      "authority": "current root32/104 replay",
+      "beforeSha256": "471b7f831ff500dbc1edbaf6ce6c4f95e2291815240319b2f68f24351a5a154d",
+      "afterSha256": "55b62cc893539cfee6626a6671e5a376513fdee9cf39868708d8bbaf21e94eac"
+    },
+    {
+      "path": "chrome/test/BUILD.gn",
+      "authority": "current root32/104 replay",
+      "beforeSha256": "6e2a9c8803e6cb0266fcd44ed34b141c2dbbd0908d64b27def22c4b89cb70200",
+      "afterSha256": "0cfe97bb2a8cf25f1305aeb710bf651c1a5e572eb4266b57abefb540150d1920"
+    }
+  ],
+  "verification": "isolated apply/reverse/result bytes PASS; no GN generation/build/test execution"
+}

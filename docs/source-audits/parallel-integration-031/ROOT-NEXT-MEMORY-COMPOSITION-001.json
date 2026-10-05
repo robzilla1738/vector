@@ -1,0 +1,31 @@
+{
+  "sourceOnly": true,
+  "patchSha256": "bca96c3808af23f1acd682dec65ddb1bb5c497c1c2526c3ae5d76477fc04e7bc",
+  "exactTenLeaves": true,
+  "forwardReverseForward": true,
+  "independentRootControls": {
+    "controls": {
+      "path": "/tmp/aux-root-next-memory-controls-001.log",
+      "sha256": "d89376d9aaa081cfca467397acbe417bfbf65b531f91f2b736f74795c5f2150a",
+      "exitCode": 0
+    },
+    "types": {
+      "path": "/tmp/aux-root-next-memory-types-001.log",
+      "sha256": "657e98c8070e812f2837abca85eb55a565a4afb74257c62f45407ac968e4f384",
+      "exitCode": 0
+    },
+    "lint": {
+      "path": "/tmp/aux-root-next-memory-lint-001.log",
+      "sha256": "97b89e193ef1824fb405353345fff36b38fefd8500b3adcf16d906920d6ec01e",
+      "exitCode": 0
+    }
+  },
+  "strictNative154": {
+    "startup": 500369,
+    "css": 179427,
+    "total": 1846274,
+    "totalLimit": 1843200,
+    "qualified": false
+  },
+  "packageManagerIncident": "Missing verification setting triggered local dependency verification; no tracked package/lock changes; future commands must set pnpm_config_verify_deps_before_run=false."
+}

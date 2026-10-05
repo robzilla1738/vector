@@ -1,0 +1,42 @@
+{
+  "patchSha256": "8b12f6c36b72e21422fc2bf75476621f4c757e2494b5e9e9c76ce5a0c1798a07",
+  "unresolvedBaselines": [],
+  "files": {
+    "permission_broker.h": {
+      "baselineSha256": "6d88e63d258562d6d13e77532788221fe3c7fa10e23dceff95a1ccaff9cbbad4",
+      "resultSha256": "283668e06eb0507898d2dc3076b925383e1557c5b06a10fde047538944120646"
+    },
+    "permission_broker.cc": {
+      "baselineSha256": "8f0aa0625448d8d70f1eaf7115daaaba78a0dd7318d508638821bb6f703dde17",
+      "resultSha256": "f2756724dd5d9e8d383bf392ea8d9624711b88d5b2bdf0ca3b81e5d2a0e5c739"
+    },
+    "power_activity_mac.h": {
+      "baselineSha256": "d3009c7d08476e9e26d94de9a481a88c3e827edee4ca11d4821541cde43aaf64",
+      "resultSha256": "0b6602eb70fb12af37a40352c28cc6f2cc9bff320a3236d8308dbe3001abee4c"
+    },
+    "power_activity_mac.mm": {
+      "baselineSha256": "ce098f51f399d36d79b66b4f9ec9ea1a96d16730963fc26db81c5c1fbaab751d",
+      "resultSha256": "d0b62bba58d53bb9edd0648dbd4c2e75cfe809c83850c0964e9c91afc6c93d85"
+    },
+    "BUILD.gn": {
+      "baselineSha256": "471b7f831ff500dbc1edbaf6ce6c4f95e2291815240319b2f68f24351a5a154d",
+      "resultSha256": "5f946c01e7f4e7b103b0a8cd6b1bca04f9a8870038f12cc2d905704a13788a25"
+    },
+    "permission_broker_unittest.cc": {
+      "baselineSha256": "3936159e21300b0030d163d9a70e1720edc08582f0a34bb05471c747c06c3b51",
+      "resultSha256": "8b8449ad442ecd61427670c6d025f132be2cbf28ed20c4c25d9c5fcf84714683"
+    },
+    "runtime_host.cc": {
+      "baselineSha256": "3054e319352d256fd07155aea338bd345165323337be72458625970fb72e7d6f",
+      "resultSha256": "5dbe6fa7fc370e96519457d0a709372e7fed41030dd51a5f9966d18ee7ec8c55"
+    },
+    "permission_effect_receipt.h": {
+      "baselineSha256": null,
+      "resultSha256": "bbd8ce632ce55951f62c5bee0efbb9f5f194aff998684db1174cc4e5d013425c"
+    },
+    "permission_effect_receipt.cc": {
+      "baselineSha256": null,
+      "resultSha256": "c100dc3b7e621e26e0d3e58154aa6ec2655d4b09262ad6cebf0ab3d017f0be09"
+    }
+  }
+}

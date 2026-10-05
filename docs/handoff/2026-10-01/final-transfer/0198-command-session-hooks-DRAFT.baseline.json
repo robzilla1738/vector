@@ -1,0 +1,33 @@
+{
+  "status": "UNAPPLIED source-only; root review/contract generation/native compile pending",
+  "rootReplayProofSha256": "c38a1972e33baa335ab91ba7b5d344f5febeb9a076a61d23a2927d244791582e",
+  "patchSha256": "8513c259321fb509da9ea1e5cd91633deb245de1657e65548491eaaff6998347",
+  "files": [
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_ui.h",
+      "beforeSha256": "b2a8e51d72cc1eb474b3f7c95675cbf698a1612a2114e3f2878693fc84ad91e4",
+      "afterSha256": "549d32d11b6c1c8bb644af1439728bdb464d547a40d6a5f00f5c52be9dc5efdc"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_ui.cc",
+      "beforeSha256": "ee034a1253c27da182eb3822cb8a6b6083b99a1dc617f6e224ceb68756d2844b",
+      "afterSha256": "ecb898f6f94244fcf349e2d2562491f3064e09efc85c8d7e9fb351a224c5d92b"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/window_methods.cc",
+      "beforeSha256": "5e3876d8a276c735962eb2de9b02af0a082dc5e2d8b33ab45b6ef41a1a8a6537",
+      "afterSha256": "ca468b12b5122a1703e98a5eaf2deb7f080e76d37d3f5270c85eda006b351814"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_window.cc",
+      "beforeSha256": "23b8d7a566d30c1fd5383c00daf1f838302f058dafd5ebe5adfe0d8587c3dc5e",
+      "afterSha256": "04660b841ec36fb8711d21025d483a93176420f2dbecd28b552059465c205c3d"
+    },
+    {
+      "path": "chrome/browser/ui/aux/method_registry.cc",
+      "beforeSha256": "83963e61591af87d38c7907ae75b9fe86d69a19491f272cf9939babd6f1dd028",
+      "afterSha256": "f2ffbf3feb8496375cd20370c9519babf6a0f5af6f2b9b43175712fb0671c66f"
+    }
+  ],
+  "verification": "isolated apply/reverse/exact bytes PASS; no native execution"
+}

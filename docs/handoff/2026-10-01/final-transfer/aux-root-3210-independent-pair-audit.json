@@ -1,0 +1,2857 @@
+{
+  "candidate": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+  "productTree": "3b0b4fe8f686b1b681f829f80c8261acade453af",
+  "nativeFilesIndependentlyCompared": 108,
+  "builderProofSha256": "0f5288bc516ad6e30e9df0a660edf44d05ddb528beaf2eba10291ae6822bba78",
+  "checks": [
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/generated/aux_host_methods.h",
+      "sha256": "a5e337bd3617c70614000e78c9cdb78984be2d800cb00b2facf33f4ab7d1d6db"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/generated/aux_host_methods.cc",
+      "sha256": "b67fddf3b4513b7bcb39ebc24d36e761f3f9b4c46af0cd31775493c4d7d2b50b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux_host/aux_feature_stages.ts",
+      "sha256": "5de6e88176a4419bfb5bfd8e9f213277777e72d17d9a7f968e29cb72efc9d961"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/MacOS/Aux",
+      "sha256": "7dcda061ac8ce2d5faf3f5f9a3afb590bda69154b7be829c74879592f4d841e3"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/libchrome_dll.dylib",
+      "sha256": "ef974b46bc0bf295babbb4041070124674bca905539ac1c0196b35c45419ab2b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Helpers/Aux Runtime",
+      "sha256": "a9bd0630891c2dcdee70de88270fee2cc0c4a9e76495039dd3b4f91c5e6b71df"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/browser_tests.pak",
+      "sha256": "c7c0a15092af701ea2bfa28db7d1a8f76dd520657697756a43423edb76cdae70"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/headless_command_resources.pak",
+      "sha256": "a1a95e6b6c2fc382f0b9e95609fd2feea86bbd6455ea46099cb6cc8681265012"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/content_shell.pak",
+      "sha256": "f34758ac0a01820876be3e2b9e7d2a35a184b3d2607a273c14785acde01a0288"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/shell_resources.pak",
+      "sha256": "5cb87a3529336e7e9c8c50d4613fbc93fa802500c5c261a12b4b7940e63cfa70"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/chrome_200_percent.pak",
+      "sha256": "9602d0ebf1503c374f2f077e803cfc07407745c7a45956dbc6316324d01f8c0b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/chrome_100_percent.pak",
+      "sha256": "4c0b48c767505a3eb39e06f733838c6147b650c0c2feb20af32827561766ca33"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/resources.pak",
+      "sha256": "2bbbca6c53e877f4f6ad85c4f1beaf4ae5c9c6670a98fde6c77c00e6796d5c19"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/id_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/de.lproj/locale.pak",
+      "sha256": "dbd993a2f7d666d9bbab1839297248707aa65a089febe39d1d8d75dd60533f4c"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sw_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sw_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ur.lproj/locale.pak",
+      "sha256": "6f391cb1887200709bb9102290bbf79d3f3c1f481ed44661b6a5379d9dcb12df"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/he.lproj/locale.pak",
+      "sha256": "93e003377be6b372f1cbf0ec9a503fcff9b80b719d9590d87b01f700d32df1ca"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/he_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en_XA_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ru_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sk_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ar.lproj/locale.pak",
+      "sha256": "abbce7ab950191b3689060bcb5e7b799634c114c061129b3655f4fa8f9face44"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/es_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/el.lproj/locale.pak",
+      "sha256": "ffb6a17d24406a31beb145f1bf2eb17f4a4ab0bccc28bb45d1b1d84c0b23d242"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ja.lproj/locale.pak",
+      "sha256": "a044e2753fc6993d07ea67f6cc5f42e6a62c78826f3989e67f07515d2cc64c99"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/th_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/es_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/uk_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fa.lproj/locale.pak",
+      "sha256": "e40ef58c087cb19ff79dd9931595679e7e4c96b01500c4ad9a0a30f7223a8065"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hi_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/mr.lproj/locale.pak",
+      "sha256": "0ea49289992c4d6a6d1d143fb81dccc65c967591514b1300030916bf974a1427"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/am_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/te_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/gu_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ja_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ja_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/mr_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en.lproj/locale.pak",
+      "sha256": "c37cc66ddb26f943c9b4e6519015ab04bc2f7ce8f5e663b0285b5edee7610781"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/nb_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/et_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sl_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/he_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/uk.lproj/locale.pak",
+      "sha256": "88be5ee91e31d6d7cbc38519f84529042c3065445480a3b7baae2f27f030d6dd"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/tr_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/es_419.lproj/locale.pak",
+      "sha256": "aa3188b4b8c24cfe2909d25dc481b6773ca19236b8be43f7e95106c62ae1c1df"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/gu.lproj/locale.pak",
+      "sha256": "870dc3d2f054f717a5495680d378f52877a9e4268ae80fab22ccd44054d5e140"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en_XA.lproj/locale.pak",
+      "sha256": "6102787f6ad112b1a12ac28b8e83692bf7fe0c0136d035f0ca1278ed0cd38718"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ko_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/zh_CN.lproj/locale.pak",
+      "sha256": "8913a4a8b3d893f39d2f4bf50065cf18037a51deac6ff990d6dc9d946e3e280e"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fi_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/kn.lproj/locale.pak",
+      "sha256": "f68ed00f100fb6910d6b205a76c5db61f75d570fd5b1a8e9aa2dde8c817f206c"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ar_XB_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sv_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/bn_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/nb.lproj/locale.pak",
+      "sha256": "411984bf75d2794aa6b9d5edc34c6393cc36417bc91b7148436c6143242059cc"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fil_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ml_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/lv_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ms_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/th_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/nl_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/id_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/am.lproj/locale.pak",
+      "sha256": "27d1d60bd3ffd08e5d961f9eff2c75090db56945f015a95039af9dc9d1875058"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/es.lproj/locale.pak",
+      "sha256": "e30381470b66738729fb9e9fa1db0ff4a6fd4422bc154a277301227a69e6d2af"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ro_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ur_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/cs_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sw.lproj/locale.pak",
+      "sha256": "f307f8c171391677d6e77565feb5b5a4eb0aeef7ffc6dcbf54d33f7375dbb935"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/et_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sl.lproj/locale.pak",
+      "sha256": "ca117cec5faa34abc2b16192d769085a584c6f654031db4e7de2d8de8ab9be65"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pt_BR.lproj/locale.pak",
+      "sha256": "4f14064c8d9ecb2bc5c7b6ebef70096b68b232ce9962bbf76c55883dcc449e12"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pt_PT_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/da.lproj/locale.pak",
+      "sha256": "4fde0f664480a3c2b2112cd0f239a43017bc2bcc825d318c5adc265d8494baf3"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/zh_CN_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/af_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/kn_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fil_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/zh_TW_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/et.lproj/locale.pak",
+      "sha256": "43bbe780cb0a97822ba56b7d7493ca2949d7e3e8ef8f969b4e2e971dd752b274"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ms_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/it.lproj/locale.pak",
+      "sha256": "673cab2990be0cd467099e5c27918b17c1ec88639d2e9f5235861ac0c894452a"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ar_XB.lproj/locale.pak",
+      "sha256": "0ea52700677e9c824e7b9e88795edb2cf64807ef627a0fa12d8594d8c9f0fc64"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/bg.lproj/locale.pak",
+      "sha256": "46eb9487c5e9df195417be7e1707d71e24234ca12c9d6af36f6455b322a6edd9"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sk.lproj/locale.pak",
+      "sha256": "70d7f0be2dc55a5031566ccddd7b9592dae1176394ede25ef73c989456f10a2c"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/lv_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/it_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ta_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pt_PT.lproj/locale.pak",
+      "sha256": "0e2e322a72fd6e4b183f84fc27352bad5177de38fa21e1116baf232ea76ee445"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ta_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sk_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ko_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/cs_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ur_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/uk_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/af_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ar_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ml_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hi_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/te_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/lt_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sr.lproj/locale.pak",
+      "sha256": "6792c9ae59b1c0dcb06af59501494f49d0195b2b9cf9394a63beec91d931ce98"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ms.lproj/locale.pak",
+      "sha256": "256521b22b8bfeeb80ef97949b3a1b7bee355bcbe0794b464c66a151b0a5e28e"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ca_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ta.lproj/locale.pak",
+      "sha256": "10ba76cacb1ad0539f7fe1fe5794a91eb9adb64a40880c2eb1572122f16ff7ea"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/he_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/es_419_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/zh_TW_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ml.lproj/locale.pak",
+      "sha256": "8213f07a2ab8992c0d9502c8fe7ad5a10def24417d87951985435db8a32b48ad"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sv.lproj/locale.pak",
+      "sha256": "b936fe9b4c6f8330e2ad8077794285a2d683074a396cc65b12e0386cb9b563e4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/da_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/kn_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sv_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/nl_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/te.lproj/locale.pak",
+      "sha256": "139590ab5f5b460dee56578e75c567f21c37bfd2c167d645ed5144a4ff3d5251"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/mr_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en_XA_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/cs.lproj/locale.pak",
+      "sha256": "50bcd359229e33e82787d7b819e2ffd1241c5478c5c37d86f07708ac4fef3d14"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en_GB_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pt_PT_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fi_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ko.lproj/locale.pak",
+      "sha256": "ef3509481c15c10389bd3d857f3e4511bed39c6fe7616bbde6f07291143fbb9f"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sl_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/lv_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fil.lproj/locale.pak",
+      "sha256": "291a5a97966f781f1452bbbe4a27cbdec9153a86d1fc927d651465b03cf8aaca"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/da_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pt_BR_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/th_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fa_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/nb_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/af_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ru_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/bg_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/vi_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ca_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hu.lproj/locale.pak",
+      "sha256": "35e5a49b15706ef339cb397787098facf291afaa45a1aa44e5486c2d349f42f9"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ko_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hr_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hu_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/zh_TW_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pt_PT_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ro_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sr_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ta_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/tr.lproj/locale.pak",
+      "sha256": "44016fb1b414f5f2e587afcc724107d189a9136f93edf223b847019bfc80d041"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pt_BR_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pl.lproj/locale.pak",
+      "sha256": "cd229306fc3412d802051aac3b04c6c2242202fefd1bc1f3b82220c58929a243"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/bg_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/zh_TW.lproj/locale.pak",
+      "sha256": "7aed32fcdbc3a8c845c01c63c0c009efeb5c4bae74c5d77fbd3dcfc53c4a4100"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ml_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ca_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fr_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pl_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ar_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en_GB.lproj/locale.pak",
+      "sha256": "f42b9aa6646e90e7b358264c25e9291d77bd51c87048728801961bda5775b6d4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/es_419_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en_GB_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/mr_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/de_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/vi.lproj/locale.pak",
+      "sha256": "9b3c0448bc2557367056bd3879ecc3b3dc2e26b5aa399a6b7923f5d0a408b83d"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/tr_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/cs_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fil_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hi_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/es_419_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/it_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/lt_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/lv.lproj/locale.pak",
+      "sha256": "68fcc7bdc89ae67c9baed506cf1c499cf38885b029087d5facd6a92bfea03a33"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/kn_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/lt.lproj/locale.pak",
+      "sha256": "21b1ccfd7a558eaf3b8fa4e0a4cd654222d63bc4ab69c183d68c643e354ff1b1"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ru.lproj/locale.pak",
+      "sha256": "18066a0ad2616d605752a5d9e7a23a7ad1d243b46ebf84c98ce9f715f00f1ff8"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/am_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/da_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pl_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fa_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/el_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/zh_CN_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/lt_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fr_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/af.lproj/locale.pak",
+      "sha256": "747e892d1dfef80334c7ea4110cce2d9e7db6b4abc08a501fa148fc5519aa129"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ar_XB_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pt_BR_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/id_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ar_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/bg_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en_GB_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/bn_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ur_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ja_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fr.lproj/locale.pak",
+      "sha256": "0633e63ab7ad222844585c2ca638524783bb71cd7b3c05ffb2b71cad30b94f05"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/it_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fi.lproj/locale.pak",
+      "sha256": "f8ef2152965d0c583c757163d136e843c9c7990d8653be5ccfa832088bc49736"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/id.lproj/locale.pak",
+      "sha256": "b53afaeb59f0815acd9ad3037afd802bf1ada30efa8ba667e85332831e7fbcf6"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/gu_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/nl.lproj/locale.pak",
+      "sha256": "6a55896e79e04076c493d3724b712bab03eff3733cd9fc02df877b78f2b90517"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/th.lproj/locale.pak",
+      "sha256": "38fee348887b5dfa96bb495a0f1851a9f985f3a5676755fda0e249003b914370"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fi_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sv_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ms_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ar_XB_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/nb_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/am_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/en_XA_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/bn.lproj/locale.pak",
+      "sha256": "c3af2bb7cf2d1640cf7b5e8159c0eafc0b7afc6c016406c4a13406f80833a95e"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/te_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sl_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/vi_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sk_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/tr_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hr_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hr_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hu_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sr_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ru_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/es_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ro.lproj/locale.pak",
+      "sha256": "f19f0cc13da894f8555a59df6882bfe649a620abed59053b6d80c9fb5edd31c6"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/et_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/de_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/uk_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fa_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/el_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/de_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/pl_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/gu_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/bn_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hu_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/vi_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/el_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sr_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/sw_FEMININE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hr.lproj/locale.pak",
+      "sha256": "01b56623abed209ef58157b196edcc0baa4bae0edc9ca05598947f9a834543e0"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/hi.lproj/locale.pak",
+      "sha256": "47508ae9da5483f7e22aec961c71cebd790c7a1b50d9c22f6d3a0cd85172e4c4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ro_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/ca.lproj/locale.pak",
+      "sha256": "d2cc88c89db24aab305ec3fa892743ecf9716cb93a5f12129593ce84154b4290"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/fr_NEUTER.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/nl_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Frameworks/Aux Framework.framework/Versions/154.0.8037.58/Resources/zh_CN_MASCULINE.lproj/locale.pak",
+      "sha256": "ca73097bd968b363b7145e86b64f3c595e533808b0763dc8863a27fc363cfa51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/runtime_host.cc",
+      "sha256": "3054e319352d256fd07155aea338bd345165323337be72458625970fb72e7d6f"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux_host/aux_host_bootstrap.ts",
+      "sha256": "95d8334f28670faf7e485022919e346ae15e721890ade7004a404c56300092a2"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/args.gn",
+      "sha256": "fddd19ff55bdf0bd1ba21baeb2eb924b5b6c528fda485c1c94dec4ac03f9b7bb"
+    },
+    {
+      "path": "/tmp/aux-root-3210-build.log",
+      "sha256": "5fa76d1d6062dc6500c451a2807f412822fa68ef8c8529859a695cda1332649a"
+    },
+    {
+      "path": "/tmp/aux-root-3210-runtime.log",
+      "sha256": "974fd8f4c25689d2a110e23a61f5d521e58333006063ec6a6a377c7a8ac25bc2"
+    },
+    {
+      "path": "/tmp/aux-root-3210-shell.log",
+      "sha256": "4c53fa66322013f23ddc71cc9a3116b66a0ec1d1bd09b672b1917239ad0685dd"
+    },
+    {
+      "path": "/tmp/aux-root-3210-apply.log",
+      "sha256": "36ecac21417e1c5990631cafd3276e008696a76af53e2919f81041a3295892ac"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/arch-mark.svg",
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/arch-mark.svg",
+      "sha256": "45ba4f1d823cab3085cad8902fd17420ff5a9a5ac3139b180bfc0902875f515c"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ActionConfirmation-Blc7oe4Y.js",
+      "sha256": "8a5c43270211393e1ee781dd2f5ff6616808ebcd5707de0a820e517939c2e097"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ActionConfirmation-Blc7oe4Y.js",
+      "sha256": "8a5c43270211393e1ee781dd2f5ff6616808ebcd5707de0a820e517939c2e097"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/AgentRail-CLpKY2CD.css",
+      "sha256": "02183df5c352217c318c6b289a18646e1dfd13fa1761301c768bbfe2cd5b59c2"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/AgentRail-CLpKY2CD.css",
+      "sha256": "02183df5c352217c318c6b289a18646e1dfd13fa1761301c768bbfe2cd5b59c2"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/AgentRail-D6x-kXt3.js",
+      "sha256": "c9f57bbb41b94da16cbd5471ea3c4d363a75a5649ed26c13a352d59e29adc983"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/AgentRail-D6x-kXt3.js",
+      "sha256": "c9f57bbb41b94da16cbd5471ea3c4d363a75a5649ed26c13a352d59e29adc983"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/AnswerMarkdown-CgMymvyb.js",
+      "sha256": "9e46897082c7bd1206a4027889887a038883129dfa7d61081072c6e22c62cef8"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/AnswerMarkdown-CgMymvyb.js",
+      "sha256": "9e46897082c7bd1206a4027889887a038883129dfa7d61081072c6e22c62cef8"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/AnswerMarkdown-ChIyT3gC.css",
+      "sha256": "46184039bb67a685e264d677a244e0c92617f75188f83d99984f697b30b62853"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/AnswerMarkdown-ChIyT3gC.css",
+      "sha256": "46184039bb67a685e264d677a244e0c92617f75188f83d99984f697b30b62853"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/App-BoHb2Z_n.js",
+      "sha256": "5fc8acca4a18a454b9b2690ea1b0f58658345f1dcecc2ebc8d615a3ee67ebdee"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/App-BoHb2Z_n.js",
+      "sha256": "5fc8acca4a18a454b9b2690ea1b0f58658345f1dcecc2ebc8d615a3ee67ebdee"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/App-Cv8Sxi7p.css",
+      "sha256": "ab39c7cb5ddfed3c8650366636523ff5046e8afb63ea2868f5b05440bbe5a950"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/App-Cv8Sxi7p.css",
+      "sha256": "ab39c7cb5ddfed3c8650366636523ff5046e8afb63ea2868f5b05440bbe5a950"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ArrowUp-DNcD-ExX.js",
+      "sha256": "a453bb598aa8d041a299da5672261021341d87dcd50ddf512f440bbe9edb7ade"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ArrowUp-DNcD-ExX.js",
+      "sha256": "a453bb598aa8d041a299da5672261021341d87dcd50ddf512f440bbe9edb7ade"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ArrowUpRight-7axyZ06G.js",
+      "sha256": "1b45505f1bae872f2ec8676f04b7ff4f8487719ecf0c784d6cd9b5897bf47b48"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ArrowUpRight-7axyZ06G.js",
+      "sha256": "1b45505f1bae872f2ec8676f04b7ff4f8487719ecf0c784d6cd9b5897bf47b48"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/AuxMark-Btscqyky.js",
+      "sha256": "d93142e1e01842db5c9f2a2bf69cf8e0dc4d026e18791c79bf619567c1c939b5"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/AuxMark-Btscqyky.js",
+      "sha256": "d93142e1e01842db5c9f2a2bf69cf8e0dc4d026e18791c79bf619567c1c939b5"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ChatSessions-BW3VlOy1.css",
+      "sha256": "a88ce476212b69cc892a881e930bc18f6552a58929165a2d825b298cd109c91c"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ChatSessions-BW3VlOy1.css",
+      "sha256": "a88ce476212b69cc892a881e930bc18f6552a58929165a2d825b298cd109c91c"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ChatSessions-CtWHH7ec.js",
+      "sha256": "287b0c83bf172ad036f4d4c928939c841351562394a90d4ea817c5fb56947e29"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ChatSessions-CtWHH7ec.js",
+      "sha256": "287b0c83bf172ad036f4d4c928939c841351562394a90d4ea817c5fb56947e29"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ChatSidebar-mcfeGDq2.js",
+      "sha256": "d2b931fd3c7ce6adaec6c2b1ea243e94365a795ef3b4126ab4eef885cb37e65e"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ChatSidebar-mcfeGDq2.js",
+      "sha256": "d2b931fd3c7ce6adaec6c2b1ea243e94365a795ef3b4126ab4eef885cb37e65e"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/CommandBar-Cc_bFiOz.js",
+      "sha256": "cf120eb0a297dc2fb31191bb6f3ac034f36bb8843694dcb33135225aad4b219c"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/CommandBar-Cc_bFiOz.js",
+      "sha256": "cf120eb0a297dc2fb31191bb6f3ac034f36bb8843694dcb33135225aad4b219c"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/CommandBar-DibI8BTP.css",
+      "sha256": "34aa36e6a6a86c20e5bc7b0f9e26782294b1df3486295359b88669b071eb174c"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/CommandBar-DibI8BTP.css",
+      "sha256": "34aa36e6a6a86c20e5bc7b0f9e26782294b1df3486295359b88669b071eb174c"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/CommandProviderRows-CYdNUvHb.js",
+      "sha256": "31b3f8b4fb5c7f6ed6afd21830426ea54c419a47d2a832c51443fb9b0c8873e2"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/CommandProviderRows-CYdNUvHb.js",
+      "sha256": "31b3f8b4fb5c7f6ed6afd21830426ea54c419a47d2a832c51443fb9b0c8873e2"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/CommandRankingDebug-B5gvXy0u.js",
+      "sha256": "c1882ebb6211d3f316b1db94fa1bf45b6aea381cdacec3267f751f4ddae3d9bd"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/CommandRankingDebug-B5gvXy0u.js",
+      "sha256": "c1882ebb6211d3f316b1db94fa1bf45b6aea381cdacec3267f751f4ddae3d9bd"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/CommandRankingDebug-DMERh6qh.css",
+      "sha256": "3b425f57a3b2754209b4c35b2e68fdcb91d790329acaf04afeb6335c04c6cab9"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/CommandRankingDebug-DMERh6qh.css",
+      "sha256": "3b425f57a3b2754209b4c35b2e68fdcb91d790329acaf04afeb6335c04c6cab9"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/CommandSurface-DKYKY8wn.js",
+      "sha256": "a261889735cf8d3a2e35be109a520ff0b9819dde47dfd1611514dff6e08c12da"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/CommandSurface-DKYKY8wn.js",
+      "sha256": "a261889735cf8d3a2e35be109a520ff0b9819dde47dfd1611514dff6e08c12da"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/CommandSurface-Dprzi4P2.css",
+      "sha256": "31d51ee9b92341eea650089ba83fa4dd03871b2cd02a01ff588b302f6079274b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/CommandSurface-Dprzi4P2.css",
+      "sha256": "31d51ee9b92341eea650089ba83fa4dd03871b2cd02a01ff588b302f6079274b"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Conversation-B1x-VeGY.js",
+      "sha256": "ea4f659fceb68030e964309f40b42613a1dbee1920c5c99ef58516e22115683c"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Conversation-B1x-VeGY.js",
+      "sha256": "ea4f659fceb68030e964309f40b42613a1dbee1920c5c99ef58516e22115683c"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Conversation-CpMi2RdD.css",
+      "sha256": "0751b150f3a4198f4d1d7a7e5ef233c6eb8ead91c88d4a27a341eca6c54578df"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Conversation-CpMi2RdD.css",
+      "sha256": "0751b150f3a4198f4d1d7a7e5ef233c6eb8ead91c88d4a27a341eca6c54578df"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ConversationDrafts-BWf39lRJ.js",
+      "sha256": "9f96b695e5b0e86135d02d04841e11768d7b11c491af1f3ed9054f2923bdb5ca"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ConversationDrafts-BWf39lRJ.js",
+      "sha256": "9f96b695e5b0e86135d02d04841e11768d7b11c491af1f3ed9054f2923bdb5ca"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ConversationDrafts-DQjuaANy.css",
+      "sha256": "0e8b20ccc0c0097dd6280503ec6028bfeaee5f4db7387b69c3da92abace381a4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ConversationDrafts-DQjuaANy.css",
+      "sha256": "0e8b20ccc0c0097dd6280503ec6028bfeaee5f4db7387b69c3da92abace381a4"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/DocumentContent-6NMlA1Qh.js",
+      "sha256": "fc3269543cff1fedb5948a53537159f0139b8488bc2e53af6ffd1c6999b46b9c"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/DocumentContent-6NMlA1Qh.js",
+      "sha256": "fc3269543cff1fedb5948a53537159f0139b8488bc2e53af6ffd1c6999b46b9c"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Downloads-C6R7GYMw.js",
+      "sha256": "b42ff9a0c5e42a00d1f4780e146a389aaf00c4a2c1d3452044b77c9f5a02a95d"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Downloads-C6R7GYMw.js",
+      "sha256": "b42ff9a0c5e42a00d1f4780e146a389aaf00c4a2c1d3452044b77c9f5a02a95d"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Downloads-mTv24bCH.css",
+      "sha256": "4c9816057ea6f7ad3ccab099c09433558fc266a157cddac38cb4aaa1f572d187"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Downloads-mTv24bCH.css",
+      "sha256": "4c9816057ea6f7ad3ccab099c09433558fc266a157cddac38cb4aaa1f572d187"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ExtensionActions-DkZb3SbV.js",
+      "sha256": "cea72352616420ef97f508faf1683c5631f4a1ba12076c01cb936aa12b22ae8d"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ExtensionActions-DkZb3SbV.js",
+      "sha256": "cea72352616420ef97f508faf1683c5631f4a1ba12076c01cb936aa12b22ae8d"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ExternalLinksSetting-UNsPuRuT.js",
+      "sha256": "df1adaea913b764ead35091fa5ca07a594a6bbcbf771f5f95ab126a854624583"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ExternalLinksSetting-UNsPuRuT.js",
+      "sha256": "df1adaea913b764ead35091fa5ca07a594a6bbcbf771f5f95ab126a854624583"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/FindBar-0nZcLHVt.css",
+      "sha256": "914ff2cbb8b10648629d9048450f21c48241717d28db76413571e0ae60e5d672"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/FindBar-0nZcLHVt.css",
+      "sha256": "914ff2cbb8b10648629d9048450f21c48241717d28db76413571e0ae60e5d672"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/FindBar-BJLbzBvz.js",
+      "sha256": "498a3ef8638d3ae6a71daf34467d9986320f7a4d1abefee7b1eea7ce745538e5"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/FindBar-BJLbzBvz.js",
+      "sha256": "498a3ef8638d3ae6a71daf34467d9986320f7a4d1abefee7b1eea7ce745538e5"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/GithubConnections-BQUfYqzm.js",
+      "sha256": "1ad68f909a7962213c30dfa755f7fd65fce9bc34932f76d2236907e25be8b542"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/GithubConnections-BQUfYqzm.js",
+      "sha256": "1ad68f909a7962213c30dfa755f7fd65fce9bc34932f76d2236907e25be8b542"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/HomeAsk-BbPswREC.js",
+      "sha256": "d5cd1beb2fe86e688a1faaf25c60ece257640efda8d3fadaa23752e3b1d8dbd4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/HomeAsk-BbPswREC.js",
+      "sha256": "d5cd1beb2fe86e688a1faaf25c60ece257640efda8d3fadaa23752e3b1d8dbd4"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/HomeAsk-KDYVomII.css",
+      "sha256": "def7be4eab8e2c50331d42de37f54e273a5db959d5c98a66e8c41bf9963a41d9"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/HomeAsk-KDYVomII.css",
+      "sha256": "def7be4eab8e2c50331d42de37f54e273a5db959d5c98a66e8c41bf9963a41d9"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/HorizontalTabs-BjWf62jz.css",
+      "sha256": "333cac00fe3084e149ec856598beb1a9d97945fb27d3ba5ab0a96254d8202e93"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/HorizontalTabs-BjWf62jz.css",
+      "sha256": "333cac00fe3084e149ec856598beb1a9d97945fb27d3ba5ab0a96254d8202e93"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/HorizontalTabs-CmTbHAqi.js",
+      "sha256": "f75e48000fb4a31f19d4f0257db17d0828f89caa9b6250c04c0352bd055e4019"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/HorizontalTabs-CmTbHAqi.js",
+      "sha256": "f75e48000fb4a31f19d4f0257db17d0828f89caa9b6250c04c0352bd055e4019"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/HttpAuthPrompt-DAtUVasb.js",
+      "sha256": "f3ab0271434ca1678b291261e656eaef3ed9856e4f61ab36a77b047be36f3305"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/HttpAuthPrompt-DAtUVasb.js",
+      "sha256": "f3ab0271434ca1678b291261e656eaef3ed9856e4f61ab36a77b047be36f3305"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/InlineAssist-1X60RTJQ.css",
+      "sha256": "ba0c896cb140b35e81fb63987dbda1092a5d49b7f2d2fb69208ab99488daa4ed"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/InlineAssist-1X60RTJQ.css",
+      "sha256": "ba0c896cb140b35e81fb63987dbda1092a5d49b7f2d2fb69208ab99488daa4ed"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/InlineAssist-ILVDzHwa.js",
+      "sha256": "09473eadfd3366f98d16d79480e2948e196a0425377aa4f7ed69b8c102df385a"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/InlineAssist-ILVDzHwa.js",
+      "sha256": "09473eadfd3366f98d16d79480e2948e196a0425377aa4f7ed69b8c102df385a"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Inspector-Hqumlhyv.js",
+      "sha256": "a36347a36bd6c176d52345445f0515d64046aebba740c5a26b158d27c7843b2d"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Inspector-Hqumlhyv.js",
+      "sha256": "a36347a36bd6c176d52345445f0515d64046aebba740c5a26b158d27c7843b2d"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Library-BFIGzrjs.css",
+      "sha256": "7216b18944c53c3ee716a06ff996f6256293ff3fca51e1c3e767980eee8ffc7b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Library-BFIGzrjs.css",
+      "sha256": "7216b18944c53c3ee716a06ff996f6256293ff3fca51e1c3e767980eee8ffc7b"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Library-DUUARp89.js",
+      "sha256": "989d97bc0d29a83da070fc2223b2d6ab68863d6e9af6561307842a8839de91c1"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Library-DUUARp89.js",
+      "sha256": "989d97bc0d29a83da070fc2223b2d6ab68863d6e9af6561307842a8839de91c1"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/LinkPeek-DFQEJE4N.js",
+      "sha256": "f753471954f5f30162e219df04066f74575aae13856e3a6bed22c15434db4d56"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/LinkPeek-DFQEJE4N.js",
+      "sha256": "f753471954f5f30162e219df04066f74575aae13856e3a6bed22c15434db4d56"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/LinkPeek-HYfUpGFC.css",
+      "sha256": "9c8819ce2a605a49ea6e3e30f65968a29b6b51b3c536acdc8158f22859898226"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/LinkPeek-HYfUpGFC.css",
+      "sha256": "9c8819ce2a605a49ea6e3e30f65968a29b6b51b3c536acdc8158f22859898226"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/LinkRouting-BaltvgHD.js",
+      "sha256": "354f414b39f95090e3d15c4f6b1e7989ac272cdb9b9af4799364ad12364acdea"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/LinkRouting-BaltvgHD.js",
+      "sha256": "354f414b39f95090e3d15c4f6b1e7989ac272cdb9b9af4799364ad12364acdea"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/LittleWindow-BKkbTqQS.js",
+      "sha256": "ea3dcae243b97a6ccd4422e7fbc05bd617a373e850055549c9eb109eded97c49"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/LittleWindow-BKkbTqQS.js",
+      "sha256": "ea3dcae243b97a6ccd4422e7fbc05bd617a373e850055549c9eb109eded97c49"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/LittleWindow-Cy_KwRWY.css",
+      "sha256": "763616d1e586f1679ee98f4366f0442010d2108962a443c7128336d9d52bb057"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/LittleWindow-Cy_KwRWY.css",
+      "sha256": "763616d1e586f1679ee98f4366f0442010d2108962a443c7128336d9d52bb057"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/LiveFolderEditor-BgQ-HC4M.js",
+      "sha256": "11a1816a5a3c712ba42a1b4228aa56089c404dd6343391391706066bc7b140b1"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/LiveFolderEditor-BgQ-HC4M.js",
+      "sha256": "11a1816a5a3c712ba42a1b4228aa56089c404dd6343391391706066bc7b140b1"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Lock-B5wkgs74.js",
+      "sha256": "452d563ab8b27c83fde1ec63dce9dd31f33567792272f96c410f53b517623fe6"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Lock-B5wkgs74.js",
+      "sha256": "452d563ab8b27c83fde1ec63dce9dd31f33567792272f96c410f53b517623fe6"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/MentionComposer-B3a61Vc7.css",
+      "sha256": "50dd9b95689d410c00afd9fdb8998606b4638c22ec0cb5ad51230c30323e9adb"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/MentionComposer-B3a61Vc7.css",
+      "sha256": "50dd9b95689d410c00afd9fdb8998606b4638c22ec0cb5ad51230c30323e9adb"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/MentionComposer-BjJkM21k.js",
+      "sha256": "5ec71e60677ec3eb3d84608d2418d685910e0a8e2a6b2a46254c62745e71e9a0"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/MentionComposer-BjJkM21k.js",
+      "sha256": "5ec71e60677ec3eb3d84608d2418d685910e0a8e2a6b2a46254c62745e71e9a0"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/MovedTabPlaceholder-Bgnrm4xH.css",
+      "sha256": "1a3c382745a9564325658d684386ed75fc72d408aba3e3e07fd207a91162bd73"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/MovedTabPlaceholder-Bgnrm4xH.css",
+      "sha256": "1a3c382745a9564325658d684386ed75fc72d408aba3e3e07fd207a91162bd73"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/MovedTabPlaceholder-CZCMSJLE.js",
+      "sha256": "63090aea78a211d57d453646f27282de876a56a9ea0ab3af4559ca7823b61c50"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/MovedTabPlaceholder-CZCMSJLE.js",
+      "sha256": "63090aea78a211d57d453646f27282de876a56a9ea0ab3af4559ca7823b61c50"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/NightSettings-C6fkaZjw.js",
+      "sha256": "b4a8734c64445d1fedf8b549b1514aebf82560d4b2c722c65169dcc888bbd1d3"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/NightSettings-C6fkaZjw.js",
+      "sha256": "b4a8734c64445d1fedf8b549b1514aebf82560d4b2c722c65169dcc888bbd1d3"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ObservationPanel-BWN1mKkt.js",
+      "sha256": "77a70ccb07192d8dfae7ec1e3d7f8b0f0c1f7046f91e57456dc9a12d1707f82d"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ObservationPanel-BWN1mKkt.js",
+      "sha256": "77a70ccb07192d8dfae7ec1e3d7f8b0f0c1f7046f91e57456dc9a12d1707f82d"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/OnboardingHost-CF_mjU-X.css",
+      "sha256": "f7d52ef68b021b5e87c7e589e1b0673e925e6f21c5d7ac0a3debfcb9e2050f36"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/OnboardingHost-CF_mjU-X.css",
+      "sha256": "f7d52ef68b021b5e87c7e589e1b0673e925e6f21c5d7ac0a3debfcb9e2050f36"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/OnboardingHost-aLHBAQpy.js",
+      "sha256": "05d92babe2c5fdc98c713385b38ff5d478f65cc40562d7ff9d742b9e2480e45f"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/OnboardingHost-aLHBAQpy.js",
+      "sha256": "05d92babe2c5fdc98c713385b38ff5d478f65cc40562d7ff9d742b9e2480e45f"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Overview-CI3Dy76E.css",
+      "sha256": "7e3df8b5d90b48dab94210049b71010963262e3e064394ac89d1e74d196a3cba"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Overview-CI3Dy76E.css",
+      "sha256": "7e3df8b5d90b48dab94210049b71010963262e3e064394ac89d1e74d196a3cba"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Overview-CItVHzqW.js",
+      "sha256": "47490df9472da7802afb2346ed18a1e0f31e1dbdfd9dd207a4dfdd6686780008"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Overview-CItVHzqW.js",
+      "sha256": "47490df9472da7802afb2346ed18a1e0f31e1dbdfd9dd207a4dfdd6686780008"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/PageSurface-CJpnXirx.js",
+      "sha256": "4b5e9d764ee62eab269186b485668e1d7806614fcff76208ed8d5cee3cef8d41"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/PageSurface-CJpnXirx.js",
+      "sha256": "4b5e9d764ee62eab269186b485668e1d7806614fcff76208ed8d5cee3cef8d41"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/PageSurface-D_qsFm-x.css",
+      "sha256": "5ca015db0b30f0f0f7f80a0b92f9617e870628095b83780fa03033b98bb135af"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/PageSurface-D_qsFm-x.css",
+      "sha256": "5ca015db0b30f0f0f7f80a0b92f9617e870628095b83780fa03033b98bb135af"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ProfileSwitcher-C1JCjofF.js",
+      "sha256": "3c60695ac156ca0590f02a16015ad4c9188eb1f49739bae85b7d0b637896ced0"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ProfileSwitcher-C1JCjofF.js",
+      "sha256": "3c60695ac156ca0590f02a16015ad4c9188eb1f49739bae85b7d0b637896ced0"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ProfileSwitcher-DfmJrsSK.css",
+      "sha256": "b3f3a3167163e596bd1e312468bede5cb20e8aef733623398e048b2f61af0e72"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ProfileSwitcher-DfmJrsSK.css",
+      "sha256": "b3f3a3167163e596bd1e312468bede5cb20e8aef733623398e048b2f61af0e72"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/QueueTonight-dEWPwsD6.js",
+      "sha256": "8c41fc5c35a3fc936c06dce2860cd80b738dfdf52fe1c4f1a1efbcf044aee503"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/QueueTonight-dEWPwsD6.js",
+      "sha256": "8c41fc5c35a3fc936c06dce2860cd80b738dfdf52fe1c4f1a1efbcf044aee503"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/QuickAsk-CzpPSB_-.css",
+      "sha256": "197a21da529fd8e05ff174627d16e53e27912cc2e9884e4f4e909ddd1613c062"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/QuickAsk-CzpPSB_-.css",
+      "sha256": "197a21da529fd8e05ff174627d16e53e27912cc2e9884e4f4e909ddd1613c062"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/QuickAsk-QcFTuNrq.js",
+      "sha256": "250d2599ba5ec4a6fcc0400d71816db07cb10b34b061988c61fdea001b58ae24"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/QuickAsk-QcFTuNrq.js",
+      "sha256": "250d2599ba5ec4a6fcc0400d71816db07cb10b34b061988c61fdea001b58ae24"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/RailHistory-Dj1i1e1x.js",
+      "sha256": "87e4b596a2fec67da42045f17a526142b5ab0eb7336bb825f47f47c077a58c2e"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/RailHistory-Dj1i1e1x.js",
+      "sha256": "87e4b596a2fec67da42045f17a526142b5ab0eb7336bb825f47f47c077a58c2e"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ReaderView-Bo3agkBl.js",
+      "sha256": "13fb4f080cf774541ef38e2f4e15095353bfc78e7df0423437670328d0178917"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ReaderView-Bo3agkBl.js",
+      "sha256": "13fb4f080cf774541ef38e2f4e15095353bfc78e7df0423437670328d0178917"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ReaderView-C0lx0RIp.css",
+      "sha256": "266043bed167670e6977124dd2363f95c94516ff4cdc264150fb502cb6c63813"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ReaderView-C0lx0RIp.css",
+      "sha256": "266043bed167670e6977124dd2363f95c94516ff4cdc264150fb502cb6c63813"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ResizeHandle-BKm4cjT7.js",
+      "sha256": "0a8e8d122e55ff975c5092ff23144d2fe62261ee52689ab3e562e59fd76c0d51"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ResizeHandle-BKm4cjT7.js",
+      "sha256": "0a8e8d122e55ff975c5092ff23144d2fe62261ee52689ab3e562e59fd76c0d51"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ResultsTable-Coab6ceh.js",
+      "sha256": "eba7937cc7623aae727f5266cad934156dd38f5e240c9fd9358a44ccdf8e9cb2"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ResultsTable-Coab6ceh.js",
+      "sha256": "eba7937cc7623aae727f5266cad934156dd38f5e240c9fd9358a44ccdf8e9cb2"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ReviewRecording-BzY4JEJG.js",
+      "sha256": "f9942ec601f78d77e1d9db4878cb4febdbfc27ed0cfb559947092d3629afebbe"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ReviewRecording-BzY4JEJG.js",
+      "sha256": "f9942ec601f78d77e1d9db4878cb4febdbfc27ed0cfb559947092d3629afebbe"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/RoutineSchedule-hSJTg3qk.js",
+      "sha256": "71f00b5eaac50676666fa1e919d0b2e202f730970905c5274dd1f44d5bac3a00"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/RoutineSchedule-hSJTg3qk.js",
+      "sha256": "71f00b5eaac50676666fa1e919d0b2e202f730970905c5274dd1f44d5bac3a00"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/RunAttentionFeed-C3Jyv8si.css",
+      "sha256": "cd9ed47025b0b519cac8ef7109e2222d71c33799a95ad2a9765191257c4ceee2"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/RunAttentionFeed-C3Jyv8si.css",
+      "sha256": "cd9ed47025b0b519cac8ef7109e2222d71c33799a95ad2a9765191257c4ceee2"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/RunAttentionFeed-CqfZLi-j.js",
+      "sha256": "0aea4d54914dc5c918af83a4e0161cfd0bab0f4aaaf23f0ffb22b63e4811b899"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/RunAttentionFeed-CqfZLi-j.js",
+      "sha256": "0aea4d54914dc5c918af83a4e0161cfd0bab0f4aaaf23f0ffb22b63e4811b899"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Search-HUo0gVCz.js",
+      "sha256": "04240d2024e7ade6445c8cddcea3a20ab05beb3b180cc92dbc4899e40fc8dc04"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Search-HUo0gVCz.js",
+      "sha256": "04240d2024e7ade6445c8cddcea3a20ab05beb3b180cc92dbc4899e40fc8dc04"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/SessionRecovery-C0-F8mgy.js",
+      "sha256": "10b6c526cdc993a5dddf323ff06fe24d73f38b169400f2222057ebc69ec735ee"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/SessionRecovery-C0-F8mgy.js",
+      "sha256": "10b6c526cdc993a5dddf323ff06fe24d73f38b169400f2222057ebc69ec735ee"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/SetPanel-BdSqD0Pd.js",
+      "sha256": "205c1a066d89f4abb6a6e4cbc833b64050714d02d7bce429c6e85a48be980702"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/SetPanel-BdSqD0Pd.js",
+      "sha256": "205c1a066d89f4abb6a6e4cbc833b64050714d02d7bce429c6e85a48be980702"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Settings-CCtQa3KX.js",
+      "sha256": "8f6b774b5a5d6a30eae21a46a77f3c5d11e5f770b46f153f2c87e4507cc31667"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Settings-CCtQa3KX.js",
+      "sha256": "8f6b774b5a5d6a30eae21a46a77f3c5d11e5f770b46f153f2c87e4507cc31667"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Settings-Dcg7iNL2.js",
+      "sha256": "e7acde66f9dd7f9afa545d99fee6ba2a2b47cc9f9b58ab453202c8c3063af83d"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Settings-Dcg7iNL2.js",
+      "sha256": "e7acde66f9dd7f9afa545d99fee6ba2a2b47cc9f9b58ab453202c8c3063af83d"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Settings-ZTx6zNUC.css",
+      "sha256": "32773aba86bc7962a5cc16a17f0cca69531fcf08f3a8dfec70381ea41e353c09"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Settings-ZTx6zNUC.css",
+      "sha256": "32773aba86bc7962a5cc16a17f0cca69531fcf08f3a8dfec70381ea41e353c09"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/SidePanelSurface-jzYDZPmq.js",
+      "sha256": "1e0052fbe799040ee7d50df189acb098a6675cc3ad11d8a08cc17b24fc681410"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/SidePanelSurface-jzYDZPmq.js",
+      "sha256": "1e0052fbe799040ee7d50df189acb098a6675cc3ad11d8a08cc17b24fc681410"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Sidebar-BwhcSnK-.css",
+      "sha256": "1ab10a56dd706635758fefd2011fc5dc3456fbdc85505a9179cf4cfd70e09c57"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Sidebar-BwhcSnK-.css",
+      "sha256": "1ab10a56dd706635758fefd2011fc5dc3456fbdc85505a9179cf4cfd70e09c57"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Sidebar-DAqE6ZMk.js",
+      "sha256": "52ef1fc3066e10e1d38243553090bdb2e5dd12f1da99670e852ceff8ea5f182f"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Sidebar-DAqE6ZMk.js",
+      "sha256": "52ef1fc3066e10e1d38243553090bdb2e5dd12f1da99670e852ceff8ea5f182f"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/SiteAgentAccess-UyDwguMo.js",
+      "sha256": "c50fcbb903ec8f9fdd1709e330a6f364bf0560641bb9aa8fcfc896917912adb4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/SiteAgentAccess-UyDwguMo.js",
+      "sha256": "c50fcbb903ec8f9fdd1709e330a6f364bf0560641bb9aa8fcfc896917912adb4"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/SiteControls-80Tr-rFe.js",
+      "sha256": "0ff447ac912e5144cad5808c1d31e9b07bc6780a107b62faabf6084f571cc0f4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/SiteControls-80Tr-rFe.js",
+      "sha256": "0ff447ac912e5144cad5808c1d31e9b07bc6780a107b62faabf6084f571cc0f4"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/SiteControls-CGBAOnlV.css",
+      "sha256": "3ad984dc80dd3c5ccd6d670c3f12d6a9efba57b95aba10928315890e5687d8c5"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/SiteControls-CGBAOnlV.css",
+      "sha256": "3ad984dc80dd3c5ccd6d670c3f12d6a9efba57b95aba10928315890e5687d8c5"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/SiteCustomization-C_SLCu-b.js",
+      "sha256": "0e067924c13778d5214538ba7ca7bc3e72121ea7678ebf9b4b827bbc3343057a"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/SiteCustomization-C_SLCu-b.js",
+      "sha256": "0e067924c13778d5214538ba7ca7bc3e72121ea7678ebf9b4b827bbc3343057a"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/SiteCustomization-rtLKrnzd.css",
+      "sha256": "152e24ea8ffd16a022261937e351948204e652dab3e7f7d8bbb9c75dc6a42b90"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/SiteCustomization-rtLKrnzd.css",
+      "sha256": "152e24ea8ffd16a022261937e351948204e652dab3e7f7d8bbb9c75dc6a42b90"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/SpaceEditor-Biw81RFa.css",
+      "sha256": "4abcf5ff53687711a0be98e8dd27c4d4a8b946becffec2af9b90e87301124f43"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/SpaceEditor-Biw81RFa.css",
+      "sha256": "4abcf5ff53687711a0be98e8dd27c4d4a8b946becffec2af9b90e87301124f43"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/SpaceEditor-DeFNsi6c.js",
+      "sha256": "7cf96a49c486337b01183cc3aa39bca4909f20a3292c86ccc8a7b75befc9dee2"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/SpaceEditor-DeFNsi6c.js",
+      "sha256": "7cf96a49c486337b01183cc3aa39bca4909f20a3292c86ccc8a7b75befc9dee2"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/SplitStage-fOaHpc16.js",
+      "sha256": "8b358b702455972f2af6064d2911c6a690ce33caac47b2f7f096d9c701c059ab"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/SplitStage-fOaHpc16.js",
+      "sha256": "8b358b702455972f2af6064d2911c6a690ce33caac47b2f7f096d9c701c059ab"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/StartPage-B8qWD_Zv.css",
+      "sha256": "72582810887c83f13edc4b51c6760266e4795ea5a4046da6fbee92a9b74e0cc9"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/StartPage-B8qWD_Zv.css",
+      "sha256": "72582810887c83f13edc4b51c6760266e4795ea5a4046da6fbee92a9b74e0cc9"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/StartPage-D8PhYQwh.js",
+      "sha256": "95bfa7250dc9e429de30225234b154c9d742a8151de06aa236202efa30d94457"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/StartPage-D8PhYQwh.js",
+      "sha256": "95bfa7250dc9e429de30225234b154c9d742a8151de06aa236202efa30d94457"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/TabCardCaption-B-PKPNrk.css",
+      "sha256": "551cbd4420dc84406aabc985468db211f456cba3c2499a82e9bfa59a0f9b0d07"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/TabCardCaption-B-PKPNrk.css",
+      "sha256": "551cbd4420dc84406aabc985468db211f456cba3c2499a82e9bfa59a0f9b0d07"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/TabCardCaption-CFjRkoK9.js",
+      "sha256": "bba5fc075ea65b365ae2eaecadf1f2be482f2c26c145ce2a4e6f006ab7d245ab"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/TabCardCaption-CFjRkoK9.js",
+      "sha256": "bba5fc075ea65b365ae2eaecadf1f2be482f2c26c145ce2a4e6f006ab7d245ab"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Tasks-BRBS-JF0.js",
+      "sha256": "0862bd4e64b8825f65d532df9c06a69fb32a31ad6f1f05f7b1ded6c5547b0b43"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Tasks-BRBS-JF0.js",
+      "sha256": "0862bd4e64b8825f65d532df9c06a69fb32a31ad6f1f05f7b1ded6c5547b0b43"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/Tasks-tFkbyYFh.css",
+      "sha256": "35c550a60a75e37a72354d739e26c1ccae274ea67dbe6a73fbdd3e2e800f78a0"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/Tasks-tFkbyYFh.css",
+      "sha256": "35c550a60a75e37a72354d739e26c1ccae274ea67dbe6a73fbdd3e2e800f78a0"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/TranslationBar-BTMyB0XS.js",
+      "sha256": "d4e49489ba38a14c62929134d49794058f39a5c87edf2ee043cd9c18969f3d96"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/TranslationBar-BTMyB0XS.js",
+      "sha256": "d4e49489ba38a14c62929134d49794058f39a5c87edf2ee043cd9c18969f3d96"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/VaultOfferBanner-CuJu9znt.js",
+      "sha256": "2a928732401098ac755f430a4a56f0e66b6426cf22355bba96e3e139a6a42f4e"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/VaultOfferBanner-CuJu9znt.js",
+      "sha256": "2a928732401098ac755f430a4a56f0e66b6426cf22355bba96e3e139a6a42f4e"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/WorkbookPreview-Dvq2VjhB.js",
+      "sha256": "e978cb0113fc13ade6f3d8595fe5f502d4c65911827840e8cd912486f214fbc0"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/WorkbookPreview-Dvq2VjhB.js",
+      "sha256": "e978cb0113fc13ade6f3d8595fe5f502d4c65911827840e8cd912486f214fbc0"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/answer-table-CWflqqm_.js",
+      "sha256": "3fef0e47f7a133a2dfc2aef2146417209e3b5deb5d8f22c73e1de1e359a71c66"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/answer-table-CWflqqm_.js",
+      "sha256": "3fef0e47f7a133a2dfc2aef2146417209e3b5deb5d8f22c73e1de1e359a71c66"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/archive-actions-Dw5Y06J6.js",
+      "sha256": "1d497eb6b4cd5d7aea215d0cfdb3975ce42747e7f32c04cadd2c301e3c6733ce"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/archive-actions-Dw5Y06J6.js",
+      "sha256": "1d497eb6b4cd5d7aea215d0cfdb3975ce42747e7f32c04cadd2c301e3c6733ce"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/chromium-bridge-BielXhDz.js",
+      "sha256": "81dedbe760abd32279f154c449cdad77c87093f027caaf769d1597f581328cf1"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/chromium-bridge-BielXhDz.js",
+      "sha256": "81dedbe760abd32279f154c449cdad77c87093f027caaf769d1597f581328cf1"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/clock-DqAxJ_aF.js",
+      "sha256": "ad32c056292a24821f5f82e5645c76dca80ae590421a060ba78ddf8874ea9c02"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/clock-DqAxJ_aF.js",
+      "sha256": "ad32c056292a24821f5f82e5645c76dca80ae590421a060ba78ddf8874ea9c02"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/clock-JnYI0rlN.js",
+      "sha256": "a06b43ad4d2f009dca0cfb15d9e6a9e5fdf99fed5adc3abf41671b8f8c5f06fd"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/clock-JnYI0rlN.js",
+      "sha256": "a06b43ad4d2f009dca0cfb15d9e6a9e5fdf99fed5adc3abf41671b8f8c5f06fd"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/command-ranking-query-B3RPjDEI.js",
+      "sha256": "3e99aca8f7aea29501c29aa96eb92e2e950483d99c46f15f975c4d55ec1af0ea"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/command-ranking-query-B3RPjDEI.js",
+      "sha256": "3e99aca8f7aea29501c29aa96eb92e2e950483d99c46f15f975c4d55ec1af0ea"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/command-result-mI_IxqPl.js",
+      "sha256": "7e230e11e5854ced74f3128d0c27b3e162656d218d7ccff849da5bd3fb838a2b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/command-result-mI_IxqPl.js",
+      "sha256": "7e230e11e5854ced74f3128d0c27b3e162656d218d7ccff849da5bd3fb838a2b"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/confirm-BCOqqDbD.js",
+      "sha256": "4b0a06a20a7bcc632bb6a9709fe6864059dd7388fcd816d53dec6aadf275c804"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/confirm-BCOqqDbD.js",
+      "sha256": "4b0a06a20a7bcc632bb6a9709fe6864059dd7388fcd816d53dec6aadf275c804"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/confirm-CMjkTP38.css",
+      "sha256": "54cc6e26669b9bea7a8b981856115dc720c41bb0667e6c2f649654ac3038ca3b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/confirm-CMjkTP38.css",
+      "sha256": "54cc6e26669b9bea7a8b981856115dc720c41bb0667e6c2f649654ac3038ca3b"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/conversations-DG32kZp1.js",
+      "sha256": "37c0ecc05c6a7077ac4b9e0c1922a0df230e16f53cb4f418761ad20ff6ea2626"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/conversations-DG32kZp1.js",
+      "sha256": "37c0ecc05c6a7077ac4b9e0c1922a0df230e16f53cb4f418761ad20ff6ea2626"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/csv-dVg5Ea7d.js",
+      "sha256": "9059a5b553b6f19096f1f7bf4bde7b727fce31366458fa2f26d7485745701e2f"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/csv-dVg5Ea7d.js",
+      "sha256": "9059a5b553b6f19096f1f7bf4bde7b727fce31366458fa2f26d7485745701e2f"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/deferred-wgRlveir.js",
+      "sha256": "fecd537c663dda790e89e7e038aab2b3b9d79ee959719cd7c23a306b694bc7e2"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/deferred-wgRlveir.js",
+      "sha256": "fecd537c663dda790e89e7e038aab2b3b9d79ee959719cd7c23a306b694bc7e2"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/demonstration-Ci7K51pE.js",
+      "sha256": "848dc89b08f9cca9d63917b75aadd4893aee122b590fca81fa594e44a544fc9b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/demonstration-Ci7K51pE.js",
+      "sha256": "848dc89b08f9cca9d63917b75aadd4893aee122b590fca81fa594e44a544fc9b"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/download-naming-0BkpkT7p.js",
+      "sha256": "81055b9f805d07db4e517521e88a9d2bc8bee5aad8fb319c79e98a38aeac4a6b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/download-naming-0BkpkT7p.js",
+      "sha256": "81055b9f805d07db4e517521e88a9d2bc8bee5aad8fb319c79e98a38aeac4a6b"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/drafts-Iha-VYtQ.js",
+      "sha256": "2b2ec73b552a5d066ccd593cdf8c0e60e01b418fdb1e94f5ed5e503af1c03e04"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/drafts-Iha-VYtQ.js",
+      "sha256": "2b2ec73b552a5d066ccd593cdf8c0e60e01b418fdb1e94f5ed5e503af1c03e04"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/entities-Bt7UyH7l.js",
+      "sha256": "f80197979447f08a29e2f937abd97b1f1ca4321d880e1e08ce523c88fa3ffd44"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/entities-Bt7UyH7l.js",
+      "sha256": "f80197979447f08a29e2f937abd97b1f1ca4321d880e1e08ce523c88fa3ffd44"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/extensions-DvTUy2FT.css",
+      "sha256": "c21ffb6d58a6976759e2be3042b49082527536e7d7d2ca940d8f1b13d08433eb"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/extensions-DvTUy2FT.css",
+      "sha256": "c21ffb6d58a6976759e2be3042b49082527536e7d7d2ca940d8f1b13d08433eb"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/feature-stage-reconciliation-BHv5Mg1_.js",
+      "sha256": "45eb3e600b835c6f65c4867f5b2d5e9262356bd34f277b46986eca52037bda68"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/feature-stage-reconciliation-BHv5Mg1_.js",
+      "sha256": "45eb3e600b835c6f65c4867f5b2d5e9262356bd34f277b46986eca52037bda68"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/geist-cyrillic-ext-wght-normal-DjL33-gN.woff2",
+      "sha256": "2317fa4bb293c9c0b110e18315d529235c47a0ddd3338cea3d8c7955e927899e"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/geist-cyrillic-ext-wght-normal-DjL33-gN.woff2",
+      "sha256": "2317fa4bb293c9c0b110e18315d529235c47a0ddd3338cea3d8c7955e927899e"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/geist-cyrillic-wght-normal-BEAKL7Jp.woff2",
+      "sha256": "6894439694946a589d157ece003086960a6a4013d74a813dab7602efdb3d8c09"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/geist-cyrillic-wght-normal-BEAKL7Jp.woff2",
+      "sha256": "6894439694946a589d157ece003086960a6a4013d74a813dab7602efdb3d8c09"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/geist-latin-ext-wght-normal-DC-KSUi6.woff2",
+      "sha256": "824f485b5d26e2f2da3c2b236132ece1bc8e4e43373452950bb0e40548b4313f"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/geist-latin-ext-wght-normal-DC-KSUi6.woff2",
+      "sha256": "824f485b5d26e2f2da3c2b236132ece1bc8e4e43373452950bb0e40548b4313f"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/geist-latin-wght-normal-BgDaEnEv.woff2",
+      "sha256": "19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/geist-latin-wght-normal-BgDaEnEv.woff2",
+      "sha256": "19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2",
+      "sha256": "cd8800999070b729e1cc0bf7a48da6c3ac096a044251171b9a7574b56d96d4b4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2",
+      "sha256": "cd8800999070b729e1cc0bf7a48da6c3ac096a044251171b9a7574b56d96d4b4"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2",
+      "sha256": "4866787fc952dbdbd591d6923d67bc21c2d894b93f34ab69d0cdf25d47bfb2df"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2",
+      "sha256": "4866787fc952dbdbd591d6923d67bc21c2d894b93f34ab69d0cdf25d47bfb2df"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2",
+      "sha256": "1a189eb997c3e2ece68373e387afaec9e8617424186c4b1ab3cff7c54ba6223b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2",
+      "sha256": "1a189eb997c3e2ece68373e387afaec9e8617424186c4b1ab3cff7c54ba6223b"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/geist-mono-latin-wght-normal-XN7g48iV.woff2",
+      "sha256": "684ad5b531f81d43c1e8c7038262d5db7cdc1f68006e04d6c7769efa8d33c8cc"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/geist-mono-latin-wght-normal-XN7g48iV.woff2",
+      "sha256": "684ad5b531f81d43c1e8c7038262d5db7cdc1f68006e04d6c7769efa8d33c8cc"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2",
+      "sha256": "5bb66d8319ba1602bb2eb67dce8d79c2b4687be8ce183a0574433e949b3c60ad"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2",
+      "sha256": "5bb66d8319ba1602bb2eb67dce8d79c2b4687be8ce183a0574433e949b3c60ad"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2",
+      "sha256": "d39b60889a94a527a7f73c7988a2d6efb6c081614aef683b0b386c02d74c2175"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2",
+      "sha256": "d39b60889a94a527a7f73c7988a2d6efb6c081614aef683b0b386c02d74c2175"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/geist-vietnamese-wght-normal-6IgcOCM7.woff2",
+      "sha256": "8fa40e5d248247735eb97a0bd593b8852440430600d6ba01364c31fe0abc1fe1"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/geist-vietnamese-wght-normal-6IgcOCM7.woff2",
+      "sha256": "8fa40e5d248247735eb97a0bd593b8852440430600d6ba01364c31fe0abc1fe1"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/generated-results-CNn81Cva.js",
+      "sha256": "a848c8377c08d46a9c3a2c447f070467bdb7418c5a08b777f45ec7418a5dd9c5"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/generated-results-CNn81Cva.js",
+      "sha256": "a848c8377c08d46a9c3a2c447f070467bdb7418c5a08b777f45ec7418a5dd9c5"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/host-methods-CtQ7089b.js",
+      "sha256": "561fc05609b15d997045d22b4a52883250c8de16687c4f879fc1f683a99463bc"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/host-methods-CtQ7089b.js",
+      "sha256": "561fc05609b15d997045d22b4a52883250c8de16687c4f879fc1f683a99463bc"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/import-BTPNRwmK.js",
+      "sha256": "54c4b79a1c9a7a49b6070b304d8b582a7dbe8a411e3e336ee9c5665c7df39974"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/import-BTPNRwmK.js",
+      "sha256": "54c4b79a1c9a7a49b6070b304d8b582a7dbe8a411e3e336ee9c5665c7df39974"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/index-B36qZRyv.js",
+      "sha256": "2abf2b671900b6530c5df85105bb0a4139a2e6136a9e46081be12df11e5587fe"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/index-B36qZRyv.js",
+      "sha256": "2abf2b671900b6530c5df85105bb0a4139a2e6136a9e46081be12df11e5587fe"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/index-BCIwKflW.css",
+      "sha256": "7f38b5e0be28364c15074332604d38dc0c1ddfda5242d5f8c9e646d20d9f582d"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/index-BCIwKflW.css",
+      "sha256": "7f38b5e0be28364c15074332604d38dc0c1ddfda5242d5f8c9e646d20d9f582d"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/index-CQal0I1O.js",
+      "sha256": "2db35adfd354619de5bc8706d1e5f2a4bf25d3245296f92e4d7ec9c81fd6aab0"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/index-CQal0I1O.js",
+      "sha256": "2db35adfd354619de5bc8706d1e5f2a4bf25d3245296f92e4d7ec9c81fd6aab0"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/index-DRJf_-5P.js",
+      "sha256": "7669b7dd582f93693d8ff614b55cbeb7dd8bfb6510ca21e6930ba36588d448cd"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/index-DRJf_-5P.js",
+      "sha256": "7669b7dd582f93693d8ff614b55cbeb7dd8bfb6510ca21e6930ba36588d448cd"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/inline-assist-C1QjjnTW.js",
+      "sha256": "43fe6ad8b73da41a071141b796c27b54903ea4131e3b68110168958461cf74c9"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/inline-assist-C1QjjnTW.js",
+      "sha256": "43fe6ad8b73da41a071141b796c27b54903ea4131e3b68110168958461cf74c9"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/live-folders-CCRLBHWf.js",
+      "sha256": "f038aed77427863e8e99b2255a12fbfbb8221f54a6fe9048e10b1365bef52297"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/live-folders-CCRLBHWf.js",
+      "sha256": "f038aed77427863e8e99b2255a12fbfbb8221f54a6fe9048e10b1365bef52297"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/memory-sensitivity-D8ExGBfm.js",
+      "sha256": "7c9f9049c6e820896089aa860997c33a44db9bc8045f3651edbde04efcc63b3c"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/memory-sensitivity-D8ExGBfm.js",
+      "sha256": "7c9f9049c6e820896089aa860997c33a44db9bc8045f3651edbde04efcc63b3c"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/mentions-BWnvYCu9.js",
+      "sha256": "d879a6775cb23aa507d47baeb819b2c9ec89d7bdc16ef2363d903aaa914e55b4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/mentions-BWnvYCu9.js",
+      "sha256": "d879a6775cb23aa507d47baeb819b2c9ec89d7bdc16ef2363d903aaa914e55b4"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/method-feature-D-nygkXM.js",
+      "sha256": "0d96e705afd54c0b474211a085ac93f911b29d0a968fa7b6e846e837f4c6708f"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/method-feature-D-nygkXM.js",
+      "sha256": "0d96e705afd54c0b474211a085ac93f911b29d0a968fa7b6e846e837f4c6708f"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/native-appearance-observer-Tw3ZrVBc.js",
+      "sha256": "0387799ca07071ff3fc2304748a69032aa3a38cd5f18de8d1f99fcda1ca6ca35"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/native-appearance-observer-Tw3ZrVBc.js",
+      "sha256": "0387799ca07071ff3fc2304748a69032aa3a38cd5f18de8d1f99fcda1ca6ca35"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/night-shift-DMhTn_yz.js",
+      "sha256": "7fca686189912a7c51380de62aa204ac1f4641e2174c32815976fbb894a8ab22"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/night-shift-DMhTn_yz.js",
+      "sha256": "7fca686189912a7c51380de62aa204ac1f4641e2174c32815976fbb894a8ab22"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/night-shift-defaults-CPScPeb1.js",
+      "sha256": "d8001dc5a498a88af4b679a21c0dc3e5ccca904093266050d5cdd05cfae5d324"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/night-shift-defaults-CPScPeb1.js",
+      "sha256": "d8001dc5a498a88af4b679a21c0dc3e5ccca904093266050d5cdd05cfae5d324"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/observation-BISCx4gh.js",
+      "sha256": "df80bde6763d3e3da9679d769e0128390d7f2a80aee5be2fe6b009aa177f8b9b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/observation-BISCx4gh.js",
+      "sha256": "df80bde6763d3e3da9679d769e0128390d7f2a80aee5be2fe6b009aa177f8b9b"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/onboarding-BHB0oerc.js",
+      "sha256": "48c3e62ec10d80031ca776591b8a0a702f9a58fe0a7fe5a00ac7f9d717c0bcf0"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/onboarding-BHB0oerc.js",
+      "sha256": "48c3e62ec10d80031ca776591b8a0a702f9a58fe0a7fe5a00ac7f9d717c0bcf0"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/organization-layout-CE1pOpvu.js",
+      "sha256": "1f314379504e939c599615b5bfb9bf493bccc99d9d432fdee59bf9ef75cd54bb"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/organization-layout-CE1pOpvu.js",
+      "sha256": "1f314379504e939c599615b5bfb9bf493bccc99d9d432fdee59bf9ef75cd54bb"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/organization-persistence-gTbrkHdW.js",
+      "sha256": "ddaed5de60055aa8d94acbfa609f1ea22a4c5dd04b5006feacb221fea534c28d"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/organization-persistence-gTbrkHdW.js",
+      "sha256": "ddaed5de60055aa8d94acbfa609f1ea22a4c5dd04b5006feacb221fea534c28d"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/preference-BYTC55lY.js",
+      "sha256": "c403685089959287c96680c7619968f972889c65196cda1a63ff0ff1e3714ca2"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/preference-BYTC55lY.js",
+      "sha256": "c403685089959287c96680c7619968f972889c65196cda1a63ff0ff1e3714ca2"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/primitives-Bjvktk47.js",
+      "sha256": "44a3e2f495ff3ce492cc58942c81e9455cdd266aeb6cd23f61cecb3ae2f3cd27"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/primitives-Bjvktk47.js",
+      "sha256": "44a3e2f495ff3ce492cc58942c81e9455cdd266aeb6cd23f61cecb3ae2f3cd27"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/program-DQlxgpNB.js",
+      "sha256": "7b129ebb64ef5b7a9d9d7be414e30bee09918e33b4c2c909275380461f29c23f"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/program-DQlxgpNB.js",
+      "sha256": "7b129ebb64ef5b7a9d9d7be414e30bee09918e33b4c2c909275380461f29c23f"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/reader-article-D96aZiy5.js",
+      "sha256": "893fbdb98bb84d056ae942ffaeffbca01020d83bfd3ea4d75e7bf11020674b01"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/reader-article-D96aZiy5.js",
+      "sha256": "893fbdb98bb84d056ae942ffaeffbca01020d83bfd3ea4d75e7bf11020674b01"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/replay-D8YUANa8.js",
+      "sha256": "64f790a92caf820b662131182110e87cd6f1b92c718f0bfcc39a443cb87497d8"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/replay-D8YUANa8.js",
+      "sha256": "64f790a92caf820b662131182110e87cd6f1b92c718f0bfcc39a443cb87497d8"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/replay-Do8QJPPW.css",
+      "sha256": "020aad43d6c7267c8853bd334376881841663cbcfd3366f4bcde96fb9e2a393b"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/replay-Do8QJPPW.css",
+      "sha256": "020aad43d6c7267c8853bd334376881841663cbcfd3366f4bcde96fb9e2a393b"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/run-history-_yANXCZx.js",
+      "sha256": "8ffc6c0f40267e21c4b599ac993842cdb6dfa7218d9ea64022a2204cebf28282"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/run-history-_yANXCZx.js",
+      "sha256": "8ffc6c0f40267e21c4b599ac993842cdb6dfa7218d9ea64022a2204cebf28282"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/run-status-Be69ufbR.js",
+      "sha256": "73aa6d760ceb1719ed11a224fbb27388a220ad7ad1e2f5422cae5adf309abc0d"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/run-status-Be69ufbR.js",
+      "sha256": "73aa6d760ceb1719ed11a224fbb27388a220ad7ad1e2f5422cae5adf309abc0d"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/schemas-D0bVT2NK.js",
+      "sha256": "861af5b1f3958aaa84691ba372d6599d1ce91db4f36bf14a835855cd530bdbcc"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/schemas-D0bVT2NK.js",
+      "sha256": "861af5b1f3958aaa84691ba372d6599d1ce91db4f36bf14a835855cd530bdbcc"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/selection-action-draft-DPKJN-G7.js",
+      "sha256": "29355320c2951f41cc72a07781ccde6001246a19a34dca5ab2e1e2aa2dbc4ea4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/selection-action-draft-DPKJN-G7.js",
+      "sha256": "29355320c2951f41cc72a07781ccde6001246a19a34dca5ab2e1e2aa2dbc4ea4"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/selection-capture-B7OJ_SXf.js",
+      "sha256": "8c281f273a2897e105c7e1c570f1103f53f92dbe68320c38f4a104a47f1b5451"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/selection-capture-B7OJ_SXf.js",
+      "sha256": "8c281f273a2897e105c7e1c570f1103f53f92dbe68320c38f4a104a47f1b5451"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/shortcuts-BfUlkfUn.js",
+      "sha256": "24191696a539c7dcc97fa9ee5d0c5d8d218e6430ea047718ecf4d7920e7b97c5"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/shortcuts-BfUlkfUn.js",
+      "sha256": "24191696a539c7dcc97fa9ee5d0c5d8d218e6430ea047718ecf4d7920e7b97c5"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/site-controls-opener-Bz4bYR4T.js",
+      "sha256": "ca10b113960a9b3c50a8f57955463b0590bbd7c3d5be4d3812f59f16669a26a2"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/site-controls-opener-Bz4bYR4T.js",
+      "sha256": "ca10b113960a9b3c50a8f57955463b0590bbd7c3d5be4d3812f59f16669a26a2"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/space-grain-CI5n4B56.png",
+      "sha256": "5617ab3d575143e996f9fc8cdc9254c03298bd34b0a29dadbaf7ae0535afb9a4"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/space-grain-CI5n4B56.png",
+      "sha256": "5617ab3d575143e996f9fc8cdc9254c03298bd34b0a29dadbaf7ae0535afb9a4"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/task-drafts-B_N7_il3.js",
+      "sha256": "e370e8dc6afd7e6517386bcd0284e9650b302c776c947ed4d9dd1751869e9c19"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/task-drafts-B_N7_il3.js",
+      "sha256": "e370e8dc6afd7e6517386bcd0284e9650b302c776c947ed4d9dd1751869e9c19"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/task-navigation-BNvxBSp7.js",
+      "sha256": "669a6e495776b4d3fb657dc9ab7dcaec10a4823812a5a5d2fcc1da044c06bc57"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/task-navigation-BNvxBSp7.js",
+      "sha256": "669a6e495776b4d3fb657dc9ab7dcaec10a4823812a5a5d2fcc1da044c06bc57"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/tidy-commit-C8RJpxQt.js",
+      "sha256": "b6322fe4180ef5db95a40c9f579c8ce80db0419bc850bc999148260fcac3456a"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/tidy-commit-C8RJpxQt.js",
+      "sha256": "b6322fe4180ef5db95a40c9f579c8ce80db0419bc850bc999148260fcac3456a"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/tidy-layout-CL6XAPbk.js",
+      "sha256": "d6ee00474e89a00c83df9e28f17188e7c8c9e34d57d9acc572ff92d65f253fb7"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/tidy-layout-CL6XAPbk.js",
+      "sha256": "d6ee00474e89a00c83df9e28f17188e7c8c9e34d57d9acc572ff92d65f253fb7"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/ui-DUK8TnT-.css",
+      "sha256": "dac7e7c127e3e775a351fbce25120f41a71ccf47db0d65c7f6a2ab4e0d98d0b8"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/ui-DUK8TnT-.css",
+      "sha256": "dac7e7c127e3e775a351fbce25120f41a71ccf47db0d65c7f6a2ab4e0d98d0b8"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/assets/workbook-snapshot-BYBqCBFM.js",
+      "sha256": "40de84357d43effb04c17671f0638da7eba4ee7a4bb2e23a58e268b9d700f74c"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/assets/workbook-snapshot-BYBqCBFM.js",
+      "sha256": "40de84357d43effb04c17671f0638da7eba4ee7a4bb2e23a58e268b9d700f74c"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/aux-icon.png",
+      "sha256": "f9797be6538463ece7d7acb889a00e9ab96cda65d5ebdad34fdc95f4a45e43ae"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/aux-icon.png",
+      "sha256": "f9797be6538463ece7d7acb889a00e9ab96cda65d5ebdad34fdc95f4a45e43ae"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/aux-mark-white.png",
+      "sha256": "72fca6d8520482ffc69a0861e1aab1504eefcc9493ef82ab05f2aba222e90a59"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/aux-mark-white.png",
+      "sha256": "72fca6d8520482ffc69a0861e1aab1504eefcc9493ef82ab05f2aba222e90a59"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/aux-mark-white.svg",
+      "sha256": "6fd52e9b0cbd945117723950dc9bb478e017c4e1c1c85dca685d2dd2ed3097e2"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/aux-mark-white.svg",
+      "sha256": "6fd52e9b0cbd945117723950dc9bb478e017c4e1c1c85dca685d2dd2ed3097e2"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-root-complete/chromium/shell-assets/index.html",
+      "sha256": "8d58a16bbd7a6cddf8c4572e269858a76f05dd70a2d411a172afe951b1936ecd"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets/index.html",
+      "sha256": "8d58a16bbd7a6cddf8c4572e269858a76f05dd70a2d411a172afe951b1936ecd"
+    }
+  ],
+  "compiledIdentityFoundInActualEngine": true,
+  "runtimeIdentity": {
+    "commit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+    "tree": "3b0b4fe8f686b1b681f829f80c8261acade453af",
+    "dirty": false,
+    "label": "32106f84ec843cc0e453dc7c7b68f5d576cc7325"
+  },
+  "runtimeResourceFiles": [
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/aux-runtime-identity.json",
+      "sha256": "e2ded83a74d5eded9f55219ecaa9bf3e709e06626bdd1b3af8399c1eabc09b04",
+      "bytes": 169
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/build-DBIPMNB4.js",
+      "sha256": "6cbcd5b4f055eda28625d5d5b4aa2869320cf86237887d85bb69ac0e005450e1",
+      "bytes": 271383
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-4FRVZPBO.js",
+      "sha256": "d7de25a921a8bef636682f9781cb15dbe554514fc24923fea90aa7b53858be01",
+      "bytes": 51381
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-63JJDTCB.js",
+      "sha256": "e443c498197a61516c0f8bb285f9708c0171a9716b667c61a5c677edd2067bbb",
+      "bytes": 83423
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-BNCYCP7M.js",
+      "sha256": "39d972ba1b1584701758884b489a2adca9fe3775e94010b9f8d36320a1d61b5f",
+      "bytes": 8252
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-CLF72B5N.js",
+      "sha256": "b6ba4d9711d6f42e9ee5dd8b98ef2bcbd196e403a8d7627aa128adfeb7b03e44",
+      "bytes": 10111
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-CSHIJMEX.js",
+      "sha256": "fac58976c8ca70773ed1230056906b256ec1c3c8d40ed4a9ad42ff69537e51b1",
+      "bytes": 2132
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-DRLFULGG.js",
+      "sha256": "56a246ff39a252cb8f86104cbe4b013d7e1e1145d8b5a60ba30efbf848cb53b5",
+      "bytes": 1034
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-KLNGDQYO.js",
+      "sha256": "b698587143d0a5c38ec8abcd920870eabc09b14dcde5fd009c615d0cf72dd9ed",
+      "bytes": 31524
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-KZ5PHKTV.js",
+      "sha256": "b87e519179cd7d05be5955aa9507876e082e14eb498aafb4a2519371f6e5bd46",
+      "bytes": 1152
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-L2RXSZSW.js",
+      "sha256": "c797de5411e148b5eab052e5f609e3562411c46246b898bf77008b40ecd6debb",
+      "bytes": 526186
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-PNK6WDL2.js",
+      "sha256": "d7f5cfbfba4212ccb35fa7e2939475db489f279daa73289d6faf69150d743482",
+      "bytes": 435568
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-PXRWQCUM.js",
+      "sha256": "07317ba702290924ad309d35d8fd83610e52dc233db5cb8ca14343fe8d1fea55",
+      "bytes": 67600
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-QF23TJH7.js",
+      "sha256": "c1ccebe1912ce993a990d81cc6a729fc544d7463ad203dd02591cc8270377cf0",
+      "bytes": 43350
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-QHWI26OV.js",
+      "sha256": "47b76fd564fde8e4d1fc28d275093a259f05bc43f677004e3eba40122a516551",
+      "bytes": 116
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-QLKTC7E7.js",
+      "sha256": "98731702285de4d8ba46293cbd2e868397b0bf482c6e43b6e9c3a318ad346c04",
+      "bytes": 2124
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-QTCEIYJU.js",
+      "sha256": "0e3705ada099a0d7445c4e0459e3c477a85bacc26652fac688cd57bb95bf263a",
+      "bytes": 284189
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/chunk-W7O3ERZG.js",
+      "sha256": "47b76fd564fde8e4d1fc28d275093a259f05bc43f677004e3eba40122a516551",
+      "bytes": 116
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/dist-7X6BYUUY.js",
+      "sha256": "d3dea7e3183083f2ac4ef522a42ae35ff30a5b9faacbee5137d7b62873644dc0",
+      "bytes": 413360
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/dist-C7C3DVS5.js",
+      "sha256": "032bdc7109c96d8742df9fb7abf5058afcdec7c5d8c4efce9fba555e79c60863",
+      "bytes": 172990
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/dist-KHDW7HUV.js",
+      "sha256": "18b1f1a64b56b257d0069361ef854bfdfbce01a8c15353fd611e8e7cd4a09d5d",
+      "bytes": 144372
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/dist-KPLZD3JV.js",
+      "sha256": "50fe999f3cc7418f18bef011ae374dabc7cb1c17a5ff2723eb5cad3765ba70c6",
+      "bytes": 118841
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/emscripten-module-372OLS5K.js",
+      "sha256": "b2249cec130c326d67b52b0d09845d04e8b07959b5ca555c7051606b0e943be2",
+      "bytes": 15016
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/emscripten-module-3Q7NIA6Y.js",
+      "sha256": "1f39e7758d9ed5c1e21752744a939597d750c2a2e4bf61d10c1938002f7b33f5",
+      "bytes": 38463
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/emscripten-module-EES6S6IV.js",
+      "sha256": "990bf0de07c93473121953ad7b478fabec4e005e0a58a2a8b37192b8fa04dca0",
+      "bytes": 73427
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/emscripten-module-L6PZXMSU.js",
+      "sha256": "d78e9fd5e60c5eba6dd2edac741aa092392b849fea9fe6a44d8e7ce61bfe5b9a",
+      "bytes": 13755
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/emscripten-module.wasm",
+      "sha256": "98d27ff5e8babbca4b28a7b9242f554cd51e758498d90b00638a4b1b36b6f463",
+      "bytes": 1070863
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/excel-W24QKCV6.js",
+      "sha256": "fc3220c9b48ada96d8350cba823662eae5f68ec7517dea691e93ded3f6492211",
+      "bytes": 726688
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/ffi-5H2TRYVO.js",
+      "sha256": "83b7696a9cb577cb97e1b5aaa02f5a009252397c8226c0a2fc02a2037a68cb38",
+      "bytes": 6283
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/ffi-QHGX6R6S.js",
+      "sha256": "d6dc3aec3f0f83c8ffdb11e8ba56015a378b36efa0b71dc9909bec95109996fd",
+      "bytes": 6283
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/ffi-QYD6YPN3.js",
+      "sha256": "a1a4f021e1e98e85b862b738f7c1ea217c259c2feb61642c56bf0df852be2a08",
+      "bytes": 7469
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/ffi-YGMAYFSX.js",
+      "sha256": "13768eb2ef2c64ccfd193273583848da61f723ed4ebf593ed926ff9966bd2f5f",
+      "bytes": 7370
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/interpreter-U5MPA2Q5.js",
+      "sha256": "68c70b4b6ecb7897eaa82e3abdaf33e1bbec2f4b3d6f174f9d75b2c07c7019b3",
+      "bytes": 311
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/module-6F3E5H7Y-M7UVI7RT.js",
+      "sha256": "6025a2d4e4fc54d0237adb3ec4b1fdd923c3f06322d07722572136351010b2a2",
+      "bytes": 357
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/module-asyncify-R6PWJ6ZV-6AHG2WXE.js",
+      "sha256": "45ba2b0b1540cd27ea7e941ec4508c04fbc845165356ea2ca17b231bcdcceca4",
+      "bytes": 277
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/playwright-page-LGCRB6RP.js",
+      "sha256": "5c604e9624b5bb10fc04605ec11f7bfd4a14408719015f7c0c4e5e2e14f91d46",
+      "bytes": 323
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/pptxgen.es-CLXDR2LH.js",
+      "sha256": "3fefd117f3e267c2629bb21314d3bc3abec2abb7fd4c7d0b766ae1de9a9469c1",
+      "bytes": 274782
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/token-ILF72H4W.js",
+      "sha256": "c39924e44472a8f6b36920ebe9a8b92a1d392ee8ae2409cf9bff311129c58ad0",
+      "bytes": 1371
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/token-util-XX7RGTYM.js",
+      "sha256": "51c7b5f28f68930b23d3391c57dab3f433aa3b1e5fc7c398009e26d9a6ac6937",
+      "bytes": 204
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/vega.module-K4GUP7VT.js",
+      "sha256": "f0a0eae27561412248cc6967e7eb54aa09b9f00d3fe7805fd8248a0ff52b4fd5",
+      "bytes": 4711
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/webapi-SNENJSJQ.js",
+      "sha256": "bcd8885fe8d9b908ec89131b2dfc40d4494196335886024616a09f4e1e49c069",
+      "bytes": 59415
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/chunks/zod-MYIPF32T.js",
+      "sha256": "7d6830ebe76f8e0406108b8a428af61e78acd830ea7cc76d55e7199c7ac0b41c",
+      "bytes": 6190
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/main.js",
+      "sha256": "56a61f642407b10f2a9aeccba533756c316fe300b27c0b039339b39d76e8bc23",
+      "bytes": 2228719
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/mcp.js",
+      "sha256": "f8a9d60e52d0dc511c212db23ee54a99d6509639ee18ed17e76014044d924d92",
+      "bytes": 294743
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/dist/privacy-checkpoint-worker.js",
+      "sha256": "09d48b02b87d9d1fdc6734863bec05829a3be68cb4f439ca58dc0211a58571cf",
+      "bytes": 397
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/package.json",
+      "sha256": "27042053ba204149837b13c6ac306f3ec7b2d29dea8651b998d1d6997ef424d8",
+      "bytes": 271
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/LICENSE",
+      "sha256": "45873d00a0dd243596deb4aa23b2493b3d1f0671921bf2538ea431d7380220eb",
+      "bytes": 11601
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/NOTICE",
+      "sha256": "6d602191187b35b9b01d2cffa01c8469c2c8d9de8a96f1bf868e0f264f51c81d",
+      "bytes": 254
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/ThirdPartyNotices.txt",
+      "sha256": "a549d329bad8806fe279f0ecae0fc0270dec7e7c2dc8ec10f90e394f7c32b144",
+      "bytes": 676
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/install_media_pack.ps1",
+      "sha256": "bc20f049badf021e3a53bdb4156603caa5ef482c9a9a251f927605e676a44171",
+      "bytes": 174
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/install_webkit_wsl.ps1",
+      "sha256": "bc61beda37a808eef27d39ce684baa792f6d17737a25a432b1a84d3b591ab815",
+      "bytes": 1464
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_beta_linux.sh",
+      "sha256": "dc8c22b9dde76583cece2857575b88094299615f3136a3c598149710c45dee3a",
+      "bytes": 1217
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_beta_mac.sh",
+      "sha256": "a92eaeb4ebcf5633a4e9c981481e14c80764fc81b6fcbc0565398e50ff319433",
+      "bytes": 563
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_beta_win.ps1",
+      "sha256": "b6d9e44742feafb98d5edc56fa20042949973cf30d141a1c5b4fb384096967c5",
+      "bytes": 957
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_stable_linux.sh",
+      "sha256": "dc72ab3567a4ce43bd8353d4ecf41f1d9c03e870169367cd3ed9043aabf67dd1",
+      "bytes": 1212
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_stable_mac.sh",
+      "sha256": "bb43a96c192a6cc81524ade0264686fff7809c019a89f7db0a9849635879c3be",
+      "bytes": 519
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_chrome_stable_win.ps1",
+      "sha256": "3d96c4e2f4ebbb3fad44cf3ba58d9cf90af1c9fb3073e3b27d45a74cf005515b",
+      "bytes": 923
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_beta_linux.sh",
+      "sha256": "10b26f35dbc2000b94edf1172d803a29c5873a4eb8d523afbc687997b642767e",
+      "bytes": 1494
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_beta_mac.sh",
+      "sha256": "0036d738bc90d686100d81f328ba0003bf07863f5500b792c8da391d149750fa",
+      "bytes": 377
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_beta_win.ps1",
+      "sha256": "b173c378a59f0cc38033cee702de1f44f09276c9b2270d1a650ebe66ee312433",
+      "bytes": 874
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_dev_linux.sh",
+      "sha256": "00e4947e7a4f8339c6db09c87976d808583c07f9179e4aa7694d88614b82fe95",
+      "bytes": 1489
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_dev_mac.sh",
+      "sha256": "6f899e3b311f742c24ca37ff9e32298e8290514ffc14bf588cc51556a29da4c0",
+      "bytes": 372
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_dev_win.ps1",
+      "sha256": "46f7f98c81cb0abe687d7f4a5afea9b897a38d2a6dd6f6662fbd847f7a22bd51",
+      "bytes": 869
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_stable_linux.sh",
+      "sha256": "ec0a31a5f09c565e108473a1850895a4458ab00c713ac1de3aa2001912e4668f",
+      "bytes": 1507
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_stable_mac.sh",
+      "sha256": "3af1e893527ff2257aa2dbc3b259a053b92f45c3eadb13e38eba46e87902655d",
+      "bytes": 371
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/bin/reinstall_msedge_stable_win.ps1",
+      "sha256": "40bb5fcbfcebbbe2ce43c6e736e7c5deefc5be03b6e9c6914423c06ec1f591be",
+      "bytes": 856
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/browsers.json",
+      "sha256": "545d52f8382c391e605562c330e9c1c534a16045898203037a49bb8bd769a946",
+      "bytes": 1137
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/index.js",
+      "sha256": "a58fb2cec4293e7dcf73c58a179898a4f3986666451a19da4e731fa3af63265b",
+      "bytes": 697
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/index.mjs",
+      "sha256": "3d36e2132d3c8b62397d23f0bb4177336aaee503203ae2a2c90fbeb5bf3317dd",
+      "bytes": 1063
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/bootstrap.js",
+      "sha256": "1ae3e114fb99b93ee838941641a88292169d0c747672404718b1eadfd9b35832",
+      "bytes": 2773
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/coreBundle.js",
+      "sha256": "7a8ded8491e6bda5315e277845bf7095ba2f305516b0b34caddfa22c3805819c",
+      "bytes": 2718384
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/entry/cliDaemon.js",
+      "sha256": "9684f1c8d5af845c6bcdd06fe516ae58941a2b80204064dc74409fc079ac5f8c",
+      "bytes": 186
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/entry/dashboardApp.js",
+      "sha256": "be63f1ef54213b381db4e6463879b88b460f71b9e5223c7e6de2914cf2918e2b",
+      "bytes": 104
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/entry/mcp.js",
+      "sha256": "eea40bf4080dbd5b94fd025f903fba89b0edbecd61605e71c82c3705cd183777",
+      "bytes": 411
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/entry/oopBrowserDownload.js",
+      "sha256": "b0637c19ede52e669d3f64e908408869bcf65f54a1a9c15160b135f1665a9ecd",
+      "bytes": 116
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/package.js",
+      "sha256": "a66f783aec8775bea06125fe917371400718cba49a17ca5c0ff48102f84ea68f",
+      "bytes": 1462
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/server/chromium/appIcon.png",
+      "sha256": "6ba994f05c5cf18e22d9b6bef9898fbdec6ad4d4d77f5187d0609cb42d72d01e",
+      "bytes": 16565
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/server/electron/loader.js",
+      "sha256": "24bbe50ceb9eb93cc8cda24b362e1ae055e48dabc2718f4d5b2065f8a1ff3664",
+      "bytes": 2563
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/serverRegistry.js",
+      "sha256": "0086cde5676f68bc15d153047dfb4dd482b02c5b0c6d69ca8295d809109b23ad",
+      "bytes": 39442
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/serverRegistry.js.LICENSE",
+      "sha256": "3098a6efcbc11752cbdf6075fa65480f5470f78c8d981fab9c0796dc9a41cefe",
+      "bytes": 2982
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/utilsBundle.js",
+      "sha256": "faeca6d607dd10442394fac4707874710997ad9289d7489cbd2c3c5bea405b0e",
+      "bytes": 2027223
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/utilsBundle.js.LICENSE",
+      "sha256": "2495f30be29620d54b58339821eda0ebabdfb6ee9b09455f7285a06fd46fb9f3",
+      "bytes": 106591
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/webp_codec.LICENSE",
+      "sha256": "995c7ee35aceb7666829b7a501ca89c0864e12b493c1174b155774ab1e03d831",
+      "bytes": 8841
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/webp_codec.wasm",
+      "sha256": "164cd9583a3e4d081f767d3b41ff0a730443dc7535fcc5caff83561463384b79",
+      "bytes": 565369
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/lib/xdg-open",
+      "sha256": "7d759d54f0d4ce1beeb34ee62c587985b5042374e8de237b0dcb8cd47aa698cf",
+      "bytes": 32416
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/playwright-core/package.json",
+      "sha256": "f061c58427e47e843e26d201f0a57076c734e57c734ecbbd87d4a23b7a20db9b",
+      "bytes": 876
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/resvg-js/LICENSE",
+      "sha256": "4b89d4518bd135ab4ee154a7bce722246b57a98c3d7efc1a09409898160c2bd1",
+      "bytes": 16724
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/resvg-js/index.js",
+      "sha256": "b670803d88b380b0610edf743d8b74dcc132d9e2aa6aaa04cfaa06b2fcad397d",
+      "bytes": 612
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/resvg-js/js-binding.js",
+      "sha256": "d5fbe3b7450d1e393ea9856e86e16465d25be8743cae7db03e2f3249aed61e56",
+      "bytes": 5509
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/resvg-js/package.json",
+      "sha256": "2669617af27d91b0dfc0828cc2190ba87b8d8ea6e4cf08619a23784a2f1d8c95",
+      "bytes": 4786
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app/Contents/Resources/aux-runtime/vendor/resvg-js/resvgjs.darwin-arm64.node",
+      "sha256": "0f5288bc516ad6e30e9df0a660edf44d05ddb528beaf2eba10291ae6822bba78",
+      "bytes": 3537944
+    }
+  ],
+  "physicalJourneys": false
+}

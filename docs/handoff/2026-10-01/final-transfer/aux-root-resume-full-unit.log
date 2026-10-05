@@ -1,0 +1,697 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-root-complete
+
+(node:49796) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| tests/unit/memory-pipeline.test.ts (15 tests) 4188ms
+   ✓ extracts completed Space runs only after opt-in and exposes bounded progressive views  368ms
+   ✓ reverts accepted memory and scrubs forgotten claims from every recoverable revision  1170ms
+   ✓ forgets a claim that exists only in an older revision and preserves the pre-restore state  686ms
+   ✓ rebuilds derived claims on Forget, erases old keys, and stays forgotten after restart  423ms
+ ✓ |unit| tests/unit/generated-results.test.ts (3 tests) 5969ms
+   ✓ renders a parseable chart PNG and rejects invalid or over-limit requests  5661ms
+ ✓ |unit| tests/unit/memory-paste.test.ts (20 tests) 1621ms
+   ✓ uses a separate explicit acceptance step and keeps pasted provenance unverified in later context  307ms
+   ✓ refuses a full review inbox without evicting imported notes, including later run extraction  348ms
+ ✓ |unit| tests/unit/recovery-package.test.ts (5 tests) 2187ms
+   ✓ restores protected SQLite, page memory, Space memory and artifacts under the second Profile's own keys  808ms
+   ✓ keeps a copied phrase package restorable after Forget refuses the older managed backup  713ms
+ ✓ |unit| tests/unit/browser-import.test.ts (11 tests) 912ms
+   ✓ cancel stops a running history import between batches  806ms
+ ✓ |unit| tests/unit/routines.test.ts (46 tests) 7085ms
+   ✓ records each missed daily occurrence after downtime without replaying writes  494ms
+   ✓ catches up a missed schedule once when opted in and still holds writes for review  562ms
+   ✓ records one missed fall-back occurrence when Aux opens during the repeated hour  937ms
+   ✓ retries a transient monitor dispatch failure once, then records failed  4008ms
+ ✓ |unit| tests/unit/electron-migration.test.ts (4 tests) 272ms
+ ✓ |unit| tests/unit/mcp-stdio.test.ts (7 tests) 1538ms
+ ✓ |unit| tests/unit/runtime-restore.test.ts (12 tests) 1200ms
+ ✓ |unit| tests/unit/action-journal.test.ts (6 tests) 514ms
+   ✓ retains a committed intent after actual SIGKILL following a remote write  469ms
+ ✓ |unit| tests/unit/product-identity.test.ts (1 test) 330ms
+   ✓ keeps docs-only commits and test evidence outside the product identity  330ms
+ ✓ |unit| tests/unit/database-migration.test.ts (31 tests) 2340ms
+   ✓ schema versioning > retries a deletion checkpoint after another reader releases its snapshot  1371ms
+ ✓ |unit| tests/unit/browser-import-recovery.test.ts (8 tests) 691ms
+   ✓ a real runtime-process exit restores an interrupted receipt without opening sources or resuming writes  434ms
+ ✓ |unit| tests/unit/electron-migration-apply.test.ts (4 tests) 526ms
+ ✓ |unit| tests/unit/autonomy-memory.test.ts (2 tests) 556ms
+   ✓ consolidates the real protected pipeline under a lease, rebuilds recall, and reverts one pre-change revision  554ms
+ ✓ |unit| tests/unit/sqlite-protection.test.ts (18 tests) 816ms
+ ✓ |unit| tests/unit/native-diff.test.ts (2 tests) 481ms
+   ✓ creates a baseline-relative patch including new and removed native files  353ms
+ ✓ |unit| tests/unit/memory-recovery-methods.test.ts (3 tests) 305ms
+ ✓ |unit| tests/unit/agent-loop.test.ts (70 tests) 1073ms
+ ✓ |unit| tests/unit/lifecycle.test.ts (18 tests) 1498ms
+   ✓ runtime lifecycle (06-T) > replaces an older peer that goes idle across the keep-alive gap  1028ms
+ ✓ |unit| tests/unit/set-run-lifecycle.test.ts (46 tests) 1830ms
+   ✓ set-run lifecycle (P0-2 / P1-3) > pause gates members before they start; resume releases them  360ms
+ ✓ |unit| tests/unit/mock-bridge-coverage.test.ts (1 test) 1158ms
+   ✓ lists the runtime methods the renderer uses that the mock bridge does not implement  1157ms
+ ✓ |unit| tests/unit/timeouts.test.ts (5 tests) 2394ms
+   ✓ model call accounting > retries a rate limit a bounded number of times, then stops and persists only safe recovery state  2214ms
+ ✓ |unit| tests/unit/chromium-content-blocking.test.ts (6 tests) 207ms
+ ✓ |unit| tests/unit/mcp-transport-provider.test.ts (8 tests) 294ms
+ ✓ |unit| tests/unit/plugins.test.ts (11 tests) 142ms
+ ✓ |unit| tests/unit/settings-defaults.test.ts (15 tests) 118ms
+ ✓ |unit| tests/unit/trust-continuity.test.ts (10 tests) 706ms
+ ✓ |unit| tests/unit/model-connections.test.ts (11 tests) 195ms
+ ✓ |unit| tests/unit/review-gates.test.ts (21 tests) 235ms
+ ✓ |unit| tests/unit/autonomy-services.test.ts (18 tests) 893ms
+   ✓ resolves real saved-task goals and refuses a changed queued task before run launch  461ms
+ ✓ |unit| tests/unit/automations-runtime.test.ts (5 tests) 483ms
+   ✓ gives fall-back wall minutes one identity and skips nonexistent spring-forward time  458ms
+ ✓ |unit| tests/unit/api-server.test.ts (16 tests) 593ms
+ ✓ |unit| tests/unit/agent-repl.test.ts (37 tests) 444ms
+ ✓ |unit| tests/unit/image-model-settings.test.ts (8 tests) 57ms
+ ✓ |unit| tests/unit/native-cdp-broker.test.ts (4 tests) 552ms
+   ✓ Chromium native CDP facade > exposes only Profile catalog targets and routes page messages through the native broker  479ms
+[runtime] fresh managed backup was not issued; review recovery status in Settings.
+ ✓ |unit| tests/unit/memory-methods.test.ts (3 tests) 141ms
+ ✓ |unit| tests/unit/skill-replay.test.ts (7 tests) 551ms
+   ✓ keeps a run-derived Skill paused through compile/test, binds exact proof, and pauses on drift  329ms
+ ✓ |unit| tests/unit/run-steer.test.ts (8 tests) 756ms
+   ✓ run steering > releases a paused coordinator page after its active plan settles  303ms
+ ✓ |unit| tests/unit/handler-results.test.ts (15 tests) 134ms
+ ✓ |unit| tests/unit/selection-capture-settings.test.ts (9 tests) 70ms
+ ✓ |unit| tests/unit/native-slot.test.ts (3 tests) 136ms
+ ✓ |unit| tests/unit/outbound-mcp-protection.test.ts (2 tests) 74ms
+ ✓ |unit| apps/shell/src/accessibility-names.test.ts (1 test) 185ms
+ ✓ |unit| tests/unit/credential-metadata-protection.test.ts (2 tests) 137ms
+ ✓ |unit| tests/unit/outbound-mcp.test.ts (12 tests) 107ms
+ ✓ |unit| tests/unit/agent-vault.test.ts (7 tests) 343ms
+ ✓ |unit| tests/unit/browser-download-ledger.test.ts (7 tests) 63ms
+ ✓ |unit| tests/unit/tasks.test.ts (14 tests) 130ms
+ ✓ |unit| tests/unit/calendar-metadata-protection.test.ts (2 tests) 105ms
+ ✓ |unit| tests/unit/onboarding.test.ts (15 tests) 76ms
+ ✓ |unit| tests/unit/agent-context.test.ts (14 tests) 63ms
+ ✓ |unit| tests/unit/external-sessions.test.ts (3 tests) 183ms
+ ✓ |unit| tests/unit/command-escalation.test.ts (9 tests) 75ms
+ ✓ |unit| tests/unit/autonomy-transport.test.ts (1 test) 95ms
+ ✓ |unit| tests/unit/direct-providers.test.ts (8 tests) 93ms
+ ✓ |unit| tests/unit/phase2-agent.test.ts (28 tests) 212ms
+ ✓ |unit| tests/unit/capture-size.test.ts (1 test) 217ms
+ ✓ |unit| tests/unit/aux-remaining.test.ts (8 tests) 112ms
+ ✓ |unit| tests/unit/native-control-channel.test.ts (11 tests) 211ms
+ ✓ |unit| tests/unit/calendar-connections.test.ts (14 tests) 123ms
+ ✓ |unit| tests/unit/held-out-tokens.test.ts (1 test) 281ms
+ ✓ |unit| tests/unit/agent-connections.test.ts (3 tests) 80ms
+ ✓ |unit| tests/unit/task-evidence.test.ts (19 tests) 92ms
+ ✓ |unit| tests/unit/browser-egress-approval.test.ts (3 tests) 221ms
+ ✓ |unit| tests/unit/vision-fallback.test.ts (7 tests) 205ms
+ ✓ |unit| tests/unit/connection-cache.test.ts (4 tests) 214ms
+ ✓ |unit| tests/unit/conversation-history.test.ts (3 tests) 91ms
+ ✓ |unit| tests/unit/plan-stream.test.ts (8 tests) 202ms
+ ✓ |unit| tests/unit/workspace-folders.test.ts (4 tests) 63ms
+ ✓ |unit| tests/unit/agent-code-mode.test.ts (7 tests) 181ms
+ ✓ |unit| tests/unit/saved-results.test.ts (3 tests) 32ms
+ ✓ |unit| tests/unit/sdk-events.test.ts (3 tests) 195ms
+ ✓ |unit| tests/unit/mention-response-provenance.test.ts (3 tests) 68ms
+ ✓ |unit| tests/unit/scoped-eval.test.ts (14 tests) 64ms
+ ✓ |unit| tests/unit/mention-task-read.test.ts (13 tests) 70ms
+ ✓ |unit| tests/unit/image-reference-model.test.ts (3 tests) 35ms
+ ✓ |unit| tests/unit/run-message-queue.test.ts (4 tests) 124ms
+ ✓ |unit| tests/unit/planner-generated-results.test.ts (3 tests) 59ms
+ ✓ |unit| tests/unit/content-memory.test.ts (14 tests) 67ms
+ ✓ |unit| tests/unit/s4-actuation.test.ts (14 tests) 43ms
+ ✓ |unit| tests/unit/subagents.test.ts (8 tests) 94ms
+ ✓ |unit| tests/unit/command-contract.test.ts (4 tests) 70ms
+ ✓ |unit| apps/shell/src/store/persistence-native-authority.test.ts (2 tests) 31ms
+ ✓ |unit| tests/unit/responses.test.ts (4 tests) 73ms
+ ✓ |unit| tests/unit/journey-process-observation.test.ts (3 tests) 36ms
+ ✓ |unit| tests/unit/development-acceptance.test.ts (1 test) 29ms
+ ✓ |unit| tests/unit/agent-bash.test.ts (10 tests) 44ms
+ ✓ |unit| tests/unit/protected-startup.test.ts (1 test) 44ms
+ ✓ |unit| tests/unit/created-profile-acceptance.test.ts (1 test) 6ms
+ ✓ |unit| tests/unit/browser-egress-boundaries.test.ts (9 tests) 50ms
+ ✓ |unit| tests/unit/operations.test.ts (16 tests) 51ms
+ ✓ |unit| tests/unit/repair-escalation.test.ts (5 tests) 92ms
+ ✓ |unit| tests/unit/download-naming.test.ts (18 tests) 52ms
+ ✓ |unit| tests/unit/suspension-flow.test.ts (4 tests) 94ms
+ ✓ |unit| tests/unit/agent-navigation.test.ts (5 tests) 108ms
+ ✓ |unit| tests/unit/agent-isolation-flow.test.ts (4 tests) 81ms
+ ✓ |unit| tests/unit/tab-catalog-sync.test.ts (13 tests) 50ms
+ ✓ |unit| tests/unit/native-file-export.test.ts (2 tests) 36ms
+ ✓ |unit| tests/unit/mention-external-source.test.ts (5 tests) 48ms
+ ✓ |unit| tests/unit/shortcut-fixture.test.ts (1 test) 52ms
+ ✓ |unit| tests/unit/mention-coordinator-producer.test.ts (6 tests) 79ms
+ ✓ |unit| tests/unit/zap-native-contract.test.ts (5 tests) 39ms
+ ✓ |unit| tests/unit/browser-egress.test.ts (22 tests) 71ms
+ ✓ |unit| tests/unit/safety-decide.test.ts (12 tests) 46ms
+ ✓ |unit| tests/unit/mcp-transport.test.ts (2 tests) 37ms
+ ✓ |unit| tests/unit/agent-tools.test.ts (11 tests) 25ms
+ ✓ |unit| tests/unit/native-permission-producer.test.ts (27 tests) 117ms
+ ✓ |unit| tests/unit/repo.test.ts (6 tests) 53ms
+ ✓ |unit| tests/unit/tracing.test.ts (3 tests) 107ms
+ ✓ |unit| tests/unit/mcp-oauth.test.ts (3 tests) 60ms
+ ✓ |unit| tests/unit/goals.test.ts (9 tests) 37ms
+ ✓ |unit| tests/unit/pages-inspect.test.ts (7 tests) 35ms
+ ✓ |unit| tests/unit/hooks.test.ts (7 tests) 31ms
+ ✓ |unit| tests/unit/chrome-bookmarks.test.ts (4 tests) 29ms
+ ✓ |unit| tests/unit/safety-read-policy.test.ts (8 tests) 29ms
+ ✓ |unit| tests/unit/mention-calendar-producer.test.ts (2 tests) 35ms
+ ✓ |unit| tests/unit/trust-bearer-denial.test.ts (1 test) 28ms
+ ✓ |unit| tests/unit/robustness.test.ts (5 tests) 55ms
+ ✓ |unit| tests/unit/pool.test.ts (5 tests) 68ms
+ ✓ |unit| tests/unit/chromium-page-material.test.ts (2 tests) 35ms
+ ✓ |unit| tests/unit/spend-ledger.test.ts (4 tests) 21ms
+ ✓ |unit| tests/unit/verify-done.test.ts (13 tests) 51ms
+ ✓ |unit| tests/unit/site-confirmation-policy.test.ts (6 tests) 26ms
+ ✓ |unit| tests/unit/agent-provider-tools.test.ts (4 tests) 22ms
+ ✓ |unit| tests/unit/browser-bookmark-ledger.test.ts (6 tests) 30ms
+ ✓ |unit| tests/unit/operation-authority.test.ts (3 tests) 29ms
+ ✓ |unit| tests/unit/agent-routing.test.ts (12 tests) 21ms
+ ✓ |unit| tests/unit/host-socket.test.ts (6 tests) 24ms
+ ✓ |unit| tests/unit/site-customization.test.ts (3 tests) 28ms
+ ✓ |unit| tests/unit/native-discovery.test.ts (3 tests) 28ms
+ ✓ |unit| tests/unit/interpreter-foreach.test.ts (2 tests) 56ms
+ ✓ |unit| tests/unit/browser-history-ledger.test.ts (4 tests) 25ms
+ ✓ |unit| tests/unit/store-batching.test.ts (8 tests) 23ms
+ ✓ |unit| tests/unit/session-recovery.test.ts (6 tests) 23ms
+ ✓ |unit| tests/unit/browser-group-ledger.test.ts (3 tests) 20ms
+ ✓ |unit| tests/unit/prompt-cache.test.ts (4 tests) 23ms
+ ✓ |unit| tests/unit/page-attachment-session.test.ts (6 tests) 20ms
+ ✓ |unit| tests/unit/observation-wire.test.ts (6 tests) 17ms
+ ✓ |unit| tests/unit/suspensions.test.ts (8 tests) 19ms
+ ✓ |unit| tests/unit/cli-open.test.ts (5 tests) 15ms
+ ✓ |unit| tests/unit/history-fts.test.ts (5 tests) 27ms
+ ✓ |unit| tests/unit/bookmark-import.test.ts (4 tests) 14ms
+ ✓ |unit| tests/unit/live-folders.test.ts (6 tests) 17ms
+ ✓ |unit| tests/unit/safety-core.test.ts (14 tests) 23ms
+ ✓ |unit| tests/unit/connectors.test.ts (3 tests) 18ms
+ ✓ |unit| tests/unit/mention-response-policy.test.ts (3 tests) 17ms
+ ✓ |unit| tests/unit/command-ranking-native.test.ts (4 tests) 15ms
+ ✓ |unit| tests/unit/qualification.test.ts (2 tests) 19ms
+ ✓ |unit| tests/unit/reading-list.test.ts (5 tests) 15ms
+ ✓ |unit| tests/unit/state.test.ts (6 tests) 19ms
+ ✓ |unit| apps/shell/src/mock/generated-host.test.ts (4 tests) 15ms
+ ✓ |unit| tests/unit/safety-dispatch.test.ts (8 tests) 36ms
+ ✓ |unit| tests/unit/dotenv.test.ts (2 tests) 13ms
+ ✓ |unit| tests/unit/browsing-memory.test.ts (4 tests) 15ms
+ ✓ |unit| tests/unit/journey-external-launch.test.ts (19 tests) 7ms
+ ✓ |unit| tests/unit/github-connection.test.ts (3 tests) 13ms
+ ✓ |unit| apps/shell/src/components/icons.test.tsx (6 tests) 13ms
+ ✓ |unit| tests/unit/origin-standing-grant.test.ts (3 tests) 13ms
+ ✓ |unit| tests/unit/command-ranking-store.test.ts (3 tests) 13ms
+ ✓ |unit| tests/unit/journey-fixture-env.test.ts (3 tests) 9ms
+ ✓ |unit| tests/unit/budgets.test.ts (4 tests) 12ms
+ ✓ |unit| tests/unit/browser-history.test.ts (4 tests) 11ms
+ ✓ |unit| tests/unit/page-discard-events.test.ts (3 tests) 13ms
+ ✓ |unit| tests/unit/driver-lifecycle.test.ts (7 tests) 26ms
+ ✓ |unit| tests/unit/task-promotion.test.ts (2 tests) 12ms
+ ✓ |unit| tests/unit/native-download-projection.test.ts (2 tests) 13ms
+ ✓ |unit| tests/unit/runtime-egress-confirmation.test.ts (1 test) 11ms
+ ✓ |unit| tests/unit/webmcp-approval.test.ts (2 tests) 12ms
+ ✓ |unit| tests/unit/chrome-tokens.test.ts (26 tests) 21ms
+ ✓ |unit| tests/unit/history-projection.test.ts (2 tests) 9ms
+ ✓ |unit| tests/unit/space-grain.test.ts (3 tests) 9ms
+ ✓ |unit| tests/unit/journey-capture-window.test.ts (2 tests) 7ms
+ ✓ |unit| tests/unit/gateway-client.test.ts (16 tests) 8ms
+ ✓ |unit| tests/unit/contracts.test.ts (12 tests) 10ms
+ ✓ |unit| tests/unit/browser-runtime-contracts.test.ts (15 tests) 10ms
+ ✓ |unit| apps/shell/src/chromium-bridge.test.ts (14 tests) 9ms
+ ✓ |unit| tests/unit/observed-target.test.ts (3 tests) 10ms
+ ✓ |unit| tests/unit/browser-change-ledger.test.ts (1 test) 12ms
+ ✓ |unit| tests/unit/turn-mentions.test.ts (9 tests) 5ms
+ ✓ |unit| tests/unit/executor.test.ts (18 tests) 10ms
+ ✓ |unit| tests/unit/browser-form-undo.test.ts (2 tests) 9ms
+ ✓ |unit| tests/unit/content-blocking.test.ts (7 tests) 9ms
+ ✓ |unit| tests/unit/archive-transaction-contract.test.ts (2 tests) 8ms
+ ✓ |unit| apps/shell/src/workspace.test.ts (24 tests) 9ms
+ ✓ |unit| apps/shell/src/ui/contrast.test.ts (2 tests) 8ms
+ ✓ |unit| tests/unit/origin-policy-store.test.ts (2 tests) 9ms
+ ✓ |unit| tests/unit/model-registry.test.ts (4 tests) 7ms
+ ✓ |unit| tests/unit/tab-archive.test.ts (7 tests) 6ms
+ ✓ |unit| tests/unit/native-stage-gate.test.ts (1 test) 8ms
+ ✓ |unit| tests/unit/mention-navigation-receipt.test.ts (8 tests) 11ms
+ ✓ |unit| tests/unit/submit-result-input.test.ts (4 tests) 6ms
+ ✓ |unit| tests/unit/turn-mention-service.test.ts (14 tests) 8ms
+ ✓ |unit| tests/unit/prompt-injection.test.ts (10 tests) 7ms
+ ✓ |unit| apps/shell/src/task-receipt-export.test.ts (6 tests) 7ms
+ ✓ |unit| tests/unit/page-tool-access.test.ts (4 tests) 6ms
+ ✓ |unit| apps/shell/src/intent.test.ts (15 tests) 7ms
+ ✓ |unit| tests/unit/egress-guard.test.ts (5 tests) 6ms
+ ✓ |unit| tests/unit/agent-tab-name.test.ts (4 tests) 5ms
+ ✓ |unit| tests/unit/ipc-channel.test.ts (3 tests) 13ms
+ ✓ |unit| tests/unit/egress-projection.test.ts (4 tests) 7ms
+ ✓ |unit| tests/unit/research-budget.test.ts (5 tests) 13ms
+ ✓ |unit| apps/shell/src/tidy-layout-durable.test.ts (6 tests) 5ms
+ ✓ |unit| tests/unit/agent-site-adapters.test.ts (5 tests) 6ms
+ ✓ |unit| tests/unit/agent-tidy.test.ts (4 tests) 6ms
+ ✓ |unit| tests/unit/host-client-inventory.test.ts (5 tests) 8ms
+ ✓ |unit| apps/shell/src/auto-archive.test.ts (3 tests) 7ms
+ ✓ |unit| tests/unit/safety-authority-revocation.test.ts (4 tests) 6ms
+ ✓ |unit| apps/shell/src/features/profiles/profile-order.test.ts (1 test) 6ms
+ ✓ |unit| apps/shell/src/selection-action-draft.test.ts (12 tests) 5ms
+ ✓ |unit| tests/unit/interpreter.test.ts (17 tests) 5ms
+ ✓ |unit| tests/unit/usage-report.test.ts (1 test) 6ms
+ ✓ |unit| tests/unit/chromium-proof-bootstrap.test.ts (4 tests) 5ms
+ ✓ |unit| tests/unit/conversation-sources.test.ts (3 tests) 5ms
+ ✓ |unit| apps/shell/src/features/commands/shortcut-settings.test.ts (3 tests) 4ms
+ ✓ |unit| apps/shell/src/mock/connectors.test.ts (1 test) 3ms
+ ✓ |unit| tests/unit/write-outcome.test.ts (5 tests) 5ms
+ ✓ |unit| apps/shell/src/mentions/candidates.test.ts (2 tests) 3ms
+ ✓ |unit| tests/unit/chrome-shell.test.ts (15 tests) 4ms
+ ✓ |unit| tests/unit/run-suspension.test.ts (3 tests) 4ms
+ ✓ |unit| apps/shell/src/features/surfaces/split-actions.test.ts (5 tests) 4ms
+ ✓ |unit| tests/unit/observation-render.test.ts (3 tests) 4ms
+ ✓ |unit| tests/unit/connection-recovery.test.ts (3 tests) 3ms
+ ✓ |unit| tests/unit/protected-store.test.ts (2 tests) 5ms
+ ✓ |unit| apps/shell/src/csv-preview.test.ts (2 tests) 5ms
+ ✓ |unit| apps/shell/src/agent/run-notifications.test.ts (6 tests) 3ms
+ ✓ |unit| tests/unit/page-ownership.test.ts (2 tests) 2ms
+ ✓ |unit| tests/unit/method-registry.test.ts (2 tests) 3ms
+ ✓ |unit| tests/unit/saved-article-model-context.test.ts (1 test) 3ms
+ ✓ |unit| tests/unit/profile-organization-channel.test.ts (1 test) 4ms
+ ✓ |unit| apps/shell/src/command-execution.test.ts (4 tests) 2ms
+ ✓ |unit| apps/shell/src/native-appearance-observer.test.ts (6 tests) 4ms
+ ✓ |unit| tests/unit/run-transcript-projection.test.ts (6 tests) 3ms
+ ✓ |unit| apps/shell/src/features/window-sync/actions.test.ts (3 tests) 2ms
+ ✓ |unit| tests/unit/roadmap-agent.test.ts (6 tests) 4ms
+ ✓ |unit| apps/shell/src/command-results.test.ts (6 tests) 3ms
+ ✓ |unit| apps/shell/src/split-layout.test.ts (8 tests) 3ms
+ ✓ |unit| apps/shell/src/suggest.test.ts (7 tests) 3ms
+ ✓ |unit| tests/unit/aux-features.test.ts (4 tests) 2ms
+ ✓ |unit| apps/shell/src/engines.test.ts (7 tests) 2ms
+ ✓ |unit| tests/unit/representative-workflows.test.ts (2 tests) 2ms
+ ✓ |unit| apps/shell/src/settings/routes.test.ts (2 tests) 2ms
+ ✓ |unit| tests/unit/readiness.test.ts (5 tests) 2ms
+ ✓ |unit| tests/unit/settings-permissions.test.ts (5 tests) 2ms
+ ✓ |unit| apps/shell/src/conversation-drafts.test.ts (7 tests) 2ms
+ ✓ |unit| apps/shell/src/features/layout/layout.test.ts (3 tests) 2ms
+ ✓ |unit| apps/shell/src/features/extensions/extension-inventory.test.ts (3 tests) 2ms
+ ✓ |unit| tests/unit/locator-resolve.test.ts (10 tests) 3ms
+ ✓ |unit| apps/shell/src/browser-context-sources.test.ts (2 tests) 2ms
+ ✓ |unit| tests/unit/cookies.test.ts (7 tests) 2ms
+ ✓ |unit| tests/unit/agent-turn-tabs.test.ts (2 tests) 2ms
+ ✓ |unit| tests/unit/journey-startup-trace.test.ts (4 tests) 3ms
+ ✓ |unit| tests/unit/migration-import.test.ts (2 tests) 2ms
+ ✓ |unit| apps/shell/src/features/surfaces/reducers.test.ts (4 tests) 2ms
+ ✓ |unit| tests/unit/physical-takeover.test.ts (1 test) 2ms
+ ✓ |unit| apps/shell/src/answer-headings.test.ts (1 test) 2ms
+ ✓ |unit| apps/shell/src/conversation-export.test.ts (1 test) 2ms
+ ✓ |unit| tests/unit/memory-sensitivity.test.ts (2 tests) 2ms
+ ✓ |unit| apps/shell/src/tidy-commit.test.ts (2 tests) 1ms
+ ✓ |unit| tests/unit/startup-host-channel.test.ts (1 test) 2ms
+ ✓ |unit| apps/shell/src/mentions/tokens.test.ts (4 tests) 2ms
+ ✓ |unit| apps/shell/src/voice-commands.test.ts (2 tests) 2ms
+ ✓ |unit| tests/unit/split-layout.test.ts (2 tests) 3ms
+ ✓ |unit| apps/shell/src/closed-tabs.test.ts (2 tests) 2ms
+ ✓ |unit| tests/unit/model-failure.test.ts (2 tests) 2ms
+ ✓ |unit| tests/unit/permission-failure.test.ts (1 test) 1ms
+ ✓ |unit| apps/shell/src/agent/run-presence.test.tsx (2 tests) 1ms
+ ✓ |unit| apps/shell/src/favicon.test.ts (3 tests) 1ms
+ ✓ |unit| apps/shell/src/use-windowed-rows.test.ts (1 test) 1ms
+ ✓ |unit| tests/unit/response-capture.test.ts (5 tests) 1ms
+ ✓ |unit| apps/shell/src/features/profiles/move-request.test.ts (3 tests) 2ms
+ ✓ |unit| tests/unit/agent-route.test.ts (2 tests) 1ms
+ ✓ |unit| apps/shell/src/settings/usage-csv.test.ts (1 test) 2ms
+ ✓ |unit| tests/unit/ref-registry.test.ts (3 tests) 2ms
+ ✓ |unit| apps/shell/src/workbook-sheet.test.ts (1 test) 2ms
+ ✓ |unit| apps/shell/src/sidebar-mode.test.ts (3 tests) 1ms
+ ✓ |unit| tests/unit/stage-obstruction.test.ts (2 tests) 1ms
+ ✓ |unit| apps/shell/src/duplicate-tabs.test.ts (3 tests) 1ms
+ ✓ |unit| tests/unit/confirmation-tier.test.ts (1 test) 1ms
+ ✓ |unit| tests/unit/text-context.test.ts (1 test) 1ms
+ ✓ |unit| tests/unit/memory-context.test.ts (2 tests) 1ms
+ ✓ |unit| apps/shell/src/local-file-url.test.ts (2 tests) 1ms
+ ✓ |unit| apps/shell/src/chat-folders.test.ts (2 tests) 1ms
+ ✓ |unit| apps/shell/src/downloads.test.ts (3 tests) 2ms
+(node:54063) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/task-drafts.test.ts (1 test) 2ms
+ ✓ |unit| tests/unit/control-authority.test.ts (1 test) 1ms
+ ✓ |unit| apps/shell/src/run-answer-drafts.test.ts (2 tests) 2ms
+ ✓ |unit| apps/shell/src/unread-badge.test.ts (2 tests) 1ms
+ ✓ |unit| apps/shell/src/tab-switcher.test.ts (3 tests) 1ms
+ ✓ |unit| tests/unit/bookmark-drop.test.ts (1 test) 1ms
+ ✓ |unit| apps/shell/src/conversation-page.test.ts (2 tests) 1ms
+ ✓ |unit| apps/shell/src/answer-table.test.ts (2 tests) 1ms
+ ✓ |unit| apps/shell/src/store-extension-id.test.ts (2 tests) 1ms
+ ✓ |unit| tests/unit/ref-registry-replace.test.ts (1 test) 1ms
+(node:54125) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54116) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/command-surface-search.test.tsx (2 tests) 346ms
+ ✓ |unit| apps/shell/src/command-bar.test.tsx (21 tests) 2095ms
+   ✓ CommandBar keyboard contract > remote suggestions honor the preference and privacy gate  629ms
+   ✓ CommandBar keyboard contract > never paints a late remote suggestion for an earlier query  433ms
+(node:54770) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/command-bar-browser.test.tsx (6 tests) 408ms
+ ✓ |unit| apps/shell/src/onboarding/OnboardingFlow.test.tsx (19 tests) 284ms
+(node:54800) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/command-surface.test.tsx (6 tests) 367ms
+ ✓ |unit| apps/shell/src/settings/sections/ModelConnections.test.tsx (7 tests) 325ms
+(node:54839) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54849) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/features/little-window/popovers.test.tsx (3 tests) 322ms
+ ✓ |unit| tests/unit/command-registry.test.ts (3 tests) 234ms
+(node:54891) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54889) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/features/surfaces/stage-cover.test.tsx (1 test) 158ms
+ ✓ |unit| apps/shell/src/components/ChatSessions.test.tsx (1 test) 177ms
+(node:54897) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54896) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/conversation-history.test.tsx (2 tests) 185ms
+ ✓ |unit| apps/shell/src/components/Composer.integration.test.tsx (6 tests) 189ms
+ ✓ |unit| apps/shell/src/components/OutboundMcpSettings.test.tsx (2 tests) 168ms
+ ✓ |unit| apps/shell/src/settings/sections/Workspaces.test.tsx (6 tests) 128ms
+(node:54956) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54968) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/ui/interaction.test.tsx (11 tests) 123ms
+ ✓ |unit| apps/shell/src/settings/sections/SelectionCapture.test.tsx (6 tests) 138ms
+(node:54985) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/browser-profiles.test.tsx (2 tests) 97ms
+(node:54988) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/TabMenu.test.tsx (2 tests) 110ms
+(node:54993) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/ui/dialog.test.tsx (4 tests) 99ms
+(node:55000) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/ui.test.tsx (4 tests) 70ms
+ ✓ |unit| apps/shell/src/components/MemoryPasteImport.test.tsx (7 tests) 61ms
+(node:55011) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55018) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Library.test.tsx (4 tests) 62ms
+(node:55030) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/Overview.test.tsx (2 tests) 61ms
+(node:55042) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/floating-sidebar.test.tsx (7 tests) 51ms
+ ✓ |unit| apps/shell/src/components/ResultViewer.test.tsx (6 tests) 63ms
+(node:55059) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/mock/bridge-mcp.test.ts (2 tests) 124ms
+ ✓ |unit| apps/shell/src/components/WorkLists.test.tsx (1 test) 66ms
+(node:55065) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/FilterListManager.test.tsx (5 tests) 55ms
+ ✓ |unit| apps/shell/src/composer/suspension-panel.test.tsx (6 tests) 38ms
+(node:55070) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/ShortcutsSetting.test.tsx (1 test) 63ms
+(node:55072) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/action-confirmation.test.tsx (4 tests) 56ms
+ ✓ |unit| apps/shell/src/components/ImportDataSetting.test.tsx (6 tests) 51ms
+ ✓ |unit| apps/shell/src/onboarding/SetupReview.test.tsx (8 tests) 46ms
+(node:55087) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55101) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/settings/sections/General.test.tsx (1 test) 56ms
+ ✓ |unit| apps/shell/src/answer-markdown.test.tsx (4 tests) 61ms
+ ✓ |unit| apps/shell/src/components/ReviewedConnectors.test.tsx (3 tests) 53ms
+(node:55105) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/transcript/run-transcript.test.tsx (4 tests) 57ms
+ ✓ |unit| apps/shell/src/components/RoutineSchedule.test.tsx (9 tests) 48ms
+ ✓ |unit| apps/shell/src/components/Goals.test.tsx (4 tests) 50ms
+(node:55119) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/inspector.test.tsx (2 tests) 54ms
+(node:55127) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/toolbar-reveal.test.tsx (3 tests) 61ms
+(node:55133) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/StepTimeline.test.tsx (13 tests) 44ms
+(node:55151) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/MemoryItems.test.tsx (1 test) 45ms
+(node:55160) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/settings/sections/ArchivedChats.test.tsx (1 test) 49ms
+(node:55173) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55166) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/http-auth-prompt.test.tsx (1 test) 46ms
+ ✓ |unit| apps/shell/src/run-controls.test.tsx (4 tests) 41ms
+(node:55176) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/site-permissions.test.tsx (5 tests) 42ms
+ ✓ |unit| apps/shell/src/settings/sections/Models.test.tsx (2 tests) 40ms
+ ✓ |unit| apps/shell/src/components/PluginsPanel.test.tsx (2 tests) 53ms
+(node:55187) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/ui/popover.test.tsx (1 test) 43ms
+ ✓ |unit| tests/unit/observe-refs.test.ts (7 tests) 41ms
+ ✓ |unit| apps/shell/src/components/Hooks.test.tsx (2 tests) 35ms
+ ✓ |unit| tests/unit/observation-credentials.test.ts (2 tests) 49ms
+ ✓ |unit| apps/shell/src/mock/connector-bridge.test.ts (1 test) 61ms
+ ✓ |unit| apps/shell/src/components/FileTree.test.tsx (2 tests) 34ms
+(node:55229) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/CalendarSourceChoiceDialog.test.tsx (1 test) 51ms
+ ✓ |unit| tests/unit/zap-picker.test.ts (2 tests) 35ms
+ ✓ |unit| apps/shell/src/mock/generated-results.test.ts (1 test) 66ms
+ ✓ |unit| apps/shell/src/settings/sections/Automations.test.tsx (1 test) 35ms
+(node:55247) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/ContentMemory.test.tsx (1 test) 36ms
+(node:55258) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/TaskReceiptView.test.tsx (6 tests) 30ms
+(node:55261) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/ImageViewer.test.tsx (2 tests) 33ms
+ ✓ |unit| apps/shell/src/settings/sections/Languages.test.tsx (1 test) 34ms
+(node:55269) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55271) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/InlineAssist.test.tsx (3 tests) 28ms
+ ✓ |unit| apps/shell/src/components/RunControls.reveal.test.tsx (3 tests) 35ms
+(node:55279) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55280) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/ResultsTable.test.tsx (1 test) 33ms
+ ✓ |unit| apps/shell/src/transcript/text-proposal.test.tsx (2 tests) 32ms
+(node:55288) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55291) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/GeneratedResultPreview.test.tsx (1 test) 36ms
+ ✓ |unit| apps/shell/src/components/RecentWork.test.tsx (1 test) 37ms
+(node:55311) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55310) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/session-recovery.test.tsx (3 tests) 24ms
+ ✓ |unit| apps/shell/src/components/SearchResultRow.test.tsx (2 tests) 20ms
+ ✓ |unit| apps/shell/src/components/DeferredSurface.test.tsx (2 tests) 29ms
+ ✓ |unit| tests/unit/inline-assist.test.ts (8 tests) 23ms
+ ✓ |unit| tests/unit/element-picker.test.ts (6 tests) 30ms
+(node:55332) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/settings/sections/RecoveryPackage.test.tsx (1 test) 29ms
+ ✓ |unit| apps/shell/src/features/window-sync/stage-cover.test.tsx (1 test) 31ms
+ ✓ |unit| apps/shell/src/components/TaskReceiptRunUndo.test.tsx (1 test) 25ms
+(node:55345) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/SupportingContent.test.tsx (1 test) 26ms
+ ✓ |unit| apps/shell/src/components/CalendarConnections.test.tsx (1 test) 35ms
+(node:55349) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/run-answer.test.ts (9 tests) 57ms
+(node:55351) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/ResizeHandle.test.tsx (9 tests) 27ms
+ ✓ |unit| apps/shell/src/components/ExternalAgentOversight.test.tsx (1 test) 29ms
+(node:55360) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/SkillReplayPanel.test.tsx (1 test) 24ms
+(node:55364) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/run-images.test.tsx (1 test) 30ms
+ ✓ |unit| apps/shell/src/components/ClearBrowsingData.test.tsx (2 tests) 29ms
+(node:55371) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/RecentWorkCard.test.tsx (1 test) 29ms
+ ✓ |unit| apps/shell/src/components/RunControls.test.tsx (3 tests) 28ms
+ ✓ |unit| apps/shell/src/components/SkillMetadata.test.tsx (2 tests) 23ms
+(node:55378) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/agent/run-attention-feed.test.tsx (3 tests) 27ms
+ ✓ |unit| apps/shell/src/settings/SectionRail.test.tsx (1 test) 24ms
+ ✓ |unit| tests/unit/mock-trust-unavailable.test.ts (1 test) 33ms
+ ✓ |unit| apps/shell/src/settings/sections/AboutAux.test.tsx (1 test) 17ms
+(node:55391) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/page-recovery.test.tsx (2 tests) 20ms
+(node:55395) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/task-receipt-view.test.tsx (2 tests) 23ms
+ ✓ |unit| apps/shell/src/components/ObservationPanel.test.tsx (2 tests) 21ms
+ ✓ |unit| apps/shell/src/components/SaveConversationTask.test.tsx (1 test) 18ms
+(node:55408) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/agent/handoff-cutout.test.tsx (2 tests) 18ms
+ ✓ |unit| apps/shell/src/settings/sections/Startup.test.tsx (2 tests) 19ms
+(node:55415) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55413) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/TaskResources.test.tsx (1 test) 19ms
+ ✓ |unit| apps/shell/src/components/RailHistory.test.tsx (1 test) 18ms
+(node:55417) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55418) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/settings/sections/CrashReporting.test.tsx (2 tests) 19ms
+ ✓ |unit| apps/shell/src/components/RecentlyClosed.test.tsx (1 test) 20ms
+(node:55426) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/tab-preview.test.tsx (1 test) 21ms
+ ✓ |unit| tests/unit/observed-target-driver.test.ts (3 tests) 17ms
+ ✓ |unit| apps/shell/src/ui/toast.test.tsx (1 test) 20ms
+ ✓ |unit| apps/shell/src/settings/search.test.tsx (3 tests) 18ms
+(node:55437) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/settings/sections/HttpsFirst.test.tsx (2 tests) 22ms
+(node:55453) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/transcript/transcript-activity.test.tsx (5 tests) 23ms
+(node:55457) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/FindBar.test.tsx (1 test) 23ms
+(node:55463) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/agent/run-attention-wiring.test.tsx (4 tests) 21ms
+ ✓ |unit| apps/shell/src/settings/sections/DownloadFolder.test.tsx (1 test) 29ms
+ ✓ |unit| apps/shell/src/ui/tooltip.test.tsx (1 test) 31ms
+ ✓ |unit| apps/shell/src/default-browser.test.tsx (2 tests) 16ms
+ ✓ |unit| apps/shell/src/components/PageSurface.test.tsx (2 tests) 15ms
+(node:55508) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55509) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/settings/sections/CookieControls.test.tsx (2 tests) 23ms
+ ✓ |unit| apps/shell/src/settings/sections/SpellCheck.test.tsx (1 test) 15ms
+ ✓ |unit| apps/shell/src/settings/sections/Agents.test.tsx (1 test) 16ms
+ ✓ |unit| apps/shell/src/components/SidebarSection.test.tsx (1 test) 15ms
+(node:55519) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/NavigationButtons.test.tsx (1 test) 19ms
+(node:55529) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/use-tab-membership.test.tsx (1 test) 12ms
+ ✓ |unit| apps/shell/src/features/window-sync/local-consumers.test.tsx (2 tests) 15ms
+(node:55535) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/components/MemoryRecoveryNotice.test.tsx (1 test) 17ms
+ ✓ |unit| apps/shell/src/settings/sections/Profiles.test.tsx (1 test) 16ms
+ ✓ |unit| apps/shell/src/bookmark-files.test.ts (3 tests) 12ms
+ ✓ |unit| apps/shell/src/features/organization-state.test.tsx (1 test) 14ms
+ ✓ |unit| tests/unit/extraction-credentials.test.ts (2 tests) 13ms
+ ✓ |unit| apps/shell/src/features/extensions/ExtensionShortcuts.test.tsx (1 test) 17ms
+ ✓ |unit| apps/shell/src/settings/search-focus.test.ts (1 test) 13ms
+ ✓ |unit| apps/shell/src/features/extensions/use-extension-actions.test.tsx (2 tests) 10ms
+ ✓ |unit| apps/shell/src/use-dismissable.test.tsx (2 tests) 10ms
+(node:55562) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/tab-reopen-race.test.ts (1 test) 25ms
+(node:55568) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | apps/shell/src/conversations.test.ts > continues the same saved conversation while leaving context assembly to the runtime
+Aux workspace refresh failed: TypeError: ws.pages is not iterable
+    at /private/tmp/aux-browser-runtime-root-complete/apps/shell/src/store.ts:79:31
+    at setState (file:///private/tmp/aux-browser-runtime-root-complete/node_modules/.pnpm/zustand@5.0.15_@types+react@19.2.2_react@19.2.1_use-sync-external-store@1.7.0_react@19.2.1_/node_modules/zustand/esm/vanilla.mjs:5:55)
+    at Object.refresh (/private/tmp/aux-browser-runtime-root-complete/apps/shell/src/store.ts:77:7)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+ ✓ |unit| apps/shell/src/conversations.test.ts (7 tests) 10ms
+(node:55571) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/features/commands/dispatch.test.ts (5 tests) 9ms
+(node:55573) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/tab-recovery.test.ts (9 tests) 8ms
+(node:55575) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/tab-catalog-sync.test.ts (9 tests) 8ms
+ ✓ |unit| apps/shell/src/memory-saver.test.ts (8 tests) 7ms
+(node:55580) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/optimistic-store.test.ts (7 tests) 7ms
+(node:55586) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/features/window-sync/catalog.test.ts (6 tests) 6ms
+ ✓ |unit| apps/shell/src/site-controls-opener.test.ts (1 test) 7ms
+ ✓ |unit| apps/shell/src/reader-article.test.ts (1 test) 5ms
+(node:55595) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/tab-window-transfer.test.ts (6 tests) 4ms
+(node:55598) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/background-tabs.test.ts (1 test) 3ms
+ ✓ |unit| apps/shell/src/features/little-window/actions.test.ts (5 tests) 3ms
+(node:55605) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/tab-close.test.ts (3 tests) 4ms
+(node:55607) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/bookmark-toggle.test.ts (2 tests) 3ms
+(node:55616) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55614) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/run-start.test.ts (2 tests) 3ms
+ ✓ |unit| apps/shell/src/peek-link.test.ts (2 tests) 3ms
+(node:55625) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55624) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/features/trust/actions.test.ts (3 tests) 3ms
+ ✓ |unit| apps/shell/src/open-local-file.test.ts (2 tests) 2ms
+ ✓ |unit| apps/shell/src/result-drafts.test.ts (3 tests) 2ms
+(node:55629) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/page-navigation.test.ts (2 tests) 2ms
+(node:55654) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:55644) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/find.test.ts (1 test) 2ms
+ ✓ |unit| apps/shell/src/command-surface-actions.test.ts (3 tests) 2ms
+ ✓ |unit| apps/shell/src/position-context-menu.test.ts (3 tests) 3ms
+(node:55662) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/zoom-response.test.ts (2 tests) 2ms
+(node:55665) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/run-retry.test.ts (2 tests) 2ms
+ ✓ |unit| apps/shell/src/ui-font-size.test.ts (2 tests) 2ms
+ ✓ |unit| apps/shell/src/features/extensions/extension-panel.test.ts (6 tests) 2ms
+(node:55670) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/task-navigation.test.ts (2 tests) 2ms
+(node:55674) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |unit| apps/shell/src/private-refresh.test.ts (1 test) 2ms
+ ✓ |unit| apps/shell/src/features/window-sync/selectors.test.ts (4 tests) 1ms
+
+ Test Files  455 passed (455)
+      Tests  2430 passed (2430)
+   Start at  21:11:38
+   Duration  236.33s (transform 17.44s, setup 0ms, collect 234.68s, tests 64.72s, environment 101.28s, prepare 18.73s)
+

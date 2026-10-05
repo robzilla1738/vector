@@ -1,0 +1,28 @@
+{
+  "status": "unapplied shared request; no compile/native evidence",
+  "baseline": "parent independently confirmed five stable hashes unchanged; four used",
+  "patchSha256": "c5b1d05c3ee8d8dc9c8de99a061b0527baa925e36e9f143383a04e935f4cfe5a",
+  "files": [
+    {
+      "path": "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h",
+      "baselineSha256": "a9998ffae3b7259e1a16f0cd1dc5aac2977cc5d58ac2a9c376d11a8b3cc795c6",
+      "requestedSha256": "a3e330d5647443dc876a84a0b7b1d6db32d6f253933eb794876b39ffa003d74b"
+    },
+    {
+      "path": "chrome/browser/picture_in_picture/picture_in_picture_window_manager.cc",
+      "baselineSha256": "95e51df5224d458db1695bd4a0155cb73586fbe6375020fcd8ef1aad97d436d9",
+      "requestedSha256": "4d2d485b4f226fccb1e7d9484081b433cfc5c2fbfad728ec73d8d158ef67f153"
+    },
+    {
+      "path": "chrome/browser/ui/views/overlay/video_overlay_window_views.cc",
+      "baselineSha256": "819eecd0269e5e2c6aed8b25c36d6818b23a545f29b30b78c72c4382e57057a1",
+      "requestedSha256": "798c812f16f58c1222084f7b239144f0bbba6153aafdf0ce8e50fad60b54dd03"
+    },
+    {
+      "path": "chrome/browser/ui/views/frame/browser_view.cc",
+      "baselineSha256": "39e8a059590b7cec5067d0784caf5f5c3d5d76355054f9fa8b764f2e16be0593",
+      "requestedSha256": "fe277342f6fd9fe45459fd7b2d6292fff8f12f6c7d85376f16276e109cfff927"
+    }
+  ],
+  "isolatedApplyCheck": "PASS; result-byte/reverse/whitespace"
+}

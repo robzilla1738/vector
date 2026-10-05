@@ -1,3 +1,15 @@
+## Current delivery status — October 5, 2026 (America/Chicago)
+
+The frozen implementation is integrated for local-main delivery. Native352 compiled successfully and its native/runtime/helper pair matched; the focused ownership, permission, generation, mailbox and acknowledgement controls passed. Aux was launched and observed on Home and New chat with Aux branding and optional context. This is an **inspection preview**, not full roadmap or release qualification.
+
+Start with [the current inspection handoff](INSPECTION-BUILD-HANDOFF.md). It identifies the actual compiled product, retained evidence, launch ownership, known harness issue, completed fixes, and remaining gates. The [copied evidence index](evidence/inspection-build-2026-10-05/index.json) preserves existing results without running new checks.
+
+The renderer passes the unchanged budgets: startup JS **500637 / 501760 bytes**, CSS **179504 / 184320**, total JS **1842978 / 1843200**. Total JS has only 222 bytes of reserve. Current functional journeys, exhaustive performance and F21 visual matrices remain deferred. The user owns resize testing; historical full native qualification remains **541 successes and one viewport failure**, with `full542Passed=false` and `safetyPassed=false`. Never convert deferred work into a pass.
+
+Scope remains frozen. No feature/command expansion, repeated unchanged checks, automatic CI runs, push, signing or release is authorized by this checkpoint. Keep the supplied 06 source/capture design authority and Aux name/logo. Earlier progress entries below are historical and do not supersede this status.
+
+---
+
 # Native Aux.app journeys
 
 The accepted S7 importer outcome uses three focused flags. `--browser-import-ui` asks an operator to select exact Chrome Profile/category pairs in Settings, then checks native destinations and restart. `--browser-import-formats` uses an isolated discovery root with Arc, Safari and Firefox fixtures; it checks each source/category, source hashes, idempotence and restart. `--browser-import-attached` launches a separate disposable headless Chrome CDP Profile, verifies borrowed tabs transfer into Aux without changing Chrome, then cancels a 5,000-visit History import, retries, isolates a corrupt second Profile, checks native History after normal Aux Quit and verifies History and sleeping imported tabs after restart. The last passing [attached import manifest](../release/test-artifacts/native-s7-browser-import-attached-2026-09-28-f/manifest.json) records the result. The fixture override changes only import discovery; Aux retains its real process `HOME` for native Profile/Keychain startup. No owner browser Profile is read.

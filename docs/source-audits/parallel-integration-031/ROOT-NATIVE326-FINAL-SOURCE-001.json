@@ -1,0 +1,29 @@
+{
+  "sourceInput": {
+    "path": "/private/tmp/aux-builder-native326-preparation-001/NATIVE326-FINAL-SOURCE-INPUT-001.json",
+    "sha256": "7f527e1602abe02fa990d53d07032430ceec2a52cfdce0cc3d9071fca37cf612"
+  },
+  "unchangedAdmittedSourceExport": "/private/tmp/aux-builder-native326-preparation-001/NATIVE326-OWN-SOURCE-EXPORT-001.json",
+  "exactSourceMapJoins": true,
+  "orderedNames": "literal chromium/patches/ prefix only",
+  "generatedPreview": [
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/own-generated-readonly-preview-001/chrome/browser/ui/aux/generated/aux_host_methods.h",
+      "sha256": "3064a9b73cc791bb7f3e5efed0869ae3861f9398730a3c8099a5035c2a987013",
+      "size": 5398
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/own-generated-readonly-preview-001/chrome/browser/ui/aux/generated/aux_host_methods.cc",
+      "sha256": "c07f31c753cf5ba6b9121b700b85d887182f074a588a656faa318f89038e34fb",
+      "size": 205594
+    },
+    {
+      "path": "/private/tmp/aux-builder-native326-preparation-001/own-generated-readonly-preview-001/chrome/browser/resources/aux_host/aux_feature_stages.ts",
+      "sha256": "e94aca1186033dea2ee1a5a7a6ea43dbab88f5a8743c655b7d33e35ae1735af7",
+      "size": 18335
+    }
+  ],
+  "actual3LeafForwardReverseForward": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-native326-transition-x_b3mn_r",
+  "admission": "SOURCE ONLY; stage/GN/build/App pending; original args drift and controller cleanup fixes remain pending"
+}

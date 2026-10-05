@@ -1,0 +1,13 @@
+{
+  "startupJS": 500637,
+  "startupCSS": 179504,
+  "totalJS": 1842978,
+  "manifestSha256": "1b6cce5d200a4caf2973f85502c31717a32ed87fccf6b8aa9c1073dbdcdbb05a",
+  "sourceCommit": "22394ff63",
+  "limits": {
+    "startupJS": 501760,
+    "startupCSS": 184320,
+    "totalJS": 1843200
+  },
+  "passed": true
+}

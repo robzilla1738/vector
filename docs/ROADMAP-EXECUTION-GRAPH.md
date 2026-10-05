@@ -1,3 +1,15 @@
+## Current delivery status — October 5, 2026 (America/Chicago)
+
+The frozen implementation is integrated for local-main delivery. Native352 compiled successfully and its native/runtime/helper pair matched; the focused ownership, permission, generation, mailbox and acknowledgement controls passed. Aux was launched and observed on Home and New chat with Aux branding and optional context. This is an **inspection preview**, not full roadmap or release qualification.
+
+Start with [the current inspection handoff](INSPECTION-BUILD-HANDOFF.md). It identifies the actual compiled product, retained evidence, launch ownership, known harness issue, completed fixes, and remaining gates. The [copied evidence index](evidence/inspection-build-2026-10-05/index.json) preserves existing results without running new checks.
+
+The renderer passes the unchanged budgets: startup JS **500637 / 501760 bytes**, CSS **179504 / 184320**, total JS **1842978 / 1843200**. Total JS has only 222 bytes of reserve. Current functional journeys, exhaustive performance and F21 visual matrices remain deferred. The user owns resize testing; historical full native qualification remains **541 successes and one viewport failure**, with `full542Passed=false` and `safetyPassed=false`. Never convert deferred work into a pass.
+
+Scope remains frozen. No feature/command expansion, repeated unchanged checks, automatic CI runs, push, signing or release is authorized by this checkpoint. Keep the supplied 06 source/capture design authority and Aux name/logo. Earlier progress entries below are historical and do not supersede this status.
+
+---
+
 ## Parallel implementation update — coherent chat and performance batch (2026-10-04)
 
 The coherent source batch now includes registered remappable conversation recovery and image controls, original disposable-Profile fixed50000 history preparation, the three-mode native command collector, exact original nested guest/Little timing bytes, and the late-quit epoch correction. Narrow composers retain explicit Add browser tabs and Add split tab controls through the existing wrapping layout. UI references are pinned to actual supplied06 WebUI/CSS and upstream sources; Aux branding remains intact. Root independently reviewed exact packet replay, source references, public contract/type equivalence and unchanged protocol policy. Rebuilt workspace, complete unit suite, shell types, lint, format, bindings, bridge, journey manifest, native inventory and strict native154 renderer gates pass. Actual bytes are500445 startup/179368 startupCSS/1843098 total against unchanged501760/184320/1843200 limits. Total margin is only102 bytes.

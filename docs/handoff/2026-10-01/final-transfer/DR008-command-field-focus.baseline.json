@@ -1,0 +1,9 @@
+{
+  "status": "unapplied scoped source request; actual native closure pending",
+  "path": "apps/shell/src/components/CommandSurface.css",
+  "beforeSha256": "bf98f7ebf9d453d1961a77d5e8b731bad2951a5e8dd205db673dcf8d4b31c164",
+  "afterSha256": "ad4966e193b7c7fb33f238c74c60fdc0ece3dc1b32607f6af060ce2f49a5a414",
+  "requestSha256": "7cf2d605987b203584f7f0f570d0a2757c07d1e55e7bd13ad199c6ff4c22c01b",
+  "authority": "root-complete read-only; not native pixels synthesized",
+  "verification": "isolated apply/reverse/exact bytes PASS; no app/native execution"
+}

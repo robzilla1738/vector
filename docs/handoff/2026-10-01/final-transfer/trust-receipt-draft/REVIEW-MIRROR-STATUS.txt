@@ -1,0 +1,19 @@
+ M apps/runtime/src/api/methods/settings.ts
+ M apps/runtime/src/features/overnight-review/runtime.ts
+ M apps/runtime/src/features/overnight-review/service.ts
+ M apps/runtime/src/main.ts
+ M apps/runtime/src/native.ts
+ M apps/runtime/src/safety/native-permission.ts
+ M apps/runtime/src/services/night-shift.ts
+ M apps/runtime/src/services/pages/executor.ts
+ M packages/contracts/src/host-methods.ts
+ M tests/unit/autonomy-services.test.ts
+ M tests/unit/handler-results.test.ts
+ M tests/unit/native-permission-producer.test.ts
+?? apps/runtime/src/services/overnight-authority.ts
+?? baseline.json
+?? native-permission.corrected.txt
+?? packages/contracts/src/native-appearance.ts
+?? receipt-baseline.json
+?? receipt-composition-dependencies.json
+?? tests/fixtures/overnight-authority.ts

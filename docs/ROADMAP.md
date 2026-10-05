@@ -1,3 +1,15 @@
+## Current delivery status — October 5, 2026 (America/Chicago)
+
+The frozen implementation is integrated for local-main delivery. Native352 compiled successfully and its native/runtime/helper pair matched; the focused ownership, permission, generation, mailbox and acknowledgement controls passed. Aux was launched and observed on Home and New chat with Aux branding and optional context. This is an **inspection preview**, not full roadmap or release qualification.
+
+Start with [the current inspection handoff](INSPECTION-BUILD-HANDOFF.md). It identifies the actual compiled product, retained evidence, launch ownership, known harness issue, completed fixes, and remaining gates. The [copied evidence index](evidence/inspection-build-2026-10-05/index.json) preserves existing results without running new checks.
+
+The renderer passes the unchanged budgets: startup JS **500637 / 501760 bytes**, CSS **179504 / 184320**, total JS **1842978 / 1843200**. Total JS has only 222 bytes of reserve. Current functional journeys, exhaustive performance and F21 visual matrices remain deferred. The user owns resize testing; historical full native qualification remains **541 successes and one viewport failure**, with `full542Passed=false` and `safetyPassed=false`. Never convert deferred work into a pass.
+
+Scope remains frozen. No feature/command expansion, repeated unchanged checks, automatic CI runs, push, signing or release is authorized by this checkpoint. Keep the supplied 06 source/capture design authority and Aux name/logo. Earlier progress entries below are historical and do not supersede this status.
+
+---
+
 **Current design basis (October 3, 2026).** F21 must derive every applicable UI element from the81 actual source files in `/Users/rcourson/AI Blueprints/06/assets/upstream-src/` (Chromium152.0.7977.83), plus decoded product WebUI, semantic/resolved colors, Geist typography, squircle geometry, liquid-glass materials and all supplied surfaces. See [the complete source-to-surface map](design/upstream-source-map.md), its pinned inventory, and `06_COPYABLE-SURFACES.md` §§8–8c. Compare against the130MB installed `live-1.0.928` capture. Keep Aux name, logo and app identity. Exact source adoption, actual native appearance/state evidence and final visual signoff remain required; availability is not completion.
 
 **Browser-runtime design-pass resources — October 1, 2026.** The [F21 design pass](BROWSER-RUNTIME-PLAN.md#f21-design-polish-pass-l12-with-the-design-reviewer-throughout) uses the approximately 130 MB installed-build capture at `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/`, indexed in `/Users/rcourson/AI Blueprints/06_COPYABLE-SURFACES.md` §§8–8c. Pull surface design and interaction references from those resources while preserving Aux branding, name, logo and product identity. The canonical plan and L12 brief record the reference workflow and unchanged visual acceptance requirements.
