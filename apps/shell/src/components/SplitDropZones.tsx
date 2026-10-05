@@ -21,15 +21,23 @@ export function SplitDropZones() {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reset = () => { if (timer.current) clearTimeout(timer.current); started.current = null; setReady(false); setSurfaceState({ dragging: null, edge: null }); };
   useEffect(() => {
+    let owner: string | undefined;
+    const identity = (id: string) => {
+      const store = useStore.getState(), primary = store.activePageId;
+      if (!primary || primary === id || store.overlay || store.mode !== "focus") return;
+      const pair = [localSplitPage(primary), localSplitPage(id)];
+      if (!pair[0] || !pair[1] || addPane(store.layout, primary, id, "right") === store.layout) return;
+      return JSON.stringify([store.layout.activeSpaceId, pair.map(page => [page!.pageId, page!.windowId, page!.windowKind, page!.targetId, page!.sessionId,
+        page!.url, page!.documentEpoch, page!.controllerEpoch, store.layout.tabSpace[page!.pageId]])]);
+    };
     const begin = (event: DragEvent) => {
       const ids = event.dataTransfer?.getData(TAB_DRAG_TYPE).split("\n");
-      const store = useStore.getState();
-      if (ids?.length !== 1 || !localSplitPage(ids[0]!) || !store.activePageId || !localSplitPage(store.activePageId)
-        || store.activePageId === ids[0] || store.overlay || store.mode !== "focus"
-        || addPane(store.layout, store.activePageId, ids[0]!, "right") === store.layout) return;
+      if (ids?.length !== 1 || !(owner = identity(ids[0]!))) return;
       setSurfaceState({ dragging: ids[0]!, edge: null });
     };
-    const unsubscribe = useStore.subscribe((next, previous) => { if (next.overlay !== previous.overlay || next.mode !== previous.mode || next.pages !== previous.pages) reset(); });
+    const unsubscribe = useStore.subscribe(() => {
+      if (owner && identity(getSurfaceState().dragging ?? "") !== owner) { owner = undefined; reset(); }
+    });
     document.addEventListener("dragstart", begin); document.addEventListener("dragend", reset, true);
     return () => { document.removeEventListener("dragstart", begin); document.removeEventListener("dragend", reset, true); unsubscribe(); reset(); };
   }, []);
