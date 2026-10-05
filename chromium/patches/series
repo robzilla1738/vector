@@ -347,3 +347,4 @@ aux/runtime/0337-original-appearance-channel-retirement.patch
 0377-native-capture-opacity-diagnostic-cleanup-and-viewport-failure-observation.patch
 0378-native-egress-request-evidence-lease-field-projection.patch
 0379-native-performance-mailbox-first-presentation-readiness.patch
+0380-native-performance-mailbox-frame-timing-class-tag.patch
