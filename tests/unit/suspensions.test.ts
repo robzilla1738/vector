@@ -2,9 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { SuspensionRequest } from "@aux/contracts";
 import { openDb } from "../../apps/runtime/src/store/db.js";
 import { SuspensionStore } from "../../apps/runtime/src/safety/suspensions.js";
-import { classifyRepair } from "../../apps/runtime/src/agent/repair.js";
 import { refusalGuidance, REFUSAL_REGISTRY } from "@aux/contracts";
-import { AuxError } from "@aux/contracts";
 
 const databases: ReturnType<typeof openDb>[] = [];
 afterEach(() => {
@@ -96,17 +94,6 @@ describe("S3 durable suspensions", () => {
       state: "pending",
       request: { instruction: "Which account should I use?" },
     });
-  });
-});
-
-describe("S3 suspension classification", () => {
-  it("classifies needs_input as suspended, not auth", () => {
-    expect(classifyRepair(new AuxError("needs_input", "Complete this action directly in the site."))).toBe(
-      "suspended",
-    );
-    expect(
-      classifyRepair(new AuxError("permission_denied", "permission denied for click (effect:write)")),
-    ).toBe("auth");
   });
 });
 

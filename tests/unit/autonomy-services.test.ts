@@ -1,3 +1,4 @@
+import { budgetLineage } from "../fixtures/budget-lineage.js";
 import { fixtureEmptyOvernightAuthority } from "../fixtures/overnight-authority.js";
 import { runInNewContext } from "node:vm";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
@@ -168,7 +169,7 @@ it("never starts proposals, serializes actual queue claims and links identity be
   const service = new NightShiftService(
     repo,
     runtime,
-    new BudgetsService(db, () => ({})),
+    new BudgetsService(db, () => ({}), budgetLineage(repo)),
     createClock(1, () => now),
   );
   const proposed = service.propose({ payload: { kind: "goal", goalId: "goal" }, budgetUsd: 0.4 });
@@ -209,7 +210,7 @@ it("persists ordinary overnight metadata without a field codec", () => {
       consolidate: async () => {},
       reindex: async () => {},
     },
-    new BudgetsService(db, () => ({})),
+    new BudgetsService(db, () => ({}), budgetLineage(repo)),
   );
   expect(service.queue({ payload: { kind: "goal", goalId: "goal" }, budgetUsd: 0.2 }).payload).toEqual({
     kind: "goal",
@@ -354,7 +355,7 @@ it("uses actual billed calls for nightly scope, exhaustion and the morning summa
     consolidate: async () => {},
     reindex: async () => {},
   };
-  const budgets = new BudgetsService(db, () => ({}));
+  const budgets = new BudgetsService(db, () => ({}), budgetLineage(repo));
   const service = new NightShiftService(
     repo,
     runtime,
@@ -665,7 +666,7 @@ it("fresh window and background checks preserve real parked approvals for person
   const service = new NightShiftService(
     repo,
     runtime,
-    new BudgetsService(db, () => ({})),
+    new BudgetsService(db, () => ({}), budgetLineage(repo)),
     createClock(1, () => now),
   );
   const item = service.queue({ payload: { kind: "goal", goalId: "goal" }, budgetUsd: 0.2 });
@@ -699,7 +700,7 @@ it("stores reviewed overnight Skill variables and refuses excessive inputs", asy
       consolidate: async () => {},
       reindex: async () => {},
     },
-    new BudgetsService(db, () => ({})),
+    new BudgetsService(db, () => ({}), budgetLineage(repo)),
   );
   const payload = {
     kind: "routine",
@@ -912,7 +913,7 @@ it("checks the real overnight window before each replayed Skill dispatch", async
   const service = new NightShiftService(
     repo,
     runtime,
-    new BudgetsService(db, () => ({})),
+    new BudgetsService(db, () => ({}), budgetLineage(repo)),
     createClock(1, () => now),
   );
   const remove = installNightShift(
@@ -980,7 +981,6 @@ it("the actual page executor stops later program steps when the overnight window
     turnMentions: mentions,
     native: new NullNativeBridge(),
     drivers: () => ({ aux: driver, chrome: null }),
-    grants: ["effect:read"],
   });
   const page = await pages.open({ url: "https://fixture.test/", ownedByRuntime: true, background: true });
   let runId = "";
@@ -1009,7 +1009,7 @@ it("the actual page executor stops later program steps when the overnight window
         return runId;
       },
     },
-    new BudgetsService(db, () => ({})),
+    new BudgetsService(db, () => ({}), budgetLineage(repo)),
     createClock(1, () => now),
   );
   const remove = installNightShift(
@@ -1085,13 +1085,15 @@ it("charges real descendant model and Guardian calls to the original person queu
   const night = new NightShiftService(
     repo,
     runtime,
-    new BudgetsService(db, () => ({})),
+    new BudgetsService(db, () => ({}), budgetLineage(repo)),
     createClock(1, () => now),
   );
   const item = night.queue({ payload: { kind: "goal", goalId: "goal" }, budgetUsd: 0.4 });
   await night.tick();
   const parentId = night.get(item.id).runId!;
+  const { SuspensionStore } = await import("../../apps/runtime/src/safety/suspensions.js");
   const runs = {
+    coordinator: { suspensions: new SuspensionStore(db) },
     pageOwnership: { snapshot: () => ({}) },
     start: async (input: { deliveryRunId: string; goal: string; pageIds: string[] }) => {
       const run = {
@@ -1200,7 +1202,7 @@ it("refuses subsequent overnight dispatch and another queued item when an actual
         return runId;
       },
     },
-    new BudgetsService(db, () => ({})),
+    new BudgetsService(db, () => ({}), budgetLineage(repo)),
     createClock(1, () => now),
   );
   const first = service.queue({ payload: { kind: "goal", goalId: "first" }, budgetUsd: 0.4 });

@@ -1,3 +1,5 @@
+import { browserContextPage } from "./browser-context-page.js";
+import type { TurnSourceContext } from "@aux/contracts/turn-source-context";
 import {
   retireControlledAttachmentNavigation,
   finalizeControlledAttachmentNavigation,
@@ -23,12 +25,17 @@ export interface MentionContext {
   workspaceId?: string;
   taskId?: string;
   taskRevision?: number;
+  nativeTurnContext?: string;
+  privateTask?: boolean;
+  /** Trusted engine source binding for narrower children; never RPC arguments. */
+  sourcePageIds?: readonly string[];
 }
 export interface TurnMentionDependencies {
   prepareReadPage?(pageId: string): Promise<void>;
   page(pageId: string): PageTarget | undefined;
   authorizeRead?(runId: string, pageId: string, taskRead?: ValidatedTaskRead): Promise<() => void>;
   organization(): Promise<ProfileOrganizationSnapshot>;
+  turnSourceContext?(token: string): Promise<TurnSourceContext>;
   routine(routineId: string): Routine | undefined;
   connectors(context: MentionContext): ConnectorCatalog;
 }
@@ -38,6 +45,9 @@ type Active = {
   refs: MentionRef[];
   context: MentionContext;
   organization?: ProfileOrganizationSnapshot;
+  sourceContext?: TurnSourceContext;
+  currentSourceContext?: TurnSourceContext;
+  defaultPageIds: Set<string>;
 };
 
 /** Profile-owned, active-turn authority. Persisted refs are instructions to validate, never grants by themselves. */
@@ -46,7 +56,7 @@ export class TurnMentionService {
   private starts = new Map<string, symbol>();
   constructor(private readonly deps: TurnMentionDependencies) {}
   private page = (pageId: string): MentionPage | undefined => {
-    const page = this.deps.page(pageId);
+    const page = browserContextPage(() => this.deps.page(pageId));
     if (!page?.sessionId || page.viewStatus === "detached" || page.viewStatus === "crashed") return undefined;
     return {
       pageId: page.pageId,
@@ -66,6 +76,12 @@ export class TurnMentionService {
     this.starts.set(runId, token);
     try {
       const refs = MentionRefsSchema.parse(raw);
+      const hasPageSelection = refs.some(
+        (ref) => ref.kind === "tab" || ref.kind === "group" || ref.kind === "space",
+      );
+      const sourceContext = context.nativeTurnContext
+        ? await this.sourceContext(context.nativeTurnContext)
+        : undefined;
       const organization = refs.some((ref) => ref.kind === "space")
         ? await this.deps.organization()
         : undefined;
@@ -78,7 +94,22 @@ export class TurnMentionService {
           for (const [pageId, spaceId] of Object.entries(organization?.shared?.tabSpace ?? {}))
             if (spaceId === ref.spaceId) selected.add(pageId);
       }
-      if (this.deps.prepareReadPage && selected.size) {
+      const defaults = new Set<string>();
+      if (!hasPageSelection) {
+        if (context.sourcePageIds) for (const pageId of context.sourcePageIds) defaults.add(pageId);
+        else if (sourceContext) {
+          if (sourceContext.activePageId) defaults.add(sourceContext.activePageId);
+          const spaceId = sourceContext.layout?.window.activeSpaceId;
+          if (
+            spaceId &&
+            sourceContext.layout?.shared.spaces.some((space) => space.id === spaceId && !space.archived)
+          )
+            for (const [pageId, memberSpace] of Object.entries(sourceContext.layout.shared.tabSpace))
+              if (memberSpace === spaceId) defaults.add(pageId);
+        }
+      }
+      for (const pageId of defaults) if (browserContextPage(() => this.deps.page(pageId))) selected.add(pageId);
+      if (this.deps.prepareReadPage && selected.size && !context.privateTask) {
         await Promise.all([...selected].map((pageId) => this.deps.prepareReadPage!(pageId)));
         if (this.starts.get(runId) !== token)
           throw new MentionUnavailable("This turn changed while preparing its sources.");
@@ -113,17 +144,32 @@ export class TurnMentionService {
             !!active.context.workspaceId &&
             this.deps
               .connectors(active.context)
-              .entries.some(
-                (entry) =>
-                  entry.connectorId === ref.connectorId &&
-                  entry.state === "active",
-              ),
+              .entries.some((entry) => entry.connectorId === ref.connectorId && entry.state === "active"),
         }),
         refs,
         context,
         organization,
+        sourceContext,
+        currentSourceContext: sourceContext,
+        defaultPageIds: defaults,
       };
-      active.authority.begin(runId, refs, ownedPageIds);
+      active.authority.begin(runId, refs, ownedPageIds, {
+        defaultPages: [...defaults].map(this.page).filter((page): page is MentionPage => !!page),
+        privateTask: context.privateTask,
+      });
+      if (context.privateTask)
+        for (const source of active.authority.sourcePages(runId)) {
+          const current = this.page(source.pageId);
+          if (
+            !current ||
+            current.url !== source.url ||
+            current.documentEpoch !== source.documentEpoch ||
+            current.sessionId !== source.sessionId
+          )
+            throw new MentionUnavailable(
+              "The private task source changed before its isolated tabs were created.",
+            );
+        }
       this.turns.set(runId, active);
       return { refs: active.refs, token };
     } finally {
@@ -162,6 +208,17 @@ export class TurnMentionService {
   has(runId: string) {
     return this.turns.has(runId);
   }
+  sourcePages(runId: string): readonly MentionPage[] {
+    return this.turns.get(runId)?.authority.sourcePages(runId) ?? [];
+  }
+  hasPageSelection(runId: string): boolean {
+    return this.turns.get(runId)?.authority.hasPageSelection(runId) ?? false;
+  }
+  private async sourceContext(token: string) {
+    if (!this.deps.turnSourceContext)
+      throw new MentionUnavailable("Original window source authority is unavailable.");
+    return this.deps.turnSourceContext(token);
+  }
   selectedPages(runId: string): string[] {
     return this.turns.get(runId)?.authority.selectedPages(runId) ?? [];
   }
@@ -176,6 +233,12 @@ export class TurnMentionService {
   private async refresh(runId: string): Promise<Active | undefined> {
     const active = this.turns.get(runId);
     if (!active) return undefined;
+    if (active.context.nativeTurnContext) {
+      const current = await this.sourceContext(active.context.nativeTurnContext);
+      if (this.turns.get(runId) !== active || current.windowId !== active.sourceContext?.windowId)
+        return undefined;
+      active.currentSourceContext = current;
+    }
     if (active.refs.some((ref) => ref.kind === "space")) {
       const current = await this.deps.organization();
       if (this.turns.get(runId) !== active) return undefined;
@@ -195,6 +258,22 @@ export class TurnMentionService {
     }
     return active;
   }
+  private defaultScopeCurrent(active: Active, pageId: string, runId: string): boolean {
+    if (
+      !active.defaultPageIds.has(pageId) ||
+      active.context.sourcePageIds ||
+      active.authority.ownedPages(runId).includes(pageId)
+    )
+      return true;
+    const original = active.sourceContext,
+      current = active.currentSourceContext;
+    const spaceId = original?.layout?.window.activeSpaceId;
+    if (!spaceId) return current?.activePageId === original?.activePageId;
+    if (current?.layout?.window.activeSpaceId !== spaceId) return false;
+    return original?.layout?.shared.tabSpace[pageId] === spaceId
+      ? current?.layout?.shared.tabSpace[pageId] === spaceId
+      : pageId === original?.activePageId && current?.activePageId === pageId;
+  }
   async require(runId: string, pageId: string, access: MentionAccess): Promise<MentionAvailability> {
     const active = await this.refresh(runId);
     const unavailable: MentionAvailability = {
@@ -202,10 +281,14 @@ export class TurnMentionService {
       reason: "This turn or its Space snapshot changed. Mention the sources again.",
     };
     if (!active) return unavailable;
+    if (!this.defaultScopeCurrent(active, pageId, runId))
+      return { status: "unavailable", reason: "The original window’s selected source Space changed." };
     const initial = active.authority.require(runId, pageId, access);
     if (initial.status === "unavailable") return initial;
     if (access === "read" && this.deps.prepareReadPage) await this.deps.prepareReadPage(pageId);
-    return this.turns.get(runId) === active ? active.authority.require(runId, pageId, access) : unavailable;
+    if ((await this.refresh(runId)) !== active || !this.defaultScopeCurrent(active, pageId, runId))
+      return unavailable;
+    return active.authority.require(runId, pageId, access);
   }
 
   capture(runId: string): symbol {
@@ -252,10 +335,14 @@ export class TurnMentionService {
     checkSource: () => void,
     dispatch: () => Promise<T>,
   ): Promise<T> {
-    const active = this.turns.get(runId);
+    const active = await this.refresh(runId);
     if (!active) throw new MentionUnavailable("This turn has ended.");
     checkSource();
-    if (active.refs.length || active.authority.ownedPages(runId).includes(pageId)) {
+    if (
+      active.authority.hasPageSelection(runId) ||
+      active.authority.ownedPages(runId).includes(pageId) ||
+      active.context.privateTask
+    ) {
       const result = await this.use(runId, pageId, access, dispatch);
       checkSource();
       return result;
@@ -278,9 +365,13 @@ export class TurnMentionService {
       (access === "read" && (ready.url !== before.url || ready.documentEpoch !== before.documentEpoch))
     )
       throw new MentionUnavailable("This turn or source changed while authorizing its read.");
+    if ((await this.refresh(runId)) !== active)
+      throw new MentionUnavailable("Original source window retired before dispatch.");
     recheckPolicy?.();
     const result = await dispatch();
     recheckPolicy?.();
+    if ((await this.refresh(runId)) !== active)
+      throw new MentionUnavailable("Original source window retired during dispatch.");
     if (this.turns.get(runId) !== active)
       throw new MentionUnavailable("This turn changed while using its approved source.");
     checkSource();

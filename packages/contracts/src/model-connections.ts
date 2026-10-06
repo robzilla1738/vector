@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ModelCapabilitySchema } from "./model-registry.js";
 import { ModelProviderSchema } from "./model-providers.js";
 
 export const MODEL_PROVIDER_NAMES = {
@@ -6,6 +7,7 @@ export const MODEL_PROVIDER_NAMES = {
   openai: "OpenAI",
   anthropic: "Anthropic",
   google: "Google",
+  openrouter: "OpenRouter",
   "openai-compatible": "OpenAI-compatible",
 } as const;
 export const ModelConnectionChangeSchema = z
@@ -22,11 +24,16 @@ export const ModelConnectionStatusSchema = z
   })
   .strict();
 export type ModelConnectionStatus = z.infer<typeof ModelConnectionStatusSchema>;
-/** Deliberately bounded; adding a model requires review of its SDK support and one-image reservation. */
-export const IMAGE_MODELS = [
-  { id: "google/imagen-4.0-fast-generate-001", label: "Imagen 4 Fast" },
-  { id: "google/imagen-4.0-generate-001", label: "Imagen 4" },
-  { id: "google/imagen-4.0-ultra-generate-001", label: "Imagen 4 Ultra" },
-] as const;
-export const ImageModelSchema = z.enum([IMAGE_MODELS[0].id, IMAGE_MODELS[1].id, IMAGE_MODELS[2].id]);
+/** Image generation defaults to the verified current Gateway model. */
+export const IMAGE_MODELS = [{ id: "openai/gpt-image-2", label: "GPT Image 2" }] as const;
+export const ImageModelSchema = z.enum([IMAGE_MODELS[0].id]);
 export type ImageModel = z.infer<typeof ImageModelSchema>;
+
+export const LocalModelServerSchema = z
+  .object({
+    kind: z.enum(["ollama", "lm-studio", "compatible"]),
+    endpoint: z.string().url(),
+    models: z.array(ModelCapabilitySchema).max(500),
+  })
+  .strict();
+export type LocalModelServer = z.infer<typeof LocalModelServerSchema>;

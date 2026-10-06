@@ -412,19 +412,34 @@ export function installMockBridge(q: URLSearchParams) {
       }),
     );
   }
-  const chatMetadata = new Map<string, { title: string; archived: boolean; updatedAt: number }>();
+  const chatMetadata = new Map<
+    string,
+    { title: string; archived: boolean; updatedAt: number; privateTask: boolean }
+  >();
   if (scenario === "results" && q.get("archived") === "1")
     chatMetadata.set(resultFixture.chatId, {
       title: resultFixture.conversationTitle,
       archived: true,
+      privateTask: false,
       updatedAt: Date.now(),
     });
   if (scenario === "generated" && q.get("archived") === "1")
     chatMetadata.set(generatedFixture.chatId, {
       title: "Generated comparison",
       archived: true,
+      privateTask: false,
       updatedAt: Date.now(),
     });
+  for (const run of runs) {
+    const chatId = run.config?.chatId ?? run.runId;
+    if (!chatMetadata.has(chatId))
+      chatMetadata.set(chatId, {
+        title: run.goal,
+        archived: false,
+        privateTask: false,
+        updatedAt: run.createdAt,
+      });
+  }
   const chatSummaries = (): ConversationSummary[] => {
     const groups = new Map<string, Run[]>();
     for (const run of runs) {
@@ -438,6 +453,7 @@ export function installMockBridge(q: URLSearchParams) {
           saved = chatMetadata.get(chatId);
         return {
           chatId,
+          privateTask: saved?.privateTask ?? false,
           title: saved?.title ?? turns.at(-1)!.goal,
           archived: saved?.archived ?? false,
           createdAt: turns.at(-1)!.createdAt,
@@ -1868,6 +1884,18 @@ export function installMockBridge(q: URLSearchParams) {
     },
     "runs.start": async (p) => {
       const id = `run-${Math.random().toString(36).slice(2, 6)}`;
+      const chatId = (p.chatId as string | undefined) ?? id;
+      const existing = chatMetadata.get(chatId);
+      if (existing && p.privateTask === true && !existing.privateTask)
+        throw new Error("This chat’s task mode is fixed.");
+      const privateTask = existing?.privateTask ?? p.privateTask === true;
+      if (!existing)
+        chatMetadata.set(chatId, {
+          title: String(p.goal),
+          archived: false,
+          privateTask,
+          updatedAt: Date.now(),
+        });
       const run: Run = {
         runId: id,
         goal: p.goal as string,
@@ -1876,7 +1904,10 @@ export function installMockBridge(q: URLSearchParams) {
         createdAt: Date.now(),
         startedAt: Date.now(),
         statusMessage: "Observing the page",
-        config: { chatId: p.chatId as string | undefined },
+        config: {
+          chatId: p.chatId as string | undefined,
+          privateTask,
+        },
       };
       runs = [run, ...runs];
       emit("run.status", { run }, id);

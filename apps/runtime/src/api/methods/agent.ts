@@ -1,19 +1,16 @@
+import { createHash } from "node:crypto";
 import { pageDerivativeCache } from "../../services/ai-result-cache.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
-import { AgentImageTools } from "../../agent/image-tools.js";
 import { AgentWebTools, permittedWebUrl } from "../../agent/web-tools.js";
 import {
   AuxError,
-  OriginRuleSchema,
   InlineAssistApplyParamsSchema,
   InlineAssistTextSchema,
 } from "@aux/contracts";
-import { SpendLedger } from "../../store/spend-ledger.js";
 import { policyFor } from "@aux/contracts";
 import { proposeTabTidy } from "../../agent/tidy.js";
 import { suggestTabName } from "../../agent/tab-name.js";
-import { evaluateOriginPolicy } from "../../safety/origin-policy.js";
 
 async function h_agent_tabs_list(ctx: MethodCtx): Promise<unknown> {
   if (!ctx.externalRunId)
@@ -74,18 +71,17 @@ function inlineAssistGuard(ctx: MethodCtx) {
     if (current.revision !== revision)
       throw new AuxError("conflict", "Selection & Capture changed. Select the field and start again.");
     if (url) {
-      const policy = evaluateOriginPolicy({
-        url,
-        effect,
-        action: `inline_assist_${effect}`,
-        managed: OriginRuleSchema.array().parse(ctx.s.repo.getSetting("managedOriginPolicies") ?? []),
-        user: [],
-        audit: (decision) => ctx.safetyAudit.record({ ...decision }),
+      const access = ctx.s.settings.agentPolicy();
+      const policy = policyFor({
+        mode: access.agentMode,
+        category: effect === "write" ? "input" : effect === "egress" ? "navigate" : "read",
+        site: new URL(url).origin,
+        overrides: access.agentPolicies,
       });
-      if (policy.reason === "explicit_deny" || policyFor({ mode: ctx.s.settings.agentPolicy().agentMode, category: effect === "write" ? "input" : effect === "egress" ? "navigate" : "read", site: new URL(url).origin, overrides: ctx.s.settings.agentPolicy().agentPolicies }).disposition !== "allow")
+      if (policy.disposition !== "allow")
         throw new AuxError(
           "permission_denied",
-          policy.access === "ask"
+          policy.disposition === "ask"
             ? "This site requires an approval that Inline assist cannot request yet."
             : "This site’s policy does not allow this Inline assist action.",
         );
@@ -165,43 +161,77 @@ async function h_agent_web_fetch(ctx: MethodCtx): Promise<unknown> {
   return web.search(params.query, engine);
 }
 async function h_agent_images_generate(ctx: MethodCtx): Promise<unknown> {
-  const { client, decideEgress, params, s } = ctx;
-  const configuredImage = () => {
-    if (Object.values(s.settings.budgetLimits()).some((limit) => limit !== undefined))
-      throw new AuxError(
-        "permission_denied",
-        "Image generation is unavailable while a run, day or routine spend cap is set because image spend is not yet included in those caps.",
-      );
-    const model = s.settings.imageModel();
-    if (!model)
-      throw new AuxError(
-        "permission_denied",
-        "Choose an image-generation model in Settings before generating an image.",
-      );
-    return model;
-  };
-  const imageModel = configuredImage();
-  await decideEgress({
-    url: new URL("https://ai-gateway.vercel.sh"),
-    action: "agent.images.generate",
-    taskId: params.taskId,
-    connectionId: client.connectionId,
-    runId: ctx.externalRunId,
-  });
-  if (configuredImage() !== imageModel)
-    throw new AuxError("conflict", "The image model changed during approval. Review the request again.");
-  const key = s.settings.gatewayKey();
-  if (!key)
-    throw new AuxError("backend_unavailable", "Connect AI Gateway in Settings before generating an image.");
-  const ledger = new SpendLedger();
-  try {
-    return await AgentImageTools.withGateway(key, s.artifacts, ledger, imageModel).generate(
-      params.prompt,
-      params.taskId,
+  const { client, params, s } = ctx;
+  if (!s.settings.imageModel())
+    throw new AuxError("permission_denied", "Image generation is off in Settings.");
+  const authorize = (runId: string) =>
+    ctx
+      .decideEgress({
+        url: new URL("https://ai-gateway.vercel.sh"),
+        action: "agent.images.generate",
+        taskId: params.taskId,
+        connectionId: client.connectionId,
+        runId,
+        threadId: runId,
+        actor: client.external ? "external_token" : "user",
+        invocationDigest: createHash("sha256")
+          .update(
+            JSON.stringify([
+              "image-generation",
+              runId,
+              params.prompt,
+              s.settings.imageModel(),
+              s.settings.modelCacheGeneration(),
+            ]),
+          )
+          .digest("hex"),
+      })
+      .then(() => {});
+  if (ctx.externalRunId) {
+    const runId = ctx.externalRunId;
+    return s.runs.imageSession(runId, (signal) =>
+      s.runs.generateImage({
+        runId,
+        prompt: params.prompt,
+        signal,
+        checkOwner: () => {
+          const run = s.repo.getRun(runId);
+          const connection = s.repo.db
+            .prepare("SELECT revoked_at,expires_at FROM agent_connections WHERE connection_id=?")
+            .get(client.connectionId ?? "") as
+            { revoked_at: number | null; expires_at: number | null } | undefined;
+          if (
+            !run ||
+            run.config?.externalConnectionId !== client.connectionId ||
+            !connection ||
+            connection.revoked_at !== null ||
+            (connection.expires_at !== null && connection.expires_at <= Date.now())
+          )
+            throw new AuxError("cancelled", "The original image connection changed.");
+        },
+        authorize,
+      }),
     );
-  } finally {
-    ledger.close();
   }
+  if (client.external || !client.nativeTurnContext || !s.native?.turnSourceContext)
+    throw new AuxError("permission_denied", "Image generation requires its original Aux window.");
+  const token = client.nativeTurnContext;
+  const owner = await s.native.turnSourceContext(token);
+  const checkOwner = async () => {
+    const current = await s.native!.turnSourceContext!(token);
+    if (current.windowId !== owner.windowId)
+      throw new AuxError("cancelled", "The original image window changed.");
+  };
+  return s.runs.imageOperation(
+    {
+      prompt: params.prompt,
+      taskId: params.taskId,
+      expectedRevision: params.expectedRevision,
+      nativeTurnContext: token,
+      checkOwner,
+    },
+    (runId, signal) => s.runs.generateImage({ runId, prompt: params.prompt, signal, checkOwner, authorize }),
+  );
 }
 async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
   const { client, decideEgress, params, s, tasks, turnTabs } = ctx;

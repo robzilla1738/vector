@@ -657,28 +657,16 @@ describe("outbound Google Calendar connection", () => {
       const prompts: string[] = [];
       let calls = 0;
       const model: ModelClient = {
-        generateStructured: async (options) => {
-          prompts.push(options.prompt);
-          const selectedGrant = calls++ === 0 ? otherGrant.grantId : grant.grantId;
-          const object =
-            calls <= 2
-              ? {
-                  status: "source",
-                  message: "Reading Calendar",
-                  sourceRequest: {
-                    kind: "calendar.events.list",
-                    grantId: selectedGrant,
-                    timeMin: "2026-09-24T00:00:00Z",
-                    timeMax: "2026-09-30T00:00:00Z",
-                    limit: 10,
-                  },
-                }
-              : {
-                  status: "done",
-                  message: "Brief ready",
-                  result: { report: `- Meeting alice [source](${eventUrl})` },
-                };
-          return { object: options.schema.parse(object), durationMs: 1 };
+        generateStructured: async () => { throw new Error("No planner source engine."); },
+        toolCallStep: async (options) => {
+          prompts.push(JSON.stringify(options.messages));
+          if (++calls > 3) throw new Error("Unexpected Calendar SDK request.");
+          const toolName = calls <= 2 ? "calendar_events_list" : "submit_result";
+          const input = calls <= 2 ? { grantId: calls === 1 ? otherGrant.grantId : grant.grantId,
+            timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z", limit: 10 }
+            : { report: `- Meeting alice [source](${eventUrl})` };
+          return { message: { role: "assistant", content: [] }, durationMs: 1,
+            toolCalls: [{ toolCallId: `calendar-${calls}`, toolName, input }] };
         },
         generateText: async () => ({ text: "", durationMs: 1 }),
         listModels: async () => [],
@@ -703,7 +691,7 @@ describe("outbound Google Calendar connection", () => {
         pages: coordinatorFixturePages1 as never,
         model: () => model,
         defaultModel: () => "fixture",
-        recoveryModel: () => undefined,
+
         recordModelCall: () => {},
       });
       const run = await coordinator.start({
@@ -782,32 +770,15 @@ describe("outbound Google Calendar connection", () => {
         calls = 0;
       const prompts: string[] = [];
       const model: ModelClient = {
-        generateStructured: async (options) => {
-          prompts.push(options.prompt);
-          if (calls++ === 0) {
-            laterGrant = setup.service.grantTask(task.taskId, task.revision, bob.connectionId).grantId;
-            return {
-              object: options.schema.parse({
-                status: "source",
-                message: "Read new account",
-                sourceRequest: {
-                  kind: "calendar.events.list",
-                  grantId: laterGrant,
-                  timeMin: "2026-09-24T00:00:00Z",
-                  timeMax: "2026-09-30T00:00:00Z",
-                },
-              }),
-              durationMs: 1,
-            };
-          }
-          return {
-            object: options.schema.parse({
-              status: "done",
-              message: "No source read",
-              result: { answer: "No new account was read." },
-            }),
-            durationMs: 1,
-          };
+        generateStructured: async () => { throw new Error("No planner source engine."); },
+        toolCallStep: async (options) => {
+          prompts.push(JSON.stringify(options.messages));
+          if (++calls > 2) throw new Error("Unexpected Calendar SDK request.");
+          if (calls === 1) laterGrant = setup.service.grantTask(task.taskId, task.revision, bob.connectionId).grantId;
+          return { message: { role: "assistant", content: [] }, durationMs: 1,
+            toolCalls: [{ toolCallId: `calendar-${calls}`, toolName: calls === 1 ? "calendar_events_list" : "submit_result",
+              input: calls === 1 ? { grantId: laterGrant, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z" }
+                : { report: "No new account was read." } }] };
         },
         generateText: async () => ({ text: "", durationMs: 1 }),
         listModels: async () => [],
@@ -832,7 +803,7 @@ describe("outbound Google Calendar connection", () => {
         pages: coordinatorFixturePages2 as never,
         model: () => model,
         defaultModel: () => "fixture",
-        recoveryModel: () => undefined,
+
         recordModelCall: () => {},
       });
       const run = await coordinator.start({
@@ -850,7 +821,7 @@ describe("outbound Google Calendar connection", () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
       expect(setup.repo.getRun(run.runId)?.config?.calendarGrantIds).toEqual([original.grantId]);
       expect(prompts[0]).toContain(original.grantId);
-      expect(prompts.join(" ")).not.toContain(laterGrant);
+      expect(prompts[0]).not.toContain(laterGrant);
       expect(setup.calls.filter((call) => call.url.pathname.endsWith("/events"))).toHaveLength(0);
     } finally {
       await setup.service.close();
@@ -914,18 +885,12 @@ describe("outbound Google Calendar connection", () => {
         },
       } as Observation;
       const model: ModelClient = {
-        generateStructured: async (options) => ({
-          object: options.schema.parse({
-            status: "source",
-            message: "Reading Calendar",
-            sourceRequest: {
-              kind: "calendar.events.list",
-              grantId: grant.grantId,
-              timeMin: "2026-09-24T00:00:00Z",
-              timeMax: "2026-09-30T00:00:00Z",
-            },
-          }),
-          durationMs: 1,
+        generateStructured: async () => { throw new Error("No planner source engine."); },
+        toolCallStep: async () => ({
+          message: { role: "assistant", content: [] }, durationMs: 1,
+          toolCalls: [{ toolCallId: "read-calendar", toolName: "calendar_events_list", input: {
+            grantId: grant.grantId, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z",
+          } }],
         }),
         generateText: async () => ({ text: "", durationMs: 1 }),
         listModels: async () => [],
@@ -950,7 +915,7 @@ describe("outbound Google Calendar connection", () => {
         pages: coordinatorFixturePages3 as never,
         model: () => model,
         defaultModel: () => "fixture",
-        recoveryModel: () => undefined,
+
         recordModelCall: () => {},
       });
       const run = await coordinator.start({

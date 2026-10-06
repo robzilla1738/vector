@@ -32,7 +32,7 @@ describe("manifest-backed code mode", () => {
     }
   });
 
-  it("projects supported members and one Contributor model across all roles", () => {
+  it("projects supported members and frontier routes by role", () => {
     expect(supportedAgentApi({ surface: "code" }).some((entry) => entry.path === "tabs.ax.write")).toBe(
       false,
     );
@@ -48,9 +48,9 @@ describe("manifest-backed code mode", () => {
     expect(agentApiDocs({ surface: "code" }, "lookup")).toContain("tabs.dialog");
     expect(agentApiDocs({ surface: "code" }, "lookup", "debugging")).toContain("tabs.dev.logs");
     expect(new Set(Object.values(DEFAULT_AGENT_MODEL_ROUTES).map((route) => route.modelId))).toEqual(
-      new Set(["meta/muse-spark-1.3-contributor"]),
+      new Set(["anthropic/claude-haiku-4.5", "anthropic/claude-sonnet-5.5", "anthropic/claude-opus-5.5"]),
     );
-    expect(agentModelRoute("deep").reasoning).toBe("xhigh");
+    expect(agentModelRoute("deep").reasoning).toBe("high");
   });
   it("uses typed host contracts for dialog inspection and development logs", async () => {
     const calls: string[] = [];

@@ -5,17 +5,22 @@ import { join } from "node:path";
 import { openDb, Repo, SettingsService, type NativeBridge } from "@aux/runtime";
 
 describe("fixed disposable credential boot/configuration order", () => {
-  it("initializes only original credential cache then uses explicit local endpoint for catalog", async () => {
+  it("initializes credentials before local discovery and uses the selected endpoint for its catalog", async () => {
     const directory = mkdtempSync(join(tmpdir(), "aux-credential-config-"));
     const repo = new Repo(openDb(":memory:"));
     const settings = new SettingsService(repo, join(directory, "settings.json"), {});
     const reads: string[] = [];
     const fetch = vi.fn(
-      async (_url: string, _options?: RequestInit) =>
-        new Response(JSON.stringify({ data: [{ id: "aux-disposable-credential-appearance" }] }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
+      async (input: string, _options?: RequestInit) =>
+        new Response(
+          String(input) === "http://127.0.0.1:3210/v1/models"
+            ? JSON.stringify({ data: [{ id: "aux-disposable-credential-appearance" }] })
+            : "",
+          {
+            status: String(input) === "http://127.0.0.1:3210/v1/models" ? 200 : 404,
+            headers: { "content-type": "application/json" },
+          },
+        ),
     );
     vi.stubGlobal("fetch", fetch);
     settings.attachNative({
@@ -40,13 +45,22 @@ describe("fixed disposable credential boot/configuration order", () => {
       expect(settings.all().gatewayCredentialSource).toBe("none");
       expect(settings.model()).toBeNull();
       await settings.listModels();
-      expect(fetch).not.toHaveBeenCalled();
+      expect(fetch.mock.calls.length).toBeGreaterThan(0);
+      expect(
+        fetch.mock.calls.every(
+          ([url, options]) =>
+            (new URL(String(url)).hostname === "127.0.0.1" ||
+              String(url) === "https://ai-gateway.vercel.sh/v1/models") &&
+            !(options?.headers as Record<string, string> | undefined)?.Authorization,
+        ),
+      ).toBe(true);
+      const discoveryCount = fetch.mock.calls.length;
       await settings.set({
         modelProvider: "openai-compatible",
         compatibleEndpoint: "http://127.0.0.1:3210/v1",
         plannerModel: "aux-disposable-credential-appearance",
       });
-      expect(fetch).not.toHaveBeenCalled();
+      expect(fetch).toHaveBeenCalledTimes(discoveryCount);
       expect(settings.all()).toMatchObject({
         modelProvider: "openai-compatible",
         compatibleEndpoint: "http://127.0.0.1:3210/v1",
@@ -54,9 +68,9 @@ describe("fixed disposable credential boot/configuration order", () => {
         modelCredentialSource: "saved",
       });
       await settings.listModels();
-      expect(fetch).toHaveBeenCalledTimes(1);
-      expect(fetch.mock.calls[0]?.[0]).toBe("http://127.0.0.1:3210/v1/models");
-      expect(fetch.mock.calls[0]?.[1]).toMatchObject({
+      const selected = fetch.mock.calls.filter(([url]) => String(url) === "http://127.0.0.1:3210/v1/models");
+      expect(selected).toHaveLength(1);
+      expect(selected[0]?.[1]).toMatchObject({
         headers: { Authorization: "Bearer aux-disposable-loopback-appearance-synthetic-key-v1" },
         redirect: "error",
       });

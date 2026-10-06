@@ -39,13 +39,18 @@ it("actual compiled SettingsService catalog uses the original branded HTTP endpo
     });
     for (let i = 0; i < 2; i++) {
       const result = await settings.listModels();
-      expect(result.models).toContainEqual({ id: endpoint.model, source: "configured" });
+      expect(result.models).toContainEqual({
+        id: endpoint.model,
+        provider: "openai-compatible",
+        source: "catalog",
+        status: "verified",
+      });
     }
     expect(readDisposableModelCredentialEndpoint(lease).observations).toEqual(
-      Array.from({ length: 2 }, () => ({ method: "GET", path: "/v1/models", syntheticAuthorization: true })),
+      Array.from({ length: 1 }, () => ({ method: "GET", path: "/v1/models", syntheticAuthorization: true })),
     );
     expect(fixture.requests).toEqual(
-      Array.from({ length: 2 }, () => ({ method: "GET", path: "/v1/models" })),
+      Array.from({ length: 1 }, () => ({ method: "GET", path: "/v1/models" })),
     );
     expect(settings.all()).toMatchObject({
       compatibleEndpoint: endpoint.endpoint,

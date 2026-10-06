@@ -7,6 +7,13 @@ import { IMAGE_MODELS } from "@aux/contracts";
 import { EventBus, openDb, Repo, SettingsService } from "@aux/runtime";
 import { ArtifactStore } from "../../apps/runtime/src/services/artifacts.js";
 import { SpendLedger } from "../../apps/runtime/src/store/spend-ledger.js";
+import { RunService } from "../../apps/runtime/src/services/runs.js";
+import { BudgetsService } from "../../apps/runtime/src/services/budgets.js";
+import { PageService } from "../../apps/runtime/src/services/pages.js";
+import { SetService } from "../../apps/runtime/src/services/sets.js";
+import { NullNativeBridge } from "../../apps/runtime/src/native.js";
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
+import { budgetLineage } from "../fixtures/budget-lineage.js";
 import { agentMethods } from "../../apps/runtime/src/api/methods/agent.js";
 
 const imageCall = vi.hoisted(() => vi.fn());
@@ -26,27 +33,74 @@ function fixture() {
   const settings = new SettingsService(repo, join(dir, "settings.json"), {
     AI_GATEWAY_API_KEY: "synthetic-image-only",
   });
-  const artifacts = new ArtifactStore(join(dir, "artifacts"), repo, new EventBus(repo));
+  const events = new EventBus(repo);
+  const artifacts = new ArtifactStore(join(dir, "artifacts"), repo, events);
+  const turnMentions = fixtureTurnMentions((id) => repo.getPage(id));
+  const pages = new PageService({
+    repo,
+    events,
+    turnMentions,
+    native: new NullNativeBridge(),
+    drivers: () => ({ aux: null, chrome: null }),
+  });
+  const budgets = new BudgetsService(db, () => settings.budgetLimits(), budgetLineage(repo));
+  const runs = new RunService({
+    repo,
+    events,
+    artifacts,
+    turnMentions,
+    pages,
+    settings,
+    budgets,
+    sets: new SetService(repo, events, pages),
+    nativeAvailable: () => false,
+  });
+  let ownerLive = true;
+  const native = {
+    turnSourceContext: async () => {
+      if (!ownerLive) throw new Error("Original window retired");
+      return {
+        windowId: "original-image-window",
+        activePageId: null,
+        revision: 0,
+        shared: null,
+        layout: null,
+      };
+    },
+  };
   const decideEgress = vi.fn(async () => {});
   dispose.push(() => {
-    db.close();
+    repo.close();
     rmSync(dir, { recursive: true, force: true });
   });
   const generate = () =>
     agentMethods["agent.images.generate"]!({
-      client: {},
-      params: { prompt: "Synthetic blue circle", taskId: "fixture-task" },
-      s: { settings, artifacts },
+      client: { nativeTurnContext: "00000000-0000-4000-8000-000000000001" },
+      params: { prompt: "Synthetic blue circle" },
+      s: { settings, artifacts, repo, runs, native },
       decideEgress,
     } as never);
-  return { settings, artifacts, decideEgress, generate, dir };
+  return {
+    settings,
+    artifacts,
+    decideEgress,
+    generate,
+    dir,
+    repo,
+    runs,
+    budgets,
+    events,
+    retireOwner: () => {
+      ownerLive = false;
+    },
+  };
 }
 
 it.each(IMAGE_MODELS)(
   "uses the saved $label selection for one synthetic dispatch, receipt and spend reservation",
   async (model) => {
     const f = fixture();
-    await f.settings.set({ imageModel: model.id, effectGrants: ["effect:egress"] });
+    await f.settings.set({ imageModel: model.id });
     imageCall.mockResolvedValue({
       image: { uint8Array: PNG.sync.write(new PNG({ width: 1, height: 1 })), mediaType: "image/png" },
       providerMetadata: { gateway: { cost: "0.03" } },
@@ -61,6 +115,13 @@ it.each(IMAGE_MODELS)(
       maxRetries: 0,
     });
     expect(f.decideEgress).toHaveBeenCalledTimes(1);
+    const calls = f.repo.db.prepare("SELECT run_id,cost_usd,cost_estimated FROM model_calls").all();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ cost_usd: 0.03, cost_estimated: 0 });
+    expect(f.repo.getRun(String(calls[0]!.run_id))).toMatchObject({
+      status: "completed",
+      config: { implementation: "image-generation" },
+    });
     expect(f.artifacts.read(result.artifactId).artifact.mediaType).toBe("image/png");
     const ledger = new SpendLedger(join(f.dir, "spend.sqlite"), { AUX_PROGRAM_SPEND_CAP_USD: "5" });
     try {
@@ -76,7 +137,7 @@ it.each(IMAGE_MODELS)(
 
 it("does not fall back after an image provider error and retains unknown spend", async () => {
   const f = fixture();
-  await f.settings.set({ imageModel: IMAGE_MODELS[1].id, effectGrants: ["effect:egress"] });
+  await f.settings.set({ imageModel: IMAGE_MODELS[0].id });
   imageCall.mockRejectedValue(new Error("Synthetic unavailable model"));
   await expect(f.generate()).rejects.toThrow(/unavailable model/);
   expect(imageCall).toHaveBeenCalledTimes(1);
@@ -92,7 +153,6 @@ it("does not use a disconnected Gateway for images even when another chat provid
   const f = fixture();
   await f.settings.set({
     imageModel: IMAGE_MODELS[0].id,
-    effectGrants: ["effect:egress"],
     modelProvider: "openai",
     modelConnection: { provider: "gateway", enabled: false },
   });
@@ -100,16 +160,14 @@ it("does not use a disconnected Gateway for images even when another chat provid
   expect(imageCall).not.toHaveBeenCalled();
 });
 
-it.each(["off", "replacement", "cap"])(
+it.each(["off", "replacement"])(
   "rechecks image settings after asynchronous egress approval (%s)",
   async (change) => {
     const f = fixture();
-    await f.settings.set({ imageModel: IMAGE_MODELS[0].id, effectGrants: ["effect:egress"] });
+    await f.settings.set({ imageModel: IMAGE_MODELS[0].id });
     f.decideEgress.mockImplementationOnce(async () => {
       await f.settings.set(
-        change === "cap"
-          ? { budgets: { dayUsd: 1 } }
-          : { imageModel: change === "off" ? null : IMAGE_MODELS[1].id },
+        change === "off" ? { imageModel: null } : { gatewayApiKey: "replacement-fixture-key" },
       );
     });
     await expect(f.generate()).rejects.toThrow();

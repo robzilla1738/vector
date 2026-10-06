@@ -37,6 +37,9 @@ import { z } from "zod";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import {
   MODEL_REGISTRY,
+  DEFAULT_AGENT_MODEL_FALLBACKS,
+  DEFAULT_UTILITY_MODEL_ID,
+  DEFAULT_IMAGE_MODEL_ID,
   AgentModelRoutesSettingSchema,
   mergeModelCapabilities,
   agentModelRoute,
@@ -47,8 +50,7 @@ import {
 } from "@aux/contracts/model-registry";
 import {
   DEFAULT_MAX_MODEL_CALLS,
-  DEFAULT_PLANNER_MODEL,
-  LUNA_FAST_MODEL,
+  DEFAULT_AGENT_MODEL,
   modelCallBudget,
   type ModelClient,
 } from "../agent/model-client.js";
@@ -62,6 +64,13 @@ import {
 } from "../agent/direct-providers.js";
 import { GatewayModelClient } from "../agent/gateway-client.js";
 import type { Repo } from "../store/repo.js";
+import { ProviderAuthService } from "./provider-auth.js";
+import { ChatgptAccounts, newChatgptHostId, type ChatgptAccount } from "./chatgpt-account.js";
+import { ChatgptAuthService } from "./chatgpt-auth.js";
+import { chatgptModelClient } from "../agent/chatgpt-model.js";
+import { chatgptModels, parseChatgptModels } from "./chatgpt-catalog.js";
+import { authJson, CHATGPT_RESOURCE } from "./chatgpt-account.js";
+import { ModelCatalogService, discoverLocalModels, type LocalModelServer } from "./model-catalog.js";
 import type { NativeBridge } from "../native.js";
 
 export interface Settings extends Pick<
@@ -69,10 +78,10 @@ export interface Settings extends Pick<
   "toolbarAutoHide" | "minimalUi" | "minimalUiAcknowledged" | "autoArchive" | "nightShift"
 > {
   modelProvider?: ModelProvider;
-  localModelsOnly?: boolean;
   modelConnection?: { provider: ModelProvider; enabled: boolean };
   disabledModelProviders?: ModelProvider[];
   imageModel?: ImageModel | null;
+  localModelsOnly?: boolean;
   modelCredential?: { provider: ModelProvider; key: string };
   compatibleEndpoint?: string;
   providerModels?: Partial<
@@ -85,7 +94,7 @@ export interface Settings extends Pick<
   agentModelRoutes?: Partial<Record<AgentModelCategory, AgentModelRoute | AgentModelRoute[]>>;
   providerAgentModelRoutes?: Partial<Record<ModelProvider, Settings["agentModelRoutes"]>>;
   /** User budgets in USD (D11): per run, per local day, per routine lifetime. Unset = unlimited. */
-  budgets?: { runUsd?: number; dayUsd?: number; routineUsd?: number };
+  budgets?: { runUsd?: number; dayUsd?: number; monthUsd?: number; routineUsd?: number };
   searchEngine?: string;
   homeEntryMode?: "search" | "ask";
   commandRouting?: "automatic" | "prefer-chat" | "prefer-search";
@@ -155,9 +164,6 @@ export class SettingsService {
   private directErrors: Partial<Record<ModelProvider, string>> = {};
   private credentialError: string | undefined;
   private writes: Promise<unknown> = Promise.resolve();
-  private discoveryClosed = false;
-  private authOwners = new Map<string, { windowId: string; activePageId: string | null }>();
-
 
   constructor(
     private repo: Repo,
@@ -195,6 +201,13 @@ export class SettingsService {
           "Saved credential is unavailable. Re-enter this provider's key in Settings.";
       }
     }
+    if (this.repo.getSetting("chatgptHostId")) {
+      try {
+        await this.chatgptAccounts();
+      } catch {
+        this.chatgptCredentialError = true;
+      }
+    }
   }
 
   get(key: keyof Settings): unknown {
@@ -211,6 +224,7 @@ export class SettingsService {
     modelApiKey?: string;
     modelCredentialSource: string;
     modelCredentialError?: string;
+    modelAuthentication: "api-key" | "chatgpt";
     modelEndpoint: string;
     modelProbe?: ModelProbeRecord;
     agentModelRouteOverrides: Settings["agentModelRoutes"];
@@ -226,36 +240,53 @@ export class SettingsService {
         (this.hasLegacyCredential()
           ? "A legacy credential is present. Re-enter it in Settings to replace plaintext storage with encrypted storage."
           : undefined),
+      localModelsOnly: this.localModelsOnly(),
       modelProvider: this.modelProvider(),
+      modelAuthentication:
+        this.modelProvider() === "openai" && this.activeChatgptAccount() ? "chatgpt" : "api-key",
       modelConnections: this.connectionStatuses(),
       imageModel: this.imageModel(),
       compatibleEndpoint: this.compatibleEndpoint(),
-      modelApiKey: this.selectedKey() ? "••••••••" : undefined,
+      modelApiKey:
+        this.modelProvider() === "openai" && this.activeChatgptAccount()
+          ? undefined
+          : this.selectedKey()
+            ? "••••••••"
+            : undefined,
       modelCredentialSource:
-        this.modelProvider() === "gateway"
-          ? this.savedKey
-            ? "saved"
-            : this.env.AI_GATEWAY_API_KEY
-              ? "environment"
-              : "none"
-          : this.directKeys[this.modelProvider()]
-            ? "saved"
-            : this.selectedKey()
-              ? "environment"
-              : "none",
+        this.modelProvider() === "openai" && this.activeChatgptAccount()
+          ? "saved"
+          : this.modelProvider() === "gateway"
+            ? this.savedKey
+              ? "saved"
+              : this.env.AI_GATEWAY_API_KEY
+                ? "environment"
+                : "none"
+            : this.directKeys[this.modelProvider()]
+              ? "saved"
+              : this.selectedKey()
+                ? "environment"
+                : "none",
       modelCredentialError:
-        this.modelProvider() === "gateway" ? this.credentialError : this.directErrors[this.modelProvider()],
+        this.modelProvider() === "openai" && this.activeChatgptAccount() && this.chatgptCredentialError
+          ? "Sign in to ChatGPT again to unlock this account."
+          : this.modelProvider() === "gateway"
+            ? this.credentialError
+            : this.directErrors[this.modelProvider()],
       modelEndpoint: providerEndpoint(this.modelProvider(), this.compatibleEndpoint()),
       modelProbe:
         modelProbe?.provider === this.modelProvider() && modelProbe.modelId === this.plannerModel()
           ? modelProbe
           : undefined,
       modelConfigured:
+        (!this.localModelsOnly() || localCompatible) &&
         this.connectionEnabled(this.modelProvider()) &&
         !!(
           this.modelOverride ||
           (this.plannerModel() &&
-            (this.selectedKey() || localCompatible) &&
+            (this.selectedKey() ||
+              localCompatible ||
+              (this.modelProvider() === "openai" && this.chatgptConnected())) &&
             (this.modelProvider() !== "openai-compatible" || this.compatibleEndpoint()))
         ),
       plannerModel: this.plannerModel(),
@@ -332,16 +363,22 @@ export class SettingsService {
 
   /** Trusted approval writer; called inside the same Repo transaction as consuming acceptance. */
   allowAgentSite(action: SafetyAction): void {
-    if (!action.origin || action.recipient) throw new AuxError("invalid_params", "Choose an exact site for this permission.");
+    if (!action.origin || action.recipient)
+      throw new AuxError("invalid_params", "Choose an exact site for this permission.");
     const current = this.agentPolicy();
     if ((action.policyRevision ?? 0) !== current.agentPolicyRevision)
       throw new AuxError("conflict", "Agent permissions changed. Refresh this approval.");
     const category = agentPolicyCategoryFor(action.category ?? "external_tool", action.action);
-    if (category === "account_security" || category === "captcha") throw new AuxError("permission_denied", "This action requires a person.");
+    if (category === "account_security" || category === "captcha")
+      throw new AuxError("permission_denied", "This action requires a person.");
     const rule = { category, site: new URL(action.origin).origin, access: "allow" as const };
     const next = AgentPolicySettingsSchema.parse({
-      ...current, agentPolicyRevision: current.agentPolicyRevision + 1,
-      agentPolicies: [...current.agentPolicies.filter((value) => value.category !== category || value.site !== rule.site), rule],
+      ...current,
+      agentPolicyRevision: current.agentPolicyRevision + 1,
+      agentPolicies: [
+        ...current.agentPolicies.filter((value) => value.category !== category || value.site !== rule.site),
+        rule,
+      ],
     });
     this.repo.setSetting("agentPolicies", next.agentPolicies);
     this.repo.setSetting("agentPolicyRevision", next.agentPolicyRevision);
@@ -357,7 +394,8 @@ export class SettingsService {
     return write;
   }
 
-  private async save(patch: Settings): Promise<{ ok: true }> {
+  private async save(patch: Settings, check?: () => Promise<void>): Promise<{ ok: true }> {
+    await check?.();
     const next: Settings = { ...patch };
     if (next.fileAccessMode !== undefined) {
       if (Object.keys(next).some((key) => !["fileAccessMode", "fileAccessRevision"].includes(key)))
@@ -365,19 +403,31 @@ export class SettingsService {
       const current = this.fileAccess();
       if (next.fileAccessRevision !== current.fileAccessRevision)
         throw new AuxError("conflict", "File access changed in another window. Reload the current settings.");
-      const policy = FileAccessSettingsSchema.parse({ fileAccessMode: next.fileAccessMode, fileAccessRevision: current.fileAccessRevision + 1 });
+      const policy = FileAccessSettingsSchema.parse({
+        fileAccessMode: next.fileAccessMode,
+        fileAccessRevision: current.fileAccessRevision + 1,
+      });
       next.fileAccessMode = policy.fileAccessMode;
       next.fileAccessRevision = policy.fileAccessRevision;
     } else if (next.fileAccessRevision !== undefined) {
       throw new AuxError("invalid_params", "Save a file access change with its current revision.");
     }
     if (next.agentMode !== undefined || next.agentPolicies !== undefined) {
-      if (Object.keys(next).some((key) => !["agentMode", "agentPolicies", "agentPolicyRevision"].includes(key)))
+      if (
+        Object.keys(next).some((key) => !["agentMode", "agentPolicies", "agentPolicyRevision"].includes(key))
+      )
         throw new AuxError("invalid_params", "Save agent permissions separately from other settings.");
       const current = this.agentPolicy();
       if (next.agentPolicyRevision !== current.agentPolicyRevision)
-        throw new AuxError("conflict", "Agent permissions changed in another window. Reload the current settings.");
-      const policy = AgentPolicySettingsSchema.parse({ agentMode: next.agentMode ?? current.agentMode, agentPolicies: next.agentPolicies ?? current.agentPolicies, agentPolicyRevision: current.agentPolicyRevision + 1 });
+        throw new AuxError(
+          "conflict",
+          "Agent permissions changed in another window. Reload the current settings.",
+        );
+      const policy = AgentPolicySettingsSchema.parse({
+        agentMode: next.agentMode ?? current.agentMode,
+        agentPolicies: next.agentPolicies ?? current.agentPolicies,
+        agentPolicyRevision: current.agentPolicyRevision + 1,
+      });
       next.agentMode = policy.agentMode;
       next.agentPolicies = policy.agentPolicies;
       next.agentPolicyRevision = policy.agentPolicyRevision;
@@ -405,6 +455,7 @@ export class SettingsService {
     if (next.modelCredential && next.gatewayApiKey !== undefined)
       throw new Error("Save one provider credential at a time.");
     const connectionChange = [
+      "localModelsOnly",
       "modelProvider",
       "modelCredential",
       "modelConnection",
@@ -426,6 +477,8 @@ export class SettingsService {
     ) {
       throw new Error("Stop active runs before changing model connections.");
     }
+    if (connectionChange && !check) this.providerAuthService?.invalidate();
+    if (connectionChange && !check) this.chatgptAuthService?.invalidate();
     const selectedProvider = ModelProviderSchema.parse(next.modelProvider ?? this.modelProvider());
     // Validate before touching OS credentials; a rejected setting must not partially rotate a key.
     if (next.imageModel !== undefined) next.imageModel = ImageModelSchema.nullable().parse(next.imageModel);
@@ -449,11 +502,23 @@ export class SettingsService {
           );
         if (key === "••••••••")
           throw new Error("Enter the actual key; a masked placeholder cannot be saved.");
+        const previous = this.directKeys[provider];
+        await check?.();
         await this.native.storeSecret(`modelKey-${provider}`, key);
+        if (check) {
+          try {
+            await check();
+          } catch (error) {
+            // The serialized settings queue holds this write receipt until rollback.
+            await this.native.storeSecret(`modelKey-${provider}`, previous ?? "");
+            throw error;
+          }
+        }
         this.directKeys[provider] = key || undefined;
         delete this.directErrors[provider];
       }
       delete next.modelCredential;
+      if (provider === "openai") this.repo.setSetting("chatgptActiveAccount", null);
     }
     if (next.agentModelRoutes !== undefined && selectedProvider !== "gateway") {
       const current = this.get("providerAgentModelRoutes") as
@@ -476,14 +541,25 @@ export class SettingsService {
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
     if (connectionChange) {
       this.connectionEpoch++;
+      this.catalogService?.invalidate();
+      this.mergedCatalog = MODEL_REGISTRY;
       this.repo.setSetting("modelCacheGeneration", randomUUID());
       this.repo.deleteSetting("modelProbe");
     }
     this.repo.transaction(() => {
-      if (next.fileAccessRevision !== undefined && this.fileAccess().fileAccessRevision !== next.fileAccessRevision - 1)
+      if (
+        next.fileAccessRevision !== undefined &&
+        this.fileAccess().fileAccessRevision !== next.fileAccessRevision - 1
+      )
         throw new AuxError("conflict", "File access changed in another window. Reload the current settings.");
-      if (next.agentPolicyRevision !== undefined && this.agentPolicy().agentPolicyRevision !== next.agentPolicyRevision - 1)
-        throw new AuxError("conflict", "Agent permissions changed in another window. Reload the current settings.");
+      if (
+        next.agentPolicyRevision !== undefined &&
+        this.agentPolicy().agentPolicyRevision !== next.agentPolicyRevision - 1
+      )
+        throw new AuxError(
+          "conflict",
+          "Agent permissions changed in another window. Reload the current settings.",
+        );
       for (const [k, v] of Object.entries(next)) {
         if (v === undefined || k === "gatewayApiKey") continue;
         this.repo.setSetting(k, v);
@@ -507,6 +583,7 @@ export class SettingsService {
   }
 
   gatewayKey(): string | undefined {
+    if (this.localModelsOnly()) return undefined;
     if (!this.connectionEnabled("gateway")) return undefined;
     if (this.savedKey) return this.savedKey;
     if (this.env.AI_GATEWAY_API_KEY) return this.env.AI_GATEWAY_API_KEY;
@@ -519,9 +596,13 @@ export class SettingsService {
   }
 
   plannerModel(): string {
-    if (this.modelProvider() !== "gateway") return this.profiles()[this.modelProvider()]?.plannerModel ?? "";
+    if (this.modelProvider() !== "gateway")
+      return (
+        this.profiles()[this.modelProvider()]?.plannerModel ??
+        (this.modelProvider() === "openrouter" ? "anthropic/claude-sonnet-5.5" : "")
+      );
     return (
-      (this.get("plannerModel") as string | undefined) || this.env.AUX_PLANNER_MODEL || DEFAULT_PLANNER_MODEL
+      (this.get("plannerModel") as string | undefined) || this.env.AUX_PLANNER_MODEL || DEFAULT_AGENT_MODEL
     );
   }
   recoveryModel(): string | undefined {
@@ -549,13 +630,23 @@ export class SettingsService {
 
   private routeBaseline(category: AgentModelCategory): AgentModelRoute {
     const baseline = agentModelRoute(category);
-    const modelId =
+    if (this.modelProvider() !== "gateway") {
+      const modelId =
+        category === "visual"
+          ? this.visionModel()
+          : category === "deep"
+            ? this.recoveryModel()
+            : this.plannerModel();
+      return { ...baseline, modelId: modelId || baseline.modelId };
+    }
+    const planner = (this.get("plannerModel") as string | undefined) || this.env.AUX_PLANNER_MODEL;
+    const explicit =
       category === "visual"
-        ? this.visionModel()
+        ? (this.get("visionModel") as string | undefined) || this.env.AUX_VISION_MODEL || planner
         : category === "deep"
-          ? this.recoveryModel()
-          : this.plannerModel();
-    return { ...baseline, modelId: modelId || baseline.modelId };
+          ? (this.get("recoveryModel") as string | undefined) || this.env.AUX_RECOVERY_MODEL || planner
+          : planner;
+    return explicit ? { ...baseline, modelId: explicit } : baseline;
   }
   /**
    * Ordered candidate chain per category (S5.9): stored single route or
@@ -566,18 +657,17 @@ export class SettingsService {
     const stored = normalizeRouteChain(this.routeOverrides()?.[category]);
     const chain = stored.length ? stored : [this.routeBaseline(category)];
     const seen = new Set(chain.map((r) => r.modelId));
-    for (const fb of [
-      this.routeBaseline(category),
-      { modelId: LUNA_FAST_MODEL, reasoning: "low" as const },
-      agentModelRoute(category),
-    ]) {
-      if (!seen.has(fb.modelId)) {
-        chain.push(fb);
-        seen.add(fb.modelId);
+    if (this.modelProvider() === "gateway") {
+      for (const fb of [this.routeBaseline(category), DEFAULT_AGENT_MODEL_FALLBACKS[category]]) {
+        if (!seen.has(fb.modelId)) {
+          chain.push(fb);
+          seen.add(fb.modelId);
+        }
       }
     }
-    return chain.slice(0, 4);
+    return chain;
   }
+
   agentRoute(category: AgentModelCategory): AgentModelRoute {
     return this.agentRouteChain(category)[0]!;
   }
@@ -591,6 +681,314 @@ export class SettingsService {
   }
   /** Snapshot + live-catalog merged capability list, refreshed by listModels(). */
   private mergedCatalog: readonly ModelCapability[] = MODEL_REGISTRY;
+  private catalogService?: ModelCatalogService;
+  private localModels: LocalModelServer[] = [];
+  private localFetchedAt = 0;
+  private localPending?: Promise<LocalModelServer[]>;
+  private localController?: AbortController;
+  private discoveryClosed = false;
+
+  private catalog(): ModelCatalogService {
+    return (this.catalogService ??= new ModelCatalogService(this.repo, () => this.modelCacheGeneration()));
+  }
+
+  private localServers(): Promise<LocalModelServer[]> {
+    if (this.discoveryClosed) return Promise.reject(new AuxError("cancelled", "Model discovery is closed."));
+    if (Date.now() - this.localFetchedAt < 30_000) return Promise.resolve(this.localModels);
+    if (this.localPending) return this.localPending;
+    const controller = new AbortController();
+    this.localController = controller;
+    return (this.localPending = discoverLocalModels(fetch, controller.signal)
+      .then((models) => {
+        if (this.discoveryClosed || controller.signal.aborted)
+          throw new AuxError("cancelled", "Model discovery is closed.");
+        this.localModels = models;
+        this.localFetchedAt = Date.now();
+        return models;
+      })
+      .finally(() => {
+        this.localPending = undefined;
+        if (this.localController === controller) this.localController = undefined;
+      }));
+  }
+  private providerAuthService?: ProviderAuthService;
+  private chatgptAuthService?: ChatgptAuthService;
+  private chatgptAccountService?: ChatgptAccounts;
+  private chatgptAccountPending?: Promise<ChatgptAccounts>;
+  private chatgptCredentialError = false;
+  private chatgptCatalog: ModelCapability[] = [];
+  private chatgptCatalogAt = 0;
+  private chatgptCatalogPending?: Promise<void>;
+  private chatgptCatalogController = new AbortController();
+  private refreshChatgptModels(accountId: string, generation: string, signal?: AbortSignal): Promise<void> {
+    if (this.chatgptCatalog.length && Date.now() - this.chatgptCatalogAt < 24 * 60 * 60_000)
+      return Promise.resolve();
+    if (this.chatgptCatalogPending) return this.chatgptCatalogPending;
+    const pending = (async () => {
+      const accounts = await this.chatgptAccounts();
+      const models = await chatgptModels(
+        accounts,
+        accountId,
+        fetch,
+        AbortSignal.any([
+          this.chatgptCatalogController.signal,
+          AbortSignal.timeout(15_000),
+          ...(signal ? [signal] : []),
+        ]),
+      );
+      this.assertModelGeneration(generation);
+      this.chatgptCatalog = models;
+      this.chatgptCatalogAt = Date.now();
+    })().finally(() => {
+      if (this.chatgptCatalogPending === pending) this.chatgptCatalogPending = undefined;
+    });
+    this.chatgptCatalogPending = pending;
+    return pending;
+  }
+  private activeChatgptAccount(): string | undefined {
+    const id = this.repo.getSetting("chatgptActiveAccount");
+    if (id === undefined || id === null) return undefined;
+    return z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .parse(id);
+  }
+  private chatgptConnected(): boolean {
+    const id = this.activeChatgptAccount();
+    if (!id || !this.chatgptAccountService || this.discoveryClosed) return false;
+    return this.chatgptAccountService
+      .summaries()
+      .some((account) => account.accountId === id && account.selected && account.connected);
+  }
+  private chatgptAccounts(): Promise<ChatgptAccounts> {
+    if (this.chatgptAccountService) return Promise.resolve(this.chatgptAccountService);
+    if (this.chatgptAccountPending) return this.chatgptAccountPending;
+    if (this.discoveryClosed || !this.native?.available())
+      return Promise.reject(
+        new AuxError("permission_denied", "ChatGPT requires protected desktop credential storage."),
+      );
+    const saved = this.repo.getSetting("chatgptHostId"),
+      hostId = saved === undefined ? newChatgptHostId() : z.string().uuid().parse(saved);
+    if (saved === undefined) this.repo.setSetting("chatgptHostId", hostId);
+    const accounts = new ChatgptAccounts(this.native, hostId);
+    this.chatgptAccountPending = accounts.initialize().then(async () => {
+      if (this.discoveryClosed) {
+        await accounts.close();
+        throw new AuxError("cancelled", "Settings are closed.");
+      }
+      this.chatgptAccountService = accounts;
+      this.chatgptCredentialError = false;
+      return accounts;
+    });
+    return this.chatgptAccountPending;
+  }
+  async savedChatgptAccounts(token: string) {
+    await this.checkAuthRequester(token);
+    if (!this.repo.getSetting("chatgptHostId")) return [];
+    return (await this.chatgptAccounts()).summaries();
+  }
+  async disconnectChatgptAccount(id: string, token: string) {
+    await this.checkAuthRequester(token);
+    const accounts = await this.chatgptAccounts();
+    if (this.activeChatgptAccount() === id) {
+      const disable = this.writes.then(async () => {
+        await this.checkAuthRequester(token);
+        if (this.activeChatgptAccount() !== id) return;
+        await this.save({ modelConnection: { provider: "openai", enabled: false } }, () =>
+          this.checkAuthRequester(token),
+        );
+      });
+      this.writes = disable.catch(() => {});
+      await disable;
+    }
+    const revocationConfirmed = await accounts.disconnect(id, () => this.checkAuthRequester(token));
+    const reduction = this.writes.then(() => {
+      if (this.activeChatgptAccount() !== id) return;
+      this.repo.transaction(() => {
+        this.repo.setSetting("chatgptActiveAccount", null);
+        this.repo.setSetting("modelCacheGeneration", randomUUID());
+      });
+      this.gatewayClient = null;
+      this.chatgptCatalog = [];
+      this.connectionEpoch++;
+    });
+    this.writes = reduction.catch(() => {});
+    await reduction;
+    return { disconnected: true as const, revocationConfirmed };
+  }
+  private async checkAuthRequester(token: string) {
+    if (this.discoveryClosed || !this.native?.turnSourceContext)
+      throw new AuxError("cancelled", "The original sign-in window is unavailable.");
+    const context = await this.native.turnSourceContext(token);
+    if (this.discoveryClosed || !context.windowId)
+      throw new AuxError("permission_denied", "Use the original regular Aux window for account settings.");
+    const saved = this.authOwners.get(token);
+    if (saved && (context.windowId !== saved.windowId || context.activePageId !== saved.activePageId))
+      throw new AuxError("cancelled", "The original ChatGPT account window changed.");
+    if (!saved) {
+      while (this.authOwners.size >= 32) this.authOwners.delete(this.authOwners.keys().next().value!);
+      this.authOwners.set(token, { windowId: context.windowId, activePageId: context.activePageId });
+    }
+  }
+  private async chatgptAuth() {
+    if (this.chatgptAuthService) return this.chatgptAuthService;
+    const accounts = await this.chatgptAccounts();
+    if (this.discoveryClosed) throw new AuxError("cancelled", "ChatGPT sign-in is closed.");
+    return (this.chatgptAuthService ??= new ChatgptAuthService({
+      accounts,
+      hostId: z.string().uuid().parse(this.repo.getSetting("chatgptHostId")),
+      generation: () => this.modelCacheGeneration(),
+      checkOwner: async (token, requester) => {
+        const original = this.authOwners.get(token);
+        if (this.discoveryClosed || !original || !this.native?.turnSourceContext)
+          throw new AuxError("cancelled", "The original sign-in window is unavailable.");
+        const current = await this.native.turnSourceContext(token);
+        if (
+          this.discoveryClosed ||
+          current.windowId !== original.windowId ||
+          current.activePageId !== original.activePageId
+        )
+          throw new AuxError("cancelled", "The original sign-in document changed.");
+        if (requester) {
+          const asking = await this.native.turnSourceContext(requester);
+          if (this.discoveryClosed || asking.windowId !== original.windowId)
+            throw new AuxError("permission_denied", "Return to the original sign-in window.");
+        }
+      },
+      activate: async (account: ChatgptAccount, check, signal) => {
+        const models = parseChatgptModels(
+          await authJson(
+            await fetch(`${CHATGPT_RESOURCE}/models`, {
+              redirect: "error",
+              signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]),
+              headers: { Authorization: `Bearer ${account.accessToken}` },
+            }),
+          ),
+        );
+        await check();
+        if (!models.length)
+          throw new AuxError("capability_unsupported", "This ChatGPT account has no available plan models.");
+        const task = this.writes.then(async () => {
+          await check();
+          if (this.discoveryClosed || this.localModelsOnly())
+            throw new AuxError("cancelled", "ChatGPT account acceptance retired.");
+          if (
+            this.repo.db
+              .prepare(
+                "SELECT 1 FROM runs WHERE status IN ('queued','planning','running','paused','needs_input') LIMIT 1",
+              )
+              .get()
+          )
+            throw new Error("Stop active runs before changing model connections.");
+          const existing = this.profiles().openai?.plannerModel;
+          const chosen = models.some((model) => model.id === existing) ? existing : models[0]!.id;
+          const generation = randomUUID();
+          const next = {
+            modelProvider: "openai" as const,
+            disabledModelProviders: ModelProviderSchema.array()
+              .parse(this.get("disabledModelProviders") ?? [])
+              .filter((provider) => provider !== "openai"),
+            providerModels: {
+              ...this.profiles(),
+              openai: { ...this.profiles().openai, plannerModel: chosen },
+            },
+            chatgptActiveAccount: account.accountId,
+            modelCacheGeneration: generation,
+          };
+          const keys = [...Object.keys(next), "modelProbe"];
+          const previous = new Map(keys.map((key) => [key, this.repo.getSetting<unknown>(key)]));
+          const previousCatalog = this.chatgptCatalog;
+          const previousCatalogAt = this.chatgptCatalogAt;
+          const previousFileSettings = this.fileSettings;
+          const updateFile = () => {
+            try {
+              if (this.fileSettings.gatewayApiKey === undefined)
+                writeFileSync(this.settingsPath, JSON.stringify(this.fileSettings, null, 2));
+            } catch {
+              // The transactional Profile settings remain authoritative.
+            }
+          };
+          // No await separates the final original-owner check from this acceptance commit.
+          this.repo.transaction(() => {
+            for (const [key, value] of Object.entries(next)) this.repo.setSetting(key, value);
+            this.repo.deleteSetting("modelProbe");
+          });
+          this.connectionEpoch++;
+          this.catalogService?.invalidate();
+          this.mergedCatalog = MODEL_REGISTRY;
+          this.gatewayClient = null;
+          this.chatgptCatalog = models;
+          this.chatgptCatalogAt = Date.now();
+          this.fileSettings = {
+            ...this.fileSettings,
+            modelProvider: next.modelProvider,
+            disabledModelProviders: next.disabledModelProviders,
+            providerModels: next.providerModels,
+          };
+          updateFile();
+          return {
+            generation,
+            rollback: async () => {
+              const reduction = this.writes.then(() => {
+                if (
+                  this.modelCacheGeneration() !== generation ||
+                  this.repo.getSetting("chatgptActiveAccount") !== account.accountId
+                )
+                  throw new AuxError(
+                    "conflict",
+                    "A later model selection prevents original ChatGPT rollback.",
+                  );
+                this.repo.transaction(() => {
+                  for (const [key, value] of previous) {
+                    if (value === undefined) this.repo.deleteSetting(key);
+                    else this.repo.setSetting(key, value);
+                  }
+                });
+                this.connectionEpoch++;
+                this.catalogService?.invalidate();
+                this.mergedCatalog = MODEL_REGISTRY;
+                this.gatewayClient = null;
+                this.chatgptCatalog = previousCatalog;
+                this.chatgptCatalogAt = previousCatalogAt;
+                // Preserve unrelated preferences accepted while the owner check was pending.
+                for (const key of ["modelProvider", "disabledModelProviders", "providerModels"] as const) {
+                  if (previousFileSettings[key] === undefined) delete this.fileSettings[key];
+                  else
+                    Object.assign(this.fileSettings, {
+                      [key]: previousFileSettings[key],
+                    });
+                }
+                updateFile();
+              });
+              this.writes = reduction.catch(() => {});
+              await reduction;
+            },
+          };
+        });
+        this.writes = task.catch(() => {});
+        return task;
+      },
+    }));
+  }
+  private async closeChatgptAccounts(): Promise<void> {
+    const failures: unknown[] = [];
+    try {
+      await this.chatgptAuthService?.close();
+    } catch (error) {
+      failures.push(error);
+    }
+    try {
+      await this.chatgptAccountPending;
+    } catch (error) {
+      if (!(error instanceof AuxError && error.code === "cancelled")) failures.push(error);
+    }
+    try {
+      await this.chatgptAccountService?.close();
+    } catch (error) {
+      failures.push(error);
+    }
+    if (failures.length) throw new AggregateError(failures, "ChatGPT account cleanup remains unresolved.");
+  }
   private copilotFactory?: () => Promise<CopilotServices>;
   /** Main owns the lazy facade lifetime; this binding never constructs an unused provider. */
   attachCopilotServices(factory: () => Promise<CopilotServices>): void {
@@ -746,30 +1144,136 @@ export class SettingsService {
       })),
     };
   }
-  localModelsOnly(): boolean {
-    return this.get("localModelsOnly") === true;
+  private authOwners = new Map<string, { windowId: string; activePageId: string | null }>();
+  private auth(): ProviderAuthService {
+    return (this.providerAuthService ??= new ProviderAuthService({
+      generation: () => this.modelCacheGeneration(),
+      checkOwner: async (token, requester) => {
+        const original = this.authOwners.get(token);
+        if (this.discoveryClosed || !original || !this.native?.turnSourceContext)
+          throw new AuxError("cancelled", "The original sign-in window is unavailable.");
+        const current = await this.native.turnSourceContext(token);
+        if (this.discoveryClosed || current.windowId !== original.windowId || current.activePageId !== original.activePageId)
+          throw new AuxError("cancelled", "The original sign-in window changed.");
+        if (requester) {
+          const requesting = await this.native.turnSourceContext(requester);
+          if (this.discoveryClosed || requesting.windowId !== original.windowId)
+            throw new AuxError("permission_denied", "Return to the original sign-in window.");
+        }
+      },
+      commit: (key, check) => {
+        const write = this.writes
+          .then(() =>
+            this.save(
+              {
+                modelProvider: "openrouter",
+                modelCredential: { provider: "openrouter", key },
+                modelConnection: { provider: "openrouter", enabled: true },
+              },
+              check,
+            ),
+          )
+          .then(() => {});
+        this.writes = write.catch(() => {});
+        return write;
+      },
+    }));
   }
-
+  async startProviderAuth(
+    token: string,
+    provider: "openrouter" | "chatgpt" = "openrouter",
+    accountId?: string,
+  ) {
+    if (this.discoveryClosed || this.localModelsOnly() || !this.native?.turnSourceContext)
+      throw new AuxError(
+        "permission_denied",
+        "Provider sign-in requires the original desktop window and cloud models enabled.",
+      );
+    const original = await this.native.turnSourceContext(token);
+    if (this.discoveryClosed) throw new AuxError("cancelled", "Provider sign-in is closed.");
+    const saved = this.authOwners.get(token);
+    if (saved && (saved.windowId !== original.windowId || saved.activePageId !== original.activePageId))
+      throw new AuxError("cancelled", "The original sign-in source changed.");
+    if (!saved) {
+      while (this.authOwners.size >= 32) this.authOwners.delete(this.authOwners.keys().next().value!);
+      this.authOwners.set(token, { windowId: original.windowId, activePageId: original.activePageId });
+    }
+    if (provider === "chatgpt") {
+      this.providerAuthService?.invalidate();
+      return (await this.chatgptAuth()).start(token, accountId);
+    }
+    this.chatgptAuthService?.invalidate();
+    return this.auth().start(token);
+  }
+  providerAuthStatus(id: string, token: string) {
+    return this.chatgptAuthService?.has(id)
+      ? this.chatgptAuthService.status(id, token)
+      : this.auth().status(id, token);
+  }
+  cancelProviderAuth(id: string, token: string) {
+    return this.chatgptAuthService?.has(id)
+      ? this.chatgptAuthService.cancel(id, token)
+      : this.auth().cancel(id, token);
+  }
   async close(): Promise<void> {
     this.discoveryClosed = true;
-    await this.writes;
+    this.chatgptCatalogController.abort();
+    const failures: unknown[] = [];
+    try {
+      await this.providerAuthService?.close();
+    } catch (error) {
+      failures.push(error);
+    }
+    try {
+      await this.closeChatgptAccounts();
+    } catch (error) {
+      failures.push(error);
+    }
+    await this.chatgptCatalogPending?.catch(() => {});
+    try {
+      await this.writes;
+    } catch (error) {
+      failures.push(error);
+    }
+    this.localController?.abort();
+    await Promise.allSettled([this.catalogService?.close(), this.localPending]);
+    if (failures.length)
+      throw new AggregateError(failures, "Original model account cleanup remains unresolved.");
   }
-
   registryModels(): readonly ModelCapability[] {
+    if (this.modelProvider() === "openai" && this.activeChatgptAccount())
+      return this.chatgptCatalog.length
+        ? this.chatgptCatalog
+        : [
+            {
+              id: this.plannerModel(),
+              source: "configured",
+              billingKind: "subscription",
+              outputLimitSupported: false,
+            },
+          ];
+    if (this.modelProvider() === "gateway") {
+      const cached = this.catalog().cached({
+        provider: "gateway",
+        endpoint: "https://ai-gateway.vercel.sh/v1",
+        generation: this.modelCacheGeneration(),
+      });
+      if (cached) this.mergedCatalog = mergeModelCapabilities(MODEL_REGISTRY, cached);
+    }
     return this.mergedCatalog;
   }
-  /** S5 A/B gate: AUX_RUN_ENGINE selects the run engine — explicit opts still win. */
-  runEngine(): "agent" | "agent-loop" | undefined {
-    const v = this.env.AUX_RUN_ENGINE;
-    return v === "agent-loop" || v === "agent" ? v : undefined;
-  }
-  budgetLimits(): { runUsd?: number; dayUsd?: number; routineUsd?: number } {
+  budgetLimits(): { runUsd?: number; dayUsd?: number; monthUsd?: number; routineUsd?: number } {
     const b = this.get("budgets") as Settings["budgets"] | undefined;
     const pos = (v: unknown) => {
       const n = Number(v);
       return Number.isFinite(n) && n > 0 ? n : undefined;
     };
-    return { runUsd: pos(b?.runUsd), dayUsd: pos(b?.dayUsd), routineUsd: pos(b?.routineUsd) };
+    return {
+      runUsd: pos(b?.runUsd),
+      dayUsd: pos(b?.dayUsd),
+      monthUsd: pos(b?.monthUsd),
+      routineUsd: pos(b?.routineUsd),
+    };
   }
   searchEngine(): string {
     return (this.get("searchEngine") as string) ?? DEFAULT_SEARCH_ENGINE;
@@ -784,10 +1288,43 @@ export class SettingsService {
     return modelCallBudget(this.get("maxModelCalls"), DEFAULT_MAX_MODEL_CALLS);
   }
 
+  localModelsOnly(): boolean {
+    return this.get("localModelsOnly") === true;
+  }
+
   model(): ModelClient | null {
+    if (
+      this.localModelsOnly() &&
+      !(
+        this.modelProvider() === "openai-compatible" &&
+        isLoopbackCompatibleEndpoint(this.compatibleEndpoint())
+      )
+    )
+      return null;
     if (!this.connectionEnabled(this.modelProvider())) return null;
     if (this.modelOverride) return this.modelOverride;
     const provider = this.modelProvider();
+    const chatgptId = provider === "openai" ? this.activeChatgptAccount() : undefined;
+    if (chatgptId) {
+      if (
+        this.chatgptCredentialError ||
+        !this.chatgptAccountService ||
+        !this.chatgptConnected() ||
+        !this.plannerModel()
+      )
+        return null;
+      if (!this.gatewayClient) {
+        const generation = this.modelCacheGeneration();
+        this.gatewayClient = chatgptModelClient(
+          this.chatgptAccountService,
+          chatgptId,
+          () => this.chatgptCatalog,
+          (signal) => this.refreshChatgptModels(chatgptId, generation, signal),
+          () => this.assertModelGeneration(generation),
+        );
+      }
+      return this.gatewayClient;
+    }
     const endpoint = this.compatibleEndpoint();
     const key =
       provider === "gateway"
@@ -817,81 +1354,142 @@ export class SettingsService {
     return this.gatewayClient;
   }
 
-  async listModels(): Promise<{ models: ModelCapability[]; source: "gateway" | "static" | "configured" }> {
+  async listModels(): Promise<{
+    models: ModelCapability[];
+    source: "gateway" | "static" | "configured";
+    localServers: LocalModelServer[];
+  }> {
+    if (this.discoveryClosed) throw new AuxError("cancelled", "Model discovery is closed.");
+    const generation = this.modelCacheGeneration();
+    const result = await this.loadModels(generation);
+    this.assertModelGeneration(generation);
+    return result;
+  }
+  private assertModelGeneration(generation: string): void {
+    if (this.discoveryClosed) throw new AuxError("cancelled", "Model discovery is closed.");
+    if (this.modelCacheGeneration() !== generation)
+      throw new AuxError("cancelled", "The model account changed during discovery.");
+  }
+  private async loadModels(generation: string): Promise<{
+    models: ModelCapability[];
+    source: "gateway" | "static" | "configured";
+    localServers: LocalModelServer[];
+  }> {
     const provider = this.modelProvider();
-    if (provider !== "gateway") {
-      const configured = [
-        ...new Set([this.plannerModel(), this.visionModel()].filter((value): value is string => !!value)),
-      ].map((id) => ({ id, source: "configured" as const }));
-      if (provider !== "openai-compatible" || !this.connectionEnabled(provider))
-        return { models: configured, source: "configured" };
-      const endpoint = this.compatibleEndpoint();
-      const key = this.selectedKey();
-      if (!endpoint || (!key && !isLoopbackCompatibleEndpoint(endpoint)))
-        return { models: configured, source: "configured" };
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10_000);
-      try {
-        const response = await fetch(`${endpoint}/models`, {
-          headers: { Accept: "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) },
-          signal: controller.signal,
-          redirect: "error",
-        });
-        if (!response.ok) throw new Error(`Model discovery failed with HTTP ${response.status}.`);
-        const declared = Number(response.headers.get("content-length") ?? 0);
-        if (declared > 2_000_000)
-          throw new Error("The model endpoint returned more data than Aux will accept.");
-        const body = await response.text();
-        if (Buffer.byteLength(body, "utf8") > 2_000_000)
-          throw new Error("The model endpoint returned more data than Aux will accept.");
-        let value: unknown;
-        try {
-          value = JSON.parse(body);
-        } catch {
-          throw new Error("The model endpoint returned an invalid response.");
+    const chatgptId = provider === "openai" ? this.activeChatgptAccount() : undefined;
+    if (chatgptId && !this.localModelsOnly() && this.connectionEnabled(provider)) {
+      await this.refreshChatgptModels(chatgptId, generation);
+      return {
+        models: [...this.chatgptCatalog],
+        source: "configured",
+        localServers: await this.localServers(),
+      };
+    }
+    const local =
+      this.modelOverride || !this.connectionEnabled(provider)
+        ? Promise.resolve(this.localModels)
+        : this.localServers();
+    // Explicit test injection remains the same provider boundary as model calls.
+    if (this.modelOverride) {
+      const catalog = (await this.modelOverride.listModels()).map((model) => ({
+        ...model,
+        source: "catalog" as const,
+      }));
+      this.assertModelGeneration(generation);
+      this.mergedCatalog = mergeModelCapabilities(MODEL_REGISTRY, catalog);
+      return { models: [...this.mergedCatalog], source: "gateway", localServers: await local };
+    }
+    const configured: ModelCapability[] = [
+      ...new Set([this.plannerModel(), this.visionModel()].filter((id): id is string => !!id)),
+    ].map((id) => ({ id, source: "configured" }));
+    const key = provider === "gateway" ? undefined : this.selectedKey();
+    const endpoint =
+      provider === "gateway"
+        ? "https://ai-gateway.vercel.sh/v1"
+        : providerEndpoint(provider, this.compatibleEndpoint());
+    if (
+      (this.localModelsOnly() &&
+        !(provider === "openai-compatible" && isLoopbackCompatibleEndpoint(endpoint))) ||
+      !this.connectionEnabled(provider) ||
+      (provider !== "gateway" &&
+        !key &&
+        !(provider === "openai-compatible" && isLoopbackCompatibleEndpoint(endpoint)))
+    )
+      return {
+        models: this.localModelsOnly() ? [] : provider === "gateway" ? [...MODEL_REGISTRY] : configured,
+        source: provider === "gateway" ? "static" : "configured",
+        localServers: await local,
+      };
+    try {
+      const models = await this.catalog().list({
+        provider,
+        endpoint,
+        generation,
+        key,
+      });
+      this.assertModelGeneration(generation);
+      this.mergedCatalog =
+        provider === "gateway"
+          ? mergeModelCapabilities(MODEL_REGISTRY, models)
+          : mergeModelCapabilities(configured, models);
+      return {
+        models: [...this.mergedCatalog],
+        source: provider === "gateway" ? "gateway" : "configured",
+        localServers: await local,
+      };
+    } catch (error) {
+      if (provider !== "gateway" || (error instanceof AuxError && error.code === "cancelled")) throw error;
+      return { models: [...this.registryModels()], source: "static", localServers: await local };
+    }
+  }
+
+  /** Utility requests prefer discovered local models without changing the user's agent route. */
+  async utilityModel(): Promise<{
+    model: ModelClient;
+    modelId: string;
+    provider: ModelProvider;
+    destination: string;
+  } | null> {
+    if (this.discoveryClosed) throw new AuxError("cancelled", "Model discovery is closed.");
+    if (this.modelOverride)
+      return {
+        model: this.modelOverride,
+        modelId: this.agentRoute("fast").modelId,
+        provider: this.modelProvider(),
+        destination: new URL(providerEndpoint(this.modelProvider(), this.compatibleEndpoint())).origin,
+      };
+    const generation = this.modelCacheGeneration();
+    const local = await this.localServers();
+    this.assertModelGeneration(generation);
+    const server = this.connectionEnabled("openai-compatible")
+      ? local.find((entry) => entry.models.length)
+      : undefined;
+    if (server)
+      return {
+        model: directModelClient("openai-compatible", "aux-local", undefined, server.endpoint),
+        modelId: server.models[0]!.id,
+        provider: "openai-compatible",
+        destination: new URL(server.endpoint).origin,
+      };
+    if (this.localModelsOnly()) return null;
+    const key = this.gatewayKey();
+    if (key)
+      return {
+        model: new GatewayModelClient(key, { models: () => this.registryModels() }),
+        modelId: DEFAULT_UTILITY_MODEL_ID,
+        provider: "gateway",
+        destination: "https://ai-gateway.vercel.sh",
+      };
+    // A saved direct provider remains usable without a separate Gateway account.
+    const selected = this.model();
+    return selected
+      ? {
+          model: selected,
+          modelId: this.plannerModel(),
+          provider: this.modelProvider(),
+          destination: new URL(providerEndpoint(this.modelProvider(), this.compatibleEndpoint())).origin,
         }
-        const data =
-          value && typeof value === "object" && Array.isArray((value as { data?: unknown }).data)
-            ? (value as { data: unknown[] }).data
-            : null;
-        if (!data) throw new Error("The model endpoint did not return an OpenAI-compatible model list.");
-        const discovered = data.flatMap((item) => {
-          if (!item || typeof item !== "object" || typeof (item as { id?: unknown }).id !== "string")
-            return [];
-          const id = (item as { id: string }).id.trim();
-          return id && id.length <= 500 ? [{ id, source: "configured" as const }] : [];
-        });
-        const seen = new Set<string>();
-        const unique = discovered.filter((item) => !seen.has(item.id) && !!seen.add(item.id)).slice(0, 500);
-        return {
-          models: [...unique, ...configured.filter((item) => !seen.has(item.id))],
-          source: "configured",
-        };
-      } catch (error) {
-        if ((error as { name?: string }).name === "AbortError")
-          throw new Error("Model discovery timed out after 10 seconds.");
-        throw error;
-      } finally {
-        clearTimeout(timeout);
-      }
-    }
-    const m = this.model();
-    let extra: { id: string; name?: string; inputUsdPerMTok?: number; outputUsdPerMTok?: number }[] = [];
-    let source: "gateway" | "static" = "static";
-    if (m) {
-      try {
-        extra = await m.listModels();
-        source = "gateway";
-      } catch {
-        extra = [];
-      }
-    }
-    const catalog = extra.map((x) => ({ ...x, source: "catalog" as const }));
-    this.mergedCatalog = mergeModelCapabilities(MODEL_REGISTRY, catalog);
-    return {
-      models: this.mergedCatalog as ModelCapability[],
-      source,
-    };
+      : null;
   }
 
   /** Nonsecret generation changes whenever provider connection configuration changes. */
@@ -1003,11 +1601,14 @@ export class SettingsService {
       .includes(provider);
   }
   imageModel(): ImageModel | null {
-    return ImageModelSchema.nullable().parse(this.get("imageModel") ?? null);
+    if (this.localModelsOnly()) return null;
+    const saved = this.get("imageModel");
+    return ImageModelSchema.nullable().parse(saved === undefined ? DEFAULT_IMAGE_MODEL_ID : saved);
   }
   private connectionStatuses(): ModelConnectionStatus[] {
     return ModelProviderSchema.options.map((provider) => {
-      const saved = provider === "gateway" ? this.savedKey : this.directKeys[provider];
+      const subscription = provider === "openai" && this.activeChatgptAccount();
+      const saved = subscription || (provider === "gateway" ? this.savedKey : this.directKeys[provider]);
       const environment =
         provider === "gateway" ? this.env.AI_GATEWAY_API_KEY : this.env[PROVIDER_ENV[provider]];
       return ModelConnectionStatusSchema.parse({
@@ -1015,9 +1616,11 @@ export class SettingsService {
         selected: provider === this.modelProvider(),
         enabled: this.connectionEnabled(provider),
         credentialSource: saved ? "saved" : environment ? "environment" : "none",
-        credentialUnavailable: !!(provider === "gateway"
-          ? this.credentialError
-          : this.directErrors[provider]),
+        credentialUnavailable: !!(subscription
+          ? this.chatgptCredentialError
+          : provider === "gateway"
+            ? this.credentialError
+            : this.directErrors[provider]),
         localEndpoint:
           provider === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint()),
       });

@@ -38,8 +38,9 @@ async function testAuthorities(now: () => number = Date.now) {
       isolationId: `isolation-${pageId}`,
       runId: `run-${pageId}`,
       taskRevision: 0,
-      inMemory: true as const,
-      cookies: "empty" as const,
+      mode: "session" as const,
+      inMemory: false as const,
+      cookies: "profile" as const,
     };
     const native = Object.assign(new NullNativeBridge(), {
       egressContext: async () => ({

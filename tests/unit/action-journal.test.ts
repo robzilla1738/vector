@@ -18,9 +18,9 @@ import {
 } from "@aux/runtime";
 import type { Step } from "@aux/contracts";
 
-const cleanup: (() => void)[] = [];
-afterEach(() => {
-  for (const fn of cleanup.splice(0).reverse()) fn();
+const cleanup: (() => void | Promise<void>)[] = [];
+afterEach(async () => {
+  for (const fn of cleanup.splice(0).reverse()) await fn();
 });
 function fixture() {
   const directory = mkdtempSync(join(tmpdir(), "aux-journal-"));
@@ -157,7 +157,7 @@ it("cannot report completion while the persistent journal contains an unresolved
     pages: {} as never,
     model: () => null,
     defaultModel: () => "test",
-    recoveryModel: () => undefined,
+
     recordModelCall: () => {},
   });
   await coordinator.finish("run", "completed", { sent: true });
@@ -173,43 +173,90 @@ it("cannot report completion while the persistent journal contains an unresolved
 it("retains a committed intent after actual SIGKILL following a remote write", async () => {
   const f = fixture();
   let writes = 0;
-  // count only the write: local tools may probe a new loopback port with a GET
+  // Count only the write: local tools may probe a new loopback port with a GET.
   const server = createServer((req, res) => {
     if (req.method === "POST") writes++;
     res.end("accepted");
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
-  try {
-    const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
-    const module = pathToFileURL(join(process.cwd(), "apps/runtime/dist/index.js")).href;
-    const source = `import {openDb,DurableWriteLedger} from ${JSON.stringify(module)};
-      const db=openDb(process.argv[1]);
-      db.prepare("INSERT INTO runs(run_id,goal,status,created_at) VALUES('run','goal','running',1)").run();
-      db.prepare("INSERT INTO pages(page_id,backend,target_id,url,created_at,active_at) VALUES('page','aux','target','https://example.test',1,1)").run();
-      const ledger=new DurableWriteLedger(db);
-      ledger.begin(${JSON.stringify(action)});
-      await fetch(process.argv[2], {method:'POST'});
-      process.kill(process.pid,'SIGKILL');`;
-    const child = spawn(process.execPath, ["--input-type=module", "-e", source, f.path, origin], {
-      env: { PATH: process.env.PATH },
-      stdio: "ignore",
+  let serverClosed: Promise<void> | undefined;
+  const closeServer = () =>
+    (serverClosed ??= new Promise<void>((resolve) => {
+      server.closeAllConnections();
+      server.close(() => resolve());
+    }));
+  cleanup.push(closeServer);
+  const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  // The crash probe needs the actual store and journal, not every runtime
+  // service/provider eagerly re-exported by the public index.
+  const dbModule = pathToFileURL(join(process.cwd(), "apps/runtime/dist/store/db.js")).href;
+  const ledgerModule = pathToFileURL(join(process.cwd(), "apps/runtime/dist/agent/durable.js")).href;
+  const source = `import {once} from 'node:events';
+    import {openDb} from ${JSON.stringify(dbModule)};
+    import {DurableWriteLedger} from ${JSON.stringify(ledgerModule)};
+    const db=openDb(process.argv[1]);
+    db.prepare("INSERT INTO runs(run_id,goal,status,created_at) VALUES('run','goal','running',1)").run();
+    db.prepare("INSERT INTO pages(page_id,backend,target_id,url,created_at,active_at) VALUES('page','aux','target','https://example.test',1,1)").run();
+    const ledger=new DurableWriteLedger(db);
+    ledger.begin(${JSON.stringify(action)});
+    const dispatch=once(process,'message');
+    process.send('intent-committed');
+    if ((await dispatch)[0] !== 'dispatch') throw new Error('Expected original dispatch');
+    const response=await fetch(process.argv[2], {method:'POST'});
+    if (!response.ok || await response.text() !== 'accepted') throw new Error('Remote write not accepted');
+    const crash=once(process,'message');
+    process.send('remote-written');
+    if ((await crash)[0] !== 'crash') throw new Error('Expected crash after remote write');
+    process.kill(process.pid,'SIGKILL');`;
+  const child = spawn(process.execPath, ["--input-type=module", "-e", source, f.path, origin], {
+    env: { PATH: process.env.PATH },
+    stdio: ["ignore", "ignore", "ignore", "ipc"],
+  });
+  const messages = new AbortController();
+  const ready = once(child, "message", { signal: messages.signal });
+  const exited = once(child, "exit") as Promise<[number | null, NodeJS.Signals | null]>;
+  const earlyExit = exited.then(([code, signal]) => {
+    throw new Error(`Writer exited before its crash acknowledgement (${code ?? signal}).`);
+  });
+  let childClosed: Promise<void> | undefined;
+  const closeChild = () =>
+    (childClosed ??= (async () => {
+      messages.abort();
+      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+      await exited;
+    })());
+  cleanup.push(closeChild);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  let dispatchExpired = false;
+  const send = (message: string) =>
+    new Promise<void>((resolve, reject) => {
+      child.send(message, (error) => (error ? reject(error) : resolve()));
     });
-    const timeout = setTimeout(() => child.kill("SIGKILL"), 10000);
-    let signal: string | null;
-    try {
-      [, signal] = (await once(child, "exit")) as [number | null, string | null];
-    } finally {
-      clearTimeout(timeout);
-    }
-    expect(signal).toBe("SIGKILL");
+  try {
+    expect((await Promise.race([ready, earlyExit]))[0]).toBe("intent-committed");
+    // The child's acknowledged committed transaction is visible in the parent
+    // before any remote effect. Slow process startup cannot pose as this crash.
+    expect(f.db.prepare("SELECT status FROM action_intents").get()?.status).toBe("pending");
+    const written = once(child, "message", { signal: messages.signal });
+    timeout = setTimeout(() => {
+      dispatchExpired = true;
+      child.kill("SIGKILL");
+    }, 10_000);
+    const [, acknowledgement] = await Promise.all([send("dispatch"), Promise.race([written, earlyExit])]);
+    expect(acknowledgement[0]).toBe("remote-written");
     expect(writes).toBe(1);
+    await send("crash");
+    const [, signal] = await exited;
+    expect(dispatchExpired).toBe(false);
+    expect(signal).toBe("SIGKILL");
     const replay = f.ledger.begin({ ...action, revision: 8, documentEpoch: 9 });
     expect(replay).toMatchObject({ duplicate: true, intent: { status: "pending" } });
     if (!replay.duplicate) await fetch(origin, { method: "POST" });
     expect(writes).toBe(1);
   } finally {
-    server.closeAllConnections();
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    clearTimeout(timeout);
+    await closeChild();
+    await closeServer();
   }
 });

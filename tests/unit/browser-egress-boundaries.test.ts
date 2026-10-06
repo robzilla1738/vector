@@ -94,8 +94,9 @@ function pageFixture(
         isolationId: "native-minted-partition",
         runId: "run",
         taskRevision: 0,
-        inMemory: true as const,
-        cookies: "empty" as const,
+        mode: "session" as const,
+        inMemory: false as const,
+        cookies: "profile" as const,
       },
     })),
     creatorCleanupProof: vi.fn(async ({ creationId, pageId }: { creationId: string; pageId: string }) => {
@@ -254,7 +255,8 @@ it("claims the actual blank document before first navigation and records even ca
 
 it("reuses observations only when the fingerprint stayed stable throughout the authorized read", async () => {
   const f = pageFixture();
-  const fingerprint = vi.fn()
+  const fingerprint = vi
+    .fn()
     .mockResolvedValueOnce("before")
     .mockResolvedValueOnce("changed-during-read")
     .mockResolvedValue("before");
@@ -465,7 +467,7 @@ it("uses native-minted controlled identity before navigation and never falls bac
     url: "https://source.test/",
     background: true,
     ownedByRuntime: true,
-    agentScope: { profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
+    agentScope: { mode: "session", profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
     beforeNavigate: async (page) => {
       expect(page.agentIsolation?.isolationId).toBe("native-minted-partition");
       f.trace.push("authority-installed");
@@ -474,6 +476,7 @@ it("uses native-minted controlled identity before navigation and never falls bac
   expect(target.pageId).toBe("native-minted-page");
   expect(f.trace).toEqual(["authority-installed", "navigate"]);
   expect(f.native.createAgentPage).toHaveBeenCalledWith({
+    mode: "session",
     profileId: "profile",
     runId: "run",
     ancestry: ["run"],
@@ -499,7 +502,13 @@ it("keeps controlled creation inert when native isolation or source authority is
       url: "https://source.test/",
       background: true,
       ownedByRuntime: true,
-      agentScope: { profileId: "profile", runId: "other-run", ancestry: ["other-run"], taskRevision: 0 },
+      agentScope: {
+        mode: "session",
+        profileId: "profile",
+        runId: "other-run",
+        ancestry: ["other-run"],
+        taskRevision: 0,
+      },
       beforeNavigate: vi.fn(),
     }),
   ).rejects.toThrow("did not match this run");
@@ -516,7 +525,7 @@ it("closes a newly minted controlled blank on denied install, without navigating
       url: "https://source.test/",
       background: true,
       ownedByRuntime: true,
-      agentScope: { profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
+      agentScope: { mode: "session", profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
       beforeNavigate: async () => {
         throw new Error("denied native install");
       },
@@ -537,8 +546,9 @@ it("preserves isolation metadata when the native catalog announces the minted pa
       isolationId: "native-minted-partition",
       runId: "run",
       taskRevision: 0,
-      inMemory: true as const,
-      cookies: "empty" as const,
+      mode: "session" as const,
+      inMemory: false as const,
+      cookies: "profile" as const,
     },
   };
   let announced!: ReturnType<PageService["registerExternal"]>;
@@ -557,7 +567,7 @@ it("preserves isolation metadata when the native catalog announces the minted pa
     url: "https://source.test/",
     background: true,
     ownedByRuntime: true,
-    agentScope: { profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
+    agentScope: { mode: "session", profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
     beforeNavigate: async () => {},
   });
   expect(await announced).toBe(page);
@@ -576,7 +586,7 @@ it("installs protected authority before driver initialization can emit CDP comma
     url: "https://source.test/",
     background: true,
     ownedByRuntime: true,
-    agentScope: { profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
+    agentScope: { mode: "session", profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
     beforeNavigate: async (page) => {
       expect(f.pages.get(page.pageId).url).toBe("about:blank");
       expect(f.driver.attach).not.toHaveBeenCalled();
@@ -607,7 +617,7 @@ it("does not attach a protected CDP driver while installation is pending or reje
     url: "https://source.test/",
     background: true,
     ownedByRuntime: true,
-    agentScope: { profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
+    agentScope: { mode: "session", profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
     beforeNavigate: () => {
       entered();
       return install;
@@ -639,7 +649,7 @@ it("retains both install and native cleanup refusal without falling back to gene
       url: "https://source.test/",
       background: true,
       ownedByRuntime: true,
-      agentScope: { profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
+      agentScope: { mode: "session", profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
       beforeNavigate: async () => {
         throw primary;
       },
@@ -669,7 +679,7 @@ it("refuses substituted native creation proof before the final cleanup RPC", asy
       url: "https://source.test/",
       background: true,
       ownedByRuntime: true,
-      agentScope: { profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
+      agentScope: { mode: "session", profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
       beforeNavigate: async () => {
         throw primary;
       },
@@ -718,7 +728,7 @@ it.each([
       url: "https://source.test/",
       background: true,
       ownedByRuntime: true,
-      agentScope: { profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
+      agentScope: { mode: "session", profileId: "profile", runId: "run", ancestry: ["run"], taskRevision: 0 },
       beforeNavigate: async () => {
         throw primary;
       },

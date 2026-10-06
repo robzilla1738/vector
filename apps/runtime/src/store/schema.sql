@@ -45,6 +45,7 @@ CREATE INDEX idx_run_messages_chat ON run_messages(chat_id,created_at,message_id
 CREATE INDEX idx_run_messages_status ON run_messages(status,created_at,message_id);
 CREATE TABLE conversations(
   chat_id TEXT PRIMARY KEY, title TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0,
+  private_task INTEGER NOT NULL DEFAULT 0 CHECK(private_task IN (0,1)),
   created_at REAL NOT NULL, updated_at REAL NOT NULL);
 CREATE INDEX idx_conversations_state_updated ON conversations(archived, updated_at DESC);
 CREATE TABLE steps(
@@ -413,6 +414,51 @@ CREATE TABLE ai_result_cache(
   accessed_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL);
 CREATE INDEX idx_ai_result_cache_profile_access ON ai_result_cache(profile_id,accessed_at,cache_key);
+
+-- Immutable Set lineage survives member removal for child billing attribution.
+CREATE TABLE run_tool_calls(
+  run_id TEXT NOT NULL,
+  tool_call_id TEXT NOT NULL,
+  tool_name TEXT NOT NULL,
+  started_at REAL NOT NULL,
+  PRIMARY KEY(run_id,tool_call_id));
+
+CREATE TABLE set_run_members(
+  child_run_id TEXT PRIMARY KEY,
+  parent_run_id TEXT NOT NULL,
+  set_id TEXT NOT NULL,
+  member_id TEXT NOT NULL,
+  source_digest TEXT NOT NULL CHECK(length(source_digest)=64),
+  state TEXT NOT NULL CHECK(state IN ('starting','running','completed','failed','cancelled')),
+  created_at REAL NOT NULL,
+  updated_at REAL NOT NULL,
+  UNIQUE(parent_run_id,member_id));
+CREATE INDEX idx_set_run_members_parent ON set_run_members(parent_run_id,child_run_id);
+
+CREATE TABLE execution_resources (
+  resource_id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL,
+  provider TEXT NOT NULL CHECK(provider = 'vercel-sandbox'),
+  state TEXT NOT NULL CHECK(state IN ('reserved', 'running', 'settled', 'cancelled')),
+  original_digest TEXT NOT NULL CHECK(length(original_digest) = 64),
+  quote_digest TEXT NOT NULL CHECK(length(quote_digest) = 64),
+  quote_json TEXT NOT NULL,
+  reservation_usd REAL CHECK(reservation_usd >= 0),
+  sandbox_id TEXT,
+  session_id TEXT,
+  usage_json TEXT,
+  cost_usd REAL CHECK(cost_usd >= 0),
+  cost_estimated INTEGER NOT NULL DEFAULT 1 CHECK(cost_estimated IN (0, 1)),
+  stop_ack INTEGER NOT NULL DEFAULT 0 CHECK(stop_ack IN (0, 1)),
+  created_at REAL NOT NULL,
+  updated_at REAL NOT NULL,
+  started_at REAL,
+  ended_at REAL,
+  CHECK(state != 'settled' OR (stop_ack = 1 AND sandbox_id IS NOT NULL AND session_id IS NOT NULL)),
+  CHECK(state != 'cancelled' OR (started_at IS NULL AND sandbox_id IS NULL)),
+  CHECK(cost_estimated = 1 OR (state = 'settled' AND cost_usd IS NOT NULL))
+);
+CREATE INDEX execution_resources_run ON execution_resources(run_id, created_at, resource_id);
 
 -- @schema spend
 CREATE TABLE IF NOT EXISTS ai_spend(

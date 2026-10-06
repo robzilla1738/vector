@@ -114,7 +114,6 @@ async function fixture() {
     handler: {
       type: "mcp_tool",
       serverId: "local",
-      grantId: "11111111-1111-4111-8111-111111111111",
       toolName: "protected_recovery_tool",
     },
   });

@@ -48,14 +48,13 @@ export {
 } from "./services/import-sources.js";
 export {
   RunCoordinator,
-  verifyDoneAgainstObservation,
   verifyResultCitations,
   markUnconfirmedWrites,
   NAV_OPS,
 } from "./agent/coordinator.js";
 export { MockModelClient } from "./agent/mock-client.js";
 export {
-  DEFAULT_PLANNER_MODEL,
+  DEFAULT_AGENT_MODEL,
   DEFAULT_MAX_MODEL_CALLS,
   LUNA_FAST_MODEL,
   FALLBACK_MODELS,
@@ -81,21 +80,9 @@ export { OperationService } from "./services/operations.js";
 export { StateService } from "./services/state.js";
 export { ResponseStore } from "./services/responses.js";
 export { Tracer } from "./services/tracing.js";
-export {
-  buildPlannerPrompt,
-  buildFinalAnswerPrompt,
-  applyTokenBudget,
-  fenceUntrusted,
-  newFenceToken,
-  PLANNER_SYSTEM,
-  UNTRUSTED_DATA_RULE,
-} from "./agent/planner.js";
 export { renderObservation, compactObservation } from "./services/observation-render.js";
 export { WorkerPool } from "./scheduler/pool.js";
-export { runMemberAgent } from "./agent/member-agent.js";
-export { SetRunner } from "./scheduler/set-runner.js";
-export { EarlyDispatcher } from "./agent/early-dispatch.js";
-export { PlanStreamParser } from "./agent/plan-stream.js";
+export { SetExecutor } from "./scheduler/set-executor.js";
 export { canResumeAfterPageRelease } from "./agent/control-authority.js";
 export {
   compileSkill,
@@ -194,16 +181,6 @@ export {
 } from "./services/runtime-backup.js";
 export { ZapService, zapStylesheet, zapInstallRequest } from "./services/zap.js";
 export {
-  classifyRepair,
-  noteRepair,
-  emptyRepairState,
-  REPAIR_BUDGETS,
-  REPAIR_CLASSES,
-  type RepairClass,
-  type RepairState,
-  type RepairDecision,
-} from "./agent/repair.js";
-export {
   negotiate as negotiateBidi,
   dispatch as dispatchBidi,
   authorizePageTool,
@@ -253,3 +230,15 @@ export {
 export { OnboardingService } from "./services/onboarding.js";
 
 export { listSafetyActivity } from "./services/safety-activity.js";
+
+export { RunFundingService, FundingBudgetError, ResourceFundingUnavailable, ResourceLimitsUnavailable, ModelFundingUnavailable } from "./services/run-funding.js";
+
+export { resourceFundingAccounting, type ResourceFundingAccounting } from "./services/resource-accounting.js";
+
+export { ProviderAuthService } from "./services/provider-auth.js";
+export { ChatgptAuthService } from "./services/chatgpt-auth.js";
+export { ChatgptAccounts, chatgptAccountId } from "./services/chatgpt-account.js";
+export { accountableUtilityModel } from "./services/utility-model.js";
+export { chatgptRequest, chatgptCompletionStream, chatgptModelClient } from "./agent/chatgpt-model.js";
+export { chatgptModels, parseChatgptModels } from "./services/chatgpt-catalog.js";
+export { ModelCatalogService, parseModelCatalog, discoverLocalModels } from "./services/model-catalog.js";

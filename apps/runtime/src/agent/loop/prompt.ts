@@ -42,13 +42,13 @@ export const CONDITIONAL_DOCS: ConditionalDoc[] = [
     requiredFor: () => true,
     doc: `## Suspensions and confirmations
 - \`ask_user_question\` parks the turn until the user answers — call it only when the answer changes what you do next, and alone (no other tool call in the same turn).
-- \`request_action_confirmation\` produces a user-facing review artifact for consequential work: call it alone, once, after the work is verified.`,
+- \`request_action_confirmation\` produces a user-facing review artifact when the user requests review or the current policy requires confirmation: call it alone, once, after the work is verified. Ordinary actions allowed by the current policy do not need an extra confirmation.`,
   },
   {
     id: "webmcp",
     requiredFor: (ctx) => ctx.webmcp === true,
     doc: `## Site tools (WebMCP)
-This page exposes site-authored tools. Call \`page.webmcp.tools()\` to list them and \`page.webmcp.call(name, input)\` to run one. Write-capable site tools require approval like any other consequential action; read-only tools run directly.`,
+This page exposes site-authored tools. Call \`page.webmcp.tools()\` to list them and \`page.webmcp.call(name, input)\` to run one. Site tools follow the current mode and site policy at dispatch.`,
   },
 ];
 

@@ -1,10 +1,12 @@
 import { z } from "zod";
 import {
   AuxError,
+  CalendarTaskEventsInputSchema,
   InlineAssistTextSchema,
   ObservationScopeSchema,
   PlanStepSchema,
   ResultCitationSchema,
+  CompletedGeneratedFileSchema,
 } from "@aux/contracts";
 import type { LoopTool, LoopToolManifest, LoopToolContext, LoopToolResult } from "./types.js";
 
@@ -283,7 +285,7 @@ export function buildToolManifest(): LoopToolManifest {
 
   const goalProgram: LoopTool = {
     description:
-      "First-turn page workflow. Write one synchronous-looking JavaScript script that performs the whole task and calls submitResult(report, citations) or page.submitLabeledValue(label) after inspecting live evidence. Supply answerLabel with the requested field label (or empty string for non-labeled answers); for a requested dialog-only value set answerScope to dialog. If the script's own extraction fails after opening a visible modal, a unique labeled value in that modal may complete via the same verifier. For pagination or a route link, use page.followLinkByName(name): it resolves one observed same-origin href and navigates the current tab without firing click handlers. Use page.clickByName(name, role?) when click behavior is required, such as a button, download, or new-tab link. page.navigateMatching(targetId) resolves a unique same-origin route only when observed sibling links support it. All named lookups fail on ambiguity; actions still pass decide() and the durable write ledger. On other ambiguity, throw rather than guess; ordinary tools are available on the next turn.",
+      "Optional verified page workflow. Write one synchronous-looking JavaScript script that performs the whole task and calls submitResult(report, citations) or page.submitLabeledValue(label) after inspecting live evidence. Supply answerLabel with the requested field label (or empty string for non-labeled answers); for a requested dialog-only value set answerScope to dialog. If the script's own extraction fails after opening a visible modal, a unique labeled value in that modal may complete via the same verifier. For pagination or a route link, use page.followLinkByName(name): it resolves one observed same-origin href and navigates the current tab without firing click handlers. Use page.clickByName(name, role?) when click behavior is required, such as a button, download, or new-tab link. page.navigateMatching(targetId) resolves a unique same-origin route only when observed sibling links support it. All named lookups fail on ambiguity; actions still pass decide() and the durable write ledger. On other ambiguity, throw rather than guess; ordinary tools are available on the next turn.",
     byline: "Aux first-turn goal program — governed REPL with verified finish",
     inputSchema: z.object({
       code: z
@@ -669,6 +671,7 @@ export function buildToolManifest(): LoopToolManifest {
         .max(32)
         .optional()
         .describe("Array of citation objects. Never a JSON string."),
+      generatedFiles: z.array(CompletedGeneratedFileSchema).max(5).optional(),
       textProposal: InlineAssistTextSchema.optional().describe(
         "Optional exact plain text the person may review and insert into a focused browser field. Use only for a requested writing draft.",
       ),
@@ -679,6 +682,7 @@ export function buildToolManifest(): LoopToolManifest {
           report: z.string().min(1).max(64_000),
           citations: z.array(ResultCitationSchema).max(32).optional(),
           textProposal: InlineAssistTextSchema.optional(),
+          generatedFiles: z.array(CompletedGeneratedFileSchema).max(5).optional(),
         })
         .parse(normalizeSubmitResultInput(raw));
       const verdict = await need(ctx.deps.submitResult, "submit_result")(input, ctx);
@@ -728,7 +732,23 @@ export function buildToolManifest(): LoopToolManifest {
     },
   };
 
+  const calendarInput = CalendarTaskEventsInputSchema.omit({ taskId: true }).refine(
+    (input) => { const span = Date.parse(input.timeMax) - Date.parse(input.timeMin); return span > 0 && span <= 31 * 24 * 60 * 60 * 1000; },
+    "Choose a calendar range of at most 31 days.",
+  );
   return {
+    calendar_events_list: {
+      description: "Read events from an account explicitly granted to this saved task. Use only a grantId listed in this run’s captured Calendar accounts; later grants do not expand this run.",
+      byline: "Task-granted Calendar",
+      inputSchema: calendarInput,
+      execute: (raw, ctx) => need(ctx.deps.calendarEvents, "calendar_events_list")(calendarInput.parse(raw)),
+    },
+    image_generate: {
+      description: "Generate an image from a prompt and save its artifact in this conversation. Uses the original run’s model and spend budgets.",
+      byline: "Aux image generation",
+      inputSchema: z.object({ prompt: z.string().trim().min(1).max(4_000) }),
+      execute: async (raw, ctx) => need(ctx.deps.generateImage, "image_generate")(z.object({ prompt: z.string().trim().min(1).max(4_000) }).parse(raw)),
+    },
     get_time: getTime,
     snapshot,
     act,

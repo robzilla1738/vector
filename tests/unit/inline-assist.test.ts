@@ -148,7 +148,7 @@ it("refuses queued insertion after preference revocation before any page or ledg
   expect(document.execCommand).not.toHaveBeenCalled();
 });
 
-it("captures only the focused selected field and drafts through the Contributor fast route", async () => {
+it("captures only the focused selected field and drafts through the selected fast route", async () => {
   const { assist, model } = harness();
   const capture = await assist.capture(request);
   expect(capture).toMatchObject({
@@ -165,7 +165,7 @@ it("captures only the focused selected field and drafts through the Contributor 
   );
   expect(draft).toMatchObject({
     replacement: "A clear project draft.",
-    modelId: "meta/muse-spark-1.3-contributor",
+    modelId: "anthropic/claude-haiku-4.5",
   });
   const sent = model.generateStructured.mock.calls[0]![0] as {
     prompt: string;

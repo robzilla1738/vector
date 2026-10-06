@@ -19,8 +19,9 @@ function fixture() {
         runId: "run",
         taskId: "task",
         taskRevision: 1,
-        inMemory: true as const,
-        cookies: "empty" as const,
+        mode: "session" as const,
+        inMemory: false as const,
+        cookies: "profile" as const,
       },
     })),
     egressInstall: vi.fn(async (_input: { lease: EgressLease; expectedUrl: string }) => ({

@@ -8,20 +8,9 @@ import { SpendLedger } from "../../apps/runtime/src/store/spend-ledger.js";
 import { ArtifactStore } from "../../apps/runtime/src/services/artifacts.js";
 import { EventBus, openDb, Repo } from "@aux/runtime";
 import { PNG } from "pngjs";
-import { DEFAULT_AGENT_MODEL_ROUTES } from "@aux/contracts";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => cleanup.splice(0).forEach((fn) => fn()));
-
-it("keeps Imagen exclusively in the image tool and all default agent roles on Contributor", () => {
-  expect(Object.values(DEFAULT_AGENT_MODEL_ROUTES).map((route) => route.modelId)).toEqual([
-    "meta/muse-spark-1.3-contributor",
-    "meta/muse-spark-1.3-contributor",
-    "meta/muse-spark-1.3-contributor",
-    "meta/muse-spark-1.3-contributor",
-  ]);
-  expect(AGENT_IMAGE_MODEL).toBe("google/imagen-4.0-fast-generate-001");
-});
 
 it("blocks private hosts and validates every search redirect against explicit egress policy", async () => {
   expect(() => permittedWebUrl("http://127.0.0.1/admin")).toThrow(/private or local/);
@@ -77,11 +66,22 @@ it("reserves global image spend before provider dispatch and saves only validate
   });
   const artifacts = new ArtifactStore(join(dir, "artifacts"), repo, new EventBus(repo));
   let calls = 0;
-  const images = new AgentImageTools(artifacts, ledger, async () => {
+  const images = new AgentImageTools(artifacts, ledger, async (_prompt, dispatch) => {
+    await dispatch.beforeDispatch();
     calls++;
     return { data: PNG.sync.write(new PNG({ width: 1, height: 1 })), mediaType: "image/png", costUsd: 0.02 };
   });
-  const result = await images.generate("A red glass sphere", "task-one");
+  const receipts: unknown[] = [];
+  const context = {
+    runId: "fixture-original-image-run",
+    taskId: "task-one",
+    signal: new AbortController().signal,
+    checkOwner: () => {},
+    recordReceipt: async (receipt: unknown) => {
+      receipts.push(receipt);
+    },
+  };
+  const result = await images.generate("A red glass sphere", context);
   expect(result).toMatchObject({ modelId: AGENT_IMAGE_MODEL, mediaType: "image/png" });
   expect(PNG.sync.read(Buffer.from(artifacts.read(result.artifactId).dataBase64, "base64"))).toMatchObject({
     width: 1,
@@ -89,7 +89,11 @@ it("reserves global image spend before provider dispatch and saves only validate
   });
   expect(ledger.summary().committedUsd).toBeCloseTo(0.02);
   const hold = ledger.reserve("fixture", "other", 49);
-  await expect(images.generate("Another sphere")).rejects.toThrow(/program cap reached/);
+  await expect(images.generate("Another sphere", context)).rejects.toThrow(/program cap reached/);
   expect(calls).toBe(1);
+  expect(receipts).toMatchObject([
+    { costUsd: 0.02, costEstimated: false },
+    { costUsd: 0, costEstimated: false },
+  ]);
   ledger.settle(hold, 49);
 });

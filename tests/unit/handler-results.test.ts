@@ -101,7 +101,6 @@ beforeAll(() => {
     sets,
     settings,
     artifacts,
-    translateSteps: (_p, s) => s,
     nativeAvailable: () => false,
   });
   // Bookmark handlers use the native BookmarkModel; keep its fixture separate
@@ -523,7 +522,7 @@ describe("handler results conform to ResultSchemas", () => {
     });
     await call("runs.list", { limit: 10 });
     await call("runs.pause", { runId: "run_x" });
-    await call("runs.resume", { runId: "run_x" });
+    await expect(invoke("runs.resume", { runId: "run_x" })).rejects.toMatchObject({ code: "conflict" });
     await call("runs.cancel", { runId: "run_x" });
     await call("runs.events", { sinceSeq: 0, limit: 50 });
     await call("events.since", { sinceSeq: 0, limit: 50 });

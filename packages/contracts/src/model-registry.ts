@@ -26,20 +26,24 @@ export const ModelCapabilitySchema = z
     promptCaching: z.boolean().optional(),
     inputUsdPerMTok: z.number().nonnegative().optional(),
     outputUsdPerMTok: z.number().nonnegative().optional(),
+    /** Transport capabilities, authored by the selected account adapter rather than inferred from API prices. */
+    billingKind: z.enum(["api", "subscription"]).optional(),
+    outputLimitSupported: z.boolean().optional(),
     source: z.enum(["snapshot", "catalog", "configured"]),
     status: z.enum(["verified", "unverified"]).optional(),
   })
   .strict();
 export type ModelCapability = z.infer<typeof ModelCapabilitySchema>;
 
-export const DEFAULT_PLANNER_MODEL_ID = "meta/muse-spark-1.3-contributor";
+export const DEFAULT_UTILITY_MODEL_ID = "openai/gpt-6-luna-fast";
+export const DEFAULT_IMAGE_MODEL_ID = "openai/gpt-image-2";
 
 export const AgentModelCategorySchema = z.enum(["fast", "standard", "deep", "visual"]);
 export type AgentModelCategory = z.infer<typeof AgentModelCategorySchema>;
 export const AgentModelRouteSchema = z
   .object({
     modelId: z.string().min(1),
-    reasoning: z.enum(["low", "medium", "xhigh"]),
+    reasoning: z.enum(["low", "medium", "high", "xhigh"]),
   })
   .strict();
 export type AgentModelRoute = z.infer<typeof AgentModelRouteSchema>;
@@ -63,12 +67,18 @@ export function normalizeRouteChain(value: unknown): AgentModelRoute[] {
   return Array.isArray(parsed.data) ? parsed.data : [parsed.data];
 }
 
-/** One Contributor model for every role; only effort changes by default. */
+/** Verified Gateway frontier routes; explicit settings remain authoritative. */
 export const DEFAULT_AGENT_MODEL_ROUTES: Readonly<Record<AgentModelCategory, AgentModelRoute>> = {
-  fast: { modelId: DEFAULT_PLANNER_MODEL_ID, reasoning: "low" },
-  standard: { modelId: DEFAULT_PLANNER_MODEL_ID, reasoning: "medium" },
-  deep: { modelId: DEFAULT_PLANNER_MODEL_ID, reasoning: "xhigh" },
-  visual: { modelId: DEFAULT_PLANNER_MODEL_ID, reasoning: "medium" },
+  fast: { modelId: "anthropic/claude-haiku-4.5", reasoning: "low" },
+  standard: { modelId: "anthropic/claude-sonnet-5.5", reasoning: "medium" },
+  deep: { modelId: "anthropic/claude-opus-5.5", reasoning: "high" },
+  visual: { modelId: "anthropic/claude-sonnet-5.5", reasoning: "medium" },
+};
+export const DEFAULT_AGENT_MODEL_FALLBACKS: Readonly<Record<AgentModelCategory, AgentModelRoute>> = {
+  fast: { modelId: "google/gemini-3.8-flash", reasoning: "low" },
+  standard: { modelId: "openai/gpt-6.1-sol", reasoning: "medium" },
+  deep: { modelId: "openai/gpt-6.1-sol", reasoning: "high" },
+  visual: { modelId: "openai/gpt-6.1-sol", reasoning: "medium" },
 };
 
 export function agentModelRoute(
@@ -78,19 +88,145 @@ export function agentModelRoute(
   return AgentModelRouteSchema.parse(overrides?.[category] ?? DEFAULT_AGENT_MODEL_ROUTES[category]);
 }
 
-/**
- * Known-good offline snapshot. Only entries verified against the live Gateway
- * catalog (2026-09-22 review) carry status "verified"; both were present in
- * the live catalog and must not be blacklisted as invalid identifiers.
- */
+/** Public Gateway /v1/models snapshot verified on 2026-10-06; live catalog wins. */
 export const MODEL_REGISTRY: readonly ModelCapability[] = [
   {
-    id: DEFAULT_PLANNER_MODEL_ID,
-    name: "Meta Muse Spark 1.3 Contributor",
-    provider: "meta",
-    contextTokens: 1_048_576,
+    id: "anthropic/claude-haiku-4.5",
+    name: "Claude Haiku 4.5",
+    provider: "anthropic",
+    contextTokens: 200000,
+    maxOutputTokens: 64000,
     modalities: ["text", "image"],
+    structuredOutput: true,
+    streaming: true,
     reasoning: "supported",
+    promptCaching: true,
+    inputUsdPerMTok: 1,
+    outputUsdPerMTok: 5,
+    source: "snapshot",
+    status: "verified",
+  },
+  {
+    id: "google/gemini-3.8-flash",
+    name: "Gemini 3.8 Flash",
+    provider: "google",
+    contextTokens: 1000000,
+    maxOutputTokens: 65535,
+    modalities: ["text", "image"],
+    structuredOutput: true,
+    streaming: true,
+    reasoning: "supported",
+    promptCaching: true,
+    inputUsdPerMTok: 0.75,
+    outputUsdPerMTok: 3.75,
+    source: "snapshot",
+    status: "verified",
+  },
+  {
+    id: "anthropic/claude-sonnet-5.5",
+    name: "Claude Sonnet 5.5",
+    provider: "anthropic",
+    contextTokens: 1000000,
+    maxOutputTokens: 128000,
+    modalities: ["text", "image"],
+    structuredOutput: true,
+    streaming: true,
+    reasoning: "supported",
+    promptCaching: true,
+    inputUsdPerMTok: 2,
+    outputUsdPerMTok: 10,
+    source: "snapshot",
+    status: "verified",
+  },
+  {
+    id: "openai/gpt-6.1-sol",
+    name: "GPT-6.1 Sol",
+    provider: "openai",
+    contextTokens: 1050000,
+    maxOutputTokens: 128000,
+    modalities: ["text", "image"],
+    structuredOutput: true,
+    streaming: true,
+    reasoning: "supported",
+    promptCaching: true,
+    inputUsdPerMTok: 2,
+    outputUsdPerMTok: 10,
+    source: "snapshot",
+    status: "verified",
+  },
+  {
+    id: "anthropic/claude-opus-5.5",
+    name: "Claude Opus 5.5",
+    provider: "anthropic",
+    contextTokens: 1000000,
+    maxOutputTokens: 128000,
+    modalities: ["text", "image"],
+    structuredOutput: true,
+    streaming: true,
+    reasoning: "supported",
+    promptCaching: true,
+    inputUsdPerMTok: 4,
+    outputUsdPerMTok: 20,
+    source: "snapshot",
+    status: "verified",
+  },
+  {
+    id: "anthropic/claude-fable-5.1",
+    name: "Claude Fable 5.1",
+    provider: "anthropic",
+    contextTokens: 1000000,
+    maxOutputTokens: 128000,
+    modalities: ["text", "image"],
+    structuredOutput: true,
+    streaming: true,
+    reasoning: "supported",
+    promptCaching: true,
+    inputUsdPerMTok: 10,
+    outputUsdPerMTok: 50,
+    source: "snapshot",
+    status: "verified",
+  },
+  {
+    id: "openai/gpt-6-luna-fast",
+    name: "GPT-6 Luna (Fast)",
+    provider: "openai",
+    contextTokens: 1050000,
+    maxOutputTokens: 128000,
+    modalities: ["text", "image"],
+    structuredOutput: true,
+    streaming: true,
+    reasoning: "supported",
+    promptCaching: true,
+    inputUsdPerMTok: 0.2,
+    outputUsdPerMTok: 1,
+    source: "snapshot",
+    status: "verified",
+  },
+  {
+    id: "openai/gpt-image-2",
+    name: "GPT Image 2",
+    provider: "openai",
+    modalities: ["text"],
+    structuredOutput: false,
+    streaming: false,
+    reasoning: "none",
+    promptCaching: true,
+    inputUsdPerMTok: 5,
+    outputUsdPerMTok: 30,
+    source: "snapshot",
+    status: "verified",
+  },
+  {
+    id: "meta/muse-spark-1.3-contributor",
+    name: "Muse Spark 1.3 Contributor",
+    provider: "meta",
+    contextTokens: 1048576,
+    maxOutputTokens: 1048576,
+    modalities: ["text", "image"],
+    structuredOutput: true,
+    streaming: true,
+    reasoning: "supported",
+    promptCaching: true,
     inputUsdPerMTok: 0.1,
     outputUsdPerMTok: 0.2,
     source: "snapshot",
@@ -98,23 +234,17 @@ export const MODEL_REGISTRY: readonly ModelCapability[] = [
   },
   {
     id: "alibaba/qwen3.8-27b",
-    name: "Qwen 3.8 27B",
+    name: "Qwen3.8 27B",
     provider: "alibaba",
-    modalities: ["text"],
-    structuredOutput: true,
-    streaming: true,
-    reasoning: "supported",
-    source: "snapshot",
-    status: "verified",
-  },
-  {
-    id: "openai/gpt-5.6-luna-fast",
-    name: "GPT 5.6 Luna Fast",
-    provider: "openai",
+    contextTokens: 1000000,
+    maxOutputTokens: 131072,
     modalities: ["text", "image"],
     structuredOutput: true,
     streaming: true,
-    reasoning: "none",
+    reasoning: "supported",
+    promptCaching: true,
+    inputUsdPerMTok: 0.5,
+    outputUsdPerMTok: 3,
     source: "snapshot",
     status: "verified",
   },

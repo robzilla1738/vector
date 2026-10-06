@@ -41,7 +41,6 @@ function fixture() {
     native: new NullNativeBridge(),
     turnMentions: fixtureTurnMentions((id): PageTarget | undefined => pages.get(id)),
     drivers: () => ({ aux: null, chrome: null }),
-    grants: ["effect:read", "effect:write"],
   });
   const target: PageTarget = {
     pageId: "tab",

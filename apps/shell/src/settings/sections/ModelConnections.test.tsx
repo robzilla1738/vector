@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { CopilotSetupSchema } from "@aux/contracts/copilot-auth";
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -27,6 +28,20 @@ vi.mock("../../commands", async () => {
     },
   };
 });
+const copilotSetup = CopilotSetupSchema.parse({
+  registrationConfigured: false,
+  runtimeInstalled: false,
+  runtimeSupported: false,
+  catalogOnly: true,
+});
+function modelRead(method: string) {
+  if (method === "models.copilot.setup") return copilotSetup;
+  if (method === "models.copilot.accounts") return [];
+  if (method === "settings.cloud.status") return { configured: false, revision: 0 };
+  if (method === "models.list") return { models: [] };
+  throw new Error(`Unexpected model producer ${method}`);
+}
+
 vi.mock("../../store", () => ({ call, toast, errToast }));
 let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
 const save = vi.fn();
@@ -79,7 +94,7 @@ beforeEach(() => {
   toast.mockReset();
   errToast.mockReset();
   save.mockReset().mockResolvedValue(true);
-  call.mockReset().mockResolvedValue({ models: [] });
+  call.mockReset().mockImplementation(async (method) => modelRead(method));
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -177,10 +192,10 @@ it("saves the exact image selection or Off without a provider request and displa
   const select = host.querySelector<HTMLSelectElement>('[aria-label="Image-generation model"]')!;
   expect(select.value).toBe("off");
   await act(async () => {
-    select.value = IMAGE_MODELS[1].id;
+    select.value = IMAGE_MODELS[0].id;
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  expect(save).toHaveBeenLastCalledWith({ imageModel: IMAGE_MODELS[1].id });
+  expect(save).toHaveBeenLastCalledWith({ imageModel: IMAGE_MODELS[0].id });
   expect(call).not.toHaveBeenCalled();
   await act(async () => {
     select.value = "off";

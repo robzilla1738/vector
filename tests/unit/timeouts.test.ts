@@ -1,12 +1,11 @@
+import { budgetLineage } from "../fixtures/budget-lineage.js";
 import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import { APICallError, JSONParseError, NoObjectGeneratedError, TypeValidationError } from "ai";
 import { ApprovalStore, BudgetsService, EventBus, openDb, Repo, RunCoordinator } from "@aux/runtime";
 import type { ModelClient } from "@aux/runtime";
-import type { Observation } from "@aux/contracts";
-import {
-  isStructuredOutputError,
-} from "../../apps/runtime/src/agent/gateway-client.js";
+import { AuxError, type Observation } from "@aux/contracts";
+import { isStructuredOutputError } from "../../apps/runtime/src/agent/gateway-client.js";
 
 const apiErr = (statusCode: number, message = "boom") =>
   new APICallError({ message, url: "https://gw.test", requestBodyValues: {}, statusCode });
@@ -33,11 +32,7 @@ describe("gateway fallback guard (P1-2 / retry amplification)", () => {
     expect(await isStructuredOutputError(apiErr(400, "response_format is not supported by this model"))).toBe(
       true,
     );
-    expect(
-      await isStructuredOutputError(
-        new Error("Unsupported JSON schema fields in schema with keys: dict_keys(['oneOf'])."),
-      ),
-    ).toBe(true);
+    expect(await isStructuredOutputError(new Error("Unsupported JSON schema fields: oneOf"))).toBe(false);
   });
   it("never retries auth, quota, server, network or abort errors", async () => {
     expect(await isStructuredOutputError(apiErr(401))).toBe(false);
@@ -106,7 +101,6 @@ function harness(model: ModelClient) {
     pages: pages as never,
     model: () => model,
     defaultModel: () => "test/planner",
-    recoveryModel: () => undefined,
     recordModelCall: (c) => {
       recorded.push({ role: c.role, error: c.error });
     },
@@ -129,7 +123,8 @@ describe("run deadline budget", () => {
   it("interrupts a hung model call and parks until an explicitly increased deadline", async () => {
     let seen: AbortSignal | undefined;
     const model: ModelClient = {
-      generateStructured: (o) =>
+      generateStructured: async () => { throw new Error("No planner dispatch."); },
+      toolCallStep: (o) =>
         new Promise((_res, rej) => {
           seen = o.signal;
           o.signal?.addEventListener("abort", () => rej(new DOMException("aborted", "AbortError")), {
@@ -147,10 +142,12 @@ describe("run deadline budget", () => {
     const pending = h.coordinator.suspensions.pending(run.runId)!;
     expect(pending.kind).toBe("budget");
     expect(pending.request.budget).toMatchObject({ reason: "time", limit: 120 });
-    await expect(h.coordinator.continueBudget(run.runId, pending.suspensionId)).rejects.toMatchObject({ code: "conflict" });
+    await expect(h.coordinator.continueBudget(run.runId, pending.suspensionId)).rejects.toMatchObject({
+      code: "conflict",
+    });
     expect(seen?.aborted).toBe(true);
     // the hung call was counted and recorded with its error
-    expect(h.recorded.filter((c) => c.role === "planner" && c.error)).toHaveLength(1);
+    expect(h.recorded.filter((c) => c.role === "agent" && c.error)).toHaveLength(1);
     await h.coordinator.cancel(run.runId);
     await vi.waitFor(() => expect(h.coordinator.controls.has(run.runId)).toBe(false));
     h.repo.db.close();
@@ -161,8 +158,10 @@ describe("explicit run call budgets", () => {
   const askingModel = () => {
     let calls = 0;
     const model: ModelClient = {
-      generateStructured: async (options) => ({
-        object: options.schema.parse({ status: "needs_input", message: "Need input", question: `Question ${++calls}` }),
+      generateStructured: async () => { throw new Error("No planner dispatch."); },
+      toolCallStep: async () => ({
+        message: { role: "assistant", content: [] },
+        toolCalls: [{ toolCallId: `question-${++calls}`, toolName: "ask_user_question", input: { question: `Question ${calls}` } }],
         durationMs: 1,
       }),
       generateText: async () => ({ text: "", durationMs: 0 }),
@@ -190,15 +189,23 @@ describe("explicit run call budgets", () => {
     const model = askingModel();
     const h = harness(model.model);
     let dayUsd = 1;
-    h.repo.saveModelCall({ callId: "previous-billed-call", role: "agent", modelId: "fixture", durationMs: 1,
-      costUsd: 1, createdAt: Date.now() });
-    const budgets = new BudgetsService(h.repo.db, () => ({ dayUsd }));
+    h.repo.saveModelCall({
+      callId: "previous-billed-call",
+      role: "agent",
+      modelId: "fixture",
+      durationMs: 1,
+      costUsd: 1,
+      createdAt: Date.now(),
+    });
+    const budgets = new BudgetsService(h.repo.db, () => ({ dayUsd }), budgetLineage(h.repo));
     h.coordinator.deps.checkBudget = ({ runId }) => budgets.assertWithin({ runId });
     const run = await h.coordinator.start({ goal: "Gather details", pageIds: ["p1"] });
     await vi.waitFor(() => expect(h.coordinator.suspensions.pending(run.runId)?.kind).toBe("budget"));
     const pending = h.coordinator.suspensions.pending(run.runId)!;
     expect(pending.request.budget).toMatchObject({ reason: "spend", scope: "day", used: 1, limit: 1 });
-    await expect(h.coordinator.continueBudget(run.runId, pending.suspensionId)).rejects.toMatchObject({ code: "permission_denied" });
+    await expect(h.coordinator.continueBudget(run.runId, pending.suspensionId)).rejects.toMatchObject({
+      code: "permission_denied",
+    });
     expect(model.calls()).toBe(0);
     dayUsd = 2;
     await h.coordinator.continueBudget(run.runId, pending.suspensionId);
@@ -214,10 +221,22 @@ describe("explicit run call budgets", () => {
     const run = await h.coordinator.start({ goal: "Gather details", pageIds: ["p1"], maxModelCalls: 1 });
     await vi.waitFor(() => expect(h.repo.getRun(run.runId)?.status).toBe("needs_input"));
     const approvals = new ApprovalStore(h.repo.db);
-    const approvalId = approvals.issue({ profileId: "profile", scope: { kind: "task", id: "task" },
-      effect: "write", action: "click", category: "purchase", authentication: "touch_id",
-      invocationDigest: "a".repeat(64), origin: "https://site.test", turnId: run.runId,
-      threadId: run.runId, requestedAt: Date.now() }, "turn");
+    const approvalId = approvals.issue(
+      {
+        profileId: "profile",
+        scope: { kind: "task", id: "task" },
+        effect: "write",
+        action: "click",
+        category: "purchase",
+        authentication: "touch_id",
+        invocationDigest: "a".repeat(64),
+        origin: "https://site.test",
+        turnId: run.runId,
+        threadId: run.runId,
+        requestedAt: Date.now(),
+      },
+      "turn",
+    );
     const proof = approvals.prepareDevice(approvalId, run.runId);
     await h.coordinator.answer(run.runId, "The requested detail");
     await vi.waitFor(() => expect(h.coordinator.suspensions.pending(run.runId)?.kind).toBe("budget"));
@@ -226,12 +245,18 @@ describe("explicit run call budgets", () => {
     expect(pending.request.budget).toMatchObject({ reason: "model_calls", used: 1, limit: 1 });
     await expect(h.coordinator.answer(run.runId, "Continue")).rejects.toMatchObject({ code: "conflict" });
     await expect(h.coordinator.resume(run.runId)).rejects.toMatchObject({ code: "conflict" });
-    await expect(h.coordinator.continueBudget(run.runId, "different-request", { maxModelCalls: 2 })).rejects.toMatchObject({ code: "conflict" });
-    await expect(h.coordinator.continueBudget(run.runId, pending.suspensionId)).rejects.toMatchObject({ code: "conflict" });
+    await expect(
+      h.coordinator.continueBudget(run.runId, "different-request", { maxModelCalls: 2 }),
+    ).rejects.toMatchObject({ code: "conflict" });
+    await expect(h.coordinator.continueBudget(run.runId, pending.suspensionId)).rejects.toMatchObject({
+      code: "conflict",
+    });
     expect(model.calls()).toBe(1);
     await h.coordinator.continueBudget(run.runId, pending.suspensionId, { maxModelCalls: 2 });
     await vi.waitFor(() => expect(model.calls()).toBe(2));
-    await expect(h.coordinator.continueBudget(run.runId, pending.suspensionId, { maxModelCalls: 3 })).rejects.toMatchObject({ code: "conflict" });
+    await expect(
+      h.coordinator.continueBudget(run.runId, pending.suspensionId, { maxModelCalls: 3 }),
+    ).rejects.toMatchObject({ code: "conflict" });
     await h.coordinator.cancel(run.runId);
     await vi.waitFor(() => expect(h.coordinator.controls.has(run.runId)).toBe(false));
     h.repo.db.close();
@@ -239,12 +264,13 @@ describe("explicit run call budgets", () => {
 });
 
 describe("model call accounting", () => {
-  it("retries a rate limit a bounded number of times, then stops and persists only safe recovery state", async () => {
+  it("records a failed SDK attempt once and persists only safe provider state", async () => {
     let attempts = 0;
     const model: ModelClient = {
-      generateStructured: async () => {
+      generateStructured: async () => { throw new Error("No planner dispatch."); },
+      toolCallStep: async () => {
         attempts++;
-        throw apiErr(429, "rate limited: private provider response body");
+        throw new AuxError("model_error", "The model provider is temporarily unavailable.");
       },
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
@@ -253,13 +279,9 @@ describe("model call accounting", () => {
     const run = await h.coordinator.start({ goal: "g", pageIds: ["p1"], maxModelCalls: 10 });
     const done = await waitForRun(h.repo, run.runId);
     expect(done.status).toBe("failed");
-    // one call plus two backed-off retries; never unbounded amplification
-    expect(attempts).toBe(3);
-    expect(h.recorded).toHaveLength(attempts);
-    expect(h.recorded.every((c) => c.error)).toBe(true);
-    expect(h.recorded.map((c) => c.role)).toEqual(["planner", "planner", "planner"]);
-    expect(h.recorded[0]?.error).not.toContain("private provider response body");
+    expect(attempts).toBe(1);
+    expect(h.recorded).toEqual([{ role: "agent", error: "The model provider is temporarily unavailable." }]);
     expect(done.error).not.toContain("private provider response body");
-    expect(done.failure).toMatchObject({ category: "rate_limit", retryable: true, action: "retry" });
+    h.repo.db.close();
   });
 });

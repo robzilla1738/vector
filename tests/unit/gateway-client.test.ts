@@ -1,15 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
-import { PlanChunkSchema, TaskPlanChunkSchema, AuxError } from "@aux/contracts";
+import { AuxError } from "@aux/contracts";
 import {
-  assignMissingStepIds,
   extractJson,
   GatewayModelClient,
-  gatewayOnlyForModel,
   gatewayProviderOptions,
-  isStructuredOutputError,
-  normalizePlannerObject,
-  schemaNeedsJsonFallback,
   stripReasoning,
 } from "../../apps/runtime/src/agent/gateway-client.js";
 
@@ -45,55 +39,17 @@ describe("extractJson", () => {
   });
 });
 
-describe("schemaNeedsJsonFallback", () => {
-  it("is false for a flat object", () => {
-    expect(schemaNeedsJsonFallback(z.object({ ok: z.boolean() }))).toBe(false);
-  });
-  it("is true for PlanChunk (discriminated unions → oneOf)", () => {
-    expect(schemaNeedsJsonFallback(PlanChunkSchema)).toBe(true);
-    expect(schemaNeedsJsonFallback(TaskPlanChunkSchema)).toBe(true);
-  });
-});
-
-describe("assignMissingStepIds", () => {
-  it("fills omitted step ids", () => {
-    expect(assignMissingStepIds({ status: "continue", steps: [{ op: "click", target: "r1" }] })).toEqual({
-      status: "continue",
-      steps: [{ op: "click", target: "r1", id: "s1" }],
-    });
-  });
-});
-
-describe("normalizePlannerObject", () => {
-  it("fills omitted message and step ids so PlanChunk parses", () => {
-    const n = normalizePlannerObject({ status: "continue", steps: [{ op: "click", target: "r1" }] });
-    expect(PlanChunkSchema.parse(n)).toMatchObject({
-      status: "continue",
-      message: "Continue",
-      steps: [{ op: "click", target: "r1", id: "s1" }],
-    });
-  });
-});
-
-describe("stripReasoning / oneOf errors", () => {
-  it("clears think blocks", () => {
+describe("structured output parsing", () => {
+  it("strips private reasoning before parsing output", () => {
     expect(stripReasoning("<think>nope</think>ok").trim()).toBe("ok");
   });
-  it("treats Cerebras oneOf rejection as a structured-output failure", async () => {
-    expect(
-      await isStructuredOutputError(
-        new Error("Unsupported JSON schema fields in schema with keys: dict_keys(['oneOf'])."),
-      ),
-    ).toBe(true);
-  });
-  it("drops a Cerebras pin for GPT Luna Fast", () => {
-    expect(gatewayOnlyForModel("openai/gpt-5.6-luna-fast", ["cerebras"])).toBeUndefined();
-    expect(gatewayOnlyForModel("alibaba/qwen3.8-27b", ["cerebras"])).toEqual(["cerebras"]);
-    expect(gatewayProviderOptions(["cerebras"], "openai/gpt-5.6-luna-fast").gateway).toMatchObject({
+  it("preserves explicit provider routing and requested reasoning", () => {
+    expect(gatewayProviderOptions(["custom-provider"], "openai/gpt-6-luna-fast").gateway.only).toEqual([
+      "custom-provider",
+    ]);
+    expect(gatewayProviderOptions(undefined, "openai/gpt-6-luna-fast").gateway).toMatchObject({
       speed: "fast",
     });
-    expect(gatewayProviderOptions(["cerebras"], "openai/gpt-5.6-luna-fast").gateway.only).toBeUndefined();
-    expect(gatewayProviderOptions(undefined, "openai/gpt-5.6-luna-fast").openai).toBeUndefined();
     expect(gatewayProviderOptions(undefined, "openai/gpt-5.4").openai).toBeUndefined();
     const reasoner = [
       {
@@ -106,9 +62,15 @@ describe("stripReasoning / oneOf errors", () => {
     expect(gatewayProviderOptions(undefined, "openai/gpt-5.4", reasoner).openai).toEqual({
       reasoningEffort: "minimal",
     });
+    expect(gatewayProviderOptions(undefined, "openai/gpt-5.4", reasoner, "high").openai).toEqual({
+      reasoningEffort: "high",
+    });
   });
   it("rejects image parts before the Gateway call when pinned to Cerebras", async () => {
-    const client = new GatewayModelClient("vg_test", { only: ["cerebras"] });
+    const client = new GatewayModelClient("vg_test", {
+      only: ["cerebras"],
+      models: () => [{ id: "alibaba/qwen3.8-27b", modalities: ["text"], source: "configured" }],
+    });
     await expect(
       client.generateText({
         modelId: "alibaba/qwen3.8-27b",

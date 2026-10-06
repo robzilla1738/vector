@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
-import { EventBus, GoalService, openDb, Repo, TaskService } from "@aux/runtime";
+import { EventBus, GoalService, RunFundingService, resourceFundingAccounting, openDb, Repo, TaskService } from "@aux/runtime";
 import type { Run } from "@aux/contracts";
 import type { RunService } from "@aux/runtime";
-import { DEFAULT_PLANNER_MODEL_ID } from "@aux/contracts/model-registry";
+const TEST_MODEL_ID = "meta/muse-spark-1.3-contributor";
 
 function fixture() {
   const db = openDb(":memory:");
@@ -31,7 +31,7 @@ function fixture() {
     resume: (id: string) => transition(id, "running"),
     cancel: (id: string) => transition(id, "cancelled"),
   } as unknown as Pick<RunService, "start" | "pause" | "resume" | "cancel">;
-  return { db, repo, workspace, goals: new GoalService(repo, runs), runs, started: () => started };
+  return { db, repo, workspace, goals: new GoalService(repo, runs), funding: new RunFundingService(repo, resourceFundingAccounting(repo)), runs, started: () => started };
 }
 
 it("runs a durable goal with the coordinator's token, cost and wall-time limits", async () => {
@@ -48,9 +48,7 @@ it("runs a durable goal with the coordinator's token, cost and wall-time limits"
   expect(f.started()).toMatchObject({
     goal: "Compare sources",
     pageIds: ["p1"],
-    engine: "agent-loop",
     defaultWorkspaceId: f.workspace.workspaceId,
-    maxTokens: 10_000,
     maxCostUsd: 2,
     deadlineMs: 120_000,
   });
@@ -123,7 +121,8 @@ it("keeps one unfinished Goal per conversation and carries that conversation int
   expect((await f.goals.cancel(first.goalId)).status).toBe("cancelled");
   const second = f.goals.create(input);
   await f.goals.start(second.goalId, ["p1"]);
-  expect(f.started()).toMatchObject({ chatId: "chat-one", maxTokens: 1200 });
+  expect(f.started()).toMatchObject({ chatId: "chat-one" });
+  expect(second.budget.maxTokens).toBe(1200);
   expect(() => f.goals.create(input)).toThrow(/Finish or cancel/);
   await f.goals.cancel(second.goalId);
   expect(f.goals.create(input).chatId).toBe("chat-one");
@@ -181,16 +180,17 @@ it("funds one provider attempt before dispatch and reconciles actual usage acros
   });
   const { runId } = await f.goals.start(goal.goalId, ["p1"]);
   const request = {
-    modelId: DEFAULT_PLANNER_MODEL_ID,
+    modelId: TEST_MODEL_ID,
     promptBytes: 100,
     toolsBytes: 100,
     maxOutputTokens: 100,
   };
-  const reservation = await f.goals.reserveModelCall(runId!, request);
+  const reservation = await f.funding.reserve(runId!, request);
   expect(reservation).toBeTruthy();
   expect(f.goals.get(goal.goalId).reservedTokens).toBe(1324);
   const afterRestart = new GoalService(f.repo, f.runs);
-  await expect(afterRestart.reserveModelCall(runId!, request)).rejects.toThrow(/uncertain charge/);
+  const restartedFunding = new RunFundingService(f.repo, resourceFundingAccounting(f.repo));
+  await expect(restartedFunding.reserve(runId!, request)).rejects.toThrow(/uncertain charge/);
   // The call is written durably before capacity is refunded.
   f.repo.saveModelCall({
     callId: "funded-1",
@@ -203,11 +203,11 @@ it("funds one provider attempt before dispatch and reconciles actual usage acros
     costUsd: 0.001,
     createdAt: Date.now(),
   });
-  afterRestart.settleModelCall(runId!, reservation, [
+  restartedFunding.settle(runId!, reservation, [
     { modelId: request.modelId, durationMs: 1, inputTokens: 10, outputTokens: 5 },
   ]);
   expect(afterRestart.get(goal.goalId)).toMatchObject({ usedTokens: 15, reservedTokens: 0 });
-  const second = await afterRestart.reserveModelCall(runId!, request);
+  const second = await restartedFunding.reserve(runId!, request);
   f.repo.saveModelCall({
     callId: "funded-2",
     runId,
@@ -219,10 +219,10 @@ it("funds one provider attempt before dispatch and reconciles actual usage acros
     costUsd: 0.001,
     createdAt: Date.now(),
   });
-  afterRestart.settleModelCall(runId!, second, [
+  restartedFunding.settle(runId!, second, [
     { modelId: request.modelId, durationMs: 1, inputTokens: 10, outputTokens: 5 },
   ]);
-  await expect(afterRestart.reserveModelCall(runId!, request)).rejects.toThrow(/token limit/);
+  await expect(restartedFunding.reserve(runId!, request)).rejects.toMatchObject({ budget: { reason: "tokens", limit: 1350 } });
   f.db.close();
 });
 
@@ -235,7 +235,7 @@ it("keeps opaque charges held, rejects unknown prices, and requires verified com
   });
   const { runId } = await f.goals.start(goal.goalId, ["p1"]);
   await expect(
-    f.goals.reserveModelCall(runId!, {
+    f.funding.reserve(runId!, {
       modelId: "custom/unpriced",
       promptBytes: 1,
       toolsBytes: 1,
@@ -243,12 +243,12 @@ it("keeps opaque charges held, rejects unknown prices, and requires verified com
     }),
   ).rejects.toThrow(/priced model/);
   const request = {
-    modelId: DEFAULT_PLANNER_MODEL_ID,
+    modelId: TEST_MODEL_ID,
     promptBytes: 100,
     toolsBytes: 100,
     maxOutputTokens: 100,
   };
-  const held = await f.goals.reserveModelCall(runId!, request);
+  const held = await f.funding.reserve(runId!, request);
   f.repo.saveModelCall({
     callId: "opaque-1",
     runId,
@@ -258,9 +258,9 @@ it("keeps opaque charges held, rejects unknown prices, and requires verified com
     error: "provider response lost",
     createdAt: Date.now(),
   });
-  f.goals.settleModelCall(runId!, held, []);
+  f.funding.settle(runId!, held, []);
   expect(f.goals.get(goal.goalId).reservedTokens).toBe(1324);
-  await expect(f.goals.reserveModelCall(runId!, request)).rejects.toThrow(/uncertain charge/);
+  await expect(f.funding.reserve(runId!, request)).rejects.toThrow(/uncertain charge/);
   const current = f.repo.getRun(runId!)!;
   f.repo.saveRun({ ...current, status: "completed" });
   expect(f.goals.get(goal.goalId).status).toBe("failed");
@@ -271,7 +271,7 @@ it("keeps opaque charges held, rejects unknown prices, and requires verified com
 
 it("refuses an unfunded price or expired wall clock before any model dispatch", async () => {
   const f = fixture();
-  const priced = new GoalService(f.repo, f.runs, async () => [
+  const priced = new RunFundingService(f.repo, resourceFundingAccounting(f.repo), async () => [
     {
       id: "fixture/expensive",
       source: "configured",
@@ -279,20 +279,20 @@ it("refuses an unfunded price or expired wall clock before any model dispatch", 
       outputUsdPerMTok: 1_000_000,
     },
   ]);
-  const costGoal = priced.create({
+  const costGoal = f.goals.create({
     workspaceId: f.workspace.workspaceId,
     objective: "Cost bound",
     budget: { maxCostUsd: 1 },
   });
-  const costRun = await priced.start(costGoal.goalId, ["p1"]);
+  const costRun = await f.goals.start(costGoal.goalId, ["p1"]);
   await expect(
-    priced.reserveModelCall(costRun.runId!, {
+    priced.reserve(costRun.runId!, {
       modelId: "fixture/expensive",
       promptBytes: 1,
       toolsBytes: 1,
       maxOutputTokens: 1,
     }),
-  ).rejects.toThrow(/cost limit exhausted/);
+  ).rejects.toMatchObject({ budget: { reason: "spend", limit: 1 } });
   const timed = f.goals.create({
     workspaceId: f.workspace.workspaceId,
     objective: "Time bound",
@@ -301,13 +301,13 @@ it("refuses an unfunded price or expired wall clock before any model dispatch", 
   const timedRun = await f.goals.start(timed.goalId, ["p1"]);
   f.repo.db.prepare("UPDATE runs SET created_at=? WHERE run_id=?").run(Date.now() - 61_000, timedRun.runId!);
   await expect(
-    f.goals.reserveModelCall(timedRun.runId!, {
-      modelId: DEFAULT_PLANNER_MODEL_ID,
+    f.funding.reserve(timedRun.runId!, {
+      modelId: TEST_MODEL_ID,
       promptBytes: 1,
       toolsBytes: 1,
       maxOutputTokens: 1,
     }),
-  ).rejects.toThrow(/time limit exhausted/);
+  ).rejects.toMatchObject({ budget: { reason: "time", limit: 60_000 } });
   f.db.close();
 });
 
@@ -320,8 +320,8 @@ it("keeps an interrupted ambiguous charge for owner review and does not restart 
     budget: { maxTokens: 5000 },
   });
   const { runId } = await f.goals.start(goal.goalId, ["p1"]);
-  await f.goals.reserveModelCall(runId!, {
-    modelId: DEFAULT_PLANNER_MODEL_ID,
+  await f.funding.reserve(runId!, {
+    modelId: TEST_MODEL_ID,
     promptBytes: 100,
     toolsBytes: 100,
     maxOutputTokens: 100,

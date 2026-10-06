@@ -79,7 +79,6 @@ async function fixture() {
     sets: new SetService(repo, events, service),
     settings: { maxWorkers: () => 1, perOrigin: () => 1 } as SettingsService,
     artifacts: {} as ArtifactStore,
-    translateSteps: (_pageId, steps) => steps,
     nativeAvailable: () => false,
   });
   repo.saveRun({
@@ -108,8 +107,9 @@ async function fixture() {
     isolationId: "native-isolation",
     runId: "run",
     taskRevision: 0,
-    inMemory: true,
-    cookies: "empty",
+    mode: "session",
+    inMemory: false,
+    cookies: "profile",
   };
   target.agentIsolation = isolation;
   const leases: EgressLease[] = [];

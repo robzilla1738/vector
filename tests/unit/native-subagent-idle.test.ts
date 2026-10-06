@@ -25,7 +25,7 @@ it("attests zero VMs only with genuine durable and coordinator idle inventories"
       throw new Error("No model dispatch");
     },
     defaultModel: () => "fixture",
-    recoveryModel: () => undefined,
+
     recordModelCall: () => {},
   });
   const deps = { repo, runs: { coordinator } } as unknown as Parameters<typeof readNativeSubagentWorkload>[0];

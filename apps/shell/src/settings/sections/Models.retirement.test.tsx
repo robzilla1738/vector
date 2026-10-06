@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { CopilotSetupSchema } from "@aux/contracts/copilot-auth";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -22,6 +23,20 @@ vi.mock("../../commands", async () => {
     },
   };
 });
+const copilotSetup = CopilotSetupSchema.parse({
+  registrationConfigured: false,
+  runtimeInstalled: false,
+  runtimeSupported: false,
+  catalogOnly: true,
+});
+function modelRead(method: string) {
+  if (method === "models.copilot.setup") return copilotSetup;
+  if (method === "models.copilot.accounts") return [];
+  if (method === "settings.cloud.status") return { configured: false, revision: 0 };
+  if (method === "models.list") return { models: [] };
+  throw new Error(`Unexpected model producer ${method}`);
+}
+
 vi.mock("../../store", () => ({ call: vi.fn(), toast: vi.fn() }));
 let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
 beforeEach(() => {
@@ -30,7 +45,7 @@ beforeEach(() => {
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  vi.mocked(call).mockReset().mockResolvedValue({ models: [] });
+  vi.mocked(call).mockReset().mockImplementation(async (method) => modelRead(method));
 });
 afterEach(async () => {
   await act(async () => root.unmount());
@@ -101,11 +116,10 @@ it.each(["success", "false-ack", "rejection"])(
 );
 it("inactive roundtrip retires original probe without clearing a fresh pending connection test", async () => {
   const completions: { resolve(value: unknown): void; reject(reason: Error): void }[] = [];
-  vi.mocked(call).mockImplementation((method) =>
-    method === "models.list"
-      ? Promise.resolve({ models: [] })
-      : new Promise((resolve, reject) => completions.push({ resolve, reject })),
-  );
+  vi.mocked(call).mockImplementation((method) => {
+    if (method !== "models.probe") return Promise.resolve(modelRead(method));
+    return new Promise((resolve, reject) => completions.push({ resolve, reject }));
+  });
   const props = { settings: settings("openai-compatible"), onSave: vi.fn(async () => true) };
   await act(async () => root.render(<ModelsSettings active {...props} />));
   await act(async () => button("Test connection").click());

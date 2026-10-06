@@ -17,8 +17,11 @@ it("uses the actual RPC producer to permit cookieless reads and refuse consequen
   const directory = mkdtempSync(join(tmpdir(), "aux-egress-confirmation-"));
   const db = openDb(":memory:"),
     repo = new Repo(db);
-  repo.setSetting("safetyCeilings", { egress: "always" });
   const settings = new SettingsService(repo, join(directory, "settings.json"), {});
+  await settings.set({
+    agentPolicies: [{ category: "external_tool", access: "ask" }],
+    agentPolicyRevision: 0,
+  });
   const services = { repo, settings, events: new EventBus(repo), featureProfileId: "fixture" } as Services;
   const deps = buildMethodDeps(services, async () => {
     throw new Error("Unexpected invocation");
@@ -37,8 +40,11 @@ it("uses the actual RPC producer to permit cookieless reads and refuse consequen
   ).resolves.toMatchObject({ status: "allow" });
   await expect(
     deps.decideEgress({ url: new URL("https://example.test/send"), action: "agent.messages.send" }),
-  ).rejects.toMatchObject({ code: "permission_denied" });
-  repo.setSetting("originPolicies", [{ origin: "https://example.test/", access: "deny" }]);
+  ).rejects.toMatchObject({ code: "needs_input" });
+  await settings.set({
+    agentPolicies: [{ category: "read", site: "https://example.test", access: "block" }],
+    agentPolicyRevision: 1,
+  });
   await expect(
     deps.decideEgress({ url: new URL("https://example.test/page"), action: "agent.web.fetch" }),
   ).rejects.toMatchObject({ code: "permission_denied" });
@@ -48,7 +54,6 @@ it("uses the actual RPC producer to permit cookieless reads and refuse consequen
     { category: "read", status: "allow" },
     { category: "navigate", status: "allow" },
     { category: "external_tool", status: "ask" },
-    { category: "external_tool", status: "deny" },
     { category: "read", status: "deny" },
   ]);
 });

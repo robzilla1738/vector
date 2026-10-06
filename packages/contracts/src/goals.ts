@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const GoalBudgetSchema = z
   .object({
-    maxTokens: z.number().int().positive().max(10_000_000).optional(),
-    maxCostUsd: z.number().positive().max(50).optional(),
+    maxTokens: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional(),
+    maxCostUsd: z.number().positive().optional(),
     deadlineMs: z
       .number()
       .int()
@@ -11,12 +11,7 @@ export const GoalBudgetSchema = z
       .max(30 * 24 * 60 * 60_000)
       .optional(),
   })
-  .strict()
-  .refine(
-    (value) =>
-      value.maxTokens !== undefined || value.maxCostUsd !== undefined || value.deadlineMs !== undefined,
-    "Set a token, cost or time limit.",
-  );
+  .strict();
 
 export const GoalSchema = z.object({
   goalId: z.string().uuid(),

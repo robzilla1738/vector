@@ -7,14 +7,22 @@ import {
   openDb,
   Repo,
   RunService,
+  ResourceLimitsUnavailable,
   SetService,
-  SetRunner,
+  SetExecutor,
   TaskService,
   WorkerPool,
 } from "@aux/runtime";
-import { AuxError, EventTypes, taskConversationId } from "@aux/contracts";
+import {
+  AuxError,
+  EventTypes,
+  SubagentGroupSchema,
+  SubagentSchema,
+  taskConversationId,
+} from "@aux/contracts";
 import type { ModelClient, PageService, SettingsService, ArtifactStore } from "@aux/runtime";
 import type { Observation, PageTarget, Program, Run } from "@aux/contracts";
+import type { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress.js";
 import { handlePageTakeover } from "../../apps/runtime/src/services/page-takeover.js";
 
 const sleep = (ms: number, signal?: AbortSignal) =>
@@ -60,7 +68,15 @@ function fakePages(opts: { execMs: number }) {
   let n = 0;
   const state = { active: 0, peak: 0, executed: 0 };
   const pages = {
-    open: async ({ url, ownedByRuntime = true }: { url: string; ownedByRuntime?: boolean }) => {
+    open: async ({
+      url,
+      ownedByRuntime = true,
+      beforeNavigate,
+    }: {
+      url: string;
+      ownedByRuntime?: boolean;
+      beforeNavigate?: (page: PageTarget) => Promise<void>;
+    }) => {
       const pageId = `p${++n}`;
       const t = {
         pageId,
@@ -73,6 +89,7 @@ function fakePages(opts: { execMs: number }) {
         viewStatus: "visible",
       } as unknown as PageTarget;
       targets.set(pageId, t);
+      await beforeNavigate?.(t);
       return t;
     },
     get: (id: string) => {
@@ -107,7 +124,9 @@ function fakePages(opts: { execMs: number }) {
   return { pages, state, targets };
 }
 
-function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClient | null } = {}) {
+function harness(
+  opts: { execMs?: number; maxWorkers?: number; model?: ModelClient | null; protectedPages?: boolean } = {},
+) {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
   const { pages, state, targets } = fakePages({ execMs: opts.execMs ?? 40 });
@@ -116,9 +135,10 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
   const settings = {
     maxWorkers: () => maxWorkers,
     perOrigin: () => 8,
-    maxModelCalls: () => 8,
+    maxModelCalls: () => 0,
     model: () => opts.model ?? null,
     plannerModel: () => "mock/planner",
+    registryModels: () => [{ id: "mock/planner", reasoning: "supported" }],
     agentRoute: (category: "fast" | "standard" | "deep" | "visual") => ({
       modelId: "mock/planner",
       reasoning: category === "deep" ? "xhigh" : category === "fast" ? "low" : "medium",
@@ -137,7 +157,10 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
   const removedArtifacts: string[] = [];
   const artifactContents = new Map<string, string | Buffer>();
   const artifacts = {
-    save: (input: { buffer: Buffer; mediaType: string; runId?: string; pageId?: string }) => {
+    save: (
+      input: { buffer: Buffer; mediaType: string; runId?: string; pageId?: string },
+      beforeCommit?: (artifact: import("@aux/contracts").Artifact) => void,
+    ) => {
       const artifactId = `fixture-artifact-${artifactContents.size}`;
       const artifact = {
         artifactId,
@@ -150,6 +173,7 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
         pageId: input.pageId,
       };
       repo.saveArtifact(artifact);
+      beforeCommit?.(artifact);
       artifactContents.set(artifactId, input.buffer);
       return artifact;
     },
@@ -170,6 +194,23 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
     routine: () => undefined,
     connectors: () => ({ entries: [], access: [] }),
   });
+  const egressScopes: { runId: string; mode: "session" | "private" }[] = [];
+  const browserEgress = {
+    creationScope: async (runId: string, sourcePageId?: string) => {
+      const mode = repo.getRun(runId)?.config?.privateTask ? "private" : "session";
+      egressScopes.push({ runId, mode });
+      return {
+        profileId: "fixture",
+        runId,
+        mode,
+        source: sourcePageId ? { expectedUrl: pages.get(sourcePageId).url } : undefined,
+      };
+    },
+    acquire: async () => () => {},
+    protect: () => {},
+    suspendRun: () => {},
+    revokeRun: () => {},
+  } as unknown as BrowserEgress;
   const runs = new RunService({
     repo,
     events,
@@ -178,8 +219,8 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
     settings,
     artifacts,
     turnMentions,
-    translateSteps: (_pid, steps) => steps,
     nativeAvailable: () => false,
+    browserEgress: opts.protectedPages ? browserEgress : undefined,
   });
   return {
     repo,
@@ -191,6 +232,7 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
     state,
     removedArtifacts,
     artifactContents,
+    egressScopes,
     targets,
     turnMentions,
   };
@@ -392,17 +434,18 @@ describe("conversation turn retry", () => {
     const image =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
     const seen: string[][] = [];
-    const model: ModelClient = {
-      generateStructured: async (opts) => {
-        seen.push(opts.imageDataUrls ?? []);
-        return {
-          object: { status: "done", message: "body", result: { answer: "body" } } as never,
-          durationMs: 1,
-        };
-      },
-      generateText: async () => ({ text: "", durationMs: 1 }),
-      listModels: async () => [],
-    };
+    const model = new MockModelClient();
+    const originalStep = model.toolCallStep.bind(model);
+    vi.spyOn(model, "toolCallStep").mockImplementation(async (request) => {
+      seen.push(
+        request.messages.flatMap((message) =>
+          message.role === "user" && Array.isArray(message.content)
+            ? message.content.filter((part) => part.type === "image").map((part) => String(part.image))
+            : [],
+        ),
+      );
+      return originalStep(request);
+    });
     const h = harness({ model });
     const page = await h.pages.open({ url: "https://example.com", background: false, ownedByRuntime: false });
     const saved = h.runs.images.add({
@@ -440,7 +483,11 @@ describe("conversation turn retry", () => {
   it("defaults new conversations to a Space while preserving explicit exclusions and existing identity", async () => {
     const h = harness();
     h.repo.db.prepare("INSERT INTO workspaces VALUES(?,?,?)").run("space-notes", "Research", 1);
-    h.repo.setSetting("workspaceMemory:space-notes", { content: "Prefer primary sources.", revision: 1 });
+    h.repo.setSetting("workspaceMemory:space-notes", {
+      workspaceId: "space-notes",
+      content: "Prefer primary sources.",
+      revision: 1,
+    });
     const first = await h.runs.start({
       goal: "Research",
       pageIds: ["p1"],
@@ -1579,9 +1626,12 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
   it("does not start a coordinator on a human-held tab", async () => {
     let modelCalls = 0;
     const model: ModelClient = {
-      generateStructured: async () => {
+      toolCallStep: async () => {
         modelCalls++;
         throw new Error("model should not run");
+      },
+      generateStructured: async () => {
+        throw new Error("Only the SDK tool loop may dispatch this fixture");
       },
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
@@ -1601,10 +1651,13 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
 
   it("keeps manual pauses separate from takeover auto-resume", async () => {
     const model: ModelClient = {
-      generateStructured: async (opts) =>
+      toolCallStep: async (opts) =>
         new Promise((_resolve, reject) =>
           opts.signal?.addEventListener("abort", () => reject(new Error("stopped")), { once: true }),
         ),
+      generateStructured: async () => {
+        throw new Error("Only the SDK tool loop may dispatch this fixture");
+      },
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
     };
@@ -1632,26 +1685,29 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     await h.runs.cancel(run.runId);
   });
 
-  it("persists a takeover checkpoint and aborts a live planner before resuming", async () => {
+  it("persists a takeover checkpoint and aborts the original provider call before resuming", async () => {
     let started!: () => void;
     const planning = new Promise<void>((resolve) => {
       started = resolve;
     });
     let aborted = 0;
     const model: ModelClient = {
-      generateStructured: async (opts) => {
+      toolCallStep: async (opts) => {
         started();
         await new Promise<void>((_resolve, reject) =>
           opts.signal?.addEventListener(
             "abort",
             () => {
               aborted++;
-              reject(new Error("takeover stopped planner"));
+              reject(new Error("takeover stopped provider"));
             },
             { once: true },
           ),
         );
         throw new Error("unreachable");
+      },
+      generateStructured: async () => {
+        throw new Error("Only the SDK tool loop may dispatch this fixture");
       },
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
@@ -1744,25 +1800,12 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     expect(h.state.executed).toBe(0);
   });
 
-  it("claims a set before model discovery and rejects a competing map", async () => {
-    const h = harness({ execMs: 5 });
+  it("claims a Set before worker dispatch and rejects a competing map", async () => {
+    const h = harness({ execMs: 30 });
     const set = await h.sets.create({ name: "exclusive", source: "urls", urls: urls(1) });
-    let finishDiscovery!: () => void;
-    const discovery = new Promise<void>((resolve) => {
-      finishDiscovery = resolve;
-    });
-    h.settings.listModels = async () => {
-      await discovery;
-      return {
-        models: [{ id: "mock/planner", source: "catalog", inputUsdPerMTok: 1, outputUsdPerMTok: 2 }],
-        source: "gateway",
-      };
-    };
-    const first = h.runs.start({ setId: set.setId, goal: "Read", maxCostUsd: 1 });
+    const first = await h.runs.mapSet({ setId: set.setId, program });
     await expect(h.runs.mapSet({ setId: set.setId, program })).rejects.toMatchObject({ code: "conflict" });
-    finishDiscovery();
-    const { runId } = await first;
-    await untilTerminal(h.repo, runId);
+    expect((await untilTerminal(h.repo, first.runId)).status).toBe("completed");
     const next = await h.runs.mapSet({ setId: set.setId, program });
     expect((await untilTerminal(h.repo, next.runId)).status).toBe("completed");
     expect(h.repo.listRuns(10).filter((run) => run.setId === set.setId)).toHaveLength(2);
@@ -1801,86 +1844,6 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     expect(h.state.executed).toBe(0);
   });
 
-  it("shares one model-call ceiling across concurrent research members", async () => {
-    let calls = 0;
-    const model: ModelClient = {
-      generateStructured: async (opts) => {
-        calls++;
-        expect(opts.maxAttempts).toBe(1);
-        await sleep(30, opts.signal);
-        return {
-          object: { status: "done", message: "ok", result: { source: "fixture" } } as never,
-          durationMs: 30,
-          inputTokens: 10,
-          outputTokens: 10,
-        };
-      },
-      generateText: async () => ({ text: "", durationMs: 0 }),
-      listModels: async () => [],
-    };
-    const h = harness({ model, maxWorkers: 2 });
-    const set = await h.sets.create({ name: "bounded", source: "urls", urls: urls(2) });
-    const { runId } = await h.runs.mapSet({
-      setId: set.setId,
-      goal: "Compare",
-      concurrency: 2,
-      maxModelCalls: 1,
-    });
-    const run = await untilTerminal(h.repo, runId);
-    expect(calls).toBe(1);
-    expect(run.status).toBe("partially_completed");
-    expect(run.config?.maxModelCalls).toBe(1);
-    expect(
-      h.repo
-        .listResults({ runId })
-        .map((result) => result.status)
-        .sort(),
-    ).toEqual(["ok", "partial"]);
-  });
-
-  it("stops before a model call when the shared token or USD reservation cannot fit", async () => {
-    let calls = 0;
-    const model: ModelClient = {
-      generateStructured: async () => {
-        calls++;
-        return { object: { status: "done", message: "ok" } as never, durationMs: 1 };
-      },
-      generateText: async () => ({ text: "", durationMs: 0 }),
-      listModels: async () => [],
-    };
-    const h = harness({ model });
-    const tokenSet = await h.sets.create({ name: "token", source: "urls", urls: urls(1) });
-    const tokenRun = await h.runs.mapSet({ setId: tokenSet.setId, goal: "Compare", maxTokens: 8192 });
-    expect((await untilTerminal(h.repo, tokenRun.runId)).status).toBe("failed");
-    expect(h.repo.listResults({ runId: tokenRun.runId })[0]?.error).toContain("token budget");
-    const costSet = await h.sets.create({ name: "cost", source: "urls", urls: urls(1) });
-    const costRun = await h.runs.mapSet({ setId: costSet.setId, goal: "Compare", maxCostUsd: 0.00001 });
-    expect((await untilTerminal(h.repo, costRun.runId)).status).toBe("failed");
-    expect(h.repo.listResults({ runId: costRun.runId })[0]?.error).toContain("USD budget");
-    expect(calls).toBe(0);
-  });
-
-  it("wakes a paused set run when its shared deadline expires", async () => {
-    const model: ModelClient = {
-      generateStructured: async (opts) =>
-        new Promise((_resolve, reject) => {
-          opts.signal?.addEventListener("abort", () => reject(new Error("deadline")), { once: true });
-        }),
-      generateText: async () => ({ text: "", durationMs: 0 }),
-      listModels: async () => [],
-    };
-    const h = harness({ maxWorkers: 1, model });
-    const set = await h.sets.create({ name: "timed", source: "urls", urls: urls(2) });
-    const { runId } = await h.runs.mapSet({ setId: set.setId, goal: "Compare", deadlineMs: 40 });
-    await h.runs.pause(runId);
-    const run = await untilTerminal(h.repo, runId);
-    expect(run.status).toBe("failed");
-    expect(
-      h.repo
-        .listMembers(set.setId)
-        .every((member) => member.status !== "running" && member.status !== "queued"),
-    ).toBe(true);
-  });
   it("journals consequential steps nested in a replay program", async () => {
     const h = harness({ execMs: 5 });
     const set = await h.sets.create({ name: "nested", source: "urls", urls: urls(1) });
@@ -1942,20 +1905,25 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     let seenSignal: AbortSignal | undefined;
     let calls = 0;
     const model: ModelClient = {
-      generateStructured: async (o) => {
+      toolCallStep: async (o) => {
         calls++;
         seenSignal = o.signal;
         await sleep(30, o.signal);
         return {
-          object: { status: "done", message: "ok", result: { v: calls } } as never,
+          text: "ok",
+          message: { role: "assistant", content: "ok" } as const,
+          toolCalls: [],
           durationMs: 30,
           resolvedModelId: "served/member",
         };
       },
+      generateStructured: async () => {
+        throw new Error("Only the SDK tool loop may dispatch this fixture");
+      },
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
     };
-    const h = harness({ model });
+    const h = harness({ model, protectedPages: true });
     const set = await h.sets.create({ name: "s", source: "urls", urls: urls(2) });
     const run = await h.runs.start({ goal: "collect", setId: set.setId });
     const done = await untilTerminal(h.repo, run.runId);
@@ -1965,64 +1933,37 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     const results = h.repo.listResults({ runId: run.runId });
     expect(results.length).toBe(2);
     expect(results.every((r) => r.runId === run.runId)).toBe(true);
-    expect(h.repo.listModelCalls(run.runId).length).toBe(calls);
-    expect(h.repo.listModelCalls(run.runId).every((call) => call.modelId === "served/member")).toBe(true);
+    const children = h.repo.db
+      .prepare("SELECT child_run_id FROM set_run_members WHERE parent_run_id=?")
+      .all(run.runId) as { child_run_id: string }[];
+    const invoices = children.flatMap((child) => h.repo.listModelCalls(child.child_run_id));
+    expect(invoices).toHaveLength(calls);
+    expect(invoices.every((call) => call.modelId === "served/member")).toBe(true);
     expect(done.config?.modelCalls).toBe(calls);
     expect(calls).toBeGreaterThan(0);
-  });
-
-  it("pilot-then-fan-out: one agent member per site, siblings replay with zero model calls (A9)", async () => {
-    let calls = 0;
-    let concurrentAgents = 0;
-    let peakAgents = 0;
-    const model: ModelClient = {
-      generateStructured: async (o) => {
-        calls++;
-        concurrentAgents++;
-        peakAgents = Math.max(peakAgents, concurrentAgents);
-        await sleep(40, o.signal);
-        concurrentAgents--;
-        // first call per member: act; second: done
-        return calls % 2 === 1
-          ? {
-              object: { status: "continue", message: "act", steps: [{ id: "s1", op: "reload" }] } as never,
-              durationMs: 40,
-            }
-          : { object: { status: "done", message: "ok", result: { v: 1 } } as never, durationMs: 40 };
-      },
-      generateText: async () => ({ text: "", durationMs: 0 }),
-      listModels: async () => [],
-    };
-    const h = harness({ model, maxWorkers: 8 });
-    // 6 members on ONE site: the pilot is the only agent, five replay
-    const set = await h.sets.create({
-      name: "s",
-      source: "urls",
-      urls: Array.from({ length: 6 }, (_, i) => `http://one.test/items/${String(100000 + i)}`),
-    });
-    const run = await h.runs.start({ goal: "collect", setId: set.setId });
-    const done = await untilTerminal(h.repo, run.runId, 10_000);
-    expect(done.status).toBe("completed");
-    expect(h.repo.listResults({ runId: run.runId }).length).toBe(6);
-    // exactly one member ran the model (2 calls: act, done); everyone else replayed
-    expect(calls).toBe(2);
-    expect(peakAgents).toBe(1);
-    expect(h.repo.listPrograms().some((p) => p.name.startsWith("learned:"))).toBe(true);
   });
 
   it("cancel aborts the signal member agents are blocked on", async () => {
     let seenSignal: AbortSignal | undefined;
     const model: ModelClient = {
-      generateStructured: async (o) => {
+      toolCallStep: async (o) => {
         seenSignal = o.signal;
         await sleep(2000, o.signal);
         if (o.signal?.aborted) throw new Error("aborted");
-        return { object: { status: "done", message: "ok" } as never, durationMs: 1 };
+        return {
+          text: "ok",
+          message: { role: "assistant", content: "ok" } as const,
+          toolCalls: [],
+          durationMs: 1,
+        };
+      },
+      generateStructured: async () => {
+        throw new Error("Only the SDK tool loop may dispatch this fixture");
       },
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
     };
-    const h = harness({ model });
+    const h = harness({ model, protectedPages: true });
     const set = await h.sets.create({ name: "s", source: "urls", urls: urls(1) });
     const run = await h.runs.start({ goal: "g", setId: set.setId });
     await sleep(40);
@@ -2143,6 +2084,7 @@ it("excludes paused Space notes from new model context while retaining saved mem
   h.repo.db.prepare("INSERT INTO workspaces VALUES(?,?,?)").run("memory-space", "Research", 1);
   h.repo.setSetting("conversationWorkspace:paused-memory-chat", "memory-space");
   h.repo.setSetting("workspaceMemory:memory-space", {
+    workspaceId: "memory-space",
     content: "Private project preference fixture",
     enabled: false,
     revision: 3,
@@ -2154,6 +2096,7 @@ it("excludes paused Space notes from new model context while retaining saved mem
     content: "Private project preference fixture",
   });
   h.repo.setSetting("workspaceMemory:memory-space", {
+    workspaceId: "memory-space",
     content: "Private project preference fixture",
     enabled: true,
     revision: 4,
@@ -2252,7 +2195,7 @@ it("cancels a held protected Set-member opening with the original run signal", a
     entered = resolve;
   });
   const agent = vi.fn();
-  const runner = new SetRunner({
+  const runner = new SetExecutor({
     repo: h.repo,
     events: h.events,
     pages: h.pages,
@@ -2260,9 +2203,7 @@ it("cancels a held protected Set-member opening with the original run signal", a
     turnMentions: h.turnMentions,
     pool: new WorkerPool({ maxWorkers: 1, perOrigin: 1 }),
     getProgram: () => undefined,
-    saveProgram: () => "unused",
-    translateSteps: (_id, steps) => steps,
-    runAgentForMember: agent,
+    runGoalForMember: agent,
     controlledPage: async (_runId, _url, sourcePageId, signal) => {
       expect(sourcePageId).toBeUndefined();
       openingSignal = signal;
@@ -2276,7 +2217,7 @@ it("cancels a held protected Set-member opening with the original run signal", a
   const mapped = runner.map({
     setId: set.setId,
     runId: "held-opening",
-    goal: "Read selected source",
+    program: { steps: [{ id: "read", op: "reload" }] },
     signal: control.signal,
   });
   await opening;
@@ -2287,4 +2228,551 @@ it("cancels a held protected Set-member opening with the original run signal", a
   expect(agent).not.toHaveBeenCalled();
   expect(h.sets.get(set.setId).members[0]).toBeDefined();
   expect(h.sets.get(set.setId).members[0]?.status).toBe("skipped");
+});
+
+it("uses the SDK for one hundred uncapped tool steps with a stable full manifest", async () => {
+  const model = new MockModelClient().scriptToolSteps([
+    ...Array.from({ length: 100 }, (_, i) => ({
+      toolCalls: [{ toolCallId: `todo-${i}`, toolName: "write_todos", input: { todos: [`step ${i}`] } }],
+    })),
+    { text: "Finished all one hundred steps." },
+  ]);
+  const call = vi.spyOn(model, "toolCallStep");
+  const h = harness({ model });
+  const run = await h.runs.start({ goal: "Complete the requested sequence" });
+  const done = await untilTerminal(h.repo, run.runId);
+  expect(done.status).toBe("completed");
+  expect(h.repo.listModelCalls(run.runId)).toHaveLength(101);
+  expect(
+    h.repo.db.prepare("SELECT count(*) AS n FROM run_tool_calls WHERE run_id=?").get(run.runId),
+  ).toMatchObject({ n: 100 });
+  const manifests = call.mock.calls.map(([request]) => Object.keys(request.tools));
+  expect(manifests[0]).toEqual(
+    expect.arrayContaining(["snapshot", "goal_program", "write_todos", "submit_result"]),
+  );
+  expect(manifests.every((tools) => JSON.stringify(tools) === JSON.stringify(manifests[0]))).toBe(true);
+});
+
+it("reserves a parent SDK batch ceiling before concurrent calls and continues the exact parent request", async () => {
+  const model = new MockModelClient();
+  model.latencyMs = 20;
+  const call = vi.spyOn(model, "toolCallStep");
+  const h = harness({ model, maxWorkers: 2, protectedPages: true });
+  const set = await h.sets.create({ name: "SDK source family", source: "urls", urls: urls(2) });
+  const { runId } = await h.runs.mapSet({
+    setId: set.setId,
+    goal: "Read each original member",
+    concurrency: 2,
+    maxModelCalls: 1,
+  });
+  await vi.waitFor(() => expect(h.repo.getRun(runId)?.status).toBe("needs_input"));
+  const suspension = h.runs.coordinator.suspensions.pending(runId)!;
+  expect(suspension.request.budget).toMatchObject({ reason: "model_calls", limit: 1, used: 1 });
+  expect(call).toHaveBeenCalledTimes(1);
+  const edges = h.repo.db
+    .prepare("SELECT child_run_id,source_digest FROM set_run_members WHERE parent_run_id=?")
+    .all(runId) as { child_run_id: string; source_digest: string }[];
+  expect(edges).toHaveLength(2);
+  expect(new Set(edges.map((edge) => edge.child_run_id)).size).toBe(2);
+  expect(
+    edges.every(
+      (edge) =>
+        h.repo.getRun(edge.child_run_id)?.config?.setMemberSource?.sourceDigest === edge.source_digest,
+    ),
+  ).toBe(true);
+  await expect(h.runs.coordinator.answer(runId, "Continue")).rejects.toMatchObject({ code: "conflict" });
+  await h.runs.continueBudget(runId, suspension.suspensionId, { maxModelCalls: 0 });
+  const finished = await untilTerminal(h.repo, runId).catch((error) => {
+    throw new Error(
+      JSON.stringify({
+        error: String(error),
+        root: h.repo.getRun(runId),
+        children: edges.map((edge) => {
+          const control = h.runs.coordinator.controls.get(edge.child_run_id);
+          return {
+            run: h.repo.getRun(edge.child_run_id),
+            suspension: h.runs.coordinator.suspensions.pending(edge.child_run_id),
+            control: control
+              ? {
+                  paused: control.paused,
+                  budgetInterrupted: control.budgetInterrupted,
+                  dispatchAborted: control.dispatchAbort?.signal.aborted,
+                  aborted: control.abort.signal.aborted,
+                  hasBudgetContinuation: !!control.budgetContinuation,
+                }
+              : null,
+            calls: h.repo.listModelCalls(edge.child_run_id).length,
+          };
+        }),
+        members: h.repo.listMembers(set.setId),
+        parentSuspension: h.runs.coordinator.suspensions.pending(runId),
+      }),
+    );
+  });
+  expect(finished.status).toBe("completed");
+  expect(h.repo.listResults({ runId })).toHaveLength(2);
+  const billed = edges.reduce((n, edge) => n + h.repo.listModelCalls(edge.child_run_id).length, 0);
+  expect(finished.config?.modelCalls).toBe(billed);
+  expect(call).toHaveBeenCalledTimes(billed);
+  expect(h.repo.listPrograms().some((program) => program.name.startsWith("learned:"))).toBe(false);
+});
+
+it("persists private chat mode and thinking while reading only owned copies", async () => {
+  const model = new MockModelClient().scriptToolSteps([{ text: "Private result." }]);
+  const call = vi.spyOn(model, "toolCallStep");
+  const h = harness({ model, protectedPages: true });
+  const source = await h.pages.open({
+    url: "https://private.test/account",
+    background: false,
+    ownedByRuntime: false,
+  });
+  const observe = vi.spyOn(h.pages, "observe");
+  const first = await h.runs.start({
+    goal: "Read the selected URL privately",
+    chatId: "private-chat",
+    pageIds: [source.pageId],
+    privateTask: true,
+    reasoning: "high",
+    modelId: "mock/planner",
+  });
+  const completed = await untilTerminal(h.repo, first.runId);
+  expect(completed.status).toBe("completed");
+  expect(completed.pageIds).not.toContain(source.pageId);
+  expect(observe.mock.calls.every(([pageId]) => pageId !== source.pageId)).toBe(true);
+  expect(h.egressScopes.every((scope) => scope.mode === "private")).toBe(true);
+  expect(call.mock.calls[0]?.[0]).toMatchObject({ modelId: "mock/planner", reasoning: "high" });
+  expect(h.repo.getConversation("private-chat")?.privateTask).toBe(true);
+  const next = await h.runs.start({ goal: "Continue this chat", chatId: "private-chat" });
+  expect(next.config?.privateTask).toBe(true);
+  expect((await untilTerminal(h.repo, next.runId)).status).toBe("completed");
+  const publicRun = await h.runs.start({ goal: "Public chat", chatId: "public-chat" });
+  await untilTerminal(h.repo, publicRun.runId);
+  await expect(
+    h.runs.start({ goal: "Switch modes", chatId: "public-chat", privateTask: true }),
+  ).rejects.toMatchObject({ code: "conflict" });
+});
+
+it("rejects a Set source changed during provider work while retaining the actual invoice", async () => {
+  const model = new MockModelClient();
+  let entered!: () => void, release!: () => void;
+  const providerEntered = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const providerRelease = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const original = model.toolCallStep.bind(model);
+  vi.spyOn(model, "toolCallStep").mockImplementation(async (request) => {
+    entered();
+    await providerRelease;
+    return original(request);
+  });
+  const h = harness({ model, protectedPages: true });
+  const source = await h.pages.open({
+    url: "https://source.test/same",
+    background: false,
+    ownedByRuntime: false,
+  });
+  const set = await h.sets.create({ name: "Original document", source: "tabs", pageIds: [source.pageId] });
+  const { runId } = await h.runs.mapSet({ setId: set.setId, goal: "Read the original document" });
+  await providerEntered;
+  h.targets.set(source.pageId, { ...h.pages.get(source.pageId), documentEpoch: 2 });
+  release();
+  expect((await untilTerminal(h.repo, runId)).status).toBe("failed");
+  const edge = h.repo.db
+    .prepare("SELECT child_run_id FROM set_run_members WHERE parent_run_id=?")
+    .get(runId) as { child_run_id: string };
+  const child = h.repo.getRun(edge.child_run_id)!;
+  expect(child.status).toBe("failed");
+  expect(child.result?.report ?? "").not.toContain("Old document result");
+  expect(h.repo.listModelCalls(child.runId)).toHaveLength(1);
+  expect(h.state.executed).toBe(0);
+});
+
+it.each([false, true])(
+  "awaits actual XLSX storage and keeps a failed submission unfinished (failure=%s)",
+  async (fail) => {
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [
+          {
+            toolCallId: "spreadsheet-result",
+            toolName: "submit_result",
+            input: {
+              report: "Workbook",
+              generatedFiles: [
+                {
+                  filename: "result.xlsx",
+                  spec: { kind: "xlsx", sheets: [{ name: "Data", rows: [["Value"], [42]] }] },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        toolCalls: [
+          {
+            toolCallId: "storage-question",
+            toolName: "ask_user_question",
+            input: { question: "The file was not saved. What should I do?" },
+          },
+        ],
+      },
+    ]);
+    const h = harness({ model });
+    const original = h.runs.coordinator.deps.saveCompletedGenerated!;
+    let entered!: () => void, release!: () => void;
+    const storing = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    h.runs.coordinator.deps.saveCompletedGenerated = async (run, file) => {
+      entered();
+      await released;
+      if (fail) throw new Error("Storage unavailable");
+      return original(run, file);
+    };
+    const started = await h.runs.start({ goal: "Create a workbook" });
+    await storing;
+    expect(h.repo.getRun(started.runId)?.status).not.toBe("completed");
+    release();
+    if (fail) {
+      await vi.waitFor(() => {
+        if (h.repo.getRun(started.runId)?.status !== "needs_input")
+          throw new Error("Waiting for the original failed storage request.");
+      });
+    } else {
+      await untilTerminal(h.repo, started.runId, 25_000);
+    }
+    const done = h.repo.getRun(started.runId)!;
+    expect(done.status).toBe(fail ? "needs_input" : "completed");
+    expect(done.result?.generatedArtifacts ?? []).toHaveLength(fail ? 0 : 1);
+    expect(
+      [...h.artifactContents.values()].some((bytes) => Buffer.from(bytes).subarray(0, 2).toString() === "PK"),
+    ).toBe(!fail);
+    if (fail) await h.runs.cancel(started.runId);
+  },
+  30_000,
+);
+
+it("binds SDK image generation to the original run without model-supplied authority", async () => {
+  const model = new MockModelClient().scriptToolSteps([
+    {
+      toolCalls: [
+        {
+          toolCallId: "image-request",
+          toolName: "image_generate",
+          input: { prompt: "A blue bird", runId: "forged" },
+        },
+      ],
+    },
+    { text: "Saved the image." },
+  ]);
+  const h = harness({ model });
+  const generate = vi.fn(
+    async (input: { runId: string; prompt: string; signal: AbortSignal; checkOwner: () => void }) => {
+      input.checkOwner();
+      return { artifactId: "image-artifact", mediaType: "image/png", size: 100, modelId: "image/model" };
+    },
+  );
+  h.runs.coordinator.deps.agentLoop = { generateImage: generate };
+  const run = await h.runs.start({ goal: "Draw a blue bird" });
+  expect((await untilTerminal(h.repo, run.runId)).status).toBe("completed");
+  expect(generate).toHaveBeenCalledTimes(1);
+  expect(generate.mock.calls[0]?.[0]).toMatchObject({ runId: run.runId, prompt: "A blue bird" });
+  expect(generate.mock.calls[0]?.[0].signal.aborted).toBe(false);
+  expect(h.repo.db.prepare("SELECT tool_name FROM run_tool_calls WHERE run_id=?").all(run.runId)).toEqual([
+    { tool_name: "image_generate" },
+  ]);
+});
+
+it.each(["funded", "usage"] as const)(
+  "refuses descendant Resume while the original %s cloud handoff is pending",
+  async (kind) => {
+    const h = harness();
+    try {
+      const workspace = new TaskService(h.repo, new EventBus(h.repo)).createWorkspace("Cloud family"),
+        now = Date.now();
+      h.repo.saveRun({
+        runId: "cloud-parent",
+        goal: "Original",
+        pageIds: [],
+        status: "needs_input",
+        createdAt: now,
+      });
+      h.repo.saveRun({ runId: "cloud-child", goal: "Child", pageIds: [], status: "paused", createdAt: now });
+      const group = SubagentGroupSchema.parse({
+        groupId: "11111111-1111-4111-8111-111111111111",
+        parentRunId: "cloud-parent",
+        workspaceId: workspace.workspaceId,
+        tokenBudget: 0,
+        costBudgetUsd: 2,
+        timeBudgetMs: 0,
+        deadlineAt: 0,
+        createdAt: now,
+        state: "active",
+      });
+      const agent = SubagentSchema.parse({
+        agentId: "22222222-2222-4222-8222-222222222222",
+        groupId: group.groupId,
+        runId: "cloud-child",
+        sourceRunId: "cloud-parent",
+        goal: "Child",
+        profile: "default",
+        pageIds: ["p1"],
+        tokenAllocation: 0,
+        costAllocationUsd: 1,
+        maxModelCalls: 0,
+        state: "running",
+        createdAt: now,
+      });
+      h.repo.db
+        .prepare(
+          "INSERT INTO subagent_groups(group_id,parent_run_id,workspace_id,body,state,created_at) VALUES(?,?,?,?,?,?)",
+        )
+        .run(group.groupId, group.parentRunId, group.workspaceId, JSON.stringify(group), group.state, now);
+      h.repo.db
+        .prepare(
+          "INSERT INTO subagents(agent_id,group_id,reserved_run_id,run_id,body,state,created_at) VALUES(?,?,?,?,?,?,?)",
+        )
+        .run(
+          agent.agentId,
+          group.groupId,
+          agent.runId!,
+          agent.runId!,
+          JSON.stringify(agent),
+          agent.state,
+          now,
+        );
+      const proof = {
+        runId: "cloud-child",
+        kind: "subagent" as const,
+        ownerId: agent.agentId,
+        budgetDigest: "a".repeat(64),
+      };
+      const review =
+        kind === "funded"
+          ? { resourceFunding: proof }
+          : {
+              resourceLimits: {
+                runId: "cloud-child",
+                scopes: [{ scope: "month" as const, limitUsd: 3 }],
+                originalDigest: "b".repeat(64),
+                quoteDigest: "c".repeat(64),
+              },
+            };
+      const pending = h.runs.coordinator.suspensions.park({
+        runId: "cloud-parent",
+        turnId: "cloud-parent",
+        threadId: "cloud-parent",
+        kind: "handoff",
+        request: {
+          kind: "handoff",
+          ...review,
+          instruction: "Cloud envelope is unavailable.",
+          guidance: "Review the original resource envelope.",
+        },
+      });
+      await expect(h.runs.resume("cloud-child")).rejects.toMatchObject({
+        code: "conflict",
+        message: expect.stringMatching(/original cloud resource handoff/),
+      });
+      expect(h.repo.getRun("cloud-child")?.status).toBe("paused");
+      expect(h.runs.coordinator.suspensions.pending("cloud-parent")).toMatchObject({
+        suspensionId: pending.suspensionId,
+        request: review,
+      });
+    } finally {
+      h.repo.db.close();
+    }
+  },
+);
+
+it("switches the original cloud family to local only after cleanup ACK and live owner proof", async () => {
+  const h = harness();
+  let release!: () => void;
+  let entered!: () => void;
+  const stopping = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let ownerLive = true;
+  const owner = async () => {
+    if (!ownerLive) throw new AuxError("permission_denied", "Original window retired.");
+  };
+  try {
+    const now = Date.now(),
+      token = "33333333-3333-4333-8333-333333333333";
+    h.repo.saveRun({
+      runId: "local-choice",
+      goal: "Original cloud work",
+      pageIds: [],
+      status: "running",
+      createdAt: now,
+      config: { executionTarget: "cloud", nativeTurnContext: token, privateTask: true },
+    });
+    const workspace = new TaskService(h.repo, new EventBus(h.repo)).createWorkspace("Local continuation");
+    h.repo.saveRun({
+      runId: "local-child",
+      goal: "Original child",
+      pageIds: [],
+      status: "paused",
+      createdAt: now,
+      config: { executionTarget: "cloud", nativeTurnContext: token, privateTask: true },
+    });
+    const group = SubagentGroupSchema.parse({
+      groupId: "44444444-4444-4444-8444-444444444444",
+      parentRunId: "local-choice",
+      workspaceId: workspace.workspaceId,
+      tokenBudget: 0,
+      costBudgetUsd: 0,
+      timeBudgetMs: 0,
+      deadlineAt: 0,
+      createdAt: now,
+      state: "active",
+    });
+    const agent = SubagentSchema.parse({
+      agentId: "55555555-5555-4555-8555-555555555555",
+      groupId: group.groupId,
+      runId: "local-child",
+      sourceRunId: "local-choice",
+      goal: "Original child",
+      profile: "default",
+      pageIds: ["p1"],
+      tokenAllocation: 0,
+      costAllocationUsd: 0,
+      maxModelCalls: 0,
+      state: "running",
+      createdAt: now,
+    });
+    h.repo.db
+      .prepare(
+        "INSERT INTO subagent_groups(group_id,parent_run_id,workspace_id,body,state,created_at) VALUES(?,?,?,?,?,?)",
+      )
+      .run(group.groupId, group.parentRunId, group.workspaceId, JSON.stringify(group), group.state, now);
+    h.repo.db
+      .prepare(
+        "INSERT INTO subagents(agent_id,group_id,reserved_run_id,run_id,body,state,created_at) VALUES(?,?,?,?,?,?,?)",
+      )
+      .run(agent.agentId, group.groupId, agent.runId!, agent.runId!, JSON.stringify(agent), agent.state, now);
+    h.runs.coordinator.controls.set("local-choice", { abort: new AbortController(), paused: false });
+    const closeRun = vi.fn(async (_runId: string) => {
+      entered();
+      await stopping;
+    });
+    h.runs.coordinator.deps.agentLoop = {
+      cloudExecutor: {
+        selected: () => true,
+        eval: async () => {
+          throw new Error("No provider dispatch expected");
+        },
+        wait: async () => {
+          throw new Error("No provider dispatch expected");
+        },
+        hasOpen: () => false,
+        closeRun,
+      },
+    };
+    const error = new ResourceLimitsUnavailable("local-choice", {
+      runId: "local-choice",
+      scopes: [{ scope: "month", limitUsd: 3 }],
+      originalDigest: "b".repeat(64),
+      quoteDigest: "c".repeat(64),
+    });
+    const parked = h.runs.coordinator.pauseForResourceFunding(error, owner);
+    await vi.waitFor(() => expect(h.runs.coordinator.suspensions.pending("local-choice")).toBeDefined());
+    const suspensionId = h.runs.coordinator.suspensions.pending("local-choice")!.suspensionId;
+    await expect(h.runs.coordinator.answer("local-choice", "Switch to local")).rejects.toMatchObject({
+      code: "conflict",
+    });
+    await expect(
+      h.runs.useLocalExecution("local-choice", suspensionId, "wrong-window", owner),
+    ).rejects.toMatchObject({ code: "permission_denied" });
+    const changing = h.runs.useLocalExecution("local-choice", suspensionId, token, owner);
+    await started;
+    expect(h.repo.getRun("local-choice")?.config).toMatchObject({
+      executionTarget: "cloud",
+      privateTask: true,
+    });
+    expect(h.runs.coordinator.suspensions.pending("local-choice")?.suspensionId).toBe(suspensionId);
+    ownerLive = false;
+    release();
+    await expect(changing).rejects.toMatchObject({ code: "permission_denied" });
+    expect(h.repo.getRun("local-choice")?.config?.executionTarget).toBe("cloud");
+    expect(h.runs.coordinator.suspensions.pending("local-choice")?.suspensionId).toBe(suspensionId);
+    ownerLive = true;
+    await h.runs.useLocalExecution("local-choice", suspensionId, token, owner);
+    await parked;
+    expect(h.repo.getRun("local-choice")).toMatchObject({
+      status: "running",
+      config: { executionTarget: "local", privateTask: true, nativeTurnContext: token },
+    });
+    expect(h.runs.coordinator.suspensions.pending("local-choice")).toBeUndefined();
+    expect(h.repo.getRun("local-child")).toMatchObject({
+      status: "paused",
+      config: { executionTarget: "local", privateTask: true },
+    });
+    expect(closeRun.mock.calls.map((call) => call[0])).toEqual([
+      "local-choice",
+      "local-child",
+      "local-choice",
+      "local-child",
+    ]);
+    await expect(h.runs.useLocalExecution("local-choice", suspensionId, token, owner)).rejects.toMatchObject({
+      code: "ref_stale",
+    });
+  } finally {
+    h.repo.db.close();
+  }
+});
+
+it("joins an ordinary in-flight provider dispatch before repository shutdown", async () => {
+  let entered!: () => void, release!: () => void;
+  const dispatched = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const providerAck = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const model = new MockModelClient().scriptToolSteps([{ text: "Late result must not publish." }]);
+  const original = model.toolCallStep.bind(model);
+  vi.spyOn(model, "toolCallStep").mockImplementation(async (request) => {
+    entered();
+    await providerAck;
+    return original(request);
+  });
+  const h = harness({ model });
+  let closed = false;
+  try {
+    const run = await h.runs.start({ goal: "Read the current page" });
+    await dispatched;
+    let joined = false;
+    const shutdown = h.runs.close().then(() => {
+      joined = true;
+    });
+    expect(h.runs.coordinator.controls.get(run.runId)?.abort.signal.aborted).toBe(true);
+    await Promise.resolve();
+    expect(joined).toBe(false);
+    release();
+    await shutdown;
+    expect(h.repo.getRun(run.runId)?.status).toBe("cancelled");
+    expect(h.repo.getRun(run.runId)?.result).toBeUndefined();
+    expect(h.runs.coordinator.controls.has(run.runId)).toBe(false);
+    expect(h.runs.coordinator.suspensions.pending(run.runId)).toBeUndefined();
+    await expect(h.runs.start({ goal: "After shutdown" })).rejects.toMatchObject({ code: "cancelled" });
+    h.repo.db.close();
+    closed = true;
+    await h.runs.close();
+  } finally {
+    release();
+    if (!closed) {
+      await h.runs.close();
+      h.repo.db.close();
+    }
+  }
 });

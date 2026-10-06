@@ -141,7 +141,6 @@ function harness(native: NullNativeBridge = new NullNativeBridge()) {
     native,
     drivers: () => drivers,
     responses: new ResponseStore({ repo, events, flushDelayMs: 0 }),
-    grants: [],
   });
   return { repo, pages, events, attached, disposed, destroyAttached: () => destroyAttached?.() };
 }

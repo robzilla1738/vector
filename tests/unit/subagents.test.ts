@@ -34,6 +34,7 @@ function fixture() {
   const messages: Record<string, unknown>[] = [];
   const cancelled: string[] = [];
   const runs = {
+    coordinator: { suspensions: { pending: () => undefined } },
     pageOwnership: {
       snapshot: () => ({ "parent-page": { pageId: "parent-page", actor: "coordinator", runId: "parent" } }),
     },
@@ -90,7 +91,7 @@ function fixture() {
   };
 }
 
-it("shares a hard reservation budget across at most eight children and rejects page collisions", async () => {
+it("shares the explicit reservation budget across nine children and rejects page collisions", async () => {
   const f = fixture();
   try {
     const group = f.service.createGroup({
@@ -109,7 +110,7 @@ it("shares a hard reservation budget across at most eight children and rejects p
         costAllocationUsd: 0.1,
       }),
     ).rejects.toThrow(/page scope/);
-    for (let i = 0; i < 8; i++)
+    for (let i = 0; i < 9; i++)
       await f.service.spawn({
         groupId: group.groupId,
         goal: `Research ${i}`,
@@ -118,17 +119,17 @@ it("shares a hard reservation budget across at most eight children and rejects p
         tokenAllocation: 1000,
         costAllocationUsd: 0.1,
       });
-    expect(f.service.view(group.groupId).reservedTokens).toBe(8000);
+    expect(f.service.view(group.groupId).reservedTokens).toBe(9000);
     await expect(
       f.service.spawn({
         groupId: group.groupId,
-        goal: "Ninth",
+        goal: "Tenth",
         pageIds: ["page-9"],
         profile: "default",
         tokenAllocation: 1000,
         costAllocationUsd: 0.1,
       }),
-    ).rejects.toThrow(/eight/);
+    ).rejects.toThrow(/shared subagent budget/);
     expect(f.starts[0]).toMatchObject({
       context: "Stable shared prompt prefix",
       contextSnapshot: true,
@@ -226,10 +227,13 @@ it("enforces explicit read-only child profiles independently of the parent mode"
   const click = [{ id: "click", op: "click" as const, target: "button" }];
   for (const profile of ["read_only", "explorer", "default"] as const)
     expect(authorizeProfileProgram(click, isReadOnlyProfile(profile)).ok).toBe(profile === "default");
-  expect(authorizeProfileProgram([{ id: "read", op: "extract", fields: [{ name: "text", selector: "h1" }] }], true).ok).toBe(true);
+  expect(
+    authorizeProfileProgram([{ id: "read", op: "extract", fields: [{ name: "text", selector: "h1" }] }], true)
+      .ok,
+  ).toBe(true);
 });
 
-it("cancels child work when the parent settles or a child exceeds its allocation", async () => {
+it("preserves funded child work for budget Continue and cancels when its parent settles", async () => {
   const f = fixture();
   try {
     const group = f.service.createGroup({
@@ -258,7 +262,7 @@ it("cancels child work when the parent settles or a child exceeds its allocation
       createdAt: Date.now(),
     });
     f.events.emit(EventTypes.ModelCall, {}, child.runId);
-    await vi.waitFor(() => expect(f.cancelled).toContain(child.runId));
+    expect(f.cancelled).not.toContain(child.runId);
     const second = await f.service.spawn({
       groupId: group.groupId,
       goal: "Two",
@@ -271,7 +275,7 @@ it("cancels child work when the parent settles or a child exceeds its allocation
     parent.status = "completed";
     f.repo.saveRun(parent);
     f.events.emit(EventTypes.RunUpdated, { run: parent }, parent.runId);
-    await vi.waitFor(() => expect(f.cancelled).toContain(second.runId));
+    await vi.waitFor(() => {expect(f.cancelled).toContain(second.runId); expect(f.cancelled).toContain(child.runId);});
     expect(f.service.view(group.groupId).group.state).toBe("closed");
   } finally {
     f.close();
@@ -599,6 +603,34 @@ it("refuses a reservation index that no longer matches its protected run provena
       .run(child.agentId);
     expect(() => runRoot(f.repo, child.runId!)).toThrow(/provenance changed/);
     expect(() => lineageRuns(f.repo, f.parent.runId)).toThrow(/provenance changed/);
+  } finally {
+    f.close();
+  }
+});
+
+it("keeps explicitly unlimited child budgets absent from the run cost cap", async () => {
+  const f = fixture();
+  try {
+    const group = f.service.createGroup({
+      parentRunId: f.parent.runId,
+      tokenBudget: 0,
+      costBudgetUsd: 0,
+      timeBudgetMs: 0,
+    });
+    const agent = await f.service.spawn({
+      groupId: group.groupId,
+      goal: "Research",
+      pageIds: ["one"],
+      profile: "default",
+      tokenAllocation: 0,
+      costAllocationUsd: 0,
+      maxModelCalls: 0,
+    });
+    f.service.sendMessage(agent.agentId, agent.runId!, "Continue researching");
+    expect(f.messages).toHaveLength(1);
+    expect(f.starts[0]).toMatchObject({ deadlineMs: 0, maxModelCalls: 0 });
+    expect(f.starts[0]?.maxCostUsd).toBeUndefined();
+    expect(f.service.view(group.groupId).group.deadlineAt).toBe(0);
   } finally {
     f.close();
   }

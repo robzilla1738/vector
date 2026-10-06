@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { WaitingPhraseSchema } from "./utility.js";
 import { MentionRefsSchema } from "./mentions.js";
 import { AgentPageIsolationSchema } from "./egress.js";
 import { WindowKindSchema } from "./window-sync.js";
@@ -150,10 +151,30 @@ export const RunSchema = z.object({
     .object({
       /** Internal person-queued overnight authority; never accepted from agent/RPC run options. */
       nightShiftItemId: z.string().uuid().optional(),
+      /** Signed-out isolated task tabs, captured when the task starts. Distinct from private windows. */
+      privateTask: z.boolean().optional(),
+      executionTarget: z.enum(["local", "cloud"]).optional(),
+      nativeTurnContext: z.string().uuid().optional(),
+      setMemberSource: z
+        .object({
+          parentRunId: z.string(),
+          setId: z.string(),
+          memberId: z.string(),
+          sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
+          url: z.string(),
+          memberUrl: z.string().optional(),
+          pageId: z.string().optional(),
+          sessionId: z.string().optional(),
+          documentEpoch: z.number().int().nonnegative().optional(),
+          recordKey: z.string().optional(),
+        })
+        .strict()
+        .optional(),
+      /** Explicit composer thinking choice; absence preserves the automatic route. */
+      reasoning: z.enum(["low", "medium", "high"]).optional(),
       modelId: z.string().optional(),
       maxSteps: z.number().optional(),
       maxModelCalls: z.number().optional(),
-      maxTokens: z.number().optional(),
       maxCostUsd: z.number().optional(),
       deadlineMs: z.number().optional(),
       /** prior-turn context for conversational runs — prompt-only, never shown */
@@ -193,6 +214,9 @@ export const RunSchema = z.object({
       messageId: z.string().optional(),
       /** Scoped external agent connection that owns this run (S6.7). */
       externalConnectionId: z.string().optional(),
+      /** Original external session; runtime assigned, never a model parameter. */
+      externalParentRunId: z.string().optional(),
+      externalRetirementPending: z.boolean().optional(),
       /** explicitly selected workspace memory revision used for this turn */
       contextWorkspaceId: z.string().optional(),
       contextWorkspaceRevision: z.number().int().nonnegative().optional(),
@@ -200,6 +224,8 @@ export const RunSchema = z.object({
       contextBrowsingMemory: z.boolean().optional(),
       /** how this run executes — shown as a badge on cards (§10 route label) */
       implementation: z.string().optional(),
+      /** A bounded utility-generated label; never an action or source authority. */
+      waitingPhrase: WaitingPhraseSchema.optional(),
       /** route-selection reason when an operation impl drove the run */
       routeReason: z.string().optional(),
       /** model calls consumed — stamped at finish so cards can badge 0-model runs */
@@ -266,6 +292,7 @@ export type RunMessage = z.infer<typeof RunMessageSchema>;
 
 export const ConversationSummarySchema = z.object({
   chatId: z.string(),
+  privateTask: z.boolean(),
   taskId: z.string().optional(),
   title: z.string(),
   archived: z.boolean(),

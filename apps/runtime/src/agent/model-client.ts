@@ -1,7 +1,8 @@
 import type { z } from "zod";
 import type { ModelMessage } from "ai";
 import {
-  DEFAULT_PLANNER_MODEL_ID,
+  DEFAULT_AGENT_MODEL_ROUTES,
+  DEFAULT_UTILITY_MODEL_ID,
   MODEL_REGISTRY,
   modelPickerEntries,
   registryCostUsd,
@@ -93,10 +94,22 @@ export function usageFields(
 }
 
 /** Gateway-reported cost (providerMetadata.gateway.cost) wins; registry pricing is an estimate. */
+const subscriptionReceipts = new WeakSet<Record<string, unknown>>();
+
+/** Only the locally selected subscription adapter can issue this in-process billing receipt. */
+export function chatgptBillingReceipt<T extends ModelAttempt & { retries?: ModelAttempt[] }>(attempt: T): T {
+  const metadata = { ...attempt.providerMetadata, aux: { billing: "chatgpt-plan" } };
+  subscriptionReceipts.add(metadata);
+  attempt.providerMetadata = metadata;
+  for (const retry of attempt.retries ?? []) chatgptBillingReceipt(retry);
+  return attempt;
+}
+
 export function modelCallCost(
   modelId: string,
   c: { inputTokens?: number; outputTokens?: number; providerMetadata?: Record<string, unknown> },
 ): { costUsd?: number; costEstimated?: boolean } {
+  if (c.providerMetadata && subscriptionReceipts.has(c.providerMetadata)) return {};
   const gateway = c.providerMetadata?.gateway as { cost?: unknown; marketCost?: unknown } | undefined;
   for (const raw of [gateway?.cost, gateway?.marketCost]) {
     const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() ? Number(raw) : NaN;
@@ -121,8 +134,10 @@ export interface ModelClient {
     imageDataUrls?: string[];
     schema: z.ZodType<T>;
     signal?: AbortSignal;
+    /** Trusted admission immediately before a provider attempt, after SDK preflight. */
+    beforeDispatch?: () => Promise<void>;
     maxOutputTokens?: number;
-    reasoning?: "low" | "medium" | "xhigh";
+    reasoning?: "low" | "medium" | "high" | "xhigh";
     /** Bound provider attempts for shared-budget callers; 1 disables corrective retries. */
     maxAttempts?: number;
     /** OpenAI prompt-cache key. Direct Anthropic caching does not use it. */
@@ -145,7 +160,7 @@ export interface ModelClient {
     signal?: AbortSignal;
     maxOutputTokens?: number;
     maxAttempts?: number;
-    reasoning?: "low" | "medium" | "xhigh";
+    reasoning?: "low" | "medium" | "high" | "xhigh";
     sessionId?: string;
     onText: (delta: string) => void;
   }): Promise<StructuredCallResult<T>>;
@@ -158,9 +173,10 @@ export interface ModelClient {
     imageDataUrls?: string[];
     imageDataUrl?: string;
     signal?: AbortSignal;
+    beforeDispatch?: () => Promise<void>;
     maxOutputTokens?: number;
     maxAttempts?: number;
-    reasoning?: "low" | "medium" | "xhigh";
+    reasoning?: "low" | "medium" | "high" | "xhigh";
     sessionId?: string;
   }): Promise<TextCallResult>;
 
@@ -184,7 +200,7 @@ export interface ModelClient {
     maxOutputTokens?: number;
     /** Funded calls reserve one exact provider attempt; suppress route failover. */
     maxAttempts?: 1;
-    reasoning?: "low" | "medium" | "xhigh";
+    reasoning?: "low" | "medium" | "high" | "xhigh";
     /** Conversation id. Direct OpenAI calls send it as `prompt_cache_key`. */
     sessionId?: string;
   }): Promise<ToolCallStepResult>;
@@ -193,8 +209,8 @@ export interface ModelClient {
 }
 
 /** Static fallback list used until the Gateway catalog is reachable. */
-export const DEFAULT_PLANNER_MODEL = DEFAULT_PLANNER_MODEL_ID;
-export const LUNA_FAST_MODEL = "openai/gpt-5.6-luna-fast";
+export const DEFAULT_AGENT_MODEL = DEFAULT_AGENT_MODEL_ROUTES.standard.modelId;
+export const LUNA_FAST_MODEL = DEFAULT_UTILITY_MODEL_ID;
 export const FALLBACK_MODELS = modelPickerEntries(MODEL_REGISTRY);
 
 /** Product default per-turn model-call budget, shared by settings and the coordinator. */

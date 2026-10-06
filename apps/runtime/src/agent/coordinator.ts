@@ -1,3 +1,11 @@
+import { lineageRuns, runRoot } from "../services/run-lineage.js";
+import { resourceFundingAccounting } from "../services/resource-accounting.js";
+import {
+  RunFundingService,
+  ResourceFundingUnavailable,
+  ModelFundingUnavailable,
+  ResourceLimitsUnavailable,
+} from "../services/run-funding.js";
 import { markInterruptedRuns } from "../services/startup-recovery.js";
 import { closeCreatedPage } from "../services/close-created-page.js";
 import { browserContextPage } from "../services/browser-context-page.js";
@@ -8,7 +16,6 @@ import {
   AuxError,
   type Observation,
   type PageTarget,
-  type PlanChunk,
   type Run,
   type Step,
   type StepOutcome,
@@ -18,28 +25,16 @@ import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
 import type { ModelClient } from "./model-client.js";
-import type { AgentModelCategory, AgentModelRoute } from "@aux/contracts/model-registry";
 import { DurableWriteLedger } from "./durable.js";
 import { ApprovalStore } from "../safety/approval.js";
 import { SuspensionStore } from "../safety/suspensions.js";
 import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
 import { PageOwnership } from "../scheduler/page-ownership.js";
-import type { CompiledSkill } from "./skills.js";
 import { runToolLoop, type AgentLoopHostDeps } from "./loop/host.js";
-import {
-  DEFAULT_MAX_MODEL_CALLS,
-  DEFAULT_MAX_STEPS,
-  TERMINAL_STATUSES,
-  runCoordinatorLoop,
-  tryVisionPlan,
-} from "./coordinator-loop.js";
+import { DEFAULT_MAX_MODEL_CALLS } from "./model-client.js";
+import { DEFAULT_MAX_STEPS, TERMINAL_STATUSES } from "./run-state.js";
 
-export {
-  verifyDoneAgainstObservation,
-  verifyResultCitations,
-  markUnconfirmedWrites,
-  NAV_OPS,
-} from "./coordinator-loop.js";
+export { markUnconfirmedWrites, verifyResultCitations, NAV_OPS } from "./result-verification.js";
 
 export interface RunControl {
   abort: AbortController;
@@ -51,6 +46,9 @@ export interface RunControl {
   deadlineHit?: boolean;
   deadlineTimer?: ReturnType<typeof setTimeout>;
   budgetWaiter?: { suspensionId: string; resolve: () => void };
+  budgetContinuation?: Promise<void>;
+  resourceContinuation?: Promise<void>;
+  resourceWaiter?: { suspensionId: string; validate: () => Promise<void>; resolve: () => void };
   answerWaiter?: { resolve: (answer: string) => void };
   span?: {
     spanId: string;
@@ -58,7 +56,19 @@ export interface RunControl {
   };
 }
 
+const BUDGET_INTERRUPTION = Symbol("trusted run budget interruption");
+const TAKEOVER_INTERRUPTION = Symbol("trusted run takeover interruption");
+
 export interface CoordinatorDeps {
+  onDeadline?: (runId: string) => void;
+  prepareSources?: (run: Run, signal: AbortSignal) => Promise<void>;
+  checkRunSource?: (runId: string) => void;
+  checkSharedBudget?: (runId: string) => Promise<void>;
+  reserveModelCall?: (runId: string) => Promise<() => void>;
+  admitToolCall?: (runId: string, callId: string, toolName: string) => Promise<void>;
+  sharedCallCap?: (runId: string) => boolean;
+  budgetOwner?: (runId: string) => string;
+  pauseFamily?: (runId: string, reason: string) => Promise<() => Promise<void>>;
   taskSource?: (taskId: string) => { revision: number; state: string; sourceOrigin?: string };
   turnMentions: import("../services/turn-mention-service.js").TurnMentionService;
   repo: Repo;
@@ -70,11 +80,12 @@ export interface CoordinatorDeps {
     run: Run,
   ) => Promise<{ url: string; title: string; capturedAt: number; text: string }[]>;
   defaultModel: () => string;
-  recoveryModel: () => string | undefined;
-  visionModel?: () => string | undefined;
-  routeModel?: (category: AgentModelCategory) => AgentModelRoute;
   /** Pre-call user-budget gate (D11): throws permission_denied when a scope is spent. */
-  checkBudget?: (scope: { runId: string }) => void | Promise<void>;
+  checkBudget?: (scope: {
+    runId: string;
+    requiredUsd?: number;
+    excludeRunLimit?: boolean;
+  }) => void | Promise<void>;
   recordModelCall: (c: {
     runId: string;
     role: "planner" | "repair" | "vision" | "probe" | "final" | "agent";
@@ -115,14 +126,16 @@ export interface CoordinatorDeps {
   browserEgress?: import("../safety/browser-egress.js").BrowserEgress;
   /** S5 tool loop backends (decide()-gated web tools, provider cache options) — main.ts wires them. */
   agentLoop?: AgentLoopHostDeps;
+  funding?: import("../services/run-funding.js").RunFundingService;
 }
 
 /** Run lifecycle and control; the agent loop itself lives in `runCoordinatorLoop`. */
 export class RunCoordinator {
   controls = new Map<string, RunControl>();
+  private executions = new Map<string, Promise<void>>();
+  private closed = false;
   answers = new Map<string, string>();
   private createdPages = new Map<string, Set<string>>();
-  skills: CompiledSkill[] = [];
   unresolvedByRun = new Map<string, string[]>();
   durable: DurableWriteLedger;
   suspensions: SuspensionStore;
@@ -135,18 +148,11 @@ export class RunCoordinator {
 
   constructor(deps: CoordinatorDeps) {
     this.deps = deps;
+    this.deps.funding ??= new RunFundingService(deps.repo, resourceFundingAccounting(deps.repo));
     this.durable = deps.durableWrites ?? new DurableWriteLedger(deps.repo.db);
     this.suspensions = deps.suspensions ?? new SuspensionStore(deps.repo.db);
     this.leases = new CoordinatorLease(deps.repo.db);
     this.pageOwnership = deps.pageOwnership ?? new PageOwnership();
-  }
-
-  seedSkills(skills: CompiledSkill[]) {
-    this.skills = [...skills];
-  }
-
-  compiledSkills(): readonly CompiledSkill[] {
-    return this.skills;
   }
 
   list(limit = 50, options: Parameters<Repo["listRuns"]>[1] = {}): Run[] {
@@ -169,9 +175,15 @@ export class RunCoordinator {
     pageIds: string[];
     setId?: string;
     modelId?: string;
+    reasoning?: "low" | "medium" | "high";
+    privateTask?: boolean;
+    executionTarget?: "local" | "cloud";
+    nativeTurnContext?: string;
+    externalConnectionId?: string;
+    externalParentRunId?: string;
+    setMemberSource?: NonNullable<Run["config"]>["setMemberSource"];
     maxSteps?: number;
     maxModelCalls?: number;
-    maxTokens?: number;
     maxCostUsd?: number;
     deadlineMs?: number;
     context?: string;
@@ -191,17 +203,12 @@ export class RunCoordinator {
     contextBrowsingMemory?: boolean;
     chatId?: string;
     retryOfRunId?: string;
-    /**
-     * Execution engine (S5 A/B): "agent" keeps the planner loop;
-     * "agent-loop" runs the durable tool-call loop. The corpus gate decides
-     * which survives — never ship both permanently.
-     */
-    engine?: "agent" | "agent-loop";
     /** routine-declared account boundary stamped on the run */
     accountLabels?: string[];
     subagentProfile?: "explorer" | "read_only" | "default";
     calendarGrantIds?: string[];
   }): Promise<Run> {
+    if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
     if (opts.runId) {
       const existing = this.deps.repo.getRun(opts.runId);
       if (existing) return existing;
@@ -214,7 +221,7 @@ export class RunCoordinator {
             .filter((grant) => grant.taskRevision === opts.taskRevision)
             .map((grant) => grant.grantId)
         : undefined);
-    const leaseKey = opts.taskId ? `task:${opts.taskId}` : undefined;
+    const leaseKey = opts.taskId && !opts.setMemberSource ? `task:${opts.taskId}` : undefined;
     if (leaseKey) {
       this.leases.acquire(leaseKey, this.leaseOwner);
       this.heldLeases.add(leaseKey);
@@ -228,9 +235,15 @@ export class RunCoordinator {
       config: {
         nightShiftItemId: opts.nightShiftItemId,
         modelId: opts.modelId,
+        reasoning: opts.reasoning,
+        privateTask: opts.privateTask ?? false,
+        executionTarget: opts.executionTarget ?? "local",
+        nativeTurnContext: opts.nativeTurnContext,
+        externalConnectionId: opts.externalConnectionId,
+        externalParentRunId: opts.externalParentRunId,
+        setMemberSource: opts.setMemberSource,
         maxSteps: opts.maxSteps ?? DEFAULT_MAX_STEPS,
         maxModelCalls: opts.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS,
-        maxTokens: opts.maxTokens,
         maxCostUsd: opts.maxCostUsd,
         deadlineMs: opts.deadlineMs,
         context: opts.context,
@@ -257,12 +270,28 @@ export class RunCoordinator {
         subagentProfile: opts.subagentProfile,
         calendarGrantIds,
         retryOfRunId: opts.retryOfRunId,
-        implementation:
-          opts.engine === "agent-loop" ? "agent-loop" : opts.modelId ? `agent:${opts.modelId}` : "agent",
+        implementation: "agent-loop",
       },
       createdAt: Date.now(),
     };
     this.deps.repo.saveRun(run);
+    if (opts.setMemberSource) {
+      const source = opts.setMemberSource;
+      this.deps.repo.db
+        .prepare(
+          `INSERT INTO set_run_members(child_run_id,parent_run_id,set_id,member_id,source_digest,state,created_at,updated_at)
+        VALUES(?,?,?,?,?,'running',?,?)`,
+        )
+        .run(
+          run.runId,
+          source.parentRunId,
+          source.setId,
+          source.memberId,
+          source.sourceDigest,
+          Date.now(),
+          Date.now(),
+        );
+    }
     this.deps.events.emit(EventTypes.RunUpdated, { run }, run.runId);
     const runLease = `run:${run.runId}`;
     this.leases.acquire(runLease, this.leaseOwner);
@@ -279,16 +308,48 @@ export class RunCoordinator {
     this.armDeadline(run.runId, control, run.config?.deadlineMs);
     this.controls.set(run.runId, control);
     this.deps.tracer?.incr("run.started");
-    void this.loop(run.runId).catch(async (e) => {
-      const error = control.deadlineHit
-        ? `run deadline exceeded (${run.config?.deadlineMs}ms)`
-        : e instanceof Error
-          ? e.message
-          : String(e);
-      await this.finish(run.runId, "failed", undefined, error, error);
-      this.controls.delete(run.runId);
-    });
+    const execution = this.loop(run.runId)
+      .catch(async (e) => {
+        const error = control.deadlineHit
+          ? `run deadline exceeded (${run.config?.deadlineMs}ms)`
+          : e instanceof Error
+            ? e.message
+            : String(e);
+        if (!control.abort.signal.aborted && !TERMINAL_STATUSES.has(this.get(run.runId).status))
+          await this.finish(run.runId, "failed", undefined, error, error);
+        if (this.controls.get(run.runId) === control) this.controls.delete(run.runId);
+        if (this.closed) throw e;
+      })
+      .finally(() => {
+        if (this.executions.get(run.runId) === execution) this.executions.delete(run.runId);
+      });
+    this.executions.set(run.runId, execution);
+    void execution;
     return run;
+  }
+
+  registerBatch(run: Run): () => void {
+    if (this.closed) throw new AuxError("cancelled", "Run execution is closed.");
+    const taskLease = run.config?.taskId ? `task:${run.config.taskId}` : undefined;
+    if (taskLease) {
+      this.leases.acquire(taskLease, this.leaseOwner);
+      this.heldLeases.add(taskLease);
+    }
+    const control: RunControl = {
+      abort: new AbortController(),
+      paused: false,
+      dispatchAbort: new AbortController(),
+    };
+    this.controls.set(run.runId, control);
+    this.armDeadline(run.runId, control, run.config?.deadlineMs);
+    return () => {
+      if (control.deadlineTimer) clearTimeout(control.deadlineTimer);
+      this.controls.delete(run.runId);
+      if (taskLease) {
+        this.leases.release(taskLease, this.leaseOwner);
+        this.heldLeases.delete(taskLease);
+      }
+    };
   }
 
   private retirePendingProofs(runId: string): void {
@@ -306,34 +367,280 @@ export class RunCoordinator {
     if (control.deadlineTimer) clearTimeout(control.deadlineTimer);
     control.deadlineHit = false;
     if (!limit) return;
-    const run = this.get(runId);
-    const remaining = limit - (Date.now() - (run.startedAt ?? run.createdAt));
-    control.deadlineTimer = setTimeout(() => {
-      if (control.abort.signal.aborted) return;
-      control.deadlineHit = true;
-      // A sheet may still be open: revoke its original proof synchronously.
-      this.retirePendingProofs(runId);
-      control.interruptPlanning?.();
-      control.dispatchAbort?.abort();
-      control.budgetWaiter?.resolve();
-      control.budgetWaiter = undefined;
-      control.answerWaiter?.resolve("");
-    }, Math.max(0, remaining));
+    const schedule = () => {
+      const run = this.get(runId);
+      const remaining = limit - (Date.now() - (run.startedAt ?? run.createdAt));
+      control.deadlineTimer = setTimeout(
+        () => {
+          if (control.abort.signal.aborted || this.controls.get(runId) !== control) return;
+          const current = this.get(runId);
+          if (limit - (Date.now() - (current.startedAt ?? current.createdAt)) > 0) {
+            schedule();
+            return;
+          }
+          control.deadlineHit = true;
+          this.retirePendingProofs(runId);
+          control.interruptPlanning?.();
+          control.dispatchAbort?.abort(BUDGET_INTERRUPTION);
+          control.budgetWaiter?.resolve();
+          control.budgetWaiter = undefined;
+          control.answerWaiter?.resolve("");
+          this.deps.onDeadline?.(runId);
+        },
+        Math.max(0, Math.min(2_147_483_647, remaining)),
+      );
+    };
+    schedule();
   }
 
-  async pauseForBudget(runId: string, budget: BudgetSuspension): Promise<void> {
+  pauseForBudget(runId: string, budget: BudgetSuspension): Promise<void> {
+    budget = this.deps.funding?.timeBudget(runId, budget) ?? budget;
+    const owner =
+      budget.reason === "spend" || budget.funding ? (this.deps.budgetOwner?.(runId) ?? runId) : runId;
+    if (owner !== runId) return this.pauseForBudget(owner, budget);
+    const control = this.controls.get(runId);
+    if (!control || control.abort.signal.aborted)
+      return Promise.reject(new AuxError("cancelled", "run cancelled"));
+    if (control.budgetContinuation) return control.budgetContinuation;
+    const pending = Promise.resolve()
+      .then(() => this.parkBudget(runId, budget))
+      .finally(() => {
+        if (control.budgetContinuation === pending) control.budgetContinuation = undefined;
+      });
+    control.budgetContinuation = pending;
+    return pending;
+  }
+
+  async pauseForResourceFunding(
+    error: ResourceFundingUnavailable | ResourceLimitsUnavailable | ModelFundingUnavailable,
+    current?: () => void | Promise<void>,
+  ): Promise<void> {
+    const validate = async () => {
+      this.deps.checkRunSource?.(error.runId);
+      if (error instanceof ModelFundingUnavailable) {
+        if (!this.deps.funding)
+          throw new AuxError("capability_unsupported", "Original model funding is unavailable.");
+        await this.deps.funding.assertModelUnavailable(error);
+      } else if (error instanceof ResourceFundingUnavailable) {
+        const funding = this.deps.funding;
+        if (!funding) throw new AuxError("capability_unsupported", "Original run funding is unavailable.");
+        funding.assertResourceOwner(error);
+      } else {
+        if (!current)
+          throw new AuxError("permission_denied", "Original cloud usage-limit authority is unavailable.");
+        await current();
+      }
+    };
+    await validate();
+    const rootId = runRoot(this.deps.repo, error.runId, true);
+    const control = this.controls.get(rootId);
+    if (!control || control.abort.signal.aborted)
+      return Promise.reject(new AuxError("cancelled", "Original cloud owner stopped."));
+    if (control.resourceContinuation) return control.resourceContinuation;
+    const pending = Promise.resolve()
+      .then(async () => {
+        const resumePeers = await this.deps.pauseFamily?.(
+          rootId,
+          error instanceof ModelFundingUnavailable
+            ? "Model funding capability needs review"
+            : "Cloud resource funding needs review",
+        );
+        await validate();
+        if (control.abort.signal.aborted) throw new AuxError("cancelled", "Original cloud owner stopped.");
+        this.retirePendingProofs(rootId);
+        control.budgetInterrupted = true;
+        control.interruptPlanning?.();
+        control.dispatchAbort?.abort(BUDGET_INTERRUPTION);
+        // The original aborted signal remains the immutable retirement witness.
+        control.dispatchAbort = new AbortController();
+        const run = this.get(rootId);
+        const suspension = this.suspensions.park({
+          runId: rootId,
+          turnId: rootId,
+          threadId: run.config?.chatId ?? rootId,
+          kind: "handoff",
+          request: {
+            kind: "handoff",
+            ...(error instanceof ModelFundingUnavailable
+              ? { modelLimits: error.proof }
+              : error instanceof ResourceFundingUnavailable
+                ? { resourceFunding: error.funding }
+                : { resourceLimits: error.proof }),
+            instruction: error.message,
+            guidance:
+              error instanceof ModelFundingUnavailable
+                ? "Stop this run before changing model connections. An answer or budget increase cannot supply a missing provider bound."
+                : "Continue locally, stop this run, or configure a verified cloud resource envelope. An answer or budget increase cannot authorize an unenforceable envelope.",
+          },
+        });
+        const continued = new Promise<void>((resolve) => {
+          const stopped = () => resolve();
+          control.abort.signal.addEventListener("abort", stopped, { once: true });
+          control.resourceWaiter = {
+            suspensionId: suspension.suspensionId,
+            validate,
+            resolve: () => {
+              control.abort.signal.removeEventListener("abort", stopped);
+              resolve();
+            },
+          };
+        });
+        await this.setStatus(rootId, "needs_input", error.message);
+        await continued;
+        if (control.abort.signal.aborted) throw new AuxError("cancelled", "Original cloud owner stopped.");
+        control.budgetInterrupted = false;
+        await resumePeers?.();
+      })
+      .finally(() => {
+        if (control.resourceContinuation === pending) {
+          control.resourceContinuation = undefined;
+          control.resourceWaiter?.resolve();
+          control.resourceWaiter = undefined;
+        }
+      });
+    control.resourceContinuation = pending;
+    return pending;
+  }
+
+  activeRunIds(): string[] {
+    return [...new Set([...this.controls.keys(), ...this.executions.keys()])];
+  }
+
+  close(): Promise<void> {
+    this.closed = true;
+    const ids = this.activeRunIds();
+    const continuations = [...this.controls.values()].flatMap((control) =>
+      [control.resourceContinuation, control.budgetContinuation].filter(
+        (pending): pending is Promise<void> => !!pending,
+      ),
+    );
+    const executions = [...this.executions.values()];
+    // Revoke every original control and proof before yielding to cleanup ACKs.
+    for (const id of ids) {
+      const control = this.controls.get(id);
+      control?.abort.abort();
+      control?.dispatchAbort?.abort();
+      if (control?.deadlineTimer) clearTimeout(control.deadlineTimer);
+      control?.budgetWaiter?.resolve();
+      control?.answerWaiter?.resolve("");
+    }
+    const proofFailures: unknown[] = [];
+    for (const id of ids) {
+      try {
+        if (this.deps.repo.getRun(id)) this.retirePendingProofs(id);
+      } catch (error) {
+        proofFailures.push(error);
+      }
+    }
+    return Promise.allSettled([...continuations, ...executions]).then((settled) => {
+      const failures = [
+        ...proofFailures,
+        ...settled.flatMap((result) =>
+          result.status === "rejected" &&
+          !(result.reason instanceof AuxError && result.reason.code === "cancelled") &&
+          !(result.reason instanceof Error && result.reason.name === "AbortError")
+            ? [result.reason]
+            : [],
+        ),
+      ];
+      if (failures.length) throw new AggregateError(failures, "Run execution shutdown did not complete.");
+    });
+  }
+
+  async useLocalExecution(
+    runId: string,
+    suspensionId: string,
+    originalOwner: () => Promise<void>,
+  ): Promise<Run> {
+    return withRunAuthorityMutation(
+      this.deps.repo,
+      async () => {
+        const control = this.controls.get(runId);
+        const waiter = control?.resourceWaiter;
+        const pending = this.suspensions.pending(runId);
+        const root = this.get(runId);
+        if (
+          runRoot(this.deps.repo, runId, true) !== runId ||
+          !control ||
+          control.abort.signal.aborted ||
+          !waiter ||
+          waiter.suspensionId !== suspensionId ||
+          pending?.suspensionId !== suspensionId ||
+          pending.kind !== "handoff" ||
+          (!pending.request.resourceFunding && !pending.request.resourceLimits) ||
+          root.status !== "needs_input" ||
+          root.config?.executionTarget !== "cloud"
+        )
+          throw new AuxError("ref_stale", "The original cloud resource handoff is no longer pending.");
+        const family = lineageRuns(this.deps.repo, runId);
+        const snapshots = family.map((id) => ({ id, config: JSON.stringify(this.get(id).config) }));
+        const validate = async () => {
+          await originalOwner();
+          await waiter.validate();
+          if (
+            control.abort.signal.aborted ||
+            control.resourceWaiter !== waiter ||
+            this.get(runId).status !== "needs_input" ||
+            this.suspensions.pending(runId)?.suspensionId !== suspensionId ||
+            JSON.stringify(lineageRuns(this.deps.repo, runId)) !== JSON.stringify(family) ||
+            snapshots.some(({ id, config }) => JSON.stringify(this.get(id).config) !== config)
+          )
+            throw new AuxError("ref_stale", "The original cloud family changed during cleanup.");
+        };
+        await validate();
+        const cloud = this.deps.agentLoop?.cloudExecutor;
+        if (!cloud) throw new AuxError("capability_unsupported", "Original cloud cleanup is unavailable.");
+        // Cleanup is real even when the request was refused before starting a VM.
+        // Any ambiguous stop keeps the cloud mode, handoff and funding holds intact.
+        for (const id of family) await cloud.closeRun(id);
+        await validate();
+        this.deps.repo.transaction(() => {
+          for (const id of family) {
+            const run = this.get(id);
+            if (id !== runId && TERMINAL_STATUSES.has(run.status)) continue;
+            if (!run.config) throw new AuxError("ref_stale", "Original run configuration is unavailable.");
+            run.config.executionTarget = "local";
+            if (id === runId) {
+              run.status = "running";
+              run.statusMessage = "Continuing locally";
+            }
+            this.deps.repo.saveRun(run);
+          }
+          this.suspensions.resolve(suspensionId, "answered");
+        });
+        this.deps.events.emit(
+          EventTypes.RunStatus,
+          { runId, status: "running", message: "Continuing locally" },
+          runId,
+        );
+        this.deps.events.emit(EventTypes.RunUpdated, { run: this.get(runId) }, runId);
+        waiter.resolve();
+        return this.get(runId);
+      },
+      runId,
+    );
+  }
+
+  private async parkBudget(runId: string, budget: BudgetSuspension): Promise<void> {
     const control = this.controls.get(runId);
     if (!control || control.abort.signal.aborted) throw new AuxError("cancelled", "run cancelled");
     const run = this.get(runId);
+    const resumePeers = await this.deps.pauseFamily?.(runId, "Parent budget reached");
     this.retirePendingProofs(runId);
     control.budgetInterrupted = true;
     control.interruptPlanning?.();
-    control.dispatchAbort?.abort();
+    control.dispatchAbort?.abort(BUDGET_INTERRUPTION);
     const suspension = this.suspensions.park({
-      runId, turnId: runId, threadId: run.config?.chatId ?? runId, kind: "budget",
-      request: { kind: "budget", budget,
+      runId,
+      turnId: runId,
+      threadId: run.config?.chatId ?? runId,
+      kind: "budget",
+      request: {
+        kind: "budget",
+        budget,
         instruction: "The configured budget has been reached.",
-        guidance: "Raise the limit and choose Continue, or stop this run." },
+        guidance: "Raise the limit and choose Continue, or stop this run.",
+      },
     });
     const continued = new Promise<void>((resolve) => {
       control.budgetWaiter = { suspensionId: suspension.suspensionId, resolve };
@@ -341,69 +648,153 @@ export class RunCoordinator {
     run.status = "needs_input";
     run.statusMessage = "Budget reached — waiting for Continue";
     this.deps.repo.saveRun(run);
-    this.deps.events.emit(EventTypes.RunStatus, { runId, status: run.status, message: run.statusMessage }, runId);
+    this.deps.events.emit(
+      EventTypes.RunStatus,
+      { runId, status: run.status, message: run.statusMessage },
+      runId,
+    );
     this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
     this.releasePages(runId, true);
     await continued;
     if (control.abort.signal.aborted) throw new AuxError("cancelled", "run cancelled");
     if (control.dispatchAbort?.signal.aborted) control.dispatchAbort = new AbortController();
+    await resumePeers?.();
     await this.waitIfPaused(control, runId);
   }
 
-  async checkModelBudget(runId: string): Promise<void> {
+  async checkModelBudget(runId: string, excludeRunLimit = false): Promise<void> {
+    this.deps.checkRunSource?.(runId);
+    await this.deps.checkSharedBudget?.(runId);
     while (true) {
-      try { await this.deps.checkBudget?.({ runId }); return; }
-      catch (error) {
+      try {
+        await this.deps.checkBudget?.({ runId, ...(excludeRunLimit ? { excludeRunLimit: true } : {}) });
+        return;
+      } catch (error) {
         const detail = error instanceof AuxError ? error.detail : undefined;
-        if (!(error instanceof AuxError) || error.code !== "permission_denied" || !detail ||
-            typeof detail !== "object" || !("scope" in detail) || !("limitUsd" in detail) || !("spentUsd" in detail) ||
-            !["run", "day", "routine", "nightShift"].includes(String(detail.scope)) ||
-            typeof detail.limitUsd !== "number" || !Number.isFinite(detail.limitUsd) || detail.limitUsd <= 0 ||
-            typeof detail.spentUsd !== "number" || !Number.isFinite(detail.spentUsd) || detail.spentUsd < 0) throw error;
-        await this.pauseForBudget(runId, { reason: "spend", limit: detail.limitUsd, used: detail.spentUsd,
-          scope: detail.scope as BudgetSuspension["scope"] });
+        if (
+          !(error instanceof AuxError) ||
+          error.code !== "permission_denied" ||
+          !detail ||
+          typeof detail !== "object" ||
+          !("scope" in detail) ||
+          !("limitUsd" in detail) ||
+          !("spentUsd" in detail) ||
+          !["run", "day", "month", "routine", "nightShift"].includes(String(detail.scope)) ||
+          typeof detail.limitUsd !== "number" ||
+          !Number.isFinite(detail.limitUsd) ||
+          detail.limitUsd <= 0 ||
+          typeof detail.spentUsd !== "number" ||
+          !Number.isFinite(detail.spentUsd) ||
+          detail.spentUsd < 0
+        )
+          throw error;
+        await this.pauseForBudget(runId, {
+          reason: "spend",
+          limit: detail.limitUsd,
+          used: detail.spentUsd,
+          scope: detail.scope as BudgetSuspension["scope"],
+        });
         throw new AuxError("cancelled", "Budget continuation requires a fresh observation.");
       }
     }
   }
 
-  async continueBudget(runId: string, suspensionId: string,
-    limits?: { maxModelCalls?: number; maxSteps?: number; deadlineMs?: number }): Promise<Run> {
+  async continueBudget(
+    runId: string,
+    suspensionId: string,
+    limits?: {
+      maxModelCalls?: number;
+      maxSteps?: number;
+      deadlineMs?: number;
+      funding?: import("../services/run-funding.js").FundingLimits;
+    },
+  ): Promise<Run> {
     const original = this.suspensions.pending(runId);
-    if (!original || original.kind !== "budget" || original.suspensionId !== suspensionId || !original.request.budget)
+    if (
+      !original ||
+      original.kind !== "budget" ||
+      original.suspensionId !== suspensionId ||
+      !original.request.budget
+    )
       throw new AuxError("conflict", "The budget request changed.");
-    await this.deps.checkBudget?.({ runId });
-    return withRunAuthorityMutation(this.deps.repo, async () => {
-      const control = this.controls.get(runId);
-      const run = this.get(runId);
-      const current = this.suspensions.pending(runId);
-      if (!control || control.abort.signal.aborted || control.paused || run.status !== "needs_input" ||
-          control.budgetWaiter?.suspensionId !== suspensionId || current?.suspensionId !== suspensionId ||
-          JSON.stringify(current) !== JSON.stringify(original))
-        throw new AuxError("conflict", "The original budget request is no longer pending.");
-      const budget = original.request.budget!;
-      const field = budget.reason === "model_calls" ? "maxModelCalls" : budget.reason === "steps" ? "maxSteps" : budget.reason === "time" ? "deadlineMs" : undefined;
-      if (Object.keys(limits ?? {}).some((key) => key !== field))
-        throw new AuxError("invalid_params", "Change only the limit for this budget request.");
-      const limit = field ? limits?.[field] ?? run.config?.[field] ?? 0 : undefined;
-      const used = budget.reason === "time" ? Date.now() - (run.startedAt ?? run.createdAt) : budget.used;
-      if (field && (limit === undefined || !Number.isSafeInteger(limit) || limit < 0 || (limit !== 0 && limit <= Math.max(used, budget.limit))))
-        throw new AuxError("conflict", "Raise the configured limit before continuing.");
-      run.config = { ...run.config, ...(field ? { [field]: limit } : {}) };
-      run.status = "running";
-      run.statusMessage = "Continuing after budget review";
-      this.deps.repo.transaction(() => {
-        this.suspensions.resolve(suspensionId, "answered");
-        this.deps.repo.saveRun(run);
-      });
-      if (budget.reason === "time") this.armDeadline(runId, control, limit);
-      const waiter = control.budgetWaiter;
-      control.budgetWaiter = undefined;
-      this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
-      this.deps.events.emit(EventTypes.RunStatus, { runId, status: run.status, message: run.statusMessage }, runId);
-      waiter.resolve();
-      return run;
-    }, runId);
+    return withRunAuthorityMutation(
+      this.deps.repo,
+      async () => {
+        await this.deps.checkBudget?.({
+          runId,
+          requiredUsd: original.request.budget!.requiredUsd,
+          ...(original.request.budget!.funding && this.deps.funding?.rootCostOwned(runId)
+            ? { excludeRunLimit: true }
+            : {}),
+        });
+        const control = this.controls.get(runId);
+        const run = this.get(runId);
+        const current = this.suspensions.pending(runId);
+        if (
+          !control ||
+          control.abort.signal.aborted ||
+          control.paused ||
+          run.status !== "needs_input" ||
+          control.budgetWaiter?.suspensionId !== suspensionId ||
+          current?.suspensionId !== suspensionId ||
+          JSON.stringify(current) !== JSON.stringify(original)
+        )
+          throw new AuxError("conflict", "The original budget request is no longer pending.");
+        const budget = original.request.budget!;
+        const field =
+          budget.reason === "model_calls"
+            ? "maxModelCalls"
+            : budget.reason === "steps"
+              ? "maxSteps"
+              : budget.reason === "time"
+                ? "deadlineMs"
+                : undefined;
+        if (Object.keys(limits ?? {}).some((key) => key !== (budget.funding ? "funding" : field)))
+          throw new AuxError("invalid_params", "Change only the limit for this budget request.");
+        const limit = field && !budget.funding ? (limits?.[field] ?? run.config?.[field] ?? 0) : undefined;
+        const used = budget.reason === "time" ? Date.now() - (run.startedAt ?? run.createdAt) : budget.used;
+        if (
+          field &&
+          !budget.funding &&
+          (limit === undefined ||
+            !Number.isSafeInteger(limit) ||
+            limit < 0 ||
+            (limit !== 0 && limit <= Math.max(used, budget.limit)))
+        )
+          throw new AuxError("conflict", "Raise the configured limit before continuing.");
+        run.config = { ...run.config, ...(field && !budget.funding ? { [field]: limit } : {}) };
+        run.status = "running";
+        run.statusMessage = "Continuing after budget review";
+        let deadlines: { runId: string; deadlineMs: number }[] = [];
+        this.deps.repo.transaction(() => {
+          if (budget.funding) {
+            if (!this.deps.funding)
+              throw new AuxError("capability_unsupported", "Original funding is unavailable.");
+            deadlines = this.deps.funding.continue(runId, budget, limits?.funding);
+            run.config = this.get(runId).config;
+          }
+          this.suspensions.resolve(suspensionId, "answered");
+          this.deps.repo.saveRun(run);
+        });
+        if (budget.reason === "time" && !budget.funding) this.armDeadline(runId, control, limit);
+        for (const deadline of deadlines) {
+          const ownerControl = this.controls.get(deadline.runId);
+          if (ownerControl) this.armDeadline(deadline.runId, ownerControl, deadline.deadlineMs);
+        }
+        const waiter = control.budgetWaiter;
+        control.budgetWaiter = undefined;
+        this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+        this.deps.events.emit(
+          EventTypes.RunStatus,
+          { runId, status: run.status, message: run.statusMessage },
+          runId,
+        );
+        control.budgetInterrupted = false;
+        waiter.resolve();
+        return run;
+      },
+      runId,
+    );
   }
 
   async pause(runId: string): Promise<Run> {
@@ -423,20 +814,34 @@ export class RunCoordinator {
     c.paused = true;
     c.takeoverInterrupted = true;
     c.interruptPlanning?.();
-    c.dispatchAbort?.abort();
+    c.dispatchAbort?.abort(TAKEOVER_INTERRUPTION);
     c.budgetWaiter?.resolve();
     c.budgetWaiter = undefined;
     c.answerWaiter?.resolve("Page control changed; the pending action was cancelled.");
     this.deps.browserEgress?.suspendRun(runId);
   }
 
+  interruptForBudget(runId: string): void {
+    const c = this.controls.get(runId);
+    if (!c || c.abort.signal.aborted) return;
+    c.paused = true;
+    c.budgetInterrupted = true;
+    c.interruptPlanning?.();
+    c.dispatchAbort?.abort(BUDGET_INTERRUPTION);
+    c.answerWaiter?.resolve("");
+    this.releasePages(runId, true);
+  }
+
   async resume(runId: string): Promise<Run> {
     const c = this.controls.get(runId);
     const run = this.get(runId);
+    if (!c || c.abort.signal.aborted)
+      throw new AuxError("conflict", "The original run control is unavailable.");
     if (this.suspensions.pending(runId)?.kind === "budget")
       throw new AuxError("conflict", "Use Continue on the current budget request.");
     if (c?.paused) {
       c.paused = false;
+      c.budgetInterrupted = false;
       if (run.status === "paused") await this.setStatus(runId, "running", "Resumed");
     } else if (run.status === "needs_input") {
       await this.setStatus(runId, "needs_input", run.statusMessage);
@@ -467,7 +872,8 @@ export class RunCoordinator {
         const token = this.deps.turnMentions.capture(runId);
         const run = this.get(runId);
         this.releasePages(runId);
-        if (run.config?.mentions?.length) run.pageIds = this.deps.turnMentions.selectedPages(runId);
+        if (this.deps.turnMentions.hasPageSelection(runId))
+          run.pageIds = this.deps.turnMentions.selectedPages(runId);
         else {
           const steer = this.deps.repo.listRunSteers(runId).at(-1);
           if (steer) run.pageIds = [...steer.pageIds];
@@ -523,6 +929,7 @@ export class RunCoordinator {
   }
 
   usePage<T>(runId: string, pageId: string, access: "read" | "act", dispatch: () => Promise<T>): Promise<T> {
+    this.deps.checkRunSource?.(runId);
     return this.deps.turnMentions.useSourcePage(
       runId,
       pageId,
@@ -541,7 +948,7 @@ export class RunCoordinator {
   }
 
   ownPage(runId: string, pageId: string): void {
-    this.deps.turnMentions.created(runId, pageId);
+    if (this.deps.turnMentions.has(runId)) this.deps.turnMentions.created(runId, pageId);
     const pages = this.createdPages.get(runId) ?? new Set<string>();
     pages.add(pageId);
     this.createdPages.set(runId, pages);
@@ -554,7 +961,7 @@ export class RunCoordinator {
     if (!c || c.abort.signal.aborted) return;
     c.interruptPlanning?.();
     c.dispatchAbort?.abort();
-      c.answerWaiter?.resolve("");
+    c.answerWaiter?.resolve("");
   }
 
   async answerWithMentions(
@@ -574,6 +981,14 @@ export class RunCoordinator {
           owned,
           {
             workspaceId: run.config?.contextWorkspaceId,
+            nativeTurnContext: run.config?.nativeTurnContext,
+            privateTask: run.config?.privateTask,
+            sourcePageIds:
+              run.config?.setMemberSource ||
+              run.config?.subagentProfile ||
+              (run.config?.privateTask && run.pageIds.length)
+                ? run.pageIds
+                : undefined,
             taskId: run.config?.taskId,
             taskRevision: run.config?.taskRevision,
           },
@@ -598,7 +1013,19 @@ export class RunCoordinator {
     return withRunAuthorityMutation(
       this.deps.repo,
       async () => {
-        if (this.suspensions.pending(runId)?.kind === "budget")
+        const pending = this.suspensions.pending(runId);
+        if (
+          pending?.request.resourceFunding ||
+          pending?.request.resourceLimits ||
+          pending?.request.modelLimits
+        )
+          throw new AuxError(
+            "conflict",
+            pending.request.modelLimits
+              ? "Stop this run before changing the model connection; an answer cannot supply the missing provider bound."
+              : "Use Continue locally on the original cloud resource handoff.",
+          );
+        if (pending?.kind === "budget")
           throw new AuxError("conflict", "Use Continue on the current budget request.");
         const c = this.controls.get(runId);
         const run = this.get(runId);
@@ -765,7 +1192,14 @@ export class RunCoordinator {
     await this.acquirePages(runId);
   }
 
+  isBudgetInterruption(signal: AbortSignal): boolean {
+    return signal.aborted && signal.reason === BUDGET_INTERRUPTION;
+  }
+
   async waitForAnswer(c: RunControl, runId: string): Promise<string> {
+    // Status publication can let an acknowledged correction retire dispatch
+    // before this waiter is installed. Its old question must not park again.
+    if (c.dispatchAbort?.signal.aborted || c.abort.signal.aborted) return "";
     if (c.takeoverInterrupted) {
       await this.waitIfPaused(c, runId);
       return "Page control changed; the pending action was cancelled.";
@@ -788,58 +1222,93 @@ export class RunCoordinator {
     return answer;
   }
 
-  async tryVisionPlan(args: {
-    runId: string;
-    pageId: string;
-    goal: string;
-    url: string;
-    lastError?: string;
-    outcomes: StepOutcome[];
-    model: ModelClient;
-    modelId: string;
-    signal: AbortSignal;
-    onModelCall?: () => void;
-    instructions?: string;
-    notes?: string;
-  }): Promise<PlanChunk | null> {
-    return tryVisionPlan(this, args);
-  }
-
-  assertTargetAlive(obs: Observation) {
-    if (!obs) throw new AuxError("target_detached", "observation empty");
-  }
-
   /**
    * Run body — the planner loop (observe → plan → authorize → dispatch →
    * verify) or the S5 tool loop when the run's engine is `agent-loop`.
    */
-  private async loop(runId: string) {
-    try {
-      const run = this.get(runId);
-      await this.deps.turnMentions.begin(runId, run.config?.mentions ?? [], this.ownedPages(runId), {
-        workspaceId: run.config?.contextWorkspaceId,
-        taskId: run.config?.taskId,
-        taskRevision: run.config?.taskRevision,
+  private async initializeRun(runId: string, control: RunControl, signal: AbortSignal) {
+    const run = this.get(runId);
+    await this.deps.prepareSources?.(run, signal);
+    if (signal.aborted) throw new AuxError("cancelled", "Original source preparation was interrupted.");
+    const preparedRun = this.get(runId);
+    run.pageIds = preparedRun.pageIds;
+    run.config = preparedRun.config;
+    await this.deps.turnMentions.begin(runId, run.config?.mentions ?? [], this.ownedPages(runId), {
+      workspaceId: run.config?.contextWorkspaceId,
+      nativeTurnContext: run.config?.nativeTurnContext,
+      privateTask: run.config?.privateTask,
+      sourcePageIds:
+        run.config?.setMemberSource ||
+        run.config?.externalParentRunId ||
+        run.config?.subagentProfile ||
+        (run.config?.privateTask && run.pageIds.length)
+          ? run.pageIds
+          : undefined,
+      taskId: run.config?.taskId,
+      taskRevision: run.config?.taskRevision,
+    });
+    if (run.config?.privateTask && !run.config?.isolatedPageSources) {
+      run.pageIds = this.deps.turnMentions.sourcePages(runId).map((page) => page.pageId);
+      this.deps.repo.saveRun(run);
+    } else if (run.config?.nativeTurnContext || this.deps.turnMentions.hasPageSelection(runId)) {
+      run.pageIds = this.deps.turnMentions.selectedPages(runId);
+      this.deps.repo.saveRun(run);
+    }
+    await this.acquirePages(runId);
+    if (this.get(runId).config?.privateTask) {
+      const current = this.get(runId);
+      await this.deps.turnMentions.begin(runId, current.config?.mentions ?? [], this.ownedPages(runId), {
+        workspaceId: current.config?.contextWorkspaceId,
+        nativeTurnContext: current.config?.nativeTurnContext,
+        privateTask: true,
+        sourcePageIds: this.ownedPages(runId),
+        taskId: current.config?.taskId,
+        taskRevision: current.config?.taskRevision,
       });
-      if (run.config?.mentions?.length) {
-        run.pageIds = this.deps.turnMentions.selectedPages(runId);
-        this.deps.repo.saveRun(run);
-      }
+    }
+    if (signal.aborted) throw new AuxError("cancelled", "Original initialization was interrupted.");
+    await this.waitIfPaused(control, runId);
+    if (signal.aborted) throw new AuxError("cancelled", "Original initialization was interrupted.");
+  }
+
+  private async loop(runId: string) {
+    const control = this.controls.get(runId)!;
+    try {
       while (true) {
-        try { await this.acquirePages(runId); break; }
-        catch (error) {
-          const c = this.controls.get(runId);
-          if (!c?.deadlineHit || c.abort.signal.aborted) throw error;
-          const current = this.get(runId);
-          await this.pauseForBudget(runId, { reason: "time", limit: current.config?.deadlineMs ?? 0,
-            used: Date.now() - (current.startedAt ?? current.createdAt) });
+        const dispatch = control.dispatchAbort!;
+        const signal = AbortSignal.any([control.abort.signal, dispatch.signal]);
+        try {
+          await this.initializeRun(runId, control, signal);
+          break;
+        } catch (error) {
+          if (
+            control.abort.signal.aborted ||
+            this.controls.get(runId) !== control ||
+            !dispatch.signal.aborted ||
+            ![BUDGET_INTERRUPTION, TAKEOVER_INTERRUPTION].includes(dispatch.signal.reason)
+          )
+            throw error;
+          this.deps.checkRunSource?.(runId);
+          const takeover = dispatch.signal.reason === TAKEOVER_INTERRUPTION;
+          if (!takeover && control.deadlineHit) {
+            const run = this.get(runId);
+            await this.pauseForBudget(runId, {
+              reason: "time",
+              limit: run.config?.deadlineMs ?? 0,
+              used: Date.now() - (run.startedAt ?? run.createdAt),
+            });
+          } else if (!takeover) await this.deps.checkSharedBudget?.(runId);
+          while (control.paused && !control.abort.signal.aborted)
+            await new Promise((resolve) => setTimeout(resolve, 120));
+          if (control.abort.signal.aborted || this.controls.get(runId) !== control)
+            throw new AuxError("cancelled", "The original run stopped before initialization resumed.");
+          this.deps.checkRunSource?.(runId);
+          control.dispatchAbort = new AbortController();
+          control.budgetInterrupted = false;
+          if (takeover) control.takeoverInterrupted = false;
         }
       }
-      const control = this.controls.get(runId);
-      if (!control) throw new AuxError("cancelled", "Run ended while preparing its pages.");
-      await this.waitIfPaused(control, runId);
-      if (this.get(runId).config?.implementation === "agent-loop") await runToolLoop(this, runId);
-      else await runCoordinatorLoop(this, runId);
+      await runToolLoop(this, runId);
     } finally {
       this.deps.turnMentions.end(runId);
       this.releasePages(runId);
@@ -862,7 +1331,11 @@ export class RunCoordinator {
         if (run.config?.contextWorkspaceId && run.config.instructions)
           this.deps.browserEgress.protect(runId, run.config.instructions, "memory");
       }
-      if (this.deps.browserEgress && !run.config?.isolatedPageSources && !run.config?.mentions?.length) {
+      if (
+        this.deps.browserEgress &&
+        !run.config?.isolatedPageSources &&
+        (run.config?.privateTask || !!run.config?.setMemberSource)
+      ) {
         const sources: NonNullable<NonNullable<Run["config"]>["isolatedPageSources"]> = [];
         for (const sourcePageId of run.pageIds) {
           if (control.abort.signal.aborted)
@@ -889,11 +1362,6 @@ export class RunCoordinator {
         }
         if (control.abort.signal.aborted)
           throw new AuxError("cancelled", "Run cancelled while opening its temporary tab.");
-        if (!sources.length && run.config?.implementation !== "agent-loop")
-          throw new AuxError(
-            "capability_unsupported",
-            "This planner needs a website to open in a protected temporary tab. Choose a website before starting.",
-          );
         const current = this.get(runId);
         if (
           this.controls.get(runId) !== control ||
@@ -913,7 +1381,10 @@ export class RunCoordinator {
           await this.pageOwnership.acquireMany(
             run.pageIds,
             { actor: "coordinator", runId },
-            AbortSignal.any([control.abort.signal, ...(control.dispatchAbort ? [control.dispatchAbort.signal] : [])]),
+            AbortSignal.any([
+              control.abort.signal,
+              ...(control.dispatchAbort ? [control.dispatchAbort.signal] : []),
+            ]),
           ),
         );
         const humanHeld = run.pageIds.find((pageId) => this.deps.pages.get(pageId).controller === "human");
@@ -984,8 +1455,8 @@ export class RunCoordinator {
       if (c) {
         c.abort.abort();
         c.budgetWaiter?.resolve();
-      c.budgetWaiter = undefined;
-      c.answerWaiter?.resolve("");
+        c.budgetWaiter = undefined;
+        c.answerWaiter?.resolve("");
       }
       await this.finish(run.runId, "failed", undefined, reason, "Stopped by a runtime fault");
       failed.push(run.runId);

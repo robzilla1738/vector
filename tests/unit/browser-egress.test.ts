@@ -23,7 +23,8 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
     epoch = 3,
     token = "native-document-1",
     owns = true,
-    alive = true;
+    alive = true,
+    privateTask = false;
   let url = "https://source.test/page",
     controller = "none",
     controlGeneration = "generation-original",
@@ -33,8 +34,9 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
     runId: "run",
     taskId: "task",
     taskRevision: 4,
-    inMemory: true,
-    cookies: "empty",
+    mode: "session",
+    inMemory: false,
+    cookies: "profile",
   };
   const leases: EgressLease[] = [];
   const revoke = vi.fn(async (_input: { lease: EgressLease }) => ({ accepted: true as const }));
@@ -61,7 +63,7 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
     profileId: "profile",
     native,
     now: () => now,
-    run: () => (alive ? { taskId: "task", taskRevision: revision, threadId: "thread" } : null),
+    run: () => (alive ? { taskId: "task", taskRevision: revision, threadId: "thread", privateTask } : null),
     page: () => ({ url, documentEpoch: epoch, controller }),
     ownsPage: () => owns,
     audit: vi.fn(),
@@ -111,6 +113,9 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
     consent,
     request,
     leases,
+    setPrivateTask: (value: boolean) => {
+      privateTask = value;
+    },
     setIsolation: (value?: AgentPageIsolation) => {
       isolation = value;
     },
@@ -585,17 +590,18 @@ describe("native browser egress authority", () => {
 it("refuses an ordinary owner tab and a different run namespace before native install", async () => {
   const f = fixture();
   f.setIsolation();
-  await expect(f.service.acquire("run", "tab")).rejects.toThrow("protected temporary tab");
+  await expect(f.service.acquire("run", "tab")).rejects.toThrow("original browser storage mode");
   expect(f.native.egressInstall).not.toHaveBeenCalled();
   f.setIsolation({
     isolationId: "other",
     runId: "another-run",
     taskId: "task",
     taskRevision: 4,
-    inMemory: true,
-    cookies: "empty",
+    mode: "session",
+    inMemory: false,
+    cookies: "profile",
   });
-  await expect(f.service.acquire("run", "tab")).rejects.toThrow("protected temporary tab");
+  await expect(f.service.acquire("run", "tab")).rejects.toThrow("original browser storage mode");
   expect(f.native.egressInstall).not.toHaveBeenCalled();
 });
 
@@ -614,6 +620,7 @@ it("obtains source URL authority from the current native document without transf
   f.setIsolation(); // ordinary owner source can supply a URL, never an action lease
   const scope = await f.service.creationScope("run", "tab");
   expect(scope).toEqual({
+    mode: "session",
     profileId: "profile",
     runId: "run",
     taskId: "task",

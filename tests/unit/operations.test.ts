@@ -63,7 +63,6 @@ const svc = (pages = fakePages()) => {
     events: new EventBus(r),
     pages,
     translateSteps: (_p, s) => s,
-    grants: ["effect:read", "effect:write", "effect:egress", "effect:destructive"],
   });
 };
 

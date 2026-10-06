@@ -16,6 +16,21 @@ function authOwner(ctx: MethodCtx): string {
     throw new AuxError("permission_denied", "Provider sign-in requires its original Aux window.");
   return ctx.client.nativeTurnContext;
 }
+async function h_models_auth_start(ctx: MethodCtx): Promise<unknown> {
+  return ctx.s.settings.startProviderAuth(authOwner(ctx), ctx.params.provider, ctx.params.accountId);
+}
+async function h_models_auth_status(ctx: MethodCtx): Promise<unknown> {
+  return ctx.s.settings.providerAuthStatus(ctx.params.attemptId, authOwner(ctx));
+}
+async function h_models_auth_cancel(ctx: MethodCtx): Promise<unknown> {
+  return ctx.s.settings.cancelProviderAuth(ctx.params.attemptId, authOwner(ctx));
+}
+async function h_models_auth_accounts(ctx: MethodCtx): Promise<unknown> {
+  return ctx.s.settings.savedChatgptAccounts(authOwner(ctx));
+}
+async function h_models_auth_disconnect(ctx: MethodCtx): Promise<unknown> {
+  return ctx.s.settings.disconnectChatgptAccount(ctx.params.accountId, authOwner(ctx));
+}
 async function h_models_copilot_setup(ctx: MethodCtx): Promise<unknown> {
   return ctx.s.settings.copilotSetup(authOwner(ctx));
 }
@@ -41,6 +56,11 @@ async function h_models_copilot_catalog(ctx: MethodCtx): Promise<unknown> {
   return ctx.s.settings.copilotCatalog(ctx.params.accountId, authOwner(ctx));
 }
 export const modelsMethods: Partial<Record<MethodName, MethodHandler>> = {
+  "models.auth.start": h_models_auth_start,
+  "models.auth.status": h_models_auth_status,
+  "models.auth.cancel": h_models_auth_cancel,
+  "models.auth.accounts": h_models_auth_accounts,
+  "models.auth.disconnect": h_models_auth_disconnect,
   "models.copilot.setup": h_models_copilot_setup,
   "models.copilot.install": h_models_copilot_install,
   "models.copilot.start": h_models_copilot_start,

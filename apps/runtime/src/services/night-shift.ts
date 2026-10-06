@@ -1,4 +1,4 @@
-import { lineageRuns, runRoot } from "./run-lineage.js";
+import { runRoot } from "./run-lineage.js";
 import { withOvernightAuthorityMutation } from "./overnight-authority.js";
 import { randomUUID } from "node:crypto";
 import {
@@ -80,20 +80,20 @@ export class NightShiftService {
     };
   }
   private spentTree(runId: string) {
-    return lineageRuns(this.repo, runId).reduce((sum, id) => sum + this.budgets.spentRunUsd(id), 0);
+    return this.budgets.spentRunUsd(runId);
   }
   private spentWindow(windowDate: string) {
     const roots = this.repo.db
       .prepare("SELECT run_id FROM night_queue WHERE window_date=? AND run_id IS NOT NULL")
       .all(windowDate) as { run_id: string }[];
-    const ids = new Set(roots.flatMap((row) => lineageRuns(this.repo, row.run_id)));
+    const ids = new Set(roots.map((row) => runRoot(this.repo, row.run_id)));
     return [...ids].reduce((sum, id) => sum + this.budgets.spentRunUsd(id), 0);
   }
   private windowCostComplete(windowDate: string) {
     const roots = this.repo.db
       .prepare("SELECT run_id FROM night_queue WHERE window_date=? AND run_id IS NOT NULL")
       .all(windowDate) as { run_id: string }[];
-    const ids = new Set(roots.flatMap((row) => lineageRuns(this.repo, row.run_id)));
+    const ids = new Set(roots.map((row) => runRoot(this.repo, row.run_id)));
     return [...ids].every((id) => this.budgets.runCostComplete(id));
   }
   private read(row: Record<string, unknown>): NightShiftItem {

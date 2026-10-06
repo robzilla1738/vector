@@ -5,15 +5,15 @@ export const SubagentProfileSchema = z.enum(["explorer", "read_only", "default"]
 export const SubagentGroupCreateParams = z
   .object({
     parentRunId: id,
-    tokenBudget: z.number().int().min(1_000).max(1_000_000),
-    costBudgetUsd: z.number().positive().max(50),
-    timeBudgetMs: z.number().int().min(1_000).max(86_400_000),
+    tokenBudget: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    costBudgetUsd: z.number().nonnegative(),
+    timeBudgetMs: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   })
   .strict();
 export const SubagentGroupSchema = SubagentGroupCreateParams.extend({
   groupId: z.string().uuid(),
   workspaceId: id,
-  deadlineAt: z.number().int().positive(),
+  deadlineAt: z.number().int().nonnegative(),
   createdAt: z.number().int().positive(),
   state: z.enum(["active", "closed"]),
 });
@@ -22,10 +22,10 @@ export const SubagentSpawnParams = z
     groupId: z.string().uuid(),
     goal: z.string().trim().min(1).max(10_000),
     profile: SubagentProfileSchema,
-    pageIds: z.array(id).min(1).max(9),
-    tokenAllocation: z.number().int().min(1_000).max(1_000_000),
-    costAllocationUsd: z.number().positive().max(50),
-    maxModelCalls: z.number().int().min(1).max(20).default(4),
+    pageIds: z.array(id).min(1),
+    tokenAllocation: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    costAllocationUsd: z.number().nonnegative(),
+    maxModelCalls: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).default(0),
     sourceRunId: id.optional(),
   })
   .strict();

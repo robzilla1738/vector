@@ -63,8 +63,9 @@ function fixture(retireOnReceipt = true, initialUrl = "https://continuation.test
     runId: "run",
     taskId: "task",
     taskRevision: 4,
-    inMemory: true as const,
-    cookies: "empty" as const,
+    mode: "session" as const,
+    inMemory: false as const,
+    cookies: "profile" as const,
   };
   let context = {
     profileId: "profile",
@@ -97,7 +98,6 @@ function fixture(retireOnReceipt = true, initialUrl = "https://continuation.test
     events: new EventBus(repo),
     native,
     turnMentions: fixtureTurnMentions((id) => pages.get(id)),
-    grants: ["effect:read", "effect:write"],
     drivers: () => ({ aux: browser, chrome: null }),
   });
   const target: PageTarget = {
@@ -905,7 +905,14 @@ it("routes a genuinely created protected page first load through the same native
     url: "https://continuation.test/next",
     background: true,
     ownedByRuntime: true,
-    agentScope: { profileId: "profile", runId: "run", ancestry: ["run"], taskId: "task", taskRevision: 4 },
+    agentScope: {
+      mode: "session",
+      profileId: "profile",
+      runId: "run",
+      ancestry: ["run"],
+      taskId: "task",
+      taskRevision: 4,
+    },
     beforeNavigate: (target) =>
       f.egress.acquire("run", target.pageId, "https://continuation.test/next").then(() => {}),
   });

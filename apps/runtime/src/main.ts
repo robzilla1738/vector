@@ -3,11 +3,10 @@ import { deferRuntimeWork, isRuntimeIdle } from "./services/idle.js";
 import { markInterruptedRuns } from "./services/startup-recovery.js";
 import { createServiceContainer, type ServiceContainer } from "./services/container.js";
 import { navigateControlledPage } from "./services/pages/controlled-navigation.js";
-import { registerNativeSubagentPreparation } from "./services/native-subagent-preparation.js";
 import { registerNativeSubagentWorkload } from "./services/native-subagent-workload.js";
 import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
 import { withRunAuthorityMutation } from "./services/overnight-authority.js";
-import { overnightRoot, runAncestry } from "./services/run-lineage.js";
+import { overnightRoot, runAncestry, runRoot, lineageRuns } from "./services/run-lineage.js";
 import { installBrowserAuthority, installOvernightAuthority } from "./services/overnight-authority.js";
 import { checkNightShiftDispatch, nightShiftEffectAuthority } from "./features/overnight-review/service.js";
 import { z } from "zod";
@@ -57,7 +56,6 @@ import {
   SubagentProfileSchema,
   ZapSnapshotParamsSchema,
   auxFeatureEnabled,
-  isElementRef,
   normalizeAuxEnvironment,
   type Step,
 } from "@aux/contracts";
@@ -494,7 +492,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         repo,
         events,
         pages: runtimeServices.pages,
-        translateSteps,
         durableWrites: runtimeServices.durableWrites,
         calendar: runtimeServices.calendar,
         authorizeConnector: (runId, connectorId, tool, dispatch) =>
@@ -508,7 +505,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       }),
     state: () =>
       new StateService({ repo, pages: runtimeServices.pages, operations: runtimeServices.operations }),
-    budgets: () => new BudgetsService(repo.db, () => runtimeServices.settings.budgetLimits()),
+    budgets: () =>
+      new BudgetsService(repo.db, () => runtimeServices.settings.budgetLimits(), {
+        root: (runId) => runRoot(repo, runId),
+        runLimitUsd: (rootRunId) => repo.getRun(rootRunId)?.config?.maxCostUsd,
+        descendants: (runId) => lineageRuns(repo, runId),
+      }),
     mentionRoutines: () => new RoutineService(repo, events),
     mentionConnectors: () =>
       new ConnectorCatalogService({
@@ -569,7 +571,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         sets: runtimeServices.sets,
         settings: runtimeServices.settings,
         artifacts: runtimeServices.artifacts,
-        translateSteps,
         nativeAvailable: () => native.available(),
         tracer: runtimeServices.tracer,
         vault: runtimeServices.vault,
@@ -587,7 +588,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       return runs;
     },
     goals: () =>
-      new GoalService(repo, runtimeServices.runs, async () => runtimeServices.settings.registryModels()),
+      new GoalService(repo, runtimeServices.runs),
     subagents: () => new SubagentService(repo, events, runtimeServices.runs),
     bashSeatbelt: () =>
       new BashSeatbelt({
@@ -806,7 +807,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const ensureBlocking = () => {
     if (closed) throw new AuxError("cancelled", "Content filtering construction retired.");
     const blocking = runtimeServices.blocking;
-    return blocking ? (blockingBoot ??= blocking.boot()) : Promise.resolve();
+    if (!blocking) return Promise.resolve();
+    if (blockingBoot) return blockingBoot;
+    const pending = blocking.boot();
+    blockingBoot = pending;
+    void pending.then(undefined, () => {
+      // A later explicit admission may retry the original native readiness.
+      // Never replace another attempt or claim the failed one became ready.
+      if (!closed && blockingBoot === pending) blockingBoot = undefined;
+    });
+    return pending;
   };
   if (env.AUX_HOST_SOCKET) {
     for (const method of [
@@ -976,23 +986,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       return { accepted: true };
     },
   });
-
-  const refLookup = (pageId: string, ref: string) =>
-    drivers.aux?.refEntry?.(pageId, ref) ?? drivers.chrome?.refEntry?.(pageId, ref);
-  const translateSteps = (pageId: string, steps: Step[]): Step[] =>
-    steps
-      .filter((s) => s.op !== "navigate")
-      .map((s) => {
-        if ("target" in s && typeof s.target === "string" && isElementRef(s.target)) {
-          const el = refLookup(pageId, s.target);
-          const sel = el?.selector;
-          if (sel?.role) {
-            return { ...s, target: `role=${sel.role.role}${sel.role.name ? `[name=${sel.role.name}]` : ""}` };
-          }
-          if (sel?.css) return { ...s, target: `css:${sel.css}` };
-        }
-        return s;
-      });
 
   const hookScratch = join(config.artifactsDir, "hook-tmp");
   mkdirSync(hookScratch, { recursive: true });
@@ -1340,6 +1333,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           }
         }
         return {
+          privateTask: run.config?.privateTask ?? false,
           taskId: run.config?.taskId,
           taskRevision: run.config?.taskRevision ?? 0,
           threadId: run.config?.chatId ?? run.runId,
@@ -1480,11 +1474,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   agentLoop.goalUpdate = async (input, ctx) =>
     runtimeServices.goals.report(ctx.runId, input.status, input.blocker, ctx.goalTurn);
-  agentLoop.goalBudget = {
-    reserve: (runId, request) => runtimeServices.goals.reserveModelCall(runId, request),
-    settle: (runId, reservationId, attempts) =>
-      runtimeServices.goals.settleModelCall(runId, reservationId, attempts),
-  };
 
   // Subagent cells (06-Y): the service is shared with the RPC invoker; the
   // REPL spawns cells under a lazily created group per parent run.
@@ -1498,9 +1487,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       if (!groupId) {
         const group = runtimeServices.subagents.createGroup({
           parentRunId: ctx.runId,
-          tokenBudget: Math.min(Math.max(1_000, run.config?.maxTokens ?? 200_000), 1_000_000),
-          costBudgetUsd: Math.min(run.config?.maxCostUsd ?? 5, 50),
-          timeBudgetMs: Math.min(Math.max(1_000, run.config?.deadlineMs ?? 600_000), 86_400_000),
+          tokenBudget: 0,
+          costBudgetUsd: 0,
+          timeBudgetMs: 0,
         });
         groupId = group.groupId;
         replGroups.set(ctx.runId, groupId);
@@ -1513,9 +1502,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         goal: input.goal,
         profile: profile.data,
         pageIds: input.pageIds?.length ? input.pageIds : run.pageIds,
-        tokenAllocation: 50_000,
-        costAllocationUsd: 1,
-        maxModelCalls: 8,
+        tokenAllocation: 0,
+        costAllocationUsd: 0,
+        maxModelCalls: 0,
       });
       return { cellId: agent.agentId };
     },
@@ -1523,6 +1512,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     sendCell: (cellId, text) => runtimeServices.subagents.cellControls().sendCell(cellId, text),
     cancelCell: (cellId) => runtimeServices.subagents.cellControls().cancelCell(cellId),
   };
+
 
   agentLoop.bash = async (input, ctx) => {
     const result = await runtimeServices.bashSeatbelt.run(input, ctx);
@@ -1670,18 +1660,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       },
       get subagents() {
         return runtimeServices.subagents;
-      },
-      get pages() {
-        return runtimeServices.pages;
-      },
-      get tasks() {
-        return runtimeServices.tasks;
-      },
-    });
-    registerNativeSubagentPreparation(channel, {
-      repo,
-      get runs() {
-        return runtimeServices.runs;
       },
       get pages() {
         return runtimeServices.pages;
@@ -1889,7 +1867,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           .then(() => {
             if (!closed) return runtimeServices.blocking?.maintain();
           })
-          .catch(() => process.stderr.write("[runtime] content blocking unavailable\n"));
+          .catch((error: unknown) => {
+            const diagnostic = {
+              code: error instanceof AuxError ? error.code : "internal",
+              message: error instanceof Error ? error.message.slice(0, 512) : "Unknown initialization failure",
+            };
+            process.stderr.write(`[runtime] content blocking unavailable ${JSON.stringify(diagnostic)}\n`);
+          });
         filterTimer = setInterval(
           () => {
             if (closed || !isRuntimeIdle(repo)) return;
@@ -1954,6 +1938,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     retireAuthority: async () => {
       try {
         const results = await Promise.allSettled([
+          serviceContainer.peek("runs")?.close(),
           serviceContainer.peek("blocking")?.close(),
           serviceContainer.peek("copilot")?.then((services) => services.close()),
         ]);

@@ -315,18 +315,20 @@ it("keeps a run-derived Skill paused through compile/test, binds exact proof, an
     activationReviewed: true,
   });
   expect(active.replay?.testedRevision).toBe(active.revision);
-  const hooks = new HookService(repo, () => {});
+  const hooks = new HookService(repo, (handler, workspaceId) => {
+    expect(workspaceId).toBe(workspace.workspaceId);
+    expect(handler).toMatchObject({ type: "mcp_tool", serverId: "fixture", toolName: "record_result" });
+  });
   const hook = hooks.register({
     workspaceId: workspace.workspaceId,
     event: "run.end",
     handler: {
       type: "mcp_tool",
       serverId: "fixture",
-      grantId: "11111111-1111-4111-8111-111111111111",
       toolName: "record_result",
     },
   });
-  hooks.approve(hook.hookId, hook.handlerDigest);
+  expect(hook.trust).toBe("approved");
   let hookCalls = 0;
   const stopHooks = installRunEndHooks(events, hooks, async () => {
     hookCalls++;

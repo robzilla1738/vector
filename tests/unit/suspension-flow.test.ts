@@ -2,7 +2,7 @@ import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, expect, it, vi } from "vitest";
 import type { DatabaseSync } from "node:sqlite";
 import type { Observation, PlanStep, StepOutcome } from "@aux/contracts";
-import { EventBus, openDb, Repo, RunCoordinator, type ModelClient } from "@aux/runtime";
+import { EventBus, MockModelClient, openDb, Repo, RunCoordinator, type ModelClient } from "@aux/runtime";
 
 const obs = (): Observation =>
   ({
@@ -29,17 +29,19 @@ const obs = (): Observation =>
     },
   }) as unknown as Observation;
 
-const scripted = (objects: unknown[]): ModelClient => {
-  const m = {
-    calls: 0,
-    generateStructured: async (o: { schema: { parse: (v: unknown) => unknown } }) => {
-      const i = m.calls++;
-      return { object: o.schema.parse(objects[Math.min(i, objects.length - 1)]), durationMs: 1 };
-    },
-    generateText: async () => ({ text: "", durationMs: 0 }),
-    listModels: async () => [],
+const tool = (toolName: string, input: unknown = {}) => ({
+  toolCalls: [{ toolCallId: crypto.randomUUID(), toolName, input }],
+});
+const done = () => tool("submit_result", { report: "Order page reviewed." });
+const scripted = (steps: MockModelClient["toolSteps"]): ModelClient => {
+  const model = new MockModelClient().scriptToolSteps(steps);
+  const dispatch = model.toolCallStep.bind(model);
+  let calls = 0;
+  model.toolCallStep = async (request) => {
+    if (++calls > steps.length) throw new Error("Unexpected SDK request beyond the fixture script.");
+    return dispatch(request);
   };
-  return m as never;
+  return model;
 };
 
 /**
@@ -99,9 +101,9 @@ function harness(
     pages: pages as never,
     model: () => model,
     defaultModel: () => "test/planner",
-    recoveryModel: () => undefined,
+
     recordModelCall: () => {},
-    grants: ["effect:read", "effect:write", "effect:egress"],
+
   });
   return { db, repo, coordinator, pages };
 }
@@ -139,8 +141,9 @@ async function settle(repo: Repo, runId: string) {
 describe("gate ask → coordinator suspension flow", () => {
   it("waits on the gate-parked approval suspension and wakes on its decision", async () => {
     const model = scripted([
-      { status: "continue", message: "submit", steps: [{ id: "s1", op: "click", target: "r1" }] },
-      { status: "done", message: "done", result: { ok: "Order page" } },
+      tool("snapshot"),
+      tool("act", { steps: [{ id: "s1", op: "click", target: "r1" }] }),
+      done(),
     ]);
     let coordinator!: RunCoordinator;
     const h = harness(model, (runId) =>
@@ -187,8 +190,9 @@ describe("gate ask → coordinator suspension flow", () => {
 
   it("a declined approval keeps the suspension cancelled and resumes with refusal guidance", async () => {
     const model = scripted([
-      { status: "continue", message: "submit", steps: [{ id: "s1", op: "click", target: "r1" }] },
-      { status: "done", message: "done", result: { ok: "Order page" } },
+      tool("snapshot"),
+      tool("act", { steps: [{ id: "s1", op: "click", target: "r1" }] }),
+      done(),
     ]);
     let coordinator!: RunCoordinator;
     const h = harness(model, (runId) =>
@@ -226,58 +230,28 @@ describe("gate ask → coordinator suspension flow", () => {
     h.db.close();
   });
 
-  it("an action-confirmation ask replans with guidance instead of waiting on the user", async () => {
-    const model = scripted([
-      { status: "continue", message: "click", steps: [{ id: "s1", op: "click", target: "r1" }] },
-      { status: "done", message: "done", result: { ok: "Order page" } },
-    ]);
-    let coordinator!: RunCoordinator;
-    let asked = false;
-    const h = harness(model, (runId, step) => {
-      // Only the first dispatch asks; the replanned chunk dispatches cleanly.
-      if (!asked) {
-        asked = true;
-        return gateAsk(runId, step, ({ runId }) =>
-          coordinator.suspensions.park({
-            runId,
-            threadId: "chat-1",
-            turnId: runId,
-            kind: "action-confirmation",
-            request: {
-              kind: "action-confirmation",
-              instruction: "Produce a final confirmation turn with a review artifact.",
-              guidance: "End the turn with one tool call carrying the artifact.",
-            },
-          }),
-        );
-      }
-      return {
-        status: "completed" as const,
-        steps: [
-          {
-            stepId: step?.id ?? "s1",
-            op: step?.op ?? "click",
-            status: "ok" as const,
-            startedAt: 1,
-            durationMs: 1,
-          },
-        ],
-      };
-    });
-    coordinator = h.coordinator;
-
-    const run = await coordinator.start({ goal: "check out", pageIds: ["p1"], chatId: "chat-1" });
-    const final = await settle(h.repo, run.runId);
-    expect(final.status).toBe("completed");
-    // The suspension was resolved by replanning — never parked for a human.
-    expect(coordinator.suspensions.pending(run.runId)).toBeUndefined();
+  it("an explicit action-confirmation waits for the actual user's review", async () => {
+    const h = harness(scripted([
+      tool("snapshot"),
+      tool("request_action_confirmation", { summary: "Review the observed order page." }),
+      done(),
+    ]), () => { throw new Error("No page action was requested."); });
+    const run = await h.coordinator.start({ goal: "Review the order", pageIds: ["p1"], chatId: "chat-1" });
+    expect((await waitForStatus(h.repo, run.runId, "needs_input")).status).toBe("needs_input");
+    const pending = h.coordinator.suspensions.pending(run.runId)!;
+    expect(pending.kind).toBe("action-confirmation");
+    await h.coordinator.answer(run.runId, "Reviewed.");
+    expect((await settle(h.repo, run.runId)).status).toBe("completed");
+    expect(suspensionState(h.db, pending.suspensionId)).toBe("answered");
     h.db.close();
   });
 
-  it("a needs_input with no parked suspension falls back to ask-user-question", async () => {
+  it("an unbound needs_input does not invent an approval; the SDK explicitly asks the user", async () => {
     const model = scripted([
-      { status: "continue", message: "submit", steps: [{ id: "s1", op: "click", target: "r1" }] },
-      { status: "done", message: "done", result: { ok: "Order page" } },
+      tool("snapshot"),
+      tool("act", { steps: [{ id: "s1", op: "click", target: "r1" }] }),
+      tool("ask_user_question", { question: "How should I continue after the blocked action?" }),
+      done(),
     ]);
     const h = harness(model, (runId) => gateAsk(runId, { id: "s1", op: "click", target: "r1" } as PlanStep));
 

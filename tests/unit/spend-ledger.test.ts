@@ -15,6 +15,7 @@ describe("AI Gateway program spend", () => {
     const second = new SpendLedger(path, cap);
     const reservation = first.reserve("smoke", "meta/muse-spark-1.3-contributor", 49.5);
     expect(second.summary().reservedUsd).toBe(49.5);
+    expect(() => second.reserve("bench", "custom/unpriced", undefined)).toThrow(/explicit AI program cap/);
     expect(() => second.reserve("bench", "meta/muse-spark-1.3-contributor", 0.51)).toThrow(/program cap/);
     first.settle(reservation, 0.25);
     expect(second.summary()).toMatchObject({ committedUsd: 0.25, reservedUsd: 0, remainingUsd: 49.75 });
@@ -29,12 +30,17 @@ describe("AI Gateway program spend", () => {
     reopened.close();
   });
 
-  it("requires known prices and a bounded output before allowing a Gateway call", () => {
+  it("estimates actual input with catalog prices and permits unpriced models", () => {
     const estimated = (10_000 * 0.1 + 2048 * 0.2) / 1_000_000;
     expect(projectedModelCostUsd("meta/muse-spark-1.3-contributor", 10_000, 2048)).toBeLessThanOrEqual(
       2 * estimated,
     );
-    expect(() => projectedModelCostUsd("unknown/model", 10_000, 2048)).toThrow(/projection unavailable/);
+    expect(projectedModelCostUsd("unknown/model", 10_000, 2048)).toBeUndefined();
+    expect(
+      projectedModelCostUsd("custom/priced", 1_000, 1_000, [
+        { id: "custom/priced", source: "catalog", inputUsdPerMTok: 1, outputUsdPerMTok: 2 },
+      ]),
+    ).toBeCloseTo(0.006);
     expect(() => projectedModelCostUsd("meta/muse-spark-1.3-contributor", 10_000, 0)).toThrow(
       /maxOutputTokens/,
     );

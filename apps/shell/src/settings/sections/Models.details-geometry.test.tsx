@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { CopilotSetupSchema } from "@aux/contracts/copilot-auth";
 import { readFileSync } from "node:fs";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -23,6 +24,20 @@ vi.mock("../../commands", async () => {
     },
   };
 });
+const copilotSetup = CopilotSetupSchema.parse({
+  registrationConfigured: false,
+  runtimeInstalled: false,
+  runtimeSupported: false,
+  catalogOnly: true,
+});
+function modelRead(method: string) {
+  if (method === "models.copilot.setup") return copilotSetup;
+  if (method === "models.copilot.accounts") return [];
+  if (method === "settings.cloud.status") return { configured: false, revision: 0 };
+  if (method === "models.list") return { models: [] };
+  throw new Error(`Unexpected model producer ${method}`);
+}
+
 vi.mock("../../store", () => ({ call: vi.fn(), toast: vi.fn() }));
 it("retains failed detail text and focused registered disclosure while enlarging only its target", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -42,7 +57,7 @@ it("retains failed detail text and focused registered disclosure while enlarging
     "Original failure <script>literal only</script>\n" + "https://fixture.invalid/" + "x".repeat(600);
   const save = vi.fn(async () => true);
   vi.mocked(call).mockImplementation(async (method) =>
-    method === "models.list" ? { models: [] } : { ok: false, modelId: "fixture-model", error: detail },
+    method === "models.probe" ? { ok: false, modelId: "fixture-model", error: detail } : modelRead(method),
   );
   try {
     await act(async () =>

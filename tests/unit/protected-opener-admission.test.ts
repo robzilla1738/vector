@@ -53,6 +53,7 @@ function fixture() {
       signal: controller.signal,
       beforeNavigate: async () => {},
       agentScope: {
+        mode: "session",
         profileId: "profile",
         runId: "original-run",
         taskId: "original-task",
@@ -89,6 +90,7 @@ it("dispatches the unchanged original scope only after reconnect and retains act
   expect(await pending).toBe(f.nativeFailure);
   expect(f.createAgentPage).toHaveBeenCalledExactlyOnceWith({
     profileId: "profile",
+    mode: "session",
     runId: "original-run",
     taskId: "original-task",
     taskRevision: 4,

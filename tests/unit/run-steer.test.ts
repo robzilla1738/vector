@@ -1,11 +1,34 @@
 import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ModelClient, Services } from "@aux/runtime";
-import { EventBus, makeInvoker, openDb, Repo, RunCoordinator, steerMessage } from "@aux/runtime";
+import {
+  EventBus,
+  makeInvoker,
+  MockModelClient,
+  openDb,
+  Repo,
+  RunCoordinator,
+  steerMessage,
+} from "@aux/runtime";
 import type { Observation, PlanStep, Run } from "@aux/contracts";
 import { RunMessageQueue } from "../../apps/runtime/src/services/run-messages.js";
 import { PageOwnership } from "../../apps/runtime/src/scheduler/page-ownership.js";
-import { userInstructions, type TurnState } from "../../apps/runtime/src/agent/coordinator-turn.js";
+
+const toolStep = (toolName: string, input: unknown) => ({
+  message: { role: "assistant" as const, content: [] },
+  toolCalls: [{ toolCallId: crypto.randomUUID(), toolName, input }],
+  durationMs: 1,
+});
+const toolModel = (step: NonNullable<ModelClient["toolCallStep"]>): ModelClient => {
+  const model = new MockModelClient();
+  let calls = 0;
+  model.toolCallStep = async (request) => {
+    if (++calls > 3)
+      throw new Error("Unexpected provider request: this fixture permits at most three SDK steps.");
+    return step(request);
+  };
+  return model;
+};
 
 const databases: ReturnType<typeof openDb>[] = [];
 afterEach(() => {
@@ -72,7 +95,6 @@ function harness(
     pages: coordinatorFixturePages1 as never,
     model: () => model,
     defaultModel: () => "fixture",
-    recoveryModel: () => undefined,
     recordModelCall: () => {},
     pageOwnership,
   });
@@ -106,22 +128,11 @@ describe("run steering", () => {
       releasePlan = resolve;
     });
     let calls = 0;
-    const model: ModelClient = {
-      generateStructured: async (options) => {
-        calls++;
-        if (calls === 1) await planGate;
-        return {
-          object: options.schema.parse(
-            calls === 1
-              ? { status: "continue", message: "Looking again", observationRequest: { scope: "full" } }
-              : { status: "done", message: "Done", result: { answer: "Example result" } },
-          ),
-          durationMs: 1,
-        };
-      },
-      generateText: async () => ({ text: "", durationMs: 0 }),
-      listModels: async () => [],
-    };
+    const model: ModelClient = toolModel(async () => {
+      calls++;
+      if (calls === 1) await planGate;
+      return calls === 1 ? toolStep("snapshot", {}) : toolStep("submit_result", { report: "Example result" });
+    });
     const { repo, coordinator, messages, pageOwnership } = harness(model);
     const run = await coordinator.start({ goal: "Find the result", pageIds: ["page"] });
     await vi.waitFor(() => expect(calls).toBe(1));
@@ -143,17 +154,10 @@ describe("run steering", () => {
 
   it("counts page wait against the run deadline without starting a model call", async () => {
     let calls = 0;
-    const model: ModelClient = {
-      generateStructured: async (options) => {
-        calls++;
-        return {
-          object: options.schema.parse({ status: "done", message: "Found the result", result: { answer: "Example result" } }),
-          durationMs: 1,
-        };
-      },
-      generateText: async () => ({ text: "", durationMs: 0 }),
-      listModels: async () => [],
-    };
+    const model: ModelClient = toolModel(async () => {
+      calls++;
+      return toolStep("submit_result", { report: "Example result" });
+    });
     const { repo, coordinator, messages, pageOwnership } = harness(model);
     const release = pageOwnership.tryAcquire({ pageId: "page", actor: "set_member", runId: "set-run" });
     const run = await coordinator.start({ goal: "Find the result", pageIds: ["page"], deadlineMs: 40 });
@@ -163,25 +167,18 @@ describe("run steering", () => {
     expect(calls).toBe(0);
     release();
     await coordinator.continueBudget(run.runId, pending.suspensionId, { deadlineMs: 0 });
-    await vi.waitFor(() => expect(repo.getRun(run.runId)?.status, repo.getRun(run.runId)?.error).toBe("completed"));
+    await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("completed"));
     expect(pageOwnership.snapshot().page).toBeUndefined();
     await messages.stop();
   });
 
   it("releases a page while awaiting input and reacquires it before continuing", async () => {
     let calls = 0;
-    const model: ModelClient = {
-      generateStructured: async (options) => ({
-        object: options.schema.parse(
-          ++calls === 1
-            ? { status: "needs_input", message: "Need detail", question: "Which version?" }
-            : { status: "done", message: "Done", result: { answer: "Example result" } },
-        ),
-        durationMs: 1,
-      }),
-      generateText: async () => ({ text: "", durationMs: 0 }),
-      listModels: async () => [],
-    };
+    const model: ModelClient = toolModel(async () =>
+      ++calls === 1
+        ? toolStep("ask_user_question", { question: "Which version?" })
+        : toolStep("submit_result", { report: "Example result" }),
+    );
     const { repo, coordinator, messages, pageOwnership } = harness(model);
     const run = await coordinator.start({ goal: "Find the result", pageIds: ["page"] });
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("needs_input"));
@@ -199,18 +196,12 @@ describe("run steering", () => {
 
   it("wakes needs-input without treating the correction as an answer", async () => {
     const prompts: string[] = [];
-    const model: ModelClient = {
-      generateStructured: async (options) => {
-        prompts.push(options.prompt);
-        const value =
-          prompts.length === 1
-            ? { status: "needs_input", message: "Need the version", question: "Which version?" }
-            : { status: "done", message: "Done", result: { answer: "Example result" } };
-        return { object: options.schema.parse(value), durationMs: 1 };
-      },
-      generateText: async () => ({ text: "", durationMs: 0 }),
-      listModels: async () => [],
-    };
+    const model: ModelClient = toolModel(async (options) => {
+      prompts.push(JSON.stringify(options.messages));
+      return prompts.length === 1
+        ? toolStep("ask_user_question", { question: "Which version?" })
+        : toolStep("submit_result", { report: "Example result" });
+    });
     const { repo, coordinator, messages } = harness(model);
     const run = await coordinator.start({
       goal: "Find the result",
@@ -221,8 +212,28 @@ describe("run steering", () => {
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("needs_input"));
     await messages.steer(steer(run.runId));
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("completed"));
-    expect(prompts[1]).toContain(
-      "<interrupted_request>\nUser correction: Use the updated requirement\n</interrupted_request>",
+    expect(JSON.parse(prompts[1]!)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "user",
+          content: expect.stringContaining(
+            "<interrupted_request>\nUse the updated requirement\n</interrupted_request>",
+          ),
+        }),
+      ]),
+    );
+    expect(JSON.parse(prompts[1]!)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "tool",
+          content: expect.arrayContaining([
+            expect.objectContaining({
+              toolName: "ask_user_question",
+              output: expect.objectContaining({ value: expect.objectContaining({ interrupted: true }) }),
+            }),
+          ]),
+        }),
+      ]),
     );
     expect(prompts[1]).not.toContain("Answer to your question");
     await messages.stop();
@@ -238,22 +249,13 @@ describe("run steering", () => {
       throw new Error("connection lost after dispatch");
     });
     let calls = 0;
-    const model: ModelClient = {
-      generateStructured: async (options) => ({
-        object: options.schema.parse({ status: "done", result: { answer: "Example result" } }),
-        durationMs: 1,
-      }),
-      streamStructured: async (options) => {
-        calls++;
-        options.onText('{"status":"continue","steps":[{"id":"s1","op":"click","target":"r1"}]}');
-        if (!options.signal) throw new Error("planner signal missing");
-        return await new Promise<never>((_resolve, reject) =>
-          options.signal!.addEventListener("abort", () => reject(new Error("steered")), { once: true }),
-        );
-      },
-      generateText: async () => ({ text: "", durationMs: 0 }),
-      listModels: async () => [],
-    };
+    const model: ModelClient = toolModel(async () => {
+      calls++;
+      if (calls === 1) return toolStep("snapshot", {});
+      if (calls === 3) return toolStep("snapshot", {});
+      if (calls !== 2) throw new Error("An uncertain write must not trigger another effect.");
+      return toolStep("act", { steps: [{ id: "s1", op: "click", target: "r1" }] });
+    });
     const { repo, coordinator, messages } = harness(model, execute as never);
     const run = await coordinator.start({
       goal: "Apply the change",
@@ -265,7 +267,7 @@ describe("run steering", () => {
     await messages.steer(steer(run.runId));
     releaseWrite();
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("interrupted"));
-    expect(calls).toBe(1);
+    expect(calls).toBe(3);
     expect(execute).toHaveBeenCalledTimes(1);
     expect(repo.getRun(run.runId)?.error).toMatch(/uncertain/i);
     await messages.stop();
@@ -276,28 +278,13 @@ describe("run steering", () => {
       throw new Error("connection lost after click");
     });
     let plannerCalls = 0;
-    const model: ModelClient = {
-      generateStructured: async (options) => ({
-        object: options.schema.parse({
-          status: "done",
-          message: "Done",
-          result: { answer: "Example result" },
-        }),
-        durationMs: 1,
-      }),
-      streamStructured: async (options) => {
-        plannerCalls++;
-        const plan = {
-          status: "continue",
-          message: "Applying",
-          steps: [{ id: "s1", op: "click", target: "r1" }],
-        };
-        options.onText(JSON.stringify(plan));
-        return { object: options.schema.parse(plan), durationMs: 1 };
-      },
-      generateText: async () => ({ text: "", durationMs: 0 }),
-      listModels: async () => [],
-    };
+    const model: ModelClient = toolModel(async () => {
+      plannerCalls++;
+      if (plannerCalls === 1) return toolStep("snapshot", {});
+      if (plannerCalls === 3) return toolStep("snapshot", {});
+      if (plannerCalls !== 2) throw new Error("An uncertain write must not be replayed.");
+      return toolStep("act", { steps: [{ id: "s1", op: "click", target: "r1" }] });
+    });
     const { repo, coordinator, messages } = harness(model, execute as never);
     const run = await coordinator.start({
       goal: "Apply the change",
@@ -306,7 +293,7 @@ describe("run steering", () => {
       contextPageRefs: refs,
     });
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("interrupted"));
-    expect(plannerCalls).toBe(1);
+    expect(plannerCalls).toBe(3);
     expect(execute).toHaveBeenCalledTimes(1);
     expect(repo.getRun(run.runId)?.error).toMatch(/uncertain/i);
     await messages.stop();
@@ -314,19 +301,11 @@ describe("run steering", () => {
 });
 
 describe("steering v2", () => {
-  it("rewrites the interrupting user turn as <interrupted_request> for both engines", () => {
+  it("rewrites the interrupting user turn as <interrupted_request> for the SDK engine", () => {
     const loopMessage = steerMessage(["Focus the pricing page"]);
     expect(loopMessage.role).toBe("user");
     expect(loopMessage.content).toContain(
       "<interrupted_request>\nFocus the pricing page\n</interrupted_request>",
-    );
-    const s = {
-      run: { config: {} },
-      steers: ["Use the new requirement"],
-      answers: [],
-    } as unknown as TurnState;
-    expect(userInstructions(s)).toContain(
-      "<interrupted_request>\nUser correction: Use the new requirement\n</interrupted_request>",
     );
   });
 

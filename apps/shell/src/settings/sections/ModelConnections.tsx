@@ -4,6 +4,7 @@ import {
   IMAGE_MODELS,
   MODEL_PROVIDER_NAMES,
   ModelConnectionStatusSchema,
+  ModelProviderSchema,
   type ModelProvider,
   type ModelConnectionStatus,
 } from "@aux/contracts";
@@ -33,7 +34,9 @@ export function ModelConnections({
   onSave(patch: Record<string, unknown>): Promise<boolean>;
   onEdit(provider: ModelProvider, focus: "model" | "key"): Promise<void>;
 }) {
-  const parsed = ModelConnectionStatusSchema.array().length(5).safeParse(settings.modelConnections);
+  const parsed = ModelConnectionStatusSchema.array()
+    .max(ModelProviderSchema.options.length)
+    .safeParse(settings.modelConnections);
   const owner = useModelControlOwner(
     active,
     JSON.stringify([settings.modelProvider, settings.modelConnections, settings.imageModel]),

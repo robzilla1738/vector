@@ -69,7 +69,7 @@ function fixture() {
     turnMentions: mentions,
     model: () => null,
     defaultModel: () => "fixture",
-    recoveryModel: () => undefined,
+
     recordModelCall: () => {},
   });
   repo.saveRun({

@@ -6,7 +6,7 @@ import { Button } from "../../ui";
 import { errorMessage } from "../../error-message";
 import { pushSettingsPath } from "../../settings/routes";
 
-const LABELS = { model_calls: "Model calls", steps: "Steps", time: "Run time", spend: "Spend" } as const;
+const LABELS = { model_calls: "Model calls", steps: "Steps", time: "Run time", spend: "Spend", tokens: "Tokens" } as const;
 
 /** Budget rows cannot be answered as questions or redeemed by an approval decision. */
 export function BudgetPrompt({ run, suspension }: { run: Run; suspension: Suspension }) {
@@ -34,7 +34,7 @@ export function BudgetPrompt({ run, suspension }: { run: Run; suspension: Suspen
     bridge.windowKind === owner.kind &&
     bridge.privateMode === owner.privateMode;
   const [limit, setLimit] = useState(() =>
-    String(budget?.reason === "time" ? 10 : Math.max((budget?.limit ?? 0) * 2, (budget?.used ?? 0) + 1)),
+    String(budget?.reason === "time" ? 10 : Math.max((budget?.limit ?? 0) * 2, (budget?.used ?? 0) + (budget?.requiredTokens ?? budget?.requiredUsd ?? 1))),
   );
   const [unlimited, setUnlimited] = useState(false),
     [busy, setBusy] = useState(false),
@@ -51,7 +51,8 @@ export function BudgetPrompt({ run, suspension }: { run: Run; suspension: Suspen
   )
     return null;
   const spend = budget.reason === "spend",
-    time = budget.reason === "time";
+    time = budget.reason === "time",
+    funded = budget.funding !== undefined;
   async function continueRun() {
     if (!budget || pending.current || completed || !current()) return;
     pending.current = true;
@@ -68,17 +69,18 @@ export function BudgetPrompt({ run, suspension }: { run: Run; suspension: Suspen
         row.runId !== owner.runId ||
         row.turnId !== owner.runId ||
         row.suspensionId !== owner.suspensionId ||
-        row.request.budget?.reason !== budget.reason
+        row.request.budget?.reason !== budget.reason ||
+        JSON.stringify(row.request.budget?.funding) !== JSON.stringify(budget.funding)
       )
         throw new Error("This budget request changed. Review the current run before continuing.");
       const value = Number(limit);
       if (
-        !spend &&
-        !unlimited &&
-        (!Number.isFinite(value) || value <= 0 || (!time && !Number.isInteger(value)))
+        (!spend || funded) &&
+        (!unlimited || funded) &&
+        (!Number.isFinite(value) || value <= 0 || (!time && !spend && !Number.isSafeInteger(value)))
       )
         throw new Error("Choose a positive new limit or explicitly choose unlimited.");
-      const next = unlimited
+      const next = unlimited && !funded
         ? 0
         : time
           ? Math.max(
@@ -88,9 +90,11 @@ export function BudgetPrompt({ run, suspension }: { run: Run; suspension: Suspen
             ) +
             value * 60_000
           : value;
-      if (!spend && next !== 0 && next <= Math.max(row.request.budget.used, row.request.budget.limit))
+      if ((!spend || funded) && next !== 0 && next <= Math.max(row.request.budget.used, row.request.budget.limit))
         throw new Error("The new limit must exceed both the previous limit and work already consumed.");
-      const limits = spend
+      const limits = funded
+        ? { funding: budget.reason === "tokens" ? { maxTokens: next } : spend ? { maxCostUsd: next } : { deadlineMs: next } }
+        : spend
         ? undefined
         : budget.reason === "model_calls"
           ? { maxModelCalls: next }
@@ -122,15 +126,17 @@ export function BudgetPrompt({ run, suspension }: { run: Run; suspension: Suspen
     <section className="composer-question" aria-label="Budget reached" aria-busy={busy}>
       <strong>{LABELS[budget.reason]} budget reached</strong>
       <p>
-        {spend
+        {funded
+          ? `This ${budget.funding!.kind === "goal" ? "Goal" : budget.funding!.kind === "subagent" ? "subagent allocation" : "subagent group"} reached its ${LABELS[budget.reason].toLowerCase()} budget. Raise this original funding limit explicitly to continue. Uncertain charges remain held.`
+          : spend
           ? `Used $${budget.used.toFixed(2)} of $${budget.limit.toFixed(2)}. Increase the actual budget in Settings, then continue. Aux will check the current ledger again.`
           : time
             ? `The run reached its time limit (${Math.ceil(budget.limit / 60_000)} minutes). Choose additional time before continuing.`
             : `Used ${budget.used} of ${budget.limit}. Choose a new total limit before continuing.`}
       </p>
-      {!spend && (
+      {(!spend || funded) && (
         <>
-          <label>
+          {!funded && <label>
             <input
               type="checkbox"
               checked={unlimited}
@@ -138,22 +144,22 @@ export function BudgetPrompt({ run, suspension }: { run: Run; suspension: Suspen
               onChange={(event) => setUnlimited(event.target.checked)}
             />
             Continue without a {time ? "time" : budget.reason === "steps" ? "step" : "model call"} limit
-          </label>
+          </label>}
           <label>
             {time ? "Additional minutes" : "New total limit"}
             <input
               type="number"
               aria-label={time ? "Additional minutes" : "New total limit"}
               min="1"
-              step="1"
+              step={spend ? "any" : "1"}
               value={limit}
-              disabled={unlimited || busy || completed}
+              disabled={(!funded && unlimited) || busy || completed}
               onChange={(event) => setLimit(event.target.value)}
             />
           </label>
         </>
       )}
-      {spend && (
+      {spend && !funded && (
         <Button size={28} disabled={busy || completed} onClick={reviewBudget}>
           Review budget
         </Button>

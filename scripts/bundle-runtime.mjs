@@ -14,6 +14,7 @@ import { createRequire } from "node:module";
 import { join, dirname, basename, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { generateAgentPrompt } from "./gen-agent-prompt.mjs";
 import { generateRuntimeSchema } from "./gen-runtime-schema.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -86,7 +87,11 @@ function dependencyNotices(inputs) {
 }
 
 export async function bundleRuntime(rtOut, target) {
-  // Generated SQL is a JSON asset: refresh its compiled copy before bundling.
+  // Refresh generated resources before bundling the compiled runtime.
+  const promptAsset = generateAgentPrompt();
+  const promptDirectory = join(runtimeDir, "dist/agent/prompt");
+  mkdirSync(promptDirectory, { recursive: true });
+  copyFileSync(promptAsset, join(promptDirectory, "system.generated.json"));
   const schemaAsset = generateRuntimeSchema();
   copyFileSync(schemaAsset, join(runtimeDir, "dist/store/schema.generated.json"));
   // The runtime ships as one esbuild bundle (workspace packages and registry

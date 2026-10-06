@@ -146,7 +146,8 @@ describe("RunCoordinator.failActive (P1-10)", () => {
     const events = new EventBus(repo);
     let seen: AbortSignal | undefined;
     const model: ModelClient = {
-      generateStructured: (o) =>
+      generateStructured: async () => { throw new Error("Only the SDK may dispatch this fixture"); },
+      toolCallStep: (o) =>
         new Promise((_res, rej) => {
           seen = o.signal;
           o.signal?.addEventListener("abort", () => rej(new DOMException("aborted", "AbortError")), {
@@ -171,9 +172,9 @@ describe("RunCoordinator.failActive (P1-10)", () => {
       } as never,
       model: () => model,
       defaultModel: () => "m",
-      recoveryModel: () => undefined,
+
       recordModelCall: () => {},
-      grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
+
     });
     const run = await coordinator.start({ goal: "g", pageIds: ["p1"] });
     for (let i = 0; i < 50 && !seen; i++) await new Promise((r) => setTimeout(r, 10));

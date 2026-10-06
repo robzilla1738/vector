@@ -424,7 +424,7 @@ class ReplSession {
 
   private constructor(
     private context: QuickJSAsyncContext,
-    readonly deps: ReplHostDeps,
+    private deps: ReplHostDeps,
     private pageId?: string,
   ) {}
 
@@ -434,7 +434,7 @@ class ReplSession {
     context.runtime.setMaxStackSize(MAX_STACK_BYTES);
     const session = new ReplSession(context, deps, initialPageId);
     context.runtime.setInterruptHandler(
-      () => session.cancelled || Date.now() >= session.deadline || deps.signal?.aborted === true,
+      () => session.cancelled || Date.now() >= session.deadline || session.deps.signal?.aborted === true,
     );
     session.deadline = Date.now() + 30_000; // bootstrap window; eval resets it per call
     const bridge = context.newAsyncifiedFunction("__aux_call", (nameHandle, paramsHandle) =>
@@ -658,7 +658,8 @@ class ReplSession {
     }
   }
 
-  async eval(code: string, deadlineMs?: number): Promise<LoopToolResult> {
+  async eval(code: string, deadlineMs?: number, deps=this.deps): Promise<LoopToolResult> {
+    if(deps.runId!==this.deps.runId)throw new AuxError("permission_denied","A REPL session cannot change its original run.");
     checkSource(code);
     code = normalizeBridgeAwaits(code);
     const declared = topLevelLexicals(code);
@@ -668,6 +669,7 @@ class ReplSession {
       release = resolve;
     });
     await previous;
+    this.deps=deps;
     const scoped = declared.some((name) => this.lexicals.has(name));
     const source = scoped ? `{\n${code}\n}` : code;
     const started = Date.now();
@@ -838,7 +840,7 @@ export class ReplPool {
         "conflict",
         "A REPL cell is still open; use repl_wait before starting another script.",
       );
-    if (opts?.yieldTimeMs === undefined) return session.eval(code, opts?.deadlineMs);
+    if (opts?.yieldTimeMs === undefined) return session.eval(code, opts?.deadlineMs,deps);
     const id = randomUUID();
     const cell = {
       runId: deps.runId,
@@ -847,7 +849,7 @@ export class ReplPool {
       terminated: false,
     };
     cell.completion = session
-      .eval(code, opts.deadlineMs)
+      .eval(code, opts.deadlineMs,deps)
       .then(
         (value) => ({ value }),
         (error) => ({ error }),

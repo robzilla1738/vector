@@ -9,11 +9,11 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "build": "node scripts/gen-runtime-schema.mjs && tsc -b tsconfig.json",
+    "build": "node scripts/gen-agent-prompt.mjs && node scripts/gen-runtime-schema.mjs && tsc -b tsconfig.json",
     "agent-api:docs": "pnpm --filter @aux/contracts build && node scripts/generate-agent-api-docs.mjs",
     "dev": "node scripts/dev.mjs",
     "fixtures": "node scripts/fixtures.mjs",
-    "typecheck": "node scripts/gen-runtime-schema.mjs && tsc -b tsconfig.json && tsc -p apps/shell/tsconfig.json",
+    "typecheck": "node scripts/gen-agent-prompt.mjs && node scripts/gen-runtime-schema.mjs && tsc -b tsconfig.json && tsc -p apps/shell/tsconfig.json",
     "test": "vitest run --project unit",
     "test:integration": "vitest run --project integration --no-file-parallelism",
     "test:unit": "vitest run --project unit",

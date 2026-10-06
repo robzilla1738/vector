@@ -34,7 +34,11 @@ export interface AgentLoopOptions {
   model: Pick<ModelClient, "toolCallStep">;
   /** Actual provider text, published independently of complete tool dispatch. */
   onText?: (text: string) => void;
+  afterModelCall?: () => void;
+  onModelAdmissionCancelled?: (reservationId: string | undefined) => void;
+  prepareModelMessages?: (messages: ModelMessage[]) => Promise<ModelMessage[]>;
   modelId: string;
+  reasoning?: "low" | "medium" | "high";
   tools: LoopToolManifest;
   transcript: TranscriptStore;
   runId: string;
@@ -68,6 +72,7 @@ export interface AgentLoopOptions {
   /** A funded Goal permits one provider attempt per reservation. */
   maxAttempts?: 1;
   /** Called after each tool executes — status/byline reporting. */
+  beforeToolCall?: (call: LoopToolCall) => Promise<void>;
   onToolCall?: (call: LoopToolCall, result: LoopToolResult) => void;
   /** Per-provider options merged into the client's defaults (prompt caching keys). */
   providerOptions?: Record<string, Record<string, unknown>>;
@@ -259,15 +264,6 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       { description: `${tool.description}\n\n(${tool.byline})`, inputSchema: tool.inputSchema },
     ]),
   );
-  const firstTurnPageTools =
-    (typeof opts.pageId === "function" ? opts.pageId() : opts.pageId) && opts.deps.repl && tools.goal_program
-      ? {
-          goal_program: sdkTools.goal_program!,
-          submit_result: sdkTools.submit_result!,
-          ask_user_question: sdkTools.ask_user_question!,
-        }
-      : undefined;
-
   // Auto-recall (06-Z): query content memory for the task once, durably. The
   // recall message lands before any assistant turn, so every later step shares
   // the same cache prefix.
@@ -325,15 +321,19 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
         ),
       };
 
-    const callTools =
-      firstTurnPageTools && !messages.some((message) => message.role === "assistant")
-        ? firstTurnPageTools
-        : sdkTools;
+    const callTools = sdkTools;
     let reservationId: string | undefined;
+    let requestMessages: ModelMessage[];
     try {
+      requestMessages = opts.prepareModelMessages ? await opts.prepareModelMessages(messages) : messages;
+      if (opts.signal?.aborted) throw new AuxError("cancelled", "Original model request authority changed.");
+      if (Buffer.byteLength(JSON.stringify(requestMessages.map((message) => message.role === "user" && Array.isArray(message.content)
+        ? { ...message, content: message.content.map((part) => part.type === "image" ? { type: "image", image: "[selected image]" } : part) }
+        : message)), "utf8") > TRANSCRIPT_COMPACT_BYTES)
+        throw new AuxError("model_error", "Selected source context exceeds the 192 KB request limit; no model call was made.");
       reservationId = await opts.beforeModelCall?.({
         modelId: opts.modelId,
-        promptBytes: Buffer.byteLength(`${system}\n${JSON.stringify(messages)}`, "utf8"),
+        promptBytes: Buffer.byteLength(`${system}\n${JSON.stringify(requestMessages)}`, "utf8"),
         toolsBytes: Buffer.byteLength(
           JSON.stringify(
             Object.entries(callTools).map(([name, spec]) => ({
@@ -356,13 +356,19 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       };
     }
 
+    if (opts.signal?.aborted) {
+      opts.onModelAdmissionCancelled?.(reservationId);
+      opts.afterModelCall?.();
+      return { kind: "failed", error: new AuxError("cancelled", "Original model request authority changed before dispatch.") };
+    }
     let step;
     try {
       step = await model.toolCallStep({
         onText: opts.onText,
         modelId: opts.modelId,
+        reasoning: opts.reasoning,
         system,
-        messages,
+        messages: requestMessages,
         tools: callTools,
         signal: opts.signal,
         providerOptions: opts.providerOptions,
@@ -371,7 +377,8 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
         maxAttempts: opts.maxAttempts,
       });
     } catch (error) {
-      await opts.onModelFailure?.({ index, error, reservationId });
+      try { await opts.onModelFailure?.({ index, error, reservationId }); }
+      finally { opts.afterModelCall?.(); }
       if (opts.steerCheck?.()) return { kind: "steered" };
       return {
         kind: "failed",
@@ -393,7 +400,8 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     }
     messages.push(assistant);
     transcript.append(runId, [assistant]);
-    await opts.onStep?.({ index, step, reservationId });
+    try { await opts.onStep?.({ index, step, reservationId }); }
+    finally { opts.afterModelCall?.(); }
 
     if (!toolCalls.length) {
       if (!step.text?.trim()) {
@@ -441,6 +449,8 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     let parked: { call: LoopToolCall; park: LoopPark } | undefined;
     let finished: Record<string, unknown> | undefined;
     for (const call of ordered) {
+      try { await opts.beforeToolCall?.(call); }
+      catch (error) { return { kind: "failed", error: error instanceof AuxError ? error : new AuxError("step_failed", String(error)) }; }
       const result = await executeOne(call.toolName, call, tools, ctx);
       if ("park" in result) {
         parked = { call, park: result.park };

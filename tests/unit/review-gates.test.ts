@@ -1,4 +1,3 @@
-import { AuxError, PageTargetSchema } from "@aux/contracts";
 import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import { spawn } from "node:child_process";
@@ -18,62 +17,17 @@ import {
   DurableWriteLedger,
   EventBus,
   markSkillFailed,
-  MockModelClient,
   NullNativeBridge,
   PageService,
   queryPage,
   rebindSteps,
   Repo,
-  runMemberAgent,
   openDb,
   stepSignature,
   tryReuseSkill,
 } from "@aux/runtime";
-import type { ObservationContent, SetMember, Step } from "@aux/contracts";
+import type { ObservationContent, Step } from "@aux/contracts";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
-
-const memberAuthorities = new WeakMap<PageService, ReturnType<typeof fixtureTurnMentions>>();
-async function memberAuthority(pages: PageService, runId: string) {
-  let turnMentions = memberAuthorities.get(pages);
-  if (!turnMentions) {
-    turnMentions = fixtureTurnMentions((id) => pages.get(id));
-    memberAuthorities.set(pages, turnMentions);
-  }
-  const source = pages.get("p1");
-  if (!turnMentions.has(runId)) await turnMentions.begin(runId, [], []);
-  return {
-    turnMentions,
-    checkSource: () => {
-      const current = pages.get("p1");
-      if (
-        current.pageId !== source.pageId ||
-        current.sessionId !== source.sessionId ||
-        current.url !== source.url ||
-        current.documentEpoch !== source.documentEpoch
-      )
-        throw new AuxError("ref_stale", "The synthetic member source lease changed.");
-    },
-  };
-}
-const memberPage = (documentEpoch: number) =>
-  PageTargetSchema.parse({
-    pageId: "p1",
-    targetId: "fixture-target",
-    backend: "aux",
-    windowId: "main",
-    url: "https://app.test/form",
-    title: "Fixture",
-    documentEpoch,
-    sessionId: "synthetic-member-attachment",
-    lastRevision: 0,
-    viewStatus: "visible",
-    lifecycle: "live",
-    controller: "none",
-    controllerEpoch: 0,
-    ownedByRuntime: false,
-    createdAt: 1,
-    lastActiveAt: 1,
-  });
 
 const obs = (opts?: { ref?: string; name?: string; url?: string }): ObservationContent =>
   ({
@@ -133,113 +87,6 @@ describe("Gate F page query and action compiler", () => {
     expect("program" in ok).toBe(true);
   });
 
-  it("member-agent compileAndAuthorize rejects stale and denied planner steps before execute", async () => {
-    const member = { memberId: "m1", url: "https://app.test/form", status: "running" } as SetMember;
-    const model = new MockModelClient().always(() => ({
-      status: "continue",
-      message: "click save",
-      steps: [{ id: "c", op: "click", target: "r9" }],
-    }));
-    const deniedPages = {
-      get: () => memberPage(2),
-      observe: async () => ({ pageId: "p1", documentEpoch: 2, content: obs() }),
-      execute: async () => {
-        throw new Error("pages.execute must not run when write is not granted");
-      },
-    } as unknown as PageService;
-    const denied = await runMemberAgent({
-      ...(await memberAuthority(deniedPages, "run-deny")),
-      member,
-      pageId: "p1",
-      goal: "click save",
-      runId: "run-deny",
-      pages: deniedPages,
-      model,
-      modelId: "mock",
-      signal: new AbortController().signal,
-      readOnly: true,
-    });
-    expect(denied.result.status).toBe("partial");
-    expect(denied.result.error).toMatch(/read-only/i);
-    expect(denied.executedSteps).toEqual([]);
-
-    const stalePages = {
-      get: () => memberPage(3),
-      observe: async () => ({ pageId: "p1", documentEpoch: 2, content: obs() }),
-      execute: async () => {
-        throw new Error("pages.execute must not run on a stale document epoch");
-      },
-    } as unknown as PageService;
-    const stale = await runMemberAgent({
-      ...(await memberAuthority(stalePages, "run-stale")),
-      member,
-      pageId: "p1",
-      goal: "click save",
-      runId: "run-stale",
-      pages: stalePages,
-      model,
-      modelId: "mock",
-      signal: new AbortController().signal,
-      readOnly: false,
-    });
-    expect(stale.result.status).toBe("partial");
-    expect(stale.result.error).toMatch(/epoch/i);
-    expect(stale.executedSteps).toEqual([]);
-  });
-
-  it("member-agent persist-before-dispatch skips a duplicate write", async () => {
-    let executes = 0;
-    const pages = {
-      get: () => memberPage(2),
-      observe: async () => ({ pageId: "p1", documentEpoch: 2, content: obs() }),
-      execute: async () => {
-        executes++;
-        return { status: "completed", steps: [] };
-      },
-    } as unknown as PageService;
-    const ledger = new DurableWriteLedger();
-    const member = { memberId: "m1", url: "https://app.test/form", status: "running" } as SetMember;
-    const model = new MockModelClient().scripted([
-      () => ({ status: "continue", message: "click save", steps: [{ id: "c", op: "click", target: "r9" }] }),
-      () => ({ status: "done", message: "done", result: { ok: true } }),
-    ]);
-    const first = await runMemberAgent({
-      ...(await memberAuthority(pages, "run-dup")),
-      member,
-      pageId: "p1",
-      goal: "click save",
-      runId: "run-dup",
-      pages,
-      model,
-      modelId: "mock",
-      signal: new AbortController().signal,
-      readOnly: false,
-      durable: ledger,
-    });
-    expect(first.result.status).toBe("ok");
-    expect(executes).toBe(1);
-    const replayModel = new MockModelClient().scripted([
-      () => ({ status: "continue", message: "click save", steps: [{ id: "c", op: "click", target: "r9" }] }),
-      () => ({ status: "done", message: "done", result: { ok: true } }),
-    ]);
-    const replay = await runMemberAgent({
-      ...(await memberAuthority(pages, "run-dup")),
-      member,
-      pageId: "p1",
-      goal: "click save",
-      runId: "run-dup",
-      pages,
-      model: replayModel,
-      modelId: "mock",
-      signal: new AbortController().signal,
-      readOnly: false,
-      durable: ledger,
-    });
-    expect(replay.result.status).toBe("partial");
-    expect(replay.result.error).toContain("No new action was executed");
-    expect(executes).toBe(1);
-  });
-
   it("rejects a compiled write when the origin does not match", () => {
     const result = compileAction({
       pageId: "p1",
@@ -260,8 +107,13 @@ describe("Gate F page query and action compiler", () => {
 
 describe("Gate D permissions and durable writes", () => {
   it("keeps user-selected read-only profiles from dispatching writes", () => {
-    expect(authorizeProfileProgram([{ id: "c", op: "click", target: "r1" }], true)).toMatchObject({ ok: false, effect: "write" });
-    expect(authorizeProfileProgram([{ id: "n", op: "navigate", url: "https://site.test" }], false).ok).toBe(true);
+    expect(authorizeProfileProgram([{ id: "c", op: "click", target: "r1" }], true)).toMatchObject({
+      ok: false,
+      effect: "write",
+    });
+    expect(authorizeProfileProgram([{ id: "n", op: "navigate", url: "https://site.test" }], false).ok).toBe(
+      true,
+    );
   });
 
   it("pages.execute honours actual category policy and RPC parameters cannot expand it", async () => {
@@ -320,7 +172,17 @@ describe("Gate D permissions and durable writes", () => {
       repo,
       events: new EventBus(repo),
       native: new NullNativeBridge(),
-      safetyGate: new SafetyDispatchGate({ approvals: new ApprovalStore(repo.db), journal: new DecisionJournal(repo.db), managedRules: () => [], agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [{ category: "click", access: "block" }] }), audit: () => {} }),
+      safetyGate: new SafetyDispatchGate({
+        approvals: new ApprovalStore(repo.db),
+        journal: new DecisionJournal(repo.db),
+        managedRules: () => [],
+        agentPolicy: () => ({
+          agentMode: "auto",
+          agentPolicyRevision: 0,
+          agentPolicies: [{ category: "click", access: "block" }],
+        }),
+        audit: () => {},
+      }),
       drivers: () => ({ aux: driver, chrome: null }),
     });
     const opened = await pages.open({ url: "https://app.test/form", background: true, ownedByRuntime: true });
@@ -401,7 +263,13 @@ describe("Gate D permissions and durable writes", () => {
       repo,
       events: new EventBus(repo),
       native: new NullNativeBridge(),
-      safetyGate: new SafetyDispatchGate({ approvals: new ApprovalStore(repo.db), journal: new DecisionJournal(repo.db), managedRules: () => [], agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }), audit: () => {} }),
+      safetyGate: new SafetyDispatchGate({
+        approvals: new ApprovalStore(repo.db),
+        journal: new DecisionJournal(repo.db),
+        managedRules: () => [],
+        agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
+        audit: () => {},
+      }),
       drivers: () => ({ aux: driver, chrome: null }),
     });
     const opened = await pages.open({
@@ -409,10 +277,14 @@ describe("Gate D permissions and durable writes", () => {
       background: true,
       ownedByRuntime: true,
     });
-    expect((await pages.execute({
-      pageId: opened.pageId,
-      steps: [{ id: "direct", op: "click", target: "r9" }],
-    })).status).toBe("completed");
+    expect(
+      (
+        await pages.execute({
+          pageId: opened.pageId,
+          steps: [{ id: "direct", op: "click", target: "r9" }],
+        })
+      ).status,
+    ).toBe("completed");
     await pagesTurnMentions.begin(
       "run_user_started",
       [

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { CopilotSetupSchema } from "@aux/contracts/copilot-auth";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
@@ -23,6 +24,20 @@ vi.mock("../../commands", async () => {
     },
   };
 });
+const copilotSetup = CopilotSetupSchema.parse({
+  registrationConfigured: false,
+  runtimeInstalled: false,
+  runtimeSupported: false,
+  catalogOnly: true,
+});
+function modelRead(method: string) {
+  if (method === "models.copilot.setup") return copilotSetup;
+  if (method === "models.copilot.accounts") return [];
+  if (method === "settings.cloud.status") return { configured: false, revision: 0 };
+  if (method === "models.list") return { models: [] };
+  throw new Error(`Unexpected model producer ${method}`);
+}
+
 vi.mock("../../store", () => ({
   call: vi.fn(),
   toast: vi.fn(),
@@ -35,7 +50,7 @@ it("keeps an unsaved provider key in the editor and indexes model controls", asy
     .mockReturnValue([{}] as unknown as DOMRectList);
   const container = document.createElement("div");
   const root = createRoot(container);
-  vi.mocked(call).mockResolvedValue({ models: [] });
+  vi.mocked(call).mockImplementation(async (method) => modelRead(method));
   const onSave = vi.fn(async () => false);
   try {
     document.body.append(container);
@@ -75,7 +90,7 @@ it("resets one model role to Automatic without dropping another override", async
     .mockReturnValue([{}] as unknown as DOMRectList);
   const container = document.createElement("div");
   const root = createRoot(container);
-  vi.mocked(call).mockResolvedValue({ models: [] });
+  vi.mocked(call).mockImplementation(async (method) => modelRead(method));
   const onSave = vi.fn(async () => true);
   const fast = { modelId: "fixture-fast", reasoning: "low" } as const;
   const deep = [

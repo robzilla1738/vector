@@ -3,13 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MethodSchemas, SearchEngineTemplateSchema } from "@aux/contracts";
-import {
-  DEFAULT_MAX_MODEL_CALLS,
-  DEFAULT_PLANNER_MODEL,
-  openDb,
-  Repo,
-  SettingsService,
-} from "@aux/runtime";
+import { DEFAULT_MAX_MODEL_CALLS, DEFAULT_AGENT_MODEL, openDb, Repo, SettingsService } from "@aux/runtime";
 
 function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}) {
   const dir = mkdtempSync(join(tmpdir(), "aux-settings-"));
@@ -138,7 +132,7 @@ describe("settings defaults for a real test pass", () => {
     );
     try {
       expect(settings.agentRoute("standard")).toEqual({ modelId: "fixture-standard", reasoning: "medium" });
-      expect(settings.agentRoute("deep")).toEqual({ modelId: "fixture-deep", reasoning: "xhigh" });
+      expect(settings.agentRoute("deep")).toEqual({ modelId: "fixture-deep", reasoning: "high" });
       expect(settings.agentRoute("visual")).toEqual({ modelId: "fixture-visual", reasoning: "medium" });
       expect(settings.agentRoute("fast")).toEqual({ modelId: "fixture-standard", reasoning: "low" });
       const patch = MethodSchemas["settings.set"].parse({
@@ -199,7 +193,7 @@ describe("settings defaults for a real test pass", () => {
     const { dir, settings } = harness();
     try {
       const patch = MethodSchemas["settings.set"].parse({
-        budgets: { runUsd: 2.5, dayUsd: 10, routineUsd: 25 },
+        budgets: { runUsd: 2.5, dayUsd: 10, monthUsd: 200_000, routineUsd: 25 },
       });
       await settings.set(patch);
       expect(settings.budgetLimits()).toEqual(patch.budgets);
@@ -207,6 +201,7 @@ describe("settings defaults for a real test pass", () => {
       expect(settings.budgetLimits()).toEqual({
         runUsd: undefined,
         dayUsd: undefined,
+        monthUsd: undefined,
         routineUsd: undefined,
       });
       expect(MethodSchemas["settings.set"].safeParse({ budgets: { dayUsd: -1 } }).success).toBe(false);
@@ -220,7 +215,7 @@ describe("settings defaults for a real test pass", () => {
     try {
       expect(settings.searchEngine()).toBe("https://duckduckgo.com/?q=%s");
       expect(settings.maxModelCalls()).toBe(DEFAULT_MAX_MODEL_CALLS);
-      expect(settings.plannerModel()).toBe(DEFAULT_PLANNER_MODEL);
+      expect(settings.plannerModel()).toBe(DEFAULT_AGENT_MODEL);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -229,14 +224,31 @@ describe("settings defaults for a real test pass", () => {
   it("defaults to Auto and Guard and persists each permission with its own revision", async () => {
     const { dir, repo, settings } = harness();
     try {
-      expect(settings.agentPolicy()).toEqual({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] });
+      expect(settings.agentPolicy()).toEqual({
+        agentMode: "auto",
+        agentPolicyRevision: 0,
+        agentPolicies: [],
+      });
       expect(settings.fileAccess()).toEqual({ fileAccessMode: "guard", fileAccessRevision: 0 });
-      await settings.set(MethodSchemas["settings.set"].parse({ fileAccessMode: "read-only", fileAccessRevision: 0 }));
+      await settings.set(
+        MethodSchemas["settings.set"].parse({ fileAccessMode: "read-only", fileAccessRevision: 0 }),
+      );
       expect(settings.fileAccess()).toEqual({ fileAccessMode: "read-only", fileAccessRevision: 1 });
-      await expect(settings.set({ fileAccessMode: "full", fileAccessRevision: 0 })).rejects.toMatchObject({ code: "conflict" });
-      await expect(settings.set({ fileAccessMode: "full", fileAccessRevision: 1, agentMode: "full", agentPolicyRevision: 0 })).rejects.toMatchObject({ code: "invalid_params" });
+      await expect(settings.set({ fileAccessMode: "full", fileAccessRevision: 0 })).rejects.toMatchObject({
+        code: "conflict",
+      });
+      await expect(
+        settings.set({
+          fileAccessMode: "full",
+          fileAccessRevision: 1,
+          agentMode: "full",
+          agentPolicyRevision: 0,
+        }),
+      ).rejects.toMatchObject({ code: "invalid_params" });
       await expect(settings.set({ fileAccessRevision: 1 })).rejects.toMatchObject({ code: "invalid_params" });
-      expect(new SettingsService(repo, join(dir, "settings.json"), {}).fileAccess()).toEqual(settings.fileAccess());
+      expect(new SettingsService(repo, join(dir, "settings.json"), {}).fileAccess()).toEqual(
+        settings.fileAccess(),
+      );
       expect(settings.agentPolicy().agentPolicyRevision).toBe(0);
     } finally {
       repo.db.close();

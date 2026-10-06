@@ -21,8 +21,9 @@ function fixture() {
     runId: "run",
     taskId: "task",
     taskRevision: 3,
-    inMemory: true as const,
-    cookies: "empty" as const,
+    mode: "session" as const,
+    inMemory: false as const,
+    cookies: "profile" as const,
   };
   const context: EgressContext = EgressContextSchema.parse({
     profileId: "profile",

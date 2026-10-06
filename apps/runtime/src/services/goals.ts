@@ -1,13 +1,8 @@
+import { resourceFundingAccounting } from "./resource-accounting.js";
 import { withRunAuthorityMutation } from "./overnight-authority.js";
 import { randomUUID } from "node:crypto";
 import { AuxError, GoalCreateParams, GoalSchema, newRunId, type Goal } from "@aux/contracts";
-import {
-  MODEL_REGISTRY,
-  modelCapabilities,
-  registryCostUsd,
-  type ModelCapability,
-} from "@aux/contracts/model-registry";
-import { modelCallCost, type ModelAttempt } from "../agent/model-client.js";
+import { lineageRuns } from "./run-lineage.js";
 import type { Repo } from "../store/repo.js";
 import type { RunService } from "./runs.js";
 
@@ -21,25 +16,10 @@ type Row = {
   updated_at: number;
 };
 type RunControl = Pick<RunService, "start" | "pause" | "resume" | "cancel">;
-type Reservation = {
-  id: string;
-  modelId: string;
-  tokens: number;
-  costUsd: number;
-  state: "pending" | "settled";
-  opaque?: boolean;
-  recordedCalls?: number;
-  inputUsdPerMTok?: number;
-  outputUsdPerMTok?: number;
-};
-type BudgetLedger = { reservations: Reservation[] };
-type BudgetRequest = { modelId: string; promptBytes: number; maxOutputTokens: number; toolsBytes: number };
-
 export class GoalService {
   constructor(
     private repo: Repo,
     private runs: RunControl,
-    private models: () => Promise<readonly ModelCapability[]> = async () => MODEL_REGISTRY,
   ) {
     // A crash between reserving a goal and linking its run is ambiguous. Never retry it automatically.
     this.repo.db
@@ -47,114 +27,6 @@ export class GoalService {
         "UPDATE goals SET status='needs_input',run_id=NULL,updated_at=? WHERE status='starting' AND (run_id IS NULL OR run_id NOT IN (SELECT run_id FROM runs))",
       )
       .run(Date.now());
-  }
-
-  private ledger(runId: string): BudgetLedger {
-    return this.repo.getSetting<BudgetLedger>(`goalBudget:${runId}`) ?? { reservations: [] };
-  }
-
-  private saveLedger(runId: string, ledger: BudgetLedger): void {
-    this.repo.setSetting(`goalBudget:${runId}`, ledger);
-  }
-
-  /** Persist capacity before a provider call. An unjoined attempt keeps its full hold after restart. */
-  async reserveModelCall(runId: string, request: BudgetRequest): Promise<string | undefined> {
-    const row = this.repo.db.prepare("SELECT goal_id FROM goals WHERE run_id=?").get(runId) as
-      { goal_id: string } | undefined;
-    if (!row) return undefined;
-    const goal = this.get(row.goal_id);
-    const run = this.repo.getRun(runId);
-    if (!run || !["queued", "planning", "running"].includes(run.status) || goal.status !== "active")
-      throw new AuxError("conflict", "This Goal is not active; no model call was sent.");
-    if (goal.budget.deadlineMs !== undefined && Date.now() - run.createdAt >= goal.budget.deadlineMs)
-      throw new AuxError("step_failed", "Goal time limit exhausted before model dispatch.");
-    const models = await this.models();
-    // UTF-8 bytes upper-bound visible text tokens; allow extra serialization overhead.
-    const inputTokens = Math.ceil(request.promptBytes + request.toolsBytes + 1024);
-    const outputTokens = request.maxOutputTokens;
-    if (
-      !Number.isSafeInteger(inputTokens) ||
-      !Number.isSafeInteger(outputTokens) ||
-      outputTokens < 1 ||
-      inputTokens < 1 ||
-      inputTokens + outputTokens > 10_000_000
-    )
-      throw new AuxError("invalid_params", "The Goal model request cannot be bounded.");
-    const tokens = inputTokens + outputTokens;
-    const cost = registryCostUsd(request.modelId, { inputTokens, outputTokens }, models);
-    if (goal.budget.maxCostUsd !== undefined && (cost === undefined || !Number.isFinite(cost)))
-      throw new AuxError("permission_denied", "Goal cost limit requires a priced model before dispatch.");
-    const ledger = this.ledger(runId);
-    if (ledger.reservations.some((item) => item.state === "pending" || item.opaque))
-      throw new AuxError(
-        "conflict",
-        "A prior Goal model call has an uncertain charge. Review it before continuing.",
-      );
-    if (
-      this.repo.listModelCalls(runId).length !==
-      ledger.reservations.reduce((sum, item) => sum + (item.recordedCalls ?? 0), 0)
-    )
-      throw new AuxError(
-        "conflict",
-        "This Goal has model calls outside its funded ledger. Review before continuing.",
-      );
-    const chargedTokens = ledger.reservations.reduce((sum, item) => sum + item.tokens, 0);
-    const chargedCost = ledger.reservations.reduce((sum, item) => sum + item.costUsd, 0);
-    if (goal.budget.maxTokens !== undefined && chargedTokens + tokens > goal.budget.maxTokens)
-      throw new AuxError("step_failed", "Goal token limit exhausted before model dispatch.");
-    if (goal.budget.maxCostUsd !== undefined && chargedCost + cost! > goal.budget.maxCostUsd)
-      throw new AuxError("step_failed", "Goal cost limit exhausted before model dispatch.");
-    if (ledger.reservations.length >= 256)
-      throw new AuxError("step_failed", "Goal model-call limit exhausted.");
-    const id = randomUUID();
-    const price = modelCapabilities(request.modelId, models);
-    ledger.reservations.push({
-      id,
-      modelId: request.modelId,
-      tokens,
-      costUsd: cost ?? 0,
-      state: "pending",
-      inputUsdPerMTok: price?.inputUsdPerMTok,
-      outputUsdPerMTok: price?.outputUsdPerMTok,
-    });
-    this.saveLedger(runId, ledger);
-    return id;
-  }
-
-  /** Called only after the model-call record is durable. Missing usage retains its full reservation. */
-  settleModelCall(runId: string, reservationId: string | undefined, attempts: ModelAttempt[]): void {
-    if (!reservationId) return;
-    const ledger = this.ledger(runId);
-    const entry = ledger.reservations.find((item) => item.id === reservationId);
-    if (!entry || entry.state !== "pending")
-      throw new AuxError("conflict", "Goal model reservation changed.");
-    const exact =
-      attempts.length === 1 &&
-      attempts[0]?.modelId === entry.modelId &&
-      Number.isFinite(attempts[0].inputTokens) &&
-      Number.isFinite(attempts[0].outputTokens) &&
-      attempts[0].inputTokens! >= 0 &&
-      attempts[0].outputTokens! >= 0;
-    const reported = exact ? modelCallCost(entry.modelId, attempts[0]!) : undefined;
-    const estimated =
-      exact && entry.inputUsdPerMTok !== undefined && entry.outputUsdPerMTok !== undefined
-        ? (attempts[0]!.inputTokens! * entry.inputUsdPerMTok +
-            attempts[0]!.outputTokens! * entry.outputUsdPerMTok) /
-          1_000_000
-        : undefined;
-    const actualCost =
-      reported?.costUsd !== undefined && !reported.costEstimated ? reported.costUsd : estimated;
-    entry.recordedCalls =
-      this.repo.listModelCalls(runId).length -
-      ledger.reservations.reduce((sum, item) => sum + (item.recordedCalls ?? 0), 0);
-    if (entry.recordedCalls < 1) return; // no durable call record: retain the pending hold
-    entry.state = "settled";
-    if (entry.recordedCalls < 1 || entry.recordedCalls > attempts.length + 1) entry.opaque = true;
-    if (!entry.opaque && exact && actualCost !== undefined && Number.isFinite(actualCost)) {
-      entry.tokens = attempts[0]!.inputTokens! + attempts[0]!.outputTokens!;
-      entry.costUsd = actualCost;
-    } else entry.opaque = true;
-    this.saveLedger(runId, ledger);
   }
 
   create(raw: unknown): Goal {
@@ -246,12 +118,10 @@ export class GoalService {
         nightShiftItemId: internal?.nightShiftItemId,
         taskId: internal?.taskId,
         taskRevision: internal?.taskRevision,
-        engine: "agent-loop",
         goal: goal.objective,
         pageIds,
         chatId: goal.chatId,
         defaultWorkspaceId: goal.workspaceId,
-        maxTokens: goal.budget.maxTokens,
         maxCostUsd: goal.budget.maxCostUsd,
         deadlineMs: goal.budget.deadlineMs,
       });
@@ -373,8 +243,8 @@ export class GoalService {
     if (!goal.runId) return goal;
     const run = this.repo.getRun(goal.runId);
     if (!run) return goal;
-    const ledger = this.ledger(goal.runId);
-    const hasPending = ledger.reservations.some((item) => item.state === "pending" || item.opaque);
+    const ledger = this.repo.getSetting<{ holds: { state: string; opaque?: boolean; tokens: number; costUsd: number }[] }>(`runFunding:goal:${goal.goalId}`) ?? { holds: [] };
+    const hasPending = ledger.holds.some((item) => item.state === "pending" || item.opaque);
     const verified =
       (this.repo.loadCheckpoint(`run:${goal.runId}`, "goal_verified") as { accepted?: boolean } | undefined)
         ?.accepted === true;
@@ -398,14 +268,15 @@ export class GoalService {
                   : run.status === "needs_input"
                     ? "needs_input"
                     : "active";
-    const calls = this.repo.listModelCalls(goal.runId);
+    const calls = lineageRuns(this.repo, goal.runId).flatMap((id) => this.repo.listModelCalls(id));
     const usedTokens = calls.reduce(
       (total, call) => total + (call.inputTokens ?? 0) + (call.outputTokens ?? 0),
       0,
     );
-    const knownCostUsd = calls.reduce((total, call) => total + (call.costUsd ?? 0), 0);
-    const costComplete = calls.every((call) => call.costUsd !== undefined);
-    const held = ledger.reservations.filter((item) => item.state === "pending" || item.opaque);
+    const resourceUsage = resourceFundingAccounting(this.repo).usage(lineageRuns(this.repo, goal.runId), []);
+    const knownCostUsd = calls.reduce((total, call) => total + (call.costUsd ?? 0), 0) + resourceUsage.costUsd;
+    const costComplete = calls.every((call) => call.costUsd !== undefined) && !resourceUsage.opaque;
+    const held = ledger.holds.filter((item) => item.state === "pending" || item.opaque);
     const reservedTokens = held.reduce((total, item) => total + item.tokens, 0);
     const reservedCostUsd = held.reduce((total, item) => total + item.costUsd, 0);
     if (

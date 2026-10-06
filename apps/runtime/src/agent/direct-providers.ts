@@ -2,11 +2,12 @@ import type { createOpenAI } from "@ai-sdk/openai";
 import type { ModelProvider } from "@aux/contracts";
 import { GatewayModelClient } from "./gateway-client.js";
 
-export const DIRECT_PROVIDERS = ["openai", "anthropic", "google", "openai-compatible"] as const;
+export const DIRECT_PROVIDERS = ["openai", "anthropic", "google", "openrouter", "openai-compatible"] as const;
 export const PROVIDER_ENV = {
   openai: "OPENAI_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
   google: "GOOGLE_GENERATIVE_AI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
   "openai-compatible": "OPENAI_COMPATIBLE_API_KEY",
 } as const;
 export const PROVIDER_ENDPOINT = {
@@ -14,6 +15,7 @@ export const PROVIDER_ENDPOINT = {
   openai: "https://api.openai.com/v1",
   anthropic: "https://api.anthropic.com/v1",
   google: "https://generativelanguage.googleapis.com/v1beta",
+  openrouter: "https://openrouter.ai/api/v1",
 } as const;
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
@@ -80,14 +82,17 @@ export function directModelClient(
   fetchOverride?: typeof fetch,
   compatibleEndpoint?: string,
 ) {
-  if (provider === "openai-compatible") {
-    const baseURL = normalizeCompatibleEndpoint(compatibleEndpoint ?? "");
+  if (provider === "openai-compatible" || provider === "openrouter") {
+    const baseURL =
+      provider === "openrouter"
+        ? PROVIDER_ENDPOINT.openrouter
+        : normalizeCompatibleEndpoint(compatibleEndpoint ?? "");
     const sdk = memo(async () =>
       (await import("@ai-sdk/openai")).createOpenAI({
         apiKey,
         baseURL,
         fetch: fetchOverride,
-        name: "openai-compatible",
+        name: provider,
       }),
     );
     return new GatewayModelClient(apiKey, {

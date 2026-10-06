@@ -533,7 +533,19 @@ export class ContentMemoryStore {
       await this.retirePendingFactors();
       return { revision, expiresAt: this.now(), rows: new Map(), searchable: new Map() };
     }
-    const key = await this.key();
+    const epoch = this.derivativeEpoch;
+    const factor = this.factorName();
+    const current = () => epoch === this.derivativeEpoch && factor === this.factorName();
+    const retired = (): Index => ({ revision, expiresAt: this.now(), rows: new Map(), searchable: new Map() });
+    let key: Buffer;
+    try {
+      key = await this.key();
+    } catch (error) {
+      // A removed original factor cannot authorize this read. A missing live factor remains an error.
+      if (!current()) return retired();
+      throw error;
+    }
+    if (!current()) return retired();
     const rows = this.repo.db
       .prepare(
         `SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext FROM content_memory

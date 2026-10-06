@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { CopilotSetupSchema } from "@aux/contracts/copilot-auth";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -13,6 +14,20 @@ const fixture = vi.hoisted(() => ({
 }));
 const call = vi.hoisted(() => vi.fn());
 vi.mock("../../bridge", () => ({ bridge: fixture, inNativeHost: false, inMock: true }));
+const copilotSetup = CopilotSetupSchema.parse({
+  registrationConfigured: false,
+  runtimeInstalled: false,
+  runtimeSupported: false,
+  catalogOnly: true,
+});
+function modelRead(method: string) {
+  if (method === "models.copilot.setup") return copilotSetup;
+  if (method === "models.copilot.accounts") return [];
+  if (method === "settings.cloud.status") return { configured: false, revision: 0 };
+  if (method === "models.list") return { models: [] };
+  throw new Error(`Unexpected model producer ${method}`);
+}
+
 vi.mock("../../store", () => ({ call }));
 vi.mock("../../commands", async () => {
   const { invokeScopedControl } = await import("../../scoped-control-commands");
@@ -36,7 +51,7 @@ beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
   Object.assign(fixture, { windowId: "models-original-window", windowKind: "normal", privateMode: false });
-  call.mockReset().mockResolvedValue({ models: [] });
+  call.mockReset().mockImplementation(async (method) => modelRead(method));
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);

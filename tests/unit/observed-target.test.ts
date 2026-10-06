@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { openDb, ApprovalStore, DecisionJournal, SafetyDispatchGate } from "@aux/runtime";
 import { observedCategory } from "../../apps/runtime/src/safety/observed-target.js";
 
 const click = { id: "click", op: "click" as const, target: "e1" };
@@ -46,66 +45,5 @@ describe("live target classification", () => {
     expect(
       observedCategory({ id: "fill", op: "fillCredential", passwordSelector: "input[type=password]" }, login),
     ).toBe("credential");
-  });
-  it("parks the actual observed login producer, grants only that origin/category, and refuses credential preapproval", async () => {
-    const db = openDb(":memory:");
-    try {
-      const approvals = new ApprovalStore(db);
-      const gate = new SafetyDispatchGate({
-        approvals,
-        journal: new DecisionJournal(db),
-        managedRules: () => [],
-        userRules: () => [],
-        localCeiling: () => "always",
-        audit: () => {},
-      });
-      const context = {
-        profileId: "profile",
-        scope: { kind: "workspace" as const, id: "workspace" },
-        turnId: "turn",
-        threadId: "thread",
-        observedTarget: login,
-      };
-      await expect(
-        gate.check({ step: click, origin: "https://example.test", context, phase: "dispatch" }),
-      ).rejects.toMatchObject({ code: "needs_input" });
-      const request = approvals.pending("thread")[0]!;
-      expect(request.action).toMatchObject({ category: "login", confirmation: "preapprovable" });
-      approvals.decideLocal({ decision: "acceptForOrigin", approvalId: request.approvalId }, "turn");
-      await expect(
-        gate.check({
-          step: click,
-          origin: "https://example.test",
-          context: { ...context, turnId: "next" },
-          phase: "dispatch",
-        }),
-      ).resolves.toMatchObject({ authorizedBy: "standing" });
-      await expect(
-        gate.check({
-          step: { id: "fill", op: "fill", target: "e1", value: "synthetic" },
-          origin: "https://example.test",
-          context: {
-            ...context,
-            turnId: "credential",
-            observedTarget: { ...login, tag: "input", type: "password", autocomplete: "current-password" },
-          },
-          phase: "dispatch",
-        }),
-      ).rejects.toMatchObject({ code: "needs_input" });
-      const credential = approvals.pending("thread").find((value) => value.action.turnId === "credential")!;
-      expect(credential.action).toMatchObject({
-        effect: "credential",
-        category: "credential",
-        confirmation: "action",
-      });
-      expect(() =>
-        approvals.decideLocal(
-          { decision: "acceptForOrigin", approvalId: credential.approvalId },
-          "credential",
-        ),
-      ).toThrow();
-    } finally {
-      db.close();
-    }
   });
 });

@@ -21,8 +21,9 @@ const original: PageTarget = {
     isolationId: "isolation",
     runId: "run",
     taskRevision: 0,
-    inMemory: true,
-    cookies: "empty",
+    mode: "session",
+    inMemory: false,
+    cookies: "profile",
   },
 };
 

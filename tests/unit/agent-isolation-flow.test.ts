@@ -7,19 +7,22 @@ import {
   SafetyDispatchGate,
   SuspensionStore,
   NullNativeBridge,
+  MockModelClient,
   openDb,
   Repo,
   RunService,
   SetService,
   type ArtifactStore,
-  type ModelClient,
   type PageService,
   type SettingsService,
 } from "@aux/runtime";
 import { AuxError } from "@aux/contracts";
 import type { AgentPageCreate, EgressLease, Observation, PageTarget, Program } from "@aux/contracts";
 import { NativePermissionController } from "../../apps/runtime/src/safety/native-permission.js";
-import { installBrowserAuthority, installOvernightAuthority } from "../../apps/runtime/dist/services/overnight-authority.js";
+import {
+  installBrowserAuthority,
+  installOvernightAuthority,
+} from "../../apps/runtime/dist/services/overnight-authority.js";
 import { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress.js";
 
 const disposers: Array<() => void> = [];
@@ -63,8 +66,9 @@ function harness(url = "https://source.test/") {
           runId: input.runId,
           taskId: input.taskId,
           taskRevision: input.taskRevision,
-          inMemory: true as const,
-          cookies: "empty" as const,
+          ...(input.mode === "private"
+            ? { mode: "private" as const, inMemory: true as const, cookies: "empty" as const }
+            : { mode: "session" as const, inMemory: false as const, cookies: "profile" as const }),
         },
       };
     }),
@@ -95,7 +99,7 @@ function harness(url = "https://source.test/") {
     run: (runId) => {
       const run = repo.getRun(runId);
       return run && ["queued", "running", "planning", "needs_input"].includes(run.status)
-        ? { taskRevision: 0, threadId: runId }
+        ? { taskRevision: 0, threadId: runId, privateTask: !!run.config?.privateTask }
         : null;
     },
     page: (pageId) => {
@@ -185,27 +189,36 @@ function harness(url = "https://source.test/") {
       return { ok: true };
     },
   } as unknown as PageService;
-  const model = {
-    generateStructured: vi.fn(async () => ({
-      object: {
-        status: "needs_input",
-        message: "Separate sign-in",
-        question: "Sign in on the temporary tab.",
+  const model = new MockModelClient();
+  const actualToolCall = model.toolCallStep.bind(model);
+  let toolCalls = 0;
+  vi.spyOn(model, "toolCallStep").mockImplementation(async (input) => {
+    toolCalls++;
+    if (toolCalls > 12) throw new Error("Unexpected fixture model continuation.");
+    model.scriptToolSteps([
+      {
+        toolCalls: [
+          toolCalls % 2 === 1
+            ? { toolCallId: `snapshot-${toolCalls}`, toolName: "snapshot", input: {} }
+            : {
+                toolCallId: `question-${toolCalls}`,
+                toolName: "ask_user_question",
+                input: { question: "What next?" },
+              },
+        ],
       },
-      inputTokens: 1,
-      outputTokens: 1,
-      durationMs: 1,
-    })),
-  } as unknown as ModelClient;
+    ]);
+    return actualToolCall(input);
+  });
   const settings = {
     maxWorkers: () => 2,
     perOrigin: () => 2,
     maxModelCalls: () => 4,
     model: () => model,
+    registryModels: async () => [],
     plannerModel: () => "fixture",
     recoveryModel: () => undefined,
     visionModel: () => undefined,
-    effectGrants: () => ["effect:read", "effect:write", "effect:egress"],
     agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
     agentRoute: () => ({ modelId: "fixture", reasoning: "medium" }),
   } as unknown as SettingsService;
@@ -221,7 +234,6 @@ function harness(url = "https://source.test/") {
     settings,
     browserEgress: egress,
     artifacts: { save: () => ({ artifactId: "fixture" }) } as unknown as ArtifactStore,
-    translateSteps: (_id, steps) => steps,
     nativeAvailable: () => true,
   });
   disposers.push(() => {
@@ -237,8 +249,15 @@ async function until(check: () => boolean) {
 
 it("copies only the selected URL before any model observation and leaves the owner tab untouched", async () => {
   const f = harness();
-  const run = await f.runs.coordinator.start({ goal: "Read the selected website", pageIds: ["owner"] });
-  await until(() => f.repo.getRun(run.runId)?.status === "needs_input");
+  const run = await f.runs.coordinator.start({
+    privateTask: true,
+    goal: "Read the selected website",
+    pageIds: ["owner"],
+  });
+  await vi.waitFor(
+    () => expect(f.repo.getRun(run.runId)?.status, f.repo.getRun(run.runId)?.error).toBe("needs_input"),
+    { timeout: 3000, interval: 10 },
+  );
   const current = f.repo.getRun(run.runId)!;
   expect(current.pageIds).toEqual(["controlled-1"]);
   expect(current.config?.isolatedPageSources).toEqual([
@@ -261,11 +280,25 @@ it("copies only the selected URL before any model observation and leaves the own
   await until(() => !f.runs.coordinator.controls.has(run.runId));
 });
 
-it("refuses the old planner’s blank page without creating or actuating an owner tab", async () => {
+it("keeps a blank private source page-free until an explicit destination is chosen", async () => {
   const f = harness("about:blank");
-  const run = await f.runs.coordinator.start({ goal: "Start browsing", pageIds: ["owner"] });
-  await until(() => f.repo.getRun(run.runId)?.status === "failed");
-  expect(f.repo.getRun(run.runId)?.error).toContain("protected temporary tab");
+  const question = new MockModelClient().scriptToolSteps([
+    {
+      toolCalls: [
+        { toolCallId: "destination", toolName: "ask_user_question", input: { question: "Which website?" } },
+      ],
+    },
+  ]);
+  vi.mocked(f.model.toolCallStep).mockImplementation(question.toolCallStep.bind(question));
+  const run = await f.runs.coordinator.start({
+    privateTask: true,
+    goal: "Start browsing",
+    pageIds: ["owner"],
+  });
+  await until(() => f.repo.getRun(run.runId)?.status === "needs_input");
+  expect(f.repo.getRun(run.runId)?.pageIds).toEqual([]);
+  expect(f.runs.coordinator.suspensions.pending(run.runId)?.kind).toBe("ask-user-question");
+  expect(f.execute).not.toHaveBeenCalled();
   expect(f.created).toEqual([]);
   expect(f.trace).toEqual([]);
 });
@@ -319,7 +352,12 @@ it("a closed explicit source rejects start without substituting another page or 
   };
   f.targets.delete("owner");
   await expect(
-    f.runs.start({ goal: "Read this selected source", pageIds: ["owner"], contextPageRefs: [ref] }),
+    f.runs.start({
+      privateTask: true,
+      goal: "Read this selected source",
+      pageIds: ["owner"],
+      contextPageRefs: [ref],
+    }),
   ).rejects.toMatchObject({
     code: "not_found",
     message:
@@ -327,7 +365,7 @@ it("a closed explicit source rejects start without substituting another page or 
   });
   expect(f.repo.listRuns(10)).toEqual([]);
   expect(f.created).toEqual([]);
-  expect(f.model.generateStructured).not.toHaveBeenCalled();
+  expect(f.model.toolCallStep).not.toHaveBeenCalled();
 });
 
 it("a selected source closed during queued turn setup fails actionably before copying or model observation", async () => {
@@ -341,7 +379,11 @@ it("a selected source closed during queued turn setup fails actionably before co
     await held;
     return begin(...args);
   });
-  const run = await f.runs.coordinator.start({ goal: "Read this selected source", pageIds: ["owner"] });
+  const run = await f.runs.coordinator.start({
+    privateTask: true,
+    goal: "Read this selected source",
+    pageIds: ["owner"],
+  });
   f.targets.delete("owner");
   resume();
   await until(() => f.repo.getRun(run.runId)?.status === "failed");
@@ -351,7 +393,7 @@ it("a selected source closed during queued turn setup fails actionably before co
   expect(f.repo.getRun(run.runId)?.pageIds).toEqual(["owner"]);
   expect(f.created).toEqual([]);
   expect(f.trace).toEqual([]);
-  expect(f.model.generateStructured).not.toHaveBeenCalled();
+  expect(f.model.toolCallStep).not.toHaveBeenCalled();
 });
 
 it("unexpected page lookup failures retain their original error instead of masquerading as a closed tab", async () => {
@@ -362,6 +404,7 @@ it("unexpected page lookup failures retain their original error instead of masqu
   });
   await expect(
     f.runs.start({
+      privateTask: true,
       goal: "Read",
       pageIds: ["owner"],
       contextPageRefs: [{ pageId: "owner", url: "https://source.test/", documentEpoch: 1 }],
@@ -387,7 +430,11 @@ it("a selected tab closed while native source context is held cannot copy or rep
     await held;
     return receipt;
   });
-  const run = await f.runs.coordinator.start({ goal: "Read selected website", pageIds: ["owner"] });
+  const run = await f.runs.coordinator.start({
+    privateTask: true,
+    goal: "Read selected website",
+    pageIds: ["owner"],
+  });
   try {
     await started;
     f.targets.delete("owner");
@@ -401,7 +448,7 @@ it("a selected tab closed while native source context is held cannot copy or rep
   expect(f.repo.getRun(run.runId)?.pageIds).toEqual(["owner"]);
   expect(f.created).toEqual([]);
   expect(f.trace).toEqual([]);
-  expect(f.model.generateStructured).not.toHaveBeenCalled();
+  expect(f.model.toolCallStep).not.toHaveBeenCalled();
 });
 
 it("preserves acknowledged takeover state and newer configuration when a protected open returns late", async () => {
@@ -420,7 +467,11 @@ it("preserves acknowledged takeover state and newer configuration when a protect
     await held;
     return page;
   });
-  const run = await f.runs.coordinator.start({ goal: "Read selected website", pageIds: ["owner"] });
+  const run = await f.runs.coordinator.start({
+    privateTask: true,
+    goal: "Read selected website",
+    pageIds: ["owner"],
+  });
   try {
     await started;
     f.targets.get("controlled-1")!.controller = "human";
@@ -438,7 +489,7 @@ it("preserves acknowledged takeover state and newer configuration when a protect
     });
     expect(f.targets.get("controlled-1")?.controller).toBe("human");
     expect(f.trace).not.toContain("close:controlled-1");
-    expect(f.model.generateStructured).not.toHaveBeenCalled();
+    expect(f.model.toolCallStep).not.toHaveBeenCalled();
   } finally {
     release();
     await f.runs.cancel(run.runId);
@@ -466,7 +517,11 @@ it("does not close a person-held protected tab when its creator is cancelled bef
     returned();
     return page;
   });
-  const run = await f.runs.coordinator.start({ goal: "Read selected website", pageIds: ["owner"] });
+  const run = await f.runs.coordinator.start({
+    privateTask: true,
+    goal: "Read selected website",
+    pageIds: ["owner"],
+  });
   try {
     await started;
     f.targets.get("controlled-1")!.controller = "human";
@@ -479,7 +534,7 @@ it("does not close a person-held protected tab when its creator is cancelled bef
   expect(f.repo.getRun(run.runId)?.status).toBe("cancelled");
   expect(f.targets.get("controlled-1")?.controller).toBe("human");
   expect(f.trace).not.toContain("close:controlled-1");
-  expect(f.model.generateStructured).not.toHaveBeenCalled();
+  expect(f.model.toolCallStep).not.toHaveBeenCalled();
 });
 
 it("continues cancelled creator cleanup past a detached copy while preserving a person-held copy", async () => {
@@ -508,6 +563,7 @@ it("continues cancelled creator cleanup past a detached copy while preserving a 
     return page;
   });
   const run = await f.runs.coordinator.start({
+    privateTask: true,
     goal: "Read selected websites",
     pageIds: ["owner", "owner-2", "owner-3"],
   });
@@ -526,7 +582,7 @@ it("continues cancelled creator cleanup past a detached copy while preserving a 
   expect(f.runs.pageOwnership.snapshot()).not.toHaveProperty("controlled-1");
   expect(f.runs.pageOwnership.snapshot()).not.toHaveProperty("controlled-2");
   expect(f.runs.pageOwnership.snapshot()).not.toHaveProperty("controlled-3");
-  expect(f.model.generateStructured).not.toHaveBeenCalled();
+  expect(f.model.toolCallStep).not.toHaveBeenCalled();
 });
 
 async function completedSourceTurn(f: ReturnType<typeof harness>) {
@@ -538,6 +594,7 @@ async function completedSourceTurn(f: ReturnType<typeof harness>) {
     sessionId: owner.sessionId,
   };
   const run = await f.runs.start({
+    privateTask: true,
     goal: "Read exact source",
     pageIds: [owner.pageId],
     contextPageRefs: [ref],
@@ -606,32 +663,81 @@ it.each([
 
 it("retires pending native authentication and accepted effects when taking over a run awaiting input", async () => {
   const f = harness();
-  const runId = "takeover-pending", threadId = "takeover-chat";
-  f.repo.saveRun({ runId, goal: "Pending effect", status: "needs_input", pageIds: ["owner"], createdAt: Date.now(), config: { chatId: threadId } });
+  const runId = "takeover-pending",
+    threadId = "takeover-chat";
+  f.repo.saveRun({
+    runId,
+    goal: "Pending effect",
+    status: "needs_input",
+    pageIds: ["owner"],
+    createdAt: Date.now(),
+    config: { chatId: threadId },
+  });
   const approvals = new ApprovalStore(f.repo.db);
   const suspensions = new SuspensionStore(f.repo.db);
-  const base = { profileId: "profile", scope: { kind: "task" as const, id: "task" }, effect: "write" as const, action: "click", origin: "https://source.test/", confirmation: "action" as const, turnId: runId, threadId, requestedAt: Date.now() };
-  const deviceId = approvals.issue({ ...base, category: "purchase", authentication: "touch_id", invocationDigest: "a".repeat(64) }, "turn");
+  const base = {
+    profileId: "profile",
+    scope: { kind: "task" as const, id: "task" },
+    effect: "write" as const,
+    action: "click",
+    origin: "https://source.test/",
+    confirmation: "action" as const,
+    turnId: runId,
+    threadId,
+    requestedAt: Date.now(),
+  };
+  const deviceId = approvals.issue(
+    { ...base, category: "purchase", authentication: "touch_id", invocationDigest: "a".repeat(64) },
+    "turn",
+  );
   const proof = approvals.prepareDevice(deviceId, runId);
   const acceptedAction = { ...base, category: "post" as const, invocationDigest: "b".repeat(64) };
   const acceptedId = approvals.issue(acceptedAction, "turn");
   approvals.decideLocal({ decision: "accept", approvalId: acceptedId }, runId);
-  suspensions.park({ runId, threadId, turnId: runId, kind: "touch-id", request: { kind: "touch-id", approvalId: deviceId, instruction: "Confirm payment", guidance: "Wait for Touch ID" } });
+  suspensions.park({
+    runId,
+    threadId,
+    turnId: runId,
+    kind: "touch-id",
+    request: {
+      kind: "touch-id",
+      approvalId: deviceId,
+      instruction: "Confirm payment",
+      guidance: "Wait for Touch ID",
+    },
+  });
 
-  const gate = new SafetyDispatchGate({ approvals, journal: new DecisionJournal(f.repo.db), managedRules: () => [], agentPolicy: () => ({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] }), audit: () => {} });
+  const gate = new SafetyDispatchGate({
+    approvals,
+    journal: new DecisionJournal(f.repo.db),
+    managedRules: () => [],
+    agentPolicy: () => ({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] }),
+    audit: () => {},
+  });
   const controller = new NativePermissionController({
-    profileId: "profile", gate, approvals, egress: f.egress,
+    profileId: "profile",
+    gate,
+    approvals,
+    egress: f.egress,
     mentions: fixtureTurnMentions((id) => f.pages.get(id)),
-    run: (id) => f.repo.getRun(id), page: (id) => f.pages.get(id)!,
-    sourceCheck: () => () => {}, standingOnly: () => false,
-    assertDispatch: async () => {}, overnightAuthority: () => null,
-    retireReservation: async () => ({ accepted: true }), requiresTurn: () => false,
+    run: (id) => f.repo.getRun(id),
+    page: (id) => f.pages.get(id)!,
+    sourceCheck: () => () => {},
+    standingOnly: () => false,
+    assertDispatch: async () => {},
+    overnightAuthority: () => null,
+    retireReservation: async () => ({ accepted: true }),
+    requiresTurn: () => false,
   });
   installOvernightAuthority(f.repo, controller);
   installBrowserAuthority(f.repo, f.egress);
   let release!: () => void, entered!: () => void;
-  const held = new Promise<void>((resolve) => { release = resolve; });
-  const retiring = new Promise<void>((resolve) => { entered = resolve; });
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const retiring = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
   const original = f.egress.withAuthorityMutation.bind(f.egress);
   vi.spyOn(f.egress, "withAuthorityMutation").mockImplementationOnce(async (matches, mutation) => {
     entered();
@@ -643,10 +749,22 @@ it("retires pending native authentication and accepted effects when taking over 
   expect(f.repo.getRun(runId)?.status).toBe("needs_input");
   expect(suspensions.pending(runId)).toBeUndefined();
   expect(() => approvals.confirmDevice(deviceId, runId, proof.fingerprint)).toThrow(/Expired, replaced/);
-  expect(approvals.authorize({ action: acceptedAction, settings: { agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] }, approvalId: acceptedId }).status).toBe("ask");
+  expect(
+    approvals.authorize({
+      action: acceptedAction,
+      settings: { agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] },
+      approvalId: acceptedId,
+    }).status,
+  ).toBe("ask");
   release();
   expect((await takeover).status).toBe("paused");
   expect(() => approvals.confirmDevice(deviceId, runId, proof.fingerprint)).toThrow(/Expired, replaced/);
-  expect(approvals.authorize({ action: acceptedAction, settings: { agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] }, approvalId: acceptedId }).status).toBe("ask");
+  expect(
+    approvals.authorize({
+      action: acceptedAction,
+      settings: { agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] },
+      approvalId: acceptedId,
+    }).status,
+  ).toBe("ask");
   expect(f.repo.getRun(runId)?.statusMessage).toContain("return control");
 });

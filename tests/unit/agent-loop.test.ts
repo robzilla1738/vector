@@ -8,6 +8,8 @@ import { join } from "node:path";
 import {
   MockModelClient,
   GoalService,
+  RunFundingService,
+  resourceFundingAccounting,
   TaskService,
   DurableWriteLedger,
   TranscriptStore,
@@ -214,7 +216,7 @@ describe("runAgentLoop (S5)", () => {
     expect(replWait).toHaveBeenCalledOnce();
     expect(transcript.load("run-1").filter((message) => message.role === "tool")).toHaveLength(2);
   });
-  it("offers a complete goal program on the first page turn, then all tools after a safe fallback", async () => {
+  it("offers the same full tools from the first page turn through a safe fallback", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);
     const seen: string[][] = [];
@@ -244,7 +246,10 @@ describe("runAgentLoop (S5)", () => {
       model: { toolCallStep: model },
     });
     expect(result).toMatchObject({ kind: "done", text: "fallback" });
-    expect(seen[0]).toEqual(["goal_program", "submit_result", "ask_user_question"]);
+    expect(seen[0]).toEqual(seen[1]);
+    expect(seen[0]).toContain("goal_program");
+    expect(seen[0]).toContain("snapshot");
+    expect(seen[0]).toContain("repl");
     expect(seen[1]).toContain("snapshot");
     expect(seen[1]).toContain("repl");
   });
@@ -800,7 +805,7 @@ function coordinatorHarness(
     pages: pages as never,
     model: () => model,
     defaultModel: () => "test/agent",
-    recoveryModel: () => undefined,
+
     recordModelCall: (call: {
       runId: string;
       role: string;
@@ -816,7 +821,7 @@ function coordinatorHarness(
         createdAt: Date.now(),
       });
     },
-    grants: ["effect:read", "effect:write", "effect:egress"],
+
   });
   return { db, repo, coordinator, pages, modelCalls };
 }
@@ -846,7 +851,7 @@ describe("runToolLoop (S5 host integration)", () => {
       return nextStep(opts);
     };
     const h = coordinatorHarness(model);
-    const run = await h.coordinator.start({ goal: "Chat without a page", pageIds: [], engine: "agent-loop" });
+    const run = await h.coordinator.start({ goal: "Chat without a page", pageIds: [], });
     try {
       await vi.waitFor(() =>
         expect(
@@ -887,11 +892,11 @@ describe("runToolLoop (S5 host integration)", () => {
     },
     {
       target: "private-address",
-      status: "failed",
+      status: "needs_input",
       gateCount: 0,
       calls: 3,
       checkEvidence: (evidence: { pending: unknown; park: unknown; row: unknown; transcript: string }) => {
-        expect(evidence.pending).toBeUndefined();
+        expect(evidence.pending).toMatchObject({ kind: "budget", request: { budget: { reason: "model_calls", limit: 3 } } });
         expect(evidence.transcript).toContain("Web tools cannot contact a private or local network address.");
         expect(evidence.transcript).not.toContain("redeclaration");
       },
@@ -973,7 +978,6 @@ describe("runToolLoop (S5 host integration)", () => {
         const run = await h.coordinator.start({
           goal: "Open the synthetic destination",
           pageIds: [],
-          engine: "agent-loop",
           maxModelCalls: 3,
         });
         try {
@@ -1017,8 +1021,6 @@ describe("runToolLoop (S5 host integration)", () => {
         goal: string;
         pageIds: string[];
         chatId?: string;
-        engine: "agent-loop";
-        maxTokens?: number;
         maxCostUsd?: number;
         deadlineMs?: number;
       }) =>
@@ -1027,8 +1029,6 @@ describe("runToolLoop (S5 host integration)", () => {
           goal: input.goal,
           pageIds: input.pageIds,
           chatId: input.chatId,
-          engine: input.engine,
-          maxTokens: input.maxTokens,
           maxCostUsd: input.maxCostUsd,
           deadlineMs: input.deadlineMs,
         }),
@@ -1036,15 +1036,10 @@ describe("runToolLoop (S5 host integration)", () => {
       resume: (runId: string) => h.coordinator.resume(runId),
       cancel: (runId: string) => h.coordinator.cancel(runId),
     } as unknown as ConstructorParameters<typeof GoalService>[1];
-    const goals = new GoalService(h.repo, runs, async () => [
+    const goals = new GoalService(h.repo, runs);
+    h.coordinator.deps.funding = new RunFundingService(h.repo, resourceFundingAccounting(h.repo), async () => [
       { id: "test/agent", source: "configured", inputUsdPerMTok: 1, outputUsdPerMTok: 1 },
     ]);
-    h.coordinator.deps.agentLoop = {
-      goalBudget: {
-        reserve: (runId, request) => goals.reserveModelCall(runId, request),
-        settle: (runId, reservationId, attempts) => goals.settleModelCall(runId, reservationId, attempts),
-      },
-    };
     const goal = goals.create({
       workspaceId: space.workspaceId,
       chatId: "chat-goal",
@@ -1074,7 +1069,10 @@ describe("runToolLoop (S5 host integration)", () => {
       budget: { maxTokens: 20_000 },
     });
     const rejected = await goals.start(tooSmall.goalId, ["p1"]);
-    expect((await settle(h.repo, rejected.runId!)).error).toMatch(/token limit exhausted/);
+    await vi.waitFor(() => expect(h.repo.getRun(rejected.runId!)?.status).toBe("needs_input"));
+    expect(h.coordinator.suspensions.pending(rejected.runId!)).toMatchObject({
+      kind: "budget", request: { budget: { reason: "tokens", limit: 20_000, funding: { kind: "goal", ownerId: tooSmall.goalId } } },
+    });
     expect(h.modelCalls).toHaveLength(before);
   });
 
@@ -1105,7 +1103,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "read after owner",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     await pending;
     await h.coordinator.pause(run.runId);
@@ -1183,7 +1180,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "Select Pro plan",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     await settle(h.repo, run.runId);
     expect(h.pages.execute).toHaveBeenCalledOnce();
@@ -1267,7 +1263,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "Enter the bio",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     await settle(h.repo, run.runId);
     expect(h.pages.execute).toHaveBeenCalledOnce();
@@ -1308,7 +1303,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "Report the exact record title",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -1316,7 +1310,7 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.modelCalls).toHaveLength(1);
   });
 
-  it("rejects a site-suffixed browser title when the user requested the exact visible title", async () => {
+  it("rejects an unsupported quotation before accepting original observation evidence", async () => {
     const model = new MockModelClient().scriptToolSteps([
       {
         toolCalls: [
@@ -1324,7 +1318,7 @@ describe("runToolLoop (S5 host integration)", () => {
             toolCallId: "g1",
             toolName: "goal_program",
             input: {
-              code: 'submitResult("Record 15 — Alpha project — Records",[{pageId:"p1",revision:1,quote:"title: Record 15 — Alpha project — Records"}])',
+              code: 'submitResult("Record 15 — Alpha project — Records",[{pageId:"p1",revision:1,quote:"Record 15 — Unsupported project"}])',
               answerLabel: "",
             },
           },
@@ -1357,14 +1351,13 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "Open rec-15 and report its exact title",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "Record 15 — Alpha project" });
     expect(h.modelCalls).toHaveLength(2);
     expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain(
-      "browser title includes surrounding site text",
+      "quote not found in the cited snapshot",
     );
   });
 
@@ -1396,7 +1389,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "read",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
       maxModelCalls: 2,
     });
     const final = await settle(h.repo, run.runId);
@@ -1434,7 +1426,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "read",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     await vi.waitFor(() => expect(h.repo.listModelCalls(run.runId)).toHaveLength(1));
     expect(h.repo.listModelCalls(run.runId)[0]).toMatchObject({
@@ -1535,7 +1526,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "Find rec-14, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -1577,7 +1567,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "save",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).not.toBe("completed");
@@ -1649,7 +1638,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "open page 2",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -1726,7 +1714,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "find record 15",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     await settle(h.repo, run.runId);
     expect(h.pages.execute).toHaveBeenCalledOnce();
@@ -1743,7 +1730,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "read the page",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -1769,7 +1755,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "pick",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     for (let i = 0; i < 400 && h.repo.getRun(run.runId)!.status !== "needs_input"; i++)
       await new Promise((r) => setTimeout(r, 10));
@@ -1820,7 +1805,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "enter the code",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     for (let i = 0; i < 400 && h.repo.getRun(run.runId)!.status !== "needs_input"; i++)
       await new Promise((r) => setTimeout(r, 10));
@@ -1880,7 +1864,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "check out",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     for (let i = 0; i < 400 && h.repo.getRun(run.runId)!.status !== "needs_input"; i++)
       await new Promise((r) => setTimeout(r, 10));
@@ -1917,7 +1900,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "click the button",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -1943,7 +1925,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "Report the page title",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -1973,7 +1954,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "summarize the page",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -2016,7 +1996,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "summarize",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -2065,7 +2044,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "click save",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -2103,7 +2081,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "click save",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final2 = await settle(h2.repo, run2.runId);
     expect(final2.status).toBe("completed");
@@ -2147,7 +2124,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "click save",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     const transcript = new TranscriptStore(h.db).load(run.runId);
@@ -2265,7 +2241,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "click save",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -2369,7 +2344,6 @@ describe("runToolLoop (S5 host integration)", () => {
         goal: "open Details and read internal ref",
         pageIds: ["p1"],
         chatId: "chat-1",
-        engine: "agent-loop",
       });
       const final = await settle(h.repo, run.runId);
       expect(final.status === "completed").toBe(shouldReconcile);
@@ -2446,7 +2420,6 @@ describe("runToolLoop (S5 host integration)", () => {
         goal: "open the edit form",
         pageIds: ["p1"],
         chatId: "chat-1",
-        engine: "agent-loop",
       });
       const final = await settle(h.repo, run.runId);
       expect(final.status === "completed").toBe(shouldReconcile);
@@ -2518,7 +2491,6 @@ describe("runToolLoop (S5 host integration)", () => {
         goal: "open the edit form",
         pageIds: ["p1"],
         chatId: "chat-1",
-        engine: "agent-loop",
       });
       const final = await settle(h.repo, run.runId);
       expect(final.status === "completed").toBe(shouldSettle);
@@ -2614,7 +2586,6 @@ describe("runToolLoop (S5 host integration)", () => {
         goal: "create one matching record",
         pageIds: ["p1"],
         chatId: "chat-1",
-        engine: "agent-loop",
       });
       const final = await settle(h.repo, run.runId);
       expect(final.status === "completed").toBe(shouldSettle);
@@ -2693,7 +2664,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "open page 2",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -2750,7 +2720,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "click save",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).not.toBe("completed");
@@ -2822,7 +2791,6 @@ describe("runToolLoop (S5 host integration)", () => {
       goal: "go to the next page",
       pageIds: ["p1"],
       chatId: "chat-1",
-      engine: "agent-loop",
     });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");

@@ -36,8 +36,7 @@ export function fixtureEmptyOvernightAuthority(repo: Repo): void {
     approvals,
     journal: new DecisionJournal(repo.db),
     managedRules: () => [],
-    userRules: () => [],
-    localCeiling: () => "ask",
+    agentPolicy: () => ({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] }),
     audit: () => {},
   });
   const controller = new NativePermissionController({

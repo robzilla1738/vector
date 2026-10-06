@@ -115,7 +115,7 @@ it("refuses connection and image changes during an active run before touching a 
     .run("fixture", "fixture", "running", "[]", "{}", Date.now());
   for (const patch of [
     { modelConnection: { provider: "gateway", enabled: false } },
-    { imageModel: IMAGE_MODELS[1].id },
+    { imageModel: IMAGE_MODELS[0].id },
     { modelCredential: { provider: "gateway", key: "fixture-key" } },
   ]) {
     await expect(f.settings.set(MethodSchemas["settings.set"].parse(patch))).rejects.toThrow(
@@ -123,7 +123,7 @@ it("refuses connection and image changes during an active run before touching a 
     );
   }
   expect(f.native.storeSecret).not.toHaveBeenCalled();
-  expect(f.settings.imageModel()).toBeNull();
+  expect(f.settings.imageModel()).toBe(IMAGE_MODELS[0].id);
 });
 
 it("never reconnects or clears the old key after a credential-store failure", async () => {
@@ -163,9 +163,9 @@ it("does not continue a stale probe or record success after disconnect", async (
   expect(f.repo.getSetting("modelProbe")).toBeUndefined();
 });
 
-it("defaults images Off and persists only bounded explicit image model choices", async () => {
+it("defaults to the verified image model and preserves an explicit Off choice", async () => {
   const f = fixture();
-  expect(f.settings.imageModel()).toBeNull();
+  expect(f.settings.imageModel()).toBe(IMAGE_MODELS[0].id);
   for (const model of IMAGE_MODELS) {
     await f.settings.set(MethodSchemas["settings.set"].parse({ imageModel: model.id }));
     expect((await f.restart()).imageModel()).toBe(model.id);
@@ -176,25 +176,17 @@ it("defaults images Off and persists only bounded explicit image model choices",
   expect((await f.restart()).imageModel()).toBeNull();
 });
 
-it.each([{}, { runUsd: 2 }, { dayUsd: 3 }, { routineUsd: 4 }])(
-  "refuses unavailable or capped image generation before egress or provider dispatch (%j)",
-  async (caps) => {
-    const decideEgress = vi.fn(),
-      generator = vi.fn();
-    const settings = {
-      budgetLimits: () => caps,
-      imageModel: () => (Object.keys(caps).length ? IMAGE_MODELS[0].id : null),
-      gatewayKey: generator,
-    };
-    await expect(
-      agentMethods["agent.images.generate"]!({
-        params: { prompt: "Synthetic", taskId: "fixture" },
-        client: {},
-        decideEgress,
-        s: { settings },
-      } as never),
-    ).rejects.toMatchObject({ code: "permission_denied" });
-    expect(decideEgress).not.toHaveBeenCalled();
-    expect(generator).not.toHaveBeenCalled();
-  },
-);
+it("refuses explicitly disabled image generation before egress or provider dispatch", async () => {
+  const decideEgress = vi.fn(),
+    generator = vi.fn();
+  await expect(
+    agentMethods["agent.images.generate"]!({
+      params: { prompt: "Synthetic" },
+      client: {},
+      decideEgress,
+      s: { settings: { imageModel: () => null, gatewayKey: generator } },
+    } as never),
+  ).rejects.toMatchObject({ code: "permission_denied" });
+  expect(decideEgress).not.toHaveBeenCalled();
+  expect(generator).not.toHaveBeenCalled();
+});

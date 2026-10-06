@@ -4,10 +4,17 @@ const state = vi.hoisted(() => ({ sdkLoads: 0, gatewayLoads: 0, gatewayCreates: 
 vi.mock("ai", () => {
   state.sdkLoads++;
   return {
-    generateText: async () => ({ text: "answer", usage: { inputTokens: 1, outputTokens: 1 } }),
+    streamText: () => ({
+      fullStream: (async function* () {
+        yield { type: "text-delta", text: "answer" };
+      })(),
+      text: Promise.resolve("answer"),
+      usage: Promise.resolve({ inputTokens: 1, outputTokens: 1 }),
+      providerMetadata: Promise.resolve(undefined),
+    }),
   };
 });
-vi.mock("@ai-sdk/gateway", () => {
+vi.mock("../../apps/runtime/node_modules/@ai-sdk/gateway/dist/index.js", () => {
   state.gatewayLoads++;
   return {
     createGateway: () => {
@@ -33,7 +40,7 @@ it("keeps SDKs unloaded through construction and coalesces the first gateway cal
       { id: "test/model", contextTokens: 128_000, inputUsdPerMTok: 1, outputUsdPerMTok: 1 } as never,
     ],
   });
-  AgentImageTools.withGateway("fixture", {} as never, ledger, "google/imagen-4.0-fast-generate-001");
+  AgentImageTools.withGateway("fixture", {} as never, ledger, "openai/gpt-image-2");
   expect(state).toEqual({ sdkLoads: 0, gatewayLoads: 0, gatewayCreates: 0 });
   const [models, result] = await Promise.all([
     client.listModels(),

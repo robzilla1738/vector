@@ -1,3 +1,4 @@
+import { budgetLineage } from "../fixtures/budget-lineage.js";
 import { RuntimeShutdownAdmission } from "../../apps/runtime/src/services/runtime-shutdown.js";
 import {
   installBrowserAuthority,
@@ -106,8 +107,9 @@ async function fixture(
         runId: run.runId,
         taskId: "task",
         taskRevision: 4,
-        inMemory: true as const,
-        cookies: "empty" as const,
+        mode: "session" as const,
+        inMemory: false as const,
+        cookies: "profile" as const,
       },
     }),
     egressInstall: async ({ lease }: { lease: EgressLease }) => {
@@ -565,7 +567,7 @@ it("a real closed overnight window denies a standing native permission before sc
         return runId;
       },
     },
-    new BudgetsService(db, () => ({})),
+    new BudgetsService(db, () => ({}), budgetLineage(repo)),
     createClock(1, () => now),
   );
   const remove = installNightShift(
@@ -808,7 +810,7 @@ it("the actual shared model ledger waits for native retirement and budgets see i
   expect(repo.listModelCalls("run")).toMatchObject([
     { callId: "guardian-cost", role: "guardian", costUsd: 0.4 },
   ]);
-  const budgets = new BudgetsService(db, () => ({ runUsd: 0.3 }));
+  const budgets = new BudgetsService(db, () => ({ runUsd: 0.3 }), budgetLineage(repo));
   expect(budgets.spentRunUsd("run")).toBe(0.4);
   expect(() => budgets.assertWithin({ runId: "run" })).toThrow(/budget/i);
   expect(repo.listModelCalls("other-run")).toEqual([]);
@@ -894,7 +896,7 @@ it("window reconciliation retires a native receipt before cancelling the run or 
         return runId;
       },
     },
-    new BudgetsService(db, () => ({})),
+    new BudgetsService(db, () => ({}), budgetLineage(repo)),
     createClock(1, () => now),
   );
   const remove = installNightShift(
@@ -1283,8 +1285,7 @@ it("queued interruption cannot resurrect a terminal run or overwrite its newer c
     pages: {} as never,
     model: () => null,
     defaultModel: () => "fixture",
-    recoveryModel: () => undefined,
-    grants: [],
+
     recordModelCall: () => {},
   });
   const settle = f.controller.withAuthorityMutation(
@@ -1453,8 +1454,7 @@ it("one runtime shutdown awaits every installed native receipt before egress clo
     pages: {} as never,
     model: () => null,
     defaultModel: () => "fixture",
-    recoveryModel: () => undefined,
-    grants: [],
+
     recordModelCall: () => {},
   });
   const stages: string[] = [];

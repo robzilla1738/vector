@@ -19,10 +19,15 @@ import type { NativeBridge } from "../native.js";
 import { AgentEgressGuard, type EgressAuditEvidence, type ProtectedClass } from "./egress.js";
 
 interface RunIdentity {
+  privateTask?: boolean;
   taskId?: string;
   taskRevision: number;
   threadId: string;
 }
+function runSnapshot(run: RunIdentity | null | undefined) {
+  return run ? { ...run } : run;
+}
+
 interface PageIdentity {
   agentIsolation?: AgentPageIsolation;
   url: string;
@@ -41,6 +46,7 @@ interface BindingSource {
   retirement?: AbortController;
 }
 interface ActivePage {
+  mode: AgentPageIsolation["mode"];
   runId: string;
   pageId: string;
   url: string;
@@ -87,6 +93,7 @@ export class BrowserEgress {
   private readonly authorityVersions = new Map<string, number>();
   private readonly bindingSources = new Map<string, BindingSource>();
   private readonly pending = new Map<string, { active: ActivePage; controller: AbortController }>();
+  private readonly runModes = new Map<string, AgentPageIsolation["mode"]>();
   private readonly seen = new Map<string, number>();
   private readonly retirementDebt = new Map<string, EgressLease>();
   private readonly mutationBarriers = new Set<(runId: string) => boolean>();
@@ -113,12 +120,21 @@ export class BrowserEgress {
       );
   }
 
+  private retainRunMode(runId: string, run: RunIdentity): AgentPageIsolation["mode"] {
+    const mode = run.privateTask ? "private" : "session";
+    const original = this.runModes.get(runId);
+    if (original && original !== mode)
+      throw new AuxError("permission_denied", "The run’s original browser storage mode changed.");
+    this.runModes.set(runId, mode);
+    return mode;
+  }
+
   /** Private creation authority; source transfers its URL only, never page state. */
   async creationScope(
     runId: string,
     sourcePageId?: string,
   ): Promise<Omit<AgentPageCreate, "windowId" | "background">> {
-    const run = this.deps.run(runId);
+    const run = runSnapshot(this.deps.run(runId));
     if (this.closed || !run || !this.deps.native.createAgentPage)
       throw new AuxError(
         "capability_unsupported",
@@ -133,6 +149,7 @@ export class BrowserEgress {
     )
       throw new AuxError("permission_denied", "The original run ancestry is unavailable.");
     const identity = {
+      mode: this.retainRunMode(runId, run),
       profileId: this.deps.profileId,
       runId,
       taskId: run.taskId,
@@ -160,6 +177,7 @@ export class BrowserEgress {
       !currentRun ||
       currentRun.taskId !== run.taskId ||
       currentRun.taskRevision !== run.taskRevision ||
+      !!currentRun.privateTask !== !!run.privateTask ||
       after.url !== page.url ||
       after.documentEpoch !== page.documentEpoch ||
       ["detached", "crashed"].includes(after.viewStatus ?? "")
@@ -193,7 +211,7 @@ export class BrowserEgress {
       return this.ensure(runId, pageId, initialDestination);
     }
     const page = { ...this.deps.page(pageId) };
-    const run = this.deps.run(runId);
+    const run = runSnapshot(this.deps.run(runId));
     if (!run) throw new AuxError("permission_denied", "The original task is no longer active.");
     const source = page.url;
     this.bindingSources.set(pageId, {
@@ -221,7 +239,7 @@ export class BrowserEgress {
     initialDestination: string | undefined,
     authorityVersion: number,
   ): Promise<void> {
-    const run = this.deps.run(runId);
+    const run = runSnapshot(this.deps.run(runId));
     const page = { ...this.deps.page(pageId) };
     if (
       this.closed ||
@@ -233,6 +251,7 @@ export class BrowserEgress {
       page.viewStatus === "crashed"
     )
       throw new AuxError("permission_denied", "Browser transmission requires a current run-owned page.");
+    this.retainRunMode(runId, run);
     const existing = this.pages.get(pageId);
     if (existing && this.current(existing) && existing.lease.expiresAt > this.now()) return;
     this.revokePage(pageId);
@@ -263,11 +282,13 @@ export class BrowserEgress {
       isolation.runId !== runId ||
       isolation.taskId !== run.taskId ||
       isolation.taskRevision !== run.taskRevision ||
+      isolation.mode !== (run.privateTask ? "private" : "session") ||
+      (page.agentIsolation && page.agentIsolation.mode !== isolation.mode) ||
       (page.agentIsolation?.isolationId && page.agentIsolation.isolationId !== isolation.isolationId)
     )
       throw new AuxError(
         "permission_denied",
-        "This is not this run’s protected temporary tab. Open a fresh tab for the task; sign in there separately. Existing cookies cannot be copied.",
+        "This tab does not match the run’s original browser storage mode. Open a new Agent tab for this task.",
       );
     const after = this.deps.page(pageId),
       currentRun = this.deps.run(runId);
@@ -276,6 +297,7 @@ export class BrowserEgress {
       !currentRun ||
       currentRun.taskId !== run.taskId ||
       currentRun.taskRevision !== run.taskRevision ||
+      !!currentRun.privateTask !== !!run.privateTask ||
       after.url !== page.url ||
       after.documentEpoch !== page.documentEpoch ||
       after.controller === "human" ||
@@ -300,6 +322,7 @@ export class BrowserEgress {
       ...(initialDestination ? { initialDestination } : {}),
     });
     const active: ActivePage = {
+      mode: isolation.mode,
       runId,
       pageId,
       url: page.url,
@@ -404,7 +427,7 @@ export class BrowserEgress {
     const commandExpiry = original.acknowledgedExpiresAt;
     let effectExpiry = commandExpiry;
     const originalPage = { ...this.deps.page(pageId) };
-    const run = this.deps.run(runId);
+    const run = runSnapshot(this.deps.run(runId));
     if (!run) throw new AuxError("permission_denied", "The original navigation run is unavailable.");
     const version = this.authorityVersions.get(pageId) ?? 0;
     const retirement = new AbortController();
@@ -438,6 +461,7 @@ export class BrowserEgress {
         !currentRun ||
         currentRun.taskId !== run.taskId ||
         currentRun.taskRevision !== run.taskRevision ||
+        !!currentRun.privateTask !== !!run.privateTask ||
         this.bindingSources.get(pageId) !== binding ||
         (this.authorityVersions.get(pageId) ?? 0) !== version ||
         page.controller === "human" ||
@@ -485,7 +509,9 @@ export class BrowserEgress {
           isolation.isolationId !== originalLease.isolationId ||
           isolation.runId !== runId ||
           isolation.taskId !== run.taskId ||
-          isolation.taskRevision !== run.taskRevision
+          isolation.taskRevision !== run.taskRevision ||
+          isolation.mode !== original.mode ||
+          isolation.mode !== (run.privateTask ? "private" : "session")
         )
           throw new AuxError(
             "ref_stale",
@@ -516,6 +542,7 @@ export class BrowserEgress {
           expiresAt: effectExpiry,
         });
         replacement = {
+          mode: isolation.mode,
           runId,
           pageId,
           url: staged.url,
@@ -638,6 +665,8 @@ export class BrowserEgress {
       !!run &&
       run.taskId === active.lease.taskId &&
       run.taskRevision === active.lease.taskRevision &&
+      active.mode === (run.privateTask ? "private" : "session") &&
+      (!page.agentIsolation || page.agentIsolation.mode === active.mode) &&
       page.url === active.url &&
       page.documentEpoch === active.epoch
     );
@@ -731,7 +760,7 @@ export class BrowserEgress {
     const { scope } = input;
     const active = this.pages.get(scope.tabId);
     const binding = this.bindingSources.get(scope.tabId);
-    const run = this.deps.run(scope.runId);
+    const run = runSnapshot(this.deps.run(scope.runId));
     const page = { ...this.deps.page(scope.tabId) };
     const version = this.authorityVersions.get(scope.tabId) ?? 0;
     const reject = () => {
@@ -742,6 +771,7 @@ export class BrowserEgress {
       scope.profileId !== this.deps.profileId ||
       run.taskId !== scope.taskId ||
       run.taskRevision !== scope.taskRevision ||
+      this.runModes.get(scope.runId) !== (run.privateTask ? "private" : "session") ||
       !this.deps.ownsPage(scope.runId, scope.tabId)
     )
       reject();
@@ -749,6 +779,7 @@ export class BrowserEgress {
       if (
         !active ||
         active.runId !== scope.runId ||
+        active.mode !== (run?.privateTask ? "private" : "session") ||
         active.lease.leaseId !== input.lease.leaseId ||
         (
           [
@@ -781,6 +812,7 @@ export class BrowserEgress {
       binding.runId !== scope.runId ||
       binding.run.taskId !== scope.taskId ||
       binding.run.taskRevision !== scope.taskRevision ||
+      !!binding.run.privateTask !== !!run?.privateTask ||
       binding.version !== version ||
       binding.page.url !== page.url ||
       binding.page.documentEpoch !== page.documentEpoch
@@ -794,13 +826,15 @@ export class BrowserEgress {
         !currentRun ||
         currentRun.taskId !== scope.taskId ||
         currentRun.taskRevision !== scope.taskRevision ||
+        !!currentRun.privateTask !== !!run?.privateTask ||
         !this.deps.ownsPage(scope.runId, scope.tabId) ||
         currentPage.url !== page.url ||
         currentPage.documentEpoch !== page.documentEpoch ||
         currentPage.controller !== page.controller ||
         currentPage.controllerEpoch !== page.controllerEpoch ||
         ["detached", "crashed"].includes(currentPage.viewStatus ?? "") ||
-        currentPage.agentIsolation?.isolationId !== page.agentIsolation?.isolationId
+        currentPage.agentIsolation?.isolationId !== page.agentIsolation?.isolationId ||
+        currentPage.agentIsolation?.mode !== page.agentIsolation?.mode
       )
         reject();
       const current = this.pages.get(scope.tabId);
@@ -833,7 +867,8 @@ export class BrowserEgress {
         native.isolation?.isolationId !== scope.isolationId ||
         native.isolation.runId !== scope.runId ||
         native.isolation.taskId !== scope.taskId ||
-        native.isolation.taskRevision !== scope.taskRevision
+        native.isolation.taskRevision !== scope.taskRevision ||
+        native.isolation.mode !== (run?.privateTask ? "private" : "session")
       )
         reject();
     };

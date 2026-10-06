@@ -1,3 +1,4 @@
+import { ProviderSignIn } from "./ProviderSignIn";
 import { staticFieldProps } from "../../ui/class-props";
 import { staticRowProps, staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
@@ -13,7 +14,7 @@ import {
 } from "./models-command-controls";
 import "./ModelProbeStatus.css";
 import {
-  DEFAULT_PLANNER_MODEL_ID,
+  DEFAULT_AGENT_MODEL_ROUTES,
   MODEL_REGISTRY,
   agentModelRoute,
   modelPickerEntries,
@@ -158,7 +159,7 @@ function plannerModelSelection(settings: Record<string, unknown>, provider: Mode
   return typeof settings.plannerModel === "string"
     ? settings.plannerModel
     : provider === "gateway"
-      ? DEFAULT_PLANNER_MODEL_ID
+      ? DEFAULT_AGENT_MODEL_ROUTES.standard.modelId
       : "";
 }
 
@@ -538,9 +539,9 @@ export function ModelsSettings({
     Record<AgentModelCategory, AgentModelRoute>
   >;
   const contributorSelected =
-    plannerModel === DEFAULT_PLANNER_MODEL_ID ||
-    modelDraft.trim() === DEFAULT_PLANNER_MODEL_ID ||
-    Object.values(roleRoutes).some((route) => route.modelId === DEFAULT_PLANNER_MODEL_ID);
+    plannerModel === "meta/muse-spark-1.3-contributor" ||
+    modelDraft.trim() === "meta/muse-spark-1.3-contributor" ||
+    Object.values(roleRoutes).some((route) => route.modelId === "meta/muse-spark-1.3-contributor");
   const turnValue = (settings.maxModelCalls as number) ?? 0;
   const turnOptions = TURN_OPTIONS.includes(turnValue) ? TURN_OPTIONS : [turnValue, ...TURN_OPTIONS];
   const hasKey =
@@ -578,6 +579,7 @@ export function ModelsSettings({
         onSave={set}
         onEdit={editConnection}
       />
+      {active && settings.localModelsOnly !== true && <ProviderSignIn onConnected={() => set({})} />}
       <IndexedField
         label="Model provider"
         hint="Switching providers changes where task context and screenshots are sent. Each provider keeps its own key and model choices; there is no automatic fallback to another provider."

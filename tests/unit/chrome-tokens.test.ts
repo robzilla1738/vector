@@ -305,15 +305,16 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   });
 
   it("draws the search suggestion enter mark as the circular accent send control and leaves other hints as text keys", () => {
-    expect(commandBar).toMatch(
-      /trailing=\{\s*s\.hint === "↵"\s*\?\s*\(\s*<span className="cb-go" aria-hidden="true">/,
+    const results = readFileSync("apps/shell/src/components/omnibox/results.tsx", "utf8");
+    expect(results).toMatch(
+      /trailing=\{\s*suggestion\.hint === "↵"\s*\?\s*\(\s*<span className="cb-go" aria-hidden="true">/,
     );
     expect(commandBar).toContain('hint: "Ask"');
     expect(commandTabRows).toContain('hint: "Switch to tab"');
     expectCss(styles).toContain(
       ".cb-go { display: grid; place-items: center; width: var(--control-h); height: var(--control-h); flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }",
     );
-    expect(commandBar).toContain("{shellIconSend}");
+    expect(results).toContain("{shellIconSend}");
     expect(commandBar).not.toContain("shellIconEnter");
     expectCss(styles).toContain(
       ".composer-send-actions > .icon-btn,\n.cb-send { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }",
@@ -344,20 +345,19 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   });
 
   it("keeps settings navigation one quiet selected surface and groups fields into rounded cards", () => {
-    const flat = styleIndex(
-      ".settings-nav button:hover, .settings-nav button[aria-current] { background: var(--bg-active);",
+    const settingsCss = readFileSync("apps/shell/src/settings/shell.css", "utf8");
+    expect(normalizedCss(settingsCss)).toContain(
+      normalizedCss(
+        '.settings-nav button[aria-current="page"] { background: var(--bg-active); color: var(--ink-0); }',
+      ),
     );
-    const selected = styleIndex(
-      '.settings-nav button[aria-current="page"] { background: var(--surface-primary); color: var(--ink-0); box-shadow: none; }',
+    expectCss(settingsCss).toContain(
+      ".settings-nav button[data-category] { display: flex; align-items: center; gap: 10px;",
     );
-    expect(selected).toBeGreaterThan(flat);
-    expect(selected).toBeGreaterThan(superellipse);
-    expectCss(styles).toContain(
-      "settings-nav button {\n  display: flex;\n  align-items: center;\n  gap: var(--space-2-5);",
-    );
-    expectCss(styles).toContain("border-radius: var(--r-control);\n  corner-shape: round;");
-    expectCss(styles).toContain(
-      ".settings-content .drawer-section + .field,\n.settings-content section > .field:first-child { border-start-start-radius: var(--r-xl); border-start-end-radius: var(--r-xl); }",
+    expectCss(settingsCss).toContain("border-radius: 10px;");
+    expectCss(settingsCss).not.toContain("box-shadow:");
+    expectCss(settingsCss).toContain(
+      ".settings-content .drawer-section + .field.ui-setting, .settings-content section > .field.ui-setting:first-child { border-start-start-radius: 14px; border-start-end-radius: 14px; }",
     );
     expectCss(sharedUi).toContain(
       ".ui-settings-group > div { background:var(--surface-secondary); border-radius:var(--r-xl); overflow:hidden; }",

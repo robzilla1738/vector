@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_PLANNER_MODEL_ID } from "@aux/contracts/model-registry";
+const TEST_MODEL_ID = "meta/muse-spark-1.3-contributor";
 import { modelCallCost, usageFields } from "../../apps/runtime/src/agent/model-client.js";
 import { GatewayModelClient } from "../../apps/runtime/src/agent/gateway-client.js";
 import { createFixture } from "../support/fixture.mjs";
@@ -17,7 +17,7 @@ describe("actual overnight pricing transport", () => {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            model: DEFAULT_PLANNER_MODEL_ID,
+            model: TEST_MODEL_ID,
             messages: [{ role: "user", content: "Synthetic local fixture" }],
           }),
         });
@@ -31,15 +31,15 @@ describe("actual overnight pricing transport", () => {
       const { generateText } = await import(runtimeRequire.resolve("ai"));
       const provider = createOpenAI({ apiKey: "synthetic-loopback-only", baseURL: model.endpoint });
       const result = await generateText({
-        model: provider.chat(DEFAULT_PLANNER_MODEL_ID),
+        model: provider.chat(TEST_MODEL_ID),
         prompt: "Synthetic local fixture",
         maxRetries: 0,
       });
       expect(result.text).toBe("Synthetic priced reply");
       const usage = usageFields(result.usage);
       expect(usage).toMatchObject({ inputTokens: 200_000, outputTokens: 200_000 });
-      expect(modelCallCost(DEFAULT_PLANNER_MODEL_ID, usage)).toEqual({ costUsd: 0.06, costEstimated: true });
-      expect(model.calls.at(-1).model).toBe(DEFAULT_PLANNER_MODEL_ID);
+      expect(modelCallCost(TEST_MODEL_ID, usage)).toEqual({ costUsd: 0.06, costEstimated: true });
+      expect(model.calls.at(-1).model).toBe(TEST_MODEL_ID);
       for (const usage of [
         { prompt_tokens: -1, completion_tokens: 1, total_tokens: 0 },
         { prompt_tokens: 1, completion_tokens: 1, total_tokens: 3 },
@@ -65,7 +65,7 @@ describe("actual overnight pricing transport", () => {
       const { streamText } = await import(runtimeRequire.resolve("ai"));
       const provider = createOpenAI({ apiKey: "synthetic-loopback-only", baseURL: model.endpoint });
       const result = streamText({
-        model: provider.chat(DEFAULT_PLANNER_MODEL_ID),
+        model: provider.chat(TEST_MODEL_ID),
         prompt: "Synthetic held reply",
         maxRetries: 0,
         abortSignal: controller.signal,
@@ -105,7 +105,7 @@ describe("actual overnight pricing transport", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          model: DEFAULT_PLANNER_MODEL_ID,
+          model: TEST_MODEL_ID,
           stream: true,
           messages: [{ role: "user", content: "Synthetic held reply" }],
         }),
@@ -148,7 +148,7 @@ describe("actual overnight pricing transport", () => {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            model: DEFAULT_PLANNER_MODEL_ID,
+            model: TEST_MODEL_ID,
             stream: true,
             messages: [{ role: "user", content: "Synthetic local stream" }],
           }),
@@ -184,7 +184,7 @@ describe("actual overnight pricing transport", () => {
       const visible: string[] = [];
       let settled = false;
       const step = client.toolCallStep({
-        modelId: DEFAULT_PLANNER_MODEL_ID,
+        modelId: TEST_MODEL_ID,
         system: "Synthetic local stream",
         messages: [{ role: "user", content: "Return held text" }],
         tools: {},
@@ -236,7 +236,7 @@ describe("actual overnight pricing transport", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          model: DEFAULT_PLANNER_MODEL_ID,
+          model: TEST_MODEL_ID,
           stream: true,
           messages: [{ role: "user", content: "Synthetic disconnect" }],
         }),

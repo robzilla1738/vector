@@ -80,8 +80,9 @@ it("never reuses a same-URL turn tab from an older run or task revision", async 
           runId: agentScope!.runId,
           taskId: agentScope!.taskId,
           taskRevision: agentScope!.taskRevision,
-          inMemory: true,
-          cookies: "empty",
+          ...(agentScope!.mode === "private"
+            ? { mode: "private", inMemory: true, cookies: "empty" }
+            : { mode: "session", inMemory: false, cookies: "profile" }),
         },
       } as PageTarget;
       pages.set(page.pageId, page);
@@ -98,12 +99,27 @@ it("never reuses a same-URL turn tab from an older run or task revision", async 
       turnId: "turn",
       url: "https://source.test/",
       skipIfActive: true,
-      agentScope: { profileId: "profile", runId: "first", ancestry: ["first"], taskId: "t", taskRevision: 1 },
+      agentScope: {
+        mode: "session" as const,
+        profileId: "profile",
+        runId: "first",
+        ancestry: ["first"],
+        taskId: "t",
+        taskRevision: 1,
+      },
     };
     const first = await turns.open(input);
     expect((await turns.open(input)).pageId).toBe(first.pageId);
     const next = await turns.open({ ...input, agentScope: { ...input.agentScope, runId: "second" } });
     expect(next.pageId).not.toBe(first.pageId);
+    const privatePage = await turns.open({
+      ...input,
+      agentScope: { ...input.agentScope, mode: "private" as const },
+    });
+    expect(privatePage.pageId).not.toBe(first.pageId);
+    first.agentIsolation = { ...first.agentIsolation!, mode: "private", inMemory: true, cookies: "empty" };
+    expect(turns.owns("c", "t", first.pageId)).toBe(false);
+
     expect(
       (await turns.open({ ...input, agentScope: { ...input.agentScope, taskRevision: 2 } })).pageId,
     ).not.toBe(first.pageId);

@@ -63,7 +63,7 @@ describe("runWebmcp", () => {
     const asked = await call("add_write");
     expect(asked.status).toBe("ask");
     expect(calls).toHaveLength(1);
-    if (asked.status !== "ask") throw new Error("expected an approval");
+    if (asked.status !== "ask" || !asked.approvalId) throw new Error("expected a durable approval");
     approvals.decideLocal({ decision: "accept", approvalId: asked.approvalId }, asked.turnId);
 
     const ran = await call("add_write");

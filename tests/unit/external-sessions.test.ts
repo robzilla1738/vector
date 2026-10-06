@@ -96,10 +96,9 @@ it("gives one scoped connection one session run, then a new run after that one e
       },
       client,
     ),
-  ).rejects.toMatchObject({ code: "permission_denied" });
+  ).rejects.toMatchObject({ code: "needs_input" });
   expect(repo.listSteps(runId).map((step) => [step.op, step.outcome?.status])).toEqual([
     ["pages.execute", "ok"],
-    ["agent.web.fetch", "failed"],
   ]);
   expect(JSON.stringify(repo.listSteps(runId))).not.toContain("https://example.com/fixture");
   const anchored = decisions(repo).filter((row) => row.request.runId === runId);
@@ -114,7 +113,7 @@ it("gives one scoped connection one session run, then a new run after that one e
   ).toMatchObject({ approval_id: approvalId });
 
   sessions.sweepIdle(Date.now());
-  expect(repo.getRun(runId)?.status).toBe("running");
+  expect(repo.getRun(runId)?.status).toBe("needs_input");
   sessions.sweepIdle(Date.now() + EXTERNAL_SESSION_IDLE_MS);
   expect(repo.getRun(runId)).toMatchObject({ status: "completed", statusMessage: "Session idle" });
 
@@ -291,9 +290,11 @@ function sessionInvoker(
     isAttached: () => true,
   };
   const settings = {
-    effectGrants: () => [],
-    originPolicies: () => [],
-    safetyCeiling: () => "ask" as const,
+    agentPolicy: () => ({
+      agentMode: "ask",
+      agentPolicyRevision: 0,
+      agentPolicies: [{ category: "read", access: "ask" }],
+    }),
   };
   return makeInvoker({
     turnMentions: fixtureTurnMentions((pageId) => pages.get(pageId)),

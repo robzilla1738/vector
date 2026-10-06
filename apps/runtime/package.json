@@ -26,6 +26,7 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
+    "jose": "6.2.12",
     "@ai-sdk/anthropic": "4.0.48",
     "@ai-sdk/gateway": "4.0.75",
     "@ai-sdk/google": "4.0.64",

@@ -5,6 +5,9 @@ import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import {
   EventBus,
+  ApprovalStore,
+  DecisionJournal,
+  SafetyDispatchGate,
   NullNativeBridge,
   PageService,
   Repo,
@@ -131,7 +134,7 @@ function fakeChromium() {
   };
 }
 
-function harness(grants: string[] = ["effect:read"]) {
+function harness(blockDialogs = true) {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
   const chromium = fakeChromium();
@@ -148,7 +151,17 @@ function harness(grants: string[] = ["effect:read"]) {
     native,
     drivers: () => drivers,
     responses,
-    grants,
+    safetyGate: new SafetyDispatchGate({
+      approvals: new ApprovalStore(repo.db),
+      journal: new DecisionJournal(repo.db),
+      managedRules: () => [],
+      agentPolicy: () => ({
+        agentMode: "auto",
+        agentPolicyRevision: 0,
+        agentPolicies: blockDialogs ? [{ category: "dialog", site: "https://a.test", access: "block" }] : [],
+      }),
+      audit: () => {},
+    }),
   });
   return { pages, repo, events, responses, chromium, native, turnMentions: pagesTurnMentions };
 }
@@ -185,7 +198,7 @@ describe("H2-C7 pages inspect RPCs", () => {
   });
 
   it("waitFor and dialog dispatch real program steps", async () => {
-    const { pages } = harness(["effect:read", "effect:write"]);
+    const { pages } = harness(false);
     const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
     const waited = await pages.waitFor(page.pageId, { kind: "textVisible", text: "Save" });
     expect(waited).toEqual({ ok: true, timedOut: false, detail: "textVisible", status: "completed" });
@@ -196,7 +209,7 @@ describe("H2-C7 pages inspect RPCs", () => {
     expect(accepted.action).toBe("accept");
   });
 
-  it("can inspect dialogs with read authority but cannot accept one", async () => {
+  it("can inspect dialogs while an exact site policy blocks accepting one", async () => {
     const { pages } = harness();
     const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
     expect((await pages.dialog(page.pageId, "list")).dialogs).toHaveLength(1);

@@ -1,14 +1,30 @@
+import { DEFAULT_IMAGE_MODEL_ID } from "@aux/contracts/model-registry";
 import { AuxError, ImageModelSchema, type ImageModel } from "@aux/contracts";
 import type { ArtifactStore } from "../services/artifacts.js";
 import { SpendLedger } from "../store/spend-ledger.js";
 
-/** Compatibility default for injected fixtures; production requires an explicit owner selection. */
-export const AGENT_IMAGE_MODEL = "google/imagen-4.0-fast-generate-001";
-const IMAGE_RESERVATION_USD = 1;
+/** The catalog-backed default; explicit Settings null still disables generation. */
+export const AGENT_IMAGE_MODEL = DEFAULT_IMAGE_MODEL_ID;
+export const IMAGE_RESERVATION_USD = 1;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 export type ImageGenerator = (
   prompt: string,
+  dispatch: { signal: AbortSignal; beforeDispatch: () => Promise<void> },
 ) => Promise<{ data: Uint8Array; mediaType: string; costUsd?: number }>;
+
+export interface ImageGenerationContext {
+  runId: string;
+  taskId?: string;
+  signal: AbortSignal;
+  checkOwner: () => void | Promise<void>;
+  recordReceipt: (receipt: {
+    dispatched: boolean;
+    costUsd: number;
+    costEstimated: boolean;
+    durationMs: number;
+    error?: string;
+  }) => Promise<void>;
+}
 
 export class AgentImageTools {
   constructor(
@@ -36,18 +52,19 @@ export class AgentImageTools {
     return new AgentImageTools(
       artifacts,
       ledger,
-      async (prompt) => {
+      async (prompt, dispatch) => {
         provider ??= Promise.all([import("ai"), import("@ai-sdk/gateway")]).then(([sdk, gateway]) => ({
           generateImage: sdk.generateImage,
           gateway: gateway.createGateway({ apiKey }),
         }));
         const { generateImage, gateway } = await provider;
+        await dispatch.beforeDispatch();
         const result = await generateImage({
           model: gateway.image(modelId),
           prompt,
           n: 1,
           maxRetries: 0,
-          abortSignal: AbortSignal.timeout(90_000),
+          abortSignal: dispatch.signal,
         });
         const metadata = result.providerMetadata as Record<string, { cost?: unknown }> | undefined;
         const rawCost = metadata?.gateway?.cost;
@@ -63,13 +80,47 @@ export class AgentImageTools {
     );
   }
 
-  async generate(prompt: string, taskId?: string) {
-    if (!prompt.trim() || prompt.length > 4000)
-      throw new AuxError("invalid_params", "Image prompt must be 1–4000 characters.");
-    const reservation = this.ledger.reserve("aux-image", this.modelId, IMAGE_RESERVATION_USD);
-    let settled = false;
+  async generate(prompt: string, context: ImageGenerationContext) {
+    let reservation: string;
     try {
-      const image = await this.generator(prompt);
+      if (!prompt.trim() || prompt.length > 4000)
+        throw new AuxError("invalid_params", "Image prompt must be 1–4000 characters.");
+      await context.checkOwner();
+      context.signal.throwIfAborted();
+      reservation = this.ledger.reserve(context.runId, this.modelId, IMAGE_RESERVATION_USD);
+    } catch (error) {
+      await context.recordReceipt({
+        dispatched: false,
+        costUsd: 0,
+        costEstimated: false,
+        durationMs: 0,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+    const startedAt = Date.now();
+    let dispatched = false;
+    let actualCost: number | undefined;
+    let failure: string | undefined;
+    try {
+      const image = await this.generator(prompt, {
+        signal: context.signal,
+        beforeDispatch: async () => {
+          await context.checkOwner();
+          context.signal.throwIfAborted();
+          if (dispatched) throw new AuxError("conflict", "An image request cannot be dispatched twice.");
+          dispatched = true;
+        },
+      });
+      if (!dispatched)
+        throw new AuxError("conflict", "The image provider did not establish a dispatch receipt.");
+      if (image.costUsd !== undefined) {
+        if (!Number.isFinite(image.costUsd) || image.costUsd < 0)
+          throw new AuxError("model_output_invalid", "The image provider returned invalid cost metadata.");
+        actualCost = image.costUsd;
+      }
+      await context.checkOwner();
+      context.signal.throwIfAborted();
       if (
         !image.data.length ||
         image.data.length > MAX_IMAGE_BYTES ||
@@ -95,22 +146,13 @@ export class AgentImageTools {
               Buffer.from(bytes.subarray(8, 12)).toString("ascii") === "WEBP";
       if (!validHeader)
         throw new AuxError("model_output_invalid", "Image provider returned invalid image bytes.");
-      if (image.costUsd !== undefined && image.costUsd > IMAGE_RESERVATION_USD) {
-        this.ledger.settle(reservation, image.costUsd);
-        settled = true;
-        throw new AuxError(
-          "conflict",
-          "Image provider cost exceeded the reserved limit; the image was not saved.",
-        );
-      }
       const artifact = this.artifacts.save({
         label: "agent-generated-image",
         buffer: Buffer.from(image.data),
         mediaType: image.mediaType,
-        ...(taskId ? { subdir: `task-${taskId}` } : {}),
+        runId: context.runId,
+        ...(context.taskId ? { subdir: `task-${context.taskId}` } : {}),
       });
-      this.ledger.settle(reservation, image.costUsd);
-      settled = true;
       return {
         artifactId: artifact.artifactId,
         mediaType: image.mediaType,
@@ -118,9 +160,22 @@ export class AgentImageTools {
         modelId: this.modelId,
       };
     } catch (error) {
-      // Failed/unknown provider usage retains the full reservation, matching model calls.
-      if (!settled) this.ledger.settle(reservation);
+      failure = error instanceof Error ? error.message : String(error);
+      if (context.signal.aborted)
+        throw new AuxError("cancelled", "The original image request was cancelled.");
       throw error;
+    } finally {
+      // Only a proved pre-dispatch refusal is free; unknown attempts retain the estimate.
+      const costUsd = dispatched ? (actualCost ?? IMAGE_RESERVATION_USD) : 0;
+      const costEstimated = dispatched && actualCost === undefined;
+      this.ledger.settle(reservation, costUsd);
+      await context.recordReceipt({
+        dispatched,
+        costUsd,
+        costEstimated,
+        durationMs: Date.now() - startedAt,
+        ...(failure ? { error: failure } : {}),
+      });
     }
   }
 }

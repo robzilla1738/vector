@@ -498,8 +498,18 @@ export class Repo {
   }
 
   // ---- runs / steps / results ----
+  conversationPrivateTask(chatId: string): boolean | undefined {
+    const row = this.q("SELECT private_task FROM conversations WHERE chat_id=?").get(chatId) as
+      { private_task: number } | undefined;
+    return row ? row.private_task === 1 : undefined;
+  }
+
   saveRun(r: Run) {
     this.transaction(() => {
+      const savedPrivateTask = this.conversationPrivateTask(r.config?.chatId ?? r.runId);
+      if (savedPrivateTask === false && r.config?.privateTask === true)
+        throw new AuxError("conflict", "This conversation’s privacy mode is immutable.");
+      r.config = { ...r.config, privateTask: savedPrivateTask ?? r.config?.privateTask ?? false };
       this.q(
         `INSERT INTO runs(run_id,goal,status,page_ids,set_id,config,status_message,result,error,failure,started_at,ended_at,created_at)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
@@ -537,7 +547,7 @@ export class Repo {
         }
       }
       this.q(
-        `INSERT INTO conversations(chat_id,title,archived,created_at,updated_at) VALUES(?,?,0,?,?)
+        `INSERT INTO conversations(chat_id,title,archived,created_at,updated_at,private_task) VALUES(?,?,0,?,?,?)
         ON CONFLICT(chat_id) DO UPDATE SET title=CASE WHEN ? THEN excluded.title ELSE conversations.title END,
           updated_at=max(conversations.updated_at,excluded.updated_at)`,
       ).run(
@@ -545,6 +555,7 @@ export class Repo {
         this.protectField("conversations", chatId, "title", title),
         r.createdAt,
         r.createdAt,
+        r.config.privateTask ? 1 : 0,
         r.config?.taskId ? 1 : 0,
       );
     });
@@ -822,6 +833,7 @@ export class Repo {
               taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id),
               title: this.revealField("conversations", row.chat_id, "title", row.title)!,
               archived: !!row.archived,
+              privateTask: row.private_task === 1,
               createdAt: row.created_at,
               updatedAt: row.updated_at,
               turnCount: row.turn_count,
@@ -905,6 +917,7 @@ export class Repo {
           taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id),
           title: this.revealField("conversations", chatId, "title", row.title)!,
           archived: !!row.archived,
+          privateTask: row.private_task === 1,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           turnCount: turns.length,
@@ -1254,6 +1267,50 @@ export class Repo {
       c.error ?? null,
       c.createdAt,
     );
+  }
+  discardModelCallReservation(callId: string, runId: string): void {
+    const removed = this.q(
+      `DELETE FROM model_calls WHERE call_id=? AND run_id=? AND duration_ms=0 AND cost_estimated=1`,
+    ).run(callId, runId);
+    if (removed.changes !== 1)
+      throw new AuxError("conflict", "The unattempted model-call reservation changed.");
+  }
+  /** Settle an original generation reservation without appending a second charged call. */
+  settleModelCall(
+    callId: string,
+    runId: string,
+    receipt: {
+      costUsd?: number;
+      costEstimated: boolean;
+      durationMs: number;
+      error?: string;
+      inputTokens?: number;
+      outputTokens?: number;
+    },
+  ): void {
+    if (
+      (receipt.costUsd === undefined
+        ? !receipt.costEstimated
+        : !Number.isFinite(receipt.costUsd) || receipt.costUsd < 0) ||
+      !Number.isFinite(receipt.durationMs) ||
+      receipt.durationMs < 0
+    )
+      throw new AuxError("invalid_params", "Invalid model-call spend receipt.");
+    const updated = this.q(
+      `UPDATE model_calls SET cost_usd=?,cost_estimated=?,duration_ms=?,error=?,input_tokens=COALESCE(?,input_tokens),output_tokens=COALESCE(?,output_tokens)
+      WHERE call_id=? AND run_id=?`,
+    ).run(
+      receipt.costUsd ?? null,
+      receipt.costEstimated ? 1 : 0,
+      receipt.durationMs,
+      receipt.error ?? null,
+      receipt.inputTokens ?? null,
+      receipt.outputTokens ?? null,
+      callId,
+      runId,
+    );
+    if (updated.changes !== 1)
+      throw new AuxError("conflict", "The original model-call reservation is unavailable.");
   }
   listModelCalls(runId: string): ModelCall[] {
     return (this.q("SELECT * FROM model_calls WHERE run_id=? ORDER BY created_at").all(runId) as any[]).map(

@@ -61,6 +61,7 @@ export function Dialog({
       role={kind}
       className={`aux-native-dialog ${className}`}
       aria-label={label}
+      aria-modal="true"
       aria-describedby={descriptionId}
       onKeyDown={(event) => {
         if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing) return;

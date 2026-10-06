@@ -1,3 +1,6 @@
+import { resourceFundingAccounting } from "./resource-accounting.js";
+import { lineageRuns } from "./run-lineage.js";
+import { runRoot } from "./run-lineage.js";
 import { withRunAuthorityMutation } from "./overnight-authority.js";
 import { randomUUID } from "node:crypto";
 import {
@@ -38,10 +41,6 @@ export class SubagentService {
             console.error("[aux-runtime] subagent retirement failed", error),
           );
       }
-      if (event.type === EventTypes.ModelCall && event.runId)
-        void this.enforceBudget(event.runId).catch((error) =>
-          console.error("[aux-runtime] subagent budget retirement failed", error),
-        );
     });
   }
 
@@ -147,7 +146,7 @@ export class SubagentService {
       ...input,
       groupId: randomUUID(),
       workspaceId,
-      deadlineAt: now + input.timeBudgetMs,
+      deadlineAt: input.timeBudgetMs === 0 ? 0 : now + input.timeBudgetMs,
       createdAt: now,
       state: "active",
     });
@@ -165,9 +164,10 @@ export class SubagentService {
 
   private usage(agent: Subagent) {
     if (!agent.runId) return { tokens: agent.tokenAllocation, cost: agent.costAllocationUsd };
-    const calls = this.repo.listModelCalls(agent.runId);
+    const calls = lineageRuns(this.repo, agent.runId).flatMap((id) => this.repo.listModelCalls(id));
     const tokens = calls.reduce((sum, call) => sum + (call.inputTokens ?? 0) + (call.outputTokens ?? 0), 0);
-    const cost = calls.reduce((sum, call) => sum + (call.costUsd ?? 0), 0);
+    const resource = resourceFundingAccounting(this.repo).usage(lineageRuns(this.repo, agent.runId), []);
+    const cost = calls.reduce((sum, call) => sum + (call.costUsd ?? 0), 0) + resource.costUsd;
     // Unknown usage is charged at the full reservation. Active children reserve
     // their allocation, including unused future calls.
     return {
@@ -177,7 +177,7 @@ export class SubagentService {
           ? Math.max(tokens, agent.tokenAllocation)
           : tokens,
       cost:
-        ACTIVE.has(agent.state) || calls.some((call) => call.costUsd === undefined)
+        ACTIVE.has(agent.state) || resource.opaque || calls.some((call) => call.costUsd === undefined)
           ? Math.max(cost, agent.costAllocationUsd)
           : cost,
     };
@@ -272,37 +272,10 @@ export class SubagentService {
     );
   }
 
-  private async enforceBudget(runId: string) {
-    const row = this.repo.db.prepare("SELECT group_id FROM subagents WHERE run_id=?").get(runId) as
-      { group_id: string } | undefined;
-    if (!row) return;
-    const view = this.view(row.group_id);
-    const current = view.agents.find((agent) => agent.runId === runId);
-    if (current && ACTIVE.has(current.state)) {
-      const calls = this.repo.listModelCalls(runId);
-      const actualTokens = calls.reduce(
-        (sum, call) => sum + (call.inputTokens ?? current.tokenAllocation) + (call.outputTokens ?? 0),
-        0,
-      );
-      const actualCost = calls.reduce((sum, call) => sum + (call.costUsd ?? current.costAllocationUsd), 0);
-      if (actualTokens > current.tokenAllocation || actualCost > current.costAllocationUsd) {
-        await this.runs.cancel(runId);
-        return;
-      }
-    }
-    if (
-      view.usedTokens + view.reservedTokens <= view.group.tokenBudget &&
-      view.usedCostUsd + view.reservedCostUsd <= view.group.costBudgetUsd &&
-      Date.now() < view.group.deadlineAt
-    )
-      return;
-    await this.closeGroup(row.group_id);
-  }
-
   async spawn(raw: unknown): Promise<Subagent> {
     const input = SubagentSpawnParams.parse(raw);
     const group = this.group(input.groupId);
-    if (group.state !== "active" || Date.now() >= group.deadlineAt)
+    if (group.state !== "active" || (group.deadlineAt > 0 && Date.now() >= group.deadlineAt))
       throw new AuxError("conflict", "The subagent group has expired or closed.");
     const parent = this.repo.getRun(group.parentRunId);
     if (!parent || !RUN_ACTIVE.has(parent.status))
@@ -311,6 +284,12 @@ export class SubagentService {
       throw new AuxError("invalid_params", "Choose distinct pages for a subagent.");
     if (input.pageIds.some((pageId) => !parent.pageIds.includes(pageId)))
       throw new AuxError("permission_denied", "A subagent cannot expand its parent's page scope.");
+    const rootId = runRoot(this.repo, parent.runId, true);
+    if (this.runs.coordinator.suspensions.pending(rootId)?.kind === "budget")
+      throw new AuxError(
+        "conflict",
+        "Continue the parent's current budget request before spawning an agent.",
+      );
     const sourceRunId = input.sourceRunId ?? group.parentRunId;
     if (
       sourceRunId !== group.parentRunId &&
@@ -328,20 +307,20 @@ export class SubagentService {
     try {
       if (
         this.group(group.groupId).state !== "active" ||
-        Date.now() >= group.deadlineAt ||
+        (group.deadlineAt > 0 && Date.now() >= group.deadlineAt) ||
         !RUN_ACTIVE.has(this.repo.getRun(group.parentRunId)?.status ?? "missing")
       )
         throw new AuxError("conflict", "The parent or subagent group changed before reservation.");
-      const activeCount = (
-        this.repo.db
-          .prepare("SELECT count(*) AS n FROM subagents WHERE state IN ('starting','running')")
-          .get() as { n: number }
-      ).n;
-      if (activeCount >= 8) throw new AuxError("conflict", "At most eight subagents can run at once.");
+      if (this.runs.coordinator.suspensions.pending(rootId)?.kind === "budget")
+        throw new AuxError("conflict", "The parent budget paused before this agent's reservation.");
       const view = this.view(group.groupId);
       if (
-        view.usedTokens + view.reservedTokens + input.tokenAllocation > group.tokenBudget ||
-        view.usedCostUsd + view.reservedCostUsd + input.costAllocationUsd > group.costBudgetUsd
+        (group.tokenBudget > 0 &&
+          (input.tokenAllocation === 0 ||
+            view.usedTokens + view.reservedTokens + input.tokenAllocation > group.tokenBudget)) ||
+        (group.costBudgetUsd > 0 &&
+          (input.costAllocationUsd === 0 ||
+            view.usedCostUsd + view.reservedCostUsd + input.costAllocationUsd > group.costBudgetUsd))
       )
         throw new AuxError("permission_denied", "This child exceeds the shared subagent budget.");
       const pageOwners = this.runs.pageOwnership.snapshot();
@@ -381,12 +360,14 @@ export class SubagentService {
         chatId: agentId,
         contextWorkspaceId: group.workspaceId,
         context: source.config?.context,
+        privateTask: source.config?.privateTask,
+        nativeTurnContext: source.config?.nativeTurnContext,
+        reasoning: source.config?.reasoning,
         contextSnapshot: true,
         instructions: `Subagent profile: ${input.profile}. Work within your selected pages and report findings to the parent.`,
         maxModelCalls: input.maxModelCalls,
-        deadlineMs: Math.max(1000, group.deadlineAt - Date.now()),
-        maxTokens: input.tokenAllocation,
-        maxCostUsd: input.costAllocationUsd,
+        deadlineMs: group.deadlineAt === 0 ? 0 : Math.max(1, group.deadlineAt - Date.now()),
+        maxCostUsd: input.costAllocationUsd > 0 ? input.costAllocationUsd : undefined,
         subagentProfile: input.profile,
       });
       const bound = this.repo.db
@@ -437,7 +418,8 @@ export class SubagentService {
       throw new AuxError("conflict", "This subagent turn changed.");
     const run = this.repo.getRun(expectedRunId);
     if (!run || !RUN_ACTIVE.has(run.status)) throw new AuxError("conflict", "This subagent has finished.");
-    if (Date.now() >= this.group(agent.groupId).deadlineAt)
+    const deadlineAt = this.group(agent.groupId).deadlineAt;
+    if (deadlineAt > 0 && Date.now() >= deadlineAt)
       throw new AuxError("conflict", "The shared deadline passed.");
     return this.runs.messages.steer({
       messageId: randomUUID(),

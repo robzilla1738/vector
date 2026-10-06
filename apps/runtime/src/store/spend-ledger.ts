@@ -32,7 +32,7 @@ function nanos(usd: number): number {
   return Math.ceil(usd * NANODOLLARS_PER_USD);
 }
 
-/** Fail closed when a Gateway model has no bounded context or list prices. */
+/** Estimate the actual input rather than the model's maximum context. */
 export function estimatedPromptTokens(...parts: unknown[]): number {
   return Math.max(
     1,
@@ -50,17 +50,13 @@ export function projectedModelCostUsd(
   promptTokens: number,
   maxOutputTokens: number,
   models?: readonly ModelCapability[],
-): number {
+): number | undefined {
   const model = modelCapabilities(modelId, models);
-  if (!model?.contextTokens || model.inputUsdPerMTok === undefined || model.outputUsdPerMTok === undefined) {
-    throw new Error(
-      `AI spend projection unavailable for ${modelId}; configure a priced model before calling Gateway`,
-    );
-  }
   if (!Number.isSafeInteger(promptTokens) || promptTokens <= 0)
     throw new Error("A positive promptTokens estimate is required");
   if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens <= 0)
     throw new Error("A positive maxOutputTokens is required for a bounded Gateway call");
+  if (model?.inputUsdPerMTok === undefined || model.outputUsdPerMTok === undefined) return undefined;
   return (2 * (promptTokens * model.inputUsdPerMTok + maxOutputTokens * model.outputUsdPerMTok)) / 1_000_000;
 }
 
@@ -101,7 +97,14 @@ export class SpendLedger {
     };
   }
 
-  reserve(source: string, modelId: string, projectedUsd: number): string {
+  reserve(source: string, modelId: string, projectedUsd: number): string;
+  reserve(source: string, modelId: string, projectedUsd: number | undefined): string | undefined;
+  reserve(source: string, modelId: string, projectedUsd: number | undefined): string | undefined {
+    if (projectedUsd === undefined) {
+      if (Number.isFinite(this.capUsd))
+        throw new Error(`The explicit AI program cap requires a price estimate for ${modelId}.`);
+      return undefined;
+    }
     const amount = nanos(projectedUsd);
     this.db.exec("BEGIN IMMEDIATE");
     try {

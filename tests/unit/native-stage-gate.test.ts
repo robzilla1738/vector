@@ -51,7 +51,6 @@ describe("native interactive stage", () => {
       repo,
       events: new EventBus(repo),
       native,
-      grants: ["effect:read", "effect:write"],
       drivers: () => ({ aux: driver, chrome: null }),
     });
     const target = await pages.open({ url: "https://app.test/", background: true, ownedByRuntime: true });

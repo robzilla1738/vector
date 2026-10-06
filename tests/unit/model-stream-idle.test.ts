@@ -56,7 +56,7 @@ it("cancels a provider that never returns its first response without waiting for
   vi.useFakeTimers();
   let signal: AbortSignal | undefined;
   const model = new MockLanguageModelV4({
-    doStream: async (options) => {
+    doStream: async (options: { abortSignal?: AbortSignal }) => {
       signal = options.abortSignal;
       return new Promise<never>(() => {});
     },
@@ -75,7 +75,7 @@ it("cancels a stalled stream and preserves caller cancellation", async () => {
   vi.useFakeTimers();
   let signal: AbortSignal | undefined;
   const model = new MockLanguageModelV4({
-    doStream: async (options) => {
+    doStream: async (options: { abortSignal?: AbortSignal }) => {
       signal = options.abortSignal;
       return {
         stream: new ReadableStream({

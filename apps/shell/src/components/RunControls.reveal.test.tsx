@@ -38,6 +38,7 @@ const page = (pageId: string, runId?: string, windowId = bridge.windowId): PageT
   ...(runId
     ? {
         agentIsolation: {
+          mode: "private",
           isolationId: `isolation-${pageId}`,
           runId,
           taskRevision: 0,

@@ -8,12 +8,12 @@ import {
   mergeModelCapabilities,
   modelPickerEntries,
 } from "@aux/contracts";
-import { DEFAULT_PLANNER_MODEL, LUNA_FAST_MODEL, openDb, Repo, SettingsService } from "@aux/runtime";
+import { DEFAULT_AGENT_MODEL, LUNA_FAST_MODEL, openDb, Repo, SettingsService } from "@aux/runtime";
 
 describe("typed model registry (AI-04)", () => {
   it("covers the default planner and Luna Fast routes in the offline snapshot", () => {
     const ids = MODEL_REGISTRY.map((m) => m.id);
-    expect(ids).toContain(DEFAULT_PLANNER_MODEL);
+    expect(ids).toContain(DEFAULT_AGENT_MODEL);
     expect(ids).toContain(LUNA_FAST_MODEL);
     for (const entry of MODEL_REGISTRY) {
       expect(ModelCapabilitySchema.safeParse(entry).success).toBe(true);
@@ -34,12 +34,15 @@ describe("typed model registry (AI-04)", () => {
     // catalog-only IDs pass through — no blacklist of new identifiers
     expect(merged.some((m) => m.id === "anthropic/claude-sonnet-x")).toBe(true);
     // snapshot-only IDs remain selectable offline
-    expect(merged.some((m) => m.id === DEFAULT_PLANNER_MODEL)).toBe(true);
+    expect(merged.some((m) => m.id === DEFAULT_AGENT_MODEL)).toBe(true);
   });
 
   it("picker projection keeps the {id, name} contract", () => {
     const entries = modelPickerEntries(MODEL_REGISTRY);
-    expect(entries).toContainEqual({ id: DEFAULT_PLANNER_MODEL, name: "Meta Muse Spark 1.3 Contributor" });
+    expect(entries).toContainEqual({
+      id: DEFAULT_AGENT_MODEL,
+      name: MODEL_REGISTRY.find((model) => model.id === DEFAULT_AGENT_MODEL)?.name,
+    });
   });
 
   it("settings.listModels merges snapshot + live gateway catalog and re-tags sources", async () => {
@@ -66,6 +69,6 @@ describe("typed model registry (AI-04)", () => {
     expect(byId.get(LUNA_FAST_MODEL)?.source).toBe("catalog");
     expect(byId.get(LUNA_FAST_MODEL)?.structuredOutput).toBe(true);
     expect(byId.get("google/gemini-flash-new")?.source).toBe("catalog");
-    expect(byId.get(DEFAULT_PLANNER_MODEL)?.source).toBe("snapshot");
+    expect(byId.get(DEFAULT_AGENT_MODEL)?.source).toBe("snapshot");
   });
 });

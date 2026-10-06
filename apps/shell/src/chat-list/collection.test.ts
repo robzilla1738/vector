@@ -5,6 +5,7 @@ import { ConversationCollection } from "./collection";
 
 const item = (id: string): ConversationSummary => ({
   chatId: id,
+  privateTask: false,
   title: id,
   archived: false,
   createdAt: 1,

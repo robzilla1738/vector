@@ -13,7 +13,7 @@ import { SafetyActivityQuerySchema, SafetyActivityPageSchema } from "./safety-ac
 import { AgentModeSchema, AgentPolicyOverrideSchema } from "./agent-policy.js";
 import { AUX_FEATURES, type AuxFeature } from "./aux-features.js";
 import { DownloadNamingSettingsSchema } from "./download-naming.js";
-import { ModelConnectionChangeSchema, ImageModelSchema } from "./model-connections.js";
+import { ModelConnectionChangeSchema, ImageModelSchema, LocalModelServerSchema } from "./model-connections.js";
 import { BrowserRuntimeMethodSchemas, BrowserRuntimeResultSchemas } from "./browser-runtime-api.js";
 import { MentionRefsSchema } from "./mentions.js";
 export * from "./model-connections.js";
@@ -252,7 +252,7 @@ import {
 import { ShortcutOverridesSchema } from "./shortcuts.js";
 import { NightShiftSettingsSchema } from "./night-shift.js";
 import { SelectionCaptureSettingsSchema } from "./selection-capture.js";
-import { AgentModelRouteChainSchema } from "./model-registry.js";
+import { ModelCapabilitySchema, AgentModelRouteChainSchema } from "./model-registry.js";
 import { SiteReadParamsSchema, SiteReadResultSchema } from "./site-adapters.js";
 
 const id = z.string().min(1);
@@ -500,9 +500,8 @@ export const SetsMapParams = z.object({
   memberIds: z.array(z.string()).optional(),
   /** Shared across every model-driven member, including concurrent pilots. */
   maxModelCalls: z.number().int().nonnegative().optional(),
-  maxTokens: z.number().int().min(8192).max(2_000_000).optional(),
-  deadlineMs: z.number().int().min(1000).max(3_600_000).optional(),
-  maxCostUsd: z.number().positive().max(1000).optional(),
+  deadlineMs: z.number().int().nonnegative().optional(),
+  maxCostUsd: z.number().nonnegative().optional(),
 });
 export const SetsResultsParams = z.object({
   setId: id,
@@ -518,9 +517,10 @@ export const RunsStartParams = z.object({
   contextPageRefs: z.array(PageContextRefSchema).max(9).optional(),
   setId: z.string().optional(),
   modelId: z.string().optional(),
+  reasoning: z.enum(["low", "medium", "high"]).optional(),
+  privateTask: z.boolean().default(false),
   maxSteps: z.number().int().nonnegative().optional(),
-  maxTokens: z.number().int().min(8192).max(2_000_000).optional(),
-  maxCostUsd: z.number().positive().max(1000).optional(),
+  maxCostUsd: z.number().nonnegative().optional(),
   /** `0` = no per-run cap. */
   maxModelCalls: z.number().int().min(0).optional(),
   deadlineMs: z.number().int().positive().optional(),
@@ -542,15 +542,28 @@ export const RunsEventsParams = z.object({
   /** Stream identity the cursor was issued against — a mismatch answers `resync` (D9). */
   streamId: z.string().optional(),
 });
-export const RunsContinueBudgetParams = z.object({
-  runId: id,
-  suspensionId: id,
-  limits: z.object({
-    maxModelCalls: z.number().int().nonnegative().optional(),
-    maxSteps: z.number().int().nonnegative().optional(),
-    deadlineMs: z.number().int().nonnegative().optional(),
-  }).strict().optional(),
-}).strict();
+export const RunsContinueBudgetParams = z
+  .object({
+    runId: id,
+    suspensionId: id,
+    limits: z
+      .object({
+        maxModelCalls: z.number().int().nonnegative().optional(),
+        maxSteps: z.number().int().nonnegative().optional(),
+        deadlineMs: z.number().int().nonnegative().optional(),
+        funding: z
+          .object({
+            maxTokens: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional(),
+            maxCostUsd: z.number().finite().positive().optional(),
+            deadlineMs: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional(),
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
 export const RunsAnswerParams = z.object({
   runId: id,
   answer: z.string(),
@@ -837,9 +850,10 @@ export const SettingsSetParams = z.object({
     .optional(),
   budgets: z
     .object({
-      runUsd: z.number().positive().max(100_000).optional(),
-      dayUsd: z.number().positive().max(100_000).optional(),
-      routineUsd: z.number().positive().max(100_000).optional(),
+      runUsd: z.number().positive().optional(),
+      dayUsd: z.number().positive().optional(),
+      monthUsd: z.number().positive().optional(),
+      routineUsd: z.number().positive().optional(),
     })
     .strict()
     .optional(),
@@ -1628,6 +1642,20 @@ export const MethodSchemas = {
   "import.status": z.object({ jobId: z.string().min(1).max(64).optional() }),
   "import.cancel": z.object({ jobId: z.string().min(1).max(64) }),
   "chrome.openLive": ChromeOpenLiveParams,
+  "models.auth.start": z
+    .object({
+      provider: z.enum(["openrouter", "chatgpt"]),
+      accountId: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
+    })
+    .strict()
+    .refine((value) => value.provider === "chatgpt" || value.accountId === undefined),
+  "models.auth.status": z.object({ attemptId: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict(),
+  "models.auth.cancel": z.object({ attemptId: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict(),
+  "models.auth.accounts": z.object({}).strict(),
+  "models.auth.disconnect": z.object({ accountId: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   "models.copilot.setup": z.object({}).strict(),
   "models.copilot.install": z.object({}).strict(),
   "models.copilot.start": z.object({}).strict(),
@@ -2415,6 +2443,46 @@ export const ResultSchemas = {
   "import.status": ImportJobStatusSchema,
   "import.cancel": z.object({ ok: z.boolean() }),
   "chrome.openLive": z.object({ ok: z.boolean() }),
+  "models.auth.start": z
+    .object({
+      attemptId: z.string(),
+      provider: z.enum(["openrouter", "chatgpt"]),
+      phase: z.enum(["pending", "authenticating", "connected", "cancelled", "expired", "failed"]),
+      expiresAt: z.number().int().nonnegative(),
+      authorizationUrl: z.string().url(),
+    })
+    .strict(),
+  "models.auth.status": z
+    .object({
+      attemptId: z.string(),
+      provider: z.enum(["openrouter", "chatgpt"]),
+      phase: z.enum(["pending", "authenticating", "connected", "cancelled", "expired", "failed"]),
+      expiresAt: z.number().int().nonnegative(),
+    })
+    .strict(),
+  "models.auth.cancel": z
+    .object({
+      attemptId: z.string(),
+      provider: z.enum(["openrouter", "chatgpt"]),
+      phase: z.enum(["pending", "authenticating", "connected", "cancelled", "expired", "failed"]),
+      expiresAt: z.number().int().nonnegative(),
+    })
+    .strict(),
+  "models.auth.accounts": z
+    .array(
+      z
+        .object({
+          accountId: z.string().regex(/^[a-f0-9]{64}$/),
+          email: z.string().max(500).optional(),
+          selected: z.boolean(),
+          connected: z.boolean(),
+        })
+        .strict(),
+    )
+    .max(16),
+  "models.auth.disconnect": z
+    .object({ disconnected: z.literal(true), revocationConfirmed: z.boolean() })
+    .strict(),
   "models.copilot.setup": CopilotSetupSchema,
   "models.copilot.install": CopilotInstallSchema,
   "models.copilot.start": CopilotDeviceChallengeSchema,
@@ -2424,7 +2492,8 @@ export const ResultSchemas = {
   "models.copilot.disconnect": CopilotDisconnectedSchema,
   "models.copilot.catalog": CopilotCatalogSchema,
   "models.list": z.object({
-    models: z.array(z.object({ id: z.string(), name: z.string().optional() })),
+    models: z.array(ModelCapabilitySchema).max(500),
+    localServers: z.array(LocalModelServerSchema).max(4).optional(),
     source: z.enum(["gateway", "static", "configured"]),
   }),
   "translate.page": z.object({ lang: z.string(), translations: z.array(z.string()), truncated: z.boolean() }),

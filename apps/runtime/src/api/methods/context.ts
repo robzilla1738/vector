@@ -381,6 +381,8 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     connectionId?: string;
     threadId?: string;
     runId?: string;
+    actor?: import("@aux/contracts").EffectActor;
+    invocationDigest?: string;
   }) => {
     const threadId = input.threadId ?? `rpc:${input.connectionId ?? "internal"}`;
     const request = EffectRequestSchema.parse({
@@ -388,7 +390,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
         scope: input.taskId
           ? { kind: "task" as const, id: input.taskId }
           : { kind: "workspace" as const, id: "rpc" },
-        actor: "external_token",
+        actor: input.actor ?? "external_token",
         effect: "egress",
         category:
           input.action === "agent.web.fetch" || input.action === "agent.web.search"
@@ -401,7 +403,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
         destination: input.url.href.slice(0, 2048),
         dataClasses: [],
         provenance: "template",
-        invocationDigest: createHash("sha256")
+        invocationDigest: input.invocationDigest ?? createHash("sha256")
           .update(JSON.stringify([input.action, input.url.href]))
           .digest("hex"),
         turnId: threadId,

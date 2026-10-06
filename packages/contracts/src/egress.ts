@@ -12,18 +12,17 @@ const httpOrigin = origin.refine((value) => {
   }
 }, "Expected an exact HTTP(S) origin");
 
-/** Native-owned namespace; no caller-selected partition identifiers or cookie bytes. */
-export const AgentPageIsolationSchema = z
-  .object({
-    isolationId: id,
-    runId: id,
-    taskId: id.optional(),
-    taskRevision: z.number().int().nonnegative(),
-    inMemory: z.literal(true),
-    /** Initial namespace policy: no owner cookies copied; later explicit sign-in can create cookies. */
-    cookies: z.literal("empty"),
-  })
-  .strict();
+/** Per-run native authority is distinct from the browser's storage partition. */
+const AgentPageAuthority = {
+  isolationId: id,
+  runId: id,
+  taskId: id.optional(),
+  taskRevision: z.number().int().nonnegative(),
+};
+export const AgentPageIsolationSchema = z.discriminatedUnion("mode", [
+  z.object({...AgentPageAuthority, mode: z.literal("session"), inMemory: z.literal(false), cookies: z.literal("profile")}).strict(),
+  z.object({...AgentPageAuthority, mode: z.literal("private"), inMemory: z.literal(true), cookies: z.literal("empty")}).strict(),
+]);
 export type AgentPageIsolation = z.infer<typeof AgentPageIsolationSchema>;
 export const AgentPageSourceSchema = z
   .object({
@@ -41,6 +40,7 @@ export const AgentPageSourceSchema = z
   .strict();
 export const AgentPageCreateSchema = z
   .object({
+    mode: z.enum(["session", "private"]),
     profileId: id,
     runId: id,
     taskId: id.optional(),

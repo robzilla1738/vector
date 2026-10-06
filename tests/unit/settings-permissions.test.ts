@@ -3,7 +3,7 @@ import { expect, it, vi } from "vitest";
 import { settingsMethods } from "../../apps/runtime/src/api/methods/settings.js";
 import type { MethodCtx } from "../../apps/runtime/src/api/methods/context.js";
 
-it.each(["originPolicies", "effectGrants", "safetyCeilings"])(
+it.each(["agentMode", "agentPolicies", "fileAccessMode"])(
   "refuses external %s changes before mutation",
   async (key) => {
     const set = vi.fn();
@@ -17,9 +17,9 @@ it.each(["originPolicies", "effectGrants", "safetyCeilings"])(
   },
 );
 
-it("allows the person to update effect grants through the shell", async () => {
+it("allows the person to update agent mode through Settings", async () => {
   const repo = new Repo(openDb(":memory:"));
-  const patch = { effectGrants: ["effect:read"] };
+  const patch = { agentMode: "auto", agentPolicyRevision: 0 };
   const set = vi.fn(async () => ({ ok: true }));
   const emit = vi.fn();
   const ctx = {
@@ -38,11 +38,11 @@ it("allows the person to update effect grants through the shell", async () => {
   repo.close();
 });
 
-it("refuses unversioned site-rule updates from the shell before mutation", async () => {
+it("refuses permission revisions from code mode before mutation", async () => {
   const set = vi.fn();
   const ctx = {
-    params: { originPolicies: [] },
-    client: { external: false },
+    params: { agentPolicyRevision: 1 },
+    client: { external: false, codeMode: true },
     s: { settings: { set } },
   } as unknown as MethodCtx;
   await expect(settingsMethods["settings.set"]!(ctx)).rejects.toMatchObject({ code: "permission_denied" });

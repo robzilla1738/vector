@@ -1,6 +1,7 @@
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError, MethodSchemas, HostMethods } from "@aux/contracts";
+import { lineageRuns } from "../../services/run-lineage.js";
 import { summarizeModelUsage } from "../../services/model-usage.js";
 import { projectRunTranscript } from "../../services/run-transcript.js";
 import { assertRunAnswerable, currentRunSuspension } from "../../services/run-suspension.js";
@@ -16,7 +17,10 @@ async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
     );
   if (client.external && params.defaultWorkspaceId)
     throw new AuxError("permission_denied", "Conversation Space defaults are set through the Aux browser.");
-  return s.runs.start(params as never);
+  return s.runs.start({
+    ...MethodSchemas["runs.start"].parse(params),
+    nativeTurnContext: client.nativeTurnContext,
+  });
 }
 async function h_runs_retry(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
@@ -25,12 +29,12 @@ async function h_runs_retry(ctx: MethodCtx): Promise<unknown> {
       "permission_denied",
       "Protected article context can only be retried from the Aux window.",
     );
-  return s.runs.retry(params.runId, params.pageId);
+  return s.runs.retry(params.runId, params.pageId, client.nativeTurnContext);
 }
 async function h_runs_get(ctx: MethodCtx): Promise<unknown> {
   const { params, s, suspensions } = ctx;
   const run = s.runs.coordinator.get(params.runId);
-  const calls = s.repo.listModelCalls(run.runId);
+  const calls = lineageRuns(s.repo, run.runId).flatMap((runId) => s.repo.listModelCalls(runId));
   const steps = s.repo.listSteps(run.runId);
   return {
     run,

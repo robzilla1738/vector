@@ -689,8 +689,20 @@ it("restores the CAS generation when another writer publishes and rolls back dur
     const ordinary = new SpaceMemoryStore(f.repo, f.native, "profile-one");
     const state = await ordinary.read(id);
     const prior = state.prior!;
-    const published = Promise.withResolvers<void>();
-    const releaseRetirement = Promise.withResolvers<void>();
+    let resolvePublished!: () => void;
+    const published = {
+      promise: new Promise<void>((resolve) => {
+        resolvePublished = resolve;
+      }),
+      resolve: () => resolvePublished(),
+    };
+    let resolveReleaseRetirement!: () => void;
+    const releaseRetirement = {
+      promise: new Promise<void>((resolve) => {
+        resolveReleaseRetirement = resolve;
+      }),
+      resolve: () => resolveReleaseRetirement(),
+    };
     const intervening = new SpaceMemoryStore(
       f.repo,
       {

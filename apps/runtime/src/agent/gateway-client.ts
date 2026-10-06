@@ -1,7 +1,7 @@
 import type { LanguageModel, ModelMessage } from "ai";
 import type { createGateway } from "@ai-sdk/gateway";
 import { z } from "zod";
-import { AuxError, TaskPlanChunkSchema } from "@aux/contracts";
+import { AuxError } from "@aux/contracts";
 import {
   clampOutputTokens,
   MODEL_REGISTRY,
@@ -13,7 +13,6 @@ import {
 import { extractJson } from "./json-text.js";
 import {
   attemptsOf,
-  DEFAULT_PLANNER_MODEL,
   modelCallCost,
   usageFields,
   withAttempts,
@@ -109,10 +108,6 @@ export async function isStructuredOutputError(e: unknown): Promise<boolean> {
   if (TypeValidationError.isInstance(e)) return true;
   if (JSONParseError.isInstance(e)) return true;
   if (UnsupportedFunctionalityError.isInstance(e)) return true;
-  const msg = e instanceof Error ? e.message : String(e);
-  // Cerebras (and some other providers) reject JSON Schema oneOf/anyOf as a
-  // generic Error, not always an APICallError 400.
-  if (/unsupported json schema|json schema fields|\boneOf\b|\banyOf\b/i.test(msg)) return true;
   if (APICallError.isInstance(e)) {
     // a 400 that names the structured-output feature — everything else is not ours to retry
     return (
@@ -123,76 +118,7 @@ export async function isStructuredOutputError(e: unknown): Promise<boolean> {
   return false;
 }
 
-export function jsonSchemaHasKeyword(value: unknown, keywords: string[]): boolean {
-  if (Array.isArray(value)) return value.some((v) => jsonSchemaHasKeyword(v, keywords));
-  if (!value || typeof value !== "object") return false;
-  const o = value as Record<string, unknown>;
-  for (const k of keywords) if (Object.prototype.hasOwnProperty.call(o, k)) return true;
-  return Object.values(o).some((v) => jsonSchemaHasKeyword(v, keywords));
-}
-
-/** Discriminated unions compile to JSON Schema oneOf — Cerebras/Qwen reject that. */
-export function schemaNeedsJsonFallback(schema: z.ZodType): boolean {
-  try {
-    return jsonSchemaHasKeyword(z.toJSONSchema(schema), ["oneOf", "anyOf"]);
-  } catch {
-    return true;
-  }
-}
-
 export { extractJson, stripReasoning } from "./json-text.js";
-
-/** Models often omit step ids; the schema requires them. */
-export function assignMissingStepIds(value: unknown): unknown {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-  const o = { ...(value as Record<string, unknown>) };
-  if (!Array.isArray(o.steps)) return o;
-  o.steps = o.steps.map((step, i) => {
-    if (!step || typeof step !== "object" || Array.isArray(step)) return step;
-    const s = step as Record<string, unknown>;
-    return s.id == null || s.id === "" ? { ...s, id: `s${i + 1}` } : s;
-  });
-  return o;
-}
-
-/** Fill required PlanChunk/RepairChunk fields Qwen commonly drops. */
-export function normalizePlannerObject(value: unknown): unknown {
-  const o = assignMissingStepIds(value);
-  if (!o || typeof o !== "object" || Array.isArray(o)) return o;
-  const rec = { ...(o as Record<string, unknown>) };
-  if (typeof rec.message !== "string" || rec.message.length === 0) {
-    rec.message = rec.status === "done" ? "Done" : rec.status === "needs_input" ? "Needs input" : "Continue";
-  } else if (rec.message.length > 280) {
-    rec.message = rec.message.slice(0, 280);
-  }
-  if (typeof rec.notes === "string" && rec.notes.length > 600) rec.notes = rec.notes.slice(0, 600);
-  else if (rec.notes != null && typeof rec.notes !== "string") delete rec.notes;
-  return rec;
-}
-
-/**
- * Cerebras rejects JSON Schema oneOf, so union schemas (PlanChunk steps)
- * cannot be sent as response_format. The system prompt already describes
- * the object; this is the compact remainder.
- */
-export const PLAN_JSON_HINT = `Respond with ONLY a JSON object. No <think> tags, no reasoning, no markdown fences, no prose.
-
-Required: "status" ("continue"|"done"|"needs_input") and "message" (short factual string).
-continue: "steps" — 1-8 ops. Each step needs "id" (s1, s2, …) and "op".
-  navigate{url} click|dblclick|hover|check|uncheck{target} fill|type{target,value}
-  press{key,target?} select{target,value} scroll{direction?,target?}
-  waitFor{condition:{kind, ...}} extract{fields:[{name,selector?}]}
-  collectScroll{item} clickPoint{x,y} screenshot back forward reload stop
-  dragTo{target,to} dialog{action} upload{target,files} expectDownload
-  waitFor kinds: textVisible{text} selector{selector} refReady{ref} urlMatches{pattern}
-    navigationSettled settled downloadCompleted response{urlIncludes}
-done: "result" object; optional read-only steps (extract/collectScroll/waitFor) whose values fill result via "{{name}}".
-needs_input: "question". Optional "notes" (≤600 chars): your running scratchpad, echoed back next turn.`;
-
-export const TASK_PLAN_JSON_HINT = `${PLAN_JSON_HINT.replace('("continue"|"done"|"needs_input")', '("continue"|"done"|"needs_input"|"source")')}
-For a saved task with a listed CALENDAR GRANT, status may also be "source" with a single sourceRequest:
-  {"kind":"calendar.events.list","grantId":"listed UUID","timeMin":"ISO timestamp with offset","timeMax":"ISO timestamp with offset","limit":1..10,"pageToken":"optional"}.
-Use source with no browser steps; its result is returned before the next decision.`;
 
 /**
  * Vercel AI Gateway client. One explicit retry owner: the app sets
@@ -211,21 +137,6 @@ export function imageReferenceMessage(prompt: string, images: string[] = []): Mo
     return { type: "file" as const, mediaType: match[1]!, data: { type: "data" as const, data: match[2]! } };
   });
   return [{ role: "user", content: [{ type: "text", text: prompt }, ...files] }];
-}
-
-/**
- * Keep `AUX_GATEWAY_ONLY` when it matches this model; drop it otherwise
- * so `openai/gpt-5.6-luna-fast` still routes when the env pins Cerebras.
- */
-export function gatewayOnlyForModel(modelId: string, only?: string[]): string[] | undefined {
-  if (!only?.length) return undefined;
-  const creator = modelId.split("/")[0] ?? "";
-  const allowed = only.some((p) => {
-    if (p === creator) return true;
-    if (p === "cerebras" && (creator === "alibaba" || modelId.includes("qwen"))) return true;
-    return false;
-  });
-  return allowed ? only : undefined;
 }
 
 /**
@@ -258,9 +169,9 @@ export function gatewayProviderOptions(
   only?: string[],
   modelId?: string,
   models: readonly ModelCapability[] = MODEL_REGISTRY,
-  effort?: "low" | "medium" | "xhigh",
+  effort?: "low" | "medium" | "high" | "xhigh",
 ) {
-  const effective = modelId ? gatewayOnlyForModel(modelId, only) : only;
+  const effective = only;
   const cap = modelId ? modelCapabilities(modelId, models) : undefined;
   const reasons =
     cap?.provider === "openai" && (cap.reasoning === "supported" || cap.reasoning === "required");
@@ -300,6 +211,7 @@ type CallOpts = {
   prompt: string;
   imageDataUrls?: string[];
   signal?: AbortSignal;
+  beforeDispatch?: () => Promise<void>;
   maxOutputTokens?: number;
   maxAttempts?: number;
   reasoning?: "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -347,7 +259,9 @@ export class GatewayModelClient implements ModelClient {
         ? opts.streamIdleTimeoutMs
         : DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS;
     this.only = !this.directModel && opts.only?.length ? opts.only : undefined;
-    this.spendLedger = opts.spendLedger ?? (!this.directModel ? new SpendLedger() : undefined);
+    this.spendLedger =
+      opts.spendLedger ??
+      (!this.directModel && process.env.AUX_PROGRAM_SPEND_CAP_USD ? new SpendLedger() : undefined);
     this.registryModels = opts.models ?? (() => MODEL_REGISTRY);
     this.candidatesFor = opts.candidatesFor;
     this.allowedModelId = opts.allowedModelId;
@@ -446,6 +360,7 @@ export class GatewayModelClient implements ModelClient {
     promptTokens: number,
     maxOutputTokens: number,
     call: () => Promise<T>,
+    beforeDispatch?: () => Promise<void>,
   ): Promise<T> {
     const started = Date.now();
     const reservation = this.spendLedger?.reserve(
@@ -453,7 +368,10 @@ export class GatewayModelClient implements ModelClient {
       modelId,
       projectedModelCostUsd(modelId, promptTokens, maxOutputTokens, this.capabilities()),
     );
+    let dispatched = false;
     try {
+      await beforeDispatch?.();
+      dispatched = true;
       const result = await call();
       const cost = modelCallCost(modelId, {
         ...usageFields(result.usage),
@@ -471,7 +389,9 @@ export class GatewayModelClient implements ModelClient {
       if (reservation)
         this.spendLedger?.settle(
           reservation,
-          cost.costUsd ?? (known.length ? modelCallCost(modelId, known.at(-1)!).costUsd : undefined),
+          dispatched
+            ? (cost.costUsd ?? (known.length ? modelCallCost(modelId, known.at(-1)!).costUsd : undefined))
+            : 0,
         );
       throw known.length || (!billed?.usage && !billed?.providerMetadata)
         ? error
@@ -503,7 +423,7 @@ export class GatewayModelClient implements ModelClient {
           this.only,
           opts.modelId,
           this.capabilities(),
-          opts.reasoning as "low" | "medium" | "xhigh" | undefined,
+          opts.reasoning as "low" | "medium" | "high" | "xhigh" | undefined,
         )
       : undefined;
     const session = provider === "openai" && opts.sessionId ? openAiSessionCache(opts.sessionId) : undefined;
@@ -512,7 +432,6 @@ export class GatewayModelClient implements ModelClient {
       abortSignal: opts.signal,
       maxRetries: 0 as const,
       maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens, this.capabilities()),
-      ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? ("medium" as const) } : {}),
       instructions: anthropic ? stampAnthropicCache({ role: "system", content: opts.system }) : opts.system,
       messages: cachedMessages,
       providerOptions: mergeProviderOptions(gateway, session, opts.providerOptions),
@@ -522,7 +441,9 @@ export class GatewayModelClient implements ModelClient {
 
   async generateStructured<T>(opts: CallOpts & { schema: z.ZodType<T> }): Promise<StructuredCallResult<T>> {
     await this.loadSdk();
-    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) => this.generateStructuredInner(o));
+    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) =>
+      this.generateStructuredInner(o),
+    );
   }
 
   private async generateStructuredInner<T>(
@@ -532,10 +453,8 @@ export class GatewayModelClient implements ModelClient {
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
     const retries: ModelAttempt[] = [];
-    // Use JSON-in-text when the schema would send oneOf — Cerebras/Qwen
-    // reject it before any tokens. Simple schemas (probe, final decision)
-    // still use structured output.
-    if (!schemaNeedsJsonFallback(opts.schema)) {
+    // Provider capabilities decide transport support; schemas do not select an engine.
+    if (modelCapabilities(opts.modelId, this.capabilities())?.structuredOutput !== false) {
       try {
         const res = await this.billed(
           opts.modelId,
@@ -560,6 +479,7 @@ export class GatewayModelClient implements ModelClient {
                 providerMetadata: await stream.providerMetadata,
               };
             }),
+          opts.beforeDispatch,
         );
         return { object: res.object, ...attempt(started, res) };
       } catch (e) {
@@ -583,7 +503,9 @@ export class GatewayModelClient implements ModelClient {
     opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void },
   ): Promise<StructuredCallResult<T>> {
     await this.loadSdk();
-    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) => this.streamStructuredInner(o));
+    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) =>
+      this.streamStructuredInner(o),
+    );
   }
 
   private async streamStructuredInner<T>(
@@ -650,7 +572,7 @@ export class GatewayModelClient implements ModelClient {
     first: ModelAttempt,
     retries: ModelAttempt[],
   ): Promise<StructuredCallResult<T>> {
-    const parse = (t: string): T => opts.schema.parse(normalizePlannerObject(extractJson(t)));
+    const parse = (t: string): T => opts.schema.parse(extractJson(t));
     try {
       return { object: parse(text), ...stripText(first), ...(retries.length ? { retries } : {}) };
     } catch (e) {
@@ -689,13 +611,16 @@ export class GatewayModelClient implements ModelClient {
     imageDataUrls?: string[];
     imageDataUrl?: string;
     signal?: AbortSignal;
+    beforeDispatch?: () => Promise<void>;
     maxOutputTokens?: number;
     maxAttempts?: number;
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<TextCallResult> {
     await this.loadSdk();
-    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) => this.generateTextInner(o));
+    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) =>
+      this.generateTextInner(o),
+    );
   }
 
   private async generateTextInner(opts: {
@@ -705,6 +630,7 @@ export class GatewayModelClient implements ModelClient {
     imageDataUrls?: string[];
     imageDataUrl?: string;
     signal?: AbortSignal;
+    beforeDispatch?: () => Promise<void>;
     maxOutputTokens?: number;
     maxAttempts?: number;
     reasoning?: CallOpts["reasoning"];
@@ -732,6 +658,7 @@ export class GatewayModelClient implements ModelClient {
             providerMetadata: await stream.providerMetadata,
           };
         }),
+      opts.beforeDispatch,
     );
     return { text: res.text, ...attempt(started, res) };
   }
@@ -911,7 +838,5 @@ function stripText(a: ModelAttempt & { text?: string }): ModelAttempt {
 }
 
 function schemaHint(schema: z.ZodType): string {
-  return schemaNeedsJsonFallback(schema)
-    ? `\n\n${schema === TaskPlanChunkSchema ? TASK_PLAN_JSON_HINT : PLAN_JSON_HINT}`
-    : `\n\nRespond with ONLY a JSON value that validates against this JSON Schema — no prose, no markdown fences:\n${JSON.stringify(z.toJSONSchema(schema))}`;
+  return `\n\nRespond with ONLY a JSON value that validates against this JSON Schema — no prose, no markdown fences:\n${JSON.stringify(z.toJSONSchema(schema))}`;
 }

@@ -300,33 +300,109 @@ export const SuspensionKindSchema = z.enum([
   "budget",
 ]);
 export type SuspensionKind = z.infer<typeof SuspensionKindSchema>;
-export const BudgetSuspensionSchema = z.object({
-  reason: z.enum(["model_calls", "steps", "time", "spend"]),
-  limit: z.number().finite().nonnegative(),
-  used: z.number().finite().nonnegative(),
-  scope: z.enum(["run", "day", "routine", "nightShift"]).optional(),
-}).strict();
+const FundingOwnerSchema = z
+  .object({
+    kind: z.enum(["goal", "subagent", "subagent_group"]),
+    ownerId: id,
+    runId: id,
+    budgetDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export const ResourceLimitsReviewSchema = z
+  .object({
+    runId: id,
+    scopes: z
+      .array(
+        z
+          .object({
+            scope: z.enum(["run", "day", "month", "routine", "nightShift"]),
+            scopeId: id.optional(),
+            limitUsd: z.number().finite().positive(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(6),
+    originalDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    quoteDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export type ResourceLimitsReview = z.infer<typeof ResourceLimitsReviewSchema>;
+export const BudgetSuspensionSchema = z
+  .object({
+    reason: z.enum(["model_calls", "steps", "time", "spend", "tokens"]),
+    limit: z.number().finite().nonnegative(),
+    used: z.number().finite().nonnegative(),
+    scope: z.enum(["run", "day", "month", "routine", "nightShift"]).optional(),
+    requiredUsd: z.number().finite().positive().optional(),
+    requiredTokens: z.number().int().positive().optional(),
+    funding: FundingOwnerSchema.optional(),
+  })
+  .strict()
+  .refine((budget) => budget.requiredTokens === undefined || budget.reason === "tokens", {
+    message: "Token headroom belongs only to a token budget.",
+  })
+  .refine((budget) => budget.reason !== "tokens" || budget.funding !== undefined, {
+    message: "Tokens require an original funded owner.",
+  })
+  .refine((budget) => budget.requiredUsd === undefined || budget.reason === "spend", {
+    message: "A spend estimate belongs only to a spend budget.",
+  });
 export type BudgetSuspension = z.infer<typeof BudgetSuspensionSchema>;
 /** The parked side of an `ask` decision; one pending suspension per run. */
 export const SuspensionRequestSchema = z
   .object({
     kind: SuspensionKindSchema,
-    context: z.object({
-      pageId: id.optional(),
-      site: z.string().refine((value) => {
-        try { return new URL(value).origin === value && ["http:", "https:"].includes(new URL(value).protocol); } catch { return false; }
-      }).optional(),
-      policyCategory: AgentPolicyCategorySchema,
-      category: EffectCategorySchema,
-      action: id,
-      amount: z.number().finite().nonnegative().optional(),
-    }).strict().optional(),
+    context: z
+      .object({
+        pageId: id.optional(),
+        site: z
+          .string()
+          .refine((value) => {
+            try {
+              return new URL(value).origin === value && ["http:", "https:"].includes(new URL(value).protocol);
+            } catch {
+              return false;
+            }
+          })
+          .optional(),
+        policyCategory: AgentPolicyCategorySchema,
+        category: EffectCategorySchema,
+        action: id,
+        amount: z.number().finite().nonnegative().optional(),
+      })
+      .strict()
+      .optional(),
     approvalId: id.optional(),
     budget: BudgetSuspensionSchema.optional(),
+    resourceFunding: FundingOwnerSchema.optional(),
+    resourceLimits: ResourceLimitsReviewSchema.optional(),
+    modelLimits: z
+      .object({
+        runId: id,
+        modelId: z.string().min(1).max(500),
+        reasons: z
+          .array(z.enum(["output-bound", "monetary-bound"]))
+          .min(1)
+          .max(2),
+        digest: z.string().regex(/^[a-f0-9]{64}$/),
+      })
+      .strict()
+      .optional(),
     instruction: z.string().trim().min(1).max(4000),
     guidance: z.string().trim().min(1).max(4000),
   })
-  .strict();
+  .strict()
+  .refine(
+    (request) =>
+      (request.resourceFunding === undefined &&
+        request.resourceLimits === undefined &&
+        request.modelLimits === undefined) ||
+      request.kind === "handoff",
+    {
+      message: "Cloud envelope review requires a handoff, never a redeemable budget request.",
+    },
+  );
 export type SuspensionRequest = z.infer<typeof SuspensionRequestSchema>;
 
 export const DecisionSchema = z.discriminatedUnion("status", [

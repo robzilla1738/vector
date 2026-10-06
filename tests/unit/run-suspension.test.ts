@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { openDb, Repo } from "@aux/runtime";
 import type { Run, Suspension } from "@aux/contracts";
 import { assertRunAnswerable, currentRunSuspension } from "../../apps/runtime/src/services/run-suspension.js";
 import { runsMethods } from "../../apps/runtime/src/api/methods/runs.js";
@@ -53,6 +54,9 @@ describe("durable run suspension view and answer guard", () => {
       kind: "approval",
       request: { kind: "approval", approvalId: "a1", instruction: "Approve?", guidance: "Review it." },
     });
+    const db = openDb(":memory:"),
+      repo = new Repo(db);
+    repo.saveRun(run());
     const answer = vi.fn(async (_runId: string, _text: string, _mentions: unknown[], recheck: () => void) =>
       recheck(),
     );
@@ -62,7 +66,7 @@ describe("durable run suspension view and answer guard", () => {
         client: { external: false },
         s: {
           runs: { coordinator: { get: () => run(), answerWithMentions: answer } },
-          repo: { listModelCalls: () => [], listSteps: () => [] },
+          repo,
           artifacts: { list: () => [] },
         },
         suspensions: { pending: () => record },
@@ -82,5 +86,6 @@ describe("durable run suspension view and answer guard", () => {
     expect(answer).toHaveBeenCalledExactlyOnceWith("r1", "Work", [], expect.any(Function));
     record = suspension({ suspensionId: "replacement" });
     expect(() => answer.mock.calls[0]![3]()).toThrow(/changed/);
+    db.close();
   });
 });

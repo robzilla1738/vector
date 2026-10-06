@@ -89,3 +89,5 @@ export * from "./native-recorder.js";
 export * from "./native-cdp.js";
 
 export * from "./agent-policy.js";
+
+export { WaitingPhraseSchema } from "./utility.js";

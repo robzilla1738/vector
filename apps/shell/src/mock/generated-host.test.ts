@@ -66,6 +66,8 @@ it("validates stub results against the live manifest schemas", async () => {
       "native.recorderStop",
       "native.personRead",
       "native.personReadContext",
+      "native.credentialContext",
+      "native.credentialAdmit",
       "native.permissionRetire",
     ].sort(),
   );

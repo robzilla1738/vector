@@ -55,6 +55,8 @@ export type LoopToolResult =
 
 /** Service surface a loop tool executes against. */
 export interface LoopToolDeps {
+  calendarEvents?: (input: Omit<import("@aux/contracts").CalendarTaskEventsQuery, "taskId">) => Promise<LoopToolResult>;
+  generateImage?: (input: { prompt: string }) => Promise<LoopToolResult>;
   /** Observe a page: the observation renderer's text becomes the tool output. */
   observe?: (input: {
     pageId: string;
@@ -179,7 +181,7 @@ export interface LoopToolDeps {
    * it can re-cite and retry.
    */
   submitResult?: (
-    input: { report: string; citations?: ResultCitation[]; textProposal?: string },
+    input: { report: string; citations?: ResultCitation[]; textProposal?: string; generatedFiles?: import("@aux/contracts").CompletedGeneratedFile[] },
     ctx: LoopToolContext,
   ) => Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; error: string }>;
   /** Settle one uncertain page write only from a newly observed effect line. */

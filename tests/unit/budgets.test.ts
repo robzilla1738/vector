@@ -1,3 +1,4 @@
+import { budgetLineage } from "../fixtures/budget-lineage.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
@@ -44,7 +45,7 @@ describe("BudgetsService", () => {
     repo.saveModelCall(call("run-a", 0.05));
     repo.saveModelCall(call("run-b", 0.25));
     repo.saveModelCall(call(null, 0.99)); // unattributed — day scope only
-    const budgets = new BudgetsService(repo.db, () => ({}));
+    const budgets = new BudgetsService(repo.db, () => ({}), budgetLineage(repo));
     expect(budgets.spentRunUsd("run-a")).toBeCloseTo(0.15);
     expect(budgets.spentRunUsd("run-b")).toBeCloseTo(0.25);
     expect(budgets.spentDayUsd()).toBeCloseTo(1.39);
@@ -62,7 +63,7 @@ describe("BudgetsService", () => {
     repo.saveModelCall(call("run-a", 0.3));
     repo.saveModelCall(call("run-c", 0.2));
     repo.saveModelCall(call("run-b", 9.99));
-    const budgets = new BudgetsService(repo.db, () => ({}));
+    const budgets = new BudgetsService(repo.db, () => ({}), budgetLineage(repo));
     expect(budgets.routineForRun("run-a")).toBe("routine-1");
     expect(budgets.routineForRun("run-b")).toBeUndefined();
     expect(budgets.spentRoutineUsd("routine-1")).toBeCloseTo(0.5);
@@ -73,7 +74,11 @@ describe("BudgetsService", () => {
     const repo = new Repo(d);
     insertRoutineRun(d, "routine-1", "run-a");
     repo.saveModelCall(call("run-a", 0.6));
-    const budgets = new BudgetsService(repo.db, () => ({ runUsd: 1.0, dayUsd: 5.0, routineUsd: 0.5 }));
+    const budgets = new BudgetsService(
+      repo.db,
+      () => ({ runUsd: 1.0, dayUsd: 5.0, routineUsd: 0.5 }),
+      budgetLineage(repo),
+    );
     expect(() => budgets.assertWithin({ runId: "run-a" })).toThrowError(/routine budget.*0\.50/);
     const thrown = (() => {
       try {
@@ -85,18 +90,22 @@ describe("BudgetsService", () => {
     })() as { code?: string; detail?: { scope?: string } } | undefined;
     expect(thrown?.code).toBe("permission_denied");
     expect(thrown?.detail?.scope).toBe("routine");
-    const generous = new BudgetsService(repo.db, () => ({ runUsd: 1.0, dayUsd: 5.0, routineUsd: 10 }));
+    const generous = new BudgetsService(
+      repo.db,
+      () => ({ runUsd: 1.0, dayUsd: 5.0, routineUsd: 10 }),
+      budgetLineage(repo),
+    );
     expect(() => generous.assertWithin({ runId: "run-a" })).not.toThrow();
-    const runCap = new BudgetsService(repo.db, () => ({ runUsd: 0.5 }));
+    const runCap = new BudgetsService(repo.db, () => ({ runUsd: 0.5 }), budgetLineage(repo));
     expect(() => runCap.assertWithin({ runId: "run-a" })).toThrowError(/run budget/);
   });
 
   it("unset limits mean unlimited — status reports spend without a cap", () => {
     const repo = new Repo(db());
     repo.saveModelCall(call("run-a", 42));
-    const budgets = new BudgetsService(repo.db, () => ({}));
+    const budgets = new BudgetsService(repo.db, () => ({}), budgetLineage(repo));
     const status = budgets.status({ runId: "run-a" });
-    expect(status).toHaveLength(2); // run + day; routine omitted without a scope
+    expect(status).toHaveLength(3); // run + day + month; routine omitted without a scope
     expect(status[0]).toMatchObject({ scope: "run", spentUsd: 42, exceeded: false, limitUsd: undefined });
     expect(() => budgets.assertWithin({ runId: "run-a" })).not.toThrow();
   });

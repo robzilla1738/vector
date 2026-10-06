@@ -2,12 +2,15 @@ import { AuxError, type PageTarget, type AgentPageCreate } from "@aux/contracts"
 import type { PageService } from "../services/pages.js";
 
 const TURN_TTL_MS = 60 * 60_000;
-const MAX_TABS_PER_TURN = 8;
 type Turn = {
   taskId: string;
   connectionId: string;
   expiresAt: number;
   pageIds: Set<string>;
+  authority: Map<
+    string,
+    { runId: string; taskId?: string; taskRevision: number; mode: AgentPageCreate["mode"] }
+  >;
   clipboardText?: string;
 };
 
@@ -35,14 +38,41 @@ export class AgentTurnTabs {
   }
   owns(connectionId: string, taskId: string, pageId: string): boolean {
     return [...this.turns.values()].some(
-      (turn) => turn.connectionId === connectionId && turn.taskId === taskId && turn.pageIds.has(pageId),
+      (turn) =>
+        turn.connectionId === connectionId &&
+        turn.taskId === taskId &&
+        turn.pageIds.has(pageId) &&
+        this.currentAuthority(turn, pageId),
     );
+  }
+  private currentAuthority(turn: Turn, pageId: string): boolean {
+    try {
+      const page = this.pages.get(pageId);
+      const saved = turn.authority.get(pageId);
+      return (
+        page.ownedByRuntime &&
+        page.controller !== "human" &&
+        (!saved ||
+          (page.agentIsolation?.runId === saved.runId &&
+            page.agentIsolation.taskId === saved.taskId &&
+            page.agentIsolation.taskRevision === saved.taskRevision &&
+            page.agentIsolation.mode === saved.mode))
+      );
+    } catch {
+      return false;
+    }
   }
   private begin(connectionId: string, taskId: string, turnId: string): Turn {
     const key = this.key(connectionId, taskId, turnId);
     let turn = this.turns.get(key);
     if (!turn) {
-      turn = { taskId, connectionId, expiresAt: this.now() + TURN_TTL_MS, pageIds: new Set() };
+      turn = {
+        taskId,
+        connectionId,
+        expiresAt: this.now() + TURN_TTL_MS,
+        pageIds: new Set(),
+        authority: new Map(),
+      };
       this.turns.set(key, turn);
     }
     turn.expiresAt = this.now() + TURN_TTL_MS;
@@ -77,19 +107,21 @@ export class AgentTurnTabs {
           const page = this.pages.get(pageId);
           if (
             page.url === input.url &&
+            this.currentAuthority(turn, pageId) &&
             (!input.agentScope ||
               (page.agentIsolation?.runId === input.agentScope.runId &&
-                page.agentIsolation.taskRevision === input.agentScope.taskRevision))
+                page.agentIsolation.taskRevision === input.agentScope.taskRevision &&
+                page.agentIsolation.taskId === input.agentScope.taskId &&
+                page.agentIsolation.mode === input.agentScope.mode))
           ) {
             turn.expiresAt = this.now() + TURN_TTL_MS;
             return page;
           }
         } catch {
           turn.pageIds.delete(pageId);
+          turn.authority.delete(pageId);
         }
       }
-    if (turn.pageIds.size >= MAX_TABS_PER_TURN)
-      throw new AuxError("conflict", "A task turn can hold at most eight temporary tabs.");
     const page = await this.pages.open({
       url: input.url,
       background: true,
@@ -98,8 +130,36 @@ export class AgentTurnTabs {
       agentScope: input.agentScope,
     });
     turn.pageIds.add(page.pageId);
+    if (input.agentScope)
+      turn.authority.set(page.pageId, {
+        runId: input.agentScope.runId,
+        taskId: input.agentScope.taskId,
+        taskRevision: input.agentScope.taskRevision,
+        mode: input.agentScope.mode,
+      });
     turn.expiresAt = this.now() + TURN_TTL_MS;
     return page;
+  }
+  async close(connectionId: string, taskId: string, pageId: string): Promise<{ok: boolean}> {
+    const turn = [...this.turns.values()].find(item => item.connectionId === connectionId && item.taskId === taskId && item.pageIds.has(pageId));
+    if (!turn || !this.currentAuthority(turn, pageId))
+      throw new AuxError("permission_denied", "The original connection no longer owns this tab.");
+    const result = await this.pages.close(pageId);
+    if (!result.ok) throw new AuxError("conflict", "Native tab closure was not acknowledged.");
+    turn.pageIds.delete(pageId);
+    turn.authority.delete(pageId);
+    return result;
+  }
+  async endConnection(connectionId: string): Promise<void> {
+    const failures: unknown[] = [];
+    for (const [key, turn] of this.turns) {
+      if (turn.connectionId !== connectionId) continue;
+      try {
+        await this.end(connectionId, turn.taskId, key.slice(`${connectionId}:${turn.taskId}:`.length));
+        if (this.turns.has(key)) failures.push(new AuxError("conflict", "Original task tabs await native closure acknowledgement."));
+      } catch (error) { failures.push(error); }
+    }
+    if (failures.length) throw new AggregateError(failures, "External task tab cleanup is incomplete.");
   }
   async end(connectionId: string, taskId: string, turnId: string): Promise<{ closed: string[] }> {
     const key = this.key(connectionId, taskId, turnId);
@@ -112,23 +172,32 @@ export class AgentTurnTabs {
         const page = this.pages.get(pageId);
         if (!page.ownedByRuntime) {
           turn.pageIds.delete(pageId);
+          turn.authority.delete(pageId);
           continue;
         }
         if (page.controller === "human") {
           this.onHumanTakeover(page);
           turn.pageIds.delete(pageId);
+          turn.authority.delete(pageId);
+          continue;
+        }
+        if (!this.currentAuthority(turn, pageId)) {
+          turn.pageIds.delete(pageId);
+          turn.authority.delete(pageId);
           continue;
         }
         const result = await this.pages.close(pageId);
         if (result.ok) {
           closed.push(pageId);
           turn.pageIds.delete(pageId);
+          turn.authority.delete(pageId);
         }
       } catch {
         try {
           this.pages.get(pageId);
         } catch {
           turn.pageIds.delete(pageId);
+          turn.authority.delete(pageId);
         }
       }
     }
@@ -144,11 +213,9 @@ export class AgentTurnTabs {
       }
   }
   async endAll(): Promise<void> {
-    for (const key of this.turns.keys()) {
-      const turn = this.turns.get(key)!;
-      const turnId = key.slice(`${turn.connectionId}:${turn.taskId}:`.length);
-      await this.end(turn.connectionId, turn.taskId, turnId);
-    }
+    const results = await Promise.allSettled([...new Set([...this.turns.values()].map(turn => turn.connectionId))].map(id => this.endConnection(id)));
+    const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected").map(result => result.reason);
+    if (failures.length) throw new AggregateError(failures, "Original task tab retirement is incomplete.");
   }
   dispose() {
     clearInterval(this.timer);

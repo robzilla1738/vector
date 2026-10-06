@@ -246,7 +246,9 @@ describe("aux isolated world", () => {
       expect(emailPreference).toBeDefined();
       await dp.check(emailPreference!.ref);
       await dp.check(refNamed(observed.elements, "Pro"));
-      await dp.uploadFiles(refNamed(observed.elements, "Resume (upload)"), [file]);
+      await dp.uploadFiles(refNamed(observed.elements, "Resume (upload)"), [
+        { name: "fixture.txt", mimeType: "text/plain", buffer: Buffer.from("fixture upload") },
+      ]);
       expect(await page(dp).locator("#role").inputValue()).toBe("Engineer");
       expect(await page(dp).locator('input[name="pref"][value="email"]').isChecked()).toBe(true);
       expect(await page(dp).locator('input[name="plan"][value="pro"]').isChecked()).toBe(true);

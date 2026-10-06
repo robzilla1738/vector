@@ -1,3 +1,4 @@
+import type { AgentPolicySettings } from "@aux/contracts";
 import { afterEach, expect, it } from "vitest";
 import {
   EventBus,
@@ -75,14 +76,20 @@ function fixture(
       return { status: "completed" };
     },
   };
-  const grants = ["effect:read"];
+  let policy: AgentPolicySettings = {
+    agentMode: "auto",
+    agentPolicyRevision: 0,
+    agentPolicies: [
+      { category: "read", access: "block" },
+      { category: "navigate", access: "block" },
+      { category: "external_tool", access: "block" },
+    ],
+  };
   const settings = {
-    effectGrants: () => grants,
+    agentPolicy: () => policy,
     searchEngine: () => "https://search.example.com/?q=%s",
-    originPolicies: () => [],
-    safetyCeiling: () => "ask" as const,
     budgetLimits: () => ({}),
-    imageModel: () => "google/imagen-4.0-fast-generate-001" as const,
+    imageModel: () => "openai/gpt-image-2" as const,
   };
   const invoke = makeInvoker({
     repo,
@@ -101,7 +108,9 @@ function fixture(
     task,
     workspace,
     page,
-    grants,
+    allowTools: () => {
+      policy = { ...policy, agentPolicyRevision: policy.agentPolicyRevision + 1, agentPolicies: [] };
+    },
     pageOwnership,
     operationCalls: () => operationCalls,
     scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId },
@@ -178,7 +187,7 @@ it("lets a scoped agent hand its authorized tab to a person without granting res
   });
 });
 
-it("requires a current task revision and an egress grant before network tools or turn tabs", async () => {
+it("requires a current task revision and agent policy approval before network tools or turn tabs", async () => {
   const f = fixture();
   const client = { external: true, connectionId: "c1", scope: f.scope };
   await expect(f.invoke("agent.web.fetch", { url: "https://example.com/" }, client)).rejects.toMatchObject({
@@ -220,7 +229,7 @@ it("requires a current task revision and an egress grant before network tools or
 
 it("authorizes task programs on a temporary turn tab and revokes them at turn end", async () => {
   const f = fixture();
-  f.grants.push("effect:egress");
+  f.allowTools();
   const client = { external: true, connectionId: "c1", scope: f.scope };
   const input = { url: "https://example.com/", taskId: f.task.taskId, expectedRevision: 1, turnId: "turn1" };
   const tab = (await f.invoke("agent.turn.open", input, client)) as { pageId: string };
@@ -246,7 +255,7 @@ it("authorizes task programs on a temporary turn tab and revokes them at turn en
 
 it("inserts virtual clipboard text through a guarded task program and erases it at turn end", async () => {
   const f = fixture();
-  f.grants.push("effect:write");
+  f.allowTools();
   const client = { external: true, connectionId: "c1", scope: f.scope };
   const ctx = { taskId: f.task.taskId, expectedRevision: 1, turnId: "copy1" };
   await expect(f.invoke("agent.turn.clipboard.read", ctx, client)).rejects.toMatchObject({
@@ -288,7 +297,7 @@ it("requires exact task, page and origin authority before site adapters run", as
   });
   await expect(f.invoke("sites.read", request, client)).rejects.toMatchObject({ code: "permission_denied" });
   expect(f.siteReads).toHaveLength(0);
-  f.grants.push("effect:egress");
+  f.allowTools();
   await expect(f.invoke("sites.read", request, client)).resolves.toEqual({ text: "fixture" });
   expect(f.siteReads).toHaveLength(1);
 });
@@ -411,10 +420,8 @@ function eventFixture() {
     ],
   } as unknown as PageService;
   const settings = {
-    effectGrants: () => [],
+    agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
     searchEngine: () => "",
-    originPolicies: () => [],
-    safetyCeiling: () => "ask" as const,
   };
   const invoke = makeInvoker({ repo, events, pages, settings } as unknown as Services);
   repo.saveRun({

@@ -26,6 +26,7 @@ type Turn = {
   pages: Map<string, TabMention>;
   owned: Set<string>;
   navigation: Map<string, symbol>;
+  privateTask: boolean;
 };
 
 /** Authority belongs to one active turn. A title change never changes authority. */
@@ -36,7 +37,12 @@ export class TurnMentions {
     private readonly authority?: MentionAuthority,
   ) {}
 
-  begin(runId: string, raw: readonly MentionRef[], ownedPageIds: readonly string[] = []): void {
+  begin(
+    runId: string,
+    raw: readonly MentionRef[],
+    ownedPageIds: readonly string[] = [],
+    context: { defaultPages?: readonly MentionPage[]; privateTask?: boolean } = {},
+  ): void {
     if (this.turns.has(runId)) throw new Error("Mention turn is already active");
     const refs = MentionRefsSchema.parse(raw);
     const pages = new Map<string, TabMention>();
@@ -66,13 +72,21 @@ export class TurnMentions {
         pages.set(tab.pageId, previous?.access === "act" ? previous : tab);
       }
     }
+    for (const page of context.defaultPages ?? [])
+      if (!pages.has(page.pageId)) pages.set(page.pageId, { ...page, kind: "tab", title: "", access: "act" });
     for (const pageId of ownedPageIds) {
       if (pages.has(pageId)) continue;
       const page = this.page(pageId);
       if (!page) throw new MentionUnavailable("The run-created attachment is unavailable.");
       pages.set(pageId, { ...page, kind: "tab", title: "", access: "act" });
     }
-    this.turns.set(runId, { refs, pages, owned: new Set(ownedPageIds), navigation: new Map() });
+    this.turns.set(runId, {
+      refs,
+      pages,
+      owned: new Set(ownedPageIds),
+      navigation: new Map(),
+      privateTask: context.privateTask === true,
+    });
   }
 
   end(runId: string): void {
@@ -102,6 +116,8 @@ export class TurnMentions {
   require(runId: string, pageId: string, access: MentionAccess): MentionAvailability {
     const turn = this.turns.get(runId);
     if (!turn) return { status: "unavailable", reason: "The turn has ended." };
+    if (turn.privateTask && !turn.owned.has(pageId))
+      return { status: "unavailable", reason: "Private tasks can only use their isolated owned tabs." };
     const current = this.page(pageId);
     if (!current) return { status: "unavailable", reason: "This tab is closed." };
     const snapshot = turn.pages.get(pageId);
@@ -260,6 +276,16 @@ export class TurnMentions {
     }
   }
 
+  sourcePages(runId: string): readonly MentionPage[] {
+    return [...(this.turns.get(runId)?.pages.values() ?? [])];
+  }
+  hasPageSelection(runId: string): boolean {
+    return (
+      this.turns
+        .get(runId)
+        ?.refs.some((ref) => ref.kind === "tab" || ref.kind === "group" || ref.kind === "space") ?? false
+    );
+  }
   selectedPages(runId: string): string[] {
     const turn = this.turns.get(runId);
     return turn

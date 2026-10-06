@@ -143,17 +143,17 @@ it("blocks capture, model drafting and insertion while off but always allows can
   expect(await agentMethods["agent.inlineAssist.cancel"]!(ctx)).toEqual({ cancelled: true });
 });
 
-it("enforces managed source deny before capture even when the owner rule allows it", async () => {
+it("enforces the current exact-site read block before capture", async () => {
   const { settings, repo } = fixture(),
     read = vi.fn(),
-    audit = vi.fn(),
     url = "https://example.test/write";
-  await settings.set({ originPolicies: [{ origin: "https://example.test/", access: "allow" }] });
-  repo.setSetting("managedOriginPolicies", [{ origin: "https://example.test/", access: "deny" }]);
+  await settings.set({
+    agentPolicyRevision: settings.agentPolicy().agentPolicyRevision,
+    agentPolicies: [{ category: "read", site: "https://example.test", access: "block" }],
+  });
   const ctx = {
     client: { external: false },
     params: { expectedUrl: url },
-    safetyAudit: { record: audit },
     s: {
       settings,
       repo,
@@ -169,20 +169,20 @@ it("enforces managed source deny before capture even when the owner rule allows 
     code: "permission_denied",
   });
   expect(read).not.toHaveBeenCalled();
-  expect(audit).toHaveBeenCalledWith(
-    expect.objectContaining({ source: "managed", access: "deny", effect: "read" }),
-  );
 });
 
-it("fails closed on source ask policy and a never-write ceiling without invoking provider or insertion", async () => {
+it("refuses current exact-site transmission ask and input block without invoking provider or insertion", async () => {
   const { settings, repo } = fixture(),
     model = vi.fn(),
     write = vi.fn(),
     url = "https://example.test/write";
   settings.modelOverride = {} as never;
   await settings.set({
-    originPolicies: [{ origin: "https://example.test/", access: "allow", effects: { egress: "ask" } }],
-    safetyCeilings: { write: "never" },
+    agentPolicyRevision: settings.agentPolicy().agentPolicyRevision,
+    agentPolicies: [
+      { category: "navigate", site: "https://example.test", access: "ask" },
+      { category: "input", site: "https://example.test", access: "block" },
+    ],
   });
   const ctx = {
     client: { external: false },
