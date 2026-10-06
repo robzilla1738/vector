@@ -48,7 +48,12 @@
     inset: auto;
     margin: 0;
     padding: var(--space-1-5);
+    border: var(--hairline) solid var(--line);
     border-radius: var(--r-xl);
+    background: var(--surface-menu);
+    color: var(--ink-0);
+    box-shadow: var(--shadow-pop);
+    -webkit-app-region: no-drag;
   }
   .aux-native-menu::backdrop {
     background: transparent;

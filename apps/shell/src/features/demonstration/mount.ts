@@ -3,7 +3,7 @@ import { createElement, lazy, Suspense } from "react";
 import { call, useStore } from "../../store";
 import { useRecording } from "./state";
 import type { FeatureMount } from "../registry";
-import { RecordButton, RecorderBanner } from "./RecorderControls";
+import { RecorderBanner } from "./RecorderControls";
 import { bootRecorder, recorderAction, recordingGeneration, exportDemonstration } from "./state";
 const ReviewRecording = lazy(() => import("./ReviewRecording"));
 function RecorderReview() {
@@ -19,7 +19,6 @@ function RecorderReview() {
 export const mount: FeatureMount = {
   feature: "demonstrationSkills",
   boot: bootRecorder,
-  sidebarItems: [RecordButton],
   overlays: [RecorderBanner, RecorderReview],
   commands: {
     "export-demonstration": () => exportDemonstration(),

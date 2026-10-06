@@ -147,6 +147,35 @@ function harness(native: NullNativeBridge = new NullNativeBridge()) {
 }
 
 describe("PageService.syncCatalog", () => {
+  it("keeps activation timestamps through inactive metadata and driver attachment updates", async () => {
+    const { pages, repo } = harness();
+    try {
+      await pages.syncCatalog(
+        patch(1, [
+          upsert(record("one", "main", { lastActiveAt: 10 })),
+          upsert(record("two", "main", { lastActiveAt: 20 })),
+          win("main", ["one", "two"], "two"),
+        ]),
+      );
+      expect(pages.get("one").lastActiveAt).toBe(10);
+      expect(pages.get("two").lastActiveAt).toBe(20);
+      pages.onNativeTitle("one", "Background title");
+      expect(pages.get("one").lastActiveAt).toBe(10);
+      await pages.syncCatalog(
+        patch(2, [
+          upsert(record("one", "main", { lastActiveAt: 30, title: "Active now" })),
+          upsert(record("two", "main", { lastActiveAt: 20, title: "Background update" })),
+          win("main", ["one", "two"], "one"),
+        ]),
+      );
+      expect(pages.get("one").lastActiveAt).toBe(30);
+      expect(pages.get("two").lastActiveAt).toBe(20);
+      pages.onNativeTitle("two", "Another background title");
+      expect(pages.get("two").lastActiveAt).toBe(20);
+    } finally {
+      repo.close();
+    }
+  });
   it("persists native split metadata during fresh attach, update and unsplit", async () => {
     const { repo, pages, events, attached } = harness();
     const seen: unknown[] = [];

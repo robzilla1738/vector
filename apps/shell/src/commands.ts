@@ -182,7 +182,6 @@ export const COMMAND_ACTIONS = {
     "pin-copy-url",
     "pin-reorder",
     "pin-unpin",
-    "clear-today",
     "make-live-folder",
     "refresh-live-folder",
     "open-live-folder-item",

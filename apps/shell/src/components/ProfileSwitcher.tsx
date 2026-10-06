@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { bridge, inNativeHost, type BrowserProfile } from "../bridge";
 import { errToast } from "../store";
 import { orderedProfiles } from "../features/profiles/profile-order";
-import { SPACE_COLORS } from "../workspace";
 import { useConfirm } from "../ui/dialog";
 import {
   shellIconBookmark,
@@ -18,7 +17,10 @@ import { BrowserHostMethods as HostMethods } from "@aux/contracts/browser-host-m
 import { executeCommand } from "../commands";
 import { commandResult } from "../features/profiles/command-result";
 import { subscribeProfileMoves } from "../features/profiles/move-request";
-import { nativeAriaHiddenProps as auxNativeAriaHiddenProps } from "../ui/native-attribute-props";
+import {
+  nativeAriaHiddenProps as auxNativeAriaHiddenProps,
+  nativeMenuItemRoleProps,
+} from "../ui/native-attribute-props";
 export function ProfileMoveConfirmation() {
   const { confirm, confirmation } = useConfirm();
   useEffect(() => {
@@ -108,7 +110,6 @@ export function ProfileSwitcher() {
     };
   }, [open]);
   if (!inNativeHost || bridge.privateMode) return null;
-  const current = profiles.find((profile) => profile.current);
   const focus = (profileId: string, spaceId: string | null) => {
     const request = ++focusRequest.current.value;
     void commandResult("focus-profile-space", HostMethods.focusBrowserProfileSpace.result, {
@@ -125,17 +126,16 @@ export function ProfileSwitcher() {
       });
   };
   return (
-    <div className="profile-switcher" data-space={current?.color ?? SPACE_COLORS[0]}>
-      <div className="profile-color-stripe" {...auxNativeAriaHiddenProps} />
+    <div className="profile-switcher">
       <button
         ref={chip}
-        className="profile-chip"
+        className="menu-item profile-menu-trigger"
+        role="menuitem"
         aria-expanded={open}
-        aria-label="Choose Profile and Space"
+        aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
       >
-        <span {...auxNativeAriaHiddenProps}>{current?.name.slice(0, 1).toLocaleUpperCase() ?? "P"}</span>
-        {current?.name ?? "Profile"}
+        Profiles…
       </button>
       {open && (
         <Menu
@@ -148,6 +148,7 @@ export function ProfileSwitcher() {
           {profiles.map((profile) => (
             <div key={profile.id} className="profile-menu-group">
               <button
+                {...nativeMenuItemRoleProps}
                 className="profile-menu-profile"
                 aria-current={profile.current ? "true" : undefined}
                 data-space={profile.color ?? "blue"}
@@ -168,6 +169,7 @@ export function ProfileSwitcher() {
               </button>
               {profile.spaces?.map((space) => (
                 <button
+                  {...nativeMenuItemRoleProps}
                   className="profile-menu-space"
                   data-space={space.color}
                   key={space.id}
@@ -180,6 +182,7 @@ export function ProfileSwitcher() {
             </div>
           ))}
           <button
+            {...nativeMenuItemRoleProps}
             onClick={() => {
               const request = ++focusRequest.current.value;
               void executeCommand("show-profiles")
@@ -193,43 +196,9 @@ export function ProfileSwitcher() {
           >
             Manage Profiles…
           </button>
-          <button onClick={() => setOpen(false)}>Close menu</button>
+          <button {...nativeMenuItemRoleProps} onClick={() => setOpen(false)}>Close menu</button>
         </Menu>
       )}
     </div>
-  );
-}
-
-export function ProfileFooterStripe() {
-  const [profile, setProfile] = useState<BrowserProfile>();
-  useEffect(() => {
-    if (!inNativeHost || bridge.privateMode) return;
-    let live = true,
-      generation = 0;
-    const refresh = () => {
-      const request = ++generation;
-      void bridge
-        .browserProfiles()
-        .then((items) => {
-          if (live && request === generation) setProfile(items.find((item) => item.current));
-        })
-        .catch((error) => {
-          if (live && request === generation) errToast(error);
-        });
-    };
-    refresh();
-    window.addEventListener("focus", refresh);
-    return () => {
-      live = false;
-      window.removeEventListener("focus", refresh);
-    };
-  }, []);
-  if (!profile) return null;
-  return (
-    <div
-      className="profile-footer-stripe"
-      data-space={profile.color ?? "blue"}
-      {...auxNativeAriaHiddenProps}
-    />
   );
 }

@@ -679,6 +679,8 @@
     backdrop-filter: none;
   }
   .sidebar {
+    container-name: sidebar;
+    container-type: inline-size;
     width: var(--sb-w, var(--sidebar-w));
     flex: none;
     display: flex;
@@ -1210,13 +1212,26 @@
     background: transparent;
     isolation: auto;
   }
-  /* All docked glass surfaces expose the same native window material and tint.
-   Apply tint once, on the panel, rather than stacking it on its contents. */
+  /* Navigation needs a backed material when a native page is behind the strip.
+   Apply that backing once on the panel; rows retain the captured alpha states. */
   :root[data-sidebar-appearance="translucent"] {
     --window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);
     --floating-glass-tint: color-mix(in srgb, var(--floating-sidebar-surface) 95%, transparent);
+    --navigation-glass-tint: color-mix(
+      in srgb,
+      var(--floating-sidebar-surface) max(95%, var(--sidebar-tint, 0%)),
+      transparent
+    );
   }
-  :root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek, .chat-sidebar, .rail),
+  :root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek) {
+    background: var(--navigation-glass-tint);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    :root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek) {
+      background: var(--floating-sidebar-surface);
+    }
+  }
+  :root[data-sidebar-appearance="translucent"] :is(.chat-sidebar, .rail),
   :root[data-sidebar-appearance="translucent"] .app.native-host .horizontal-tabs-row {
     background: var(--window-glass-tint);
   }
@@ -1501,17 +1516,6 @@
     background: var(--bg-hover);
     border-radius: var(--r-lg);
   }
-  .sb-bookmarks-empty {
-    margin: 0 var(--space-3) var(--space-3);
-    padding: var(--space-3-5) var(--space-2);
-    min-height: 50px;
-    border: 1px dashed var(--line);
-    border-radius: var(--r-lg);
-    color: var(--ink-2);
-    font-size: var(--fs-xs);
-    text-align: center;
-    -webkit-app-region: no-drag;
-  }
   .sidebar .tab-list {
     padding-inline: var(--space-2);
     gap: var(--space-0);
@@ -1519,7 +1523,7 @@
   .sidebar .tab-row,
   .sidebar .tab-new,
   .sidebar .folder-row {
-    min-height: 34px;
+    min-height: var(--sidebar-row-h);
     padding-inline: var(--space-2);
     font-size: var(--fs-md);
   }
@@ -1556,10 +1560,6 @@
   :root .app.sidebar-peek .main-col.has-page,
   .app.sidebar-peek .stage-card.has-page {
     background: transparent;
-  }
-  .sb-bookmarks-empty:hover {
-    color: var(--ink-2);
-    background: var(--bg-hover);
   }
   .icon-btn:not(:disabled):active,
   .btn:not(:disabled):active {

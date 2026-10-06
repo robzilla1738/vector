@@ -362,7 +362,7 @@
     --sb-bg: var(--bg-window);
     --sb-ink-0: var(--ink-0);
     --sb-ink-1: rgb(255 255 255 / 65%);
-    --sb-ink-2: rgb(255 255 255 / 45%);
+    --sb-ink-2: rgb(255 255 255 / 55%);
     --sb-ink-3: var(--ink-3);
     --sb-hover: var(--bg-hover);
     --sb-field: var(--surface-primary);
@@ -419,7 +419,7 @@
     --space-c: 0.09;
     --space-grain-opacity-scale: 0.0005;
     --sb-ink-1: rgb(0 0 0 / 65%);
-    --sb-ink-2: rgb(0 0 0 / 45%);
+    --sb-ink-2: rgb(0 0 0 / 55%);
     --sb-glow: rgb(0 0 0 / 18%);
     --sb-highlight: var(--highlight-inset);
     --surface-primary: #fff;

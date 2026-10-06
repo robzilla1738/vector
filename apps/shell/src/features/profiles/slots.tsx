@@ -5,7 +5,7 @@ const Switcher = lazy(() =>
 const Confirmation = lazy(() =>
   import("../../components/ProfileSwitcher").then((module) => ({ default: module.ProfileMoveConfirmation })),
 );
-export function ProfileSidebar() {
+export function ProfileMenu() {
   return (
     <Suspense fallback={null}>
       <Switcher />
@@ -16,17 +16,6 @@ export function ProfileConfirmation() {
   return (
     <Suspense fallback={null}>
       <Confirmation />
-    </Suspense>
-  );
-}
-
-const Footer = lazy(() =>
-  import("../../components/ProfileSwitcher").then((module) => ({ default: module.ProfileFooterStripe })),
-);
-export function ProfileFooter() {
-  return (
-    <Suspense fallback={null}>
-      <Footer />
     </Suspense>
   );
 }

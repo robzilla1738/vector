@@ -13,5 +13,6 @@ export const retainNativeTabMetadata = (
         windowKind: previous.windowKind,
         anchor: previous.anchor,
         split: previous.split,
+        lastActiveAt: previous.lastActiveAt,
       }
     : next;

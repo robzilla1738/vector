@@ -82,7 +82,7 @@
   .session-row {
     display: flex;
     align-items: center;
-    min-height: 34px;
+    min-height: var(--sidebar-row-h);
     border-radius: var(--r-lg);
     position: relative;
   }
@@ -144,10 +144,22 @@
     padding: 0 var(--space-1) var(--space-1) var(--space-2-5);
   }
   .session-empty {
+    margin: 0;
     padding: var(--space-2);
     color: var(--ink-2);
     font-size: var(--fs-xs);
     line-height: 1.5;
+  }
+  .sidebar .session-heading,
+  .sidebar .session-empty {
+    color: var(--sb-ink-2);
+  }
+  .sidebar .chat-sessions[aria-busy="true"] > output.session-empty {
+    display: block;
+    min-height: 28px;
+    padding-block: var(--space-1);
+    font-size: var(--fs-2xs);
+    line-height: 20px;
   }
   .session-archive-toggle {
     padding: var(--space-1);
@@ -194,8 +206,8 @@
     }
   }
   .session-row {
-    height: 34px;
-    min-height: 34px;
+    height: var(--sidebar-row-h);
+    min-height: var(--sidebar-row-h);
   }
   .session-actions {
     display: flex;
@@ -214,12 +226,12 @@
     pointer-events: auto;
   }
   .session-open {
-    height: 34px;
+    height: var(--sidebar-row-h);
     padding: 0 56px 0 var(--space-2);
-    line-height: 34px;
+    line-height: var(--sidebar-row-h);
   }
   .session-folder-toggle {
-    height: 34px;
+    height: var(--sidebar-row-h);
     padding: 0 var(--space-7) 0 var(--space-2);
   }
   .session-folder {

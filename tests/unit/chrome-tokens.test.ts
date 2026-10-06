@@ -141,7 +141,10 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expectCss(styles).toContain(
       "--window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);",
     );
-    expectCss(styles).toContain(":is(.sidebar.expanded, .sidebar.peek, .chat-sidebar, .rail)");
+    expectCss(styles).toContain(
+      ':root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek) { background: var(--navigation-glass-tint); }',
+    );
+    expectCss(styles).toContain(":is(.chat-sidebar, .rail)");
     expect(tokens).toMatch(/--surface-menu:\s*var\(--bg-2\)/);
     expect(tokens).toMatch(/--hairline:\s*0\.5px/);
     expect(tokens).toMatch(/--squircle-factor:\s*1\.4/);

@@ -11,6 +11,7 @@ import {
 import { bridge } from "./bridge";
 import { useStore } from "./store";
 import { emptyLayout } from "./workspace";
+import { reducePageEvent } from "./store/events";
 
 afterEach(() => vi.restoreAllMocks());
 const record = (pageId: string, over: Partial<TabRecord> = {}): TabRecord => ({
@@ -216,4 +217,42 @@ it("a snapshot never rewinds the catalog version", () => {
   useStore.getState().syncTabsSnapshot(snapshot(1, [record("ghost")], ["ghost"], "ghost"));
   expect(useStore.getState().catalogVersion).toBe(3);
   expect(orderedPages(useStore.getState().pages).map((page) => page.pageId)).toEqual(["one", "two"]);
+});
+
+it("keeps native activation order through full and partial runtime metadata overlays", () => {
+  setup();
+  useStore.getState().applyTabsPatch(
+    patch(4, 3, [
+      { op: "upsert", tab: record("one", { lastActiveAt: 10 }) },
+      { op: "upsert", tab: record("two", { lastActiveAt: 20 }) },
+    ]),
+  );
+  const apply = (payload: Record<string, unknown>) => {
+    const next = reducePageEvent(useStore.getState(), {
+      seq: 1,
+      streamId: "recency-test",
+      type: "page.updated",
+      ts: 1,
+      payload,
+    });
+    if (next) useStore.setState(next);
+  };
+  apply({ page: { ...useStore.getState().pages.byId.one!, title: "Attached", lastActiveAt: 99 } });
+  apply({ pageId: "one", lastActiveAt: 100, loading: true });
+  expect(useStore.getState().pages.byId.one).toMatchObject({
+    lastActiveAt: 10,
+    title: "Attached",
+    loading: true,
+  });
+  useStore.getState().applyTabsPatch(
+    patch(5, 4, [
+      { op: "upsert", tab: record("one", { lastActiveAt: 30 }) },
+      { op: "upsert", tab: record("two", { lastActiveAt: 20 }) },
+      { op: "window", window: { windowId: "main", order: ["one", "two"], activePageId: "one" } },
+    ]),
+  );
+  apply({ page: { ...useStore.getState().pages.byId.two!, title: "Metadata", lastActiveAt: 101 } });
+  expect(useStore.getState().pages.byId.one?.lastActiveAt).toBe(30);
+  expect(useStore.getState().pages.byId.two?.lastActiveAt).toBe(20);
+  expect(useStore.getState().activePageId).toBe("one");
 });

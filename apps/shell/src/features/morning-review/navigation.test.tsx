@@ -15,7 +15,6 @@ vi.mock("../../store", async () => {
 });
 vi.mock("../../commands", () => ({ executeCommand: fixture.execute }));
 vi.mock("./MorningReview", () => ({
-  OvernightCard: () => null,
   MorningReviewInbox: () => <h2>Overnight review</h2>,
 }));
 vi.mock("./NightSettings", () => ({ NightSettings: () => null }));

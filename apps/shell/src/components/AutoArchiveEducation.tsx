@@ -13,10 +13,12 @@ export function AutoArchiveEducation() {
   const editor = useOrganizationEditor();
   if (!connected || archiveSettings(settings).acknowledged || editor) return null;
   return (
-    <dialog open aria-label="Tabs stay one click away" className="archive-education">
-      <h3>Tabs stay one click away</h3>
-      <p>Aux archives tabs you haven't used in 12 hours. They're one click away in Archive.</p>
-      <div className="dialog-actions">
+    <section aria-label="Tab archiving" className="archive-education">
+      <div className="archive-education-copy">
+        <strong>Tabs stay one click away</strong>
+        <p>Unused tabs move to Archive after 12 hours.</p>
+      </div>
+      <div className="archive-education-actions">
         <button
           {...auxClassGhostButtonProps}
           data-command-id="configure-auto-archive"
@@ -32,6 +34,6 @@ export function AutoArchiveEducation() {
           Got it
         </button>
       </div>
-    </dialog>
+    </section>
   );
 }

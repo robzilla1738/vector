@@ -5,7 +5,6 @@ import { call, useStore } from "../../store";
 import { executeCommand } from "../../commands";
 import { NightOverlays } from "./NightOverlays";
 export { NightOverlays } from "./NightOverlays";
-import { OvernightCard } from "./MorningReview";
 const NightSettings = lazy(() =>
   import("./NightSettings").then((module) => ({ default: module.NightSettings })),
 );
@@ -38,8 +37,6 @@ function QueueButton({ disabled = false }: Partial<ComposerPluginProps>) {
 export const mount: FeatureMount = {
   feature: "overnightReview",
   boot: bootNightReview,
-  sidebarFooterItems: [OvernightCard],
-  startItems: [OvernightCard],
   overlays: [NightOverlays],
   composerActions: [QueueButton],
   settingsSections: [{ category: "Automations", component: NightSettingsSection }],

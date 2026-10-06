@@ -224,6 +224,7 @@ export const reducePageEvent: Reducer = (state, e) => {
           delete fields.windowKind;
           delete fields.anchor;
           delete fields.split;
+          delete fields.lastActiveAt;
         }
         if (Object.keys(fields).length) next = { ...next, ...patchPage(next, pageId, fields) };
       }

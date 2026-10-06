@@ -457,6 +457,7 @@ export class PageOpener {
     url: string;
     backend: Backend;
     title?: string;
+    lastActiveAt?: number;
     themeColor?: string;
     split?: PageTarget["split"];
     active?: boolean;
@@ -497,6 +498,7 @@ export class PageOpener {
       url: string;
       backend: Backend;
       title?: string;
+      lastActiveAt?: number;
       themeColor?: string;
       split?: PageTarget["split"];
       active?: boolean;
@@ -547,7 +549,7 @@ export class PageOpener {
       controllerEpoch: opts.restored ? opts.restored.controllerEpoch + 1 : 0,
       ownedByRuntime,
       createdAt: opts.restored?.createdAt ?? Date.now(),
-      lastActiveAt: Date.now(),
+      lastActiveAt: opts.lastActiveAt ?? Date.now(),
     };
     const lp = this.pages.addLive(target, dp);
     if (opts.active) {

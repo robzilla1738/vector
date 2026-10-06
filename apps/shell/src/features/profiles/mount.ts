@@ -2,7 +2,7 @@ import type { FeatureMount, CommandContext, CommandInvocation } from "../registr
 import type { ShellCommandId } from "@aux/contracts";
 import { useStore, errToast } from "../../store";
 import { bridge } from "../../bridge";
-import { ProfileSidebar, ProfileConfirmation, ProfileFooter } from "./slots";
+import { ProfileMenu, ProfileConfirmation } from "./slots";
 import { requestProfileMove, requestProfileDelete } from "./move-request";
 import { orderedProfiles, orderedProfileSpaces } from "./profile-order";
 const commands: NonNullable<FeatureMount["commands"]> = {};
@@ -69,8 +69,7 @@ commands["set-profile-appearance"] = (_state, { payload }) => {
 export const mount: FeatureMount = {
   feature: "profiles",
   commands,
-  sidebarItems: [ProfileSidebar],
-  sidebarFooterItems: [ProfileFooter],
+  spaceMenuItems: [ProfileMenu],
   overlays: [ProfileConfirmation],
   boot: () => {
     let live = true,

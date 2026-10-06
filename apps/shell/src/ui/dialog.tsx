@@ -1,4 +1,3 @@
-import { GlassMaterial } from "../components/GlassMaterial";
 import {
   useCallback,
   useEffect,
@@ -202,7 +201,6 @@ export function Menu({
           onClose();
       }}
     >
-      <GlassMaterial />
       {children}
     </dialog>,
     document.body,

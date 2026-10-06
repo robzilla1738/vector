@@ -1,23 +1,7 @@
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
-import { useStore } from "../../store";
 import { executeCommand } from "../../commands";
 import { useRecording } from "./state";
 import { nativePoliteLiveProps, nativeAlertRoleProps } from "../../ui/native-attribute-props";
-export function RecordButton() {
-  const pageId = useStore((state) => state.activePageId);
-  const busy = useRecording((state) => state.busy),
-    demo = useRecording((state) => state.demonstration);
-  return (
-    <button
-      {...smallButtonProps}
-      aria-label="Record a demonstration"
-      disabled={!pageId || busy || (!!demo && demo.state !== "stopped")}
-      onClick={() => void executeCommand("record-demonstration", { payload: { pageId: pageId! } })}
-    >
-      Record
-    </button>
-  );
-}
 export function RecorderBanner() {
   const { demonstration: demo, busy, error } = useRecording();
   if (!demo || demo.state === "stopped") return null;

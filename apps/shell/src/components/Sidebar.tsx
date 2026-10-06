@@ -2,6 +2,7 @@ import { GlassMaterial } from "./GlassMaterial";
 import { hintNavigation } from "../navigation-preload";
 import { useTabLayout } from "../use-tab-layout";
 import { orderedPages } from "../store/pages";
+import { storage } from "../store/persistence";
 import { staticMenuItemProps, staticIconButtonProps } from "../ui/class-props";
 import { ReturnControlButton } from "./ReturnControlButton";
 import { runCommand } from "../commands";
@@ -98,7 +99,6 @@ import {
 import {
   staticTextProps as auxClassTextProps,
   staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps,
-  staticSpacerProps as auxClassSpacerProps,
 } from "../ui/class-props";
 import { nativeMenuItemRoleProps } from "../ui/native-attribute-props";
 
@@ -185,6 +185,7 @@ interface TabRowProps {
   index: number;
   folderId: string | null;
   dragging: boolean;
+  reorderable: boolean;
   dropBefore: boolean;
   dropAfter: boolean;
   onActivate: (id: string) => void;
@@ -209,6 +210,7 @@ const TabRow = memo(function TabRow({
   index,
   folderId,
   dragging,
+  reorderable,
   dropBefore,
   dropAfter,
   onActivate,
@@ -284,12 +286,16 @@ const TabRow = memo(function TabRow({
             onClose(p.pageId);
           } else if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
             e.preventDefault();
-            onKeyMove(folderId, index, e.key === "ArrowUp" ? -1 : 1);
+            if (reorderable) onKeyMove(folderId, index, e.key === "ArrowUp" ? -1 : 1);
           }
         }}
         onDragStart={(e) => onDragStart(folderId, index, p.pageId, e)}
-        onDragOver={(e) => onDragOver(folderId, index, e)}
-        onDrop={(e) => onDrop(folderId, e)}
+        onDragOver={(e) => {
+          if (reorderable) onDragOver(folderId, index, e);
+        }}
+        onDrop={(e) => {
+          if (reorderable) onDrop(folderId, e);
+        }}
         onDragEnd={onDragEnd}
       >
         <span className="tab-fav">
@@ -540,6 +546,7 @@ export function SpaceMenu({
         </>
       )}
       <div className="menu-sep" role="separator" />
+      <FeatureSlots slot="spaceMenuItems" />
       {actions.map((action) => (
         <div key={action.label} role="none">
           {action.separator && <div className="menu-sep" role="separator" />}
@@ -778,7 +785,7 @@ const SidebarBookmarks = memo(function SidebarBookmarks({
           )}
         </div>
       ) : (
-        <div className="sb-bookmarks-empty">Drag tabs here to add bookmarks</div>
+        <div className="sb-bookmarks-empty">Drag tabs here to bookmark</div>
       )}
     </div>
   );
@@ -810,6 +817,31 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const peek = useStore((s) => s.sidebarPeek);
   const layout = useTabLayout();
   const pages = useTabMembership();
+  const [recentFirst, setRecentFirst] = useState(() => {
+    try {
+      return storage?.getItem("aux.sidebar-tab-order") === "recently-used";
+    } catch {
+      return false;
+    }
+  });
+  const lastActive = useStore(
+    useShallow((state) => {
+      const times: Record<string, number> = {};
+      if (recentFirst)
+        for (const page of pages) {
+          const actual = state.pages.byId[page.pageId];
+          if (actual) times[page.pageId] = actual.lastActiveAt;
+        }
+      return times;
+    }),
+  );
+  const sortTabs = useCallback(
+    (items: TabMembership[]) =>
+      recentFirst
+        ? [...items].sort((a, b) => (lastActive[b.pageId] ?? 0) - (lastActive[a.pageId] ?? 0))
+        : items,
+    [recentFirst, lastActive],
+  );
   /** 0 not saved · 1 bookmarked · 2 also on the reading list — for the active page. */
   const saved = useStore((s) => {
     const url = s.pages.byId[s.activePageId ?? ""]?.url;
@@ -840,15 +872,17 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const tabs = useMemo(() => tabsInSpace(layout, pages, space.id), [layout, pages, space.id]);
   const folders = useMemo(() => foldersInSpace(layout, space.id), [layout, space.id]);
   const loose = useMemo(
-    () => unfiledTabs(layout, pages, space.id).filter((page) => !boundPin(layout, page.pageId)),
-    [layout, pages, space.id],
+    () => sortTabs(unfiledTabs(layout, pages, space.id).filter((page) => !boundPin(layout, page.pageId))),
+    [layout, pages, space.id, sortTabs],
   );
   const visibleTabs = useMemo(
     () => [
-      ...folders.flatMap((folder) => (folder.collapsed ? [] : tabsInFolder(layout, pages, folder.id))),
+      ...folders.flatMap((folder) =>
+        folder.collapsed ? [] : sortTabs(tabsInFolder(layout, pages, folder.id)),
+      ),
       ...loose,
     ],
-    [folders, layout, pages, loose],
+    [folders, layout, pages, loose, sortTabs],
   );
   const focusablePageId = visibleTabs.some((tab) => tab.pageId === activePageId)
     ? activePageId
@@ -1094,6 +1128,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
       folderId={folderId}
       active={p.pageId === activePageId && mode === "focus"}
       focusable={p.pageId === focusablePageId}
+      reorderable={!recentFirst}
       dragging={drag.folderId === folderId && drag.from === index}
       dropBefore={
         drag.folderId === folderId && drag.to === index && drag.from !== index && drag.from !== index - 1
@@ -1212,20 +1247,45 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
             aria-orientation="vertical"
             ref={tabScroller}
           >
-            <NewTabButton
-              data-command-id="new-tab"
-              onClick={() => runCommand("new-tab")}
-              dropOn={!!drag.pageId && drag.folderId != null && drag.over === ""}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-                setDrag((d) => (d.over === "" ? d : { ...d, over: "" }));
-              }}
-              onDrop={(e) => onDrop(null, e)}
-              onDragEnd={onDragEnd}
-            />
+            <div className="sb-tab-tools">
+              <NewTabButton
+                data-command-id="new-tab"
+                onClick={() => runCommand("new-tab")}
+                dropOn={!!drag.pageId && drag.folderId != null && drag.over === ""}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setDrag((d) => (d.over === "" ? d : { ...d, over: "" }));
+                }}
+                onDrop={(e) => onDrop(null, e)}
+                onDragEnd={onDragEnd}
+              />
+              <button
+                className="sb-tab-sort"
+                aria-label="Sort tabs by last used"
+                aria-pressed={recentFirst}
+                title={
+                  recentFirst
+                    ? "Last used first. Turn off to reorder tabs manually."
+                    : "Sort tabs by last used"
+                }
+                onClick={() => {
+                  const next = !recentFirst;
+                  setDrag(IDLE_DRAG);
+                  setRecentFirst(next);
+                  try {
+                    storage?.setItem("aux.sidebar-tab-order", next ? "recently-used" : "manual");
+                  } catch {
+                    toast("Tab order changed for this window; the preference could not be saved.");
+                  }
+                }}
+              >
+                {shellIconClock}
+                <span>Last used</span>
+              </button>
+            </div>
             {folders.map((f) => {
-              const kids = tabsInFolder(layout, pages, f.id);
+              const kids = sortTabs(tabsInFolder(layout, pages, f.id));
               return (
                 <div
                   key={f.id}
@@ -1268,19 +1328,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
 
             {(folders.length > 0 || loose.length > 0) && <div className="sb-rule" />}
 
-            <div className="today-header">
-              <span>Today</span>
-              <button
-                className="btn ghost sm"
-                data-command-id="clear-today"
-                disabled={!loose.length}
-                onClick={() =>
-                  void executeCommand("clear-today", { payload: { spaceId: space.id } }).catch(errToast)
-                }
-              >
-                Clear
-              </button>
-            </div>
             <VirtualList
               items={loose}
               rowHeight={32}
@@ -1303,7 +1350,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
         </div>
       </SidebarSection>
       <div className="sb-foot">
-        <FeatureSlots slot="sidebarFooterItems" />
         <div className="sb-space">
           <button
             ref={spaceTrigger}
@@ -1342,7 +1388,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
         {bridge.privateMode ? (
           <>
             <span className="private-sidebar-label">Private</span>
-            <span {...auxClassSpacerProps} />
             <button
               data-command-id="overview"
               onClick={() => runCommand("overview")}
@@ -1354,7 +1399,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
           </>
         ) : (
           <>
-            <span {...auxClassSpacerProps} />
             <button
               {...staticIconButtonProps}
               title={withShortcut("Search", key("palette"))}
@@ -1397,6 +1441,28 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                   returnFocus={moreTrigger}
                   onClose={() => setMoreOpen(false)}
                 >
+                  <button
+                    {...nativeMenuItemRoleProps}
+                    aria-label="Agent"
+                    data-command-id="agent-rail"
+                    onClick={() => chooseMore("agent-rail")}
+                  >
+                    {shellIconAgent}
+                    <span>Agent</span>
+                    {key("agent-rail") && <kbd>{key("agent-rail")}</kbd>}
+                  </button>
+                  {activeController === "human" && (
+                    <button
+                      {...nativeMenuItemRoleProps}
+                      data-command-id="return-agent-control"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        runCommand("return-agent-control", { payload: { pageId: activePageId! } });
+                      }}
+                    >
+                      <span>Return control to agent</span>
+                    </button>
+                  )}
                   <button
                     {...nativeMenuItemRoleProps}
                     aria-label="Chats"
@@ -1581,6 +1647,8 @@ function NewTabButton({
   return (
     <button
       className={`tab-new ${dropOn ? "drop-on" : ""}`}
+      aria-label="New Tab"
+      title="New Tab"
       onClick={onClick}
       onDragOver={onDragOver}
       onDrop={onDrop}

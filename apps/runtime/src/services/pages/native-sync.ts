@@ -125,7 +125,8 @@ export class NativeViewSync {
         // The window op is the truth for activation — the global pointer
         // follows the most recently activated tab main reports.
         this.pages.activeId = lp.target.pageId;
-        lp.target.lastActiveAt = Date.now();
+        const nativeTab = patch.ops.find((op) => op.op === "upsert" && op.tab.pageId === lp.target.pageId);
+        lp.target.lastActiveAt = nativeTab?.op === "upsert" ? nativeTab.tab.lastActiveAt : patch.ts;
         this.pages.deps.events.emit(EventTypes.PageUpdated, {
           pageId: lp.target.pageId,
           activePageId: lp.target.pageId,
@@ -169,6 +170,7 @@ export class NativeViewSync {
         this.pages.lastKnownWindow.set(tab.pageId, tab.windowId);
         const lp = this.pages.live.get(tab.pageId);
         if (lp) {
+          lp.target.lastActiveAt = tab.lastActiveAt;
           this.syncMemoryAdmission(tab.pageId, tab.windowKind, tab.workspaceId);
           if (!lp.driver && !lp.target.ownedByRuntime && !lp.target.agentIsolation) {
             if (lp.target.url !== tab.url) {
@@ -225,6 +227,7 @@ export class NativeViewSync {
           marker: `atab-${tab.pageId}`,
           url: tab.url,
           title: tab.title,
+          lastActiveAt: tab.lastActiveAt,
           themeColor: tab.themeColor,
           split: tab.split,
           backend: "aux",

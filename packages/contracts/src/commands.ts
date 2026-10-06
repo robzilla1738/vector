@@ -1242,7 +1242,6 @@ export const COMMANDS = [
   C("pin-copy-url", "Copy pinned URL", pinnedAppControl),
   C("pin-reorder", "Move pinned app", pinnedAppControl),
   C("pin-unpin", "Unpin app from Space", pinnedAppControl),
-  C("clear-today", "Clear Today", archiveBatchControl),
   C("make-live-folder", "Make live folder…", liveFolderControl),
   C("refresh-live-folder", "Refresh live folder", liveFolderControl),
   C("open-live-folder-item", "Open live folder item", liveFolderControl),

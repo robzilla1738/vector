@@ -1,8 +1,5 @@
-import { orderedPages } from "../../store/pages";
 import type { FeatureMount } from "../registry";
 import { useStore } from "../../store";
-import { boundPin } from "../../pinned-apps";
-import { unfiledTabs } from "../../workspace";
 import { showOrganizationEditor } from "../organization-state";
 import { ArchiveOverlay } from "../organization-overlays";
 
@@ -11,17 +8,6 @@ export const mount: FeatureMount = {
   overlays: [ArchiveOverlay],
   commands: {
     "show-archived-tabs": () => showOrganizationEditor({ kind: "archive" }),
-    "clear-today": async (state, invocation) => {
-      const payload = invocation.payload;
-      const spaceId =
-        payload && "spaceId" in payload
-          ? (payload.spaceId ?? state.layout.activeSpaceId)
-          : state.layout.activeSpaceId;
-      const ids = unfiledTabs(state.layout, orderedPages(state.pages), spaceId)
-        .filter((page) => !boundPin(state.layout, page.pageId))
-        .map((page) => page.pageId);
-      if (ids.length) await (await import("../../archive-actions")).archivePages(ids, { reason: "manual" });
-    },
     "archive-restore": async (_state, invocation) => {
       const payload = invocation.payload;
       const entry =

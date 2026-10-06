@@ -92,7 +92,7 @@ export interface FeatureMount {
   privateWindows?: boolean;
   boot?: () => void | (() => void);
   sidebarItems?: readonly ComponentType[];
-  sidebarFooterItems?: readonly ComponentType[];
+  spaceMenuItems?: readonly ComponentType[];
   startItems?: readonly ComponentType[];
   toolbarItems?: readonly ComponentType[];
   railView?: {
@@ -159,7 +159,7 @@ export function runFeatureCommand(
 export function FeatureSlots({
   slot,
 }: {
-  slot: "sidebarItems" | "sidebarFooterItems" | "toolbarItems" | "overlays" | "startItems";
+  slot: "sidebarItems" | "spaceMenuItems" | "toolbarItems" | "overlays" | "startItems";
 }) {
   const overrides = useStore((state) => state.settings.featureOverrides as FeatureOverride | undefined);
   return featureMounts

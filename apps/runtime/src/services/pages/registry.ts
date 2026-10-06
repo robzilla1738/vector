@@ -619,7 +619,6 @@ export class PageRegistry {
 
   /** Coalesced: the page row and tab strip commit once per tick however many fields changed. */
   persist(lp: LivePage) {
-    lp.target.lastActiveAt = Date.now();
     this.deps.repo.deferPage(lp.target);
     this.saveTabsSnapshot();
   }
