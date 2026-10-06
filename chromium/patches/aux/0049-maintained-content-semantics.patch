@@ -224672,7 +224672,7 @@ index 0921e08..37011d1 100644
  }
  }  // namespace aux
 diff --git a/chrome/browser/ui/aux/content_filter_network.cc b/chrome/browser/ui/aux/content_filter_network.cc
-index e236b44..85be0b7 100644
+index e236b44..815725c 100644
 --- a/chrome/browser/ui/aux/content_filter_network.cc
 +++ b/chrome/browser/ui/aux/content_filter_network.cc
 @@ -1,21 +1,27 @@
@@ -224732,7 +224732,7 @@ index e236b44..85be0b7 100644
  }
  void AddCSP(const std::string& csp, network::mojom::URLResponseHead* head) {
    if (csp.empty()) return;
-@@ -76,26 +83,61 @@ void Reject(mojo::PendingRemote<network::mojom::URLLoaderClient> client, int cod
+@@ -76,26 +83,63 @@ void Reject(mojo::PendingRemote<network::mojom::URLLoaderClient> client, int cod
  class FilteredRequest final : public network::mojom::URLLoader, public network::mojom::URLLoaderClient {
   public:
    FilteredRequest(mojo::PendingRemote<network::mojom::URLLoaderClient> client,
@@ -224745,6 +224745,7 @@ index e236b44..85be0b7 100644
 +                  ContentFilterSourceScope scope,
 +                  ContentFilterSourceScope::RequestSource source,
 +                  network::ResourceRequest request,
++                  int32_t original_id,
 +                  Profile* profile,
 +                  uint32_t options,
 +                  net::MutableNetworkTrafficAnnotationTag annotation,
@@ -224755,6 +224756,7 @@ index e236b44..85be0b7 100644
 +        scope_(std::move(scope)),
 +        source_(std::move(source)),
 +        request_(std::move(request)),
++        original_id_(original_id),
 +        client_(std::move(client)),
 +        profile_(profile),
 +        options_(options),
@@ -224774,7 +224776,7 @@ index e236b44..85be0b7 100644
 +                -> std::optional<SemanticHeaderRequest> {
 +              return self ? self->CaptureHeaders(actual_url) : std::nullopt;
 +            },
-+            weak_factory_.GetWeakPtr())});
++            weak_factory_.GetWeakPtr()), original_id_});
 +    if (!native_id_) {
 +      Finish(net::ERR_INSUFFICIENT_RESOURCES);
 +      return false;
@@ -224811,7 +224813,7 @@ index e236b44..85be0b7 100644
    }
    void SetPriority(net::RequestPriority priority, int32_t intra) override { if (target_) target_->SetPriority(priority, intra); }
    void OnReceiveEarlyHints(network::mojom::EarlyHintsPtr hints) override {
-@@ -105,12 +147,144 @@ class FilteredRequest final : public network::mojom::URLLoader, public network::
+@@ -105,12 +149,144 @@ class FilteredRequest final : public network::mojom::URLLoader, public network::
    void OnReceiveResponse(network::mojom::URLResponseHeadPtr head, mojo::ScopedDataPipeConsumerHandle body,
        std::optional<mojo_base::BigBuffer> metadata) override {
      if (!Current()) { Finish(net::ERR_ABORTED); return; }
@@ -224962,7 +224964,7 @@ index e236b44..85be0b7 100644
        const auto headers = head->headers;
        content::GetNetworkService()->ParseHeaders(request_.url, headers,
            mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(
-@@ -118,29 +292,81 @@ class FilteredRequest final : public network::mojom::URLLoader, public network::
+@@ -118,29 +294,81 @@ class FilteredRequest final : public network::mojom::URLLoader, public network::
                std::move(head), std::move(body), std::move(metadata)), nullptr));
        return;
      }
@@ -225064,7 +225066,7 @@ index e236b44..85be0b7 100644
    void OnParsedResponse(network::mojom::URLResponseHeadPtr head,
        mojo::ScopedDataPipeConsumerHandle body, std::optional<mojo_base::BigBuffer> metadata,
        network::mojom::ParsedHeadersPtr parsed) {
-@@ -150,22 +376,236 @@ class FilteredRequest final : public network::mojom::URLLoader, public network::
+@@ -150,48 +378,282 @@ class FilteredRequest final : public network::mojom::URLLoader, public network::
      // The real sandboxed network parser updates the CSP structures consumed by
      // navigation/renderer commits, not merely the textual response header.
      head->parsed_headers = std::move(parsed);
@@ -225311,7 +225313,10 @@ index e236b44..85be0b7 100644
    }
    base::WeakPtr<ContentBlockingController> owner_;
    const ContentFilterSourceScope scope_;
-@@ -175,23 +615,42 @@ class FilteredRequest final : public network::mojom::URLLoader, public network::
+   const ContentFilterSourceScope::RequestSource source_;
+   network::ResourceRequest request_;
++  const int32_t original_id_;
+   std::optional<net::RedirectInfo> pending_redirect_;
    mojo::Remote<network::mojom::URLLoaderClient> client_;
    mojo::Receiver<network::mojom::URLLoaderClient> client_receiver_{this};
    raw_ptr<Profile> profile_;
@@ -225359,7 +225364,7 @@ index e236b44..85be0b7 100644
      target_.set_disconnect_handler(base::BindOnce(&ContentFilterFactory::OnTargetError, base::Unretained(this)));
    }
    void CreateLoaderAndStart(mojo::PendingReceiver<network::mojom::URLLoader> loader, int32_t id, uint32_t options,
-@@ -200,55 +659,132 @@ class ContentFilterFactory final : public network::SelfDeletingURLLoaderFactory
+@@ -200,7 +662,11 @@ class ContentFilterFactory final : public network::SelfDeletingURLLoaderFactory
      if (!request.url.SchemeIsHTTPOrHTTPS()) {
        target_->CreateLoaderAndStart(std::move(loader), id, options, request, std::move(client), annotation); return;
      }
@@ -225371,14 +225376,13 @@ index e236b44..85be0b7 100644
 +    }
      ++pending_;
      owner_->EnsureReady(base::BindOnce(&ContentFilterFactory::StartReady, weak_factory_.GetWeakPtr(),
--        std::move(loader), id, options, request, std::move(client), annotation));
-+        std::move(loader), options, request, std::move(client), annotation));
-   }
+         std::move(loader), id, options, request, std::move(client), annotation));
+@@ -208,47 +674,121 @@ class ContentFilterFactory final : public network::SelfDeletingURLLoaderFactory
   private:
    ~ContentFilterFactory() override = default;
    void OnTargetError() { DisconnectReceiversAndDestroy(); }
 -  void StartReady(mojo::PendingReceiver<network::mojom::URLLoader> loader, int32_t id, uint32_t options,
-+  void StartReady(mojo::PendingReceiver<network::mojom::URLLoader> loader, uint32_t options,
++  void StartReady(mojo::PendingReceiver<network::mojom::URLLoader> loader, int32_t original_id, uint32_t options,
        network::ResourceRequest request, mojo::PendingRemote<network::mojom::URLLoaderClient> client,
        net::MutableNetworkTrafficAnnotationTag annotation, bool ready) {
 +    if (!ready || !owner_ || !scope_ || !owner_->SourceAlive(*scope_)) {
@@ -225397,11 +225401,12 @@ index e236b44..85be0b7 100644
 +        request.url, request.method, ResourceType(request), *scope_,
 +        base::BindOnce(&ContentFilterFactory::StartSemantic,
 +                       weak_factory_.GetWeakPtr(), std::move(loader),
-+                       options, request, std::move(client), annotation,
++                       original_id, options, request, std::move(client), annotation,
 +                       binding->first, binding->second));
 +  }
 +  void StartSemantic(
 +      mojo::PendingReceiver<network::mojom::URLLoader> loader,
++      int32_t original_id,
 +      uint32_t options,
 +      network::ResourceRequest request,
 +      mojo::PendingRemote<network::mojom::URLLoaderClient> client,
@@ -225463,7 +225468,7 @@ index e236b44..85be0b7 100644
 +    // never hand compressed bytes to the maintained HTML/replace semantics.
 +    request.client_side_content_decoding_enabled = false;
 +    auto guard = std::make_unique<FilteredRequest>(
-+        std::move(client), owner_, *scope_, *source, request, profile_, options,
++        std::move(client), owner_, *scope_, *source, request, original_id, profile_, options,
 +        annotation, original_bridge, std::move(original_binding), registry_);
 +    if (!guard->Register()) {
 +      return;
@@ -482501,7 +482506,7 @@ index 0000000..b90f849
 +})();
 diff --git a/chrome/browser/ui/aux/semantic_factory_headers.cc b/chrome/browser/ui/aux/semantic_factory_headers.cc
 new file mode 100644
-index 0000000..47e1c07
+index 0000000..3032e59
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic_factory_headers.cc
 @@ -0,0 +1,104 @@
@@ -482539,17 +482544,17 @@ index 0000000..47e1c07
 +    // Native monotonic target identity has no renderer-selected alias. A late
 +    // notification for a retired loader closes this pipe instead of adopting
 +    // a newer request or using a foreground document as its source.
-+    if (!entry || !entry->first) {
++    if (!entry || !entry->bridge) {
 +      return;
 +    }
 +    mojo::PendingRemote<network::mojom::TrustedHeaderClient> preceding;
 +    if (existing_) {
-+      existing_->OnLoaderCreated(id,
++      existing_->OnLoaderCreated(entry->original_id,
 +                                 preceding.InitWithNewPipeAndPassReceiver());
 +    }
 +    mojo::FusePipes(
 +        std::move(receiver),
-+        WrapSemanticTrustedHeaders(*entry->first, std::move(entry->second),
++        WrapSemanticTrustedHeaders(*entry->bridge, std::move(entry->capture),
 +                                   std::move(preceding)));
 +  }
 +  void OnLoaderForCorsPreflightCreated(
@@ -486080,7 +486085,7 @@ index 0000000..daecc27
 +#endif
 diff --git a/chrome/browser/ui/aux/semantic_loader_registry.cc b/chrome/browser/ui/aux/semantic_loader_registry.cc
 new file mode 100644
-index 0000000..b4420c9
+index 0000000..e7127db
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic_loader_registry.cc
 @@ -0,0 +1,30 @@
@@ -486093,7 +486098,7 @@ index 0000000..b4420c9
 +SemanticLoaderRegistry::~SemanticLoaderRegistry() = default;
 +std::optional<int32_t> SemanticLoaderRegistry::Register(
 +    SemanticLoaderHeaderEntry original_request) {
-+  if (!original_request.first || !original_request.second ||
++  if (!original_request.bridge || !original_request.capture ||
 +      requests_.size() >= 4096 ||
 +      next_id_ > std::numeric_limits<int32_t>::max()) {
 +    return std::nullopt;
@@ -486108,7 +486113,7 @@ index 0000000..b4420c9
 +std::optional<SemanticLoaderHeaderEntry> SemanticLoaderRegistry::Find(
 +    int32_t original_id) const {
 +  const auto found = requests_.find(original_id);
-+  if (found == requests_.end() || !found->second.first) {
++  if (found == requests_.end() || !found->second.bridge) {
 +    return std::nullopt;
 +  }
 +  return found->second;
@@ -486116,10 +486121,10 @@ index 0000000..b4420c9
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/semantic_loader_registry.h b/chrome/browser/ui/aux/semantic_loader_registry.h
 new file mode 100644
-index 0000000..910d04a
+index 0000000..65d13c3
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic_loader_registry.h
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,32 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +#ifndef CHROME_BROWSER_UI_AUX_SEMANTIC_LOADER_REGISTRY_H_
 +#define CHROME_BROWSER_UI_AUX_SEMANTIC_LOADER_REGISTRY_H_
@@ -486129,8 +486134,12 @@ index 0000000..910d04a
 +
 +#include "chrome/browser/ui/aux/semantic_filter_trusted_headers.h"
 +namespace aux {
-+using SemanticLoaderHeaderEntry = std::pair<base::WeakPtr<SemanticFilterBridge>,
-+                                            CaptureSemanticHeaderRequest>;
++struct SemanticLoaderHeaderEntry {
++  base::WeakPtr<SemanticFilterBridge> bridge;
++  CaptureSemanticHeaderRequest capture;
++  // ID received from the preceding native proxy, before our target remapping.
++  int32_t original_id;
++};
 +// Native proxy-assigned target IDs, not renderer-chosen IDs. IDs are never
 +// recycled in a live factory, so late OnLoaderCreated cannot adopt a newer
 +// request which happened to reuse its caller's original URLLoader ID.
