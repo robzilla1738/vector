@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
+import { AuxError, errorAdvice } from "@aux/contracts";
 import { resetDescriptorCache, rpc } from "../../packages/mcp/src/client";
 
 const servers: Server[] = [];
@@ -76,4 +77,33 @@ it("fails closed for Aux MCP configs that have no scoped bearer token", async ()
   writeFileSync(path, JSON.stringify({ port: 1, token: "broad-runtime-token", pid: process.pid }));
   resetDescriptorCache();
   await expect(rpc("pages.list")).rejects.toThrow(/scoped AUX_MCP_TOKEN/i);
+});
+
+it("keeps unconfirmed native completion non-retryable across the MCP transport", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "aux-mcp-uncertain-"));
+  directories.push(dir);
+  const path = join(dir, "runtime.json");
+  vi.stubEnv("AUX_RUNTIME_FILE", path);
+  vi.stubEnv("AUX_MCP_TOKEN", "scoped-token");
+  let calls = 0;
+  const port = await listen(
+    createServer((request, response) => {
+      request.resume();
+      request.on("end", () => {
+        calls++;
+        response.setHeader("content-type", "application/json");
+        response.end(
+          JSON.stringify({ error: { code: "operation_uncertain", message: "Completion unconfirmed" } }),
+        );
+      });
+    }),
+  );
+  writeFileSync(path, JSON.stringify({ port, token: "runtime", pid: process.pid }));
+  const fault = await rpc("pages.navigate", { pageId: "original", url: "https://example.test" }).catch(
+    (error: unknown) => error,
+  );
+  expect(fault).toBeInstanceOf(AuxError);
+  expect((fault as AuxError).code).toBe("operation_uncertain");
+  expect(errorAdvice((fault as AuxError).code).retryable).toBe(false);
+  expect(calls).toBe(1);
 });

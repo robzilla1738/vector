@@ -1,5 +1,5 @@
 import { resolveRuntimeDescriptor } from "@aux/contracts/installation";
-import { AuxError, type AuxErrorCode } from "@aux/contracts";
+import { AUX_ERROR_REGISTRY, AuxError, type AuxErrorCode } from "@aux/contracts";
 import { AuxClient, AuxRpcError, readRuntimeDescriptor, type AuxConnection } from "@aux/sdk";
 
 export type RuntimeDescriptor = AuxConnection & { pid: number };
@@ -15,28 +15,6 @@ function descriptor(): RuntimeDescriptor {
 export function resetDescriptorCache() {
   cached = null;
 }
-
-const AUX_CODES = new Set<string>([
-  "not_found",
-  "invalid_params",
-  "target_detached",
-  "ref_stale",
-  "target_ambiguous",
-  "backend_unavailable",
-  "capability_unsupported",
-  "step_failed",
-  "condition_timeout",
-  "cancelled",
-  "model_error",
-  "model_output_invalid",
-  "needs_input",
-  "conflict",
-  "permission_denied",
-  "assertion_failed",
-  "operation_not_found",
-  "recovery_stale",
-  "internal",
-] satisfies AuxErrorCode[]);
 
 export async function rpc<T = unknown>(method: string, params: unknown = {}): Promise<T> {
   const scopedToken = process.env.AUX_MCP_TOKEN;
@@ -56,7 +34,7 @@ export async function rpc<T = unknown>(method: string, params: unknown = {}): Pr
         "This Aux connection is no longer authorized. Recreate it in Aux Settings.",
       );
     if (error instanceof AuxRpcError)
-      throw AUX_CODES.has(error.code)
+      throw Object.hasOwn(AUX_ERROR_REGISTRY, error.code)
         ? new AuxError(error.code as AuxErrorCode, error.message, error.detail)
         : new AuxError("backend_unavailable", `${error.code}: ${error.message}`);
     throw error;
