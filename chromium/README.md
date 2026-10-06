@@ -1,6 +1,6 @@
 # Aux Chromium source
 
-Aux pins Chromium `154.0.8037.58` at the commit in [version.txt](version.txt). The source and build output live outside this repository. [downloads.ini](downloads.ini) records the official branch-point lite archive and its SHA-256; the exact `.58` security respin is fetched from the signed upstream tag and checked against its pinned commit. The branch-point archive alone does not contain that respin.
+Aux pins Chromium `154.0.8037.98` at the commit in [version.txt](version.txt). The source and build output live outside this repository. [downloads.ini](downloads.ini) records the official branch-point lite archive and its SHA-256; the exact `.98` security respin is fetched from the upstream tag and checked against its pinned commit. The branch-point archive alone does not contain that respin.
 
 The patch order is [patches/series](patches/series). Source patches are the reviewable record of every upstream change. No Chromium profile, build output, credential, downloaded archive, or reference capture belongs in Git.
 
@@ -24,7 +24,7 @@ The existing Mac already has the stable source, the ordered series through patch
 
 `pop` removes the series in reverse order. `refresh --patch aux/<area>/<name>.patch <upstream paths...>` records a selected tracked diff, and `format <upstream paths...>` runs Chromium's clang-format. `stage-shell` builds the Chromium renderer with SurfaceEmbed's restricted `object-src 'self'` policy, stages current `apps/shell/dist` assets under `chrome/browser/resources/aux/assets`. Run it before a native resource rebuild when renderer assets change. CSP and bootstrap order can be checked with `node chromium/stage-shell.mjs verify`. The current AuxDev build has the native Mojo host integration; methods still absent from its allowlist remain product gaps.
 
-`stage-runtime` builds a self-contained runtime bundle and stages it beside an unsigned `Aux.app` with Node `26.7.0`. The official macOS arm64 Node archive is pinned to SHA-256 `7ee659a7768e641bbfd5360940660b8e8fd0052f77488f365562bac522fc15d4` and cached outside the repository. Pass an app path to stage a different build, for example `node chromium/stage-runtime.mjs /path/to/Aux.app`. Run this before signing; the script refuses to modify an app with a code signature. The same runtime bundler supplies the legacy Electron package until Electron is removed.
+`stage-runtime` builds a self-contained runtime bundle and stages it beside an unsigned `Aux.app`. `slim-node.mjs` builds Node `26.7.0` with small ICU, no npm and LTO, then strips local symbols. Node 26 no longer includes Corepack or accepts its old configure switch. The official source archive is pinned to SHA-256 `e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356`; its incremental source build and executable are cached outside the repository in `~/aux-node-slim` (override with `AUX_NODE_CACHE`). The source build uses the same plain native development lock. Pass an app path to stage a different build, for example `node chromium/stage-runtime.mjs /path/to/Aux.app`. Run this before signing; the script refuses to modify a signed app. The slim executable's 90 MB size target is advisory and must be measured after the build.
 
 ## Source and build evidence
 
