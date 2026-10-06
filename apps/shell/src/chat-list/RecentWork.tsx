@@ -38,12 +38,7 @@ export function RecentWork() {
     const update = () => setRefresh((value) => value + 1);
     window.addEventListener("focus", update);
     const off = bridge.onEvent((event) => {
-      if (
-        event.type === "conversation.changed" ||
-        event.type === "conversation.deleted" ||
-        event.type === "conversation.context.changed"
-      )
-        update();
+      if (event.type === "routine.updated") update();
     });
     return () => {
       window.removeEventListener("focus", update);

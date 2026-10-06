@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { RoutineSchema } from "@aux/contracts";
+import { type AuxEvent, RoutineSchema } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
 import { RecentWork } from "../chat-list/RecentWork";
@@ -102,4 +102,44 @@ it("keeps the current Space when a retired routine reply arrives out of order", 
   await act(async () => finishFirst([routine("workspace-a")]));
   expect(host.textContent).toContain("workspace-b routine");
   expect(host.textContent).not.toContain("workspace-a routine");
+});
+
+it("refreshes routines for their own changes without refetching on chat changes", async () => {
+  const listeners = new Set<(event: AuxEvent) => void>();
+  vi.spyOn(bridge, "onEvent").mockImplementation((listener) => {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  });
+  const invoke = vi
+    .spyOn(bridge, "invoke")
+    .mockImplementation(async (method) => (method === "routines.list" ? [routine("workspace-a")] : []));
+  await openRoutines();
+  invoke.mockClear();
+  await act(async () => {
+    for (const listener of listeners)
+      listener({
+        type: "conversation.changed",
+        payload: { chatId: "other" },
+        seq: 1,
+        ts: 1,
+        streamId: "test",
+      });
+  });
+  expect(invoke).not.toHaveBeenCalled();
+  await act(async () => {
+    for (const listener of listeners)
+      listener({
+        type: "routine.updated",
+        payload: { routine: routine("workspace-a") },
+        seq: 2,
+        ts: 2,
+        streamId: "test",
+      });
+  });
+  expect(invoke).toHaveBeenCalledWith(
+    "routines.list",
+    expect.objectContaining({ workspaceId: "workspace-a" }),
+  );
 });
