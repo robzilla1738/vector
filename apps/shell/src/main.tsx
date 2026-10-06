@@ -2,8 +2,8 @@ import { errorMessage } from "./error-message";
 import { config as configureZod } from "zod/v4/core";
 import { createRoot } from "react-dom/client";
 import { Component, type ReactNode } from "react";
-import "@fontsource-variable/geist";
-import "@fontsource-variable/geist-mono";
+import { captureFirstFrame } from "./first-frame";
+import "./fonts.css";
 import "./tokens.css";
 import "./styles.css";
 import { staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "./ui/class-props";
@@ -45,11 +45,6 @@ class RootBoundary extends Component<{ children: ReactNode }, { error: Error | n
 async function boot() {
   if (booting) return;
   booting = true;
-  root.render(
-    <output className="boot-status" data-block>
-      Opening Aux…
-    </output>,
-  );
   try {
     const chromiumShell = location.protocol === "chrome:" && location.hostname === "aux";
     if (chromiumShell) {
@@ -68,6 +63,9 @@ async function boot() {
       installMockBridge(new URLSearchParams(location.search));
     }
     const { App } = await import("./App");
+    const { useStore } = await import("./store");
+    const firstFrame = captureFirstFrame();
+    if (firstFrame?.mode === "ask") useStore.getState().setAgentDraft(firstFrame.text);
     root.render(
       <RootBoundary>
         <App />

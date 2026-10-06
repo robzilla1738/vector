@@ -1,3 +1,5 @@
+import { orderedPages } from "../store/pages";
+import { takeFirstFrame } from "../first-frame";
 import { errorMessage } from "../error-message";
 import { smallGhostButtonProps as auxReserveSmallGhostButtonProps } from "../ui/button-props";
 import { HomeEntryAction, runHomeEntry, useHomeEntryInput, useHomeEntryOwner } from "./HomeEntryControls";
@@ -111,7 +113,9 @@ export function CommandBar({
   // those fields keeps loading/audio churn from re-rendering the bar.
   const tabDigest = useStore(
     useShallow((s) =>
-      s.pages.map((p) => `${p.pageId}${p.title}${p.url}${p.favicon}${p.ownedByRuntime ? 1 : 0}`),
+      orderedPages(s.pages).map(
+        (p) => `${p.pageId}${p.title}${p.url}${p.favicon}${p.ownedByRuntime ? 1 : 0}`,
+      ),
     ),
   );
   const activePageId = useStore((s) => s.activePageId);
@@ -156,9 +160,7 @@ export function CommandBar({
   const newTab = useStore((s) => s.newTab);
   const setOverlay = useStore((s) => s.setOverlay);
   const agentDraft = useStore((s) => s.agentDraft);
-  const page = useStore((s) =>
-    s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined,
-  );
+  const page = useStore((s) => (s.activePageId ? s.pages.byId[s.activePageId ?? ""] : undefined));
   const pageAddress = page?.navigationError?.url ?? page?.url ?? "";
   const hasPage = !!page?.showBlankDocument || !isHomeAddress(pageAddress);
   const searchEngine = settings.searchEngine as string | undefined;
@@ -174,16 +176,19 @@ export function CommandBar({
       : seed && /^[@/>?]/.test(seed)
         ? (seed[0] as "@" | "/" | ">" | "?")
         : null;
-  const [editing, setEditing] = useState(!!surfaceMode);
+  const [firstFrame] = useState(() => (hero ? takeFirstFrame() : undefined));
+  const [editing, setEditing] = useState(!!surfaceMode || !!firstFrame?.focused);
   const [submitting, setSubmitting] = useState(false);
   const [queryState, setQueryState] = useState({
-    value: seed
-      ? initialPrefix && seed.startsWith(initialPrefix)
-        ? seed.slice(1)
-        : seed
-      : surfaceMode === "edit"
-        ? pageAddress
-        : "",
+    value:
+      firstFrame?.text ??
+      (seed
+        ? initialPrefix && seed.startsWith(initialPrefix)
+          ? seed.slice(1)
+          : seed
+        : surfaceMode === "edit"
+          ? pageAddress
+          : ""),
     generation: 0,
   });
   const val = queryState.value;
@@ -230,6 +235,7 @@ export function CommandBar({
   const entryModeRequest = useRef(0);
   const [entryMode, setEntryModeState] = useState<"search" | "ask">(() => {
     if (!hero || bridge.privateMode) return "search";
+    if (firstFrame) return firstFrame.mode;
     if (settings.homeEntryMode === "ask" || settings.homeEntryMode === "search")
       return settings.homeEntryMode;
     try {
@@ -240,7 +246,7 @@ export function CommandBar({
     }
   });
   useEffect(() => {
-    if (!hero || bridge.privateMode) return;
+    if (!hero || bridge.privateMode || firstFrame) return;
     if (settings.homeEntryMode === "ask" || settings.homeEntryMode === "search") {
       ++entryModeRequest.current;
       setEntryModeState(settings.homeEntryMode);
@@ -260,7 +266,7 @@ export function CommandBar({
     } catch {
       /* Optional legacy storage cannot block the fresh Search entry. */
     }
-  }, [hero, settings.dataDir, settings.homeEntryMode]);
+  }, [hero, settings.dataDir, settings.homeEntryMode, firstFrame]);
   const setEntryMode = (next: "search" | "ask") => {
     const previous = entryMode;
     const request = ++entryModeRequest.current;
@@ -331,6 +337,17 @@ export function CommandBar({
     inputRef.current?.focus();
     if (surfaceMode === "edit") inputRef.current?.select();
   }, [surfaceMode]);
+
+  useLayoutEffect(() => {
+    if (!firstFrame?.focused || firstFrame.mode !== "search") return;
+    const input = inputRef.current;
+    input?.focus();
+    input?.setSelectionRange(
+      firstFrame.selectionStart,
+      firstFrame.selectionEnd,
+      firstFrame.selectionDirection,
+    );
+  }, [firstFrame]);
 
   // ⌘L and friends land here
   useEffect(() => {
@@ -667,9 +684,8 @@ export function CommandBar({
     const q = raw.toLowerCase();
     if (q.length < 2 || q.includes("/")) return null;
     const urls = [
-      ...useStore
-        .getState()
-        .pages.filter((p) => !p.ownedByRuntime)
+      ...orderedPages(useStore.getState().pages)
+        .filter((p) => !p.ownedByRuntime)
         .map((p) => p.url),
       ...bookmarks.map((b) => b.url),
       ...history.map((h) => h.url),
@@ -797,9 +813,8 @@ export function CommandBar({
   // change so the ranker's folded-text cache survives across keystrokes.
   const tabCandidates = useMemo(() => {
     const layout = useStore.getState().layout;
-    return useStore
-      .getState()
-      .pages.filter((p) => p.pageId !== activePageId && !p.ownedByRuntime)
+    return orderedPages(useStore.getState().pages)
+      .filter((p) => p.pageId !== activePageId && !p.ownedByRuntime)
       .map((p) => ({
         ...p,
         id: p.pageId,
@@ -1231,7 +1246,7 @@ export function CommandBar({
           </output>
         }
       >
-        <HomeAsk onSearch={() => switchEntryMode("search")} current={homeCurrent} />
+        <HomeAsk firstFrame={firstFrame} onSearch={() => switchEntryMode("search")} current={homeCurrent} />
       </Suspense>
     );
 

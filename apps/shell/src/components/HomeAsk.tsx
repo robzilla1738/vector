@@ -1,9 +1,10 @@
+import type { FirstFrameEntry } from "../first-frame";
 import {
   smallButtonProps as auxReserveSmallButtonProps,
   smallGhostButtonProps as auxReserveSmallGhostButtonProps,
 } from "../ui/button-props";
 import { HomeEntryAction, useHomeEntryOwner } from "./HomeEntryControls";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Conversation } from "./Conversation";
 import { HOME_DRAFT_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { bridge } from "../bridge";
@@ -13,7 +14,15 @@ import "./HomeAsk.css";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 
 /** Home uses the real composer and durable draft/context services. Loaded only when the home composer is needed. */
-export default function HomeAsk({ onSearch, current }: { onSearch?(): unknown; current?(): boolean }) {
+export default function HomeAsk({
+  onSearch,
+  current,
+  firstFrame,
+}: {
+  onSearch?(): unknown;
+  current?(): boolean;
+  firstFrame?: FirstFrameEntry;
+}) {
   const ownCurrent = useHomeEntryOwner(!!onSearch);
   const searchCurrent = current ?? ownCurrent;
   const [chatId, setChatId] = useState(() =>
@@ -25,6 +34,16 @@ export default function HomeAsk({ onSearch, current }: { onSearch?(): unknown; c
         ),
   );
   const composer = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    if (!firstFrame?.focused) return;
+    const input = composer.current;
+    input?.focus();
+    input?.setSelectionRange(
+      firstFrame.selectionStart,
+      firstFrame.selectionEnd,
+      firstFrame.selectionDirection,
+    );
+  }, [firstFrame]);
   const focusRequest = useStore((state) => state.focusRequest);
   const railOpen = useStore((state) => state.railOpen);
   useEffect(() => {
