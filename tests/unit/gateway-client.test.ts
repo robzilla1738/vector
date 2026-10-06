@@ -79,9 +79,9 @@ describe("stripReasoning / oneOf errors", () => {
   it("clears think blocks", () => {
     expect(stripReasoning("<think>nope</think>ok").trim()).toBe("ok");
   });
-  it("treats Cerebras oneOf rejection as a structured-output failure", () => {
+  it("treats Cerebras oneOf rejection as a structured-output failure", async () => {
     expect(
-      isStructuredOutputError(
+      await isStructuredOutputError(
         new Error("Unsupported JSON schema fields in schema with keys: dict_keys(['oneOf'])."),
       ),
     ).toBe(true);

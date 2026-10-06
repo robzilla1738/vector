@@ -1,5 +1,3 @@
-import { generateImage } from "ai";
-import { createGateway } from "@ai-sdk/gateway";
 import { AuxError, ImageModelSchema, type ImageModel } from "@aux/contracts";
 import type { ArtifactStore } from "../services/artifacts.js";
 import { SpendLedger } from "../store/spend-ledger.js";
@@ -29,11 +27,21 @@ export class AgentImageTools {
     modelId: ImageModel,
   ): AgentImageTools {
     ImageModelSchema.parse(modelId);
-    const gateway = createGateway({ apiKey });
+    let provider:
+      | Promise<{
+          generateImage: typeof import("ai").generateImage;
+          gateway: ReturnType<typeof import("@ai-sdk/gateway").createGateway>;
+        }>
+      | undefined;
     return new AgentImageTools(
       artifacts,
       ledger,
       async (prompt) => {
+        provider ??= Promise.all([import("ai"), import("@ai-sdk/gateway")]).then(([sdk, gateway]) => ({
+          generateImage: sdk.generateImage,
+          gateway: gateway.createGateway({ apiKey }),
+        }));
+        const { generateImage, gateway } = await provider;
         const result = await generateImage({
           model: gateway.image(modelId),
           prompt,

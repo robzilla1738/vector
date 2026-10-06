@@ -1,4 +1,4 @@
-import { newAsyncContext, type QuickJSAsyncContext } from "quickjs-emscripten";
+import type { QuickJSAsyncContext } from "quickjs-emscripten";
 import { randomUUID } from "node:crypto";
 import {
   AgentJsRunParams,
@@ -57,6 +57,7 @@ export class AgentCodeMode {
   }
 
   private async makeSession(client: Client): Promise<Session> {
+    const { newAsyncContext } = await import("quickjs-emscripten");
     const context = await newAsyncContext();
     context.runtime.setMemoryLimit(MAX_HEAP_BYTES);
     context.runtime.setMaxStackSize(2 * 1024 * 1024);

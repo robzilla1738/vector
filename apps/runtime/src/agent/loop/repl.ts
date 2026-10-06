@@ -1,4 +1,4 @@
-import { newAsyncContext, type QuickJSAsyncContext, type QuickJSHandle } from "quickjs-emscripten";
+import type { QuickJSAsyncContext, QuickJSHandle } from "quickjs-emscripten";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -428,6 +428,7 @@ class ReplSession {
   ) {}
 
   static async create(deps: ReplHostDeps, initialPageId?: string): Promise<ReplSession> {
+    const { newAsyncContext } = await import("quickjs-emscripten");
     const context = await newAsyncContext();
     context.runtime.setMemoryLimit(MAX_HEAP_BYTES);
     context.runtime.setMaxStackSize(MAX_STACK_BYTES);

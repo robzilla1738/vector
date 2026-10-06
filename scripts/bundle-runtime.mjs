@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 /** Build the self-contained Aux Runtime payload for Chromium. */
-import { copyFileSync, cpSync, mkdirSync, readdirSync, rmSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  cpSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  readFileSync,
+  writeFileSync,
+  statSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -9,6 +18,45 @@ import { generateRuntimeSchema } from "./gen-runtime-schema.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const runtimeDir = join(root, "apps", "runtime");
+
+// Playwright embeds its generated browser programs as JavaScript strings.
+// Minify each complete program without changing public export property names.
+function minifyPlaywrightSource(source, filename, transformSync, ts) {
+  const file = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const replacements = [];
+  const options = {
+    loader: "js",
+    minify: true,
+    keepNames: false,
+    target: "esnext",
+    legalComments: "none",
+    charset: "utf8",
+  };
+  const visit = (node) => {
+    if (ts.isStringLiteral(node) && node.text.includes("// packages/injected/src/")) {
+      const parent = node.parent;
+      const generated =
+        (ts.isBinaryExpression(parent) &&
+          parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+          ts.isIdentifier(parent.left) &&
+          /^source\d*$/.test(parent.left.text)) ||
+        (ts.isVariableDeclaration(parent) &&
+          ts.isIdentifier(parent.name) &&
+          /^source\d*$/.test(parent.name.text));
+      if (generated)
+        replacements.push({
+          start: node.getStart(file),
+          end: node.end,
+          code: JSON.stringify(transformSync(node.text, options).code),
+        });
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  for (const replacement of replacements.reverse())
+    source = source.slice(0, replacement.start) + replacement.code + source.slice(replacement.end);
+  return transformSync(source, options).code;
+}
 
 export async function bundleRuntime(rtOut, target) {
   // Generated SQL is a JSON asset: refresh its compiled copy before bundling.
@@ -24,6 +72,7 @@ export async function bundleRuntime(rtOut, target) {
 
   const runtimeRequire = createRequire(join(runtimeDir, "package.json"));
   const { build, transformSync } = runtimeRequire("esbuild");
+  const ts = runtimeRequire("typescript");
   const runtimeBuild = await build({
     entryPoints: {
       main: join(root, "apps/runtime/dist/main.js"),
@@ -87,16 +136,13 @@ export async function bundleRuntime(rtOut, target) {
   for (const unused of ["types", "index.d.ts", "README.md", "cli.js", "lib/vite", "lib/tools"]) {
     rmSync(join(playwrightOut, unused), { recursive: true, force: true });
   }
-  // playwright-core ships its bundles unminified. Strip whitespace only: no renaming
-  // or syntax rewrites, so functions it serializes into pages keep their meaning.
+  // Keep injected browser code as self-contained function source. Full lexical
+  // minification preserves local references; keepNames would introduce __name
+  // closure helpers into serialized functions, so it must remain disabled.
   for (const file of readdirSync(join(playwrightOut, "lib"), { recursive: true })) {
     if (!file.endsWith(".js")) continue;
     const path = join(playwrightOut, "lib", file);
-    writeFileSync(
-      path,
-      transformSync(readFileSync(path, "utf8"), { loader: "js", minifyWhitespace: true, charset: "utf8" })
-        .code,
-    );
+    writeFileSync(path, minifyPlaywrightSource(readFileSync(path, "utf8"), path, transformSync, ts));
   }
 
   // Stage the maintained resvg loader with its platform binding in one package
@@ -163,4 +209,21 @@ export async function bundleRuntime(rtOut, target) {
   } finally {
     rmSync(resvgSmoke, { force: true });
   }
+
+  const files = readdirSync(rtOut, { recursive: true })
+    .map((name) => ({ name, bytes: statSync(join(rtOut, name)) }))
+    .filter((item) => item.bytes.isFile())
+    .map((item) => ({ name: item.name, bytes: item.bytes.size }));
+  const size = {
+    entryBytes: statSync(join(rtOut, "dist/main.js")).size,
+    javascriptBytes: files
+      .filter((item) => /\.m?js$/.test(item.name))
+      .reduce((sum, item) => sum + item.bytes, 0),
+    totalBytes: files.reduce((sum, item) => sum + item.bytes, 0),
+    advisoryTargetBytes: 8 * 1024 * 1024,
+  };
+  writeFileSync(join(dirname(rtOut), "runtime-size.json"), JSON.stringify(size, null, 2));
+  console.log(
+    `[runtime bundle] entry ${(size.entryBytes / 1024).toFixed(1)} KiB; JavaScript ${(size.javascriptBytes / 1024 / 1024).toFixed(2)} MiB; payload ${(size.totalBytes / 1024 / 1024).toFixed(2)} MiB (8 MiB advisory target)`,
+  );
 }

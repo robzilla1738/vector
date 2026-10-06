@@ -312,7 +312,7 @@ export async function structuredCall<T>(
     return call;
   } catch (e) {
     if (!modelStarted || modelReturned) throw e; // Ledger retirement failed; never bill a fictitious second model attempt.
-    const safe = classifyModelFailure(e);
+    const safe = await classifyModelFailure(e);
     const attempts = attemptsOf(e);
     s.modelCalls += Math.max(0, attempts.length - 1);
     if (attempts.length)
@@ -418,7 +418,7 @@ export async function tryFinalDecision(
     return "done";
   } catch (e) {
     if (e instanceof ModelFailureError) throw e;
-    const failure = classifyModelFailure(e);
+    const failure = await classifyModelFailure(e);
     if (!failure.retryable && !s.c.abort.signal.aborted) throw new ModelFailureError(failure);
     return "gave_up";
   }
@@ -902,7 +902,7 @@ export async function handlePlannerFailure(
   if (s.self.durable.unresolved(s.runId).length) return "continue";
   if (s.c.paused && !s.c.abort.signal.aborted) return "continue";
   if (s.c.abort.signal.aborted) throw e;
-  const failure = classifyModelFailure(e);
+  const failure = await classifyModelFailure(e);
   if (TRANSIENT_FAILURES.has(failure.category) && (s.transientRetries ?? 0) < TRANSIENT_RETRY_LIMIT) {
     // A 429/5xx/network blip is not the model's mistake: back off and re-plan
     // from a fresh observation without spending the model-error budget.

@@ -2,7 +2,6 @@ import { lookup } from "node:dns/promises";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { BlockList, isIP } from "node:net";
-import { parse } from "parse5";
 import { AuxError } from "@aux/contracts";
 
 const MAX_BYTES = 1_000_000;
@@ -139,9 +138,10 @@ type HtmlNode = {
   attrs?: { name: string; value: string }[];
   childNodes?: HtmlNode[];
 };
-function pageFromHtml(url: URL, html: string, contentType: string): WebPage {
+async function pageFromHtml(url: URL, html: string, contentType: string): Promise<WebPage> {
   if (!contentType.includes("html"))
     return { url: url.href, title: url.hostname, text: html.slice(0, MAX_BYTES), links: [], contentType };
+  const { parse } = await import("parse5");
   const root = parse(html) as HtmlNode;
   const links: { title: string; url: string }[] = [];
   const text: string[] = [];

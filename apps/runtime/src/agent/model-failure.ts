@@ -1,4 +1,3 @@
-import { APICallError, JSONParseError, NoObjectGeneratedError, TypeValidationError } from "ai";
 import { AuxError, type RunFailure } from "@aux/contracts";
 
 export type ClassifiedModelFailure = RunFailure & { automaticRetry: boolean };
@@ -12,7 +11,7 @@ const failure = (
 ): ClassifiedModelFailure => ({ category, message, retryable, action, automaticRetry });
 
 /** Convert provider errors into stable, nonsecret UI state. Never return a provider response body. */
-export function classifyModelFailure(error: unknown): ClassifiedModelFailure {
+export async function classifyModelFailure(error: unknown): Promise<ClassifiedModelFailure> {
   if (error instanceof AuxError) {
     if (error.code === "capability_unsupported") {
       return failure(
@@ -32,6 +31,7 @@ export function classifyModelFailure(error: unknown): ClassifiedModelFailure {
       );
     }
   }
+  const { APICallError, JSONParseError, NoObjectGeneratedError, TypeValidationError } = await import("ai");
   if (
     NoObjectGeneratedError.isInstance(error) ||
     TypeValidationError.isInstance(error) ||

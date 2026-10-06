@@ -1,17 +1,5 @@
-import {
-  type LanguageModel,
-  type ModelMessage,
-  APICallError,
-  generateObject,
-  generateText,
-  JSONParseError,
-  NoObjectGeneratedError,
-  streamText,
-  tool,
-  TypeValidationError,
-  UnsupportedFunctionalityError,
-} from "ai";
-import { createGateway } from "@ai-sdk/gateway";
+import type { LanguageModel, ModelMessage } from "ai";
+import type { createGateway } from "@ai-sdk/gateway";
 import { z } from "zod";
 import { AuxError, TaskPlanChunkSchema } from "@aux/contracts";
 import {
@@ -57,7 +45,14 @@ export function withCallTimeout(signal: AbortSignal | undefined, timeoutMs: numb
  * quota (429), server (5xx), network and abort errors are surfaced as-is —
  * retrying them with a different prompt only amplifies cost.
  */
-export function isStructuredOutputError(e: unknown): boolean {
+export async function isStructuredOutputError(e: unknown): Promise<boolean> {
+  const {
+    APICallError,
+    JSONParseError,
+    NoObjectGeneratedError,
+    TypeValidationError,
+    UnsupportedFunctionalityError,
+  } = await import("ai");
   if (NoObjectGeneratedError.isInstance(e)) return true;
   if (TypeValidationError.isInstance(e)) return true;
   if (JSONParseError.isInstance(e)) return true;
@@ -253,6 +248,9 @@ const RETRY_SYSTEM =
 
 export class GatewayModelClient implements ModelClient {
   private gateway: ReturnType<typeof createGateway> | undefined;
+  private sdkPromise: Promise<typeof import("ai")> | undefined;
+  private readonly apiKey: string;
+  private readonly directModel: boolean;
   private resolveModel: (id: string) => LanguageModel;
   private readonly callTimeoutMs: number;
   private readonly only: string[] | undefined;
@@ -277,15 +275,31 @@ export class GatewayModelClient implements ModelClient {
     } = {},
   ) {
     if (!apiKey) throw new AuxError("invalid_params", "AI_GATEWAY_API_KEY is required");
-    this.gateway = opts.model ? undefined : createGateway({ apiKey });
+    this.apiKey = apiKey;
+    this.directModel = !!opts.model;
     this.resolveModel = opts.model ?? ((id: string) => this.gateway!(id));
     this.callTimeoutMs =
       opts.callTimeoutMs && opts.callTimeoutMs > 0 ? opts.callTimeoutMs : DEFAULT_MODEL_CALL_TIMEOUT_MS;
-    this.only = this.gateway && opts.only?.length ? opts.only : undefined;
-    this.spendLedger = opts.spendLedger ?? (this.gateway ? new SpendLedger() : undefined);
+    this.only = !this.directModel && opts.only?.length ? opts.only : undefined;
+    this.spendLedger = opts.spendLedger ?? (!this.directModel ? new SpendLedger() : undefined);
     this.registryModels = opts.models ?? (() => MODEL_REGISTRY);
     this.candidatesFor = opts.candidatesFor;
     this.allowedModelId = opts.allowedModelId;
+  }
+
+  private loadSdk(): Promise<typeof import("ai")> {
+    return (this.sdkPromise ??= Promise.all([
+      import("ai"),
+      this.directModel ? undefined : import("@ai-sdk/gateway"),
+    ])
+      .then(([sdk, gateway]) => {
+        if (gateway) this.gateway = gateway.createGateway({ apiKey: this.apiKey });
+        return sdk;
+      })
+      .catch((error) => {
+        this.sdkPromise = undefined;
+        throw error;
+      }));
   }
 
   private capabilities() {
@@ -442,18 +456,20 @@ export class GatewayModelClient implements ModelClient {
         ...(gateway?.openai || session?.openai || opts.providerOptions?.openai
           ? { openai: { ...gateway?.openai, ...session?.openai, ...opts.providerOptions?.openai } }
           : {}),
-      } as Parameters<typeof generateText>[0]["providerOptions"],
+      } as Parameters<typeof import("ai").generateText>[0]["providerOptions"],
       cacheTools: anthropic,
     };
   }
 
   async generateStructured<T>(opts: CallOpts & { schema: z.ZodType<T> }): Promise<StructuredCallResult<T>> {
+    await this.loadSdk();
     return this.withFailover(opts, (o) => this.generateStructuredInner(o));
   }
 
   private async generateStructuredInner<T>(
     opts: CallOpts & { schema: z.ZodType<T> },
   ): Promise<StructuredCallResult<T>> {
+    const { generateObject } = await this.loadSdk();
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
     const retries: ModelAttempt[] = [];
@@ -477,7 +493,7 @@ export class GatewayModelClient implements ModelClient {
         );
         return { object: res.object, ...attempt(started, res) };
       } catch (e) {
-        if (opts.signal?.aborted || !isStructuredOutputError(e) || opts.maxAttempts === 1) throw e;
+        if (opts.signal?.aborted || !(await isStructuredOutputError(e)) || opts.maxAttempts === 1) throw e;
         retries.push(...attemptsOf(e).map((a) => ({ ...a, error: "structured output unusable" })));
       }
     }
@@ -496,12 +512,14 @@ export class GatewayModelClient implements ModelClient {
   async streamStructured<T>(
     opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void },
   ): Promise<StructuredCallResult<T>> {
+    await this.loadSdk();
     return this.withFailover(opts, (o) => this.streamStructuredInner(o));
   }
 
   private async streamStructuredInner<T>(
     opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void },
   ): Promise<StructuredCallResult<T>> {
+    const { streamText } = await this.loadSdk();
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
     const { cacheTools: _cacheTools, ...request } = this.directRequest(
@@ -608,6 +626,7 @@ export class GatewayModelClient implements ModelClient {
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<TextCallResult> {
+    await this.loadSdk();
     return this.withFailover(opts, (o) => this.generateTextInner(o));
   }
 
@@ -622,6 +641,7 @@ export class GatewayModelClient implements ModelClient {
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<TextCallResult> {
+    const { generateText } = await this.loadSdk();
     const started = Date.now();
     const images = [...(opts.imageDataUrls ?? []), ...(opts.imageDataUrl ? [opts.imageDataUrl] : [])];
     this.requireVision(opts.modelId, images);
@@ -659,6 +679,7 @@ export class GatewayModelClient implements ModelClient {
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<ToolCallStepResult> {
+    await this.loadSdk();
     return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) =>
       this.toolCallStepInner(o),
     );
@@ -677,6 +698,7 @@ export class GatewayModelClient implements ModelClient {
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<ToolCallStepResult> {
+    const { generateText, streamText, tool } = await this.loadSdk();
     const started = Date.now();
     const names = Object.keys(opts.tools);
     const maxOut = clampOutputTokens(opts.modelId, opts.maxOutputTokens ?? 4000, this.capabilities());
@@ -771,6 +793,8 @@ export class GatewayModelClient implements ModelClient {
   }
 
   async listModels(): Promise<{ id: string; name?: string }[]> {
+    if (this.directModel) return [];
+    await this.loadSdk();
     if (!this.gateway) return [];
     const catalog = await this.gateway.getAvailableModels();
     return catalog.models.map((m) => {

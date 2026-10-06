@@ -14,9 +14,9 @@ const apiErr = (statusCode: number, message = "boom") =>
   new APICallError({ message, url: "https://gw.test", requestBodyValues: {}, statusCode });
 
 describe("gateway fallback guard (P1-2 / retry amplification)", () => {
-  it("falls back only on structured-output failures", () => {
+  it("falls back only on structured-output failures", async () => {
     expect(
-      isStructuredOutputError(
+      await isStructuredOutputError(
         new NoObjectGeneratedError({
           message: "no object",
           text: "x",
@@ -26,26 +26,30 @@ describe("gateway fallback guard (P1-2 / retry amplification)", () => {
         } as never),
       ),
     ).toBe(true);
-    expect(isStructuredOutputError(new TypeValidationError({ value: {}, cause: new Error("bad") }))).toBe(
+    expect(
+      await isStructuredOutputError(new TypeValidationError({ value: {}, cause: new Error("bad") })),
+    ).toBe(true);
+    expect(await isStructuredOutputError(new JSONParseError({ text: "{", cause: new Error("bad") }))).toBe(
       true,
     );
-    expect(isStructuredOutputError(new JSONParseError({ text: "{", cause: new Error("bad") }))).toBe(true);
-    expect(isStructuredOutputError(apiErr(400, "response_format is not supported by this model"))).toBe(true);
+    expect(await isStructuredOutputError(apiErr(400, "response_format is not supported by this model"))).toBe(
+      true,
+    );
     expect(
-      isStructuredOutputError(
+      await isStructuredOutputError(
         new Error("Unsupported JSON schema fields in schema with keys: dict_keys(['oneOf'])."),
       ),
     ).toBe(true);
   });
-  it("never retries auth, quota, server, network or abort errors", () => {
-    expect(isStructuredOutputError(apiErr(401))).toBe(false);
-    expect(isStructuredOutputError(apiErr(403))).toBe(false);
-    expect(isStructuredOutputError(apiErr(429, "rate limit"))).toBe(false);
-    expect(isStructuredOutputError(apiErr(500))).toBe(false);
-    expect(isStructuredOutputError(apiErr(400, "invalid api key"))).toBe(false);
-    expect(isStructuredOutputError(new TypeError("fetch failed"))).toBe(false);
-    expect(isStructuredOutputError(new DOMException("aborted", "AbortError"))).toBe(false);
-    expect(isStructuredOutputError(new DOMException("timed out", "TimeoutError"))).toBe(false);
+  it("never retries auth, quota, server, network or abort errors", async () => {
+    expect(await isStructuredOutputError(apiErr(401))).toBe(false);
+    expect(await isStructuredOutputError(apiErr(403))).toBe(false);
+    expect(await isStructuredOutputError(apiErr(429, "rate limit"))).toBe(false);
+    expect(await isStructuredOutputError(apiErr(500))).toBe(false);
+    expect(await isStructuredOutputError(apiErr(400, "invalid api key"))).toBe(false);
+    expect(await isStructuredOutputError(new TypeError("fetch failed"))).toBe(false);
+    expect(await isStructuredOutputError(new DOMException("aborted", "AbortError"))).toBe(false);
+    expect(await isStructuredOutputError(new DOMException("timed out", "TimeoutError"))).toBe(false);
   });
 });
 
