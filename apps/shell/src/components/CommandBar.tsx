@@ -1,11 +1,12 @@
+import { GlassMaterial } from "./GlassMaterial";
 import { orderedPages } from "../store/pages";
 import { takeFirstFrame } from "../first-frame";
 import { errorMessage } from "../error-message";
 import { smallGhostButtonProps as auxReserveSmallGhostButtonProps } from "../ui/button-props";
 import { HomeEntryAction, runHomeEntry, useHomeEntryInput, useHomeEntryOwner } from "./HomeEntryControls";
 import { guardCommandCompletion } from "../command-completion";
-import { PreferenceAction } from "../settings/sections/preference-command";
-import { SearchResultRow } from "./SearchResultRow";
+import { askBreaker, useOmniboxActions } from "./omnibox/actions";
+import { OmniboxResults, PROVIDER_SCOPES, type ProviderScope } from "./omnibox/results";
 import {
   lazy,
   Suspense,
@@ -22,17 +23,16 @@ import { useShallow } from "zustand/react/shallow";
 import type {
   CommandRankingEntry,
   ConversationSummary,
-  HistoryEntry,
   Routine,
   Run,
   SavedProgram,
   SavedResult,
 } from "@aux/contracts";
+import { useNativeOmnibox } from "./omnibox/use-native-omnibox";
 import { normalizeCommandRankingQuery } from "@aux/contracts/command-ranking-query";
 import { isHomeAddress, toUrl } from "../chrome";
-import { AskCircuitBreaker, detectIntent, intentLabel, type Intent } from "../intent";
-import { engineList, parseSuggestResponse, suggestEndpoint } from "../engines";
-import { isPrivateAddress } from "../suggest";
+import { detectIntent, intentLabel, type Intent } from "../intent";
+import { engineList } from "../engines";
 import { useStore, call, errToast } from "../store";
 import { hostOf, tabLabel } from "../workspace";
 
@@ -53,8 +53,7 @@ import { bridge, type BrowserExtension } from "../bridge";
 import { recentConversations } from "../conversations";
 import { rememberSiteControlsOpener } from "../site-controls-opener";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
-import { inNativeHost, inMock, type AutocompleteMatch } from "../bridge";
-import { auxShellPathFromUrl } from "../settings/routes";
+import { inNativeHost, inMock } from "../bridge";
 import { commandCandidateKey, mergeCommandResults } from "../command-results";
 import type { ProviderSuggestion, Suggestion } from "./command-provider-types";
 import { commandTabRows } from "./command-tab-rows";
@@ -62,26 +61,9 @@ import { useFeature } from "../use-feature";
 import { openCommandSurface, type CommandSurfaceMode } from "../command-surface-state";
 import "./CommandBar.css";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
-import { nativeAlertRoleProps } from "../ui/native-attribute-props";
-const askBreaker = new AskCircuitBreaker();
-let pendingAsk: Promise<Run | null> | null = null;
 
 const HomeAsk = lazy(() => import("./HomeAsk"));
 const CommandRankingDebug = lazy(() => import("./CommandRankingDebug"));
-
-const EMPTY_HISTORY: HistoryEntry[] = [];
-const EMPTY_BROWSER: AutocompleteMatch[] = [];
-const PROVIDER_SCOPES = [
-  "all",
-  "tabs",
-  "closed",
-  "bookmarks",
-  "history",
-  "extensions",
-  "sites",
-  "work",
-] as const;
-type ProviderScope = (typeof PROVIDER_SCOPES)[number];
 
 /**
  * One field, three jobs: URL bar, search, and agent prompt. Intent is
@@ -224,13 +206,6 @@ export function CommandBar({
   const [providerBuilder, setProviderBuilder] = useState<
     typeof import("./CommandProviderRows").buildCommandProviderRows | null
   >(null);
-  const [autocompleteRetry, setAutocompleteRetry] = useState(0);
-  const [browserResult, setBrowserResult] = useState<{
-    query: string;
-    generation: number;
-    items: AutocompleteMatch[];
-    error: string | null;
-  }>({ query: "", generation: 0, items: [], error: null });
   const homeCurrent = useHomeEntryOwner(hero);
   const entryModeRequest = useRef(0);
   const [entryMode, setEntryModeState] = useState<"search" | "ask">(() => {
@@ -291,10 +266,6 @@ export function CommandBar({
     );
   };
   const [scopeFlip, setScopeFlip] = useState(false);
-  const [historyResult, setHistoryResult] = useState<{ query: string; items: HistoryEntry[] }>({
-    query: "",
-    items: [],
-  });
   const [workResult, setWorkResult] = useState<{
     query: string;
     results: SavedResult[];
@@ -432,7 +403,6 @@ export function CommandBar({
       ? { kind: "command", query: raw.replace(/^\//, "") }
       : detectIntent((scopePrefix === ">" || scopePrefix === "?" ? scopePrefix : "") + raw, {
           hasPage,
-          searchEngine,
           searchEngines,
           routing,
           askUnavailable: bridge.privateMode || askBreaker.unavailable(),
@@ -477,24 +447,6 @@ export function CommandBar({
   }, [editing, providerBuilder]);
 
   useEffect(() => {
-    if (!editing || bridge.privateMode) return;
-    let live = true;
-    void call("command.ranking.list", {})
-      .then((entries) => {
-        if (live) {
-          setRankingEntries(entries);
-          setRankingError(null);
-        }
-      })
-      .catch((error) => {
-        if (live) setRankingError(errorMessage(error));
-      });
-    return () => {
-      live = false;
-    };
-  }, [editing]);
-
-  useEffect(() => {
     if (!editing || !extensionEnabled) return;
     let live = true;
     void bridge
@@ -510,86 +462,19 @@ export function CommandBar({
     };
   }, [editing, extensionEnabled]);
 
-  const autocompleteWindow = bridge.windowId;
-  const autocompleteKind = bridge.windowKind;
-  const autocompletePrivate = bridge.privateMode;
-  useLayoutEffect(() => {
-    if (!browserAutocomplete || !typedSomething || raw.length < 2) return;
-    let live = true;
-    const current = () =>
-      live &&
-      bridge.windowId === autocompleteWindow &&
-      bridge.windowKind === autocompleteKind &&
-      bridge.privateMode === autocompletePrivate;
-    void Promise.resolve()
-      .then(() => (current() ? bridge.autocomplete(raw) : EMPTY_BROWSER))
-      .then((items) => {
-        if (current()) setBrowserResult({ query: raw, generation: queryGeneration, items, error: null });
-      })
-      .catch((error) => {
-        if (current())
-          setBrowserResult({
-            query: raw,
-            generation: queryGeneration,
-            items: [],
-            error: errorMessage(error),
-          });
-      });
-    return () => {
-      live = false;
-    };
-  }, [
-    browserAutocomplete,
-    typedSomething,
+  const nativeOmnibox = useNativeOmnibox(
+    browserAutocomplete &&
+      editing &&
+      !scopePrefix &&
+      !(hero && entryMode === "ask") &&
+      ["empty", "navigate", "search"].includes(intent.kind),
     raw,
     queryGeneration,
-    intent.kind,
-    autocompleteRetry,
-    autocompleteWindow,
-    autocompleteKind,
-    autocompletePrivate,
-  ]);
-  const currentBrowserResult = browserResult.query === raw && browserResult.generation === queryGeneration;
-  const browserMatches = currentBrowserResult ? browserResult.items : EMPTY_BROWSER;
-  const browserError = currentBrowserResult ? browserResult.error : null;
-  const retriedBrowserResult = useRef<typeof browserResult | null>(null);
-  const retryAutocomplete = () => {
-    if (
-      retriedBrowserResult.current === browserResult ||
-      !editing ||
-      !browserError ||
-      !currentBrowserResult ||
-      !browserAutocomplete ||
-      !typedSomething ||
-      raw.length < 2 ||
-      bridge.windowId !== autocompleteWindow ||
-      bridge.windowKind !== autocompleteKind ||
-      bridge.privateMode !== autocompletePrivate
-    )
-      throw new Error("Choose the current browser suggestions Retry control.");
-    retriedBrowserResult.current = browserResult;
-    setAutocompleteRetry((value) => value + 1);
-  };
-
-  // The local indexed query is cheap; dispatch it immediately and only display
-  // a response that belongs to the exact text still in the field.
-  useEffect(() => {
-    let cancelled = false;
-    if (browserAutocomplete || !typedSomething || raw.length < 2) {
-      return;
-    }
-    void call("history.list", { query: raw, limit: 6 })
-      .then((items) => {
-        if (!cancelled) setHistoryResult({ query: raw, items });
-      })
-      .catch(() => {
-        if (!cancelled) setHistoryResult({ query: raw, items: [] });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [raw, typedSomething, intent.kind, browserAutocomplete]);
-  const history = historyResult.query === raw ? historyResult.items : EMPTY_HISTORY;
+  );
+  const browserMatches = nativeOmnibox.items;
+  const browserError = nativeOmnibox.error;
+  const currentBrowserResult = nativeOmnibox.current;
+  const retryAutocomplete = nativeOmnibox.retry;
 
   const [workStatus, setWorkStatus] = useState({ query: "", pending: 0, failed: false });
   const [workRetry, setWorkRetry] = useState(0);
@@ -635,48 +520,6 @@ export function CommandBar({
   const savedWork =
     workResult.query === raw ? { ...workResult, skills: skillsEnabled ? workResult.skills : [] } : null;
 
-  // Remote suggestions — opt-in preference, never in private mode, and never
-  // for probable private/intranet addresses or keyword-engine input.
-  const [remoteResult, setRemoteResult] = useState<{ query: string; items: string[] }>({
-    query: "",
-    items: [],
-  });
-  const intentEngine = intent.kind === "search" ? (intent.engine ?? null) : null;
-  useEffect(() => {
-    let cancelled = false;
-    const want =
-      !browserAutocomplete &&
-      !bridge.privateMode &&
-      settings.searchSuggestions === true &&
-      typedSomething &&
-      intent.kind === "search" &&
-      !intent.engine &&
-      raw.length >= 3 &&
-      !isPrivateAddress(raw);
-    const endpoint = want ? suggestEndpoint(searchEngine) : null;
-    if (!endpoint) return;
-    const t = window.setTimeout(() => {
-      void fetch(`${endpoint}${encodeURIComponent(raw)}`)
-        .then((response) => (response.ok ? response.json() : null))
-        .then((data) => {
-          if (!cancelled && data) setRemoteResult({ query: raw, items: parseSuggestResponse(data) });
-        })
-        .catch(() => {});
-    }, 160);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(t);
-    };
-  }, [
-    raw,
-    typedSomething,
-    intent.kind,
-    intentEngine,
-    searchEngine,
-    settings.searchSuggestions,
-    browserAutocomplete,
-  ]);
-
   // Inline host completion — only a bare hostname prefix earns ghost text;
   // ArrowRight/End accepts like every mainstream browser.
   const inlineCompletion = useMemo(() => {
@@ -688,7 +531,6 @@ export function CommandBar({
         .filter((p) => !p.ownedByRuntime)
         .map((p) => p.url),
       ...bookmarks.map((b) => b.url),
-      ...history.map((h) => h.url),
     ];
     let best: string | null = null;
     for (const url of urls) {
@@ -697,116 +539,18 @@ export function CommandBar({
       if (!best || host.length < best.length) best = host;
     }
     return best ? best.slice(q.length) : null;
-  }, [typedSomething, intent.kind, raw, tabDigest, bookmarks, history]);
+  }, [typedSomething, intent.kind, raw, tabDigest, bookmarks]);
 
-  const exec = useCallback(
-    async (i: Intent, alt = false, typedPick = false) => {
-      switch (i.kind) {
-        case "navigate":
-        case "search": {
-          const url =
-            i.kind === "search" && !i.engine && inNativeHost
-              ? await bridge.resolveSearch!(i.query).catch(() => i.url)
-              : i.url;
-          if (i.kind === "navigate" && inNativeHost) {
-            const shellPath = auxShellPathFromUrl(url);
-            if (shellPath !== null) {
-              if (window.location.pathname !== shellPath) window.history.pushState(null, "", shellPath);
-              window.dispatchEvent(new PopStateEvent("popstate"));
-              break;
-            }
-          }
-          if (surfaceMode === "new-tab" && alt) {
-            const ack = await bridge.tabCommand(
-              { kind: "open", url, activate: false },
-              useStore.getState().catalogVersion,
-            );
-            if (ack.status === "rejected" || !ack.pageId)
-              throw new Error(ack.error?.message ?? "The tab could not be opened.");
-          } else if (surfaceMode === "new-tab" || alt) {
-            if (!(await newTab(url))) throw new Error("The tab could not be opened.");
-          } else if (page) await useStore.getState().navigatePage(page.pageId, url);
-          else if (!(await newTab(url))) throw new Error("The tab could not be opened.");
-          if (typedPick && !bridge.privateMode) {
-            const candidateKey = commandCandidateKey({ id: "typed", title: "", url, section: "browser" });
-            if (candidateKey.length <= 300) {
-              try {
-                const entry = await call("command.ranking.record", {
-                  query: normalizeCommandRankingQuery(i.kind === "search" ? i.query : i.display),
-                  candidateKey,
-                  source: "browser",
-                  pickOrigin: "typed",
-                });
-                setRankingEntries((current) => [
-                  entry,
-                  ...current.filter((item) => item.candidateKey !== candidateKey),
-                ]);
-              } catch (error) {
-                setRankingError(errorMessage(error));
-              }
-            }
-          }
-          break;
-        }
-        case "run": {
-          if (pendingAsk)
-            throw new Error(
-              "An Ask request is still awaiting acknowledgement. You can search while it finishes.",
-            );
-          let timer: ReturnType<typeof setTimeout> | undefined;
-          try {
-            if (useStore.getState().settings.modelConfigured === false)
-              throw new Error("Ask is unavailable. Connect a model in Settings; your prompt is kept.");
-            const request = hero
-              ? startRun(i.goal, { scope: "new", chatId: crypto.randomUUID(), presentation: "conversation" })
-              : startRun(i.goal, { scope: alt ? "new" : i.scope });
-            pendingAsk = request;
-            void request.then(
-              () => {
-                if (pendingAsk === request) pendingAsk = null;
-              },
-              () => {
-                if (pendingAsk === request) pendingAsk = null;
-              },
-            );
-            const acknowledged = await Promise.race([
-              request,
-              new Promise<never>((_, reject) => {
-                timer = setTimeout(
-                  () => reject(new Error("Ask did not acknowledge within five seconds")),
-                  5000,
-                );
-              }),
-            ]);
-            if (!acknowledged) throw new Error("Ask is unavailable. Your prompt is kept.");
-          } catch (error) {
-            askBreaker.failed();
-            setBreakerVersion((value) => value + 1);
-            throw error;
-          } finally {
-            clearTimeout(timer);
-          }
-          break;
-        }
-        case "command":
-          openCommandSurface({ mode: "command", seed: i.query });
-          break;
-        case "empty":
-          if (surfaceMode === "new-tab") {
-            if (alt) {
-              const ack = await bridge.tabCommand(
-                { kind: "open", url: "about:blank", activate: false },
-                useStore.getState().catalogVersion,
-              );
-              if (ack.status === "rejected" || !ack.pageId)
-                throw new Error(ack.error?.message ?? "The tab could not be opened.");
-            } else if (!(await newTab("about:blank"))) throw new Error("The tab could not be opened.");
-          }
-          break;
-      }
-    },
-    [page, newTab, startRun, hero, surfaceMode],
-  );
+  const exec = useOmniboxActions({
+    page,
+    newTab,
+    startRun,
+    hero,
+    surfaceMode,
+    browserAutocomplete,
+    nativeOmnibox,
+    setBreakerVersion,
+  });
 
   // The intent row tracks every keystroke; provider ranking follows a deferred
   // query so typing never waits on it. Candidate lists are built once per source
@@ -824,40 +568,11 @@ export function CommandBar({
           .some((pin) => pin.pageId === p.pageId || (!pin.pageId && pin.url === p.url)),
       }));
   }, [tabDigest, activePageId, tabNames, pins]);
-  const bookmarkCandidates = useMemo(
-    () => bookmarks.map((b) => ({ ...b, id: `bookmark-${b.url}` })),
-    [bookmarks],
-  );
   const closedCandidates = useMemo(() => closedTabs.map((tab) => ({ ...tab, id: tab.pageId })), [closedTabs]);
-  const historyCandidates = useMemo(
-    () => history.map((entry) => ({ ...entry, id: `h-${entry.url}`, lastVisit: entry.visitedAt })),
-    [history],
-  );
   const extensionCandidates = useMemo(
     () => extensionItems.map((item) => ({ ...item, id: item.key, title: item.name })),
     [extensionItems],
   );
-  const domainCandidates = useMemo(() => {
-    const domains = new Map<string, { id: string; title: string; url: string; count: number }>();
-    for (const item of [...tabCandidates, ...bookmarks, ...history]) {
-      try {
-        const url = new URL(item.url);
-        if (!/^https?:$/.test(url.protocol)) continue;
-        const prior = domains.get(url.origin);
-        if (prior) prior.count += 1;
-        else
-          domains.set(url.origin, {
-            id: `domain-${url.origin}`,
-            title: url.hostname,
-            url: url.origin,
-            count: 1,
-          });
-      } catch {
-        /* Non-web entries are not site suggestions. */
-      }
-    }
-    return [...domains.values()].sort((a, b) => b.count - a.count).slice(0, 12);
-  }, [tabCandidates, bookmarks, history]);
   const programCandidates = useMemo(
     () => programs.map((pr: SavedProgram) => ({ ...pr, id: pr.programId, title: pr.name })),
     [programs],
@@ -920,20 +635,21 @@ export function CommandBar({
     () =>
       browserMatches.map((match) => ({
         id: `browser-${match.id}`,
-        section: match.type === "bookmark" ? "bookmarks" : match.type === "history" ? "history" : "browser",
+        section: "browser",
         providerType: match.type,
         url: match.url,
         icon: match.type === "search" ? shellIconSearch : <FavIcon url={match.url} size="sm" />,
         title: match.title,
         detail: match.description || hostOf(match.url),
-        run: () => exec({ kind: "navigate", url: match.url, display: match.title }),
+        run: () =>
+          nativeOmnibox.open(match, surfaceMode === "new-tab" ? "new-foreground-tab" : "current-tab"),
       })),
-    [browserMatches, exec],
+    [browserMatches, nativeOmnibox.open, surfaceMode],
   );
   const rankQuery = useDeferredValue(typedSomething ? raw.toLowerCase() : "");
   // Open tabs remain keyboard-ready while the optional providers load.
   const immediateTabs = useMemo(
-    () => (rankQuery || scopePrefix === "@" ? commandTabRows(rankQuery, tabCandidates, activate) : []),
+    () => (scopePrefix === "@" ? commandTabRows(rankQuery, tabCandidates, activate) : []),
     [rankQuery, tabCandidates, activate, scopePrefix],
   );
   const rankedDetails = useMemo(() => {
@@ -957,22 +673,16 @@ export function CommandBar({
       }));
     return providerBuilder({
       query: rankQuery,
-      remote: remoteResult,
-      tabs: tabCandidates,
-      domains: domainCandidates,
-      bookmarks: bookmarkCandidates,
+      tabs: scopePrefix === "@" ? tabCandidates : [],
       closed: closedCandidates,
-      history: historyCandidates,
       extensions: extensionCandidates,
       programs: programCandidates,
       runs: runCandidates,
       recentChats,
       savedWork,
       page,
-      searchEngine,
       rankingEntries,
       rankingOpenedAt: rankingOpenedAt.current,
-      exec,
       activate,
     });
   }, [
@@ -980,28 +690,28 @@ export function CommandBar({
     providerBuilder,
     immediateTabs,
     scopePrefix,
-    remoteResult,
     tabCandidates,
-    domainCandidates,
-    bookmarkCandidates,
     closedCandidates,
-    historyCandidates,
     extensionCandidates,
     programCandidates,
     runCandidates,
     recentChats,
     savedWork,
     page,
-    searchEngine,
     rankingEntries,
-    exec,
     activate,
   ]);
   const rankedRows = useMemo(() => rankedDetails.map((item) => item.candidate), [rankedDetails]);
   const mergedRows = useMemo(() => {
     const sites = providerScope === "sites";
     const browser = browserRows.filter(
-      (row) => providerScope === "all" || sites || row.section === providerScope,
+      (row) =>
+        providerScope === "all" ||
+        sites ||
+        row.section === providerScope ||
+        (providerScope === "bookmarks" && row.providerType === "bookmark") ||
+        (providerScope === "history" && row.providerType === "history") ||
+        (providerScope === "tabs" && row.providerType === "tab"),
     );
     const aux = (rankQuery === raw.toLowerCase() ? rankedRows : []).filter(
       (row) =>
@@ -1016,7 +726,7 @@ export function CommandBar({
     return mergeCommandResults(browser, aux);
   }, [browserRows, rankedRows, rankQuery, raw, providerScope]);
   const suggestions = useMemo(() => {
-    if (!typedSomething) return [];
+    if (!typedSomething) return browserRows;
     if (intent.kind === "command" && commandRows)
       return mergeCommandResults(commandRows(intent.query), [
         ...mergedRows.rows,
@@ -1035,7 +745,17 @@ export function CommandBar({
       ...mergedRows.rows,
       ...supplemental,
     ]).rows;
-  }, [typedSomething, intentRows, mergedRows, providerScope, intent, commandRows, providerRows, raw]);
+  }, [
+    typedSomething,
+    browserRows,
+    intentRows,
+    mergedRows,
+    providerScope,
+    intent,
+    commandRows,
+    providerRows,
+    raw,
+  ]);
 
   // The native fixture reads only generations and a fixed source label. These
   // are committed with the actual visible rows, never input echo or old results.
@@ -1049,13 +769,20 @@ export function CommandBar({
           browserAutocomplete &&
           currentBrowserResult &&
           !browserError &&
-          suggestions.some((row) => row.section === "history")
+          suggestions.some((row) => row.section === "history" || row.providerType === "history")
         ? "history"
         : undefined;
 
-  const runSuggestion = async (suggestion: Suggestion) => {
-    await suggestion.run();
-    if (bridge.privateMode || suggestion.section === "intent" || !raw) return;
+  const runSuggestion = async (suggestion: Suggestion, newTab = false) => {
+    const nativeMatch = browserMatches.find((match) => `browser-${match.id}` === suggestion.id);
+    if (nativeMatch && newTab)
+      await nativeOmnibox.open(
+        nativeMatch,
+        surfaceMode === "new-tab" ? "new-background-tab" : "new-foreground-tab",
+      );
+    else await suggestion.run();
+    if (bridge.privateMode || suggestion.section === "intent" || !raw || suggestion.id.startsWith("browser-"))
+      return;
     const query = normalizeCommandRankingQuery(raw);
     const candidateKey = commandCandidateKey(suggestion);
     if (candidateKey.length > 300) return;
@@ -1205,8 +932,8 @@ export function CommandBar({
         () =>
           chosen &&
           (chosen.section === "tabs" || intent.kind === "command" || providerScope !== "all" || sel > 0)
-            ? runSuggestion(chosen)
-            : exec(completed, e.metaKey, true),
+            ? runSuggestion(chosen, e.metaKey || e.ctrlKey)
+            : exec(completed, e.metaKey || e.ctrlKey, true),
         !!chosen && "keepOpen" in chosen && chosen.keepOpen === true,
       );
     }
@@ -1468,6 +1195,7 @@ export function CommandBar({
       )}
       {scopePrefix && (
         <span className="cb-scope-pill">
+          <GlassMaterial />
           {scopePrefix === "@"
             ? "Tabs"
             : scopePrefix === "/"
@@ -1477,228 +1205,104 @@ export function CommandBar({
                 : "Search"}
         </span>
       )}
-      {(typedSomething || browserError) && (
-        <div
-          className="cb-pop"
-          style={{
-            maxHeight: popup.height,
-            ...(popup.above ? { top: "auto", bottom: "calc(100% + 6px)" } : {}),
+      {(typedSomething || browserError || browserMatches.length > 0) && (
+        <OmniboxResults
+          popup={popup}
+          privateMode={bridge.privateMode}
+          extensionEnabled={extensionEnabled}
+          providerScope={providerScope}
+          onScope={(scope) => {
+            setProviderScope(scope);
+            setSel(0);
+            inputRef.current?.focus();
           }}
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          {(askBreaker.unavailable() ||
-            preferSearchOffer ||
-            (workSearch && workStatus.query === raw && (workStatus.pending > 0 || workStatus.failed))) && (
-            <div className="cb-query-status">
-              {askBreaker.unavailable() && typedSomething && (
-                <output className="cb-suggestion-privacy">Ask unavailable — searching</output>
-              )}
-              {preferSearchOffer && (
-                <button
-                  {...auxNativeButtonTypeProps}
-                  {...auxReserveSmallGhostButtonProps}
-                  onClick={() => {
-                    void call("settings.set", { commandRouting: "prefer-search" })
-                      .then(() => setPreferSearchOffer(false))
-                      .catch(errToast);
-                  }}
-                >
-                  Prefer search?
-                </button>
-              )}
-              {workSearch && workStatus.query === raw && workStatus.pending > 0 && (
-                <output className="cb-suggestion-privacy">Searching saved work…</output>
-              )}
-              {workSearch && workStatus.query === raw && workStatus.failed && (
-                <output className="cb-suggestion-privacy">
-                  Some saved work couldn’t be searched.{" "}
+          rankingOpen={rankingOpen}
+          onRankingToggle={() => setRankingOpen((value) => !value)}
+          searchSuggestions={settings.searchSuggestions === true}
+          browserError={browserError}
+          retry={retryAutocomplete}
+          listId={listId}
+          generation={queryGeneration}
+          resultSource={resultSource}
+          suggestions={suggestions}
+          selected={sel}
+          query={raw}
+          commandQuery={intent.kind === "command"}
+          onHover={(index) => sel !== index && setSel(index)}
+          onOptionRef={(index, node) => {
+            if (node) optionRefs.current.set(index, node);
+            else optionRefs.current.delete(index);
+          }}
+          onSelect={(suggestion) =>
+            void submit(
+              () => runSuggestion(suggestion),
+              "keepOpen" in suggestion && suggestion.keepOpen === true,
+            )
+          }
+          status={
+            (askBreaker.unavailable() ||
+              preferSearchOffer ||
+              (workSearch && workStatus.query === raw && (workStatus.pending > 0 || workStatus.failed))) && (
+              <div className="cb-query-status">
+                {askBreaker.unavailable() && typedSomething && (
+                  <output className="cb-suggestion-privacy">Ask unavailable — searching</output>
+                )}
+                {preferSearchOffer && (
                   <button
+                    {...auxNativeButtonTypeProps}
                     {...auxReserveSmallGhostButtonProps}
-                    onClick={() => setWorkRetry((value) => value + 1)}
+                    onClick={() => {
+                      void call("settings.set", { commandRouting: "prefer-search" })
+                        .then(() => setPreferSearchOffer(false))
+                        .catch(errToast);
+                    }}
                   >
-                    Retry
+                    Prefer search?
                   </button>
-                </output>
-              )}
-            </div>
-          )}
-          <div className="cb-provider-scopes" role="group" aria-label="Search providers">
-            {PROVIDER_SCOPES.filter((scope) => scope !== "extensions" || extensionEnabled).map((scope) => (
-              <button
-                key={scope}
-                {...auxNativeButtonTypeProps}
-                aria-pressed={providerScope === scope}
-                title={`Alt+${PROVIDER_SCOPES.indexOf(scope) + 1}`}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  setProviderScope(scope);
-                  setSel(0);
-                  inputRef.current?.focus();
-                }}
-              >
-                {scope === "all"
-                  ? "All"
-                  : scope === "tabs"
-                    ? "Open Tabs"
-                    : scope === "closed"
-                      ? "Recently Closed"
-                      : scope === "bookmarks"
-                        ? "Bookmarks"
-                        : scope === "history"
-                          ? "History"
-                          : scope === "extensions"
-                            ? "Extensions"
-                            : scope === "sites"
-                              ? "Sites"
-                              : "Work"}
-              </button>
-            ))}
-            {!bridge.privateMode && (
-              <button
-                {...auxNativeButtonTypeProps}
-                className="cb-ranking-toggle"
-                aria-expanded={rankingOpen}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => setRankingOpen((value) => !value)}
-              >
-                Ranking
-              </button>
-            )}
-          </div>
-          {settings.searchSuggestions === true && (
-            <p className="cb-suggestion-privacy">
-              Search suggestions may be sent to your configured search provider.
-            </p>
-          )}
-          {browserError && (
-            <div className="cb-provider-error" {...nativeAlertRoleProps}>
-              Browser suggestions couldn’t load. You can still search.
-              <PreferenceAction
-                type="button"
-                command="retry-browser-autocomplete"
-                scopeId={listId}
-                invoke={retryAutocomplete}
-              >
-                Try again
-              </PreferenceAction>
-            </div>
-          )}
-          {suggestions.length === 0 && (
-            <p className="cb-empty">
-              No {providerScope === "all" ? "results" : providerScope} matches. Choose another provider or
-              edit the query.
-            </p>
-          )}
-          <div
-            role="listbox"
-            id={listId}
-            data-command-results-source={resultSource}
-            data-command-results-generation={resultSource ? queryGeneration : undefined}
-          >
-            {suggestions.map((s, i) => {
-              const first = i === 0 || suggestions[i - 1]!.section !== s.section;
-              return (
-                <div
-                  key={s.id}
-                  data-command-id={
-                    intent.kind === "command" && "commandId" in s ? String(s.commandId) : undefined
-                  }
-                >
-                  {first && s.section !== "intent" && <div className="cb-section">{SECTION[s.section]}</div>}
-                  <SearchResultRow
-                    id={`${listId}-opt-${i}`}
-                    resultSource={
-                      resultSource &&
-                      (resultSource === "registry" ? "commandId" in s : s.section === "history")
-                        ? resultSource
-                        : undefined
-                    }
-                    resultGeneration={
-                      resultSource &&
-                      (resultSource === "registry" ? "commandId" in s : s.section === "history")
-                        ? queryGeneration
-                        : undefined
-                    }
-                    selected={i === sel}
-                    className={`cb-opt ${s.section}`}
-                    title={s.title}
-                    detail={s.detail}
-                    icon={s.icon}
-                    query={raw}
-                    elementRef={(node) => {
-                      if (node) optionRefs.current.set(i, node);
-                      else optionRefs.current.delete(i);
-                    }}
-                    onHover={() => sel !== i && setSel(i)}
-                    onSelect={() => {
-                      void submit(() => runSuggestion(s), "keepOpen" in s && s.keepOpen === true);
-                    }}
-                    trailing={
-                      s.hint === "↵" ? (
-                        <span className="cb-go" aria-hidden="true">
-                          {shellIconSend}
-                        </span>
-                      ) : s.hint ? (
-                        <kbd>{s.hint}</kbd>
-                      ) : null
-                    }
-                  />
-                </div>
-              );
-            })}
-          </div>
-          {rankingOpen && !bridge.privateMode && (
-            <Suspense fallback={<output className="cb-empty">Opening ranking details…</output>}>
-              <CommandRankingDebug
-                rows={rankedDetails
-                  .filter((item) => mergedRows.rows.some((row) => row.id === item.candidate.id))
-                  .slice(0, 12)
-                  .map((item) => ({
-                    id: item.candidate.id,
-                    title: item.candidate.title,
-                    source: item.candidate.section,
-                    base: item.base,
-                    adjustment: item.adjustment,
-                    score: item.score,
-                  }))}
-                duplicates={mergedRows.dropped}
-                choices={rankingEntries.length}
-                error={rankingError}
-                onClear={() => void clearRanking()}
-              />
-            </Suspense>
-          )}
-          <div className="cb-search-keys">
-            <span>
-              <kbd>Enter</kbd> choose
-            </span>
-            <span>
-              <kbd>Esc</kbd> {providerScope === "all" ? "close" : "all results"}
-            </span>
-          </div>
-        </div>
+                )}
+                {workSearch && workStatus.query === raw && workStatus.pending > 0 && (
+                  <output className="cb-suggestion-privacy">Searching saved work…</output>
+                )}
+                {workSearch && workStatus.query === raw && workStatus.failed && (
+                  <output className="cb-suggestion-privacy">
+                    Some saved work couldn’t be searched.{" "}
+                    <button
+                      {...auxReserveSmallGhostButtonProps}
+                      onClick={() => setWorkRetry((value) => value + 1)}
+                    >
+                      Retry
+                    </button>
+                  </output>
+                )}
+              </div>
+            )
+          }
+          rankingDetails={
+            rankingOpen &&
+            !bridge.privateMode && (
+              <Suspense fallback={<output className="cb-empty">Opening ranking details…</output>}>
+                <CommandRankingDebug
+                  rows={rankedDetails
+                    .filter((item) => mergedRows.rows.some((row) => row.id === item.candidate.id))
+                    .slice(0, 12)
+                    .map((item) => ({
+                      id: item.candidate.id,
+                      title: item.candidate.title,
+                      source: item.candidate.section,
+                      base: item.base,
+                      adjustment: item.adjustment,
+                      score: item.score,
+                    }))}
+                  duplicates={mergedRows.dropped}
+                  choices={rankingEntries.length}
+                  error={rankingError}
+                  onClear={() => void clearRanking()}
+                />
+              </Suspense>
+            )
+          }
+        />
       )}
     </div>
   );
 }
-
-const SECTION: Record<Suggestion["section"], string> = {
-  intent: "",
-  browser: "Browser",
-  suggest: "Suggestions",
-  tabs: "Open tabs",
-  domains: "Top sites",
-  bookmarks: "Bookmarks",
-  closed: "Recently Closed",
-  history: "History",
-  extensions: "Extensions",
-  recent: "Recent",
-  programs: "Saved programs",
-  runs: "Conversations",
-  results: "Saved results",
-  skills: "Skills",
-  chats: "Conversations",
-  tasks: "Tasks",
-  memory: "Saved notes",
-  sets: "Sets",
-};

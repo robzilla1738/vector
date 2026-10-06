@@ -1,4 +1,5 @@
 import { GlassMaterial } from "./GlassMaterial";
+import { hintNavigation } from "../navigation-preload";
 import { useTabLayout } from "../use-tab-layout";
 import { orderedPages } from "../store/pages";
 import { staticMenuItemProps, staticIconButtonProps } from "../ui/class-props";
@@ -708,6 +709,8 @@ const SidebarBookmarkRow = memo(function SidebarBookmarkRow({
     <button
       className="sb-link"
       title={bookmark.title || bookmark.url}
+      onPointerEnter={() => hintNavigation(bookmark.url)}
+      onFocus={() => hintNavigation(bookmark.url)}
       onClick={(event) => onOpen(bookmark, event)}
       onAuxClick={(event) => onOpen(bookmark, event)}
     >

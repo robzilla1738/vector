@@ -198,7 +198,9 @@ const requirements = {
   },
   "commandBar": {
     "requires": [
-      "autocomplete"
+      "omnibox.start",
+      "omnibox.stop",
+      "omnibox.open"
     ]
   },
   "searchRanking": {

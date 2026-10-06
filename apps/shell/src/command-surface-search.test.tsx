@@ -1,3 +1,4 @@
+import { nativeOmniboxFixture } from "./test-native-omnibox";
 import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
@@ -35,7 +36,7 @@ it("shows local history while slower saved-work sources are still pending", asyn
     settings: {},
   } as never);
   const pending = new Promise<never>(() => {});
-  vi.spyOn(bridge, "autocomplete").mockResolvedValue([
+  nativeOmniboxFixture([
     { id: "needle", type: "history", url: "https://needle.example.test/", title: "Needle source" },
   ]);
   vi.spyOn(bridge, "invoke").mockImplementation(async (method: string) => {
@@ -87,7 +88,7 @@ it("binds registered command rows to the current surface and query", async () =>
     conversationDrafts: [],
     settings: {},
   } as never);
-  vi.spyOn(bridge, "autocomplete").mockResolvedValue([]);
+  nativeOmniboxFixture([]);
   vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
   const host = document.createElement("div");
   document.body.append(host);

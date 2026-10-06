@@ -1,3 +1,4 @@
+import { nativeOmniboxFixture } from "../test-native-omnibox";
 import { normalizePages } from "../store/pages";
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
@@ -37,7 +38,7 @@ it("retains query and combobox focus when choosing a full provider label with th
   vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
   vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
   vi.spyOn(bridge, "extensions").mockResolvedValue([]);
-  vi.spyOn(bridge, "autocomplete").mockResolvedValue([]);
+  nativeOmniboxFixture([]);
   const host = document.createElement("div"),
     style = document.createElement("style");
   document.body.append(host);

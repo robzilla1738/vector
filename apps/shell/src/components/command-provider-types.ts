@@ -1,12 +1,12 @@
 import type { CommandRankingSource } from "@aux/contracts";
-import type { AutocompleteMatch } from "../bridge";
+import type { OmniboxMatch } from "../bridge";
 import type { ReactNode } from "react";
 
 interface SuggestionBase {
   id: string;
   pinned?: boolean;
   url?: string;
-  providerType?: AutocompleteMatch["type"];
+  providerType?: OmniboxMatch["type"];
   icon: ReactNode;
   title: string;
   detail?: string;

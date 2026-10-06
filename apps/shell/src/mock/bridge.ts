@@ -54,7 +54,7 @@ import type {
 } from "@aux/contracts";
 import { normalizeCommandRankingQuery } from "@aux/contracts/command-ranking-query";
 import { OrganizationCommitSchema, type OrganizationSnapshot } from "@aux/contracts/organization";
-import type { BrowserExtension, AuxBridge } from "../bridge";
+import type { BrowserExtension, AuxBridge, OmniboxResult } from "../bridge";
 import { DEFAULT_SPACE } from "../workspace";
 import {
   BOOKMARKS,
@@ -2056,6 +2056,7 @@ export function installMockBridge(q: URLSearchParams) {
   }
 
   const { emitEvent: _emitHostEvent, ...hostDefaults } = createMockHost();
+  let omnibox: OmniboxResult | null = null;
   const bridge: AuxBridge = {
     ...hostDefaults,
     browserProfiles: async () => [],
@@ -2245,10 +2246,10 @@ export function installMockBridge(q: URLSearchParams) {
     }),
     resolveSearch: async (query) => DEFAULT_SEARCH_ENGINE.replace("%s", encodeURIComponent(query)),
     setShortcuts: async () => true,
-    autocomplete: async (query) => {
+    "omnibox.start": async ({ queryId, input: query }) => {
       const term = query.trim().toLowerCase();
-      if (!term) return [];
-      return [
+
+      const matches = [
         ...HISTORY.filter((item) => `${item.title} ${item.url}`.toLowerCase().includes(term))
           .slice(0, 4)
           .map((item, index) => ({
@@ -2275,6 +2276,41 @@ export function installMockBridge(q: URLSearchParams) {
           description: "Web search",
         },
       ];
+      omnibox = {
+        queryId,
+        sequenceId: queryId,
+        input: query,
+        done: true,
+        items: matches.map((match, index) => ({ ...match, index, id: `${queryId}:${index}` })),
+      };
+      _emitHostEvent("onOmniboxResult", omnibox);
+      return true;
+    },
+    "omnibox.stop": async (queryId) => {
+      if (omnibox?.queryId !== queryId) return false;
+      omnibox = null;
+      return true;
+    },
+    preloadNavigation: async ({ pageId, expectedUrl, url }) => {
+      const page = pages.find((item) => item.pageId === pageId);
+      return pageId === activePageId && page?.url === expectedUrl && /^https?:\/\//.test(url);
+    },
+    "omnibox.open": async ({ queryId, match, disposition }) => {
+      if (omnibox?.queryId !== queryId) return false;
+      const selected = match
+        ? omnibox.items.find(
+            (item) =>
+              item.index === match.index &&
+              item.url === match.url &&
+              omnibox!.sequenceId === match.sequenceId,
+          )
+        : omnibox.items[0];
+      if (!selected) return false;
+      const active = activePageId;
+      if (disposition === "current-tab" && active)
+        await invoke("pages.navigate", { pageId: active, url: selected.url });
+      else await invoke("pages.open", { url: selected.url, activate: disposition !== "new-background-tab" });
+      return true;
     },
     overlay: async () => true,
     focusShell: async () => null,

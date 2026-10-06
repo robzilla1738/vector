@@ -11,6 +11,7 @@
  */
 import type {
   HostMethodResult,
+  HostEventPayload,
   MethodName,
   MethodResult,
   RpcArgs,
@@ -132,13 +133,8 @@ export interface VaultOffer {
   offerId?: string;
   locked?: boolean;
 }
-export interface AutocompleteMatch {
-  id: string;
-  type: "history" | "bookmark" | "search" | "typed";
-  title: string;
-  url: string;
-  description?: string;
-}
+export type OmniboxMatch = HostEventPayload<"onOmniboxResult">["items"][number];
+export type OmniboxResult = HostEventPayload<"onOmniboxResult">;
 
 /** Bridge members composed by the adapter instead of dispatched as host methods. */
 export interface ComposedBridgeMembers {
@@ -266,7 +262,11 @@ const stub: AuxBridge = {
   downloadsSnapshot: async () => [],
   controlDownload: unavailable("Download control requires Aux desktop"),
   surfaceContentId: async () => null,
-  autocomplete: async () => [],
+  "omnibox.start": async () => false,
+  "omnibox.stop": async () => false,
+  "omnibox.open": async () => false,
+  preloadNavigation: async () => false,
+  onOmniboxResult: noop,
   resolveSearch: unavailable("Profile search requires the native browser."),
   overlay: async () => true,
   focusShell: async () => null,

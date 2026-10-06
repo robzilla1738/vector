@@ -1,3 +1,4 @@
+import { nativeOmniboxFixture } from "./test-native-omnibox";
 import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
@@ -58,9 +59,11 @@ const key = (input: HTMLInputElement, name: string, init: KeyboardEventInit = {}
 
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
+let native: ReturnType<typeof nativeOmniboxFixture>;
 
 beforeEach(() => {
   nativeFlag.value = true;
+  native = nativeOmniboxFixture();
   useStore.setState({
     pages: normalizePages([{ ...page }] as never),
     activePageId: "p1",
@@ -91,74 +94,66 @@ describe("CommandBar keyboard contract", () => {
     expect(document.activeElement).not.toBe(input);
   });
 
-  it("Enter on typed search navigates through the tab command", async () => {
-    const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue(ack);
-    const requiredBridge = bridge as typeof bridge & { resolveSearch: (query: string) => Promise<string> };
-    vi.spyOn(requiredBridge, "resolveSearch").mockResolvedValue(
-      "https://duckduckgo.com/?q=browser+session+restore",
-    );
+  it("Enter on typed search uses the native input classifier", async () => {
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
     await act(async () => input.focus());
     await act(async () => type(input, "browser session restore"));
     await act(async () => key(input, "Enter"));
-    await settle();
-    expect(
-      command.mock.calls.some(
-        ([c]) => c.kind === "navigate" && String((c as { url?: string }).url).includes("duckduckgo.com"),
-      ),
-    ).toBe(true);
+    expect(native.open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryId: native.start.mock.calls.at(-1)![0].queryId,
+        disposition: "current-tab",
+      }),
+    );
   });
 
-  it("ArrowDown + Enter runs the highlighted suggestion, not the intent row", async () => {
-    useStore.setState({
-      pages: normalizePages([
-        { ...page },
-        { ...page, pageId: "p2", url: "https://gitlab.com/other", title: "GitLab other" },
-      ] as never),
-      bookmarks: [{ url: "https://github.blog/x", title: "GitHub blog", folderPath: [] }],
-    } as never);
-    const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue(ack);
+  it("ArrowDown + Enter opens the highlighted native match", async () => {
+    native = nativeOmniboxFixture([
+      { id: "default", index: 0, type: "search", title: "Search git", url: "https://search.test/?q=git" },
+      { id: "gitlab", index: 7, type: "history", title: "GitLab other", url: "https://gitlab.com/other" },
+    ]);
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
     await act(async () => input.focus());
     await act(async () => type(input, "git"));
-    // [intent, ask, tab-p2, bookmark] — two downs land on the open tab.
-    await act(async () => key(input, "ArrowDown"));
-    await act(async () => key(input, "ArrowDown"));
+    for (let step = 0; step < 3; step++) await act(async () => key(input, "ArrowDown"));
     await act(async () => key(input, "Enter"));
-    await settle();
-    expect(
-      command.mock.calls.some(([c]) => c.kind === "activate" && (c as { pageId?: string }).pageId === "p2"),
-    ).toBe(true);
-    expect(
-      command.mock.calls.every(
-        ([c]) => !(c.kind === "navigate" && String((c as { url?: string }).url).includes("q=git")),
-      ),
-    ).toBe(true);
+    expect(native.open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        match: expect.objectContaining({ index: 7, url: "https://gitlab.com/other" }),
+      }),
+    );
   });
 
-  it("updates bookmark suggestions when a saved title changes", async () => {
-    useStore.setState({
-      bookmarks: [{ url: "https://example.com/guide", title: "Original guide", folderPath: [] }],
-    } as never);
+  it("updates bookmark suggestions from the current native stream", async () => {
+    native = nativeOmniboxFixture([
+      { id: "guide", index: 4, type: "bookmark", title: "Original guide", url: "https://example.com/guide" },
+    ]);
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
     await act(async () => input.focus());
     await act(async () => type(input, "guide"));
-    await vi.waitFor(async () => {
-      await act(async () => {});
-      expect(host.textContent).toContain("Original guide");
-    });
+    expect(host.textContent).toContain("Original guide");
+    const { queryId } = native.start.mock.calls.at(-1)![0];
     await act(async () =>
-      useStore.setState({
-        bookmarks: [{ url: "https://example.com/guide", title: "Updated guide", folderPath: [] }],
-      } as never),
+      native.emit({
+        queryId,
+        sequenceId: queryId + 1,
+        input: "guide",
+        done: true,
+        items: [
+          {
+            id: "guide",
+            index: 4,
+            type: "bookmark",
+            title: "Updated guide",
+            url: "https://example.com/guide",
+          },
+        ],
+      }),
     );
-    await vi.waitFor(async () => {
-      await act(async () => {});
-      expect(host.textContent).toContain("Updated guide");
-    });
+    expect(host.textContent).toContain("Updated guide");
     expect(host.textContent).not.toContain("Original guide");
   });
 
@@ -174,6 +169,7 @@ describe("CommandBar keyboard contract", () => {
       input.dispatchEvent(event);
     });
     expect(command.mock.calls.filter(([c]) => c.kind === "navigate")).toHaveLength(0);
+    expect(native.open).not.toHaveBeenCalled();
   });
 
   it("keyword engines route Enter to the engine, not the default search", async () => {
@@ -193,61 +189,72 @@ describe("CommandBar keyboard contract", () => {
     ).toBe(true);
   });
 
-  it("requests indexed local history as soon as a usable query is typed", async () => {
-    nativeFlag.value = false;
+  it("starts native autocomplete without fetching Node history", async () => {
     const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
     await act(async () => input.focus());
     await act(async () => type(input, "gi"));
-    expect(invoke).toHaveBeenCalledWith("history.list", { query: "gi", limit: 6 });
+    expect(native.start).toHaveBeenLastCalledWith(expect.objectContaining({ input: "gi" }));
+    expect(invoke.mock.calls.some(([method]) => method === "history.list")).toBe(false);
   });
 
-  it("remote suggestions honor the preference and privacy gate", async () => {
-    nativeFlag.value = false;
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response(JSON.stringify(["x", ["extra suggestion"]])));
-    useStore.setState({
-      settings: { searchSuggestions: true, searchEngine: "https://duckduckgo.com/?q=%s" },
-    } as never);
+  it("delegates provider queries to native autocomplete without renderer network fetches", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    useStore.setState({ settings: { searchSuggestions: true } } as never);
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
     await act(async () => input.focus());
-    // Private-looking input: never leaves the machine.
-    await act(async () => type(input, "192.168.1.1"));
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 300)));
+    for (const query of ["192.168.1.1", "public question"]) {
+      await act(async () => type(input, query));
+      expect(native.start).toHaveBeenLastCalledWith(expect.objectContaining({ input: query }));
+    }
     expect(fetchMock).not.toHaveBeenCalled();
-    // Public query past the debounce reaches the engine endpoint.
-    await act(async () => type(input, "public question"));
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 300)));
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("duckduckgo.com/ac/"));
   });
 
-  it("never paints a late remote suggestion for an earlier query", async () => {
-    nativeFlag.value = false;
-    const replies: ((response: Response) => void)[] = [];
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation(() => new Promise((resolve) => replies.push(resolve)));
-    useStore.setState({
-      settings: { searchSuggestions: true, searchEngine: "https://duckduckgo.com/?q=%s" },
-    } as never);
+  it("never paints a late native suggestion for an earlier query", async () => {
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
     await act(async () => input.focus());
     await act(async () => type(input, "first query"));
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 190)));
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const first = native.start.mock.calls.at(-1)![0].queryId;
     await act(async () => type(input, "second query"));
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 190)));
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    await act(async () => replies[0]!(new Response(JSON.stringify(["first query", ["stale suggestion"]]))));
+    const second = native.start.mock.calls.at(-1)![0].queryId;
+    await act(async () =>
+      native.emit({
+        queryId: first,
+        sequenceId: first,
+        input: "first query",
+        done: true,
+        items: [
+          {
+            id: "stale",
+            index: 0,
+            type: "search",
+            title: "stale suggestion",
+            url: "https://search.test/stale",
+          },
+        ],
+      }),
+    );
     expect(host.textContent).not.toContain("stale suggestion");
     await act(async () =>
-      replies[1]!(new Response(JSON.stringify(["second query", ["current suggestion"]]))),
+      native.emit({
+        queryId: second,
+        sequenceId: second + 1,
+        input: "second query",
+        done: true,
+        items: [
+          {
+            id: "current",
+            index: 0,
+            type: "search",
+            title: "current suggestion",
+            url: "https://search.test/current",
+          },
+        ],
+      }),
     );
-    await settle();
     expect(host.textContent).toContain("current suggestion");
   });
 
@@ -290,27 +297,11 @@ describe("CommandBar keyboard contract", () => {
     expect(useStore.getState().resultPreview).toBe("artifact-new");
   });
 
-  it("keeps scoped pills keyboard reachable and records a chosen tab", async () => {
-    useStore.setState({
-      pages: normalizePages([
-        { ...page },
-        { ...page, pageId: "p2", title: "GitLab project", url: "https://gitlab.com/project" },
-      ] as never),
-    } as never);
-    const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) =>
-      method === "command.ranking.list"
-        ? ([] as never)
-        : method === "command.ranking.record"
-          ? ({
-              query: "git",
-              candidateKey: "gitlab project\u0000gitlab.com",
-              source: "tabs",
-              uses: 1,
-              lastUsedAt: Date.now(),
-            } as never)
-          : ([] as never),
-    );
-    const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue(ack);
+  it("keeps scoped pills keyboard reachable and opens a native tab match", async () => {
+    native = nativeOmniboxFixture([
+      { id: "tab-p2", index: 5, type: "tab", title: "GitLab project", url: "https://gitlab.com/project" },
+    ]);
+    const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
     await act(async () => input.focus());
@@ -322,11 +313,12 @@ describe("CommandBar keyboard contract", () => {
     expect(host.textContent).toContain("GitLab project");
     expect(host.textContent).not.toContain("Search for “git”");
     await act(async () => key(input, "Enter"));
-    await settle();
-    expect(
-      command.mock.calls.some(([c]) => c.kind === "activate" && (c as { pageId?: string }).pageId === "p2"),
-    ).toBe(true);
-    expect(invoke.mock.calls.some(([method]) => method === "command.ranking.record")).toBe(true);
+    expect(native.open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        match: expect.objectContaining({ index: 5, url: "https://gitlab.com/project" }),
+      }),
+    );
+    expect(invoke.mock.calls.some(([method]) => method === "command.ranking.record")).toBe(false);
   });
 
   it("reopens a closed tab from its scope and returns to all results with Escape", async () => {
@@ -336,7 +328,7 @@ describe("CommandBar keyboard contract", () => {
       ],
     } as never);
     const reopen = vi.spyOn(useStore.getState(), "reopenClosedTab").mockResolvedValue(undefined);
-    vi.spyOn(bridge, "autocomplete").mockResolvedValue([]);
+    nativeOmniboxFixture([]);
     vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
@@ -366,7 +358,16 @@ describe("CommandBar keyboard contract", () => {
       bookmarks: [{ url: "https://example.com/guide", title: "Guide", folderPath: ["Reading"] }],
     } as never);
     const navigate = vi.spyOn(useStore.getState(), "navigatePage").mockResolvedValue(undefined);
-    vi.spyOn(bridge, "autocomplete").mockResolvedValue([]);
+    native = nativeOmniboxFixture([
+      {
+        id: "guide",
+        index: 6,
+        type: "bookmark",
+        title: "Guide",
+        description: "Reading",
+        url: "https://example.com/guide",
+      },
+    ]);
     vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
@@ -374,18 +375,24 @@ describe("CommandBar keyboard contract", () => {
     await act(async () => type(input, "guide"));
     await settle();
     await act(async () => key(input, "4", { altKey: true }));
-    expect(host.querySelector(".cb-opt.bookmarks")?.textContent).toContain("Reading");
+    expect(host.querySelector(".cb-opt.browser")?.textContent).toContain("Reading");
     await act(async () => key(input, "Enter"));
     await settle();
-    expect(navigate).toHaveBeenCalledWith("p1", "https://example.com/guide");
+    expect(native.open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        match: expect.objectContaining({ index: 6, url: "https://example.com/guide" }),
+      }),
+    );
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("finds a browser history match in History and opens an extension action", async () => {
+    nativeFlag.value = true;
     const nativeWindow = window as Window & { auxChromiumHost?: { featureStages?: { extensions: "on" } } };
     const priorHost = nativeWindow.auxChromiumHost;
     nativeWindow.auxChromiumHost = { featureStages: { extensions: "on" } };
     try {
-      vi.spyOn(bridge, "autocomplete").mockResolvedValue([
+      const fixture = nativeOmniboxFixture([
         { id: "visit", type: "history", title: "Guide visit", url: "https://example.com/guide" },
       ]);
       vi.spyOn(bridge, "extensions").mockResolvedValue([
@@ -409,10 +416,16 @@ describe("CommandBar keyboard contract", () => {
       await act(async () => type(input, "guide"));
       await settle();
       await act(async () => key(input, "5", { altKey: true }));
-      expect(host.querySelector(".cb-opt.history")?.textContent).toContain("Guide visit");
+      expect(host.querySelector(".cb-opt.browser")?.textContent).toContain("Guide visit");
       await act(async () => key(input, "Enter"));
       await settle();
-      expect(navigate).toHaveBeenCalledWith("p1", "https://example.com/guide");
+      expect(fixture.open).toHaveBeenCalledWith(
+        expect.objectContaining({
+          disposition: "current-tab",
+          match: expect.objectContaining({ url: "https://example.com/guide" }),
+        }),
+      );
+      expect(navigate).not.toHaveBeenCalled();
       await act(async () => input.focus());
       await act(async () => type(input, "guide"));
       await settle();
@@ -463,6 +476,8 @@ it("edit mode selects the current URL without creating a page", async () => {
 });
 
 it("new-tab CmdEnter uses a background native open acknowledgement", async () => {
+  nativeFlag.value = true;
+  const fixture = nativeOmniboxFixture();
   const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue({ ...ack, pageId: "new" });
   const close = vi.fn();
   await act(async () => root.render(<CommandBar surfaceMode="new-tab" onClose={close} />));
@@ -470,10 +485,8 @@ it("new-tab CmdEnter uses a background native open acknowledgement", async () =>
   await act(async () => type(input, "https://example.com/new"));
   await act(async () => key(input, "Enter", { metaKey: true }));
   await settle();
-  expect(command).toHaveBeenCalledWith(
-    expect.objectContaining({ kind: "open", activate: false, url: "https://example.com/new" }),
-    expect.any(Number),
-  );
+  expect(fixture.open).toHaveBeenCalledWith(expect.objectContaining({ disposition: "new-background-tab" }));
+  expect(command).not.toHaveBeenCalled();
   expect(close).toHaveBeenCalledOnce();
 });
 
@@ -497,41 +510,25 @@ it("scope markers become pills and empty Backspace clears the scope", async () =
   expect(host.querySelector(".cb-scope-pill")).toBeNull();
 });
 
-it("records typed frecency only after navigation succeeds", async () => {
-  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(
-    async (method) =>
-      (method === "command.ranking.record"
-        ? {
-            query: "example.com/typed",
-            candidateKey: "https://example.com/typed",
-            source: "browser",
-            frequency: 2,
-            uses: 1,
-            lastUsedAt: Date.now(),
-          }
-        : []) as never,
-  );
-  const create = vi
-    .spyOn(useStore.getState(), "newTab")
-    .mockRejectedValueOnce(new Error("Native refusal"))
-    .mockResolvedValue(page as never);
+it("keeps a refused native navigation open and closes only after acceptance", async () => {
+  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
+  native.open.mockResolvedValueOnce(false).mockResolvedValue(true);
   const close = vi.fn();
   await act(async () => root.render(<CommandBar surfaceMode="new-tab" onClose={close} />));
   const input = host.querySelector("input")!;
   await act(async () => type(input, "https://example.com/typed"));
   await act(async () => key(input, "Enter"));
-  expect(create).toHaveBeenCalledOnce();
-  expect(invoke.mock.calls.some(([method]) => method === "command.ranking.record")).toBe(false);
+  expect(native.open).toHaveBeenCalledOnce();
   expect(close).not.toHaveBeenCalled();
   await act(async () => key(input, "Enter"));
-  expect(invoke).toHaveBeenCalledWith(
-    "command.ranking.record",
-    expect.objectContaining({ pickOrigin: "typed", candidateKey: "https://example.com/typed" }),
-  );
+  expect(native.open).toHaveBeenCalledTimes(2);
   expect(close).toHaveBeenCalledOnce();
+  expect(invoke.mock.calls.some(([method]) => method === "command.ranking.record")).toBe(false);
 });
 
 it("keeps missing-model Ask refusals in the command surface and searches after three failures", async () => {
+  nativeFlag.value = true;
+  const fixture = nativeOmniboxFixture();
   useStore.setState({
     settings: { modelConfigured: false, commandRouting: "automatic" },
     overlay: null,
@@ -571,9 +568,9 @@ it("keeps missing-model Ask refusals in the command surface and searches after t
   expect(input.value).toBe(question);
   expect(document.activeElement).toBe(input);
   await act(async () => key(input, "Enter"));
-  expect(search).toHaveBeenCalledWith(question);
-  expect(create).toHaveBeenCalledWith("https://example.com/profile-search");
-  expect(create).toHaveBeenCalledOnce();
+  expect(fixture.open).toHaveBeenCalledWith(expect.objectContaining({ disposition: "new-foreground-tab" }));
+  expect(search).not.toHaveBeenCalled();
+  expect(create).not.toHaveBeenCalled();
   expect(close).toHaveBeenCalledOnce();
 });
 
@@ -601,6 +598,8 @@ it("keeps saved-work failure and Retry outside the editing row and retries the c
 });
 
 it("queries saved work only in All or Work, retaining current failures and Retry there", async () => {
+  nativeFlag.value = true;
+  nativeOmniboxFixture();
   const featureWindow = window as Window & { auxChromiumHost?: { featureStages: { automations: "on" } } };
   const previousHost = featureWindow.auxChromiumHost;
   featureWindow.auxChromiumHost = { featureStages: { automations: "on" } };
@@ -672,6 +671,8 @@ it("does not query unavailable routines or fabricate a saved-work failure on a f
 });
 
 it("hides retained routine results immediately when their trusted feature stage becomes unavailable", async () => {
+  nativeFlag.value = true;
+  nativeOmniboxFixture();
   const featureWindow = window as Window & {
     auxChromiumHost?: { featureStages: { automations: "on" | "off" } };
   };

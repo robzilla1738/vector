@@ -313,7 +313,10 @@ const RESULTS: Record<string, unknown> = {
   "preview": null,
   "contextMenu": false,
   "navigationMenu": false,
-  "autocomplete": [],
+  "omnibox.start": false,
+  "omnibox.stop": false,
+  "omnibox.open": false,
+  "preloadNavigation": false,
   "readArticle": {
     "title": "mock-title",
     "byline": "mock-byline",

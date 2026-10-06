@@ -1,230 +1,186 @@
-import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, expect, it, vi } from "vitest";
-
-vi.mock("./bridge", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./bridge")>()),
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+vi.mock("./bridge", async (original) => ({
+  ...(await original<typeof import("./bridge")>()),
   inNativeHost: true,
 }));
 import { bridge } from "./bridge";
 import { CommandBar } from "./components/CommandBar";
 import { useStore } from "./store";
+import { normalizePages } from "./store/pages";
+import { nativeOmniboxFixture } from "./test-native-omnibox";
 
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-(globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class {
-  observe() {}
-  disconnect() {}
-};
-Element.prototype.scrollIntoView ??= () => {};
-
-async function enterQuery(input: HTMLInputElement, value: string) {
+const initial = useStore.getState();
+let host: HTMLDivElement;
+let root: ReturnType<typeof createRoot>;
+beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  Element.prototype.scrollIntoView ??= () => {};
+  useStore.setState(
+    {
+      ...initial,
+      pages: normalizePages([]),
+      activePageId: null,
+      bookmarks: [],
+      runs: [],
+      programs: [],
+      settings: {},
+      toasts: [],
+    },
+    true,
+  );
+  vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+});
+afterEach(async () => {
+  await act(async () => root.unmount());
+  host.remove();
+  useStore.setState(initial, true);
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+async function mount() {
+  await act(async () => root.render(<CommandBar />));
+  const input = host.querySelector<HTMLInputElement>('input[role="combobox"]')!;
+  await act(async () => input.focus());
+  return input;
+}
+async function type(input: HTMLInputElement, value: string) {
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
-
-const host = document.createElement("div");
-document.body.append(host);
-let root: ReturnType<typeof createRoot>;
-afterEach(async () => {
-  await act(async () => root.unmount());
-  vi.restoreAllMocks();
-  host.replaceChildren();
+const match = (title: string, index = 3) => ({
+  id: title,
+  index,
+  type: "history" as const,
+  title,
+  url: `https://example.test/${encodeURIComponent(title)}`,
 });
 
-it("requires the current native reply when a query returns to an earlier value", async () => {
-  useStore.setState({
-    pages: normalizePages([] as never),
-    activePageId: null,
-    bookmarks: [],
-    closedTabs: [],
-    runs: [],
-    programs: [],
-    settings: {},
-  } as never);
-  const replies: Array<(rows: Awaited<ReturnType<typeof bridge.autocomplete>>) => void> = [];
-  vi.spyOn(bridge, "autocomplete").mockImplementation(() => new Promise((resolve) => replies.push(resolve)));
-  vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
-  root = createRoot(host);
-  await act(async () => root.render(<CommandBar />));
-  const input = host.querySelector<HTMLInputElement>('input[role="combobox"]')!;
-  await act(async () => input.focus());
-  await enterQuery(input, "alpha");
-  await act(async () =>
-    replies[0]!([{ id: "old", type: "history", title: "Old alpha", url: "https://old.example/" }]),
-  );
-  expect(host.textContent).toContain("Old alpha");
-  const firstGeneration = input.dataset.commandValueGeneration;
-  await enterQuery(input, "beta");
-  await enterQuery(input, "alpha");
-  expect(input.dataset.commandValueGeneration).not.toBe(firstGeneration);
-  expect(host.textContent).not.toContain("Old alpha");
-  expect(host.querySelector('[data-command-result-source="history"]')).toBeNull();
-  await act(async () =>
-    replies[1]!([{ id: "late", type: "history", title: "Late beta", url: "https://late.example/" }]),
-  );
-  expect(host.textContent).not.toContain("Late beta");
-  expect(host.querySelector('[data-command-result-source="history"]')).toBeNull();
-  await act(async () =>
-    replies[2]!([
-      { id: "current", type: "history", title: "Current alpha", url: "https://current.example/" },
-    ]),
-  );
-  const row = host.querySelector<HTMLElement>('[role="option"][data-command-result-source="history"]')!;
-  expect(row.textContent).toContain("Current alpha");
-  expect(row.dataset.commandResultGeneration).toBe(input.dataset.commandValueGeneration);
-  expect(host.querySelector<HTMLElement>('[role="listbox"]')!.dataset.commandResultsGeneration).toBe(
-    input.dataset.commandValueGeneration,
-  );
+it("keeps native zero-suggest providers available on focus", async () => {
+  const fixture = nativeOmniboxFixture([match("Recent page")]);
+  await mount();
+  expect(fixture.start).toHaveBeenLastCalledWith(expect.objectContaining({ input: "", onFocus: true }));
+  expect(host.textContent).toContain("Recent page");
 });
-
-it("does not mark a failed native search as presented history", async () => {
-  useStore.setState({
-    pages: normalizePages([] as never),
-    activePageId: null,
-    bookmarks: [],
-    closedTabs: [],
-    runs: [],
-    programs: [],
-    settings: {},
-  } as never);
-  const autocomplete = vi
-    .spyOn(bridge, "autocomplete")
-    .mockRejectedValueOnce(new Error("commandBar is preview in chromium-fork"))
-    .mockResolvedValue([
-      { id: "retry", type: "history", title: "Recovered history", url: "https://recovered.example/" },
-    ]);
-  vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
-  root = createRoot(host);
-  await act(async () => root.render(<CommandBar />));
-  const input = host.querySelector<HTMLInputElement>('input[role="combobox"]')!;
-  await act(async () => input.focus());
-  await enterQuery(input, "alpha");
-  expect(host.textContent).toContain("Browser suggestions couldn’t load. You can still search.");
-  expect(host.textContent).not.toContain("chromium-fork");
-  expect(input.value).toBe("alpha");
-  expect(host.querySelector('[data-command-result-source="history"]')).toBeNull();
-  expect(host.querySelector("[data-command-results-generation]")).toBeNull();
-  const retry = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
-    (button) => button.textContent === "Try again",
-  )!;
-  expect(retry.dataset.commandId).toBe("retry-browser-autocomplete");
-  vi.spyOn(retry, "getClientRects").mockReturnValue([{ width: 200, height: 32 }] as unknown as DOMRectList);
-  expect(autocomplete).toHaveBeenCalledTimes(1);
-  await act(async () => retry.click());
-  expect(autocomplete).toHaveBeenCalledTimes(2);
-  expect(autocomplete).toHaveBeenLastCalledWith("alpha");
-  expect(input.value).toBe("alpha");
-  expect(host.textContent).toContain("Recovered history");
-  expect(host.textContent).not.toContain("Browser suggestions couldn’t load");
+it("keeps late native updates and their order instead of finishing at the first local result", async () => {
+  const fixture = nativeOmniboxFixture();
+  fixture.start.mockResolvedValue(true);
+  const input = await mount();
+  await type(input, "release");
+  const queryId = fixture.start.mock.calls.at(-1)![0].queryId;
+  await act(async () =>
+    fixture.emit({ queryId, sequenceId: 10, input: "release", done: false, items: [match("Local result")] }),
+  );
+  expect(host.textContent).toContain("Local result");
+  await act(async () =>
+    fixture.emit({
+      queryId,
+      sequenceId: 11,
+      input: "release",
+      done: true,
+      items: [match("Default search", 0), match("Late network result", 1), match("Local result", 2)],
+    }),
+  );
+  const titles = [...host.querySelectorAll(".cb-opt.browser")].map((node) => node.textContent);
+  expect(titles[0]).toContain("Default search");
+  expect(titles[1]).toContain("Late network result");
+  expect(titles[2]).toContain("Local result");
+  await act(async () =>
+    fixture.emit({
+      queryId,
+      sequenceId: 10,
+      input: "release",
+      done: true,
+      items: [match("Obsolete sequence")],
+    }),
+  );
+  expect(host.textContent).not.toContain("Obsolete sequence");
 });
-
-it("preserves Chromium order while a scoped tab survives title-and-host dedup", async () => {
-  useStore.setState({
-    pages: normalizePages([
-      { pageId: "current", url: "https://aux.example", title: "Aux", favicon: "", ownedByRuntime: false },
-      {
-        pageId: "tab",
-        url: "https://example.com/tab",
-        title: "Release Notes",
-        favicon: "",
-        ownedByRuntime: false,
-      },
-    ] as never),
-    activePageId: "current",
-    bookmarks: [],
-    closedTabs: [],
-    runs: [],
-    programs: [],
-    settings: {},
-  } as never);
-  vi.spyOn(bridge, "autocomplete").mockResolvedValue([
-    { id: "one", type: "history", title: "Release Notes", url: "https://example.com/history" },
-    { id: "two", type: "search", title: "Release discussion", url: "https://search.example/?q=release" },
-  ]);
-  vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
-  root = createRoot(host);
-  await act(async () => root.render(<CommandBar />));
-  const input = host.querySelector("input")!;
-  await act(async () => input.focus());
+it("refuses older query generations when text returns through A B A", async () => {
+  const fixture = nativeOmniboxFixture();
+  fixture.start.mockResolvedValue(true);
+  const input = await mount();
+  await type(input, "alpha");
+  const old = fixture.start.mock.calls.at(-1)![0].queryId;
+  await type(input, "beta");
+  await type(input, "alpha");
+  const current = fixture.start.mock.calls.at(-1)![0].queryId;
+  expect(current).toBeGreaterThan(old);
+  await act(async () =>
+    fixture.emit({
+      queryId: old,
+      sequenceId: 80,
+      input: "alpha",
+      done: true,
+      items: [match("Old protected result")],
+    }),
+  );
+  expect(host.textContent).not.toContain("Old protected result");
+  await act(async () =>
+    fixture.emit({
+      queryId: current,
+      sequenceId: 81,
+      input: "alpha",
+      done: true,
+      items: [match("Current result")],
+    }),
+  );
+  expect(host.textContent).toContain("Current result");
+  expect(fixture.stop).toHaveBeenCalledWith(old);
+});
+it("accepts the native selection identity and disposition without Node browser ranking or history", async () => {
+  const fixture = nativeOmniboxFixture([match("Native bookmark", 4)]);
+  const input = await mount();
+  await type(input, "bookmark");
+  const queryId = fixture.start.mock.calls.at(-1)![0].queryId;
   await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "release");
-    input.dispatchEvent(new Event("input", { bubbles: true }));
+    host
+      .querySelector<HTMLElement>(".cb-opt.browser")!
+      .dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
   });
-  await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
-  expect(host.querySelector(".cb-opt.history")?.textContent).toContain("Release Notes");
-  expect(host.querySelector(".cb-opt.browser")?.textContent).toContain("Release discussion");
-  expect(host.querySelector(".cb-opt.tabs")?.textContent).toContain("Release Notes");
-  await act(async () =>
-    input.dispatchEvent(new KeyboardEvent("keydown", { key: "2", altKey: true, bubbles: true })),
-  );
-  expect(host.querySelector(".cb-opt.tabs")?.textContent).toContain("Release Notes");
-});
-
-it("opens a search through the current Profile provider", async () => {
-  useStore.setState({
-    pages: normalizePages([
-      { pageId: "current", url: "https://aux.example", title: "Aux", favicon: "", ownedByRuntime: false },
-    ] as never),
-    activePageId: "current",
-    bookmarks: [],
-    closedTabs: [],
-    runs: [],
-    programs: [],
-    settings: {},
-  } as never);
-  const resolved = vi
-    .spyOn(bridge as typeof bridge & { resolveSearch: (query: string) => Promise<string> }, "resolveSearch")
-    .mockResolvedValue("https://selected.example/?q=aux+browser");
-  const navigate = vi.spyOn(useStore.getState(), "navigatePage").mockResolvedValue(undefined);
-  vi.spyOn(bridge, "autocomplete").mockResolvedValue([]);
-  vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
-  root = createRoot(host);
-  await act(async () => root.render(<CommandBar />));
-  const input = host.querySelector("input")!;
-  await act(async () => input.focus());
   await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "aux browser");
-    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true }));
   });
+  expect(fixture.open).toHaveBeenLastCalledWith({
+    queryId,
+    disposition: "new-foreground-tab",
+    match: { sequenceId: queryId, index: 4, url: "https://example.test/Native%20bookmark" },
+  });
+  const methods = vi.mocked(bridge.invoke).mock.calls.map(([method]) => method);
+  expect(methods).not.toContain("history.list");
+  expect(methods).not.toContain("command.ranking.list");
+  expect(methods).not.toContain("command.ranking.record");
+});
+it("uses Chromium's current default match or classifier for typed Enter", async () => {
+  const fixture = nativeOmniboxFixture();
+  const resolve = vi.spyOn(bridge, "resolveSearch").mockResolvedValue("https://wrong.test/");
+  const input = await mount();
+  await type(input, "aux browser");
+  const queryId = fixture.start.mock.calls.at(-1)![0].queryId;
   await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
-  expect(resolved).toHaveBeenCalledWith("aux browser");
-  expect(navigate).toHaveBeenCalledWith("current", "https://selected.example/?q=aux+browser");
+  expect(fixture.open).toHaveBeenLastCalledWith({ queryId, disposition: "current-tab" });
+  expect(resolve).not.toHaveBeenCalled();
 });
-
-it.each(["chrome://version", "https://example.test/path"])(
-  "opens %s directly from Home Search",
-  async (url) => {
-    useStore.setState({
-      pages: normalizePages([
-        { pageId: "current", url: "about:blank", title: "New Tab", ownedByRuntime: false },
-      ] as never),
-      activePageId: "current",
-      bookmarks: [],
-      closedTabs: [],
-      runs: [],
-      programs: [],
-      settings: { homeEntryMode: "search" },
-    } as never);
-    const resolved = vi
-      .spyOn(bridge as typeof bridge & { resolveSearch: (query: string) => Promise<string> }, "resolveSearch")
-      .mockResolvedValue("https://search.example/");
-    const navigate = vi.spyOn(useStore.getState(), "navigatePage").mockResolvedValue(undefined);
-    vi.spyOn(bridge, "autocomplete").mockResolvedValue([]);
-    vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
-    root = createRoot(host);
-    await act(async () => root.render(<CommandBar hero />));
-    const input = host.querySelector("input")!;
-    await act(async () => input.focus());
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, url);
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
-    expect(resolved).not.toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith("current", url);
-  },
-);
+it("stops the native query when the field closes", async () => {
+  const fixture = nativeOmniboxFixture([match("Result")]);
+  const input = await mount();
+  await type(input, "example");
+  const queryId = fixture.start.mock.calls.at(-1)![0].queryId;
+  await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 1)));
+  expect(fixture.stop).toHaveBeenCalledWith(queryId);
+});

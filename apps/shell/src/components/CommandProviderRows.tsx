@@ -1,56 +1,35 @@
 import type {
   CommandRankingEntry,
   ConversationSummary,
-  HistoryEntry,
   Routine,
   Run,
   SavedProgram,
   SavedResult,
 } from "@aux/contracts";
-import { toUrl } from "../chrome";
 import { rankAuxCommandResults } from "../command-ranking-renderer";
 import { rankCandidates } from "../suggest";
 import { isLive, useStore, call, toast } from "../store";
 import { hostOf } from "../workspace";
 import { openSavedSkill } from "../task-navigation";
-import type { Intent } from "../intent";
 import { FavIcon } from "./SiteTile";
-import {
-  shellIconChats,
-  shellIconExtension,
-  shellIconLayersSm,
-  shellIconResult,
-  shellIconSearch,
-} from "../ui/icons";
+import { shellIconChats, shellIconExtension, shellIconLayersSm, shellIconResult } from "../ui/icons";
 import type { ProviderSuggestion } from "./command-provider-types";
 import { commandTabRows } from "./command-tab-rows";
 import { bridge, type BrowserExtension } from "../bridge";
 
 type Store = ReturnType<typeof useStore.getState>;
-interface Domain {
-  id: string;
-  title: string;
-  url: string;
-  count: number;
-}
 export interface CommandProviderInput {
   query: string;
-  remote: { query: string; items: string[] };
   tabs: Array<NonNullable<Store["pages"]["byId"][string]> & { id: string }>;
-  domains: Domain[];
-  bookmarks: Array<Store["bookmarks"][number] & { id: string }>;
   closed: Array<Store["closedTabs"][number] & { id: string }>;
-  history: Array<HistoryEntry & { id: string; lastVisit: number }>;
   extensions: Array<BrowserExtension & { id: string; title: string }>;
   programs: Array<SavedProgram & { id: string; title: string }>;
   runs: Array<Run & { id: string; title: string }>;
   recentChats: Run[];
   savedWork: { results: SavedResult[]; skills: Routine[]; chats: ConversationSummary[] } | null;
   page: NonNullable<Store["pages"]["byId"][string]> | undefined;
-  searchEngine: string | undefined;
   rankingEntries: CommandRankingEntry[];
   rankingOpenedAt?: number;
-  exec: (intent: Intent) => Promise<void>;
   activate: Store["activate"];
 }
 
@@ -58,60 +37,19 @@ export interface CommandProviderInput {
 export function buildCommandProviderRows(input: CommandProviderInput) {
   const {
     query: q,
-    remote,
     tabs,
-    domains,
-    bookmarks,
     closed,
-    history,
     extensions,
     programs,
     runs,
     recentChats,
     savedWork,
     page,
-    searchEngine,
     rankingEntries,
-    exec,
     activate,
   } = input;
   const out: ProviderSuggestion[] = [];
-  for (const phrase of (remote.query.toLowerCase() === q ? remote.items : [])
-    .filter((item) => item.toLowerCase() !== q)
-    .slice(0, 4)) {
-    out.push({
-      id: `sug-${phrase}`,
-      section: "suggest",
-      icon: shellIconSearch,
-      title: phrase,
-      url: toUrl(phrase, searchEngine),
-      detail: "Web suggestion",
-      run: () => exec({ kind: "search", query: phrase, url: toUrl(phrase, searchEngine) }),
-    });
-  }
   out.push(...commandTabRows(q, tabs, activate));
-  for (const site of rankCandidates(q, domains).slice(0, 2)) {
-    out.push({
-      id: site.id,
-      section: "domains",
-      url: site.url,
-      icon: <FavIcon url={site.url} size="sm" />,
-      title: site.title,
-      detail: `Top site · ${site.count} saved or recent page${site.count === 1 ? "" : "s"}`,
-      run: () => exec({ kind: "navigate", url: site.url, display: site.title }),
-    });
-  }
-  for (const item of rankCandidates(q, bookmarks).slice(0, 3)) {
-    out.push({
-      id: `bookmark-${item.url}`,
-      section: "bookmarks",
-      url: item.url,
-      icon: <FavIcon url={item.url} size="sm" />,
-      title: item.title || hostOf(item.url),
-      detail: item.folderPath?.join(" / ") || hostOf(item.url),
-      run: () => exec({ kind: "navigate", url: item.url, display: item.title }),
-    });
-  }
   for (const item of rankCandidates(q, closed).slice(0, 2)) {
     out.push({
       id: `closed-${item.pageId}`,
@@ -122,17 +60,6 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
       detail: `${hostOf(item.url)} · closed tab`,
       hint: "Reopen",
       run: () => useStore.getState().reopenClosedTab(item.pageId),
-    });
-  }
-  for (const item of rankCandidates(q, history).slice(0, 4)) {
-    out.push({
-      id: `h-${item.url}`,
-      section: "history",
-      url: item.url,
-      icon: <FavIcon url={item.url} size="sm" />,
-      title: item.title || hostOf(item.url),
-      detail: hostOf(item.url),
-      run: () => exec({ kind: "navigate", url: item.url, display: item.title }),
     });
   }
   for (const item of rankCandidates(q, extensions).slice(0, 4)) {

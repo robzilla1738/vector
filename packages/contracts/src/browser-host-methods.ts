@@ -144,12 +144,20 @@ const screenRect = strictObject({
   width: number.positive(),
   height: number.positive(),
 });
-const autocompleteMatch = strictObject({
+const omniboxMatch = strictObject({
   id: str,
-  type: z.enum(["history", "bookmark", "search", "typed"]),
+  index: number.int().nonnegative(),
+  type: z.enum(["history", "bookmark", "search", "typed", "tab"]),
   title: str,
   url: str,
   description: freshOptional(str),
+});
+const omniboxResult = strictObject({
+  queryId: number.int().positive().max(2147483647),
+  sequenceId: number.int().nonnegative().max(4294967295),
+  input: str,
+  done: bool,
+  items: z.array(omniboxMatch),
 });
 const httpAuthRequest = strictObject({ id: str, origin: str, proxy: bool, realm: str, retry: bool });
 const downloadFolderResult = strictObject({ path: str, custom: bool, error: freshOptional(str) });
@@ -496,7 +504,37 @@ export const BrowserHostMethods = {
   preview: coreShell(tuple([str]), nullableString),
   contextMenu: coreShell(tuple([z.union([str, z.null()])]), bool),
   navigationMenu: coreShell(tuple([str, z.enum(["back", "forward"])]), bool),
-  autocomplete: shell("commandBar", tuple([str]), z.array(autocompleteMatch)),
+  "omnibox.start": shell(
+    "commandBar",
+    tuple([
+      strictObject({
+        queryId: number.int().positive().max(2147483647),
+        input: str.max(300),
+        onFocus: bool,
+      }),
+    ]),
+    bool,
+  ),
+  "omnibox.stop": shell("commandBar", tuple([number.int().positive().max(2147483647)]), bool),
+  "omnibox.open": shell(
+    "commandBar",
+    tuple([
+      strictObject({
+        queryId: number.int().positive().max(2147483647),
+        match: strictObject({
+          sequenceId: number.int().nonnegative().max(4294967295),
+          index: number.int().nonnegative().max(4294967295),
+          url: str.max(8192),
+        }).optional(),
+        disposition: z.enum(["current-tab", "new-foreground-tab", "new-background-tab"]),
+      }),
+    ]),
+    bool,
+  ),
+  preloadNavigation: coreShell(
+    tuple([strictObject({ pageId: str, expectedUrl: str.max(8192), url: str.max(8192) })]),
+    bool,
+  ),
   readArticle: shell(
     "reader",
     tuple([str]),
@@ -604,6 +642,7 @@ const coreEvent = eventFor("core"),
 /** Events published by the native browser to an authorized Aux WebUI. */
 export const HostEvents = {
   onEvent: coreEvent(EventSchema),
+  onOmniboxResult: event("commandBar", omniboxResult),
   onRunAttentionActivated: coreEvent(
     strictObject({ runId: freshTokenString(), identity: freshTokenString(), windowId: freshTokenString() }),
   ),
