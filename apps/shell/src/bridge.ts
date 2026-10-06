@@ -54,29 +54,8 @@ export interface BrowserSiteInfo {
   trackersAllowed: boolean;
   blockedCount: number;
 }
-export interface FilterSourceStatus {
-  id: string;
-  name: string;
-  url: string;
-  enabled: boolean;
-  kind: "hosts" | "cookie_banner";
-  meta?: {
-    fetchedAt: number;
-    etag?: string;
-    hosts: number;
-    selectors?: number;
-    sha256: string;
-    error?: string;
-  };
-}
-export interface FilterListStatus {
-  sources: FilterSourceStatus[];
-  hosts: number;
-  cookieSelectors: number;
-  builtinHosts: number;
-  backend: "subresource_filter" | "declarative_net_request" | "preview";
-  cosmeticBackend?: "document_start_stylesheet" | "unavailable";
-}
+export type FilterListStatus = HostMethodResult<"filterLists">;
+export type FilterSourceStatus = FilterListStatus["sources"][number];
 export interface BrowserHealthSummary {
   recordingSince?: number;
   latestAt?: number;
@@ -348,10 +327,10 @@ const stub: AuxBridge = {
   removeAllowedHost: unavailable("Site controls require Aux desktop"),
   filterLists: async () => ({
     sources: [],
-    hosts: 0,
-    cookieSelectors: 0,
-    builtinHosts: 0,
-    backend: "preview",
+    networkRules: 0,
+    cosmeticRules: 0,
+    backend: "unavailable",
+    cosmeticBackend: "unavailable",
   }),
   updateFilters: unavailable("Filter updates require Aux desktop"),
   addFilterSource: unavailable("Filter lists require Aux desktop"),

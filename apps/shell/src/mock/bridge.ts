@@ -2599,10 +2599,10 @@ export function installMockBridge(q: URLSearchParams) {
     removeAllowedHost: async () => [],
     filterLists: async () => ({
       sources: [],
-      hosts: 0,
-      cookieSelectors: 0,
-      builtinHosts: 0,
-      backend: "preview" as const,
+      networkRules: 0,
+      cosmeticRules: 0,
+      backend: "unavailable" as const,
+      cosmeticBackend: "unavailable" as const,
     }),
     updateFilters: async () => {
       throw new Error("Content blocking requires the Aux desktop browser.");
