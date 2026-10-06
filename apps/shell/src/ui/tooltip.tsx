@@ -1,3 +1,4 @@
+import { GlassMaterial } from "../components/GlassMaterial";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import "./tooltip.css";
@@ -109,6 +110,7 @@ export function Tooltip({ content, children }: { content: ReactNode; children(id
             onPointerEnter={enter}
             onPointerLeave={leave}
           >
+            <GlassMaterial />
             {content}
           </span>,
           portalHost,

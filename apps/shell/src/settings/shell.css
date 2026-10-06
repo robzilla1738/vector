@@ -1,0 +1,264 @@
+@layer overrides {
+  .settings-page {
+    background: var(--bg-0);
+    container: settings-page / inline-size;
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+  }
+  .settings-nav {
+    width: 208px;
+    flex: none;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 4px 6px;
+    gap: 4px;
+    background: transparent;
+    border: 0;
+  }
+  .settings-category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .settings-nav button[data-category] {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: auto;
+    min-height: 32px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 450;
+    text-align: left;
+    color: var(--ink-1);
+    background: none;
+  }
+  .settings-nav button[data-category]:hover {
+    background: var(--bg-hover);
+    color: var(--ink-0);
+  }
+  .settings-nav button[aria-current="page"] {
+    background: var(--bg-active);
+    color: var(--ink-0);
+  }
+  .settings-nav button[data-category]:focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: -2px;
+  }
+  .settings-nav button[aria-current="page"] .settings-category-icon svg {
+    fill: currentColor;
+    fill-opacity: 1;
+  }
+  .settings-rail-group-title {
+    display: block;
+    padding: 16px 10px 4px;
+    color: var(--ink-2);
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .settings-search-box {
+    margin: 4px 4px 8px;
+    background: var(--surface-secondary);
+    border-radius: 10px;
+  }
+  .settings-content {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    container: settings-content / inline-size;
+    position: relative;
+    margin: 4px 4px 4px 0;
+    padding: 64px 32px 0;
+    border: 0;
+    border-radius: 22.4px;
+    corner-shape: superellipse(var(--squircle-factor));
+    background: var(--surface-tertiary);
+  }
+  .settings-content > :not(.settings-outline) {
+    width: 100%;
+    max-width: 672px;
+    margin-inline: auto;
+  }
+  .settings-content .drawer-head {
+    flex: none;
+    position: static;
+    border: 0;
+    background: none;
+    padding: 0 0 32px;
+  }
+  .settings-content .settings-heading h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 450;
+    line-height: 1.25;
+    letter-spacing: -0.03em;
+  }
+  .settings-heading p {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .settings-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    padding: 14px 14px 160px;
+  }
+  .settings-content .drawer-section {
+    margin: 32px 0 12px;
+    padding: 0;
+    color: color-mix(in srgb, var(--ink-0) 80%, transparent);
+    font-size: 14px;
+    font-weight: 550;
+  }
+  .settings-content .field.ui-setting {
+    min-height: 52px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 160px);
+    align-items: center;
+    column-gap: 16px;
+    row-gap: 4px;
+    margin: 0 -14px;
+    padding: 14px;
+    border: 0;
+    border-radius: 0;
+    background: var(--surface-secondary);
+  }
+  .settings-content .field.ui-setting + .field.ui-setting {
+    margin-top: 1px;
+  }
+  .settings-content .field.ui-setting > .setting-label {
+    grid-column: 1;
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 0;
+  }
+  .settings-content .field.ui-setting > .hint {
+    grid-column: 1;
+    font-size: 12px;
+    font-weight: 500;
+    margin: 0;
+    line-height: 1.5;
+  }
+  .settings-content .ui-setting-control {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    justify-self: end;
+    width: 100%;
+    max-width: 160px;
+    min-width: 0;
+  }
+  .settings-content .ui-setting-control > :is(input, select, button) {
+    max-width: 100%;
+  }
+  .settings-content .drawer-section + .field.ui-setting,
+  .settings-content section > .field.ui-setting:first-child {
+    border-start-start-radius: 14px;
+    border-start-end-radius: 14px;
+  }
+  .settings-content .field.ui-setting:not(:has(+ .field.ui-setting)) {
+    border-end-start-radius: 14px;
+    border-end-end-radius: 14px;
+  }
+  [data-theme="light"] .settings-content .field.ui-setting + .field.ui-setting {
+    margin-top: 0;
+  }
+  @container settings-page (width < 720px) {
+    .settings-nav {
+      position: absolute;
+      inset: 0 0 auto;
+      width: 100%;
+      height: 104px;
+      padding: 12px 16px 8px;
+      overflow: hidden;
+    }
+    .settings-category-list {
+      flex-direction: row;
+      overflow-x: auto;
+      min-height: 40px;
+    }
+    .settings-rail-item > button {
+      flex: none;
+      white-space: nowrap;
+    }
+    .settings-rail-group-title {
+      display: none;
+    }
+    .settings-search-box {
+      margin: 0;
+      flex: none;
+    }
+    .settings-content {
+      margin: 104px 4px 4px;
+      padding: 32px 18px 0;
+    }
+  }
+  @container settings-content (width < 440px) {
+    .settings-content .field.ui-setting {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .settings-content .ui-setting-control {
+      grid-column: 1;
+      grid-row: auto;
+      justify-self: start;
+    }
+  }
+}
+
+@layer overrides {
+  .settings-outline {
+    position: absolute;
+    inset-block: 0;
+    left: 12px;
+    z-index: 2;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    width: 20px;
+    pointer-events: none;
+  }
+  .settings-outline button {
+    display: flex;
+    align-items: center;
+    width: 20px;
+    min-height: 20px;
+    padding: 4px 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  .settings-outline button span {
+    width: 8px;
+    height: 2px;
+    background: var(--ink-3);
+    border-radius: var(--r-pill);
+    transition: width var(--t-fast) var(--ease-out);
+  }
+  .settings-outline button:is(:hover, [aria-current]) span {
+    width: 20px;
+    background: var(--ink-1);
+  }
+  .settings-outline button:focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: 2px;
+  }
+  @container settings-content (min-width:720px) {
+    .settings-outline {
+      display: flex;
+    }
+  }
+}

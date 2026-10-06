@@ -3,11 +3,12 @@ import { staticIconButtonProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { FeatureSettings, featureSettingsAvailable } from "../features/registry";
 import "./Settings.css";
+import "../settings/shell.css";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStore, call, errToast } from "../store";
 
-import { shellIconBack, shellIconCheck, shellIconClose } from "./icons";
+import { shellIconBack, shellIconCheck, shellIconClose } from "../ui/icons";
 
 import { searchSettings, type SettingsDestination } from "../settings-search";
 import { collectSettingsFields } from "../settings/search";
@@ -413,7 +414,7 @@ export function Settings() {
           </button>
         )}
         <div className="settings-heading">
-          <h3>{searching ? "Search settings" : (subview ?? sectionTitle)}</h3>
+          <h1>{searching ? "Search settings" : (subview ?? sectionTitle)}</h1>
           <p>
             {searching
               ? "Find a preference across all categories."

@@ -356,30 +356,9 @@
 }
 
 @layer components {
-  .settings-category-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
   /* Settings follows the same inset controls and quiet surfaces as the work views. */
-  .settings-nav {
-    gap: var(--space-1);
-    padding-top: var(--space-6);
-  }
   .settings-rail-item {
     display: contents;
-  }
-  .settings-rail-item > button {
-    min-height: 36px;
-    height: auto;
-  }
-  .settings-rail-group-title {
-    color: var(--ink-2);
-    padding: var(--space-3) var(--space-3) var(--space-1);
-    font-size: var(--fs-2xs);
-    font-weight: var(--fw-medium);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
   }
   .settings-search-box {
     display: flex;
@@ -427,11 +406,6 @@
     color: var(--ink-2);
     font-size: var(--fs-sm);
     line-height: 1.5;
-  }
-  .settings-content .drawer-head {
-    align-items: flex-start;
-    gap: var(--space-3);
-    padding-bottom: var(--space-5);
   }
   .settings-content .drawer-head > .icon-btn {
     flex: none;
@@ -527,49 +501,6 @@
       animation: none;
       outline: 2px solid var(--warn);
       outline-offset: 2px;
-    }
-  }
-  @container settings-page (max-width: 680px) {
-    .settings-nav {
-      position: absolute;
-      inset: 0 0 auto;
-      width: 100%;
-      height: 104px;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: var(--space-2);
-      padding: var(--space-3) var(--space-4) var(--space-2);
-      overflow: hidden;
-      border: 0;
-    }
-    .settings-category-list {
-      flex-direction: row;
-      overflow-x: auto;
-      flex: none;
-      min-height: 40px;
-    }
-    .settings-nav > span {
-      display: none;
-    }
-    .settings-rail-item > button {
-      flex: none;
-      white-space: nowrap;
-    }
-    .settings-rail-group-title {
-      display: none;
-    }
-    .settings-search-box {
-      flex: none;
-      margin: 0;
-    }
-    .settings-search-box input {
-      width: 100%;
-      flex: 1;
-    }
-    .settings-content {
-      margin-top: 104px;
-      padding: var(--space-4);
     }
   }
 }

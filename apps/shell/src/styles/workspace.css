@@ -496,49 +496,6 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
-  .settings-nav button:hover,
-  .settings-nav button[aria-current] {
-    background: var(--bg-active);
-    color: var(--ink-0);
-  }
-  .settings-content {
-    display: flex;
-    overflow: hidden;
-    border-radius: 0;
-    border: 0;
-    padding: 28px 36px 36px;
-    container: settings-content / inline-size;
-    flex-direction: column;
-    flex: 1;
-    min-width: 0;
-    min-height: 0;
-  }
-  .settings-content > * {
-    width: 100%;
-    max-width: 700px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  .settings-content .drawer-head {
-    flex-shrink: 0;
-    padding: 0 0 var(--space-6);
-    border: 0;
-    position: static;
-    background: none;
-    padding-bottom: 18px;
-  }
-  .settings-scroll {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-gutter: stable;
-    padding: var(--space-1) var(--space-1) var(--space-6);
-  }
-  .settings-content .field > .setting-label {
-    font-size: var(--fs-sm);
-    color: var(--ink-0);
-  }
   .settings-content .field input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
   .settings-content select {
     background: var(--bg-2);

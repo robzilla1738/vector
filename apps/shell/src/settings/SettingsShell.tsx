@@ -1,3 +1,4 @@
+import { SettingsOutline } from "./SettingsOutline";
 import type { ReactNode, RefObject } from "react";
 
 export function SettingsShell({
@@ -12,7 +13,10 @@ export function SettingsShell({
   return (
     <section className="settings-page" aria-label="Settings" ref={shellRef}>
       {nav}
-      <div className="settings-content">{children}</div>
+      <div className="settings-content">
+        <SettingsOutline shellRef={shellRef} />
+        {children}
+      </div>
     </section>
   );
 }

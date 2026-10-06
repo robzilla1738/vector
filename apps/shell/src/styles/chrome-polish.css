@@ -206,8 +206,6 @@
       --floating-glass-tint,
       color-mix(in srgb, var(--floating-sidebar-surface) 80%, transparent)
     );
-    backdrop-filter: var(--floating-glass-filter, blur(var(--blur-glass-floating)) saturate(1.15));
-    -webkit-backdrop-filter: var(--floating-glass-filter, blur(var(--blur-glass-floating)) saturate(1.15));
     box-shadow:
       0 8px 30px var(--floating-shadow-tint),
       inset 0 1px var(--floating-highlight);
@@ -254,8 +252,6 @@
   @media (max-width: 820px) {
     :root[data-sidebar-appearance="translucent"] .rail.open .rail-inner {
       background: var(--floating-glass-tint);
-      backdrop-filter: var(--floating-glass-filter);
-      -webkit-backdrop-filter: var(--floating-glass-filter);
     }
   }
   .app.tabs-vertical:not(.layout-expanded) .main-col {

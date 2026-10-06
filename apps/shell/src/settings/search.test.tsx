@@ -69,3 +69,11 @@ it("finds unopened sections and routes backup editor fields without mounting the
     expect.objectContaining({ category: "Models", label: "OpenAI API key", target: "Model provider" }),
   );
 });
+
+it("normalizes non-Latin combining marks before matching every search token", () => {
+  const items = [
+    { category: "General", label: "שלום calendar", description: "" },
+    { category: "General", label: "Other calendar", description: "" },
+  ];
+  expect(searchSettingsIndex(items, "שָלוֹם calendar")).toEqual([items[0]]);
+});

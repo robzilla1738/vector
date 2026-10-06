@@ -7,6 +7,46 @@
 
 @layer tokens {
   :root {
+    --liquid-black-channels: 0 0 0;
+    --liquid-state-light-hover: #ededed;
+    --liquid-state-dark-hover: #ffffff17;
+    --liquid-shadow-light: #00000005;
+    --liquid-rim-light: #dedede;
+    --liquid-rim-light-edge: #c4c4c4;
+    --liquid-shadow-dark: #0000000a;
+    --liquid-rim-dark: #a6a6a6;
+    --liquid-inner-glow: #e6e6e6;
+    --liquid-black-fill: #00000040;
+    --liquid-white-fill: #ffffff40;
+    --liquid-dodge-fill: #44444480;
+    --liquid-luminosity-fill: #f8f8f833;
+    --liquid-overlay-fill: #00000026;
+    --liquid-dark-fill: #9999992b;
+    --liquid-white: #fff;
+    --liquid-white-half: #ffffff80;
+    --liquid-tint-overlay: #999;
+    --liquid-black: #000;
+    --liquid-reflection-start: #909090;
+    --liquid-reflection-clear: #90909000;
+    --liquid-reflection-half: #90909080;
+    --liquid-reflection-dark-clear: #70707000;
+    --liquid-reflection-dark-end: #505050;
+    --liquid-shade-light: #282828;
+    --liquid-edge-light: #ccc;
+    --liquid-shade-dark: #1a1a1a;
+    --liquid-black-alpha: #00000014;
+    --liquid-white-alpha-edge: #ffffffa6;
+    --liquid-white-alpha-fill: #ffffff0d;
+    --liquid-glow-light-alpha: #0000001a;
+    --liquid-shade-light-alpha: #fff6;
+    --liquid-glow-dark-alpha: #ffffff1a;
+    --liquid-inset-light: #fafafa33;
+    --liquid-inset-dark: #ffffff14;
+    --liquid-inset-alpha: #ffffff21;
+    --liquid-reflection-light-top: #ffffffe6;
+    --liquid-reflection-light-bottom: #ffffff8c;
+    --liquid-reflection-dark-top: #ffffff4d;
+
     --squircle-factor: 1.4;
     --hairline: 0.5px;
     --text: var(--ink-0);

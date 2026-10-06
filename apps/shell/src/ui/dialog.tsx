@@ -1,3 +1,4 @@
+import { GlassMaterial } from "../components/GlassMaterial";
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { moveMenuFocus } from "../keyboard-list";
@@ -173,6 +174,7 @@ export function Menu({
           onClose();
       }}
     >
+      <GlassMaterial />
       {children}
     </dialog>,
     document.body,

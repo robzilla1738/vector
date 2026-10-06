@@ -1,3 +1,4 @@
+import { GlassMaterial } from "./GlassMaterial";
 import { orderedPages } from "../store/pages";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,7 +11,7 @@ import { canSplitPage, tabLabel, hostOf } from "../workspace";
 import { closeCommandSurface, type CommandSurfaceRequest } from "../command-surface-state";
 import { useShortcutLabels } from "../use-shortcut-label";
 import { CommandBar } from "./CommandBar";
-import { shellIconCommand } from "./icons";
+import { shellIconCommand } from "../ui/icons";
 import type { CommandInvocation } from "../features/registry";
 import type { Suggestion } from "./command-provider-types";
 import { commandSurfaceWorkRows, emptyCommandSurfaceWork } from "../command-surface-providers";
@@ -316,6 +317,7 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
         style={placement ? { ...placement, transform: "none" } : undefined}
         ref={dialogRef}
       >
+        <GlassMaterial />
         {picker && (
           <button
             {...smallGhostButtonProps}

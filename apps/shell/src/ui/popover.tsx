@@ -1,3 +1,4 @@
+import { GlassMaterial } from "../components/GlassMaterial";
 import {
   useCallback,
   useEffect,
@@ -120,6 +121,7 @@ export function Popover({
                 close();
             }}
           >
+            <GlassMaterial />
             {children(close)}
           </dialog>,
           document.body,

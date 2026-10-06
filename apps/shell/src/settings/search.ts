@@ -34,12 +34,7 @@ export function collectSettingsFields(root: ParentNode | null): SettingsSearchIt
   });
 }
 
-const normalize = (text: string) =>
-  text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase()
-    .trim();
+const normalize = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase().trim();
 
 function matchScore(value: string, token: string): number {
   const text = normalize(value);

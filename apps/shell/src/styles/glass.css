@@ -1,0 +1,412 @@
+/* Layer recipe and modifiers from Aside assets/liquid-glass.css. */
+@layer overrides {
+  :has(> .glass-material) {
+    isolation: isolate;
+    background: var(--glass);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .glass-material [class*="glass-light-"],
+  .glass-material .glass-white-backing,
+  .glass-material .glass-tint-stack,
+  .glass-material .glass-normal-black-fill,
+  .glass-material .glass-normal-white-fill,
+  .glass-material .glass-linear-dodge-fill,
+  .glass-material .glass-luminosity-fill,
+  .glass-material .glass-overlay-fill,
+  .glass-material .glass-dark-inset-fill {
+    display: none;
+  }
+  [data-theme="light"] .glass-material [class*="glass-dark-"] {
+    display: none;
+  }
+  [data-theme="light"] .glass-material [class*="glass-light-"],
+  [data-theme="light"]
+    .glass-material
+    :is(
+      .glass-normal-black-fill,
+      .glass-normal-white-fill,
+      .glass-linear-dodge-fill,
+      .glass-luminosity-fill,
+      .glass-overlay-fill
+    ) {
+    display: block;
+  }
+  [data-theme="light"] .glass-material .glass-solid-glass-fill {
+    display: none;
+  }
+  .glass-material:not(._inset) :is(.glass-light-inset-fill, .glass-dark-inset-fill) {
+    display: none;
+  }
+  .glass-material._inset .glass-dark-inset-fill {
+    display: block;
+  }
+  [data-theme="light"] .glass-material._inset .glass-dark-inset-fill {
+    display: none;
+  }
+  .glass-material.glass-tinted :is(.glass-white-backing, .glass-tint-stack, .glass-solid-glass-fill) {
+    display: block;
+  }
+  .glass-material.glass-tinted
+    :is(
+      .glass-light-backdrop,
+      .glass-dark-backdrop,
+      .glass-normal-black-fill,
+      .glass-normal-white-fill,
+      .glass-linear-dodge-fill,
+      .glass-luminosity-fill,
+      .glass-overlay-fill,
+      .glass-dark-fill,
+      .glass-light-glass-fill,
+      .glass-light-inner-edge
+    ) {
+    display: none;
+  }
+  .glass-tint-color {
+    background: var(--glass-material-tint, var(--floating-sidebar-surface));
+  }
+  :has(> .glass-material):hover > .glass-material .glass-state-layer {
+    opacity: 1;
+  }
+  :has(> .glass-material):active > .glass-material .glass-light-state {
+    background: var(--liquid-state-light-pressed);
+  }
+  :has(> .glass-material):active > .glass-material .glass-dark-state {
+    background: var(--liquid-state-dark-pressed);
+  }
+
+  .glass-material {
+    pointer-events: none;
+    border-radius: inherit;
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+  .glass-layer {
+    border-radius: inherit;
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+  }
+  .glass-state-layer {
+    opacity: 0;
+    transition:
+      opacity 0.12s ease-out,
+      background-color 0.12s ease-out;
+  }
+  .glass-light-state {
+    mix-blend-mode: multiply;
+    background: var(--liquid-state-light-hover);
+  }
+  .glass-dark-state {
+    background: var(--liquid-state-dark-hover);
+  }
+  .glass-light-backdrop {
+    backdrop-filter: blur(4px);
+  }
+  .glass-dark-backdrop {
+    backdrop-filter: blur(3px);
+  }
+  .glass-light-shadow {
+    box-shadow: 0 8px 15px var(--liquid-shadow-light);
+  }
+  .glass-light-burn-shadow {
+    box-shadow:
+      0 0 0 0.5px var(--liquid-rim-light),
+      -1.25px 0 0 -0.75px var(--liquid-rim-light-edge),
+      1.25px 0 0 -0.75px var(--liquid-rim-light-edge);
+  }
+  .glass-dark-shadow {
+    box-shadow: 0 8px 15px var(--liquid-shadow-dark);
+  }
+  .glass-dark-burn-shadow {
+    box-shadow:
+      0 0 0 0.5px var(--liquid-rim-dark),
+      -1.25px 0 0 -0.75px var(--liquid-rim-dark),
+      1.25px 0 0 -0.75px var(--liquid-rim-dark);
+  }
+  .glass-tinted-burn-shadow {
+    box-shadow:
+      -1.25px 0 var(--liquid-inner-glow),
+      1.25px 0 var(--liquid-inner-glow);
+  }
+  .glass-normal-black-fill {
+    background: var(--liquid-black-fill);
+  }
+  .glass-normal-white-fill {
+    background: var(--liquid-white-fill);
+  }
+  .glass-linear-dodge-fill {
+    mix-blend-mode: plus-lighter;
+    background: var(--liquid-dodge-fill);
+  }
+  .glass-luminosity-fill {
+    mix-blend-mode: luminosity;
+    background: var(--liquid-luminosity-fill);
+  }
+  .glass-overlay-fill {
+    mix-blend-mode: overlay;
+    background: var(--liquid-overlay-fill);
+  }
+  .glass-dark-fill {
+    mix-blend-mode: luminosity;
+    background: var(--liquid-dark-fill);
+  }
+  .glass-light-glass-fill {
+    mix-blend-mode: multiply;
+    background: linear-gradient(
+      var(--liquid-white) 0%,
+      var(--liquid-white-half) 25.4808% 75%,
+      var(--liquid-white) 100%
+    );
+  }
+  .glass-solid-glass-fill {
+    mix-blend-mode: multiply;
+    background: var(--liquid-white);
+  }
+  .glass-white-backing {
+    opacity: 0.94;
+    background: var(--liquid-white);
+    inset: -0.5px;
+  }
+  .glass-tint-stack {
+    inset: -0.5px;
+  }
+  .glass-tint-white-fill {
+    background: var(--liquid-white-half);
+  }
+  .glass-tint-saturation-fill {
+    mix-blend-mode: saturation;
+    background: var(--liquid-white);
+  }
+  .glass-tint-overlay-fill {
+    mix-blend-mode: overlay;
+    background: var(--liquid-tint-overlay);
+  }
+  .glass-stroke,
+  .glass-material._alpha .glass-light-burn-shadow,
+  .glass-material._alpha .glass-dark-burn-shadow {
+    -webkit-mask-composite: xor;
+    mix-blend-mode: color-dodge;
+    padding: 0.5px;
+    mask-image: linear-gradient(var(--liquid-black) 0 0), linear-gradient(var(--liquid-black) 0 0);
+    mask-position:
+      0 0,
+      0 0;
+    mask-size: auto, auto;
+    mask-repeat: repeat, repeat;
+    mask-clip: content-box, border-box;
+    mask-origin: content-box, border-box;
+    mask-composite: exclude;
+    mask-mode: match-source, match-source;
+  }
+  .glass-light-stroke {
+    background: linear-gradient(
+      var(--liquid-reflection-start) 0%,
+      var(--liquid-reflection-clear) 25% 75%,
+      var(--liquid-reflection-half) 100%
+    );
+  }
+  .glass-dark-stroke {
+    background: linear-gradient(
+      var(--liquid-reflection-start) 0%,
+      var(--liquid-reflection-clear) 25%,
+      var(--liquid-reflection-dark-clear) 75%,
+      var(--liquid-reflection-dark-end) 100%
+    );
+  }
+  .glass-linear-burn {
+    mix-blend-mode: multiply;
+    mix-blend-mode: plus-darker;
+  }
+  .glass-linear-dodge {
+    mix-blend-mode: plus-lighter;
+  }
+  .glass-light-inner-glow {
+    box-shadow: inset 0 40px 30px -40px var(--liquid-inner-glow);
+  }
+  .glass-light-inner-shade {
+    box-shadow:
+      inset 0 -40px 10px -40px var(--liquid-shade-light),
+      inset 0 40px 10px -40px var(--liquid-shade-light);
+  }
+  .glass-light-inner-edge {
+    mix-blend-mode: soft-light;
+    box-shadow: inset 0 1px 1px var(--liquid-edge-light);
+  }
+  .glass-dark-inner-glow {
+    box-shadow: inset 0 40px 30px -40px var(--liquid-inner-glow);
+  }
+  .glass-dark-inner-shade {
+    box-shadow:
+      inset 0 -40px 10px -40px var(--liquid-shade-dark),
+      inset 0 40px 10px -40px var(--liquid-shade-dark);
+  }
+  .glass-material._alpha .glass-light-backdrop,
+  .glass-material._alpha .glass-dark-backdrop {
+    backdrop-filter: none;
+  }
+  .glass-material._alpha .glass-normal-black-fill {
+    background: var(--liquid-black-alpha);
+  }
+  .glass-material._alpha .glass-linear-dodge-fill,
+  .glass-material._alpha .glass-overlay-fill,
+  .glass-material._alpha .glass-light-inner-edge,
+  .glass-material._alpha .glass-solid-glass-fill {
+    display: none;
+  }
+  .glass-material._alpha .glass-light-glass-fill {
+    mix-blend-mode: normal;
+    background: linear-gradient(
+      var(--liquid-white-alpha-edge),
+      var(--liquid-white-alpha-fill) 25.4808% 75%,
+      var(--liquid-white-alpha-edge)
+    );
+  }
+  .glass-material._alpha .glass-light-inner-glow {
+    box-shadow: inset 0 40px 30px -40px var(--liquid-glow-light-alpha);
+  }
+  .glass-material._alpha .glass-light-inner-shade {
+    mix-blend-mode: normal;
+    box-shadow:
+      inset 0 -40px 10px -40px var(--liquid-shade-light-alpha),
+      inset 0 40px 10px -40px var(--liquid-shade-light-alpha);
+  }
+  .glass-material._alpha .glass-light-state {
+    mix-blend-mode: normal;
+    background: var(--liquid-shadow-dark);
+  }
+  .glass-material._alpha .glass-dark-fill {
+    mix-blend-mode: normal;
+  }
+  .glass-material._alpha .glass-dark-inner-glow {
+    mix-blend-mode: normal;
+    box-shadow: inset 0 40px 30px -40px var(--liquid-glow-dark-alpha);
+  }
+  .glass-material._alpha .glass-dark-inner-shade {
+    mix-blend-mode: normal;
+    box-shadow:
+      inset 0 -40px 10px -40px var(--liquid-glow-dark-alpha),
+      inset 0 40px 10px -40px var(--liquid-glow-dark-alpha);
+  }
+  .glass-light-inset-fill {
+    background: var(--liquid-inset-light);
+  }
+  .glass-dark-inset-fill {
+    background: var(--liquid-inset-dark);
+  }
+  .glass-material._inset .glass-light-inner-shade,
+  .glass-material._inset .glass-dark-inner-shade {
+    display: none;
+  }
+  .glass-material._alpha._inset .glass-linear-dodge-fill {
+    mix-blend-mode: normal;
+    background: var(--liquid-inset-alpha);
+    display: block;
+  }
+  .glass-material._alpha .glass-light-burn-shadow,
+  .glass-material._alpha .glass-dark-burn-shadow {
+    background: linear-gradient(
+      180deg,
+      rgb(var(--liquid-black-channels) / var(--rim-end-opacity, 8%)),
+      var(--liquid-black-fill) 50%,
+      rgb(var(--liquid-black-channels) / var(--rim-end-opacity, 8%))
+    );
+    box-shadow: none;
+    mix-blend-mode: normal;
+    inset: -0.5px;
+  }
+  .glass-material._alpha .glass-light-burn-shadow {
+    --rim-end-opacity: 15%;
+  }
+  .glass-material._alpha .glass-light-stroke,
+  .glass-material._alpha .glass-dark-stroke {
+    background: linear-gradient(
+      180deg,
+      var(--reflection-top),
+      transparent 30%,
+      transparent 70%,
+      var(--reflection)
+    );
+    mix-blend-mode: normal;
+    padding-top: 0.75px;
+  }
+  .glass-material._alpha .glass-light-stroke {
+    --reflection-top: var(--liquid-reflection-light-top);
+    --reflection: var(--liquid-reflection-light-bottom);
+  }
+  .glass-material._alpha .glass-dark-stroke {
+    --reflection-top: var(--liquid-reflection-dark-top);
+    --reflection: var(--liquid-glow-dark-alpha);
+  }
+  .glass-material._alpha._noTopGlow .glass-light-inner-glow,
+  .glass-material._alpha._noTopGlow .glass-dark-inner-glow {
+    display: none;
+  }
+  .glass-material._alpha._noTopGlow .glass-light-inner-shade {
+    box-shadow: inset 0 -40px 10px -40px var(--liquid-shade-light-alpha);
+  }
+  .glass-material._alpha._noTopGlow .glass-dark-inner-shade {
+    box-shadow: inset 0 -40px 10px -40px var(--liquid-glow-dark-alpha);
+  }
+  .glass-material._alpha._noTopGlow .glass-light-glass-fill {
+    background: linear-gradient(var(--liquid-white-alpha-fill) 75%, var(--liquid-white-alpha-edge));
+  }
+}
+@layer overrides {
+  @supports not (
+    (backdrop-filter: blur(4px)) and (mix-blend-mode: plus-lighter) and (mask-composite: exclude)
+  ) {
+    .glass-material {
+      display: none;
+    }
+    :has(> .glass-material) {
+      background: var(--floating-sidebar-surface);
+    }
+  }
+  @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+    .glass-material {
+      display: none;
+    }
+    :has(> .glass-material) {
+      background: var(--floating-sidebar-surface);
+    }
+  }
+  :root[data-sidebar-appearance="solid"] .sidebar > .glass-material {
+    display: none;
+  }
+}
+
+@layer overrides {
+  .toast:has(> .glass-material) {
+    position: relative;
+  }
+}
+
+@layer overrides {
+  :has(> .glass-material._alpha) {
+    background: transparent;
+  }
+  .glass-material,
+  .glass-layer {
+    corner-shape: inherit;
+  }
+  @supports not (
+    (backdrop-filter: blur(4px)) and (mix-blend-mode: plus-lighter) and (mask-composite: exclude)
+  ) {
+    :has(> .glass-material._alpha) {
+      background: var(--floating-sidebar-surface);
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    :has(> .glass-material._alpha) {
+      background: var(--floating-sidebar-surface);
+    }
+  }
+  @media (forced-colors: active) {
+    :has(> .glass-material) {
+      background: Canvas;
+      color: CanvasText;
+    }
+  }
+}

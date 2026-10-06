@@ -497,29 +497,7 @@
   }
 
   /* Settings adapts to the pane left after browser chrome, not the outer window. */
-  @container settings-page (max-width:600px) {
-    .settings-nav {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 58px;
-      align-items: center;
-      overflow-x: auto;
-      border-bottom: 1px solid var(--line);
-    }
-    .settings-nav > span {
-      display: none;
-    }
-    .settings-nav input {
-      width: 160px;
-      flex: 0 0 160px;
-    }
-    .settings-nav button {
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-  }
+
   @container settings-content (max-width:440px) {
     .settings-content .appearance-preferences .field {
       grid-template-columns: minmax(0, 1fr);
@@ -1201,28 +1179,6 @@
     margin: 0 auto;
     min-width: 0;
   }
-  .settings-nav button {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2-5);
-    height: 32px;
-    min-height: 32px;
-    padding: 0 var(--space-2-5);
-    border-radius: var(--r-control);
-    corner-shape: round;
-    color: var(--ink-1);
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-book);
-    text-align: left;
-  }
-  .settings-content .field {
-    border-bottom: var(--hairline) solid var(--line);
-    border-radius: 0;
-    background: var(--surface-secondary);
-    margin: 0;
-    padding: var(--space-4);
-    gap: var(--space-2-5);
-  }
   .tasks-page {
     position: absolute;
     inset: 0;
@@ -1259,7 +1215,6 @@
   :root[data-sidebar-appearance="translucent"] {
     --window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);
     --floating-glass-tint: color-mix(in srgb, var(--floating-sidebar-surface) 95%, transparent);
-    --floating-glass-filter: blur(var(--blur-glass-floating)) saturate(1.15);
   }
   :root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek, .chat-sidebar, .rail),
   :root[data-sidebar-appearance="translucent"] .app.native-host .horizontal-tabs-row {
@@ -1956,41 +1911,12 @@
       height: 180px;
     }
   }
-  .settings-page {
-    background: var(--bg-0);
-    container: settings-page / inline-size;
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    display: flex;
-  }
-  .settings-nav {
-    width: 228px;
-    gap: 1px;
-    padding: var(--space-4) var(--space-3) var(--space-5);
-    border-right: 0;
-    background: transparent;
-    flex: none;
-    min-height: 0;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-  }
   .settings-nav input::placeholder {
     color: var(--ink-2);
   }
   .settings-nav input:focus-visible {
     outline: none;
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink-0) 16%, transparent);
-  }
-  .settings-nav button:hover {
-    background: color-mix(in srgb, var(--ink-0) 5%, transparent);
-    color: var(--ink-0);
-  }
-  .settings-nav button[aria-current="page"] {
-    background: var(--surface-primary);
-    color: var(--ink-0);
-    box-shadow: none;
   }
   .settings-nav button:focus-visible {
     outline: 2px solid var(--focus-line);
@@ -2000,20 +1926,6 @@
   .settings-nav button[aria-current="page"] .settings-category-icon,
   .settings-nav button:hover .settings-category-icon {
     color: var(--ink-0);
-  }
-  .settings-content h3 {
-    font-size: var(--fs-2xl);
-    font-weight: var(--fw-strong);
-    letter-spacing: -0.03em;
-  }
-  .settings-content .drawer-section {
-    margin: 22px var(--space-0) var(--space-2);
-    padding: 0;
-  }
-  .settings-content .drawer-section + .field,
-  .settings-content section > .field:first-child {
-    border-start-start-radius: var(--r-xl);
-    border-start-end-radius: var(--r-xl);
   }
   .pane-failure {
     display: flex;
