@@ -31,7 +31,7 @@ export function StartPage() {
       <strong>Private browsing</strong>
       <span>Aux won’t save this window’s tabs, history, site data, or permissions. Files you download remain on your Mac.</span>
     </section></> : <>
-      <header className="home-welcome"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task.</p></header>
+      <header className="home-welcome" aria-label="Aux"><AuxMark /></header>
       {needsModel && <div className="home-model-setup"><p>Connect an AI model to start chatting. Your draft stays here.</p><button {...auxNativeButtonTypeProps} {...smallButtonProps} data-command-id="settings" onClick={() => { useStore.setState({ settingsCategory: "Models" }); runCommand("settings"); }}>Connect an AI model</button></div>}
       <Suspense fallback={<output className="home-ask-loading" {...nativeStatusRoleProps}>Opening chat…</output>}><HomeAsk /></Suspense>
       <SessionRecovery compact />
