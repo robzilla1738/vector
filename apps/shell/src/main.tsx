@@ -1,5 +1,4 @@
 import { errorMessage } from "./error-message";
-import { config as configureZod } from "zod/v4/core";
 import { createRoot } from "react-dom/client";
 import { Component, type ReactNode } from "react";
 import { captureFirstFrame } from "./first-frame";
@@ -48,14 +47,15 @@ async function boot() {
   try {
     const chromiumShell = location.protocol === "chrome:" && location.hostname === "aux";
     if (chromiumShell) {
-      // The packaged WebUI forbids dynamic scripts. Configure Zod before any
-      // contract parser runs so its lazy JIT probe never trips Trusted Types.
-      configureZod({ jitless: true });
       const ready = (window as Window & { auxChromiumHostReady?: Promise<void> }).auxChromiumHostReady;
       if (!ready) throw new Error("Aux's Chromium host bootstrap is unavailable.");
       await ready;
       const { installChromiumBridge } = await import("./chromium-bridge");
-      if (!installChromiumBridge()) throw new Error("Aux's Chromium host bridge is unavailable.");
+      const validation = import.meta.env.DEV
+        ? (await import("./host/validation.generated")).hostValidation
+        : undefined;
+      if (!installChromiumBridge(undefined, validation))
+        throw new Error("Aux's Chromium host bridge is unavailable.");
     }
     // Keep the scripted preview bridge out of the native production bundle.
     if (!chromiumShell && import.meta.env.MODE === "mock") {

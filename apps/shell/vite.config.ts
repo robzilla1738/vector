@@ -1,7 +1,4 @@
-import { conservativeRendererMinify } from "../../scripts/conservative-renderer-minify.mjs";
 import { preloadPathPrefix } from "../../scripts/preload-path-prefix.mjs";
-import { reactNamedValueAliases } from "../../scripts/react-named-value-aliases.mjs";
-import { reactConstructorAliases } from "../../scripts/react-constructor-aliases.mjs";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { join } from "node:path";
@@ -82,19 +79,12 @@ export default defineConfig({
   root: import.meta.dirname,
   base: "/",
   resolve: {
+    // Configure Zod when a lazy schema chunk loads, before any parser can probe JIT.
+    alias: [{ find: /^zod$/, replacement: join(import.meta.dirname, "src/schema-runtime.ts") }],
     // Emitted .js siblings must not shadow the TypeScript the typechecker ships.
     extensions: [".mjs", ".mts", ".ts", ".tsx", ".jsx", ".js", ".json"],
   },
-  plugins: [
-    conservativeRendererMinify(),
-    preloadPathPrefix(),
-    reactConstructorAliases(),
-    reactNamedValueAliases(join(import.meta.dirname, "src")),
-    react(),
-    chromiumHostBootstrap(),
-    shellCsp(),
-    preloadApp(),
-  ],
+  plugins: [preloadPathPrefix(), react(), chromiumHostBootstrap(), shellCsp(), preloadApp()],
   build: {
     outDir: join(import.meta.dirname, "dist"),
     emptyOutDir: true,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HostEvents, HostMethods } from "@aux/contracts/host-methods";
+import { hostValidation } from "../../apps/shell/src/host/validation.generated";
 import { createHostClient, type HostPort } from "../../apps/shell/src/host/client.generated";
 
 const browserIds = Object.entries(HostMethods)
@@ -27,6 +28,7 @@ describe("authoritative host client inventory", () => {
         calls.push({ method, args });
         return result;
       }),
+      hostValidation,
     );
     expect(await client.setDefaultBrowser()).toEqual({ isDefault: true });
     expect(calls).toEqual([{ method: "setDefaultBrowser", args: [] }]);
@@ -82,16 +84,19 @@ describe("authoritative host client inventory", () => {
     let deliver!: (payload: unknown) => void;
     let unsubscribed = false;
     let payload: unknown;
-    const client = createHostClient({
-      ...port(async () => undefined),
-      subscribe: (event, callback) => {
-        expect(event).toBe("onShortcut");
-        deliver = callback;
-        return () => {
-          unsubscribed = true;
-        };
+    const client = createHostClient(
+      {
+        ...port(async () => undefined),
+        subscribe: (event, callback) => {
+          expect(event).toBe("onShortcut");
+          deliver = callback;
+          return () => {
+            unsubscribed = true;
+          };
+        },
       },
-    });
+      hostValidation,
+    );
     const stop = client.onShortcut((value) => {
       payload = value;
     });
@@ -104,4 +109,60 @@ describe("authoritative host client inventory", () => {
     stop();
     expect(unsubscribed).toBe(true);
   });
+});
+
+it("production host normalization preserves tab argument trimming, projection and native acknowledgment values", async () => {
+  const args = {
+    kind: "move" as const,
+    pageId: "page",
+    windowId: "window",
+    ignored: true,
+    placement: {
+      space: { id: "space", name: "Space", color: "blue", ignored: true },
+      tabName: { title: "  Saved title  ", url: "https://example.test", ignored: true },
+      ignored: true,
+    },
+  };
+  const ack = {
+    commandId: "command",
+    status: "rejected",
+    catalogVersion: 3,
+    error: { code: "owner", message: "Wrong window", ignored: true },
+    ignored: true,
+  };
+  let transported: unknown;
+  const client = createHostClient(
+    port(async (_method, value) => {
+      transported = value;
+      return ack;
+    }),
+  );
+  expect(await client.tabCommand(args)).toEqual(HostMethods.tabCommand.result.parse(ack));
+  expect(transported).toEqual(HostMethods.tabCommand.args.parse([args]));
+  expect(args.placement.tabName.title).toBe("  Saved title  ");
+});
+
+it("production host event normalization preserves nested placement trimming and removes undeclared fields", () => {
+  let deliver!: (payload: unknown) => void;
+  const client = createHostClient({
+    ...port(async () => undefined),
+    subscribe: (_event, callback) => {
+      deliver = callback;
+      return () => {};
+    },
+  });
+  let received: unknown;
+  client.onTabsPlacement((value) => {
+    received = value;
+  });
+  const payload = {
+    pageId: "page",
+    windowId: "window",
+    placement: {
+      space: { id: "space", name: "Space", color: "blue", ignored: true },
+      tabName: { title: "  Saved title  ", url: "https://example.test" },
+    },
+  };
+  deliver(payload);
+  expect(received).toEqual(HostEvents.onTabsPlacement.payload.parse(payload));
 });

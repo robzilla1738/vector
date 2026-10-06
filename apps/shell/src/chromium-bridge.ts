@@ -1,13 +1,9 @@
 import { effectiveShortcuts, type ShortcutOverrides } from "@aux/contracts/shortcut-defs";
 import type { AuxBridge } from "./bridge";
-import {
-  requireAuxMethod,
-  type AuxFeatureOverrides,
-  type MethodName,
-  type MethodResult,
-  type RpcArgs,
-} from "@aux/contracts";
-import { createHostClient } from "./host/client.generated";
+import { requireAuxMethod } from "@aux/contracts/method-feature";
+import type { AuxFeatureOverrides } from "@aux/contracts/aux-features";
+import type { MethodName, MethodResult, RpcArgs } from "@aux/contracts/api";
+import { createHostClient, type HostValidation } from "./host/client.generated";
 import { chromiumFeatureStages } from "./feature-stage-reconciliation";
 
 /**
@@ -37,7 +33,10 @@ type ChromiumWindow = Window & {
 };
 
 /** Install before App is imported so the existing AuxBridge is the real host. */
-export function installChromiumBridge(target: ChromiumWindow = window as ChromiumWindow): boolean {
+export function installChromiumBridge(
+  target: ChromiumWindow = window as ChromiumWindow,
+  validation?: HostValidation,
+): boolean {
   if (target.location.protocol !== "chrome:" || target.location.hostname !== "aux" || target.__auxMock)
     return false;
   if (target.aux) return false;
@@ -52,7 +51,7 @@ export function installChromiumBridge(target: ChromiumWindow = window as Chromiu
   )
     return false;
 
-  const client = createHostClient(port);
+  const client = createHostClient(port, validation);
   target.aux = {
     ...client,
     windowId: port.windowId,
