@@ -100,6 +100,31 @@ describe("manifest-backed code mode", () => {
     }
   });
 
+  it("isolates concurrent async host calls in different code sessions", async () => {
+    let entered = 0;
+    let release!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const mode = new AgentCodeMode(async (method) => {
+      expect(method).toBe("pages.list");
+      if (++entered === 2) release();
+      await barrier;
+      return [];
+    });
+    try {
+      const results = await Promise.all([
+        mode.run({ sessionId: "first", code: "globalThis.marker='A'; aux.tabs.list({}); marker" }, caller),
+        mode.run({ sessionId: "second", code: "globalThis.marker='B'; aux.tabs.list({}); marker" }, caller),
+      ]);
+      expect(results.map((result) => result.value)).toEqual(["A", "B"]);
+      expect(entered).toBe(2);
+    } finally {
+      release();
+      mode.disposeAll();
+    }
+  });
+
   it("hides unsupported members and routes every action through the host dispatcher", async () => {
     const calls: string[] = [];
     const mode = new AgentCodeMode(async (method) => {
