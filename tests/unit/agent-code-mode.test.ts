@@ -125,6 +125,57 @@ describe("manifest-backed code mode", () => {
     }
   });
 
+  it("evicts the oldest idle session while preserving newer session state", async () => {
+    const mode = new AgentCodeMode(async () => []);
+    try {
+      for (let index = 0; index < 9; index++)
+        await mode.run({ sessionId: `session-${index}`, code: `globalThis.marker=${index}` }, caller);
+      expect((await mode.run({ sessionId: "session-8", code: "marker" }, caller)).value).toBe(8);
+      expect((await mode.run({ sessionId: "session-0", code: "typeof marker" }, caller)).value).toBe(
+        "undefined",
+      );
+    } finally {
+      mode.disposeAll();
+    }
+  });
+
+  it("keeps active and queued sessions alive while the idle cache is full", async () => {
+    let entered = 0;
+    let enteredAll!: () => void;
+    const allActive = new Promise<void>((resolve) => {
+      enteredAll = resolve;
+    });
+    let release!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const mode = new AgentCodeMode(async () => {
+      if (++entered === 9) enteredAll();
+      await barrier;
+      return [];
+    });
+    const active = Array.from({ length: 9 }, (_, index) =>
+      mode.run(
+        {
+          sessionId: `active-${index}`,
+          code: `globalThis.marker=${index}; aux.tabs.list({}); marker`,
+        },
+        caller,
+      ),
+    );
+    try {
+      await allActive;
+      const queued = mode.run({ sessionId: "active-0", code: "marker += 10; marker" }, caller);
+      release();
+      expect((await Promise.all(active)).map((result) => result.value)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+      expect((await queued).value).toBe(10);
+    } finally {
+      release();
+      await Promise.allSettled(active);
+      mode.disposeAll();
+    }
+  });
+
   it("hides unsupported members and routes every action through the host dispatcher", async () => {
     const calls: string[] = [];
     const mode = new AgentCodeMode(async (method) => {

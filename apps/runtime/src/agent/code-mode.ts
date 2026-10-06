@@ -18,6 +18,7 @@ type Session = {
   client: Client;
   deadline: number;
   touchedAt: number;
+  pending: number;
   hostFailures: Map<string, AuxError>;
 };
 
@@ -30,6 +31,7 @@ const MAX_HOST_FAILURES = 32;
 /** An isolated QuickJS context per caller/session. Only manifest-backed handles cross it. */
 export class AgentCodeMode {
   private sessions = new Map<string, Session>();
+  private creating = new Map<string, Promise<Session>>();
   constructor(
     private invoke: Invoke,
     private support: AgentApiSupport = { surface: "code" },
@@ -48,8 +50,10 @@ export class AgentCodeMode {
 
   async reset(client: Client, sessionId = "default") {
     const key = this.key(client, sessionId);
-    await this.sessions.get(key)?.queue;
-    this.dispose(key);
+    await this.creating.get(key);
+    const session = this.sessions.get(key);
+    while (session?.pending) await session.queue;
+    if (this.sessions.get(key) === session) this.dispose(key);
     return { reset: true as const };
   }
 
@@ -67,6 +71,7 @@ export class AgentCodeMode {
       client,
       deadline: 0,
       touchedAt: Date.now(),
+      pending: 0,
       hostFailures: new Map(),
     };
     context.runtime.setInterruptHandler(() => Date.now() >= session.deadline);
@@ -125,15 +130,21 @@ export class AgentCodeMode {
   async run(raw: unknown, client: Client) {
     const params = AgentJsRunParams.parse(raw);
     const key = this.key(client, params.sessionId);
-    for (const [id, session] of this.sessions) if (Date.now() - session.touchedAt > IDLE_MS) this.dispose(id);
+    for (const [id, session] of this.sessions)
+      if (session.pending === 0 && Date.now() - session.touchedAt > IDLE_MS) this.dispose(id);
     let session = this.sessions.get(key);
     if (!session) {
-      if (this.sessions.size >= MAX_SESSIONS)
-        throw new AuxError("conflict", "Too many active code-mode sessions; reset an old session.");
-      session = await this.makeSession(client);
-      this.sessions.set(key, session);
+      let creating = this.creating.get(key);
+      if (!creating) {
+        creating = this.makeSession(client).finally(() => this.creating.delete(key));
+        this.creating.set(key, creating);
+      }
+      session = await creating;
     }
     const current = session;
+    current.pending++;
+    this.sessions.set(key, current);
+    this.evictIdle(key);
     let release!: () => void;
     const previous = current.queue;
     current.queue = new Promise<void>((resolve) => {
@@ -160,7 +171,20 @@ export class AgentCodeMode {
       throw new AuxError("invalid_params", `Code mode failed: ${message}`);
     } finally {
       current.hostFailures.clear();
+      current.pending--;
+      current.touchedAt = Date.now();
       release();
+      this.evictIdle();
+    }
+  }
+
+  private evictIdle(keep?: string) {
+    while (this.sessions.size > MAX_SESSIONS) {
+      const oldest = [...this.sessions]
+        .filter(([key, session]) => key !== keep && session.pending === 0)
+        .sort((a, b) => a[1].touchedAt - b[1].touchedAt)[0];
+      if (!oldest) return;
+      this.dispose(oldest[0]);
     }
   }
 }
