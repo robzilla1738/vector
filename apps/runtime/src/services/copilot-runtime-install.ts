@@ -757,9 +757,14 @@ export class CopilotRuntimeInstaller {
       },
     );
   }
-  async close(): Promise<void> {
+  /** Retirement prevents new work and aborts the same original download.
+   * File cleanup remains close()'s joined step; no installed payload is released. */
+  retireAdmission(): void {
     this.closed = true;
     this.attempt?.controller.abort();
+  }
+  async close(): Promise<void> {
+    this.retireAdmission();
     const failures: unknown[] = [];
     await this.attempt?.work.catch((error: unknown) => {
       if (

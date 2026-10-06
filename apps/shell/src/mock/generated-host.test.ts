@@ -44,6 +44,7 @@ it("validates stub results against the live manifest schemas", async () => {
       "native.contentBlockBegin",
       "native.contentBlockAppend",
       "native.contentBlockCommit",
+      "native.turnSourceContext",
       "native.cdpReset",
       "native.cdpCatalog",
       "native.cdpAttach",

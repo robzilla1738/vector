@@ -133,6 +133,8 @@ export interface ClientCtx {
   nativePersonResume?: string;
   /** Private original local native owner intent; never API params. */
   nativeRunResume?: string;
+  /** Opaque original Aux window/document capability supplied only by native api.invoke. */
+  nativeTurnContext?: string;
   connectionId?: string;
   scope?: AgentConnectionScope;
   codeMode?: true;

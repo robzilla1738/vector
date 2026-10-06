@@ -1,3 +1,6 @@
+import type { CopilotServices } from "./copilot-services.js";
+import type { CopilotAccount } from "./copilot-account.js";
+import { CopilotRegistrationSchema, type CopilotRegistration } from "./copilot-protocol.js";
 import { randomUUID } from "node:crypto";
 import {
   DownloadNamingSettingsSchema,
@@ -66,6 +69,7 @@ export interface Settings extends Pick<
   "toolbarAutoHide" | "minimalUi" | "minimalUiAcknowledged" | "autoArchive" | "nightShift"
 > {
   modelProvider?: ModelProvider;
+  localModelsOnly?: boolean;
   modelConnection?: { provider: ModelProvider; enabled: boolean };
   disabledModelProviders?: ModelProvider[];
   imageModel?: ImageModel | null;
@@ -151,6 +155,9 @@ export class SettingsService {
   private directErrors: Partial<Record<ModelProvider, string>> = {};
   private credentialError: string | undefined;
   private writes: Promise<unknown> = Promise.resolve();
+  private discoveryClosed = false;
+  private authOwners = new Map<string, { windowId: string; activePageId: string | null }>();
+
 
   constructor(
     private repo: Repo,
@@ -584,6 +591,170 @@ export class SettingsService {
   }
   /** Snapshot + live-catalog merged capability list, refreshed by listModels(). */
   private mergedCatalog: readonly ModelCapability[] = MODEL_REGISTRY;
+  private copilotFactory?: () => Promise<CopilotServices>;
+  /** Main owns the lazy facade lifetime; this binding never constructs an unused provider. */
+  attachCopilotServices(factory: () => Promise<CopilotServices>): void {
+    if (this.copilotFactory) throw new AuxError("conflict", "Copilot services are already bound.");
+    this.copilotFactory = factory;
+  }
+  copilotHostId(): string {
+    const saved = this.repo.getSetting("copilotHostId");
+    if (saved !== undefined) return z.string().uuid().parse(saved);
+    const id = randomUUID();
+    this.repo.setSetting("copilotHostId", id);
+    return id;
+  }
+  /** Reviewed app configuration only; no renderer/model client ID or secret. */
+  async copilotRegistration(): Promise<CopilotRegistration | undefined> {
+    const clientId = this.env.AUX_COPILOT_CLIENT_ID;
+    if (!clientId) return undefined;
+    if (!CopilotRegistrationSchema.shape.clientId.safeParse(clientId).success)
+      throw new AuxError("needs_input", "The Aux GitHub application registration requires configuration.");
+    const raw = this.repo.getSetting("copilotRegistration");
+    const saved = raw === undefined ? undefined : CopilotRegistrationSchema.parse(raw);
+    if (saved?.clientId === clientId) return saved;
+    const next = { clientId, revision: randomUUID() };
+    this.repo.setSetting("copilotRegistration", next);
+    return next;
+  }
+  copilotGeneration(): string {
+    const saved = this.repo.getSetting("copilotRevision");
+    if (saved !== undefined) return z.string().uuid().parse(saved);
+    const revision = randomUUID();
+    this.repo.setSetting("copilotRevision", revision);
+    return revision;
+  }
+  async checkCopilotOwner(original: string, requester?: string): Promise<void> {
+    if (this.discoveryClosed || !this.native?.turnSourceContext)
+      throw new AuxError("cancelled", "The original Copilot window retired.");
+    const saved = this.authOwners.get(original);
+    if (!saved) throw new AuxError("cancelled", "The original Copilot window is unavailable.");
+    const current = await this.native.turnSourceContext(original);
+    if (
+      this.discoveryClosed ||
+      current.windowId !== saved.windowId ||
+      current.activePageId !== saved.activePageId
+    )
+      throw new AuxError("cancelled", "The original Copilot window changed.");
+    if (requester) {
+      const next = await this.native.turnSourceContext(requester);
+      if (this.discoveryClosed || next.windowId !== saved.windowId)
+        throw new AuxError("permission_denied", "Return to the original Copilot window.");
+    }
+  }
+  async activateCopilotAccount(account: CopilotAccount, check: () => Promise<void>) {
+    const work = this.writes.then(async () => {
+      await check();
+      if (this.discoveryClosed || this.localModelsOnly())
+        throw new AuxError("cancelled", "Copilot account acceptance retired.");
+      const previousAccount = this.repo.getSetting<string>("copilotActiveAccount");
+      const previousRevision = this.copilotGeneration();
+      const generation = randomUUID();
+      this.repo.transaction(() => {
+        this.repo.setSetting("copilotActiveAccount", account.accountId);
+        this.repo.setSetting("copilotRevision", generation);
+      });
+      // Auth adopts this generation before its existing post-acceptance check.
+      return {
+        generation,
+        rollback: async () => {
+          const reduction = this.writes.then(() => {
+            if (
+              this.copilotGeneration() !== generation ||
+              this.repo.getSetting("copilotActiveAccount") !== account.accountId
+            )
+              throw new AuxError("conflict", "A later Copilot selection prevents original rollback.");
+            this.repo.transaction(() => {
+              if (previousAccount === undefined) this.repo.deleteSetting("copilotActiveAccount");
+              else this.repo.setSetting("copilotActiveAccount", previousAccount);
+              this.repo.setSetting("copilotRevision", previousRevision);
+            });
+          });
+          this.writes = reduction.catch(() => {});
+          await reduction;
+        },
+      };
+    });
+    this.writes = work.catch(() => {});
+    return work;
+  }
+  async deactivateCopilotAccount(accountId: string, check: () => Promise<void>): Promise<void> {
+    const work = this.writes.then(async () => {
+      await check();
+      if (this.discoveryClosed) throw new AuxError("cancelled", "Copilot settings are closed.");
+      if (this.repo.getSetting("copilotActiveAccount") !== accountId) return;
+      this.repo.transaction(() => {
+        this.repo.deleteSetting("copilotActiveAccount");
+        this.repo.setSetting("copilotRevision", randomUUID());
+      });
+    });
+    this.writes = work.catch(() => {});
+    await work;
+  }
+  private async copilotForOwner(owner: string, positive = false): Promise<CopilotServices> {
+    if (this.discoveryClosed || !this.native?.turnSourceContext || !this.copilotFactory)
+      throw new AuxError("capability_unsupported", "Copilot requires the original desktop window.");
+    if (positive && this.localModelsOnly())
+      throw new AuxError("permission_denied", "Enable cloud models before connecting Copilot.");
+    const context = await this.native.turnSourceContext(owner);
+    if (this.discoveryClosed) throw new AuxError("cancelled", "Copilot settings are closed.");
+    const saved = this.authOwners.get(owner);
+    if (saved) await this.checkCopilotOwner(owner);
+    else {
+      while (this.authOwners.size >= 32) this.authOwners.delete(this.authOwners.keys().next().value!);
+      this.authOwners.set(owner, {
+        windowId: context.windowId,
+        activePageId: context.activePageId,
+      });
+    }
+    const services = await this.copilotFactory();
+    await this.checkCopilotOwner(owner);
+    return services;
+  }
+  async copilotSetup(owner: string) {
+    return {
+      ...(await (await this.copilotForOwner(owner)).setup(owner)),
+      catalogOnly: true as const,
+    };
+  }
+  async copilotInstall(owner: string) {
+    return (await this.copilotForOwner(owner)).install(owner);
+  }
+  async copilotStart(owner: string) {
+    return (await this.copilotForOwner(owner, true)).start(owner);
+  }
+  async copilotStatus(id: string, owner: string) {
+    return (await this.copilotForOwner(owner)).status(id, owner);
+  }
+  async copilotCancel(id: string, owner: string) {
+    return (await this.copilotForOwner(owner)).cancel(id, owner);
+  }
+  async copilotAccounts(owner: string) {
+    return (await this.copilotForOwner(owner)).accounts(owner);
+  }
+  async copilotDisconnect(id: string, owner: string) {
+    return (await this.copilotForOwner(owner)).disconnect(id, owner);
+  }
+  async copilotCatalog(id: string, owner: string) {
+    const models = await (await this.copilotForOwner(owner, true)).catalog(id, owner);
+    return {
+      catalogOnly: true as const,
+      models: models.map((model) => ({
+        id: model.id,
+        name: model.name,
+        ...(model.policy ? { policy: model.policy.state } : {}),
+      })),
+    };
+  }
+  localModelsOnly(): boolean {
+    return this.get("localModelsOnly") === true;
+  }
+
+  async close(): Promise<void> {
+    this.discoveryClosed = true;
+    await this.writes;
+  }
+
   registryModels(): readonly ModelCapability[] {
     return this.mergedCatalog;
   }

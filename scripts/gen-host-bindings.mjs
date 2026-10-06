@@ -564,6 +564,7 @@ function firstValid(schema, hint, depth) {
 }
 // A browser mock cannot issue native document, lease or effect receipts.
 const nativeOnlyHostMethods = new Set([
+  "native.turnSourceContext",
   "native.contentBlockState",
   "native.contentBlockBegin",
   "native.contentBlockAppend",

@@ -1186,3 +1186,18 @@ index 532a9a0..8dd0494 100644
    register_runtime(AuxRuntimeMethodGroup::kAsync,
                     {"native.downloadRenameReceipts", "native.downloadNamingCandidate", "native.downloadPreviewText",
                      "native.renameDownload", "native.undoDownloadRename",
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index dffd693..72b2e11 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1044,6 +1044,10 @@ void WebUIBrowserUI::Request(const std::string& method,
+         api_method == "models.auth.start" ||
+       api_method == "models.auth.status" || api_method == "models.auth.cancel" ||
+       api_method == "models.auth.accounts" || api_method == "models.auth.disconnect" ||
++      api_method == "models.copilot.setup" || api_method == "models.copilot.install" ||
++      api_method == "models.copilot.start" || api_method == "models.copilot.status" ||
++      api_method == "models.copilot.cancel" || api_method == "models.copilot.accounts" ||
++      api_method == "models.copilot.disconnect" || api_method == "models.copilot.catalog" ||
+         api_method == "settings.remoteDebugging.get" || api_method == "settings.remoteDebugging.set" ||
+       api_method == "projects.files" || api_method == "projects.file" || api_method == "projects.changes" ||
+       api_method == "settings.cloud.status" || api_method == "settings.cloud.configure" ||

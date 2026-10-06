@@ -1,3 +1,4 @@
+import type { CopilotServices } from "./services/copilot-services.js";
 import { deferRuntimeWork, isRuntimeIdle } from "./services/idle.js";
 import { markInterruptedRuns } from "./services/startup-recovery.js";
 import { createServiceContainer, type ServiceContainer } from "./services/container.js";
@@ -234,6 +235,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     workspaceFolders: WorkspaceFolderService;
     filesystem: FilesystemAccessService;
     settings: SettingsService;
+    copilot: Promise<CopilotServices>;
     durableWrites: DurableWriteLedger;
     safetyAudit: SafetyAuditStore;
     decisions: DecisionJournal;
@@ -295,6 +297,23 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         },
       }),
     settings: () => new SettingsService(repo, config.settingsPath, env),
+    copilot: async () => {
+      if (closed) throw new AuxError("cancelled", "Copilot construction retired.");
+      const { CopilotServices } = await import("./services/copilot-services.js");
+      if (closed) throw new AuxError("cancelled", "Copilot construction retired.");
+      const settings = runtimeServices.settings;
+      const services = new CopilotServices({
+        native,
+        dataDir: config.dataDir,
+        hostId: settings.copilotHostId(),
+        registration: () => settings.copilotRegistration(),
+        generation: () => settings.copilotGeneration(),
+        checkOwner: (original, requester) => settings.checkCopilotOwner(original, requester),
+        activate: (account, check) => settings.activateCopilotAccount(account, check),
+        deactivate: (accountId, check) => settings.deactivateCopilotAccount(accountId, check),
+      });
+      return services;
+    },
     durableWrites: () => new DurableWriteLedger(repo.db),
     safetyAudit: () => new SafetyAuditStore(repo.db),
     decisions: () => new DecisionJournal(repo.db),
@@ -643,6 +662,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       scope?: import("@aux/contracts").AgentConnectionScope;
       nativePersonResume?: string;
       nativeRunResume?: string;
+      nativeTurnContext?: string;
     },
   ) => Promise<unknown>;
   let resolveInvoker: (fn: InvokeFn) => void;
@@ -814,6 +834,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return auxFeatureEnabled("zapAndUserCss", host, stages) ? snapshot : [];
   });
   runtimeServices.settings.attachNative(native);
+  runtimeServices.settings.attachCopilotServices(() => runtimeServices.copilot);
 
   // These authenticated host-only methods prepare local files for native save dialogs.
   channel?.onMethod("artifact.exportDescriptor", (params) => {
@@ -834,12 +855,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // Register api.invoke immediately — the renderer can call before services
   // finish booting; calls wait on the invoker promise instead of failing.
   channel?.onMethod("api.invoke", (p) => {
-    const { method, params, desktopUser, nativePersonResume, nativeRunResume } = p as {
+    const { method, params, desktopUser, nativePersonResume, nativeRunResume, nativeTurnContext } = p as {
       method: string;
       params: unknown;
       desktopUser?: boolean;
       nativePersonResume?: unknown;
       nativeRunResume?: unknown;
+      nativeTurnContext?: unknown;
     };
     const receipt =
       method === "pages.resume" &&
@@ -860,6 +882,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return invokerReady.then((fn) =>
       fn(method, params, {
         external: desktopUser !== true,
+        ...(desktopUser === true &&
+        typeof nativeTurnContext === "string" &&
+        /^[0-9a-f-]{36}$/.test(nativeTurnContext)
+          ? { nativeTurnContext }
+          : {}),
         ...(receipt ? { nativePersonResume: receipt } : {}),
         ...(runReceipt ? { nativeRunResume: runReceipt } : {}),
       }),
@@ -1926,7 +1953,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     },
     retireAuthority: async () => {
       try {
-        await serviceContainer.peek("blocking")?.close();
+        const results = await Promise.allSettled([
+          serviceContainer.peek("blocking")?.close(),
+          serviceContainer.peek("copilot")?.then((services) => services.close()),
+        ]);
+        const failures = results
+          .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+          .map((result) => result.reason);
+        if (failures.length)
+          throw new AggregateError(failures, "Runtime process retirement awaits acknowledgement.");
       } finally {
         await withRunAuthorityMutation(repo, async () => {});
       }
@@ -1961,6 +1996,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           serviceContainer.peek("contentMemory")?.close();
         },
       },
+      { stage: "model-discovery", run: () => serviceContainer.peek("settings")?.close() },
       { stage: "api", run: () => api.close() },
       { stage: "invocations", run: () => invoke.dispose() },
       {

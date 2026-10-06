@@ -39,6 +39,7 @@ const requirements = {
   },
   "tabMentions": {
     "requires": [
+      "native.turnSourceContext",
       "native.organizationSnapshot",
       "agent.tabs.list"
     ]

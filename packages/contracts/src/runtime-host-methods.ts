@@ -1,3 +1,4 @@
+import { TurnSourceContextSchema } from "./turn-source-context.js";
 import {
   ContentBlockBeginSchema,
   ContentBlockAppendSchema,
@@ -124,6 +125,11 @@ export const RuntimeHostMethods = {
     "contentBlocking",
     ContentBlockCommitSchema,
     ContentBlockReceiptSchema,
+  ),
+  "native.turnSourceContext": runtime(
+    "tabMentions",
+    z.object({ token: z.string().uuid() }).strict(),
+    TurnSourceContextSchema,
   ),
   "native.organizationSnapshot": runtime(
     "tabMentions",

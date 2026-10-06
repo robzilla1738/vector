@@ -1,3 +1,4 @@
+import { TurnSourceContextSchema, type TurnSourceContext } from "@aux/contracts/turn-source-context";
 import type { DownloadNamingNative, CompletedDownload } from "./services/download-naming.js";
 import {
   NativeCreatorClosedSchema,
@@ -118,6 +119,7 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
     reason: string;
     durationSec: number;
   }): Promise<HostMethodResult<"native.powerActivity">>;
+  turnSourceContext?(token: string): Promise<TurnSourceContext>;
   organizationSnapshot?(): Promise<ProfileOrganizationSnapshot>;
   recorderStart?(input: { pageId: string }): Promise<HostMethodResult<"native.recorderStart">>;
   recorderDrain?(input: {
@@ -378,6 +380,9 @@ export class ChannelNativeBridge implements NativeBridge {
     return HostMethods["native.powerActivity"].result.parse(
       await this.channel.call("native.powerActivity", input),
     );
+  }
+  async turnSourceContext(token: string): Promise<TurnSourceContext> {
+    return TurnSourceContextSchema.parse(await this.channel.call("native.turnSourceContext", { token }));
   }
   async organizationSnapshot(): Promise<ProfileOrganizationSnapshot> {
     return ProfileOrganizationSnapshotSchema.parse(

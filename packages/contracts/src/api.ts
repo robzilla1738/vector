@@ -1,3 +1,14 @@
+import {
+  CopilotAttemptParams,
+  CopilotAccountParams,
+  CopilotSetupSchema,
+  CopilotInstallSchema,
+  CopilotAuthStatusSchema,
+  CopilotDeviceChallengeSchema,
+  CopilotAccountsSchema,
+  CopilotDisconnectedSchema,
+  CopilotCatalogSchema,
+} from "./copilot-auth.js";
 import { SafetyActivityQuerySchema, SafetyActivityPageSchema } from "./safety-activity.js";
 import { AgentModeSchema, AgentPolicyOverrideSchema } from "./agent-policy.js";
 import { AUX_FEATURES, type AuxFeature } from "./aux-features.js";
@@ -1617,6 +1628,14 @@ export const MethodSchemas = {
   "import.status": z.object({ jobId: z.string().min(1).max(64).optional() }),
   "import.cancel": z.object({ jobId: z.string().min(1).max(64) }),
   "chrome.openLive": ChromeOpenLiveParams,
+  "models.copilot.setup": z.object({}).strict(),
+  "models.copilot.install": z.object({}).strict(),
+  "models.copilot.start": z.object({}).strict(),
+  "models.copilot.status": CopilotAttemptParams,
+  "models.copilot.cancel": CopilotAttemptParams,
+  "models.copilot.accounts": z.object({}).strict(),
+  "models.copilot.disconnect": CopilotAccountParams,
+  "models.copilot.catalog": CopilotAccountParams,
   "models.list": z.object({}),
   "models.probe": ModelsProbeParams,
   "translate.page": z
@@ -2396,6 +2415,14 @@ export const ResultSchemas = {
   "import.status": ImportJobStatusSchema,
   "import.cancel": z.object({ ok: z.boolean() }),
   "chrome.openLive": z.object({ ok: z.boolean() }),
+  "models.copilot.setup": CopilotSetupSchema,
+  "models.copilot.install": CopilotInstallSchema,
+  "models.copilot.start": CopilotDeviceChallengeSchema,
+  "models.copilot.status": CopilotAuthStatusSchema,
+  "models.copilot.cancel": CopilotAuthStatusSchema,
+  "models.copilot.accounts": CopilotAccountsSchema,
+  "models.copilot.disconnect": CopilotDisconnectedSchema,
+  "models.copilot.catalog": CopilotCatalogSchema,
   "models.list": z.object({
     models: z.array(z.object({ id: z.string(), name: z.string().optional() })),
     source: z.enum(["gateway", "static", "configured"]),
