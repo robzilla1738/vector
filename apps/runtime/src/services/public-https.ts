@@ -38,6 +38,8 @@ export async function publicHttpsText(
       {
         method: "GET",
         agent: false,
+        // Pin the vetted singleton family so Node requests the single-address lookup contract.
+        family: chosen.family,
         signal: options.signal,
         headers: {
           "Accept-Encoding": "identity",
