@@ -1,27 +1,32 @@
+import { useChatCollection } from "./use-chat-collection";
+import { useChatArtifacts } from "./use-chat-artifacts";
 import { staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { smallGhostButtonProps } from "../ui/button-props";
 import { bridge } from "../bridge";
 import { useEffect, useState } from "react";
-import type { ConversationArtifact, ConversationSummary, Routine } from "@aux/contracts";
+import type { Routine } from "@aux/contracts";
 import { call, errToast, useStore } from "../store";
-import { ConversationDrafts } from "./ConversationDrafts";
-import { mergeHistory } from "../run-history";
-import { RecentConversationCard } from "./RecentWorkCard";
+import { ConversationDrafts } from "../components/ConversationDrafts";
+import { ChatList, savedChat } from "./ChatList";
 import { openSavedTask } from "../task-navigation";
 import { shellIconRight } from "../ui/icons";
-import { RecentWorkEmpty } from "./RecentWorkEmpty";
+import { RecentWorkEmpty } from "../components/RecentWorkEmpty";
 import { Tabs } from "../ui";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** Home previews use durable chat titles and results, never invented activity. */
 export function RecentWork() {
-  const [items, setItems] = useState<ConversationSummary[]>([]);
-  const [results, setResults] = useState<Record<string, ConversationArtifact>>({});
   const [routineResult, setRoutineResult] = useState<{ workspaceId?: string; items: Routine[] }>({
     items: [],
   });
   const [tab, setTab] = useState<"chats" | "routines">("chats");
+  const {
+    collection,
+    state: chatState,
+    items,
+  } = useChatCollection({ archived: false, policy: "preview" }, tab === "chats");
+  const results = useChatArtifacts(collection, items, tab === "chats");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
@@ -49,35 +54,15 @@ export function RecentWork() {
     let live = true;
     setLoading(true);
     setError("");
-    const fetch =
-      tab === "chats"
-        ? call("conversations.list", { limit: 3, archived: false }).then(async (found) => {
-            if (!live) return;
-            mergeHistory(found.map((item) => item.latestRun));
-            setItems(found);
-            const next: Record<string, ConversationArtifact> = {};
-            // Read summaries for only the three visible cards; never fetch artifact bytes here.
-            await Promise.all(
-              found.slice(0, 3).map(async (item) => {
-                try {
-                  const { artifacts } = await call("conversations.artifacts.get", { chatId: item.chatId });
-                  const result = artifacts
-                    .filter((artifact) => artifact.runId === item.latestRun.runId)
-                    .sort((a, b) => b.createdAt - a.createdAt)[0];
-                  if (result) next[item.chatId] = result;
-                } catch {
-                  /* The conversation preview remains available if its artifact summary fails. */
-                }
-              }),
-            );
-            if (live) setResults(next);
-          })
-        : (workspaceId
-            ? call("routines.list", { workspaceId, includeArchived: false })
-            : Promise.resolve([])
-          ).then((found) => {
-            if (live) setRoutineResult({ workspaceId, items: found });
-          });
+    if (tab === "chats") {
+      setLoading(false);
+      return;
+    }
+    const fetch = (
+      workspaceId ? call("routines.list", { workspaceId, includeArchived: false }) : Promise.resolve([])
+    ).then((found) => {
+      if (live) setRoutineResult({ workspaceId, items: found });
+    });
     void fetch
       .catch((reason) => {
         if (live) setError(String(reason));
@@ -90,6 +75,8 @@ export function RecentWork() {
     };
   }, [refresh, tab, workspaceId]);
   const count = tab === "chats" ? items.length : routines.length;
+  const visibleLoading = tab === "chats" ? chatState.loading : loading;
+  const visibleError = tab === "chats" ? chatState.error : error;
   return (
     <section className="home-history" aria-label="Recent work">
       <header className="home-section-head">
@@ -123,48 +110,58 @@ export function RecentWork() {
         role="tabpanel"
         aria-labelledby={`recent-work-panel-${tab}`}
         className="home-cards"
-        aria-busy={loading}
+        aria-busy={visibleLoading}
       >
-        {tab === "chats"
-          ? items.map((item) => (
-              <RecentConversationCard key={item.chatId} item={item} artifact={results[item.chatId]} />
-            ))
-          : routines.slice(0, 3).map((item) => (
-              <article className="home-card" key={item.routineId}>
-                <div className="home-card-meta">
-                  <span>
-                    {item.paused ? "Paused" : item.trigger.kind === "manual" ? "On demand" : "Scheduled"}
-                  </span>
-                </div>
-                <h3>
-                  <button
-                    className="home-card-open"
-                    onClick={() =>
-                      item.sourceTaskId
-                        ? void openSavedTask(item.sourceTaskId).catch(errToast)
-                        : useStore.getState().setOverlay("tasks")
-                    }
-                  >
-                    {item.title}
-                  </button>
-                </h3>
-                <p className="home-excerpt">{item.objective}</p>
-              </article>
-            ))}
-        {!loading && !error && !count && (
+        {tab === "chats" ? (
+          <ChatList
+            rows={items.map((item) => ({ entry: savedChat(item), card: { artifact: results[item.chatId] } }))}
+            onOpen={(entry) => {
+              if (entry.kind === "saved-chat")
+                useStore.getState().openConversation(entry.item.latestRun.runId);
+            }}
+          />
+        ) : (
+          routines.slice(0, 3).map((item) => (
+            <article className="home-card" key={item.routineId}>
+              <div className="home-card-meta">
+                <span>
+                  {item.paused ? "Paused" : item.trigger.kind === "manual" ? "On demand" : "Scheduled"}
+                </span>
+              </div>
+              <h3>
+                <button
+                  className="home-card-open"
+                  onClick={() =>
+                    item.sourceTaskId
+                      ? void openSavedTask(item.sourceTaskId).catch(errToast)
+                      : useStore.getState().setOverlay("tasks")
+                  }
+                >
+                  {item.title}
+                </button>
+              </h3>
+              <p className="home-excerpt">{item.objective}</p>
+            </article>
+          ))
+        )}
+        {!visibleLoading && !visibleError && !count && (
           <RecentWorkEmpty view={tab} onCreateTask={() => useStore.getState().setOverlay("tasks")} />
         )}
       </div>
       {tab === "chats" && <ConversationDrafts limit={3} compact exclude={items.map((item) => item.chatId)} />}
-      {loading && !count && (
+      {visibleLoading && !count && (
         <output {...staticHintProps} data-block>
           Loading recent work…
         </output>
       )}
-      {error && (
+      {visibleError && (
         <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
           Recent work couldn’t be loaded.{" "}
-          <button {...smallGhostButtonProps} title={error} onClick={() => setRefresh((value) => value + 1)}>
+          <button
+            {...smallGhostButtonProps}
+            title={visibleError}
+            onClick={() => (tab === "chats" ? void collection.retry() : setRefresh((value) => value + 1))}
+          >
             Retry
           </button>
         </p>

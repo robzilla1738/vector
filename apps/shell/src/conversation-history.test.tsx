@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import type { AuxEvent } from "@aux/contracts";
 import { expect, it, vi } from "vitest";
-import { ConversationHistory } from "./components/ConversationHistory";
+import { ChatHistory } from "./chat-list/ChatHistory";
 import { bridge } from "./bridge";
 import { makeRun } from "./mock/fixtures";
 import { useStore } from "./store";
@@ -34,7 +34,7 @@ it("refreshes the loaded history range instead of dropping older pages", async (
   const host = document.createElement("div"),
     root = createRoot(host);
   try {
-    await act(async () => root.render(<ConversationHistory />));
+    await act(async () => root.render(<ChatHistory />));
     await act(async () => vi.advanceTimersByTimeAsync(180));
     expect(host.querySelectorAll(".history-conversation")).toHaveLength(40);
     const more = Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find(
@@ -52,8 +52,9 @@ it("refreshes the loaded history range instead of dropping older pages", async (
       });
       await vi.advanceTimersByTimeAsync(100);
     });
-    expect(invoke).toHaveBeenLastCalledWith("conversations.list", expect.objectContaining({ limit: 80 }));
+    expect(invoke).toHaveBeenLastCalledWith("conversations.list", expect.objectContaining({ limit: 81 }));
     expect(host.querySelectorAll(".history-conversation")).toHaveLength(80);
+    expect(host.textContent).toContain("Load more conversations");
   } finally {
     await act(async () => root.unmount());
     vi.restoreAllMocks();
@@ -82,7 +83,7 @@ it("keeps conversation actions in the shared menu and restores focus on Escape",
   document.body.append(host);
   const root = createRoot(host);
   try {
-    await act(async () => root.render(<ConversationHistory />));
+    await act(async () => root.render(<ChatHistory />));
     await act(async () => vi.advanceTimersByTimeAsync(180));
     const search = host.querySelector<HTMLInputElement>('[aria-label="Search conversations"]')!;
     await act(async () =>

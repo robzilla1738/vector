@@ -25,7 +25,7 @@ const SetPanel = deferSurface(
 
 const RailHistory = deferSurface(
   async () => {
-    const module = await import("./RailHistory");
+    const module = await import("../chat-list/RailHistory");
     return { default: module.RailHistory };
   },
   "Recent conversations",

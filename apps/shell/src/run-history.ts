@@ -9,3 +9,7 @@ export function mergeHistory(history: Run[]) {
     return added.length ? { runs: [...state.runs, ...added] } : state;
   });
 }
+
+export function cursor(run: Run) {
+  return { createdAt: run.createdAt, runId: run.runId };
+}

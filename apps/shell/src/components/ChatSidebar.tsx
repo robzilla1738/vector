@@ -3,7 +3,7 @@ import { useRef, useState, type CSSProperties } from "react";
 import { runCommand } from "../commands";
 import { useFloatingSidebar } from "../floating-sidebar";
 import { bridge } from "../bridge";
-import { ChatSessions } from "./ChatSessions";
+import { SidebarChats } from "../chat-list/SidebarChats";
 import { useStore } from "../store";
 import { ResizeHandle } from "./ResizeHandle";
 import { shellIconFolder, shellIconGear, shellIconPencil, shellIconSearch } from "../ui/icons";
@@ -75,7 +75,7 @@ export function ChatSidebar({ minimal = false }: { minimal?: boolean }) {
         </nav>
         {!bridge.privateMode && (
           <section className="chat-sidebar-history" aria-label="Chats">
-            <ChatSessions query={query} />
+            <SidebarChats query={query} />
           </section>
         )}
       </div>

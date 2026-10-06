@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import { RecentWork } from "./RecentWork";
+import { RecentWork } from "../chat-list/RecentWork";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
 import { makeRun } from "../mock/fixtures";

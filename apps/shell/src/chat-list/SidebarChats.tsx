@@ -1,12 +1,13 @@
+import { ChatList, savedChat, type ChatListRow } from "./ChatList";
+import { useChatCollection } from "./use-chat-collection";
+import { useChatActions } from "./use-chat-actions";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
-import { errorMessage } from "../error-message";
-import "./ChatSessions.css";
+import "./SidebarChats.css";
 import { ActionMenu } from "../ui";
 import { STATUS_LABEL } from "../run-status";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ConversationSummary } from "@aux/contracts";
-import { bridge } from "../bridge";
-import { call, errToast, useStore } from "../store";
+import { errToast, useStore } from "../store";
 import {
   readChatFolders,
   writeChatFolder,
@@ -32,14 +33,15 @@ import {
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** Shared session organization for both sidebar layouts. Folder entries belong to this browser profile. */
-export function ChatSessions({ compact = false, query = "" }: { compact?: boolean; query?: string }) {
+export function SidebarChats({ compact = false, query = "" }: { compact?: boolean; query?: string }) {
   const active = useStore((s) => (s.mode === "conversation" ? s.conversationId : null));
-  const runRevision = useStore((s) =>
-    s.runs.map((run) => `${run.runId}:${run.status}:${run.endedAt ?? ""}`).join("|"),
-  );
-  const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<ConversationSummary[]>([]);
   const [archived, setArchived] = useState(false);
+  const {
+    collection,
+    state: { loading, error },
+    items: rows,
+  } = useChatCollection({ archived, policy: "complete" });
+  const actions = useChatActions(collection);
   const [organization, setOrganization] = useState(() => readChatFolders(localStorage));
   const [editing, setEditing] = useState<ChatFolder | null>(null);
   const [name, setName] = useState("");
@@ -47,8 +49,7 @@ export function ChatSessions({ compact = false, query = "" }: { compact?: boolea
   const [chatName, setChatName] = useState("");
   const [moving, setMoving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const pending = useRef(false);
+  const busy = actions.busy;
   const root = useRef<HTMLDivElement>(null);
   const projectSelectors = useRef(new Map<string, HTMLSelectElement>());
   const actionTriggers = useRef(new Map<string, HTMLButtonElement>());
@@ -80,8 +81,6 @@ export function ChatSessions({ compact = false, query = "" }: { compact?: boolea
     setDeleting(null);
     setRenaming(null);
   }
-  const [error, setError] = useState("");
-  const [revision, setRevision] = useState(0);
   useEffect(() => {
     const refresh = () => setOrganization(readChatFolders(localStorage));
     window.addEventListener("storage", refresh);
@@ -91,50 +90,6 @@ export function ChatSessions({ compact = false, query = "" }: { compact?: boolea
       window.removeEventListener("aux-chat-folders", refresh);
     };
   }, []);
-  useEffect(
-    () =>
-      bridge.onEvent((event) => {
-        if (event.type === "conversation.changed" || event.type === "conversation.deleted")
-          setRevision((value) => value + 1);
-      }),
-    [],
-  );
-  useEffect(() => {
-    let live = true;
-    setLoading(true);
-    const timer = setTimeout(
-      () =>
-        void (async () => {
-          try {
-            const found: ConversationSummary[] = [];
-            let before: { updatedAt: number; chatId: string } | undefined;
-            for (;;) {
-              const next = await call("conversations.list", {
-                archived,
-                limit: 200,
-                ...(before ? { before } : {}),
-              });
-              if (!live) return;
-              found.push(...next);
-              if (next.length < 200) break;
-              const last = next[next.length - 1]!;
-              before = { updatedAt: last.updatedAt, chatId: last.chatId };
-            }
-            setRows(found);
-            setError("");
-          } catch (reason) {
-            if (live) setError(errorMessage(reason));
-          } finally {
-            if (live) setLoading(false);
-          }
-        })(),
-      100,
-    );
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [archived, runRevision, revision]);
   function organize(work: () => void) {
     try {
       work();
@@ -144,29 +99,10 @@ export function ChatSessions({ compact = false, query = "" }: { compact?: boolea
     }
   }
   async function mutate(item: ConversationSummary, remove: boolean) {
-    if (pending.current) return;
-    pending.current = true;
-    setBusy(true);
-    try {
-      if (remove) {
-        await call("conversations.delete", { chatId: item.chatId });
-        organize(() => moveChatToFolder(localStorage, item.chatId, ""));
-      } else await call("conversations.archive", { chatId: item.chatId, archived: !archived });
-      useStore.setState((state) => ({
-        runs: [
-          ...(!remove && archived ? [item.latestRun] : []),
-          ...state.runs.filter((run) => (run.config?.chatId ?? run.runId) !== item.chatId),
-        ],
-      }));
+    if (await actions.perform(remove ? "delete" : "archive", item)) {
       focusReturn.current = { kind: "chat", id: item.chatId };
-      setRows((items) => items.filter((row) => row.chatId !== item.chatId));
       setDeleting(null);
       setMoving(null);
-    } catch (reason) {
-      errToast(reason);
-    } finally {
-      pending.current = false;
-      setBusy(false);
     }
   }
   function edit(folder?: ChatFolder) {
@@ -186,186 +122,182 @@ export function ChatSessions({ compact = false, query = "" }: { compact?: boolea
   const matches = term ? rows.filter((row) => row.title.toLocaleLowerCase().includes(term)) : rows;
   const visibleRows = compact ? matches.slice(0, 3) : matches;
   async function rename(item: ConversationSummary) {
-    if (!chatName.trim() || pending.current) return;
-    pending.current = true;
-    setBusy(true);
-    try {
-      const changed = await call("conversations.rename", { chatId: item.chatId, title: chatName.trim() });
-      setRows((current) => current.map((row) => (row.chatId === changed.chatId ? changed : row)));
+    if (!chatName.trim()) return;
+    if (await actions.perform("rename", item, chatName)) {
       focusReturn.current = { kind: "chat", id: item.chatId };
       setRenaming(null);
-    } catch (error) {
-      errToast(error);
-    } finally {
-      pending.current = false;
-      setBusy(false);
     }
   }
-  const renderChat = (item: ConversationSummary) => (
-    <div
-      className={`session-item${active === item.chatId ? " active" : ""}`}
-      key={item.chatId}
-      onKeyDown={(event) => {
-        if (
-          event.key === "Escape" &&
-          (moving === item.chatId || deleting === item.chatId || renaming === item.chatId)
-        ) {
-          event.preventDefault();
-          event.stopPropagation();
-          dismiss(item.chatId);
-        }
-      }}
-    >
-      <div className={`session-row${active === item.chatId ? " active" : ""}`}>
-        <button
-          className="session-open"
-          aria-current={active === item.chatId ? "page" : undefined}
-          title={item.title}
-          onClick={() => useStore.getState().openConversation(item.latestRun.runId)}
-        >
-          {item.title || "New chat"}
-        </button>
-        <div className="session-actions">
-          {!["completed", "cancelled"].includes(item.latestRun.status) && (
-            <span
-              className={`session-status ${item.latestRun.status}`}
-              role="status"
-              title={STATUS_LABEL[item.latestRun.status]}
-              aria-label={STATUS_LABEL[item.latestRun.status]}
-            />
-          )}
-          <ActionMenu
-            label={`Actions for ${item.title || "New chat"}`}
-            triggerRef={(node) => {
-              if (node) actionTriggers.current.set(item.chatId, node);
-              else actionTriggers.current.delete(item.chatId);
-            }}
-            actions={[
-              {
-                label: "Rename",
-                icon: shellIconPencil,
-                disabled: busy,
-                onSelect: () => {
-                  setRenaming(item.chatId);
-                  setChatName(item.title);
-                  setMoving(null);
-                  setDeleting(null);
-                },
-              },
-              {
-                label: "Move to project",
-                icon: shellIconFolder,
-                disabled: busy,
-                onSelect: () => {
-                  setMoving(item.chatId);
-                  setDeleting(null);
-                  setRenaming(null);
-                },
-              },
-              {
-                label: archived ? "Restore chat" : "Archive chat",
-                icon: shellIconArchive,
-                disabled: busy,
-                onSelect: () => {
-                  void mutate(item, false);
-                },
-              },
-              {
-                label: "Delete chat…",
-                icon: shellIconTrash,
-                danger: true,
-                disabled: busy,
-                onSelect: () => {
-                  setDeleting(item.chatId);
-                  setMoving(null);
-                  setRenaming(null);
-                },
-              },
-            ]}
+
+  const chatRow = (item: ConversationSummary): ChatListRow => ({
+    entry: savedChat(item),
+    selected: active === item.chatId,
+    openClassName: "session-open",
+    className: `session-item${active === item.chatId ? " active" : ""}`,
+    contentClassName: `session-row${active === item.chatId ? " active" : ""}`,
+    onKeyDown: (event) => {
+      if (
+        event.key === "Escape" &&
+        (moving === item.chatId || deleting === item.chatId || renaming === item.chatId)
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        dismiss(item.chatId);
+      }
+    },
+    actions: (
+      <div className="session-actions">
+        {!["completed", "cancelled"].includes(item.latestRun.status) && (
+          <span
+            className={`session-status ${item.latestRun.status}`}
+            role="status"
+            title={STATUS_LABEL[item.latestRun.status]}
+            aria-label={STATUS_LABEL[item.latestRun.status]}
           />
-        </div>
-      </div>
-      {renaming === item.chatId && (
-        <form
-          className="session-editor"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void rename(item);
+        )}
+        <ActionMenu
+          label={`Actions for ${item.title || "New chat"}`}
+          triggerRef={(node) => {
+            if (node) actionTriggers.current.set(item.chatId, node);
+            else actionTriggers.current.delete(item.chatId);
           }}
-        >
-          <input
-            autoFocus
-            aria-label="Conversation name"
-            maxLength={160}
-            value={chatName}
-            onChange={(event) => setChatName(event.target.value)}
-          />
-          <button {...smallButtonProps} disabled={busy || !chatName.trim()}>
-            Save
-          </button>
-          <button
-            {...smallGhostButtonProps}
-            {...auxNativeButtonTypeProps}
-            onClick={() => dismiss(item.chatId)}
-          >
-            Cancel
-          </button>
-        </form>
-      )}
-      <div
-        className={`session-disclosure${moving === item.chatId ? " open" : ""}`}
-        aria-hidden={moving !== item.chatId}
-        inert={moving !== item.chatId}
-      >
-        <div>
-          <label className="session-move">
-            Project
-            <select
-              ref={(node) => {
-                if (node) projectSelectors.current.set(item.chatId, node);
-                else projectSelectors.current.delete(item.chatId);
-              }}
-              aria-label={`Project for ${item.title}`}
-              value={
-                organization.members[item.chatId] &&
-                organization.folders.some((f) => f.id === organization.members[item.chatId])
-                  ? organization.members[item.chatId]
-                  : ""
-              }
-              onChange={(event) => {
-                organize(() => moveChatToFolder(localStorage, item.chatId, event.target.value));
-                focusReturn.current = { kind: "chat", id: item.chatId };
+          actions={[
+            {
+              label: "Rename",
+              icon: shellIconPencil,
+              disabled: busy,
+              onSelect: () => {
+                setRenaming(item.chatId);
+                setChatName(item.title);
                 setMoving(null);
-              }}
-            >
-              <option value="">No project</option>
-              {organization.folders.map((folder) => (
-                <option key={folder.id} value={folder.id}>
-                  {folder.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+                setDeleting(null);
+              },
+            },
+            {
+              label: "Move to project",
+              icon: shellIconFolder,
+              disabled: busy,
+              onSelect: () => {
+                setMoving(item.chatId);
+                setDeleting(null);
+                setRenaming(null);
+              },
+            },
+            {
+              label: archived ? "Restore chat" : "Archive chat",
+              icon: shellIconArchive,
+              disabled: busy,
+              onSelect: () => {
+                void mutate(item, false);
+              },
+            },
+            {
+              label: "Delete chat…",
+              icon: shellIconTrash,
+              danger: true,
+              disabled: busy,
+              onSelect: () => {
+                setDeleting(item.chatId);
+                setMoving(null);
+                setRenaming(null);
+              },
+            },
+          ]}
+        />
       </div>
-      <div
-        className={`session-disclosure${deleting === item.chatId ? " open" : ""}`}
-        aria-hidden={deleting !== item.chatId}
-        inert={deleting !== item.chatId}
-      >
-        <div>
-          <div className="session-confirm" role="group" aria-label={`Delete ${item.title} permanently?`}>
-            <span>Delete this chat permanently?</span>
-            <button className="btn ghost danger" disabled={busy} onClick={() => void mutate(item, true)}>
-              Delete permanently
+    ),
+    details: (
+      <>
+        {renaming === item.chatId && (
+          <form
+            className="session-editor"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void rename(item);
+            }}
+          >
+            <input
+              autoFocus
+              aria-label="Conversation name"
+              maxLength={160}
+              value={chatName}
+              onChange={(event) => setChatName(event.target.value)}
+            />
+            <button {...smallButtonProps} disabled={busy || !chatName.trim()}>
+              Save
             </button>
-            <button {...auxClassGhostButtonProps} onClick={() => dismiss(item.chatId)}>
+            <button
+              {...smallGhostButtonProps}
+              {...auxNativeButtonTypeProps}
+              onClick={() => dismiss(item.chatId)}
+            >
               Cancel
             </button>
+          </form>
+        )}
+        <div
+          className={`session-disclosure${moving === item.chatId ? " open" : ""}`}
+          aria-hidden={moving !== item.chatId}
+          inert={moving !== item.chatId}
+        >
+          <div>
+            <label className="session-move">
+              Project
+              <select
+                ref={(node) => {
+                  if (node) projectSelectors.current.set(item.chatId, node);
+                  else projectSelectors.current.delete(item.chatId);
+                }}
+                aria-label={`Project for ${item.title}`}
+                value={
+                  organization.members[item.chatId] &&
+                  organization.folders.some((f) => f.id === organization.members[item.chatId])
+                    ? organization.members[item.chatId]
+                    : ""
+                }
+                onChange={(event) => {
+                  organize(() => moveChatToFolder(localStorage, item.chatId, event.target.value));
+                  focusReturn.current = { kind: "chat", id: item.chatId };
+                  setMoving(null);
+                }}
+              >
+                <option value="">No project</option>
+                {organization.folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         </div>
-      </div>
-    </div>
+        <div
+          className={`session-disclosure${deleting === item.chatId ? " open" : ""}`}
+          aria-hidden={deleting !== item.chatId}
+          inert={deleting !== item.chatId}
+        >
+          <div>
+            <div className="session-confirm" role="group" aria-label={`Delete ${item.title} permanently?`}>
+              <span>Delete this chat permanently?</span>
+              <button className="btn ghost danger" disabled={busy} onClick={() => void mutate(item, true)}>
+                Delete permanently
+              </button>
+              <button {...auxClassGhostButtonProps} onClick={() => dismiss(item.chatId)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    ),
+  });
+  const renderChats = (items: ConversationSummary[]) => (
+    <ChatList
+      rows={items.map(chatRow)}
+      onOpen={(entry) => {
+        if (entry.kind === "saved-chat") useStore.getState().openConversation(entry.item.latestRun.runId);
+      }}
+    />
   );
   return (
     <div ref={root} className="chat-sessions" aria-busy={loading}>
@@ -383,7 +315,6 @@ export function ChatSessions({ compact = false, query = "" }: { compact?: boolea
               icon: shellIconArchive,
               onSelect: () => {
                 setArchived(!archived);
-                setRows([]);
               },
             },
             { label: "All chats", icon: shellIconChats, onSelect: showHistory },
@@ -465,7 +396,7 @@ export function ChatSessions({ compact = false, query = "" }: { compact?: boolea
             </div>
             {(term || !folder.collapsed) && (
               <div className="session-folder-chats">
-                {children.map(renderChat)}
+                {renderChats(children)}
                 {!children.length && !compact && (
                   <p className="session-empty">Use a chat’s menu to move it here.</p>
                 )}
@@ -475,11 +406,11 @@ export function ChatSessions({ compact = false, query = "" }: { compact?: boolea
         );
       })}
 
-      {visibleRows
-        .filter(
+      {renderChats(
+        visibleRows.filter(
           (row) => !organization.folders.some((folder) => folder.id === organization.members[row.chatId]),
-        )
-        .map(renderChat)}
+        ),
+      )}
       {compact && matches.length > 3 && (
         <button className="sb-link sb-show-all" onClick={showHistory}>
           All chats {shellIconRight}
@@ -495,10 +426,16 @@ export function ChatSessions({ compact = false, query = "" }: { compact?: boolea
           {term ? "No matching chats." : archived ? "No archived chats." : "Your sessions will appear here."}
         </p>
       )}
-      {error && (
+      {(error || actions.error) && (
         <p className="session-empty" {...nativeAlertRoleProps}>
-          {error}
-          <button {...auxClassGhostButtonProps} onClick={() => setRevision((value) => value + 1)}>
+          {error || actions.error}
+          <button
+            {...auxClassGhostButtonProps}
+            onClick={() => {
+              actions.dismissError();
+              void collection.retry();
+            }}
+          >
             Retry
           </button>
         </p>

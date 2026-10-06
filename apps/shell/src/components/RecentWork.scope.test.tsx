@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { RoutineSchema } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
-import { RecentWork } from "./RecentWork";
+import { RecentWork } from "../chat-list/RecentWork";
 const initial = useStore.getState();
 let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
 const spaces = ["a", "b"].map((id) => ({

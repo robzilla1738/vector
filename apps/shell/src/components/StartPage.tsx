@@ -9,7 +9,7 @@ import { useShallow } from "zustand/react/shallow";
 import { CommandBar } from "./CommandBar";
 import { runCommand } from "../commands";
 import { bridge } from "../bridge";
-import { RecentWork } from "./RecentWork";
+import { RecentWork } from "../chat-list/RecentWork";
 import { RunAttentionFeed, selectAttentionRuns } from "../agent/RunAttentionFeed";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { nativeStatusRoleProps } from "../ui/native-attribute-props";

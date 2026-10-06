@@ -5,7 +5,7 @@ import { expect, it, vi } from "vitest";
 import type { ConversationSummary } from "@aux/contracts";
 import { useStore } from "../store";
 import { makeRun } from "../mock/fixtures";
-import { RecentConversationCard } from "./RecentWorkCard";
+import { ChatCard } from "../chat-list/ChatCard";
 
 const previews = vi.hoisted(() => vi.fn());
 vi.mock("./surfaces", () => ({
@@ -39,7 +39,7 @@ it("updates only the changed chat draft and preserves focus on another card", as
       root.render(
         <>
           {items.map((item) => (
-            <RecentConversationCard key={item.chatId} item={item} />
+            <ChatCard key={item.chatId} item={item} />
           ))}
         </>,
       ),

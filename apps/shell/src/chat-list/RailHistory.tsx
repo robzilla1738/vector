@@ -1,91 +1,14 @@
 import { smallGhostButtonProps } from "../ui/button-props";
-import { STATUS_LABEL } from "../run-status";
 import { recentConversations } from "../conversations";
-import { memo, useState, useSyncExternalStore } from "react";
+import { memo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { isLive, useStore } from "../store";
-import { hostOf } from "../workspace";
-import { VirtualList } from "./VirtualList";
-import {
-  shellIconAgentSm,
-  shellIconAlert,
-  shellIconChat,
-  shellIconCheck,
-  shellIconCircle,
-  shellIconClose,
-  shellIconLayersSm,
-  shellIconSearch,
-} from "../ui/icons";
+import { ChatList, type LocalChatListRow } from "./ChatList";
+import { shellIconClose, shellIconLayersSm, shellIconSearch } from "../ui/icons";
 import {
   staticNumericCountProps as auxClassNumericCountProps,
   staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps,
 } from "../ui/class-props";
-
-const ago = (ts: number) => {
-  const m = Math.floor((Date.now() - ts) / 60000);
-  if (m < 1) return "now";
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
-};
-
-const minuteListeners = new Set<() => void>();
-let minuteTimer: number | undefined;
-/** One shared minute clock, running only while some row shows a relative time. */
-const subscribeMinute = (listener: () => void) => {
-  minuteListeners.add(listener);
-  minuteTimer ??= window.setInterval(() => {
-    for (const notify of minuteListeners) notify();
-  }, 60_000);
-  return () => {
-    minuteListeners.delete(listener);
-    if (!minuteListeners.size) {
-      window.clearInterval(minuteTimer);
-      minuteTimer = undefined;
-    }
-  };
-};
-const currentMinute = () => Math.floor(Date.now() / 60_000);
-function Ago({ ts }: { ts: number }) {
-  useSyncExternalStore(subscribeMinute, currentMinute);
-  return <span className="nums">{ago(ts)}</span>;
-}
-
-/** Memoized so a ticking run only re-renders its own row. */
-const RunRow = memo(function RunRow({ runId }: { runId: string }) {
-  const r = useStore((s) => s.runs.find((run) => run.runId === runId));
-  const page = useStore((s) => s.pages.byId[r?.pageIds[0] ?? ""]);
-  if (!r) return null;
-  const live = isLive(r);
-  return (
-    <button
-      className={`run-row ${live ? "live" : ""}`}
-      onClick={() => useStore.getState().setRailView({ kind: "run", runId: r.runId })}
-      title={r.goal}
-    >
-      <span className={`run-row-ico ${r.status}`}>
-        {r.status === "completed"
-          ? shellIconCheck
-          : r.status === "failed"
-            ? shellIconAlert
-            : r.status === "needs_input"
-              ? shellIconChat
-              : live
-                ? shellIconAgentSm
-                : shellIconCircle}
-      </span>
-      <span className="run-row-main">
-        <span className="run-row-title">{r.goal}</span>
-        <span className="run-row-sub">
-          <span className={`st mini ${r.status}`}>{STATUS_LABEL[r.status]}</span>
-          {page && <span className="h">{hostOf(page.url)}</span>}
-          <Ago ts={r.createdAt} />
-        </span>
-      </span>
-    </button>
-  );
-});
 
 const SetRow = memo(function SetRow({ setId }: { setId: string }) {
   const set = useStore((s) => s.sets.find((item) => item.setId === setId));
@@ -141,6 +64,12 @@ export function RailHistory() {
     }),
   );
 
+  const project = (ids: string[]): LocalChatListRow[] =>
+    ids.flatMap((runId) => {
+      const run = useStore.getState().runs.find((item) => item.runId === runId);
+      return run ? [{ entry: { kind: "local-run", run } }] : [];
+    });
+
   return (
     <div className="rail-home">
       {live.length > 0 && (
@@ -149,9 +78,7 @@ export function RailHistory() {
             <span>Live</span>
             <span {...auxClassNumericCountProps}>{live.length}</span>
           </div>
-          {live.map((runId) => (
-            <RunRow key={runId} runId={runId} />
-          ))}
+          <ChatList rows={project(live)} />
         </section>
       )}
       {sets.length > 0 && (
@@ -190,20 +117,8 @@ export function RailHistory() {
               ? "No recent conversations match."
               : "Nothing yet. Ask for something below — the agent works in this window, on your tabs."}
           </div>
-        ) : past.length > 30 ? (
-          <VirtualList
-            items={past}
-            rowHeight={56}
-            className="run-list virtual"
-            keyOf={(runId) => runId}
-            renderRow={(runId) => <RunRow runId={runId} />}
-          />
         ) : (
-          <div className="run-list">
-            {past.map((runId) => (
-              <RunRow key={runId} runId={runId} />
-            ))}
-          </div>
+          <ChatList rows={project(past)} className="run-list" windowed={past.length > 30} rowHeight={56} />
         )}
         <button
           {...smallGhostButtonProps}

@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
 import { useStore } from "../store";
 import { makeRun } from "../mock/fixtures";
-import { RailHistory } from "./RailHistory";
+import { RailHistory } from "../chat-list/RailHistory";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

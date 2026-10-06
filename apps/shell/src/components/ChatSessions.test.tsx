@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import { ChatSessions } from "./ChatSessions";
+import { SidebarChats } from "../chat-list/SidebarChats";
 import { bridge } from "../bridge";
 import { makeRun } from "../mock/fixtures";
 
@@ -46,7 +46,7 @@ it("bounds recent chats, exposes organization in one menu, and requires confirma
   document.body.append(host);
   const root = createRoot(host);
   try {
-    await act(async () => root.render(<ChatSessions compact />));
+    await act(async () => root.render(<SidebarChats compact />));
     await act(async () => vi.advanceTimersByTimeAsync(110));
     expect(host.querySelectorAll(".session-item")).toHaveLength(3);
     expect(host.querySelectorAll(".session-item .ui-menu-trigger")).toHaveLength(3);
@@ -200,17 +200,17 @@ it("searches all saved chats and reveals matches inside collapsed projects witho
   document.body.append(host);
   const root = createRoot(host);
   try {
-    await act(async () => root.render(<ChatSessions query="  BUDGET  " />));
+    await act(async () => root.render(<SidebarChats query="  BUDGET  " />));
     await act(async () => vi.advanceTimersByTimeAsync(110));
     expect(Array.from(host.querySelectorAll(".session-open"), (row) => row.textContent)).toEqual([
       "Budget review",
     ]);
     expect(host.querySelector(".session-folder-toggle")?.getAttribute("aria-expanded")).toBe("true");
     expect(readChatFolders(localStorage).folders[0]?.collapsed).toBe(true);
-    await act(async () => root.render(<ChatSessions query="missing" />));
+    await act(async () => root.render(<SidebarChats query="missing" />));
     expect(host.textContent).toContain("No matching chats.");
     expect(host.querySelector(".session-folder")).toBeNull();
-    await act(async () => root.render(<ChatSessions />));
+    await act(async () => root.render(<SidebarChats />));
     expect(host.querySelector(".session-folder-toggle")?.getAttribute("aria-expanded")).toBe("false");
     expect(Array.from(host.querySelectorAll(".session-open"), (row) => row.textContent)).toEqual([
       "Other chat",

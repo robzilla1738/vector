@@ -37,7 +37,7 @@ export function VirtualList<T>({
   rowGap = 0,
   measureRows = false,
 }: {
-  items: T[];
+  items: readonly T[];
   rowHeight: number;
   overscan?: number;
   className?: string;

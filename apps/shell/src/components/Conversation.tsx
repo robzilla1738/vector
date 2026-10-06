@@ -90,7 +90,8 @@ import { bridge, type BrowserProfile } from "../bridge";
 import { previewSplit } from "../workspace";
 import { useStore, call, decodeBase64Json, errToast, isLive, toast } from "../store";
 import { ConversationAction, ConversationDetails, useConversationOwner } from "./ConversationControls";
-import { ConversationHistory, cursor, mergeHistory } from "./ConversationHistory";
+import { ChatHistory } from "../chat-list/ChatHistory";
+import { cursor, mergeHistory } from "../run-history";
 import { browserLinkUrl as answerUrl } from "../browser-links";
 import { RunPanel } from "./RunPanel";
 import {
@@ -1663,7 +1664,7 @@ export function Conversation({
       }}
     />
   );
-  if (id === "history") return <ConversationHistory />;
+  if (id === "history") return <ChatHistory />;
   const dictation = (
     <Dictation
       draftKey={id ? draftKey(id) : "new"}

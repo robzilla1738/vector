@@ -9,7 +9,7 @@ import { useSidebarControl } from "./use-sidebar-control";
 import { windowTabHint } from "../tab-window-transfer";
 import { FeatureSlots } from "../features/registry";
 import "./Sidebar.css";
-import { ChatSessions } from "./ChatSessions";
+import { SidebarChats } from "../chat-list/SidebarChats";
 import { TabPreview, useSidebarTabPreview } from "./TabPreview";
 import {
   lazy,
@@ -784,14 +784,14 @@ const SidebarBookmarks = memo(function SidebarBookmarks({
   );
 });
 
-const SidebarChats = memo(function SidebarChats() {
+const SidebarChatSection = memo(function SidebarChatSection() {
   return (
     <div className="sb-chats">
       <button className="sb-link" data-command-id="new-chat" onClick={() => runCommand("new-chat")}>
         {shellIconPencil}
         <span>New chat</span>
       </button>
-      <ChatSessions compact />
+      <SidebarChats compact />
     </div>
   );
 });
@@ -1199,7 +1199,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
       )}
       {!bridge.privateMode && (
         <SidebarSection title="Chats" open={sections.chats} onToggle={() => toggleSection("chats")}>
-          <SidebarChats />
+          <SidebarChatSection />
         </SidebarSection>
       )}
       <SidebarSection title="Tabs" open={sections.tabs} onToggle={() => toggleSection("tabs")} fill>

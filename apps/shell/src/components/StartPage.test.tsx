@@ -39,7 +39,7 @@ vi.mock("./CommandBar", () => ({
 }));
 vi.mock("./AuxMark", () => ({ AuxMark: () => <span aria-hidden="true">Aux</span> }));
 vi.mock("./SessionRecovery", () => ({ SessionRecovery: () => null }));
-vi.mock("./RecentWork", () => ({ RecentWork: () => <section aria-label="Recent work" /> }));
+vi.mock("../chat-list/RecentWork", () => ({ RecentWork: () => <section aria-label="Recent work" /> }));
 vi.mock("../features/registry", () => ({ FeatureSlots: () => null }));
 vi.mock("../agent/RunAttentionFeed", () => ({
   RunAttentionFeed: () => null,

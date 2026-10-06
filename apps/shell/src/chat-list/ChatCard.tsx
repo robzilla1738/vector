@@ -4,10 +4,10 @@ import { draftKey } from "../conversation-drafts";
 import { STATUS_LABEL } from "../run-status";
 import { useStore } from "../store";
 import { shellIconOpen, shellIconResult } from "../ui/icons";
-import { ResultExcerpt } from "./ResultCard";
-import { AnswerPreview } from "./surfaces";
+import { ResultExcerpt } from "../components/ResultCard";
+import { AnswerPreview } from "../components/surfaces";
 
-function previewText(item: ConversationSummary, draft?: string) {
+export function previewText(item: ConversationSummary, draft?: string) {
   if (draft?.trim()) return draft.trim();
   const run = item.latestRun;
   if (typeof run.result?.answer === "string" && run.result.answer.trim()) return run.result.answer;
@@ -18,7 +18,7 @@ function previewText(item: ConversationSummary, draft?: string) {
 }
 
 /** A draft edit updates only its own card, preserving other cards and their focus. */
-export const RecentConversationCard = memo(function RecentConversationCard({
+export const ChatCard = memo(function ChatCard({
   item,
   artifact,
 }: {
