@@ -437051,18 +437051,19 @@ index 0000000..983e469
 +export { default } from '../../../native-environment.js';
 diff --git a/chrome/browser/ui/aux/semantic/native-entry.js b/chrome/browser/ui/aux/semantic/native-entry.js
 new file mode 100644
-index 0000000..f16f81d
+index 0000000..facc265
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic/native-entry.js
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,51 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +import { NativeSemanticBridge, SemanticFilterOperation } from './aux_semantic_filters.mojom-webui.js';
++import { retireDeferredWork } from './native-environment.js';
 +import { compileSnapshot, checkRequest, checkPopup, documentCosmetics, filterResponseHeaders, filterHtml, filterOriginalBody, bodyPlan, scriptletsForDocument, genericCosmetics } from './semantic-adapter.js';
 +
 +const bridge = NativeSemanticBridge.getRemote();
 +let generation;
 +let retired = false;
-+bridge.onConnectionError.addListener(() => { retired = true; });
++bridge.onConnectionError.addListener(() => { retired = true; retireDeferredWork(); });
 +const { snapshot } = await bridge.initialize();
 +generation = snapshot.generation;
 +let compilation;
@@ -437107,10 +437108,10 @@ index 0000000..f16f81d
 +}
 diff --git a/chrome/browser/ui/aux/semantic/native-environment.js b/chrome/browser/ui/aux/semantic/native-environment.js
 new file mode 100644
-index 0000000..dea533c
+index 0000000..9e331d2
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic/native-environment.js
-@@ -0,0 +1,70 @@
+@@ -0,0 +1,221 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +// Environment adapter for byte-identical maintained uBO modules. This document
 +// has no page/extension APIs: it returns data to its native-bound Mojo owner.
@@ -437158,20 +437159,171 @@ index 0000000..dea533c
 +  environment.canFilterResponseData = capabilities.htmlTransform === true;
 +}
 +export default environment;
++// The maintained SNFE stores only allocation metadata in this optional cache.
++// It is real original-document memory, never Profile/page localStorage or a
++// fake persistence acknowledgement. Two fixed keys bound both size and purpose.
++const optimizationKeys = new Set([
++  'SNFE.origHNTrieContainer.trieDetails',
++  'SNFE.destHNTrieContainer.trieDetails',
++]);
++const optimizationCache = new Map();
++const optimizationStorage = Object.freeze({
++  getItem(key) {
++    if (deferredRetired) throw new Error('Original optimization cache retired');
++    if (!optimizationKeys.has(key)) throw new Error('Unknown optimization cache key');
++    return optimizationCache.get(key) ?? null;
++  },
++  async setItem(key, value = undefined) {
++    if (deferredRetired) throw new Error('Original optimization cache retired');
++    if (!optimizationKeys.has(key)) throw new Error('Unknown optimization cache key');
++    if (value === undefined) { optimizationCache.delete(key); return; }
++    if (!value || typeof value !== 'object' || Object.keys(value).length !== 2 ||
++        !Number.isSafeInteger(value.byteLength) || value.byteLength < 0 ||
++        !Number.isSafeInteger(value.char0) || value.char0 < 0 || value.char0 > value.byteLength) {
++      throw new Error('Invalid maintained trie allocation metadata');
++    }
++    optimizationCache.set(key, Object.freeze({ byteLength: value.byteLength, char0: value.char0 }));
++  },
++  async removeItem(key) { await this.setItem(key); },
++});
++// Mirror the pinned vAPI.defer scheduling contract using real WebUI timers.
++// Every handle belongs to this original document and is cancelled on retirement.
++const deferredClients = new Set();
++const deferredPromises = new Set();
++let deferredRetired = false;
++export function retireDeferredWork() {
++  if (deferredRetired) return;
++  deferredRetired = true;
++  optimizationCache.clear();
++  for (const client of deferredClients) client.off();
++  deferredClients.clear();
++  for (const reject of deferredPromises) reject(new Error('Original semantic timer owner retired'));
++  deferredPromises.clear();
++}
++function normalizeDelay(delay = 0) {
++  if (typeof delay === 'object') {
++    if (delay.sec !== undefined) return delay.sec * 1000;
++    if (delay.min !== undefined) return delay.min * 60000;
++    if (delay.hr !== undefined) return delay.hr * 3600000;
++  }
++  return delay;
++}
++class DeferredClient {
++  constructor(callback) {
++    if (deferredRetired) throw new Error('Original semantic timer owner retired');
++    if (typeof callback !== 'function') throw new TypeError('Deferred callback must be a function');
++    this.timer = null;
++    this.type = 0;
++    this.callback = callback;
++  }
++  current() {
++    if (deferredRetired) throw new Error('Original semantic timer owner retired');
++  }
++  on(delay, ...args) {
++    this.current();
++    if (this.timer !== null) return;
++    deferredClients.add(this);
++    this.type = 0;
++    this.timer = setTimeout(() => {
++      this.timer = null;
++      deferredClients.delete(this);
++      if (!deferredRetired) this.callback(...args);
++    }, normalizeDelay(delay) || 1);
++  }
++  offon(delay, ...args) { this.off(); this.on(delay, ...args); }
++  onvsync(delay, ...args) {
++    this.current();
++    if (this.timer !== null) return;
++    const milliseconds = normalizeDelay(delay);
++    if (milliseconds !== 0) {
++      deferredClients.add(this);
++      this.type = 0;
++      this.timer = setTimeout(() => {
++        this.timer = null;
++        deferredClients.delete(this);
++        if (!deferredRetired) this.onraf(...args);
++      }, milliseconds);
++    } else this.onraf(...args);
++  }
++  onidle(delay, options, ...args) {
++    this.current();
++    if (this.timer !== null) return;
++    const milliseconds = normalizeDelay(delay);
++    if (milliseconds !== 0) {
++      deferredClients.add(this);
++      this.type = 0;
++      this.timer = setTimeout(() => {
++        this.timer = null;
++        deferredClients.delete(this);
++        if (!deferredRetired) this.onric(options, ...args);
++      }, milliseconds);
++    } else this.onric(options, ...args);
++  }
++  off() {
++    deferredClients.delete(this);
++    if (this.timer === null) return;
++    switch (this.type) {
++      case 0: clearTimeout(this.timer); break;
++      case 1: cancelAnimationFrame(this.timer); break;
++      case 2: cancelIdleCallback(this.timer); break;
++    }
++    this.timer = null;
++  }
++  onraf(...args) {
++    this.current();
++    if (this.timer !== null) return;
++    deferredClients.add(this);
++    this.type = 1;
++    this.timer = requestAnimationFrame(() => {
++      this.timer = null;
++      deferredClients.delete(this);
++      if (!deferredRetired) this.callback(...args);
++    });
++  }
++  onric(options, ...args) {
++    this.current();
++    if (this.timer !== null) return;
++    deferredClients.add(this);
++    this.type = 2;
++    this.timer = requestIdleCallback((deadline) => {
++      this.timer = null;
++      deferredClients.delete(this);
++      if (!deferredRetired) this.callback(deadline, ...args);
++    }, options);
++  }
++  ongoing() { return this.timer !== null; }
++}
++const defer = Object.freeze({
++  Client: DeferredClient,
++  create(callback) { return new DeferredClient(callback); },
++  normalizeDelay,
++  once(delay, ...args) {
++    if (deferredRetired) return Promise.reject(new Error('Original semantic timer owner retired'));
++    return new Promise((resolve, reject) => {
++      deferredPromises.add(reject);
++      const client = new DeferredClient(() => {
++        deferredPromises.delete(reject);
++        deferredClients.delete(client);
++        resolve(...args);
++      });
++      deferredClients.add(client);
++      client.timer = setTimeout(() => {
++        client.timer = null;
++        deferredClients.delete(client);
++        if (!deferredRetired) client.callback();
++      }, normalizeDelay(delay));
++    });
++  },
++});
++globalThis.addEventListener('pagehide', retireDeferredWork, { once: true });
 +// Used only for maintained selector-cache maintenance, not privileged browser
 +// operations. CSS installation stays with the native original-document owner.
 +globalThis.vAPI = Object.freeze({
 +  // The real native component exposes public WAR assets; no secret token is
 +  // an authority substitute. Native document/snapshot admission remains required.
 +  warSecret: Object.freeze({ short: () => '' }),
-+  defer: Object.freeze({ create(callback) {
-+    let timer;
-+    return { off() { clearTimeout(timer); timer = undefined; }, on(delay) {
-+      if (timer !== undefined) return;
-+      const milliseconds = Number(delay?.min ?? 0) * 60000;
-+      timer = setTimeout(() => { timer = undefined; callback(); }, milliseconds);
-+    } };
-+  } }),
++  defer,
++  localStorage: optimizationStorage,
 +  tabs: Object.freeze({ insertCSS(id, details) {
 +    // Maintained generic retrieval asks its platform interface to install CSS.
 +    // Here that interface can only produce a bounded receipt in the current
@@ -443534,14 +443686,15 @@ index 0000000..e981e61
 +/******************************************************************************/
 diff --git a/chrome/browser/ui/aux/semantic/scriptlet-adapter.js b/chrome/browser/ui/aux/semantic/scriptlet-adapter.js
 new file mode 100644
-index 0000000..796fe55
+index 0000000..e119045
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic/scriptlet-adapter.js
-@@ -0,0 +1,60 @@
+@@ -0,0 +1,85 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
 +import './native-environment.js';
 +import { builtinScriptlets } from './js/resources/scriptlets.js';
 +import { redirectEngine } from './upstream/src/js/redirect-engine.js';
++import redirectableResources from './upstream/src/js/redirect-resources.js';
 +import { ScriptletFilteringEngine } from './upstream/src/js/scriptlet-filtering-core.js';
 +import * as maker from './upstream/src/js/make-scriptlets.js';
 +import * as sfp from './upstream/src/js/static-filtering-parser.js';
@@ -443566,6 +443719,30 @@ index 0000000..796fe55
 +}
 +maker.init(builtinScriptlets);
 +export const scriptletEngine = new ScriptletFilteringEngine();
++export async function initializeScriptletResources() {
++  // Legacy injectable resources are maintained public text assets, not entries
++  // in the newer builtin function registry. Import their exact loaded bytes
++  // through maintained make-scriptlets, retaining its aliases/world semantics.
++  for (const [name, details] of redirectableResources) {
++    if (!name.endsWith('.js') || details.data !== 'text') continue;
++    if (catalog.has(name)) throw new Error('Conflicting maintained injectable resource');
++    const resource = redirectEngine.contentFromName(name, 'text/javascript');
++    if (!resource || typeof resource.js !== 'string') throw new Error(`Missing maintained injectable resource: ${name}`);
++    const aliases = typeof details.alias === 'string' ? [details.alias] : (details.alias ?? []);
++    const entry = { name, aliases, requiresTrust: redirectEngine.tokenRequiresTrust(name),
++      dependencies: resource.dependencies };
++    for (const token of [name, ...aliases]) {
++      if (catalog.has(token)) throw new Error('Conflicting maintained injectable alias');
++      catalog.set(token, entry);
++    }
++    await maker.importScriptlet({ ...entry, code: resource.js, world: resource.world });
++  }
++  for (const entry of catalog.values()) {
++    for (const dependency of entry.dependencies ?? []) {
++      if (!catalog.has(dependency)) throw new Error('Missing maintained injectable dependency');
++    }
++  }
++}
 +export function compileScriptlet(parser, writer, trustedSource) {
 +  const args = parser.getScriptletArgs();
 +  if (args.length) {
@@ -443600,12 +443777,12 @@ index 0000000..796fe55
 +}
 diff --git a/chrome/browser/ui/aux/semantic/semantic-adapter.js b/chrome/browser/ui/aux/semantic/semantic-adapter.js
 new file mode 100644
-index 0000000..056aff3
+index 0000000..c95cb73
 --- /dev/null
 +++ b/chrome/browser/ui/aux/semantic/semantic-adapter.js
-@@ -0,0 +1,508 @@
+@@ -0,0 +1,509 @@
 +// Copyright 2026 The Aux Authors. BSD-3-Clause.
-+import { scriptletEngine, compileScriptlet, documentScriptlets, trustedTokens } from './scriptlet-adapter.js';
++import { scriptletEngine, compileScriptlet, documentScriptlets, trustedTokens, initializeScriptletResources } from './scriptlet-adapter.js';
 +import { drainDiagnostics, setNativeCapabilities, withContext } from './native-environment.js';
 +import * as sfp from './upstream/src/js/static-filtering-parser.js';
 +import snfe from './upstream/src/js/static-net-filtering.js';
@@ -443693,6 +443870,18 @@ index 0000000..056aff3
 +  capabilities = Object.freeze({ htmlTransform: input.capabilities?.htmlTransform === true, scriptlets: input.capabilities?.scriptlets === true });
 +  setNativeCapabilities(capabilities);
 +  publicSuffixList.parse(boundedString(input.publicSuffixList, MAX_SOURCE_BYTES, 'Public suffix list'), (name) => new URL(`https://${name}/`).hostname);
++  // Resource loading is maintained upstream code, supplied only hash-verified
++  // local public assets. A missing asset/catalog entry rejects this candidate;
++  // upstream's logged import failure must never create partial acceptance.
++  await redirectEngine.loadBuiltinResources(loadPublicRedirectResource);
++  const resourceDetails = new Map(redirectEngine.getResourceDetails());
++  for (const name of redirectableResources.keys()) {
++    if (!publicRedirectPaths.includes(`/web_accessible_resources/${name}`) ||
++        !resourceDetails.get(name)?.canRedirect) throw new Error(`Missing pinned redirect resource: ${name}`);
++  }
++  const resourceErrors = drainDiagnostics().filter((item) => item.type === 'error');
++  if (resourceErrors.length) throw new Error('Maintained redirect resource initialization failed');
++  await initializeScriptletResources();
 +  const errors = [];
 +  const warnings = [];
 +  let bytes = 0;
@@ -443785,17 +443974,6 @@ index 0000000..056aff3
 +  html.fromCompiledContent(new CompiledListReader(compiled));
 +  responseHeaders.fromCompiledContent(new CompiledListReader(compiled)); responseHeaders.freeze();
 +  scriptletEngine.fromCompiledContent(new CompiledListReader(compiled)); scriptletEngine.freeze();
-+  // Resource loading is maintained upstream code, supplied only hash-verified
-+  // local public assets. A missing asset/catalog entry rejects this candidate;
-+  // upstream's logged import failure must never create partial acceptance.
-+  await redirectEngine.loadBuiltinResources(loadPublicRedirectResource);
-+  const resourceDetails = new Map(redirectEngine.getResourceDetails());
-+  for (const name of redirectableResources.keys()) {
-+    if (!publicRedirectPaths.includes(`/web_accessible_resources/${name}`) ||
-+        !resourceDetails.get(name)?.canRedirect) throw new Error(`Missing pinned redirect resource: ${name}`);
-+  }
-+  const resourceErrors = drainDiagnostics().filter((item) => item.type === 'error');
-+  if (resourceErrors.length) throw new Error('Maintained redirect resource initialization failed');
 +  ready = true;
 +  return { generation, accepted: true, diagnostics: [], sourceBytes: bytes, warnings };
 +}
