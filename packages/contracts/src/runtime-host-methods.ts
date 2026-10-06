@@ -1,4 +1,10 @@
 import {
+  ContentBlockBeginSchema,
+  ContentBlockAppendSchema,
+  ContentBlockCommitSchema,
+  ContentBlockReceiptSchema,
+} from "./content-blocking-schema.js";
+import {
   NativeCopilotStartParams,
   NativeCopilotStartSchema,
   NativeCopilotEndpointParams,
@@ -89,17 +95,6 @@ const nullableString = str.nullable();
 const ok = z.object({ ok: bool }).strict();
 const accepted = z.object({ accepted: z.literal(true) }).strict();
 const pageId = z.object({ pageId: str }).strict();
-const contentGuard = z.object({ pageId: str, expectedUrl: str, navigationId: number }).strict().optional();
-const contentBase = z
-  .object({
-    profileId: str,
-    generation: number,
-    allowedSiteHosts: z.array(str),
-    enabled: bool,
-    siteGuard: contentGuard,
-  })
-  .strict();
-const cosmeticRule = z.object({ domains: z.array(str), selector: str }).strict();
 const nativePage = z
   .object({
     pageId: str,
@@ -118,53 +113,17 @@ export const RuntimeHostMethods = {
   "native.copilotStart": runtime("core", NativeCopilotStartParams, NativeCopilotStartSchema),
   "native.copilotEndpoint": runtime("core", NativeCopilotEndpointParams, NativeCopilotEndpointSchema),
   "native.copilotStop": runtime("core", NativeCopilotStopParams, NativeCopilotStoppedSchema),
-  "native.contentBlockBegin": runtime(
+  "native.contentBlockState": runtime(
     "contentBlocking",
-    contentBase.extend({ hostsDigest: str, hostCount: number }),
-    accepted,
+    z.object({ profileId: z.string().min(1).max(128) }).strict(),
+    z.object({ receipt: ContentBlockReceiptSchema.nullable() }).strict(),
   ),
-  "native.contentBlockAppend": runtime(
-    "contentBlocking",
-    z.object({ profileId: str, generation: number, offset: number, hosts: z.array(str) }).strict(),
-    accepted,
-  ),
+  "native.contentBlockBegin": runtime("contentBlocking", ContentBlockBeginSchema, accepted),
+  "native.contentBlockAppend": runtime("contentBlocking", ContentBlockAppendSchema, accepted),
   "native.contentBlockCommit": runtime(
     "contentBlocking",
-    z.object({ profileId: str, generation: number, hostsDigest: str }).strict(),
-    z
-      .object({
-        backend: z.enum(["subresource_filter", "declarative_net_request"]),
-        generation: number,
-        hostsDigest: str,
-        installedRules: number,
-      })
-      .strict(),
-  ),
-  "native.cosmeticBegin": runtime(
-    "contentBlocking",
-    contentBase.extend({ rulesDigest: str, ruleCount: number }),
-    accepted,
-  ),
-  "native.cosmeticAppend": runtime(
-    "contentBlocking",
-    z.object({ profileId: str, generation: number, offset: number, rules: z.array(cosmeticRule) }).strict(),
-    accepted,
-  ),
-  "native.cosmeticCommit": runtime(
-    "contentBlocking",
-    z.object({ profileId: str, generation: number, rulesDigest: str }).strict(),
-    z
-      .object({
-        backend: z.literal("isolated_world_stylesheet"),
-        profileId: str,
-        private: bool,
-        generation: number,
-        rulesDigest: str,
-        installedRules: number,
-        phase: z.literal("document_start"),
-        futureDocuments: z.literal(true),
-      })
-      .strict(),
+    ContentBlockCommitSchema,
+    ContentBlockReceiptSchema,
   ),
   "native.organizationSnapshot": runtime(
     "tabMentions",

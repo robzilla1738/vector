@@ -784,6 +784,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     : Promise.resolve(featureAvailabilityFor([]));
   let blockingBoot: Promise<void> | undefined;
   const ensureBlocking = () => {
+    if (closed) throw new AuxError("cancelled", "Content filtering construction retired.");
     const blocking = runtimeServices.blocking;
     return blocking ? (blockingBoot ??= blocking.boot()) : Promise.resolve();
   };
@@ -1923,7 +1924,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       process.off("unhandledRejection", onUnhandledRejection);
       process.off("uncaughtException", onUncaughtException);
     },
-    retireAuthority: () => withRunAuthorityMutation(repo, async () => {}),
+    retireAuthority: async () => {
+      try {
+        await serviceContainer.peek("blocking")?.close();
+      } finally {
+        await withRunAuthorityMutation(repo, async () => {});
+      }
+    },
     closeEgress: () => {
       browserEgress?.close();
     },

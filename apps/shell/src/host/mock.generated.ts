@@ -7,7 +7,7 @@ import { HostMethods, HostEvents } from "@aux/contracts/host-methods";
 import { AuxError } from "@aux/contracts";
 import type { createHostClient } from "./client.generated";
 
-const NATIVE_ONLY = new Set(["native.copilotStart","native.copilotEndpoint","native.copilotStop","native.cdpReset","native.cdpCatalog","native.cdpAttach","native.cdpStartNavigation","native.cdpTakeNavigationReceipt","native.cdpDispatch","native.egressContext","native.egressInstall","native.egressRevoke","native.egressResumePerson","native.egressResumeRun","native.egressCheckRunResume","native.egressRunTerminal","native.createAgentPage","native.creatorCleanupProof","native.closeCreatedPage","native.recorderStart","native.recorderDrain","native.recorderStop","native.personRead","native.personReadContext","native.credentialContext","native.credentialAdmit","native.permissionRetire"]);
+const NATIVE_ONLY = new Set(["native.contentBlockState","native.contentBlockBegin","native.contentBlockAppend","native.contentBlockCommit","native.copilotStart","native.copilotEndpoint","native.copilotStop","native.cdpReset","native.cdpCatalog","native.cdpAttach","native.cdpStartNavigation","native.cdpTakeNavigationReceipt","native.cdpDispatch","native.egressContext","native.egressInstall","native.egressRevoke","native.egressResumePerson","native.egressResumeRun","native.egressCheckRunResume","native.egressRunTerminal","native.createAgentPage","native.creatorCleanupProof","native.closeCreatedPage","native.recorderStart","native.recorderDrain","native.recorderStop","native.personRead","native.personReadContext","native.credentialContext","native.credentialAdmit","native.permissionRetire"]);
 const RESULTS: Record<string, unknown> = {
   "capabilities": {
     "buildId": "mock-buildid",
@@ -471,34 +471,6 @@ const RESULTS: Record<string, unknown> = {
     "truncated": false
   },
   "showOriginal": 0,
-  "native.contentBlockBegin": {
-    "accepted": true
-  },
-  "native.contentBlockAppend": {
-    "accepted": true
-  },
-  "native.contentBlockCommit": {
-    "backend": "subresource_filter",
-    "generation": 0,
-    "hostsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "installedRules": 0
-  },
-  "native.cosmeticBegin": {
-    "accepted": true
-  },
-  "native.cosmeticAppend": {
-    "accepted": true
-  },
-  "native.cosmeticCommit": {
-    "backend": "isolated_world_stylesheet",
-    "profileId": "mock-profileid",
-    "private": false,
-    "generation": 0,
-    "rulesDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "installedRules": 0,
-    "phase": "document_start",
-    "futureDocuments": true
-  },
   "native.organizationSnapshot": {
     "revision": 0,
     "shared": null

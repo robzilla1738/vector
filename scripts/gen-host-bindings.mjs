@@ -149,7 +149,13 @@ function emitNode(schema, index) {
         add("if (!HasNoControlOrFormatCharacters(utf16)) return false;");
       else if (schema.pattern === "^[a-f0-9]{64}$")
         add("if (!IsLowerHexSha256(value.GetString())) return false;");
-      else if (schema.pattern === "^[A-F0-9]{32}$") {
+      else if (/^\^\[a-f0-9\]\{([1-9][0-9]*)\}\$$/.test(schema.pattern)) {
+        const size = Number(schema.pattern.match(/\{([1-9][0-9]*)\}/)[1]);
+        if (!Number.isSafeInteger(size)) throw new Error(`Unsupported hex length ${schema.pattern}`);
+        add("const auto& hex = value.GetString();");
+        add(`if (hex.size() != ${size}) return false;`);
+        add("for (char c : hex) if (!((c >= 'a' && c <= 'f') || (c >= '0' && c <= '9'))) return false;");
+      } else if (schema.pattern === "^[A-F0-9]{32}$") {
         add("const auto& token = value.GetString();");
         add("if (token.size() != 32 || token == std::string(32, '0')) return false;");
         add("for (char c : token) if (!((c >= 'A' && c <= 'F') || (c >= '0' && c <= '9'))) return false;");
@@ -558,6 +564,10 @@ function firstValid(schema, hint, depth) {
 }
 // A browser mock cannot issue native document, lease or effect receipts.
 const nativeOnlyHostMethods = new Set([
+  "native.contentBlockState",
+  "native.contentBlockBegin",
+  "native.contentBlockAppend",
+  "native.contentBlockCommit",
   "native.copilotStart",
   "native.copilotEndpoint",
   "native.copilotStop",

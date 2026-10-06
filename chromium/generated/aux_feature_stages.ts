@@ -521,12 +521,10 @@ const requirements = {
       "addFilterSource",
       "removeFilterSource",
       "setFilterSourceEnabled",
+      "native.contentBlockState",
       "native.contentBlockBegin",
       "native.contentBlockAppend",
-      "native.contentBlockCommit",
-      "native.cosmeticBegin",
-      "native.cosmeticAppend",
-      "native.cosmeticCommit"
+      "native.contentBlockCommit"
     ]
   },
   "httpsFirst": {

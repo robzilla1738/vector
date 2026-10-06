@@ -1,299 +1,265 @@
+import { publicHttpsText } from "./public-https.js";
 import { createHash } from "node:crypto";
-import { readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { FilterLists, type FilterListStatus, type FilterSource } from "@aux/filter-lists";
+import {
+  FilterLists,
+  type FilterListStatus,
+  type FilterSource,
+  type BlockingState,
+  type PreparedFilters,
+  type FetchFilter,
+} from "@aux/filter-lists";
 import {
   assertContentBlockReceipt,
-  assertCookieBannerReceipt,
-  canonicalCookieRules,
-  cookieRuleDigestInput,
+  filterSnapshotDigestInput,
   filterSourceUrl,
-  isAuxError,
-  MAX_FILTER_HOSTS,
-  readBoundedFilterText,
-  TRACKER_HOSTS,
+  MAX_FILTER_BYTES,
+  MAX_FILTER_CHUNK_BYTES,
   type ContentBlockSnapshot,
+  type ChromiumContentBlockReceipt,
   type FilterSourceKind,
 } from "@aux/contracts";
-import type { NativeBridge } from "../native.js";
-import type { ContentBlockBegin } from "../native.js";
-
+import type { NativeBridge, ContentBlockBegin } from "../native.js";
 type BlockingNativeBridge = Pick<
   NativeBridge,
-  | "contentBlockBegin"
-  | "contentBlockAppend"
-  | "contentBlockCommit"
-  | "cosmeticBegin"
-  | "cosmeticAppend"
-  | "cosmeticCommit"
+  "contentBlockState" | "contentBlockBegin" | "contentBlockAppend" | "contentBlockCommit"
 >;
 
-interface BlockingSettings {
-  generation: number;
-  enabled: boolean;
-  allowedSiteHosts: string[];
-}
-
-/** Per-Profile list owner. The native receipt is the only proof that a downloaded
- * host became an active Chromium rule. Failed downloads retain the last cache;
- * failed native commits leave the old rules installed. */
+/** One Profile snapshot owner. Configuration, cache and statistics publish only after exact native activation. */
 export class ContentBlockingService {
   private readonly lists: FilterLists;
-  private readonly settingsPath: string;
-  private settings: BlockingSettings;
-  private busy = false;
-  private cosmeticReady = false;
-  private installedCookieSelectors = 0;
-
+  private operation: Promise<unknown> | null = null;
+  private controller: AbortController | null = null;
+  private closed = false;
+  private cleanup: Promise<void> = Promise.resolve();
   constructor(
-    private readonly dataDir: string,
+    dataDir: string,
     private readonly native: BlockingNativeBridge,
     private readonly profileId: string,
-    private readonly fetchText = fetchFilterText,
+    private readonly fetchText: FetchFilter = fetchFilterText,
   ) {
-    this.lists = new FilterLists(dataDir, "subresource_filter");
-    this.settingsPath = join(this.lists.dir, "blocking.json");
-    this.settings = this.readSettings();
+    this.lists = new FilterLists(dataDir);
   }
-
-  private readSettings(): BlockingSettings {
-    try {
-      const value = JSON.parse(readFileSync(this.settingsPath, "utf8")) as Partial<BlockingSettings>;
-      return {
-        generation: Number.isSafeInteger(value.generation) && value.generation! >= 0 ? value.generation! : 0,
-        enabled: value.enabled !== false,
-        allowedSiteHosts: Array.isArray(value.allowedSiteHosts)
-          ? value.allowedSiteHosts
-              .filter((host): host is string => typeof host === "string" && validSiteHost(host))
-              .slice(0, 4096)
-          : [],
-      };
-    } catch {
-      return { generation: 0, enabled: true, allowedSiteHosts: [] };
-    }
-  }
-
-  private saveSettings() {
-    const path = `${this.settingsPath}.tmp`;
-    writeFileSync(path, JSON.stringify(this.settings), { mode: 0o600 });
-    renameSync(path, this.settingsPath);
-  }
-
   status(): FilterListStatus {
-    const state = this.lists.status(TRACKER_HOSTS.size);
-    return {
-      ...state,
-      cookieSelectors: this.installedCookieSelectors,
-      cosmeticBackend: this.cosmeticReady ? "document_start_stylesheet" : "unavailable",
-      sources: state.sources.map((source) =>
-        source.kind === "cookie_banner" && !this.cosmeticReady
-          ? {
-              ...source,
-              enabled: false,
-              meta: {
-                ...(source.meta ?? { fetchedAt: 0, hosts: 0, sha256: "" }),
-                error: "Chromium cosmetic filtering is unavailable in this browser build.",
-              },
-            }
-          : source,
-      ),
-    };
+    return this.lists.status();
   }
-
   privacy() {
-    return { trackerBlock: this.settings.enabled, allowedHosts: [...this.settings.allowedSiteHosts] };
+    const state = this.lists.current();
+    return { trackerBlock: state.enabled, allowedHosts: state.allowedSiteHosts };
   }
-
-  private async installSnapshot(siteGuard?: ContentBlockBegin["siteGuard"]) {
-    if (!this.native.contentBlockBegin || !this.native.contentBlockAppend || !this.native.contentBlockCommit)
-      throw new Error("Chromium content blocking is unavailable in this browser build.");
-    const selected = await this.lists.loadHostsOffThread();
-    const hosts = [...new Set([...TRACKER_HOSTS, ...selected])].sort();
-    if (hosts.length > MAX_FILTER_HOSTS) throw new Error("Too many filter hosts for Chromium.");
-    const hostsDigest = createHash("sha256").update(hosts.join("\n")).digest("hex");
-    const generation = ++this.settings.generation;
-    this.saveSettings();
-    const snapshot: ContentBlockSnapshot = {
-      generation,
-      hostsDigest,
-      hosts,
-      allowedSiteHosts: this.settings.allowedSiteHosts,
-      enabled: this.settings.enabled,
+  private snapshot(prepared: PreparedFilters): ContentBlockSnapshot {
+    return {
+      profileId: this.profileId,
+      generation: prepared.state.generation,
+      filterDigest: createHash("sha256")
+        .update(
+          filterSnapshotDigestInput(
+            prepared.sources,
+            prepared.state.enabled,
+            prepared.state.allowedSiteHosts,
+          ),
+        )
+        .digest("hex"),
+      sources: prepared.sources,
+      enabled: prepared.state.enabled,
+      allowedSiteHosts: prepared.state.allowedSiteHosts,
     };
+  }
+  private async currentReceipt(): Promise<ChromiumContentBlockReceipt | null> {
+    if (!this.native.contentBlockState)
+      throw new Error("Chromium content filtering is unavailable in this browser build.");
+    return (await this.native.contentBlockState({ profileId: this.profileId })).receipt;
+  }
+  private async install(
+    state: BlockingState,
+    signal: AbortSignal,
+    siteGuard?: ContentBlockBegin["siteGuard"],
+  ): Promise<void> {
+    if (!this.native.contentBlockBegin || !this.native.contentBlockAppend || !this.native.contentBlockCommit)
+      throw new Error("Chromium content filtering is unavailable in this browser build.");
+    signal.throwIfAborted();
+    const current = await this.currentReceipt();
+    signal.throwIfAborted();
+    state.generation = await this.lists.reserveGeneration(current?.generation ?? 0);
+    const prepared = await this.lists.prepare(state);
+    const snapshot = this.snapshot(prepared);
+    // If the process exits after native ACK, boot recovers this exact candidate
+    // using the native state receipt before publishing any different policy.
+    await this.lists.stage(prepared);
+    signal.throwIfAborted();
     await this.native.contentBlockBegin({
       profileId: this.profileId,
-      generation,
-      hostsDigest,
-      hostCount: hosts.length,
-      allowedSiteHosts: snapshot.allowedSiteHosts,
+      generation: snapshot.generation,
+      filterDigest: snapshot.filterDigest,
+      sources: snapshot.sources.map(({ text, ...header }) => ({ ...header, bundled: text === undefined })),
       enabled: snapshot.enabled,
+      allowedSiteHosts: snapshot.allowedSiteHosts,
       ...(siteGuard ? { siteGuard } : {}),
     });
-    for (let offset = 0; offset < hosts.length; offset += 1024)
-      await this.native.contentBlockAppend({
-        profileId: this.profileId,
-        generation,
-        offset,
-        hosts: hosts.slice(offset, offset + 1024),
-      });
+    for (const source of snapshot.sources) {
+      if (source.text === undefined) continue;
+      let offset = 0;
+      // Bound by encoded bytes while retaining whole UTF-8 code points.
+      let chunk = "",
+        bytes = 0;
+      const append = async () => {
+        signal.throwIfAborted();
+        await this.native.contentBlockAppend!({
+          profileId: this.profileId,
+          generation: snapshot.generation,
+          sourceId: source.id,
+          offset,
+          text: chunk,
+        });
+        offset += bytes;
+        chunk = "";
+        bytes = 0;
+      };
+      for (const character of source.text) {
+        const size = Buffer.byteLength(character, "utf8");
+        if (bytes + size > MAX_FILTER_CHUNK_BYTES) await append();
+        chunk += character;
+        bytes += size;
+      }
+      if (bytes) await append();
+    }
+    signal.throwIfAborted();
     const receipt = await this.native.contentBlockCommit({
       profileId: this.profileId,
-      generation,
-      hostsDigest,
+      generation: snapshot.generation,
+      filterDigest: snapshot.filterDigest,
     });
     assertContentBlockReceipt(snapshot, receipt);
-    if (receipt.backend !== "subresource_filter")
-      throw new Error("Chromium reported the wrong filter backend.");
-    if (receipt.installedRules !== hosts.length)
-      throw new Error("Chromium installed a partial filter snapshot.");
-    if (this.native.cosmeticBegin && this.native.cosmeticAppend && this.native.cosmeticCommit) {
-      const rules = canonicalCookieRules(await this.lists.loadCookieRulesOffThread());
-      const rulesDigest = createHash("sha256").update(cookieRuleDigestInput(rules)).digest("hex");
-      const cosmetic = {
-        profileId: this.profileId,
-        private: false,
-        generation,
-        rulesDigest,
-        rules,
-        allowedSiteHosts: snapshot.allowedSiteHosts,
-        enabled: snapshot.enabled,
-      };
-      await this.native.cosmeticBegin({
-        profileId: this.profileId,
-        generation,
-        rulesDigest,
-        ruleCount: rules.length,
-        allowedSiteHosts: snapshot.allowedSiteHosts,
-        enabled: snapshot.enabled,
-        ...(siteGuard ? { siteGuard } : {}),
+    // Cancellation after actual commit cannot erase the saved native receipt.
+    // Complete its journal publication; never report an unactivated candidate.
+    await this.lists.publish(prepared, receipt);
+    this.cleanup = this.cleanup
+      .then(() => this.lists.collectUnused())
+      .catch((error) => {
+        console.warn("Unable to collect inactive filter cache files", error);
       });
-      for (let offset = 0; offset < rules.length; offset += 128)
-        await this.native.cosmeticAppend({
-          profileId: this.profileId,
-          generation,
-          offset,
-          rules: rules.slice(offset, offset + 128),
-        });
-      const cosmeticReceipt = await this.native.cosmeticCommit({
-        profileId: this.profileId,
-        generation,
-        rulesDigest,
-      });
-      assertCookieBannerReceipt(cosmetic, cosmeticReceipt);
-      this.installedCookieSelectors = rules.length;
-      this.cosmeticReady = true;
-    } else {
-      this.cosmeticReady = false;
-      this.installedCookieSelectors = 0;
-      if (this.lists.sources().some((source) => source.enabled && source.kind === "cookie_banner"))
-        throw new Error("Chromium cosmetic filtering is unavailable in this browser build.");
-    }
-    return receipt;
   }
-
-  async boot() {
-    await this.installSnapshot();
+  private mutate<T>(work: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    if (this.closed) return Promise.reject(new Error("Content filtering is closed."));
+    if (this.operation) return Promise.reject(new Error("A filter list operation is already running."));
+    const controller = new AbortController();
+    this.controller = controller;
+    // Finish collection before a later candidate writes new immutable cache files.
+    const operation = this.cleanup.then(() => {
+      controller.signal.throwIfAborted();
+      return work(controller.signal);
+    });
+    this.operation = operation;
+    return operation.finally(() => {
+      if (this.operation === operation) {
+        this.operation = null;
+        this.controller = null;
+      }
+    });
   }
-
-  async maintain() {
-    const sources = this.lists.status(TRACKER_HOSTS.size).sources.filter((source) => source.enabled);
+  async boot(): Promise<void> {
+    await this.mutate(async (signal) => {
+      const pending = this.lists.pending();
+      if (pending) {
+        const prepared = await this.lists.prepare(pending),
+          snapshot = this.snapshot(prepared),
+          current = await this.currentReceipt();
+        if (current?.generation === snapshot.generation && current.filterDigest === snapshot.filterDigest) {
+          assertContentBlockReceipt(snapshot, current);
+          await this.lists.publish(prepared, current);
+        }
+      }
+      await this.install(this.lists.current(), signal);
+    });
+  }
+  async close(): Promise<void> {
+    this.closed = true;
+    this.controller?.abort(new Error("Content filtering closed."));
+    await this.operation?.catch(() => {});
+    await this.cleanup;
+  }
+  async maintain(): Promise<void> {
+    if (this.closed || this.operation) return;
+    const enabled = this.lists.current().sources.filter((source) => source.enabled);
     if (
-      !sources.length ||
-      this.busy ||
-      sources.every(
-        (source) => source.meta?.fetchedAt && Date.now() - source.meta.fetchedAt < 24 * 60 * 60 * 1000,
-      )
+      !enabled.length ||
+      enabled.every((source) => source.meta?.fetchedAt && Date.now() - source.meta.fetchedAt < 86_400_000)
     )
       return;
     await this.update();
   }
-
-  private async mutate<T>(work: () => Promise<T>): Promise<T> {
-    if (this.busy) throw new Error("A filter list operation is already running.");
-    this.busy = true;
-    try {
-      return await work();
-    } finally {
-      this.busy = false;
-    }
-  }
-
-  async update(): Promise<FilterListStatus> {
-    return this.mutate(async () => {
-      await this.lists.update(this.fetchText);
-      await this.installSnapshot();
+  update(): Promise<FilterListStatus> {
+    return this.mutate(async (signal) => {
+      const state = this.lists.current();
+      await this.lists.update(state, this.fetchText, signal);
+      await this.install(state, signal);
       return this.status();
     });
   }
-
-  async add(name: string, url: string, kind: FilterSourceKind): Promise<FilterSource[]> {
-    return this.mutate(async () => {
-      if (kind === "cookie_banner" && !this.cosmeticReady)
-        throw new Error("Chromium cosmetic filtering is unavailable in this browser build.");
-      this.lists.addSource(name, filterSourceUrl(url), kind);
-      await this.lists.update(this.fetchText, [kind]);
-      await this.installSnapshot();
+  add(name: string, url: string, kind: FilterSourceKind = "adblock"): Promise<FilterSource[]> {
+    return this.mutate(async (signal) => {
+      const state = this.lists.current();
+      this.lists.addSource(state, name, url, kind);
+      const id = state.sources.at(-1)!.id;
+      await this.lists.update(state, this.fetchText, signal, id);
+      await this.install(state, signal);
       return this.status().sources;
     });
   }
-
-  async remove(id: string): Promise<FilterSource[]> {
-    return this.mutate(async () => {
-      this.lists.removeSource(id);
-      await this.installSnapshot();
+  remove(id: string): Promise<FilterSource[]> {
+    return this.mutate(async (signal) => {
+      const state = this.lists.current();
+      this.lists.removeSource(state, id);
+      await this.install(state, signal);
       return this.status().sources;
     });
   }
-
-  async setSourceEnabled(id: string, enabled: boolean): Promise<FilterSource[]> {
-    return this.mutate(async () => {
-      const source = this.lists.sources().find((item) => item.id === id);
-      if (enabled && source?.kind === "cookie_banner" && !this.cosmeticReady)
-        throw new Error("Chromium cosmetic filtering is unavailable in this browser build.");
-      this.lists.setEnabled(id, enabled);
-      if (enabled && source) await this.lists.update(this.fetchText, [source.kind]);
-      await this.installSnapshot();
+  setSourceEnabled(id: string, enabled: boolean): Promise<FilterSource[]> {
+    return this.mutate(async (signal) => {
+      const state = this.lists.current();
+      this.lists.setEnabled(state, id, enabled);
+      if (enabled && !state.sources.find((source) => source.id === id)?.meta)
+        await this.lists.update(state, this.fetchText, signal, id);
+      await this.install(state, signal);
       return this.status().sources;
     });
   }
-
-  async setEnabled(enabled: boolean) {
-    return this.mutate(async () => {
-      this.settings.enabled = enabled;
-      await this.installSnapshot();
+  setEnabled(enabled: boolean) {
+    return this.mutate(async (signal) => {
+      const state = this.lists.current();
+      state.enabled = enabled;
+      await this.install(state, signal);
       return this.privacy();
     });
   }
-
-  async setSiteAllowed(hostname: string, allowed: boolean, siteGuard?: ContentBlockBegin["siteGuard"]) {
-    return this.mutate(async () => {
+  setSiteAllowed(hostname: string, allowed: boolean, siteGuard?: ContentBlockBegin["siteGuard"]) {
+    return this.mutate(async (signal) => {
       const host = hostname.toLowerCase();
       if (!validSiteHost(host)) throw new Error("Choose an HTTP or HTTPS site.");
-      const previous = this.settings.allowedSiteHosts;
-      const set = new Set(this.settings.allowedSiteHosts);
+      if (allowed || siteGuard) {
+        let reviewed: URL;
+        try {
+          reviewed = new URL(siteGuard?.expectedUrl ?? "");
+        } catch {
+          throw new Error("Review the original HTTP or HTTPS page before changing its site exception.");
+        }
+        if (!siteGuard || !["http:", "https:"].includes(reviewed.protocol) || reviewed.hostname !== host)
+          throw new Error("The site exception does not match the reviewed original page.");
+      }
+      const state = this.lists.current(),
+        set = new Set(state.allowedSiteHosts);
       if (allowed) {
         if (set.size >= 4096 && !set.has(host)) throw new Error("Too many site exceptions.");
         set.add(host);
       } else set.delete(host);
-      this.settings.allowedSiteHosts = [...set].sort();
-      try {
-        await this.installSnapshot(siteGuard);
-      } catch (error) {
-        if (isAuxError(error) && error.code === "conflict") {
-          this.settings.allowedSiteHosts = previous;
-          this.saveSettings();
-        }
-        throw error;
-      }
+      state.allowedSiteHosts = [...set].sort();
+      await this.install(state, signal, siteGuard);
       return { hostname: host, allowed };
     });
   }
-
   async removeAllowedHost(hostname: string) {
     await this.setSiteAllowed(hostname, false);
-    return [...this.settings.allowedSiteHosts];
+    return this.privacy().allowedHosts;
   }
-
   handle(method: string, params: unknown): unknown {
     const object =
       params && typeof params === "object" && !Array.isArray(params)
@@ -317,7 +283,11 @@ export class ContentBlockingService {
       case "blocking.update":
         return this.update();
       case "blocking.add":
-        return this.add(string("name"), string("url"), string("kind") as FilterSourceKind);
+        return this.add(
+          string("name"),
+          string("url"),
+          object.kind === undefined ? "adblock" : (string("kind") as FilterSourceKind),
+        );
       case "blocking.remove":
         return this.remove(string("id"));
       case "blocking.setSourceEnabled":
@@ -358,18 +328,11 @@ function validSiteHost(host: string) {
   }
 }
 
-async function fetchFilterText(url: string, etag?: string) {
-  const expected = filterSourceUrl(url);
-  const response = await fetch(expected, {
-    redirect: "manual",
-    signal: AbortSignal.timeout(12_000),
-    headers: etag ? { "If-None-Match": etag.slice(0, 512) } : {},
+async function fetchFilterText(url: string, etag?: string, signal?: AbortSignal) {
+  const response = await publicHttpsText(new URL(filterSourceUrl(url)), {
+    maxBytes: MAX_FILTER_BYTES,
+    etag,
+    signal,
   });
-  if (response.url !== expected)
-    throw new Error("The filter list redirected. Review its final HTTPS URL separately.");
-  return {
-    status: response.status,
-    etag: response.headers.get("etag")?.slice(0, 512),
-    text: () => readBoundedFilterText(response),
-  };
+  return { status: response.status, etag: response.etag, text: async () => response.text };
 }

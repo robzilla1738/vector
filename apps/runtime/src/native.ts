@@ -29,8 +29,7 @@ import {
   type McpStdioLaunchPermit,
   type McpOAuthToken,
   type ChromiumContentBlockReceipt,
-  type ChromiumCookieBannerReceipt,
-  type CookieBannerRule,
+  type ContentBlockSource,
   WebmcpCallResultSchema,
   WebmcpToolSchema,
   type WebmcpCallResult,
@@ -53,8 +52,8 @@ import {
 export interface ContentBlockBegin {
   profileId: string;
   generation: number;
-  hostsDigest: string;
-  hostCount: number;
+  filterDigest: string;
+  sources: readonly (Omit<ContentBlockSource, "text"> & { bundled: boolean })[];
   allowedSiteHosts: readonly string[];
   enabled: boolean;
   siteGuard?: { pageId: string; expectedUrl: string; navigationId: number };
@@ -62,33 +61,14 @@ export interface ContentBlockBegin {
 export interface ContentBlockAppend {
   profileId: string;
   generation: number;
+  sourceId: string;
   offset: number;
-  hosts: readonly string[];
+  text: string;
 }
 export interface ContentBlockCommit {
   profileId: string;
   generation: number;
-  hostsDigest: string;
-}
-export interface CosmeticBegin {
-  profileId: string;
-  generation: number;
-  rulesDigest: string;
-  ruleCount: number;
-  enabled: boolean;
-  allowedSiteHosts: readonly string[];
-  siteGuard?: ContentBlockBegin["siteGuard"];
-}
-export interface CosmeticAppend {
-  profileId: string;
-  generation: number;
-  offset: number;
-  rules: readonly CookieBannerRule[];
-}
-export interface CosmeticCommit {
-  profileId: string;
-  generation: number;
-  rulesDigest: string;
+  filterDigest: string;
 }
 
 import {
@@ -176,12 +156,12 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   capabilities?(): Promise<HostCapabilities>;
   /** Chromium BookmarkModel owns the tree; the runtime only keeps offline article bodies. */
   bookmarksInvoke?(method: string, params: unknown): Promise<unknown>;
+  contentBlockState?(request: {
+    profileId: string;
+  }): Promise<{ receipt: ChromiumContentBlockReceipt | null }>;
   contentBlockBegin?(request: ContentBlockBegin): Promise<{ accepted: true }>;
   contentBlockAppend?(request: ContentBlockAppend): Promise<{ accepted: true }>;
   contentBlockCommit?(request: ContentBlockCommit): Promise<ChromiumContentBlockReceipt>;
-  cosmeticBegin?(request: CosmeticBegin): Promise<{ accepted: true }>;
-  cosmeticAppend?(request: CosmeticAppend): Promise<{ accepted: true }>;
-  cosmeticCommit?(request: CosmeticCommit): Promise<ChromiumCookieBannerReceipt>;
   /** Chromium HistoryService owns writes once a native history projection is active. */
   historyClear?(range: { since?: number; before?: number }): Promise<{ removed: number }>;
   historyImport?(
@@ -407,6 +387,12 @@ export class ChannelNativeBridge implements NativeBridge {
   async capabilities(): Promise<HostCapabilities> {
     return HostCapabilitiesSchema.parse(await this.channel.call("native.capabilities", {}));
   }
+  contentBlockState(request: { profileId: string }) {
+    return this.channel.call<{ receipt: ChromiumContentBlockReceipt | null }>(
+      "native.contentBlockState",
+      request,
+    );
+  }
   contentBlockBegin(request: ContentBlockBegin) {
     return this.channel.call<{ accepted: true }>("native.contentBlockBegin", request);
   }
@@ -416,15 +402,7 @@ export class ChannelNativeBridge implements NativeBridge {
   contentBlockCommit(request: ContentBlockCommit) {
     return this.channel.call<ChromiumContentBlockReceipt>("native.contentBlockCommit", request);
   }
-  cosmeticBegin(request: CosmeticBegin) {
-    return this.channel.call<{ accepted: true }>("native.cosmeticBegin", request);
-  }
-  cosmeticAppend(request: CosmeticAppend) {
-    return this.channel.call<{ accepted: true }>("native.cosmeticAppend", request);
-  }
-  cosmeticCommit(request: CosmeticCommit) {
-    return this.channel.call<ChromiumCookieBannerReceipt>("native.cosmeticCommit", request);
-  }
+
   available() {
     return true;
   }
