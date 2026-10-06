@@ -200,6 +200,7 @@ export interface Workspace {
   startRun(
     goal: string,
     opts?: {
+      executionTarget?: import("@aux/contracts/cloud-execution").ExecutionTarget;
       pageId?: string | null;
       pageIds?: string[];
       contextPageRefs?: PageContextRef[];

@@ -407,6 +407,19 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
     target: "Bound folders",
   },
   {
+    category: "Workspaces",
+    label: "Cloud account",
+    description: "",
+    target: "Cloud account",
+    searchTerms: ["Vercel", "Sandbox", "Run in cloud", "Bash", "REPL"],
+  },
+  {
+    category: "Workspaces",
+    label: "Cloud resource rates",
+    description: "Review the rates and session limits for your own Vercel account before saving.",
+    target: "Cloud resource rates",
+  },
+  {
     category: "Quick Ask",
     label: "Quick Ask window",
     description:

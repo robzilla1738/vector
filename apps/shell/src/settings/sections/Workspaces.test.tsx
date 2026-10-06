@@ -51,6 +51,7 @@ it("reviews exact folder access and AGENTS.md before grant, then archives it", a
   const digest = "a".repeat(64);
   let folder: Record<string, unknown> | null = null;
   rpc.mockImplementation(async (method: string, params: Record<string, unknown>) => {
+    if (method === "settings.cloud.status") return { configured: false, revision: 0 };
     if (method === "workspaces.list") return [{ workspaceId, name: "Personal" }];
     if (method === "workspaces.folders.list") return folder ? [folder] : [];
     if (method === "memory.pipeline.policy") return { workspaceId, enabled: false };
@@ -113,6 +114,7 @@ it("keeps extracted notes pending until the owner accepts or discards them", asy
     capturedAt: 1,
   };
   rpc.mockImplementation(async (method: string, params: Record<string, unknown>) => {
+    if (method === "settings.cloud.status") return { configured: false, revision: 0 };
     if (method === "workspaces.list") return [{ workspaceId, name: "Personal" }];
     if (method === "workspaces.folders.list") return [];
     if (method === "memory.pipeline.policy") return { workspaceId, enabled };

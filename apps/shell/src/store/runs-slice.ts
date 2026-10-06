@@ -130,6 +130,7 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
       const pageIds = [...new Set([...(pageId ? [pageId] : []), ...(opts.pageIds ?? [])])];
       const run = await call("runs.start", {
         goal: g,
+        executionTarget: opts.executionTarget ?? "local",
         pageIds,
         contextPageRefs: opts.contextPageRefs,
         mentions: opts.mentions,

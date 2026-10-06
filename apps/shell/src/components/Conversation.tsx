@@ -1,3 +1,4 @@
+import type { ExecutionTarget } from "@aux/contracts/cloud-execution";
 import { BudgetPrompt } from "../features/budget/BudgetPrompt";
 import { orderedPages } from "../store/pages";
 import { errorMessage } from "../error-message";
@@ -399,6 +400,9 @@ export function Conversation({
   useInteractiveComposer(home, textareaRef);
   const fullPageId = useStore((s) => s.conversationId);
   const id = chatId === undefined ? fullPageId : chatId;
+  const [executionChoices, setExecutionChoices] = useState<Record<string, ExecutionTarget>>({});
+  const executionKey = id ?? "new";
+  const executionTarget = executionChoices[executionKey] ?? "local";
   const scrolling = useConversationScroll(id);
   useEffect(() => {
     if (id || embedded) return;
@@ -1101,6 +1105,7 @@ export function Conversation({
     if (id) return id;
     const chatId = crypto.randomUUID();
     createdChat.current = chatId;
+    setExecutionChoices((choices) => ({ ...choices, [chatId]: executionTarget }));
     const text = readText();
     if (text) useStore.getState().setConversationDraft(chatId, text);
     useStore.getState().setConversationContext(chatId, contextPage);
@@ -1399,6 +1404,7 @@ export function Conversation({
         // Optimistic: the message leaves the composer and joins the thread now;
         // a failed start puts it back unless something new was typed meanwhile.
         const chatId = id ?? crypto.randomUUID();
+        if (!id) setExecutionChoices((choices) => ({ ...choices, [chatId]: executionTarget }));
         if (!id) {
           useStore.getState().setConversationContext(chatId, contextPage);
           useStore.getState().setConversationBrowserSources(chatId, browserSources);
@@ -1426,6 +1432,7 @@ export function Conversation({
           scope: primaryForRun ? "page" : "new",
           presentation: embedded && !home ? "rail" : "conversation",
           ownsDraft: true,
+          executionTarget,
         });
         if (run) {
           clearMentionDraft(composerId);
@@ -2525,6 +2532,23 @@ export function Conversation({
                       <output {...auxReuseStaticFieldErrorProps} data-block>
                         A selected tab changed or closed. Update or remove it before sending.
                       </output>
+                    )}
+
+                    {!live && (
+                      <label className="field">
+                        Execution
+                        <select aria-label="Run execution" value={executionTarget}
+                          disabled={archived || sending || answerPending || !connected}
+                          onChange={(event) => {
+                            const target = event.target.value;
+                            if (target === "local" || target === "cloud")
+                              setExecutionChoices((choices) => ({ ...choices, [executionKey]: target }));
+                          }}>
+                          <option value="local">On this Mac</option>
+                          <option value="cloud">Run in cloud</option>
+                        </select>
+                        {executionTarget === "cloud" && <span className="hint">Bash and code run in your Vercel Sandbox account. Review Cloud account and resource rates in Settings → Workspaces. Model calls use your existing model connection.</span>}
+                      </label>
                     )}
 
                     <ComposerInput

@@ -1,3 +1,4 @@
+import { CloudExecution } from "./CloudExecution";
 import { staticFieldProps } from "../../ui/class-props";
 import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallButtonProps } from "../../ui/button-props";
@@ -205,6 +206,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
             </div>
           ))}
       </SettingsField>
+      {active && <CloudExecution />}
     </SettingsSection>
   );
 }
