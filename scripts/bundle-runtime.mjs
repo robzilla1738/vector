@@ -11,7 +11,7 @@ import {
   statSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { join, dirname, basename } from "node:path";
+import { join, dirname, basename, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { generateRuntimeSchema } from "./gen-runtime-schema.mjs";
@@ -58,6 +58,30 @@ function minifyPlaywrightSource(source, filename, transformSync, ts) {
   return transformSync(source, options).code;
 }
 
+function dependencyNotices(inputs) {
+  const packages = new Map();
+  for (const input of Object.keys(inputs)) {
+    if (!input.includes("node_modules/")) continue;
+    let directory = dirname(resolve(root, input));
+    while (directory.includes("node_modules")) {
+      try {
+        const metadata = JSON.parse(readFileSync(join(directory, "package.json"), "utf8"));
+        if (metadata.name && metadata.version) {
+          const id = `${metadata.name}@${metadata.version}`;
+          if (!packages.has(id)) {
+            const licenses = readdirSync(directory).filter(name => /^(?:licen[sc]e|notice)(?:[.-].*)?$/i.test(name) && statSync(join(directory,name)).isFile());
+            packages.set(id, [id, `License: ${typeof metadata.license === "string" ? metadata.license : JSON.stringify(metadata.license ?? "See upstream notice")}`,
+              ...licenses.sort().map(name => readFileSync(join(directory,name),"utf8"))].join("\n\n"));
+          }
+          break;
+        }
+      } catch { /* Continue to the owning published package, not a nested source directory. */ }
+      directory = dirname(directory);
+    }
+  }
+  return [...packages].sort(([left],[right]) => left.localeCompare(right)).map(([,notice]) => notice).join("\n\n----------------------------------------\n\n");
+}
+
 export async function bundleRuntime(rtOut, target) {
   // Generated SQL is a JSON asset: refresh its compiled copy before bundling.
   const schemaAsset = generateRuntimeSchema();
@@ -73,12 +97,21 @@ export async function bundleRuntime(rtOut, target) {
   const runtimeRequire = createRequire(join(runtimeDir, "package.json"));
   const { build, transformSync } = runtimeRequire("esbuild");
   const ts = runtimeRequire("typescript");
+  // tar's published minified entry embeds these dependencies; esbuild cannot
+  // identify their separate notices from that entry's module graph.
+  const tarManifestPath = runtimeRequire.resolve("tar/package.json");
+  const tarManifest = JSON.parse(readFileSync(tarManifestPath, "utf8"));
+  const tarRequire = createRequire(tarManifestPath);
+  const archiveNoticeInputs = Object.fromEntries(
+    Object.keys(tarManifest.dependencies).map(name => [tarRequire.resolve(name), {}]),
+  );
   const runtimeBuild = await build({
     entryPoints: {
       main: join(root, "apps/runtime/dist/main.js"),
       mcp: join(root, "packages/mcp/dist/main.js"),
       "filesystem-worker": join(root, "apps/runtime/dist/services/filesystem-worker.js"),
       "privacy-checkpoint-worker": join(root, "apps/runtime/dist/store/privacy-checkpoint-worker.js"),
+      "copilot-install-worker": join(root, "apps/runtime/dist/services/copilot-install-worker.js"),
     },
     outdir: join(rtOut, "dist"),
     entryNames: "[name]",
@@ -111,6 +144,7 @@ export async function bundleRuntime(rtOut, target) {
     },
   });
   writeFileSync(join(dirname(rtOut), "runtime-meta.json"), JSON.stringify(runtimeBuild.metafile));
+  writeFileSync(join(rtOut, "THIRD-PARTY-NOTICES.txt"), dependencyNotices({...runtimeBuild.metafile.inputs, ...archiveNoticeInputs}));
 
   // QuickJS's async release variant loads its WASM beside the esbuild chunk at
   // runtime. esbuild bundles the loader JS but does not copy that sibling file.
@@ -182,6 +216,7 @@ export async function bundleRuntime(rtOut, target) {
         imports: {
           "#playwright-core": "./vendor/playwright-core/index.mjs",
           "#resvg": "./vendor/resvg-js/index.js",
+          "#aux-copilot-install-worker": "./dist/copilot-install-worker.js",
         },
         dependencies: { "playwright-core": playwrightVersion },
       },

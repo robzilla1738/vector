@@ -43,6 +43,7 @@
     "oxlint": "1.83.0",
     "pngjs": "7.0.0",
     "prettier": "3.9.9",
+    "tar": "7.5.22",
     "typescript": "catalog:",
     "vite": "7.3.6",
     "vitest": "catalog:",

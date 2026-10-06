@@ -43,6 +43,7 @@
     "pngjs": "^7.0.0",
     "pptxgenjs": "4.0.1",
     "quickjs-emscripten-core": "0.31.0",
+    "tar": "7.5.22",
     "vega": "6.4.0",
     "vega-lite": "6.4.3",
     "ws": "8.21.3",
@@ -54,5 +55,8 @@
     "@types/ws": "8.18.1",
     "esbuild": "0.28.2",
     "typescript": "catalog:"
+  },
+  "imports": {
+    "#aux-copilot-install-worker": "./dist/services/copilot-install-worker.js"
   }
 }
