@@ -22,6 +22,8 @@ import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { bundleRuntime } from "../scripts/bundle-runtime.mjs";
 
+import { assertDevLock } from "../scripts/dev.mjs";
+
 import { productIdentity } from "../scripts/lib/product-identity.mjs";
 
 const root = resolve(import.meta.dirname, "..");
@@ -74,6 +76,7 @@ if (existsSync(join(app, "Contents", "_CodeSignature")))
 const appRoot = realpathSync(app);
 if (!appRoot.endsWith("/Aux.app")) throw new Error("The target must be an Aux.app bundle");
 
+assertDevLock();
 mkdirSync(cache, { recursive: true });
 const archive = join(cache, archiveName);
 if (!existsSync(archive)) {
@@ -102,8 +105,6 @@ try {
   const payload = join(staging, "aux-runtime");
   await bundleRuntime(payload, "node26");
   writeFileSync(join(payload, "aux-runtime-identity.json"), `${JSON.stringify(productIdentity(root))}\n`);
-  const entry = join(payload, "dist", "main.js");
-  writeFileSync(entry, `process.env.AUX_PROGRAM_SPEND_CAP_USD ??= "50";\n${readFileSync(entry, "utf8")}`);
   run(node, ["--check", join(payload, "dist", "main.js")]);
   run(node, ["--check", join(payload, "dist", "mcp.js")]);
   run(node, ["--check", join(payload, "dist", "privacy-checkpoint-worker.js")]);

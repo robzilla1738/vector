@@ -1,3 +1,4 @@
+import { StandaloneDriver } from "../support/standalone-driver.js";
 /**
  * Driver isolated world + raw CDP input against real Chromium: fast paths
  * dispatch trusted input, page scripts cannot redirect refs, blocked targets
@@ -8,7 +9,7 @@ import type { ChildProcess } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { StandaloneDriver, type PlaywrightDriverPage } from "@aux/chromium-driver";
+import { type PlaywrightDriverPage } from "@aux/chromium-driver";
 import { findChromium } from "../../scripts/chromium.mjs";
 import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 

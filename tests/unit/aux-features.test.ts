@@ -1,46 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { AUX_FEATURES, AuxError, auxFeatureEnabled, auxFeatureForBridgeMethod, auxFeatureForMethod, auxFeatureStage, requireAuxFeature, requireAuxMethod } from "@aux/contracts";
-import { AUX_FEATURE_REQUIREMENTS, deriveAuxFeatureStages } from "../../packages/contracts/src/feature-requirements";
+import { FEATURES, AuxError, auxFeatureStage, featureAvailabilityFor, featureEnabled, requireAuxFeature, SettingsSetParams } from "@aux/contracts";
 
-describe("AuxFeature staging", () => {
-  it("registers every product feature with an owning batch", () => {
-    expect(Object.keys(AUX_FEATURES).length).toBeGreaterThan(70);
-    expect(new Set(Object.values(AUX_FEATURES))).toEqual(new Set(["B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12"]));
+describe("feature availability", () => {
+  it("enables shipped features without commit qualification", () => {
+    expect(FEATURES.every(feature => feature.default === "on")).toBe(true);
+    expect(auxFeatureStage("spaces", "chromium-fork")).toBe("on");
+    expect(featureAvailabilityFor([]).memory).toBe("on");
   });
 
-  it("keeps unqualified native features closed", () => {
-    expect(auxFeatureStage("spaces", "chromium-fork")).toBe("off");
-    expect(() => requireAuxMethod("spaces.create", "chromium-fork")).toThrowError(AuxError);
-    expect(() => requireAuxMethod("spaces.import", "chromium-fork")).not.toThrow();
-    expect(auxFeatureStage("passwordManager", "chromium-fork")).toBe("off");
-    expect(auxFeatureStage("vault", "electron")).toBe("on");
-    expect(auxFeatureStage("vault", "chromium-fork")).toBe("off");
-    expect(auxFeatureStage("spaces", "electron")).toBe("on");
-    expect(auxFeatureEnabled("spaces", "chromium-fork", { spaces: "preview" })).toBe(false);
-    expect(auxFeatureEnabled("spaces", "chromium-fork", { spaces: "on" })).toBe(true);
+  it("requires native capabilities and honors a user opt-out", () => {
+    expect(featureAvailabilityFor([]).layouts).toBe("off");
+    expect(featureAvailabilityFor(["setAppearance"]).layouts).toBe("on");
+    expect(featureEnabled("memory", { memory: false })).toBe(false);
+    expect(featureEnabled("memory", { memory: true })).toBe(true);
+    expect(() => requireAuxFeature("layouts", "chromium-fork", featureAvailabilityFor([]))).toThrowError(AuxError);
   });
 
-  it("derives stages from implemented methods and baked qualification", () => {
-    const methods = AUX_FEATURE_REQUIREMENTS.spaces.requires;
-    expect(deriveAuxFeatureStages([], []).spaces).toBe("off");
-    expect(deriveAuxFeatureStages(methods, []).spaces).toBe("preview");
-    expect(deriveAuxFeatureStages(methods, ["reader"]).spaces).toBe("preview");
-    expect(deriveAuxFeatureStages(methods, ["spaces"]).spaces).toBe("on");
-    expect(AUX_FEATURE_REQUIREMENTS.layouts.requires).toContain("setAppearance");
-    expect(deriveAuxFeatureStages([], []).layouts).toBe("off");
-    expect(deriveAuxFeatureStages(["setAppearance"], []).layouts).toBe("preview");
-  });
-
-  it("returns a typed registry error for disabled runtime and bridge features", () => {
-    expect(auxFeatureForMethod("vault.fill")).toBe("vault");
-    expect(auxFeatureForBridgeMethod("vaultFill")).toBe("passwordManager");
-    for (const method of ["dictationStatus", "startDictation", "stopDictation", "cancelDictation"]) {
-      expect(auxFeatureForBridgeMethod(method)).toBe("dictation");
-    }
-    expect(() => requireAuxFeature("dictation", "chromium-fork")).toThrowError(AuxError);
-    expect(() => requireAuxFeature("dictation", "chromium-fork", { dictation: "on" })).not.toThrow();
-    expect(() => requireAuxMethod("vault.fill", "chromium-fork")).toThrowError(AuxError);
-    expect(() => requireAuxFeature("spaces", "chromium-fork", { spaces: "preview" })).toThrowError(/preview/);
-    expect(() => requireAuxMethod("pages.list", "chromium-fork")).not.toThrow();
+  it("persists only known boolean feature overrides", () => {
+    expect(SettingsSetParams.parse({ featureOverrides: { memory: false } }).featureOverrides).toEqual({ memory: false });
+    expect(SettingsSetParams.safeParse({ featureOverrides: { memory: "off" } }).success).toBe(false);
+    expect(SettingsSetParams.safeParse({ featureOverrides: { unknown: false } }).success).toBe(false);
   });
 });

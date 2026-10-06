@@ -1,9 +1,0 @@
-# Original native read context and bounded scopes
-
-Source-only successor to frozen f0fd1780, 2e19f259 and b8954ef2. Eight actual original/result native leaves replay exactly in both directions. This packet does not adopt or compile native changes. Compose narrow shared host/egress hunks with the required L10 predecessors; do not overwrite newer shared snapshots.
-
-Read context retains an actual DocumentUserData UUID, committed URL and private session minted from the original published authenticated connection and original person control/retirement generations. The original native Egress receipt is checked inside Describe and again at host dispatch/completion. Replacement documents, connection retirement and settled owner mutations rotate or refuse original sessions. No control attachment is created. The context route is one closed page UUID; the fixed reader supports only bounded observe/extract and full/viewport/subtree filtering. Whole-page protected metadata admission remains before DOM reads.
-
-The paired runtime contract validates producer bytes using the generated immutable wrapped script literal. Native catalog publication updates actual committed URLs and retires observation state once; explicit selected-page/mention reads revalidate private native context before authority checks. Stale live rows and mismatched catalog URLs refuse, metadata-only @Tabs grants no read or act, and extraction must retain the original observed document/session. Runtime-only output validation preserves renderer size.
-
-Two new real native session fixture definitions preserve same-original positive behavior and verify connection/session replacement plus settled owner-fence refusal; existing disconnect fixture now retains a replacement pending read against stale original disconnect. All native definitions are uncompiled. Genuine host socket-generation, slot cap, reentrant completion and receiver-teardown controls remain required.

@@ -1,6 +1,4 @@
-import { realpathSync } from "node:fs";
 import { conservativeRendererMinify } from "../../scripts/conservative-renderer-minify.mjs";
-import { contractSchemaPurityPlugin } from "../../scripts/contract-schema-purity.mjs";
 import { preloadPathPrefix } from "../../scripts/preload-path-prefix.mjs";
 import { reactNamedValueAliases } from "../../scripts/react-named-value-aliases.mjs";
 import { reactConstructorAliases } from "../../scripts/react-constructor-aliases.mjs";
@@ -24,7 +22,7 @@ const SHELL_CSP = [
   "media-src 'self' data: blob:",
   // search suggestions and cloud terminal sessions
   "connect-src 'self' https: wss:",
-  // Chromium's SurfaceEmbed plugin has no src. Keep objects disabled in Electron.
+  // Chromium's SurfaceEmbed plugin has no src. Other previews keep objects disabled.
   process.env.AUX_CHROMIUM_SHELL_BUILD === "1" ? "object-src 'self'" : "object-src 'none'",
   "frame-src aux-result:",
   "base-uri 'none'",
@@ -72,12 +70,11 @@ export default defineConfig({
     // Emitted .js siblings must not shadow the TypeScript the typechecker ships.
     extensions: [".mjs", ".mts", ".ts", ".tsx", ".jsx", ".js", ".json"],
   },
-  plugins: [conservativeRendererMinify(), preloadPathPrefix(), reactConstructorAliases(), reactNamedValueAliases(join(import.meta.dirname, "src")), react(), chromiumHostBootstrap(), shellCsp(), preloadApp(), contractSchemaPurityPlugin(realpathSync(join(import.meta.dirname, "../../packages/contracts/dist")))],
+  plugins: [conservativeRendererMinify(), preloadPathPrefix(), reactConstructorAliases(), reactNamedValueAliases(join(import.meta.dirname, "src")), react(), chromiumHostBootstrap(), shellCsp(), preloadApp()],
   build: {
     outDir: join(import.meta.dirname, "dist"),
     emptyOutDir: true,
-    // Match the packaged browser. Electron preview still targets its Chromium 150.
-    target: process.env.AUX_CHROMIUM_SHELL_BUILD === "1" ? "chrome154" : "chrome150",
+    target: "chrome154",
     // scripts/check-budgets.mjs walks the manifest to measure startup bytes
     manifest: true,
     rollupOptions: { output: { compact: true, chunkFileNames: chunk => ["App", "MockPage", "xterm"].includes(chunk.name) ? "assets/[name]-[hash].js" : "assets/[hash].js" } },

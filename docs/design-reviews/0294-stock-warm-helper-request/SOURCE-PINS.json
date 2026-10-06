@@ -1,8 +1,0 @@
-{
-  "baselinePath": "/tmp/aux-browser-runtime-builder-21ebefdd/tests/host/native-window.swift",
-  "beforeSha256": "1ca30229f64c276080274057292b4ba5cf242ddcff17813e3bffebd63157c681",
-  "afterSha256": "584f7fc86d6c7aed85a7efe95cc8fcf1c929c1cd20b8090ab1d58b47e6c3c5e6",
-  "patchSha256": "769639a79c29e4a7aed31e90e357102712dcb9a3370b418d10cab66435f257c9",
-  "resultSnapshot": "caller-source/0294-stock-warm-helper/shared-results/tests/host/native-window.swift",
-  "status": "source-only/uncompiled; fixed helper endpoint still requires actual SDK/native execution and trusted compiled helper artifact pairing"
-}

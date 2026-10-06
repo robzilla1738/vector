@@ -1,8 +1,0 @@
-{
-  "passed": true,
-  "sourceOnly": true,
-  "patchSha256": "c8ffda4c65dea428e60339f7385e02a64ddbaf05f87d5dae054bedc4116ca69a",
-  "exactFourLeafForwardReverseForward": true,
-  "startupAcceptancePendingRootBuild": true,
-  "nativeQualification": false
-}

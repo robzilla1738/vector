@@ -6,6 +6,7 @@ import type { Routine } from "@aux/contracts";
 import { SkillReplayPanel } from "./SkillReplayPanel";
 
 const rpc = vi.hoisted(() => vi.fn());
+vi.mock("../feature-availability", () => ({ featureAvailable: () => true, featureVisible: () => true, featureStage: () => "on" }));
 vi.mock("../store", async importOriginal => ({ ...await importOriginal<typeof import("../store")>(), call: rpc }));
 vi.mock("../use-feature", () => ({ featureStage: () => "on", useFeature: () => true }));
 let root: Root;

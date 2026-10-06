@@ -1,34 +1,29 @@
-# Aux / vector workspace
+# Aux workspace
 
-## Test + build gotcha (important)
+## Test + build gotcha
 
-Unit tests import `@aux/runtime` via the package `exports` map, which points at
-`apps/runtime/dist/` — **compiled output**, not source. After editing
-`apps/runtime/src/**`, always rebuild before running tests or the tests will
-exercise stale code:
+Unit tests import `@aux/runtime` through package exports into `apps/runtime/dist`, not source. After editing runtime source, rebuild before testing:
 
 ```bash
-npx tsc -b            # rebuild workspace dist (fast, incremental)
-npm test              # vitest run --project unit  (reads dist/)
-npm run typecheck     # tsc -b && tsc -p apps/shell/tsconfig.json
+npx tsc -b
+npm test
+npm run typecheck
 ```
 
-Renderer (`apps/shell/src/**`) tests resolve `@aux/contracts` to *source* via
-the vitest alias, so shell edits don't need a build first.
+Renderer tests resolve `@aux/contracts` to source via the Vitest alias.
 
-## Checks
+## Product direction
 
-```bash
-npm run lint          # oxlint apps packages tests scripts --max-warnings=390
-npm run format:check  # prettier ratchet — only files listed in config are checked
-```
+Read `docs/ROADMAP.md` and `docs/STATUS.md`. The Aux v3 owner decisions supersede the previous frozen inspection scope. Chromium is the only engine. Vertical layout and Auto agent mode are defaults. Built features are on, with Labs opt-outs; method capabilities still determine what the host implements. Honour site policy, protect secrets, and keep Stop, Take over, durable effects and undo. Browser UI must remain usable while the runtime is unavailable.
 
-The prettier gate is a *ratchet*: only migrated files are enforced. Do not run
-`prettier --write` on broad directories — it reformats files outside the
-ratchet list and creates massive churn.
+## Working rules
 
-## Current delivery scope
-
-Read `docs/INSPECTION-BUILD-HANDOFF.md` first, then `docs/ROADMAP.md`. Scope is frozen to the local inspection package. Keep one native builder and preserve its original ownership, caches, permission and acknowledgement guards. Do not repeat unchanged tests, expand command coverage, run GitHub Actions, push, sign or release without a new task requiring it. Resize is user-owned; full qualification and the five current journeys are deferred, not passed. Current inspection uses a disposable Profile and synthetic loopback model. Historical agent instructions are preserved in `docs/archive/2026-10-05-agent-continuation-history.md`; they are historical records, not authority to resume stopped lanes.
-
-Latest local-main implementation is `3c4379bc3` (default Home/sidebar reference correction), following `4d7bef5b5` (panel surfaces). Current package renderer manifest and retained evidence are in `docs/evidence/home-parity-2026-10-05/`. Treat older preview owner IDs and launcher-wait entries as historical; latest launched owner is recorded in the current handoff. Saved-Profile runtime startup remains unresolved.
+- Commit coherent slices to local main. Never push, run hosted Actions, enable Dependabot, sign, notarize or release as part of development.
+- Delete replaced implementations; no compatibility shims or placeholder methods.
+- Use disposable development Profiles. Ask before touching the owner’s real Profile.
+- Use one native builder and one plain lock. Preserve existing live preview cleanup ownership until normal retirement when replacing the old launcher. Never force-clear an active lock or reset the stable Chromium checkout.
+- After runtime edits rebuild dist before tests. Run `npm run check` per integrated slice; avoid repeating unchanged tests. Builds fail on compile errors; style, byte reports and coverage reports are advisory.
+- For native changes, build incrementally, launch with `node scripts/dev.mjs --temp-profile` and inspect the changed behavior. After patch consolidation, add native changes as area patches in `chromium/patches/series`.
+- At phase ends run `pnpm perf`; once Phase 4 starts, run the manual 20-task smoke. Do not claim phase completion without its specified evidence.
+- Real providers with the owner’s configured keys are permitted. Never print credentials or commit Profiles, caches or personal-data logs.
+- Docs describe current state in ROADMAP, STATUS and architecture; older handoffs are historical records.

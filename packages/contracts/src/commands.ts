@@ -543,14 +543,10 @@ export const COMMANDS = [
   C("command-translate", "Translate this page", translationControl),
   C("command-show-original", "Show original page", translationControl),
   C("command-bookmarks", "Bookmarks and history", shellApplication),
-  C("command-attach-chrome", "Attach Chrome", normalApplication),
-  C("command-detach-chrome", "Detach Chrome", normalApplication),
   C("command-open-live-chrome", "Open live in Chrome", normalApplication),
   { id: "command-new-space", label: "New Space", section: "Application", handler: "shell", feature: "spaces", focusShell: true, bindings: [] },
 
   { id: "command-switch-space", label: "Switch Space", section: "Layout", handler: "shell", feature: "spaces", palette: false, focusShell: true, bindings: [] },
-  C("command-borrow-chrome", "Add a Chrome tab…", normalApplication),
-  { id: "command-borrow-tab", label: "Borrow attached Chrome tab", section: "Application", handler: "shell", windows: ["normal"], palette: false, focusShell: true, bindings: [] },
 
   C("export-demonstration", "Export reviewed demonstration", demonstrationControl),
   { id: "record-demonstration", label: "Record a demonstration", section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: true },

@@ -1,9 +1,0 @@
-# Internal identity tokens
-
-Ten useMemo object identities across nine leaves become ordered plain-binding arrays. No dependency list, hook order, predicate, admission, async callback, policy, effect or rendered node changes. Arrays contain the exact original plain lexical bindings in original order. No property access initializer, spread, call, getter or computed name qualifies.
-
-The TypeScript symbol audit records all token uses including shorthand value-symbol resolution. Local uses are strict reference comparisons, dependency arrays, owner/state storage or calls to the existing save/status hooks. Those hooks accept identity as object, store it on original owners, compare by strict reference equality and include it in dependencies; neither reads token fields or reflects/serializes the token. Search editing state retains the token only for equality. Home/Conversation owner hooks return only a current predicate; no token enters native payloads, props or public contracts. Owner.identity uses remain equality-only. The original snapshot strings are unchanged and computed before the memo, including PageRecovery and Autofill.
-
-The installed emitted output has ten matching plain-valued object constructions with a gross object-to-array syntax difference of 347 bytes. This is a bound, not measured net savings or proof that every emitted match maps uniquely to these owners. No renderer build, loading boundary change, directive, compiler change or native operation. Root owns the coherent packaged measurement.
-
-No helpers or test assertions change. Existing original owner/ACK/false-ACK/draft/ABA/retired-error controls run against exact root Live/Conversation/command prerequisites; those files are excluded from the patch. Source inverse restores each whole original production file byte-for-byte, and nine-leaf F/R/F passes.

@@ -1,8 +1,0 @@
-{
-  "file": "apps/shell/src/components/OutboundMcpSettings.test.tsx",
-  "beforeCommit": "633df4b8aa5b5960f4947fbd57570474f0dee5db",
-  "afterSha256": "dafc1467474c2ab3ba57c59b40b0006df262d00c2f04f37ae1eb6bc2db62efc0",
-  "onlyFormattingAndTestTitle": true,
-  "originalExecutableAstAndAssertionsPreserved": true,
-  "priorLexicalComparisonRejectedPrettierParentheses": true
-}

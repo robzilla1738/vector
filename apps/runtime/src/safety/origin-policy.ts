@@ -1,3 +1,5 @@
+import { exactOrigin } from "@aux/contracts/util/exact-origin";
+export { exactOrigin } from "@aux/contracts/util/exact-origin";
 import { type Effect, type OriginAccess, type OriginRule, OriginRuleSchema } from "@aux/contracts";
 
 export type PolicySource = "managed" | "user" | "default";
@@ -16,14 +18,6 @@ export interface OriginPolicyAudit extends OriginPolicyDecision { at: number; ac
 const ACCESS_RANK: Record<OriginAccess, number> = { deny: 0, ask: 1, allow: 2 };
 const CONFIRM_RANK = { handoff: 0, action: 1, preapprovable: 2, none: 3 } as const;
 
-/** Parse rather than normalize: scheme, credentials, paths and opaque origins must never broaden a rule. */
-export function exactOrigin(value: string): string | null {
-  try {
-    const url = new URL(value);
-    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
-    return url.origin;
-  } catch { return null; }
-}
 
 function ruleAccess(rule: OriginRule | undefined, effect: Effect): OriginAccess | undefined {
   if (!rule) return undefined;

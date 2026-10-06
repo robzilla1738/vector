@@ -8,7 +8,7 @@ it("preserves the legacy palette action inventory with real registered producer 
   expect(Object.keys(COMMAND_SURFACE_ACTIONS).sort()).toEqual([
     "command-tabs", "command-observe", "command-inline-assist", "command-collect-tabs", "command-reading-list",
     "command-autofill", "command-vault-fill", "command-translate", "command-show-original", "command-bookmarks",
-    "command-attach-chrome", "command-detach-chrome", "command-open-live-chrome", "command-new-space",
+    "command-open-live-chrome", "command-new-space",
   ].sort());
 });
 it("refuses saved personal-info dispatch when there is no current Aux page", async () => {

@@ -1,8 +1,0 @@
-{
-  "baseCommit": "32b9a173dbb4bb4ac5cf311c35bc3e4ac1a5a041",
-  "path": "apps/shell/src/components/CommandBar.tsx",
-  "before": "ffad42fd1c6db46ea6a75959209da6c68739b5bd035969ed0c063087012f0d96",
-  "after": "c070dd7990d1b49c4e607c28e9d97c616d2d03adac707d0aec88f1e1a876cfc8",
-  "depends": "autocomplete-retry-glyph/request.patch",
-  "nativeAccepted": false
-}

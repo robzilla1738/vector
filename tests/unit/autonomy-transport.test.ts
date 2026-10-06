@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_PLANNER_MODEL_ID } from "@aux/contracts/model-registry";
 import { modelCallCost, usageFields } from "../../apps/runtime/src/agent/model-client.js";
 import { GatewayModelClient } from "../../apps/runtime/src/agent/gateway-client.js";
-import { createFixture } from "../host/lib/fixture.mjs";
-import { createModelFixture } from "../host/lib/model-fixture.mjs";
+import { createFixture } from "../support/fixture.mjs";
+import { createModelFixture } from "../support/model-fixture.mjs";
 const runtimeRequire = createRequire(new URL("../../apps/runtime/package.json", import.meta.url));
 
 describe("actual overnight pricing transport", () => {

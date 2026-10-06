@@ -1,2 +1,0 @@
-apps/shell/src/components/Conversation.palette-focus.test.tsx(105,43): error TS2344: Type '{ chatId?: string | null | undefined; embedded?: boolean | undefined; home?: boolean | undefined; entryControls?: ReactNode; onChatCreated?: ((chatId: string) => void) | undefined; composerRef?: RefObject<...> | undefined; findReturnRef?: RefObject<...> | undefined; } | undefined' does not satisfy the constraint 'object'.
-  Type 'undefined' is not assignable to type 'object'.

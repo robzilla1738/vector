@@ -1,4 +1,5 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID, scryptSync } from "node:crypto";
+import { digest as sha } from "@aux/contracts/util/digest";
+import { createCipheriv, createDecipheriv, randomBytes, randomUUID, scryptSync } from "node:crypto";
 import { lstat, mkdir, readFile, realpath, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -37,7 +38,6 @@ const detachedSnapshot = (bytes: Uint8Array): Buffer => {
   copy[18] = 1; copy[19] = 1;
   return copy;
 };
-const sha = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
 const decode = (value: string) => {
   const bytes = Buffer.from(value, "base64");
   if (bytes.toString("base64") !== value) throw new Error("Recovery package is invalid.");

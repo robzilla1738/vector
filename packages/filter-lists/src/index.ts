@@ -21,7 +21,7 @@ export interface FilterListStatus {
   hosts: number;
   cookieSelectors: number;
   builtinHosts: number;
-  backend: "electron_web_request" | "subresource_filter";
+  backend: "subresource_filter";
   cosmeticBackend?: "document_start_stylesheet" | "unavailable";
 }
 
@@ -32,7 +32,7 @@ export class FilterLists {
   readonly dir: string;
   private readonly sourcesFile: string;
 
-  constructor(dataDir: string, private readonly backend: FilterListStatus["backend"] = "electron_web_request") {
+  constructor(dataDir: string, private readonly backend: FilterListStatus["backend"] = "subresource_filter") {
     this.dir = join(dataDir, "filters");
     this.sourcesFile = join(this.dir, "sources.json");
     mkdirSync(this.dir, { recursive: true, mode: 0o700 });

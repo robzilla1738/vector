@@ -2,7 +2,7 @@ import { it, expect } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { BrowserImporter, Repo, openDb } from "@aux/runtime";
-import { createImportSourceOwner, createImportInterruptionSourceHome, readImportSourceHome, disposeImportSourceHome } from "../host/lib/import-source-home.mjs";
+import { createImportSourceOwner, createImportInterruptionSourceHome, readImportSourceHome, disposeImportSourceHome } from "../support/import-source-home.mjs";
 
 it("real fixed5001 reader yields confirmed partial progress, cancels and merges reviewed retry without source mutation", async () => {
   const root = mkdtempSync("/tmp/aux-native-journey-");

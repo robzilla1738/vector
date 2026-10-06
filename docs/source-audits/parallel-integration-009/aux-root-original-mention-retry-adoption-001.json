@@ -1,9 +1,0 @@
-{
-  "passed": true,
-  "sourceOnly": true,
-  "sourceCommit": "10d2ce61a569edfdec15bdda74ba91fc1e2b1bae",
-  "exact3LeafReplay": true,
-  "actualBeforePins": true,
-  "originalJourneyDeadlineAndAssertionsPreserved": true,
-  "nativeExecuted": false
-}

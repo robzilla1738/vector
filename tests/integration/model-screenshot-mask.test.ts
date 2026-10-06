@@ -1,5 +1,6 @@
+import { StandaloneDriver } from "../support/standalone-driver.js";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { StandaloneDriver, type PlaywrightDriverPage } from "@aux/chromium-driver";
+import { type PlaywrightDriverPage } from "@aux/chromium-driver";
 import { findChromium } from "../../scripts/chromium.mjs";
 
 let driver: StandaloneDriver;

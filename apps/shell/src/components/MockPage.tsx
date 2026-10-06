@@ -4,7 +4,7 @@ import { hostOf } from "../workspace";
 /**
  * Stand-in for the native WebContentsView when the shell runs in a plain
  * browser (mock mode). A neutral document skeleton keyed off the URL so the
- * stage reads as a real page in screenshots — never shown inside Electron.
+ * stage reads as a real page in screenshots — never shown inside the native host.
  */
 export function MockPage({ page }: { page: PageTarget }) {
   const host = hostOf(page.url);

@@ -100,7 +100,7 @@ const DISPLAY_KEYS: Record<string, string> = {
   "{": "[", "}": "]", "_": "-", "+": "=", "backspace": "Backspace", "tab": "Tab",
 };
 
-/** Electron accelerator string for a binding ("CmdOrCtrl+Shift+T"). */
+/** Portable accelerator string for a binding ("CmdOrCtrl+Shift+T"). */
 export function acceleratorFor(b: ShortcutBinding): string {
   const parts = [b.command && "CmdOrCtrl", b.ctrl && "Ctrl", b.shift && "Shift", b.alt && "Alt"].filter(Boolean);
   const key = DISPLAY_KEYS[b.key] ?? (b.key.length === 1 ? b.key.toUpperCase() : b.key);

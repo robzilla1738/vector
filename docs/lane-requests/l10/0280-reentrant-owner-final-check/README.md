@@ -1,5 +1,0 @@
-# Final owner checks
-
-Request-only narrow successor after e12ce400. Egress leaf export contains ONLY the CurrentCreator catalog null guard; independent uncommitted M4 instrumentation is excluded. Tabs null-checks original catalog, retains retired connection counter in post-target check, rechecks original catalog/window/native page identity and exact original cleanup proof after target factory.
-
-CurrentCreator intentionally allows genuine original creation proof before blank_committed while the original frame is active; after commit it additionally requires LiveFrame. The proof already binds actual creator creation ID/WeakDocument/control/generation/isolation/ancestry/absolute deadline, and checks original catalog owner/current runtime identity. No frame/UUID is manufactured. Context does not invoke external callbacks; current_proof points to an owned local cleanup dictionary, not controller member storage, and remains valid across Context/target callbacks. Final native state is freshly rechecked against that original local proof. Native uncompiled/unexecuted.

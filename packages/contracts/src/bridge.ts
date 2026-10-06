@@ -3,12 +3,11 @@ import { TabCommandEnvelopeSchema } from "./tabs.js";
 import { CredentialHandoffRequestSchema } from "./safety.js";
 
 /**
- * Internal transport between the Electron main process (native surface owner)
- * and the runtime process (execution authority). Carried over fork IPC or a
- * loopback socket — the schema is identical either way.
+ * Authenticated local transport between the Chromium host (native surface owner)
+ * and the runtime process (execution authority).
  *
- * native.* methods are implemented BY the main process and called by runtime.
- * runtime.* notifications travel main -> runtime.
+ * native.* methods are implemented by Chromium and called by the runtime.
+ * runtime.* notifications travel from Chromium to the runtime.
  */
 
 export const NativePageIdParams = z.object({ pageId: z.string() });

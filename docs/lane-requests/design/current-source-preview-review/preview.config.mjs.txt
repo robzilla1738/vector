@@ -1,3 +1,0 @@
-import original from './apps/shell/vite.config.ts';
-import {join} from 'node:path';
-export default {...original,resolve:{...original.resolve,alias:{'@fontsource-variable/geist':join(import.meta.dirname,'apps/shell/public/source-fonts/geist/index.css'),'@fontsource-variable/geist-mono':join(import.meta.dirname,'apps/shell/public/source-fonts/geist-mono/index.css'),}},server:{...original.server,host:'127.0.0.1',port:5248,strictPort:true,fs:{allow:[import.meta.dirname]}}};

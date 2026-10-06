@@ -1,4 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
+import { digest, jsonDigest as bundleDigest } from "@aux/contracts/util/digest";
+import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { lstat, open } from "node:fs/promises";
 import { AuxError, AuxPluginManifestSchema, PluginAssetSchema, PluginSchema, PluginSkillGrantParams, PluginSkillGrantSchema, PluginSkillReadParams, PluginSkillReadSchema, type AuxPluginManifest, type Plugin, type PluginAsset, type PluginSkillGrant } from "@aux/contracts";
@@ -31,8 +32,6 @@ const record = (row: Row): Plugin =>
     uninstalledAt: row.uninstalled_at ?? undefined,
   });
 
-const bundleDigest = (bundle: AuxPluginManifest | ImportedPlugin): string =>
-  createHash("sha256").update(JSON.stringify(bundle)).digest("hex");
 
 /**
  * Thin plugins bundle existing capabilities. aux-plugin@1 carries portable
@@ -143,7 +142,7 @@ export class PluginService {
       { kind: string; content: string | null; digest: string; workspace_id: string; uninstalled_at: number | null } | undefined;
     if (!asset || asset.uninstalled_at !== null || asset.kind !== "skill" || asset.content === null)
       throw new AuxError("not_found", "Imported Skill does not exist");
-    if (asset.digest !== input.expectedDigest || createHash("sha256").update(asset.content).digest("hex") !== asset.digest)
+    if (asset.digest !== input.expectedDigest || digest(asset.content) !== asset.digest)
       throw new AuxError("conflict", "Imported Skill changed after review. Inspect it again.");
     if (input.scope.kind === "workspace") {
       if (input.scope.workspaceId !== asset.workspace_id) throw new AuxError("permission_denied", "Skill belongs to another Space.");
@@ -197,7 +196,7 @@ export class PluginService {
       (row.scope_kind === "workspace" ? row.scope_id !== task.workspace_id
         : row.scope_id !== input.taskId || row.task_revision !== task.revision))
       throw new AuxError("permission_denied", "Skill grant does not cover this task and revision.");
-    if (row.asset_digest !== row.digest || createHash("sha256").update(row.content).digest("hex") !== row.digest)
+    if (row.asset_digest !== row.digest || digest(row.content) !== row.digest)
       throw new AuxError("conflict", "Imported Skill content changed. Review and grant it again.");
     return PluginSkillReadSchema.parse({ grant: grantRecord(row), name: row.name, content: row.content, digest: row.digest });
   }

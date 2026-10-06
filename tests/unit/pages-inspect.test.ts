@@ -225,9 +225,6 @@ describe("H2-C7 pages inspect RPCs", () => {
       repo,
       responses,
       drivers: () => ({ aux: null, chrome: null }),
-      chromeAttach: async () => ({}),
-      chromeDetach: async () => ({}),
-      chromeTabs: async () => [],
       importCookies: async () => ({}),
       benchRun: async () => ({ reportPath: "" }),
     } as Services);

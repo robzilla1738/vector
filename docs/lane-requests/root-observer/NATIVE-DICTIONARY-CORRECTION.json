@@ -1,8 +1,0 @@
-{
-  "path": "chrome/browser/ui/aux/permission_broker_unittest.cc",
-  "baseline": "2a6a2047d6fdbbcedbdb6ad791b2d8f82830aeb13d7c951bc57834f481a8145a",
-  "result": "3936159e21300b0030d163d9a70e1720edc08582f0a34bb05471c747c06c3b51",
-  "packetSha256": "04051003dc1e5fb50962c2c4f1b088284708094c552b40f2ce0959bbd10b0801",
-  "testsPreserved": 31,
-  "compiled": false
-}

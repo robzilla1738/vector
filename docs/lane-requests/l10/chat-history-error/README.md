@@ -1,5 +1,0 @@
-Conversation history failures render String(error) in the primary alert, including transport codes and page UUIDs. This narrow request moves that unchanged diagnostic into closed Details and uses friendly history/draft-kept copy. Catch, request generation, Retry producer, draft recovery, send gate and toast behavior are unchanged.
-
-Three new actual mounted controls cover original diagnostic containment and Retry without pages/runs, late rejection after chat replacement, and fresh no-tab history absence. Four existing real-store send controls also pass with original rejection and no duplicate toast. The original primary-copy control failed before the JSX change. Source-only; no native/qualified journey claim.
-
-Conversation is shared REQUEST ONLY; test is new owned. Saved original/result and independent git-root F/R/F replay retained. Initial nested scratch replay silently skipped paths due git cwd prefix; corrected with separate git root and exact checks. JSX grows 148 UTF-8 bytes, no new imports/helper/boot module. Packaged size is root integration gate. Borrowed dependency directory links remained read-only; no shared joins changed.

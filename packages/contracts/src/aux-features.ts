@@ -1,7 +1,7 @@
 import { AuxError } from "./errors.js";
 
-export type AuxFeatureStage = "off" | "preview" | "on";
-export type AuxFeatureHost = "electron" | "chromium-fork";
+export type AuxFeatureStage = "off" | "on";
+export type AuxFeatureHost = "chromium-fork";
 export type AuxFeatureBatch = "B2" | "B3" | "B4" | "B5" | "B6" | "B7" | "B8" | "B9" | "B10" | "B11" | "B12";
 
 /** The product surface in ROADMAP section 3. New features must be registered before exposure. */
@@ -95,35 +95,25 @@ export const AUX_FEATURES = {
   policyProvider: "B8",
   updates: "B11",
   crashReporting: "B11",
-  electronMigration: "B11",
   onboarding: "B7",
 } as const satisfies Record<string, AuxFeatureBatch>;
 
 export type AuxFeature = keyof typeof AUX_FEATURES;
 export type AuxFeatureOverrides = Partial<Record<AuxFeature, AuxFeatureStage>>;
 
-/** Legacy Electron remains usable during migration; the fork starts closed. */
+/** Features default to enabled; capability checks and user choices govern availability. */
 export const AUX_FEATURE_DEFAULTS: Readonly<Record<AuxFeatureHost, AuxFeatureOverrides>> = {
-  electron: {
-    passwordManager: "off",
-    passkeys: "off",
-    codeMode: "off",
-    fourLayerTabApi: "off",
-    webMcp: "off",
-    outboundMcp: "off",
-    updates: "off",
-    crashReporting: "off",
-  },
   "chromium-fork": {},
 };
 
 export function auxFeatureStage(
   feature: AuxFeature,
-  host: AuxFeatureHost,
+  _host: AuxFeatureHost,
   profileOverrides: AuxFeatureOverrides = {},
-  hostOverrides: AuxFeatureOverrides = AUX_FEATURE_DEFAULTS[host],
+  hostOverrides: AuxFeatureOverrides = {},
 ): AuxFeatureStage {
-  return profileOverrides[feature] ?? hostOverrides[feature] ?? (host === "electron" ? "on" : "off");
+  const stage = profileOverrides[feature] ?? hostOverrides[feature] ?? "on";
+  return stage;
 }
 
 export function auxFeatureEnabled(
@@ -158,7 +148,6 @@ const BRIDGE_FEATURE_METHODS: Readonly<Record<string, AuxFeature>> = {
   installUnpackedExtension: "extensions",
   updateUnpackedExtension: "extensions",
   vaultFill: "passwordManager",
-  exportMigrationLayout: "electronMigration",
   browserProfiles: "profiles",
   createBrowserProfile: "profiles",
   renameBrowserProfile: "profiles",

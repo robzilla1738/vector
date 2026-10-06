@@ -128,7 +128,7 @@ export class PageNavigation {
         }
         this.pages.resetDocumentState(lp);
       } else if (lp?.target.navigationError && lp.target.backend === "aux" && this.pages.deps.native.recoverPage) {
-        // A renderer can recover in Electron while Playwright retains its
+        // A native renderer can recover while Playwright retains its
         // crashed Page flag. The native view owns retries for failed loads.
         const recovered = await this.pages.deps.native.recoverPage(pageId, lp.target.url);
         if (!recovered.ok) throw new AuxError("target_detached", "The native tab is no longer available");

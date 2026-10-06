@@ -8,7 +8,7 @@ vi.mock("../bridge", () => ({ bridge: {
   organizationSnapshot: vi.fn(), organizationCommit: vi.fn(),
 } }));
 vi.mock("../store", () => ({ toast: vi.fn() }));
-vi.mock("../use-feature", () => ({ featureStage: () => "on" }));
+vi.mock("../feature-availability", () => ({ featureStage: () => "on" }));
 const values = new Map<string, string>();
 const storage = {
   getItem: vi.fn((key: string) => values.get(key) ?? null),

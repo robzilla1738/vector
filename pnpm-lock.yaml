@@ -332,6 +332,9 @@ importers:
       ai:
         specifier: 7.0.93
         version: 7.0.93(zod@4.5.4)
+      playwright-core:
+        specifier: 1.63.0
+        version: 1.63.0
       pngjs:
         specifier: ^7.0.0
         version: 7.0.0

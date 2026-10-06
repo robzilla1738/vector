@@ -1,16 +1,10 @@
-import { auxFeatureStage, type AuxFeature, type AuxFeatureStage } from "@aux/contracts";
-import { inNativeHost, inMock } from "./bridge";
-import { chromiumFeatureStages } from "./feature-stage-reconciliation";
+import { type AuxFeature, type FeatureOverride } from "@aux/contracts";
+import { featureVisible } from "./feature-availability";
+import { useStore } from "./store";
 
-/** Native stages, with the trusted runtime's scoped acceptance, are fixed before App mounts. */
-export function featureStage(feature: AuxFeature): AuxFeatureStage {
-  if (inNativeHost) {
-    const stages = chromiumFeatureStages();
-    return auxFeatureStage(feature, "chromium-fork", stages);
-  }
-  return inMock ? "on" : "off";
-}
+export { featureAvailable, featureStage, featureVisible } from "./feature-availability";
 
 export function useFeature(feature: AuxFeature): boolean {
-  return featureStage(feature) === "on";
+  const overrides = useStore(state => state.settings.featureOverrides as FeatureOverride | undefined);
+  return featureVisible(feature, overrides);
 }

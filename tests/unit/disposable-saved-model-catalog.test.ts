@@ -3,7 +3,7 @@ import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {openDb,Repo,SettingsService,NullNativeBridge} from '@aux/runtime';
-import {createFixture,readDisposableModelCredentialEndpoint} from '../host/lib/fixture.mjs';
+import {createFixture,readDisposableModelCredentialEndpoint} from '../support/fixture.mjs';
 it('actual compiled SettingsService catalog uses the original branded HTTP endpoint and synthetic saved credential only after configuration',async()=>{
  const fixture=await createFixture(),lease=fixture.claimDisposableModelCredentialEndpoint(),endpoint=readDisposableModelCredentialEndpoint(lease);
  const directory=mkdtempSync(join(tmpdir(),'aux-saved-catalog-source-')),repo=new Repo(openDb(':memory:'));

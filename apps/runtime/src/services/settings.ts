@@ -105,6 +105,7 @@ export interface Settings extends Pick<z.infer<typeof SettingsSetParams>,
   memorySaverMinutes?: 0 | 1 | 15 | 30 | 60;
   tabSwitcherOrder?: "sidebar" | "recently-used";
   /** commandId → replacement bindings; null disables the command's shortcuts. */
+  featureOverrides?: import("@aux/contracts").FeatureOverride;
   shortcutOverrides?: ShortcutOverrides;
   selectionCapture?: SelectionCaptureSettings;
   zoomFactor?: number;
@@ -277,6 +278,7 @@ export class SettingsService {
       memorySaverMinutes: z.union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)])
         .catch(0).parse(this.get("memorySaverMinutes")),
       tabSwitcherOrder: (this.get("tabSwitcherOrder") as Settings["tabSwitcherOrder"]) ?? "sidebar",
+      featureOverrides: SettingsSetParams.shape.featureOverrides.parse(this.get("featureOverrides") ?? {}),
       shortcutOverrides: (this.get("shortcutOverrides") as Settings["shortcutOverrides"]) ?? {},
       selectionCapture: this.selectionCapture(),
       autofill: (this.get("autofill") as Settings["autofill"]) ?? {},

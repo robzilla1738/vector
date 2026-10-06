@@ -142,6 +142,12 @@ export function migrateCalendarConnections(db: DatabaseSync, cipher: SqliteColum
   const columns = ["account_key", "label", "scopes"] as const;
   const marker = "protected_sqlite_v1:calendar_connections";
   const plan = JSON.stringify({ columns, lookup: "account_key_lookup:auxidx:v1" });
+  // Durable markers replace boot scans; protected adapters authenticate each read.
+  const completed = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(marker) as { value: string } | undefined;
+  if (completed) {
+    if (completed.value !== plan) throw new Error("Protected Calendar inventory changed without a new migration version.");
+    return 0;
+  }
   let changed = 0;
   db.exec("BEGIN IMMEDIATE");
   try {
@@ -197,6 +203,12 @@ export function migrateSensitiveTable(db: DatabaseSync, cipher: SqliteColumnCiph
     throw new Error("Protected database triggers need an explicit query adaptation before migration.");
   const marker = `protected_sqlite_v1:${table}`;
   const plan = IDENTITY_OVERRIDES[table] ? JSON.stringify({ columns, identity }) : JSON.stringify(columns);
+  // Durable markers replace boot scans; protected adapters authenticate each read.
+  const completed = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(marker) as { value: string } | undefined;
+  if (completed) {
+    if (completed.value !== plan) throw new Error("Protected database column inventory changed without a new migration version.");
+    return 0;
+  }
   let changed = 0;
   db.exec("BEGIN IMMEDIATE");
   try {
@@ -238,6 +250,12 @@ export function migrateSensitiveTable(db: DatabaseSync, cipher: SqliteColumnCiph
 
 /** Transactionally seal every KV value except the two explicitly retained operational families. */
 export function migrateSensitiveKv(db: DatabaseSync, cipher: SqliteColumnCipher): number {
+  // Durable markers replace boot scans; protected adapters authenticate each read.
+  const completed = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(KV_MARKER) as { value: string } | undefined;
+  if (completed) {
+    if (completed.value !== KV_PLAN) throw new Error("Protected KV inventory changed without a new migration version.");
+    return 0;
+  }
   let changed = 0;
   db.exec("BEGIN IMMEDIATE");
   try {

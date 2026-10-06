@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { EventBus, openDb, Repo, SpaceService, TaskEvidenceService, TaskService } from "@aux/runtime";
 import type { SafetyAction } from "@aux/contracts";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
@@ -63,7 +63,8 @@ it("migrates a table atomically with stable AAD and refuses tampered or plaintex
     expect(f.db.prepare("SELECT value FROM kv WHERE key='counter:requests'").get()).toMatchObject({ value: "3" });
     f.db.prepare("UPDATE kv SET value='plain again' WHERE key='one'").run();
     f.db.prepare("UPDATE kv SET value='auxenc:v1:bad' WHERE key='two'").run();
-    expect(() => migrateSensitiveKv(f.db, cipher)).toThrow();
+    expect(migrateSensitiveKv(f.db, cipher)).toBe(0);
+    expect(() => cipher.decrypt("kv", JSON.stringify(["one"]), "value", "plain again")).toThrow(/plaintext/);
     expect(f.db.prepare("SELECT value FROM kv WHERE key='one'").get()).toMatchObject({ value: "plain again" });
   } finally { f.close(); }
 });
@@ -519,7 +520,7 @@ it("protects conversation titles and KV text across search, restart, backups and
     expect(() => reopened.getConversation("chat")).toThrow(/plaintext/);
     db.prepare("UPDATE kv SET value='tampered plaintext' WHERE key='setting:providerModels'").run();
     expect(() => reopened.getSetting("providerModels")).toThrow(/plaintext/);
-    expect(() => migrateSensitiveKv(db, cipher)).toThrow(/plaintext/);
+    expect(migrateSensitiveKv(db, cipher)).toBe(0);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 
@@ -594,7 +595,8 @@ it("protects Space and Task text with evidence while retaining task binding", as
     db.prepare("UPDATE tasks SET json='tampered plaintext' WHERE task_id=?").run(task.taskId);
     expect(() => restartedTasks.get(task.taskId)).toThrow(/plaintext/);
     db.prepare("UPDATE criterion_reviews SET json='tampered plaintext' WHERE task_id=?").run(task.taskId);
-    expect(() => migrateSensitiveTable(db, cipher, "criterion_reviews")).toThrow(/plaintext/);
+    expect(migrateSensitiveTable(db, cipher, "criterion_reviews")).toBe(0);
+    expect(() => restartedEvidence.receipt(task.taskId, 1)).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 
@@ -750,4 +752,29 @@ it("protects step inputs and preserves paged download lookup", async () => {
     db.prepare("UPDATE steps SET inputs='tampered plaintext' WHERE step_id='target'").run();
     expect(() => reopened.downloadStep("private-download-amber")).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+
+it("skips protected table and KV rows on matching markers and rejects changed inventories", async () => {
+  const f = fixture();
+  try {
+    const cipher = await SqliteColumnCipher.create(f.secrets, "profile-one", false);
+    const repo = new Repo(f.db);
+    repo.saveModelCall({ callId: "row", role: "agent", modelId: "model", durationMs: 1,
+      error: "private", createdAt: 1 });
+    repo.setSetting("sample", "private");
+    migrateSensitiveTable(f.db, cipher, "model_calls");
+    migrateSensitiveKv(f.db, cipher);
+    const decrypt = vi.spyOn(cipher, "decrypt").mockImplementation(() => { throw new Error("boot scan"); });
+    const changes = f.db.prepare("SELECT total_changes() AS n").get();
+    expect(migrateSensitiveTable(f.db, cipher, "model_calls")).toBe(0);
+    expect(migrateSensitiveKv(f.db, cipher)).toBe(0);
+    expect(decrypt).not.toHaveBeenCalled();
+    expect(f.db.prepare("SELECT total_changes() AS n").get()).toEqual(changes);
+    f.db.prepare("UPDATE aux_meta SET value='changed' WHERE key='protected_sqlite_v1:model_calls'").run();
+    expect(() => migrateSensitiveTable(f.db, cipher, "model_calls")).toThrow(/inventory changed/);
+    f.db.prepare("UPDATE aux_meta SET value='changed' WHERE key='protected_sqlite_v1:kv_filtered'").run();
+    expect(() => migrateSensitiveKv(f.db, cipher)).toThrow(/inventory changed/);
+    decrypt.mockRestore();
+  } finally { f.close(); }
 });

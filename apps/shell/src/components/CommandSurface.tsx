@@ -1,10 +1,10 @@
 import { smallGhostButtonProps } from "../ui/button-props";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { COMMANDS, type CommandDef, type PreparedConversation } from "@aux/contracts";
+import { COMMANDS, type CommandDef, type PreparedConversation, type FeatureOverride } from "@aux/contracts";
 import { useShallow } from "zustand/react/shallow";
 import { useStore, call, errToast } from "../store";
 import { bridge } from "../bridge";
-import { featureStage } from "../use-feature";
+import { featureVisible } from "../feature-availability";
 import { canSplitPage, tabLabel, hostOf } from "../workspace";
 import { closeCommandSurface, type CommandSurfaceRequest } from "../command-surface-state";
 import { useShortcutLabels } from "../use-shortcut-label";
@@ -26,6 +26,7 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
   const restoreFocus = useRef(document.activeElement as HTMLElement | null);
   const key = useShortcutLabels();
   const layout = useStore(state => state.layout);
+  const featureOverrides = useStore(state => state.settings.featureOverrides as FeatureOverride | undefined);
   const activePageId = useStore(state => state.activePageId);
   useStore(useShallow(state => state.pages.map(page => JSON.stringify([page.pageId, page.url, page.title, page.backend, page.viewStatus]))));
   const pages = useStore.getState().pages;
@@ -56,17 +57,10 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
     return () => { live = false; clearTimeout(timer); };
   }, [query, prepared]);
   const providerRows = useCallback((term: string) => bridge.privateMode ? [] : commandSurfaceWorkRows(term, work), [work]);
-  const [pickerOverride, setPickerOverride] = useState<{ sequence: number; provider: "split" | "chrome" | null } | null>(null);
+  const [pickerOverride, setPickerOverride] = useState<{ sequence: number; provider: "split" | null } | null>(null);
   const picker = pickerOverride?.sequence === request.sequence ? pickerOverride.provider : request.provider ?? null;
-  const setPicker = (provider: "split" | "chrome" | null) => setPickerOverride({ sequence: request.sequence, provider });
-  const [chromeTabs, setChromeTabs] = useState<Array<{ targetId?: string; id?: string; url: string; title?: string }>>([]);
+  const setPicker = (provider: "split" | null) => setPickerOverride({ sequence: request.sequence, provider });
   const [revision, setRevision] = useState(0);
-  useEffect(() => {
-    if (request.provider !== "chrome") return;
-    let live = true;
-    void call("chrome.tabs").then(tabs => { if (live) setChromeTabs(tabs); }).catch(error => { if (live) errToast(error); });
-    return () => { live = false; };
-  }, [request.sequence, request.provider]);
   const close = useCallback(() => {
     const dismissing = useStore.getState().overlay === "command-surface";
     closeCommandSurface(request.sequence);
@@ -86,8 +80,8 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
   const registry = useMemo(() => COMMANDS.filter(command => {
     const definition = command as CommandDef;
     return definition.palette !== false && (!definition.windows || definition.windows.includes(bridge.windowKind))
-      && (!definition.feature || featureStage(definition.feature) === "on");
-  }), []);
+      && (!definition.feature || featureVisible(definition.feature, featureOverrides));
+  }), [featureOverrides]);
   const rows = useCallback((query: string): Array<Suggestion & { keepOpen?: boolean; commandId?: string }> => {
     const term = query.trim().toLocaleLowerCase();
     const matches = (text: string) => !term || text.toLocaleLowerCase().includes(term);
@@ -98,19 +92,13 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
       && canSplitPage(activePage) && layout.tabSpace[page.pageId] === layout.activeSpaceId
       && matches(`${tabLabel(layout, page)} ${page.url}`)).map(page => row(`split-${page.pageId}`, tabLabel(layout, page), hostOf(page.url),
         () => executeCommand("split-add", { payload: { pageId: page.pageId } }), "split-add"));
-    if (picker === "chrome") return chromeTabs.flatMap(tab => {
-      const targetId = tab.targetId ?? tab.id;
-      return targetId && matches(`${tab.title ?? ""} ${tab.url}`)
-        ? [row(`chrome-${targetId}`, tab.title || tab.url, hostOf(tab.url),
-          () => executeCommand("command-borrow-tab", { payload: { url: tab.url, targetId } }), "command-borrow-tab")] : [];
-    });
     const result: Array<Suggestion & { keepOpen?: boolean; commandId?: string }> = registry.filter(command => matches(`${command.label} ${command.section} ${command.id}`))
       .map(command => ({ ...row(command.id, command.label, command.section, () => executeCommand(command.id), command.id), hint: key(command.id) || undefined }));
-    if (featureStage("spaces") === "on") for (const space of layout.spaces)
+    if (featureVisible("spaces", featureOverrides)) for (const space of layout.spaces)
       if (space.id !== layout.activeSpaceId && matches(`Switch to ${space.name}`)) result.push(row(`space-${space.id}`, `Switch to ${space.name}`, "Space",
         () => executeCommand("command-switch-space", { payload: { spaceId: space.id } }), "command-switch-space"));
     return result.sort((a, b) => Number(b.title.toLocaleLowerCase() === term) - Number(a.title.toLocaleLowerCase() === term));
-  }, [pages, layout, activePage, activePageId, picker, chromeTabs, registry, executeCommand, key]);
+  }, [pages, layout, activePage, activePageId, picker, registry, executeCommand, key, featureOverrides]);
   const [placement, setPlacement] = useState<{ left: number; top: number; width: number } | null>(null);
   useEffect(() => {
     const stage = document.querySelector<HTMLElement>(".stage-wrap");

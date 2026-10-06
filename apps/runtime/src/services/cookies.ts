@@ -6,32 +6,21 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { promisify } from "node:util";
 import { AuxError } from "@aux/contracts";
-import type { BrowserCookie, BrowserDriver } from "@aux/chromium-driver";
+import type { BrowserCookie } from "@aux/chromium-driver";
 import type { NativeBridge } from "../native.js";
 
 const execFileP = promisify(execFile);
 
 /**
- * Chrome cookie import. Two sources:
- *
- * - "attached": the user's running Chrome, reached over its remote-debugging
- *   port. `Storage.getCookies` returns already-decrypted values — no keychain
- *   access, and it covers cookies Aux could never decrypt itself (Chrome
- *   v130+ "app-bound" v20 entries).
- * - "profile": Chrome's on-disk `Cookies` SQLite DB. Values are AES-128-CBC
- *   encrypted with a key derived from the "Chrome Safe Storage" keychain
- *   entry; reading it triggers the macOS permission prompt, which is the
- *   user-mediated consent boundary. v20/app-bound rows are skipped and
- *   counted — importing those needs the attached path.
- *
- * In both cases cookies are injected into Aux's shared profile partition
- * through the native bridge (or the standalone driver's CDP session). Cookie
- * values are never logged, returned, or persisted by Aux itself.
+ * Reads a copy of Chrome's on-disk cookie store after macOS authorizes the
+ * Safe Storage keychain read. App-bound v20 rows cannot be decrypted here.
+ * Cookies are imported through the native Profile bridge; values are never
+ * logged, returned, or persisted by Aux.
  */
 
 export interface CookieImportResult {
   ok: boolean;
-  source: "attached" | "profile";
+  source: "profile";
   imported: number;
   skipped: number;
   /** distinct domains touched — names only, never values */
@@ -52,17 +41,16 @@ interface ChromeProfileRow {
   is_persistent: number;
 }
 
-const CHROME_DIRS = [
-  join(homedir(), "Library/Application Support/Google/Chrome"),
-  join(homedir(), "Library/Application Support/Google/Chrome Beta"),
-  join(homedir(), "Library/Application Support/Chromium"),
-];
+interface CookieProfileSource {
+  directory: string;
+  safeStorageService: string;
+}
 
-const SAFE_STORAGE_SERVICE: Record<string, string> = {
-  "Google/Chrome": "Chrome Safe Storage",
-  "Google/Chrome Beta": "Chrome Beta Safe Storage",
-  Chromium: "Chromium Safe Storage",
-};
+const CHROME_PROFILES: readonly CookieProfileSource[] = [
+  { directory: join(homedir(), "Library/Application Support/Google/Chrome"), safeStorageService: "Chrome Safe Storage" },
+  { directory: join(homedir(), "Library/Application Support/Google/Chrome Beta"), safeStorageService: "Chrome Beta Safe Storage" },
+  { directory: join(homedir(), "Library/Application Support/Chromium"), safeStorageService: "Chromium Safe Storage" },
+];
 
 export function chromeEpochToUnix(expiresUtc: number): number | undefined {
   if (!expiresUtc) return undefined;
@@ -85,7 +73,7 @@ async function safeStoragePassword(service: string): Promise<string> {
   } catch {
     throw new AuxError(
       "backend_unavailable",
-      `Could not read "${service}" from the keychain — unlock it when macOS prompts, or attach Chrome (⌘⇧P → Attach Chrome) and import from the running browser instead.`,
+      `Could not read "${service}" from the keychain. Unlock it when macOS prompts and retry the import.`,
     );
   }
 }
@@ -113,54 +101,31 @@ export function decryptValue(encrypted: Buffer, key: Buffer, metaVersion: number
 export class CookieService {
   constructor(
     private deps: {
-      drivers: () => { aux: BrowserDriver | null; chrome: BrowserDriver | null; engine?: BrowserDriver | null };
       native: NativeBridge;
+      profileSources?: readonly CookieProfileSource[];
+      readSafeStoragePassword?: (service: string) => Promise<string>;
     },
   ) {}
 
   private async inject(cookies: BrowserCookie[]): Promise<number> {
     const { native } = this.deps;
-    // the Aux Engine keeps its own jar — mirror imports there so engine-routed
-    // pages see the same sessions (best-effort; the Chromium count is authoritative)
-    const engine = this.deps.drivers().engine;
-    if (engine?.isConnected() && engine.setCookies) await engine.setCookies(cookies).catch(() => 0);
-    if (native.available()) {
-      const res = await native.setCookies(cookies);
-      return res.count;
+    if (!native.available()) {
+      throw new AuxError("backend_unavailable", "Native Profile cookie import is unavailable.");
     }
-    const aux = this.deps.drivers().aux;
-    if (!aux?.setCookies) {
-      throw new AuxError("backend_unavailable", "no Aux browser session to receive cookies");
-    }
-    return aux.setCookies(cookies);
+    return (await native.setCookies(cookies)).count;
   }
 
-  async importCookies(opts: { source?: "auto" | "attached" | "profile" }): Promise<CookieImportResult> {
-    const source = opts.source ?? "auto";
-    const chrome = this.deps.drivers().chrome;
-
-    if ((source === "auto" || source === "attached") && chrome?.isConnected() && chrome.getAllCookies) {
-      const all = await chrome.getAllCookies();
-      const usable = all.filter((c) => c.name && c.domain);
-      const imported = await this.inject(usable);
-      return {
-        ok: true,
-        source: "attached",
-        imported,
-        skipped: all.length - usable.length + (usable.length - imported),
-        domains: new Set(usable.map((c) => c.domain)).size,
-        detail: `imported from running Chrome over CDP`,
-      };
-    }
-    if (source === "attached") {
-      throw new AuxError("backend_unavailable", "no Chrome attached — run Attach Chrome first");
+  async importCookies(_opts: { source?: "auto" | "profile" } = {}): Promise<CookieImportResult> {
+    if (!this.deps.native.available()) {
+      throw new AuxError("backend_unavailable", "Native Profile cookie import is unavailable.");
     }
 
     // ---- profile path ----
-    const dir = CHROME_DIRS.find((d) => existsSync(d));
-    if (!dir) {
+    const source = (this.deps.profileSources ?? CHROME_PROFILES).find((candidate) => existsSync(candidate.directory));
+    if (!source) {
       throw new AuxError("not_found", "no Chrome profile found on this machine");
     }
+    const dir = source.directory;
     let profiles: string[];
     try {
       profiles = readdirSync(dir).filter(
@@ -170,15 +135,14 @@ export class CookieService {
       if ((e as NodeJS.ErrnoException).code === "EPERM") {
         throw new AuxError(
           "backend_unavailable",
-          "macOS is blocking reads of Chrome's profile directory. Either grant Aux Full Disk Access (System Settings → Privacy & Security → Full Disk Access), or attach Chrome (launch it with --remote-debugging-port=9222) and re-import — the attached path needs no extra permissions.",
+          "macOS is blocking reads of Chrome's profile directory. Grant Aux Full Disk Access in System Settings → Privacy & Security → Full Disk Access, then retry the import.",
         );
       }
       throw e;
     }
     if (!profiles.length) throw new AuxError("not_found", "Chrome profile has no Cookies store");
 
-    const serviceKey = Object.keys(SAFE_STORAGE_SERVICE).find((k) => dir.includes(k))!;
-    const password = await safeStoragePassword(SAFE_STORAGE_SERVICE[serviceKey]!);
+    const password = await (this.deps.readSafeStoragePassword ?? safeStoragePassword)(source.safeStorageService);
     const key = pbkdf2Sync(password, "saltysalt", 1003, 16, "sha1");
 
     const byKey = new Map<string, BrowserCookie>();
@@ -250,11 +214,11 @@ export class CookieService {
       ok: true,
       source: "profile",
       imported,
-      skipped: skipped + (cookies.length - imported),
+      skipped: skipped + appBound + (cookies.length - imported),
       domains: new Set(cookies.map((c) => c.domain)).size,
       detail:
         appBound > 0
-          ? `${appBound} cookie(s) use Chrome's app-bound encryption and can't be read from disk — attach Chrome and re-import to capture them`
+          ? `${appBound} cookie(s) use Chrome's app-bound encryption and cannot be imported from disk.`
           : `imported from ${profiles.length} Chrome profile(s)`,
     };
   }

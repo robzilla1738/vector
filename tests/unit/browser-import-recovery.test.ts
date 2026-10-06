@@ -259,11 +259,12 @@ it("a real runtime-process exit restores an interrupted receipt without opening 
 
 it("retains five metadata-only receipts and cannot discover them from another Profile", async () => {
   const repo = repository();
-  const importer = new BrowserImporter({ repo, emit: () => {}, sources: () => [] });
+  const fixture = historyFixture("chrome", 1);
+  const importer = new BrowserImporter({ repo, emit: () => {}, sources: () => [fixture.source] });
   const ids: string[] = [];
   for (let i = 0; i < 7; i++)
     ids.push(
-      (await importer.runNow({ selections: [{ sourceId: "chrome-attached", categories: ["tabs"] }] })).jobId,
+      (await importer.runNow({ selections: [{ sourceId: "chrome", profileId: "Reviewed", categories: ["history"] }] })).jobId,
     );
   const restored = new BrowserImporter({ repo, emit: () => {}, sources: () => [] });
   expect((await restored.preview()).recentJobs).toHaveLength(5);

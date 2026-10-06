@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Download, PageTarget } from "@aux/contracts";
 const host = vi.hoisted(() => ({ snapshot: vi.fn(), promote: vi.fn(), downloads: vi.fn(), errors: vi.fn() }));
+vi.mock("../../feature-availability", () => ({ featureAvailable: () => true, featureVisible: () => true, featureStage: () => "on" }));
 vi.mock("../../bridge", () => ({ inNativeHost: false, inMock: false, bridge: {
   windowId: "little", windowKind: "little", privateMode: false, platform: "mac",
   organizationSnapshot: host.snapshot, onOrganizationChanged: () => () => {},

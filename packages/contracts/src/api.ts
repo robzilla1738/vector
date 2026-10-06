@@ -1,3 +1,4 @@
+import { AUX_FEATURES, type AuxFeature } from "./aux-features.js";
 import { DownloadNamingSettingsSchema } from "./download-naming.js";
 import { ModelConnectionChangeSchema, ImageModelSchema } from "./model-connections.js";
 import { BrowserRuntimeMethodSchemas, BrowserRuntimeResultSchemas } from "./browser-runtime-api.js";
@@ -746,11 +747,7 @@ export const ProgramsSaveParams = z.object({
 });
 export const ProgramsDeleteParams = z.object({ programId: id });
 
-/** sessions / chrome attach */
-export const ChromeAttachParams = z.object({
-  /** cdp port of the user's Chrome started with --remote-debugging-port */
-  port: z.number().int().positive().default(9222),
-});
+/** Native browser session operations. */
 export const ChromeOpenLiveParams = z.object({ pageId: id });
 
 /** models / settings */
@@ -759,6 +756,7 @@ export const SidebarMaterialSchema = z.enum(["liquid-glass", "titlebar", "sideba
 export type SidebarMaterial = z.infer<typeof SidebarMaterialSchema>;
 
 export const SettingsSetParams = z.object({
+  featureOverrides: z.partialRecord(z.enum(Object.keys(AUX_FEATURES) as [AuxFeature, ...AuxFeature[]]), z.boolean()).optional(),
   modelProvider: ModelProviderSchema.optional(),
   modelCredential: ModelCredentialSchema.optional(),
   modelConnection: ModelConnectionChangeSchema.optional(),
@@ -1539,11 +1537,8 @@ export const MethodSchemas = {
   "programs.save": ProgramsSaveParams,
   "programs.delete": ProgramsDeleteParams,
   "sessions.list": z.object({}),
-  "chrome.attach": ChromeAttachParams,
-  "chrome.detach": z.object({}),
-  "chrome.tabs": z.object({}),
   "chrome.importCookies": z.object({
-    source: z.enum(["auto", "attached", "profile"]).optional(),
+    source: z.enum(["auto", "profile"]).optional(),
   }),
   "chrome.importBookmarks": z.object({
     profile: z.string().trim().min(1).max(64).optional(),
@@ -2273,14 +2268,9 @@ export const ResultSchemas = {
   "programs.save": SavedProgramSchema,
   "programs.delete": z.object({ ok: z.boolean() }),
   "sessions.list": z.array(BrowserSessionSchema),
-  "chrome.attach": BrowserSessionSchema,
-  "chrome.detach": z.object({ ok: z.boolean() }),
-  "chrome.tabs": z.array(
-    z.object({ targetId: z.string(), url: z.string(), title: z.string(), type: z.string() }),
-  ),
   "chrome.importCookies": z.object({
     ok: z.boolean(),
-    source: z.enum(["attached", "profile"]),
+    source: z.enum(["profile"]),
     imported: z.number(),
     skipped: z.number(),
     domains: z.number(),

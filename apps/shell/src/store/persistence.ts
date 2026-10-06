@@ -4,7 +4,7 @@ import type { ClosedTab } from "../closed-tabs";
 import { createEntryWriter } from "../conversation-drafts";
 import { toast } from "../store";
 import { type Layout, type TidyUndoRecord, emptyLayout } from "../workspace";
-import { featureStage } from "../use-feature";
+import { featureStage } from "../feature-availability";
 import type { OrganizationPersistence } from "./organization-persistence";
 
 export const CLOSED_TABS_KEY = `aux.closed-tabs.v1:${bridge.windowId}`;

@@ -58,7 +58,7 @@ async function h_runtime_describe(ctx: MethodCtx): Promise<unknown> {
       operationRegistry: !!s.operations,
       stateIndex: !!s.state,
       tracing: !!s.tracer,
-      chromeAttach: true,
+      chromeAttach: false,
       takeover: true,
       // Runs are crash-safe (the ledger marks them interrupted) but NOT
       // resumable after a restart; program checkpoints (`resumeFrom`)

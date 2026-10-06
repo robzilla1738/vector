@@ -3,18 +3,15 @@ const requirements = {
   "minimalUi": {
     "requires": [
       "windowControlsVisible"
-    ],
-    "journey": "feature:minimalUi"
+    ]
   },
   "windowSync": {
     "requires": [
       "showTabWindow"
-    ],
-    "journey": "feature:windowSync"
+    ]
   },
   "pinnedApps": {
-    "requires": [],
-    "journey": "feature:pinnedApps"
+    "requires": []
   },
   "liveFolders": {
     "requires": [
@@ -25,38 +22,32 @@ const requirements = {
       "github.connections.list",
       "github.connections.connect",
       "github.connections.revoke"
-    ],
-    "journey": "feature:liveFolders"
+    ]
   },
   "autoArchive": {
     "requires": [
       "archiveTab"
-    ],
-    "journey": "feature:autoArchive"
+    ]
   },
   "pictureInPicture": {
     "requires": [
       "pictureInPicture"
-    ],
-    "journey": "feature:pictureInPicture"
+    ]
   },
   "cliOpen": {
-    "requires": [],
-    "journey": "feature:cliOpen"
+    "requires": []
   },
   "tabMentions": {
     "requires": [
       "native.organizationSnapshot",
       "agent.tabs.list"
-    ],
-    "journey": "feature:tabMentions"
+    ]
   },
   "agentSitePermissions": {
     "requires": [
       "safety.originPolicies.list",
       "safety.originPolicies.set"
-    ],
-    "journey": "feature:agentSitePermissions"
+    ]
   },
   "demonstrationSkills": {
     "requires": [
@@ -72,8 +63,7 @@ const requirements = {
       "routines.replay.repair.propose",
       "routines.replay.repair.apply",
       "routines.replay.compileDemonstration"
-    ],
-    "journey": "feature:demonstrationSkills"
+    ]
   },
   "overnightReview": {
     "requires": [
@@ -85,22 +75,18 @@ const requirements = {
       "nightShift.summary",
       "nightShift.list",
       "nightShift.review"
-    ],
-    "journey": "feature:overnightReview"
+    ]
   },
   "layouts": {
     "requires": [
       "setAppearance"
-    ],
-    "journey": "feature:layouts"
+    ]
   },
   "floatingSidebar": {
-    "requires": [],
-    "journey": "feature:floatingSidebar"
+    "requires": []
   },
   "autoHideToolbar": {
-    "requires": [],
-    "journey": "feature:autoHideToolbar"
+    "requires": []
   },
   "spaces": {
     "requires": [
@@ -110,53 +96,42 @@ const requirements = {
       "organizationCommit",
       "spaces.create",
       "spaces.update"
-    ],
-    "journey": "feature:spaces"
+    ]
   },
   "spaceThemes": {
-    "requires": [],
-    "journey": "feature:spaceThemes"
+    "requires": []
   },
   "tabSections": {
-    "requires": [],
-    "journey": "feature:tabSections"
+    "requires": []
   },
   "folders": {
-    "requires": [],
-    "journey": "feature:folders"
+    "requires": []
   },
   "archive": {
-    "requires": [],
-    "journey": "feature:archive"
+    "requires": []
   },
   "tidy": {
-    "requires": [],
-    "journey": "feature:tidy"
+    "requires": []
   },
   "aiTidy": {
     "requires": [
       "agent.tidy.propose"
-    ],
-    "journey": "feature:aiTidy"
+    ]
   },
   "splitView": {
-    "requires": [],
-    "journey": "feature:splitView"
+    "requires": []
   },
   "peek": {
-    "requires": [],
-    "journey": "feature:peek"
+    "requires": []
   },
   "littleWindow": {
     "requires": [
       "littleWindow",
       "externalLinkTarget"
-    ],
-    "journey": "feature:littleWindow"
+    ]
   },
   "hoverCards": {
-    "requires": [],
-    "journey": "feature:hoverCards"
+    "requires": []
   },
   "linkRouting": {
     "requires": [
@@ -166,18 +141,15 @@ const requirements = {
       "resolveRoutePrompt",
       "routedOpens",
       "routePrompts"
-    ],
-    "journey": "feature:linkRouting"
+    ]
   },
   "titleRules": {
-    "requires": [],
-    "journey": "feature:titleRules"
+    "requires": []
   },
   "aiTabNaming": {
     "requires": [
       "agent.tabName.suggest"
-    ],
-    "journey": "feature:aiTabNaming"
+    ]
   },
   "smartDownloadNames": {
     "requires": [
@@ -189,14 +161,12 @@ const requirements = {
       "downloads.completedNative",
       "downloads.renameReceipts",
       "downloads.undoRename"
-    ],
-    "journey": "feature:smartDownloadNames"
+    ]
   },
   "tabLifecycle": {
     "requires": [
       "tabSleep"
-    ],
-    "journey": "feature:tabLifecycle"
+    ]
   },
   "profiles": {
     "requires": [
@@ -210,42 +180,29 @@ const requirements = {
       "setBrowserProfileAppearance",
       "focusBrowserProfileSpace",
       "moveTabToProfile"
-    ],
-    "journey": "feature:profiles"
+    ]
   },
   "privateWindows": {
-    "requires": [],
-    "journey": "feature:privateWindows"
+    "requires": []
   },
   "commandRegistry": {
-    "requires": [],
-    "journey": "feature:commandRegistry"
+    "requires": []
   },
   "browserImport": {
-    "requires": [
-      "migrationReview",
-      "migrationBegin",
-      "migrationBatch",
-      "migrationFinish",
-      "migrationRollback"
-    ],
-    "journey": "feature:browserImport"
+    "requires": []
   },
   "appleScript": {
     "requires": [
       "javascriptAppleEvents"
-    ],
-    "journey": "feature:appleScript"
+    ]
   },
   "commandBar": {
     "requires": [
       "autocomplete"
-    ],
-    "journey": "feature:commandBar"
+    ]
   },
   "searchRanking": {
-    "requires": [],
-    "journey": "feature:searchRanking"
+    "requires": []
   },
   "searchEngines": {
     "requires": [
@@ -254,34 +211,28 @@ const requirements = {
       "native.searchEngineSet",
       "native.searchSuggestionsGet",
       "native.searchSuggestionsSet"
-    ],
-    "journey": "feature:searchEngines"
+    ]
   },
   "homeAsk": {
-    "requires": [],
-    "journey": "feature:homeAsk"
+    "requires": []
   },
   "quickAsk": {
     "requires": [
       "quickAskShortcut",
       "quickAsk"
-    ],
-    "journey": "feature:quickAsk"
+    ]
   },
   "conversation": {
     "requires": [
       "pickEvidenceImage",
       "pickEvidenceDocument"
-    ],
-    "journey": "feature:conversation"
+    ]
   },
   "selectionAsk": {
-    "requires": [],
-    "journey": "feature:selectionAsk"
+    "requires": []
   },
   "regionCapture": {
-    "requires": [],
-    "journey": "feature:regionCapture"
+    "requires": []
   },
   "inlineAssist": {
     "requires": [
@@ -289,30 +240,25 @@ const requirements = {
       "agent.inlineAssist.draft",
       "agent.inlineAssist.apply",
       "agent.inlineAssist.cancel"
-    ],
-    "journey": "feature:inlineAssist"
+    ]
   },
   "reader": {
     "requires": [
       "readArticle",
       "native.captureReadablePage"
-    ],
-    "journey": "feature:reader"
+    ]
   },
   "aiTranslate": {
     "requires": [
       "translatePage",
       "showOriginal"
-    ],
-    "journey": "feature:aiTranslate"
+    ]
   },
   "summarize": {
-    "requires": [],
-    "journey": "feature:summarize"
+    "requires": []
   },
   "siteAdapters": {
-    "requires": [],
-    "journey": "feature:siteAdapters"
+    "requires": []
   },
   "dictation": {
     "requires": [
@@ -320,20 +266,16 @@ const requirements = {
       "startDictation",
       "stopDictation",
       "cancelDictation"
-    ],
-    "journey": "feature:dictation"
+    ]
   },
   "voiceCommands": {
-    "requires": [],
-    "journey": "feature:voiceCommands"
+    "requires": []
   },
   "realtimeVoice": {
-    "requires": [],
-    "journey": "feature:realtimeVoice"
+    "requires": []
   },
   "codeMode": {
-    "requires": [],
-    "journey": "feature:codeMode"
+    "requires": []
   },
   "fourLayerTabApi": {
     "requires": [
@@ -344,32 +286,25 @@ const requirements = {
       "native.cdpTakeNavigationReceipt",
       "native.cdpDispatch",
       "native.cdpVersion"
-    ],
-    "journey": "feature:fourLayerTabApi"
+    ]
   },
   "webMcp": {
-    "requires": [],
-    "journey": "feature:webMcp"
+    "requires": []
   },
   "agentTabGroups": {
-    "requires": [],
-    "journey": "feature:agentTabGroups"
+    "requires": []
   },
   "turnScopedTabs": {
-    "requires": [],
-    "journey": "feature:turnScopedTabs"
+    "requires": []
   },
   "modelRouting": {
-    "requires": [],
-    "journey": "feature:modelRouting"
+    "requires": []
   },
   "webTools": {
-    "requires": [],
-    "journey": "feature:webTools"
+    "requires": []
   },
   "agentRecovery": {
-    "requires": [],
-    "journey": "feature:agentRecovery"
+    "requires": []
   },
   "subagents": {
     "requires": [
@@ -378,31 +313,25 @@ const requirements = {
       "sets.list",
       "sets.map",
       "sets.results"
-    ],
-    "journey": "feature:subagents"
+    ]
   },
   "steerAndTakeover": {
-    "requires": [],
-    "journey": "feature:steerAndTakeover"
+    "requires": []
   },
   "agentOverlay": {
-    "requires": [],
-    "journey": "feature:agentOverlay"
+    "requires": []
   },
   "tasksInbox": {
-    "requires": [],
-    "journey": "feature:tasksInbox"
+    "requires": []
   },
   "safetyCore": {
     "requires": [
       "safety.grants.list",
       "safety.grants.revoke"
-    ],
-    "journey": "feature:safetyCore"
+    ]
   },
   "durableJournal": {
-    "requires": [],
-    "journey": "feature:durableJournal"
+    "requires": []
   },
   "skills": {
     "requires": [
@@ -416,8 +345,7 @@ const requirements = {
       "plugins.skills.revoke",
       "plugins.skills.read",
       "plugins.uninstall"
-    ],
-    "journey": "feature:skills"
+    ]
   },
   "automations": {
     "requires": [
@@ -446,16 +374,13 @@ const requirements = {
       "routines.exportSkill",
       "routines.importSkill",
       "routines.import"
-    ],
-    "journey": "feature:automations"
+    ]
   },
   "goals": {
-    "requires": [],
-    "journey": "feature:goals"
+    "requires": []
   },
   "hooks": {
-    "requires": [],
-    "journey": "feature:hooks"
+    "requires": []
   },
   "inboundAgents": {
     "requires": [
@@ -463,12 +388,10 @@ const requirements = {
       "agentConnections",
       "agentClients",
       "revokeAgentConnection"
-    ],
-    "journey": "feature:inboundAgents"
+    ]
   },
   "outboundMcp": {
-    "requires": [],
-    "journey": "feature:outboundMcp"
+    "requires": []
   },
   "connectors": {
     "requires": [
@@ -481,28 +404,24 @@ const requirements = {
       "calendar.taskGrants.revoke",
       "calendar.taskEvents.list",
       "connectors.catalog"
-    ],
-    "journey": "feature:connectors"
+    ]
   },
   "reports": {
     "requires": [
       "savePagePdf"
-    ],
-    "journey": "feature:reports"
+    ]
   },
   "documentArtifacts": {
     "requires": [
       "saveWorkbook",
       "saveStoredArtifact"
-    ],
-    "journey": "feature:documentArtifacts"
+    ]
   },
   "activeHtml": {
     "requires": [
       "createResultPreview",
       "releaseResultPreview"
-    ],
-    "journey": "feature:activeHtml"
+    ]
   },
   "zapAndUserCss": {
     "requires": [
@@ -519,8 +438,7 @@ const requirements = {
       "customization.css.set",
       "customization.css.effective",
       "customization.css.apply"
-    ],
-    "journey": "feature:zapAndUserCss"
+    ]
   },
   "memory": {
     "requires": [
@@ -539,12 +457,10 @@ const requirements = {
       "memory.pipeline.overview",
       "memory.pipeline.search",
       "memory.pipeline.forget"
-    ],
-    "journey": "feature:memory"
+    ]
   },
   "unifiedRecall": {
-    "requires": [],
-    "journey": "feature:unifiedRecall"
+    "requires": []
   },
   "extensions": {
     "requires": [
@@ -562,14 +478,12 @@ const requirements = {
       "removeExtension",
       "installUnpackedExtension",
       "updateUnpackedExtension"
-    ],
-    "journey": "feature:extensions"
+    ]
   },
   "passwordManager": {
     "requires": [
       "native.fillSavedPassword"
-    ],
-    "journey": "feature:passwordManager"
+    ]
   },
   "vault": {
     "requires": [
@@ -593,12 +507,10 @@ const requirements = {
       "vault.import",
       "vault.update",
       "vault.secretMatches"
-    ],
-    "journey": "feature:vault"
+    ]
   },
   "passkeys": {
-    "requires": [],
-    "journey": "feature:passkeys"
+    "requires": []
   },
   "contentBlocking": {
     "requires": [
@@ -617,15 +529,13 @@ const requirements = {
       "native.cosmeticBegin",
       "native.cosmeticAppend",
       "native.cosmeticCommit"
-    ],
-    "journey": "feature:contentBlocking"
+    ]
   },
   "httpsFirst": {
     "requires": [
       "httpsUpgrade",
       "setHttpsUpgrade"
-    ],
-    "journey": "feature:httpsFirst"
+    ]
   },
   "sitePermissions": {
     "requires": [
@@ -638,50 +548,33 @@ const requirements = {
       "clearSitePermission",
       "cookieControls",
       "setCookieControls"
-    ],
-    "journey": "feature:sitePermissions"
+    ]
   },
   "pageZoom": {
     "requires": [
       "siteZoom",
       "native.setZoom"
-    ],
-    "journey": "feature:pageZoom"
+    ]
   },
   "policyProvider": {
-    "requires": [],
-    "journey": "feature:policyProvider"
+    "requires": []
   },
   "updates": {
-    "requires": [],
-    "journey": "feature:updates"
+    "requires": []
   },
   "crashReporting": {
-    "requires": [],
-    "journey": "feature:crashReporting"
-  },
-  "electronMigration": {
-    "requires": [
-      "exportRuntimeBackup",
-      "exportMigrationLayout",
-      "stageRuntimeRestore",
-      "cancelRuntimeRestore",
-      "runtimeRestoreStatus"
-    ],
-    "journey": "feature:electronMigration"
+    "requires": []
   },
   "onboarding": {
-    "requires": [],
-    "journey": "feature:onboarding"
+    "requires": []
   }
 } as const;
 const runtimeMethods = ["liveFolders.items","liveFolders.refresh","liveFolders.markRead","github.connections.list","github.connections.connect","github.connections.revoke","downloads.completedNative","downloads.renameReceipts","downloads.undoRename","safety.originPolicies.list","safety.originPolicies.set","recorder.get","recorder.start","recorder.pause","recorder.resume","recorder.stop","recorder.discard","nightShift.propose","nightShift.queue","nightShift.summary","nightShift.list","nightShift.review","agent.tabs.list","agent.tidy.propose","agent.tabName.suggest","agent.inlineAssist.capture","agent.inlineAssist.draft","agent.inlineAssist.apply","agent.inlineAssist.cancel","spaces.create","spaces.update","vault.status","vault.list","vault.save","vault.lock","vault.unlock","vault.grant","vault.renewGrant","vault.expiredGrants","vault.revoke","vault.history","vault.grants","vault.generate","vault.itemsForOrigin","vault.fill","vault.export","vault.import","vault.update","vault.secretMatches","routines.list","routines.suggest","routines.get","routines.create","routines.fromResult","routines.replay.repair.propose","routines.replay.repair.apply","routines.replay.compileDemonstration","routines.replay.compile","routines.replay.test","routines.replay.result","routines.update","routines.pause","routines.archive","routines.run","routines.runs","routines.outcome","routines.reconcile","routines.due","routines.ingestEvent","routines.alerts","routines.inbox","routines.inboxRead","routines.compare","routines.export","routines.exportSkill","routines.importSkill","routines.import","zap.list","zap.grant","zap.update","zap.revoke","plugins.inspect","plugins.install","plugins.list","plugins.assets","plugins.skills.grant","plugins.skills.grants","plugins.skills.revoke","plugins.skills.read","plugins.uninstall","memory.paste.preview","memory.paste.commit","memory.paste.status","memory.pipeline.policy","memory.pipeline.setPolicy","memory.pipeline.extractRun","memory.pipeline.sources","memory.pipeline.inbox","memory.pipeline.claims","memory.pipeline.history","memory.pipeline.revert","memory.pipeline.review","memory.pipeline.overview","memory.pipeline.search","memory.pipeline.forget","calendar.connections.list","calendar.auth.start","calendar.connections.revoke","calendar.events.list","calendar.taskGrants.list","calendar.taskGrants.create","calendar.taskGrants.revoke","calendar.taskEvents.list","connectors.catalog","customization.zap.pick","customization.zap.list","customization.zap.add","customization.zap.remove","customization.css.get","customization.css.set","customization.css.effective","customization.css.apply","sets.create","sets.get","sets.list","sets.map","sets.results","safety.grants.list","safety.grants.revoke"] as const;
-export type FeatureStage = 'off' | 'preview' | 'on';
-export function featureStagesFor(methods: readonly string[], qualifiedFeatures: readonly string[]): Record<keyof typeof requirements, FeatureStage> {
+export type FeatureStage = 'off' | 'on';
+export function featureStagesFor(methods: readonly string[]): Record<keyof typeof requirements, FeatureStage> {
   const implemented = new Set<string>([...methods, ...runtimeMethods]);
-  const qualified = new Set(qualifiedFeatures);
   return Object.fromEntries(Object.entries(requirements).map(([feature, spec]) => {
     if (!spec.requires.every(method => implemented.has(method))) return [feature, 'off'];
-    return [feature, qualified.has(feature) ? 'on' : 'preview'];
+    return [feature, 'on'];
   })) as Record<keyof typeof requirements, FeatureStage>;
 }

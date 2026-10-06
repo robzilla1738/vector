@@ -1,4 +1,5 @@
-import { createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
+import { digest as sha } from "@aux/contracts/util/digest";
+import { createDecipheriv, randomBytes, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { lstat, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { lstatSync, readFileSync } from "node:fs";
@@ -17,7 +18,6 @@ import { ProtectedStore } from "./protected-store.js";
 import { renderObservation } from "./observation-render.js";
 
 const exec = promisify(execFile);
-const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 type Manifest = { generation: string; keyName: string; version?: 2 };
 type Revision = { revisionId: string; capturedAt: number; claims: MemoryClaim[] };
 export type RecoverySpaceMemory = { workspaceId: string; claims: MemoryClaim[]; inbox: MemoryClaim[];

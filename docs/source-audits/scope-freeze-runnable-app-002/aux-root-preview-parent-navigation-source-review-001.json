@@ -1,8 +1,0 @@
-{
-  "status": "source-only-pass",
-  "freezeSha": "2b394a2ae5ab3ce3ada638edfcec148f802883c2ffa5858d59d83bb47439bdb8",
-  "exactOneLeafForwardReverseForward": true,
-  "originalChildAssertionsUnchanged": true,
-  "actualParentNavigationCompletionAndSuccessRequired": true,
-  "nativePending": true
-}

@@ -1,9 +1,0 @@
-{
-  "passed": true,
-  "actualArtifacts": 38,
-  "originalOwnerPidAndGroupsAbsent": true,
-  "actualGlobalSlotAbsent": true,
-  "allFourDiagnosticsFailed": true,
-  "qualification": false,
-  "closureSha256": "1fd7a2b14429b45f8e853783cf9aa77fafec8aa437625ad0c7b8162d847a29c2"
-}

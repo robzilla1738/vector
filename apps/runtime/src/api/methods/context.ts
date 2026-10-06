@@ -93,10 +93,7 @@ export interface Services {
   state?: StateService;
   tracer?: Tracer;
   drivers: () => DriverSet;
-  chromeAttach: (port: number) => Promise<unknown>;
-  chromeDetach: () => Promise<unknown>;
-  chromeTabs: () => Promise<unknown>;
-  importCookies: (opts: { source?: "auto" | "attached" | "profile" }) => Promise<unknown>;
+  importCookies: (opts: { source?: "auto" | "profile" }) => Promise<unknown>;
   browserImport?: BrowserImporter;
   benchRun: (task?: string, repeats?: number) => Promise<unknown>;
 }
@@ -108,8 +105,7 @@ export function browserImporter(s: Services): BrowserImporter {
     repo: s.repo,
     native: s.native,
     emit: (type, payload) => s.events.emit(type, payload),
-    chromeTabs: async () => (await s.chromeTabs()) as { url: string; title: string; type: string }[],
-    openTab: async (url) => {
+      openTab: async (url) => {
       await s.pages.open({ url, background: true, ownedByRuntime: false });
     },
   });

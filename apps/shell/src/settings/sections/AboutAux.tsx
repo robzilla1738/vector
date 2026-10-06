@@ -2,7 +2,7 @@ import { staticFieldErrorProps } from "../../ui/class-props";
 import { staticHintProps, staticRowProps } from "../../ui/class-props";
 import { smallGhostButtonProps } from "../../ui/button-props";
 import { AUX_FEATURES, type AuxFeature } from "@aux/contracts";
-import { featureStage } from "../../use-feature";
+import { featureStage } from "../../feature-availability";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
 import { bridge, inMock, inNativeHost } from "../../bridge";
 import { guardCommandCompletion } from "../../command-completion";

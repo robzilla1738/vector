@@ -1,1 +1,0 @@
-import{e as a}from"./App-D6OKY7fI.js";async function o(p,r,s){return r.parse(await a(p,{payload:s}))}export{o as c};

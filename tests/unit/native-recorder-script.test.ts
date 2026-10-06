@@ -4,7 +4,7 @@ import { runInNewContext } from "node:vm";
 import { expect, it } from "vitest";
 import { RECORDER_SOURCE } from "@aux/chromium-driver";
 
-const header = readFileSync(new URL("../../.native/chrome/common/native_recorder_script.h", import.meta.url), "utf8");
+const header = readFileSync(new URL("../../chromium/test-fixtures/native_recorder_script.h", import.meta.url), "utf8");
 function script(name: string) {
   const source = new RegExp(`k${name}\\[\\] = uR"AUX_REC\\(([\\s\\S]*?)\\)AUX_REC";`).exec(header);
   if (!source) throw new Error(`Missing fixed generated ${name}`);

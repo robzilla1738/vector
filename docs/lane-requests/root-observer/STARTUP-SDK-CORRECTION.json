@@ -1,9 +1,0 @@
-{
-  "originalFailedCompileCommit": "58e72790da2aa0a1ee86f2ed18c21b48b88d4541",
-  "originalFailedStderr": "/Users/rcourson/Library/Caches/dev.aux.journeys/startup-58e72790-compile-1/compile.stderr",
-  "originalFailedStderrSha256": "3566db2da5417183fa07643b8283e734a6aa4546a42cdcbe42ef4a3c6b1b022e",
-  "correction": "Initialize imported opaque POSIX spawn handles as nil optionals; preserve exact native proc_pidpath allocation as4*PATH_MAX from original SDK macro chain. Original lifecycle/receipt checks unchanged.",
-  "launcherSha256": "0f31f195a4dd9a0911a06a5ec68524dce8c1ceed7fe84332f208fc9d1d29b921",
-  "nativeCompilerRetried": false,
-  "startupQualified": false
-}

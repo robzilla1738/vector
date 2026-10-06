@@ -1,8 +1,0 @@
-{
-  "requestSha256": "c47716b77e378f3ac9ff6c2652beae5b0177b89c9224b49ab63743ef6d5f75aa",
-  "exact4LeafBaselineResult": "PASS",
-  "independentSourceReview": "PASS",
-  "rejectOriginalDummyIncludingMatchingLabels": true,
-  "native335Untouched": true,
-  "nativeExecuted": false
-}

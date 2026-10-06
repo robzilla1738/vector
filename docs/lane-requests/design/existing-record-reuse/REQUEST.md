@@ -1,5 +1,0 @@
-# Reuse existing closed property records in remaining eligible native/component construction
-
-Request-only eleven renderer leaves, sixty-three exact attribute spans: className54/type7/aria-hidden1/autoComplete1. No new records, helper/policy or dependencies. Before snapshots match current root, including LivePage70948c49. Existing frozen own-data records are spread at the exact original attribute position; fresh props, ref/key/children/native events/property/evaluation order remain. Existing imported aliases are reused where possible; new imports follow all original imports. All role literals, key-after spans and cb-go source guard remain unchanged.
-
-Installed native154 automatic lowering independently preserves whole-file AST after replacing only these original fields; exact63-span/11file source inverse and F/R/F pass. Original affected component/property controls53 pass, chrome-token original26 source guards pass, source-only shell tsc passes, scoped lint has original warnings/no errors, only changed migrated leaf CommandRankingDebug format passes. No renderer build or net-byte claim; root owns one coherent actual native154 byte measurement.

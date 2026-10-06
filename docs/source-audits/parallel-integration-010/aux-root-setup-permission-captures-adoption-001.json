@@ -1,9 +1,0 @@
-{
-  "passed": true,
-  "sourceOnly": true,
-  "exactForwardReverseForward": true,
-  "actualProducerPins": true,
-  "patchSha256": "ef679510b395b4855e259674a0f96b449734b59ecfdda78b3e199bf38d39bfa2",
-  "nativeCaptured": false,
-  "qualification": false
-}

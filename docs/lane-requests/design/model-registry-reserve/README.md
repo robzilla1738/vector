@@ -1,5 +1,0 @@
-Unadopted model registry tuple diagnostic
-
-Exact original067abb source contains421 retained +20 model commands (441 total). One candidate uses existing closed G(modelControl,"model",literal rows); no new factory/purity/policy. All441 ordered metadata values/own-property key order and bindings/windows reference-alias pairs match, and ShellCommandId/NativeCommandId exact literal unions match. Original held compiled COMMANDS match before source. New focused documentary comparison control passes.
-
-Only one before and one after actual native154 strict-CSP/no-map Vite build on identical held source/dependencies/owned cache/output. Startup498689→498606, CSS179368 unchanged, total1842805→1842722:83bytes each JS metric. This is a local delta, not current whole-root budget, and not meaningful reserve. Candidate production registry restored to exact original before bytes. Do not adopt UNADOPTED.patch; no further variants/builds. No authority/schema/loading/validator/gate changes or native/App execution. Diagnostic dist is isolated and unused by root.

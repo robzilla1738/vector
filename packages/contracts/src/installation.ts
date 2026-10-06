@@ -1,10 +1,9 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { normalizeAuxEnvironment, type AuxEnvironment } from "./environment.js";
 
 export const AUX_DATABASE_NAME = "aux-state.sqlite";
-export const LEGACY_DATABASE_NAME = "vector.sqlite";
 
 export function resolveDataDirectory(
   source: AuxEnvironment = process.env,
@@ -21,21 +20,9 @@ export function resolveDataDirectory(
   return join(root, "Aux Browser");
 }
 
-/**
- * Resolve the runtime database inside the selected data directory. A legacy
- * `vector.sqlite` found here is incompatible data: it is preserved untouched
- * and reported rather than opened or overwritten.
- */
+/** Resolve the runtime database inside the selected data directory. */
 export function resolveDatabasePath(dataDir: string): string {
-  const current = join(dataDir, AUX_DATABASE_NAME);
-  const legacy = join(dataDir, LEGACY_DATABASE_NAME);
-  if (existsSync(legacy)) {
-    throw new Error(
-      `The selected data directory contains a legacy Vector database (${LEGACY_DATABASE_NAME}). ` +
-      `It was preserved unchanged — remove or archive it, or point AUX_DATA_DIR elsewhere.`,
-    );
-  }
-  return current;
+  return join(dataDir, AUX_DATABASE_NAME);
 }
 
 export function resolveNativeUserDataDir(source: AuxEnvironment = process.env, userHome = homedir()): string {

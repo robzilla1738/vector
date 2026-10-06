@@ -1,6 +1,6 @@
 import { normalizeTabName } from "@aux/contracts/tab-name-rule";
 import { bridge } from "../bridge";
-import { featureStage } from "../use-feature";
+import { featureStage } from "../feature-availability";
 import { errToast, toast } from "../store";
 import { assignFolder, assignSpace, createFolder, createSpace, reconcileSpaces, rememberActiveTab, removeFolder, removeSpace, renameFolder, renameSpace, reorderGroup, reorderInSpace, reorderPin, setActiveSpace, splitForPage, tabsInSpace, toggleFolder, togglePin, updateFolder } from "../workspace";
 import { initialLayout, persistLayout } from "./persistence";

@@ -7,7 +7,7 @@ import { NativePersonReader } from "../../apps/runtime/dist/services/native-pers
 
 const pageId = randomUUID(), documentId = randomUUID(), sessionId = randomUUID();
 const producerSha256 = createHash("sha256").update(PERSON_OBSERVER_WRAPPED_SOURCE).digest("hex");
-const header = readFileSync(new URL("../../.native/chrome/common/native_person_observer_script.h", import.meta.url), "utf8");
+const header = readFileSync(new URL("../../chromium/test-fixtures/native_person_observer_script.h", import.meta.url), "utf8");
 const nativeSource = /kRead\[\] = uR"AUX_READ\(([\s\S]*?)\)AUX_READ";/.exec(header)![1]!;
 function value() {
   const dom = new JSDOM('<title>Plan</title><h1>Ready</h1><p>Visible text</p><input name=company value=private><button>Continue</button>',

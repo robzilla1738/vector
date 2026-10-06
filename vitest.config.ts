@@ -1,5 +1,8 @@
 import { defineConfig } from "vitest/config";
 import { join } from "node:path";
+import { availableParallelism } from "node:os";
+
+const unitWorkers = Math.min(10, availableParallelism());
 
 const resolve = {
   // renderer tests import contract types from source so they run without a build
@@ -13,7 +16,11 @@ export default defineConfig({
   resolve,
   esbuild: { jsx: "automatic" },
   test: {
-    pool: "forks",
+    // Recycle isolated worker threads instead of starting one Node process per file.
+    pool: "threads",
+    maxWorkers: unitWorkers,
+    minWorkers: unitWorkers,
+    poolOptions: { threads: { isolate: true } },
     projects: [
       {
         resolve,
@@ -21,7 +28,15 @@ export default defineConfig({
         test: {
           name: "unit",
           include: ["tests/unit/**/*.test.ts", "apps/shell/src/**/*.test.{ts,tsx}"],
-          pool: "forks",
+          pool: "threads",
+          deps: {
+            optimizer: {
+              // Contracts resolve to editable source. Rebuild once per run, then
+              // share the bundled graph across isolated workers without stale schemas.
+              web: { enabled: true, include: ["@aux/contracts", "zod"], force: true },
+              ssr: { enabled: true, include: ["@aux/contracts", "zod"], force: true },
+            },
+          },
           testTimeout: 30_000,
           hookTimeout: 30_000,
         },

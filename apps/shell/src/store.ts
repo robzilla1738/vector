@@ -14,7 +14,7 @@ import { retainNativeTabMetadata } from "./store/native-tab-metadata";
 import { createTabsSlice } from "./store/tabs-slice";
 import type { Workspace } from "./store/types";
 import { createUiSlice } from "./store/ui-slice";
-import { featureStage } from "./use-feature";
+import { featureStage } from "./feature-availability";
 import { reconcilePendingArchives } from "./tab-archive";
 
 export type { CommandSlot, Mode, Overlay, RailView, RunModelStats, SidebarMode } from "./store/types";

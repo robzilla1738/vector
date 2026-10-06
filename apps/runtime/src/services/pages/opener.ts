@@ -68,7 +68,7 @@ export class PageOpener {
       throw new AuxError(
         "invalid_params",
         backend === "chrome"
-          ? "chrome pages.open requires targetId of an existing tab (list them with chrome.tabs)"
+          ? "chrome pages.open requires targetId of an existing tab"
           : `${backend} driver cannot create pages`,
       );
     }

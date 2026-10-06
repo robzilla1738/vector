@@ -1,8 +1,0 @@
-{
-  "freezeSha256": "9efc03b73bb8ea38dd69164574b3babd3732e5a47c642d54bbd91fb467a58855",
-  "actualAPIAndRawPins": true,
-  "actual330Before": true,
-  "exactForwardReverseForward": true,
-  "requiredCases": 524,
-  "executionAdmission": false
-}

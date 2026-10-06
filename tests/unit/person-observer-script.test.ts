@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 import { expect, it } from "vitest";
 
-const header = readFileSync(new URL("../../.native/chrome/common/native_person_observer_script.h", import.meta.url), "utf8");
+const header = readFileSync(new URL("../../chromium/test-fixtures/native_person_observer_script.h", import.meta.url), "utf8");
 const source = /kRead\[\] = uR"AUX_READ\(([\s\S]*?)\)AUX_READ";/.exec(header)![1]!;
 function page(html: string) {
   const dom = new JSDOM(html, { url: "https://person-read.test/", runScripts: "outside-only", pretendToBeVisual: true });

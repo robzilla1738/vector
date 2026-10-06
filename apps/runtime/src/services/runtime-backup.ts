@@ -1,5 +1,7 @@
-import {createHash,randomUUID} from 'node:crypto';
-import {constants,createReadStream,existsSync,openSync,closeSync,writeFileSync,fsyncSync,fstatSync,lstatSync,renameSync,unlinkSync} from 'node:fs';
+import { digest as bytesDigest } from "@aux/contracts/util/digest";
+import { digestFile as digest } from "@aux/contracts/util/digest-file";
+import {randomUUID} from 'node:crypto';
+import {constants,existsSync,openSync,closeSync,writeFileSync,fsyncSync,fstatSync,lstatSync,renameSync,unlinkSync} from 'node:fs';
 import {chmod,copyFile,lstat,mkdir,open,readFile,readdir,realpath,rename,rm,stat,writeFile} from 'node:fs/promises';
 import {DatabaseSync} from 'node:sqlite';
 import {dirname,isAbsolute,join,relative,resolve,sep} from 'node:path';
@@ -7,7 +9,7 @@ import {SCHEMA_VERSION} from '../store/db.js';
 import type {Repo} from '../store/repo.js';
 import {sanitizePortablePageRecall} from '@aux/contracts/portable-page-recall';
 import {SENSITIVE_SQLITE_COLUMNS,protectedKvKey,protectedSqliteIdentity,type SqliteColumnCipher} from '../store/sqlite-protection.js';
-import {minimizeLegacyObservationArtifacts,minimizedObservationArtifactBytes} from './observation-artifact-migration.js';
+import {minimizedObservationArtifactBytes} from './observation-artifact-migration.js';
 import {assertManagedRecoveryGeneration,ensureManagedRecoveryGeneration,type ManagedRecoveryGeneration} from './managed-recovery-generation.js';
 
 const MAX_BACKUP_BYTES=2*1024*1024*1024,MAX_ARTIFACT_BYTES=1024*1024*1024,MAX_ARTIFACTS=10_000;
@@ -85,7 +87,6 @@ function authenticateProtectedCopy(db:DatabaseSync,cipher?:SqliteColumnCipher){
   }
 }
 
-async function digest(path:string){return new Promise<string>((ok,fail)=>{const hash=createHash('sha256'),stream=createReadStream(path);stream.on('data',chunk=>hash.update(chunk));stream.on('error',fail);stream.on('end',()=>ok(hash.digest('hex')));});}
 function validateDatabase(path:string){const db=new DatabaseSync(path,{readOnly:true});try{const version=(db.prepare('PRAGMA user_version').get() as {user_version:number}).user_version;if(version<1||version>SCHEMA_VERSION)throw new Error(`This backup uses unsupported database schema ${version}.`);if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE name='aux_meta'").get()||(db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as {value:string}|undefined)?.value!=='aux')throw new Error('The selected file is not an Aux database.');const check=db.prepare('PRAGMA quick_check').get() as {'quick_check':string};if(check['quick_check']!=='ok')throw new Error('The selected backup failed SQLite integrity checking.');for(const table of ['kv','pages','runs','tasks','artifacts'])if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table))throw new Error(`The selected file is missing the ${table} table.`);if(db.prepare("SELECT 1 FROM sqlite_schema WHERE (type IN ('trigger','view') OR upper(coalesce(sql,'')) LIKE '%VIRTUAL TABLE%') AND name NOT LIKE 'history_fts%' LIMIT 1").get())throw new Error('The selected backup contains unsupported executable database schema.');return version;}finally{db.close();}}
 function safeRelative(value:unknown){if(typeof value!=='string'||!value||value.length>1024||isAbsolute(value))throw new Error('The backup contains an invalid artifact path.');const normalized=value.replaceAll('\\','/');if(normalized.split('/').some(part=>!part||part==='.'||part==='..'))throw new Error('The backup contains an unsafe artifact path.');return normalized;}
 async function readBoundedManifest(handle:Awaited<ReturnType<typeof open>>,size:number){
@@ -112,7 +113,6 @@ export async function createRuntimeBackup(repo:Repo,dataDir:string,opts:{maxBack
   if(opts.expectedRecoveryGeneration)assertManagedRecoveryGeneration(dataDir,opts.expectedRecoveryGeneration);
   const backups=join(dataDir,'backups');await mkdir(backups,{recursive:true,mode:0o700});await mkdir(resolve(dataDir,'artifacts'),{recursive:true,mode:0o700});const createdAt=Date.now(),root=join(backups,`${BACKUP_PREFIX}${new Date(createdAt).toISOString().replace(/[:.]/g,'-')}-${randomUUID().slice(0,8)}`),database=join(root,'state.sqlite'),artifactRoot=await realpath(resolve(dataDir,'artifacts'));await mkdir(root,{recursive:true,mode:0o700});
   try{
-    await minimizeLegacyObservationArtifacts(repo,artifactRoot);
     repo.db.prepare('VACUUM INTO ?').run(database);await chmod(database,0o600);const sanitized=new DatabaseSync(database);try{authenticateProtectedCopy(sanitized,repo.columnCipher);sanitized.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();sanitizePortablePageRecall(sanitized,repo.columnCipher);if(repo.columnCipher&&sanitized.prepare("SELECT 1 FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%' LIMIT 1").get())sanitized.prepare("INSERT INTO aux_meta(key,value) VALUES('portable_profile_proof_v1',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(repo.columnCipher.encrypt('aux_meta',JSON.stringify(['portable_profile_proof_v1']),'value','aux-portable-profile-v1'));sanitized.exec('VACUUM');}finally{sanitized.close();}opts.interrupt?.();const databaseInfo=await stat(database);if(!databaseInfo.isFile())throw new Error('The runtime database backup is invalid or exceeds 2 GB.');if(databaseInfo.size>maxBytes)throw new Error('Not enough free space for a complete runtime backup. Free disk space and try again.');const schemaVersion=validateDatabase(database);
     const snapshot=new DatabaseSync(database,{readOnly:true});let rows:{artifact_id:string;path:string}[];try{rows=snapshot.prepare("SELECT artifact_id,path FROM artifacts WHERE status='complete' ORDER BY created_at").all() as {artifact_id:string;path:string}[];}finally{snapshot.close();}if(rows.length>MAX_ARTIFACTS)throw new Error(`The runtime has more than ${MAX_ARTIFACTS} artifact records; remove old task data before creating a portable backup.`);const artifacts:ManifestArtifact[]=[];let missingArtifacts=0,totalBytes=databaseInfo.size,artifactBytes=0;
     for(const row of rows){try{const source=await realpath(row.path),rel=relative(artifactRoot,source);if(!rel||rel==='..'||rel.startsWith(`..${sep}`))throw new Error('outside artifact root');const info=await lstat(source);if(info.isSymbolicLink()||!info.isFile())throw new Error('not regular');if(artifactBytes+info.size>MAX_ARTIFACT_BYTES)throw new Error('Aux artifact backups are limited to 1 GB. Remove old artifacts and try again.');if(totalBytes+info.size>maxBytes)throw new Error('Not enough free space for a complete runtime backup. Free disk space and try again.');const relativePath=safeRelative(rel),target=join(root,'artifacts',relativePath);await mkdir(dirname(target),{recursive:true,mode:0o700});await copyFile(source,target);await chmod(target,0o600);artifacts.push({artifactId:row.artifact_id,relativePath,bytes:info.size,sha256:await digest(target)});artifactBytes+=info.size;totalBytes+=info.size;}catch(error){if(error instanceof Error&&(error.message.includes('limited to 1 GB')||error.message.includes('Not enough free space')))throw error;missingArtifacts++;}}
@@ -155,7 +155,7 @@ export async function stageListedRuntimeRestore(dataDir:string,name:string,expec
     const identities=await Promise.all(handles.map(handle=>handle.stat()));
     if(!identities[0]!.isDirectory()||!identities[1]!.isFile()||identities[1]!.size>10*1024*1024||!identities[2]!.isFile()||identities[2]!.size>MAX_BACKUP_BYTES)throw new Error('The reviewed backup file inventory is invalid.');
     const originalManifest=await readBoundedManifest(handles[1]!,identities[1]!.size);
-    const manifestHash=createHash('sha256').update(originalManifest).digest('hex');
+    const manifestHash=bytesDigest(originalManifest);
     const current=async()=>{
       assertManagedRecoveryGeneration(dataDir,generation);
       for(const [index,path] of paths.entries()){
@@ -163,7 +163,7 @@ export async function stageListedRuntimeRestore(dataDir:string,name:string,expec
         for(const value of [named,retained])if(value.isSymbolicLink()||value.dev!==original.dev||value.ino!==original.ino||value.mode!==original.mode||value.uid!==original.uid||value.size!==original.size||value.mtimeMs!==original.mtimeMs||value.ctimeMs!==original.ctimeMs)
           throw new Error('The reviewed backup changed before staging. Refresh the list.');
       }
-      if(await realpath(item.path)!==canonicalRoot||createHash('sha256').update(await readBoundedManifest(handles[1]!,identities[1]!.size)).digest('hex')!==manifestHash||await digest(paths[2]!)!==expectedSha256)
+      if(await realpath(item.path)!==canonicalRoot||bytesDigest(await readBoundedManifest(handles[1]!,identities[1]!.size))!==manifestHash||await digest(paths[2]!)!==expectedSha256)
         throw new Error('The reviewed backup changed before staging. Refresh the list.');
       assertManagedRecoveryGeneration(dataDir,generation);
     };
@@ -279,7 +279,7 @@ async function stageRuntimeRestoreSource(dataDir:string,sourcePath:string,cipher
       const bytes=minimized?.length??info.size;
       artifactBytes+=bytes;
       if(artifactBytes>MAX_ARTIFACT_BYTES)throw new Error('Aux artifact restores are limited to 1 GB.');
-      const stagedDigest=minimized?createHash('sha256').update(minimized).digest('hex'):item.sha256;
+      const stagedDigest=minimized?bytesDigest(minimized):item.sha256;
       let targetRel=rel;
       const current=join(dataDir,'artifacts',rel);
       try{

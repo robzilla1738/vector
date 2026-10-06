@@ -15,15 +15,6 @@ import type { createHostClient } from "./host/client.generated";
 export type TabsSinceResult = { kind: "patches"; patches: TabPatch[] } | { kind: "snapshot"; snapshot: TabCatalogSnapshot };
 
 export type BrowserProfile = HostMethodResult<"browserProfiles">[number];
-export interface MigrationReview {
-  status:"ready"|"interrupted"|"applied";
-  contentHash:string;manifestSha256:string;
-  tabs:number;bookmarks:number;bookmarkFolders:number;spaces:number;vaultPending:boolean;
-  omitted:{unsafeTabs:number;unsafeBookmarks:number;missingArtifacts:number;vaultMetadata:number;layoutMissing:boolean};
-  progress?:{status:"importing";folders:number;bookmarks:number;tabs:number};
-}
-export type MigrationToken = Pick<MigrationReview,"contentHash"|"manifestSha256">;
-export type MigrationProgress = NonNullable<MigrationReview["progress"]>;
 export interface HttpAuthRequest { id:string; origin:string;  proxy:boolean; realm:string; retry:boolean }
 export interface BrowserExtension { key:string;id?:string;name:string;version:string;permissions:string[];enabled:boolean;loaded:boolean;managed:boolean;source:"managed"|"environment"|"store";error?:string }
 export interface BrowserSiteInfo {
@@ -36,7 +27,7 @@ export interface BrowserSiteInfo {
 }
 export interface FilterSourceStatus { id:string;name:string;url:string;enabled:boolean;kind:"hosts"|"cookie_banner";meta?:{fetchedAt:number;etag?:string;hosts:number;selectors?:number;sha256:string;error?:string} }
 export interface FilterListStatus { sources:FilterSourceStatus[];hosts:number;cookieSelectors:number;builtinHosts:number;
-  backend:"electron_web_request"|"subresource_filter"|"declarative_net_request"|"preview";
+  backend:"subresource_filter"|"declarative_net_request"|"preview";
   cosmeticBackend?:"document_start_stylesheet"|"unavailable" }
 export interface BrowserHealthSummary {
   recordingSince?:number;latestAt?:number;samples:number;sessions:number;observedMinutes:number;spanDays:number;sevenDaySpan:boolean;startupMs?:number;
@@ -157,11 +148,6 @@ const stub: AuxBridge = {
   tabsSnapshot:async()=>({version:0,tabs:[],windows:[]}),
   organizationSnapshot:async()=>({revision:0,layout:null}),
   organizationCommit: unavailable("Organization storage requires Aux desktop"),
-  migrationReview: unavailable("Chromium Profile migration requires Aux Chromium"),
-  migrationBegin: unavailable("Chromium Profile migration requires Aux Chromium"),
-  migrationBatch: unavailable("Chromium Profile migration requires Aux Chromium"),
-  migrationFinish: unavailable("Chromium Profile migration requires Aux Chromium"),
-  migrationRollback: unavailable("Chromium Profile migration requires Aux Chromium"),
   onOrganizationChanged:noop,
   tabsSince:async()=>({kind:"snapshot",snapshot:{version:0,tabs:[],windows:[]}}),
   onTabsPatch:noop,
@@ -226,7 +212,6 @@ const stub: AuxBridge = {
   dataDir: async () => "",
   exportDiagnostics:async()=>null,
   exportRuntimeBackup:async()=>null,
-  exportMigrationLayout:async()=>null,
   stageRuntimeRestore:async()=>null,
   cancelRuntimeRestore:async()=>({cancelled:true}),
   runtimeRestoreStatus:async()=>({pending:false,managedRecovery:{generation:0,freshBackupIssued:false}}),

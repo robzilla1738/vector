@@ -1,8 +1,0 @@
-$ node scripts/check-renderer-format.mjs
-Checking formatting...
-[warn] apps/shell/src/components/CalendarSourceChoiceDialog.tsx
-[warn] Code style issues found in the above file. Run Prettier with --write to fix.
-apps/shell/src/components/CalendarSourceChoiceDialog.tsx:22: line is 140 characters (limit 110)
-apps/shell/src/components/CalendarSourceChoiceDialog.tsx:32: line is 112 characters (limit 110)
-2 renderer lines exceed the B7 limit.
-[ELIFECYCLE] Command failed with exit code 1.

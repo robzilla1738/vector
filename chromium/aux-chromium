@@ -121,12 +121,13 @@ def configure(flavor: str) -> None:
 
 
 def build(flavor: str) -> None:
+    assert_revision()
     output = SRC / "out" / ("AuxDev" if flavor == "dev" else "AuxRelease")
     if not (output / "build.ninja").exists():
         raise SystemExit("Run configure first")
-    # Keep staging and incremental compilation in the same shared native slot.
-    if not ENV.get("AUX_NATIVE_SLOT_TOKEN"):
-        run("node", str(REPO / "scripts/native-slot.mjs"), "--", sys.executable,
+    # Keep staging and incremental compilation under the same dev lock.
+    if not ENV.get("AUX_DEV_LOCK_PID"):
+        run("node", str(REPO / "scripts/dev.mjs"), "--", sys.executable,
             str(ROOT / "aux-chromium"), "build", "--flavor", flavor, cwd=REPO)
         return
     run("node", str(ROOT / "stage-host-bindings.mjs"), cwd=REPO)
@@ -197,30 +198,8 @@ def format_sources(paths: list[str]) -> None:
 
 
 def stage_shell_owner() -> None:
-    original = ENV.get("AUX_NATIVE_SLOT_EXPECTED_OWNER")
-    if original is not None:
-        if len(original.encode()) > 4096:
-            raise SystemExit("Stage shell requires the original outer owner receipt")
-        def identity(value):
-            return isinstance(value, dict) and set(value) == {"dev", "ino"} and all(
-                type(value[key]) is int and 0 <= value[key] <= 2**53 - 1 for key in ("dev", "ino")) and value["ino"] > 0
-        try:
-            owner = json.loads(original)
-            valid = isinstance(owner, dict) and set(owner) == {"pid", "token", "directory", "file"} and \
-                type(owner["pid"]) is int and 0 < owner["pid"] <= 2**53 - 1 and isinstance(owner["token"], str) and owner["token"] and \
-                identity(owner["directory"]) and identity(owner["file"]) and json.dumps(owner, separators=(",", ":"), ensure_ascii=False) == original
-            if not valid:
-                raise ValueError("Invalid original owner receipt")
-        except (ValueError, TypeError):
-            raise SystemExit("Stage shell requires the original outer owner receipt") from None
-    receipt = run("node", "--input-type=module", "-e",
-                  "import {assertNativeSlotOwned} from './scripts/native-slot.mjs';"
-                  "const raw=process.env.AUX_NATIVE_SLOT_EXPECTED_OWNER;"
-                  "console.log(JSON.stringify(assertNativeSlotOwned(raw===undefined?{}:{expectedOwner:JSON.parse(raw)})));",
-                  cwd=REPO, capture=True)
-    if original is not None and receipt != original:
-        raise SystemExit("Stage shell original owner receipt changed")
-    ENV["AUX_NATIVE_SLOT_EXPECTED_OWNER"] = original if original is not None else receipt
+    run("node", "--input-type=module", "-e",
+        "import {assertDevLock} from './scripts/dev.mjs'; assertDevLock();", cwd=REPO)
 
 
 def stage_shell() -> None:
@@ -233,7 +212,6 @@ def stage_shell() -> None:
     build_env["AUX_CHROMIUM_SHELL_BUILD"] = "1"
     subprocess.run(["pnpm", "--filter", "@aux/shell", "build"],
                    cwd=REPO, env=build_env, check=True)
-    run("node", str(ROOT / "stage-shell.mjs"), "capture", cwd=REPO)
     stage_shell_owner()
     run("node", str(ROOT / "stage-shell.mjs"), "install", cwd=REPO)
 

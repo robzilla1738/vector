@@ -1,7 +1,0 @@
-# Distinct Aux utility-window appearance capture
-
-Actual native appearanceSnapshot derives windowKind from current Browser/Profile under original WebUI WeakDocument/window guards. Existing per-WebUI observers and direct-child stream retain exact native PID/window/frame and raw receipt. This packet uses that existing producer, not title/size/new-window heuristics as appearance authority. Original functional diagnostic selectors/assertions remain byte-restorable.
-
-Quick Ask focused composer and Little external-draft/empty captures gain a conditional distinct helper. Ordinary captures preserve exact existing window options. Appearance captures require the original app/helper owner and exact layer-zero observed ID, then expectedWindowKind is validated against BOTH native samples inside the original PNG provenance ticket. Unknown native theme/backing/material remain unknown and never count through unchanged QA policy. No source/helper733/950/native operation or qualification changes.
-
-Seven source/control leaves;31 controlled cases (four helper cases plus original provenance suite and three actual-kind/unknown-material cases), scoped lint/diff, and exact forward/reverse/forward pins pass. Synthetic PNG/protocol fixtures are source tests only. Every real image still requires original build/runtime/helper pairing, real preferences, geometry/focus/hit review and full F21 matrix approval.

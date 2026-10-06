@@ -1,7 +1,0 @@
-# Original observed Settings owner retirement
-
-Apply only after immutable initial `ba7c266f`; the two owned leaves are an exact source successor. A current-owner read that observes a native-window/kind/Private/connected mismatch now permanently retires that same retained original owner before refusal. An uncommitted A→B refused command→A sequence cannot restore original permission or late save delivery. Both new cases drive actual focused registered controls; the held ACK uses original Close preview, which remains available while Save is pending. Original completion still returns true; no native save success or image capture is synthesized.
-
-Twenty focused cases pass (original six plus fourteen new), types pass, and scoped lint keeps exactly the original two effect warnings. A first local-parameter mutation warning is retained; using the already identity-checked original ref fixes it without suppression. Exact forward/reverse/forward proves both leaves restore initial results. No compiler/loading/style/native change or renderer build was made.
-
-The component guard covers its own delivery and guarded command observers only. Actual Settings.tsx's original `set` wrapper catches settings.set failure, calls global errToast and returns false before this component sees completion. That parent publication remains a separately owned integration gap, so mocked throwing onSave controls do not prove whole actual Settings retired-error suppression. Native/F21, root shared-caller review and strict NEXT renderer byte gates remain pending.

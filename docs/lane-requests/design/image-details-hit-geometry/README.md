@@ -1,7 +1,0 @@
-# Image details disclosure hit geometry
-
-Actual ImagePreview mounts a registered native summary with inherited fs-xs and normal line-height. Existing padding6px vertically yields source-model targets27/28.5/30px at supported12/13/14px body scales, below original Aux --hit32. One scoped min-height:var(--hit) retains original marker, padding, colors, typography, focus, disclosure/current owner guards and all metadata. Aux32px is the deliberate compact target; supplied upstream desktop toolbar34px/insets are contextual anatomy, not permission to replace Aux dimensions. Branding unchanged.
-
-Six actual component/registration/source-layout cases across2files PASS. The actual mounted control preserves full filename/source address/snapshot explanation and included state, focused remapped open/close and retired refusal. The layout test uses original parsed source tokens and supported scales: it does not claim jsdom geometry or pixels. Original CSS gives1RED/1PASS with only the hit-layout assertion failing; result CSS restored exactly. Shell types/lint PASS. Initial fixture/path/type failures retained and corrected without weakening assertions. Exact2leaf F/R/F PASS; inverse preserves every unrelated stylesheet byte.
-
-No renderer build: this CSS-only change supplies no total-JS reserve. Native actualfocus/hit/longlabel/light-dark/transparency/motion/pixel evidence and F21 owner signoff remain pending. Reference/API/source hashes are in SOURCE-REFERENCES.json.

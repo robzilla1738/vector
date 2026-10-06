@@ -3,7 +3,7 @@ import { act, useLayoutEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { Settings } from "./Settings";
-vi.mock("../use-feature", () => ({ useFeature: () => false }));
+vi.mock("../use-feature", () => ({ useFeature: () => false, featureAvailable: () => false }));
 vi.mock("../bridge", () => ({ inNativeHost: false, bridge: { privateMode: false } }));
 vi.mock("../store", () => {
   const state = {settingsCategory:"Models",settings:{},setOverlay:()=>{}};

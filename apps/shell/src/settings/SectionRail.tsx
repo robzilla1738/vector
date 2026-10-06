@@ -32,6 +32,7 @@ const items: readonly RailItem[] = [
   { label: "Selection & Capture", category: "Selection & Capture", group: "Features", icon: shellIconResult },
   { label: "Developers & External Agents", category: "Connections", group: "Features", icon: shellIconGlobe, tab: "Agents" },
   { label: "Extensions", category: "Extensions", group: "Features", icon: shellIconExtension, gate: "extensions" },
+  { label: "Labs", category: "Labs", group: "Features", icon: shellIconGear },
   { label: "Archived chats", category: "Archived chats", group: "Archived", icon: shellIconArchive },
 ];
 

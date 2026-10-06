@@ -14,7 +14,6 @@ import { bootRuntimeFeatures } from "./features/registry.js";
 import type { Services } from "./api/methods/context.js";
 import { ConnectionRecovery } from "./connection-recovery.js";
 import { readRuntimeIdentity } from "./api/runtime-identity.js";
-import { developmentAcceptanceStages } from "./api/development-acceptance.js";
 import { BrowsingMemory } from "./services/browsing-memory.js";
 import { ContentMemoryStore } from "./services/content-memory.js";
 import { MemoryPipeline } from "./services/memory-pipeline.js";
@@ -33,9 +32,8 @@ import { browserEgressApproval } from "./safety/browser-egress-approval.js";
 /**
  * Aux runtime entry point.
  *
- * Spawned by the Electron main process via child_process.fork, connected to
- * the Chromium host over an authenticated local socket, or run standalone.
- * The same runtime and versioned agent API serve each native host.
+ * Spawned by the native Chromium host over an authenticated local socket.
+ * The same runtime and versioned agent API also support external-only use.
  */
 import { createHash, randomUUID } from "node:crypto";
 import { chmodSync, mkdirSync, realpathSync, renameSync, writeFileSync } from "node:fs";
@@ -56,10 +54,8 @@ import {
   normalizeAuxEnvironment,
   type Step,
 } from "@aux/contracts";
-import { RpcChannel, type Transport } from "@aux/contracts";
+import type { RpcChannel } from "@aux/contracts";
 import {
-  AttachedChromeDriver,
-  StandaloneDriver,
   ManagedChromiumDriver,
   type BrowserDriver,
 } from "@aux/chromium-driver";
@@ -77,7 +73,7 @@ import { PrivacyCheckpoint } from "./store/privacy-checkpoint.js";
 import { Repo } from "./store/repo.js";
 import { EventBus } from "./events.js";
 import { ChannelNativeBridge, NullNativeBridge, type NativeBridge } from "./native.js";
-import { featureStagesFor } from "./api/feature-stages.generated.js";
+import { featureAvailabilityFor } from "@aux/contracts";
 import { NativeCdpBroker } from "./native-cdp-broker.js";
 import { PageService, type DriverSet } from "./services/pages.js";
 import { TurnMentionService } from "./services/turn-mention-service.js";
@@ -96,7 +92,6 @@ import { registerNativeControlChannel } from "./services/native-control-channel.
 import { applyNativePageTakeover } from "./services/native-page-takeover.js";
 import { ArtifactStore } from "./services/artifacts.js";
 import { artifactExportDescriptor, renderWorkbookForNativeExport } from "./services/native-file-export.js";
-import { minimizeLegacyObservationArtifacts } from "./services/observation-artifact-migration.js";
 import { applyPendingRuntimeRestore } from "./services/runtime-backup.js";
 import { CookieService } from "./services/cookies.js";
 import { SettingsService } from "./services/settings.js";
@@ -179,6 +174,14 @@ async function takeoverOrDecline(
 }
 
 export async function startRuntime(processEnv = process.env): Promise<RuntimeHandle> {
+  const bootStarted = performance.now();
+  let phaseStarted = bootStarted;
+  const bootPhase = (phase: string) => {
+    const at = performance.now();
+    process.stderr.write(`[runtime] boot ${JSON.stringify({ phase, durationMs: Math.round((at - phaseStarted) * 100) / 100,
+      elapsedMs: Math.round((at - bootStarted) * 100) / 100 })}\n`);
+    phaseStarted = at;
+  };
   const shutdownAdmission = new RuntimeShutdownAdmission();
   // `.env` in the data dir, then in the cwd — real environment variables
   // always win. The README promised this; nothing loaded it before.
@@ -192,7 +195,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await takeoverOrDecline(config.dataDir, config.apiPort, developmentIdentity);
   }
   await applyPendingRuntimeRestore(config.dataDir, config.dbPath, env.AUX_BROWSER_PROFILE_ID);
+  bootPhase("restore");
   const db = openDb(config.dbPath);
+  bootPhase("database");
   let channel: RpcChannel | null = null;
   let hostSocket: HostSocketTransport | null = null;
   let releaseHostStartup: (() => void) | undefined;
@@ -213,6 +218,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     hostSocket?.close();
     throw error;
   }
+  bootPhase("protection");
   const repo = new Repo(db, columnCipher);
   const workspaceFolders = new WorkspaceFolderService(repo, () => [config.dataDir]);
   const folderRootsForRun = (runId?: string, access: "read" | "write" = "write") => {
@@ -223,14 +229,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const privacyCheckpoint = new PrivacyCheckpoint(config.dbPath, (error) =>
     process.stderr.write(`[runtime] privacy checkpoint failed: ${error.message}\n`),
   );
-  repo.pruneEvents();
-  setTimeout(() => {
-    try {
-      repo.pruneRetention();
-    } catch {
-      /* retried next start */
-    }
-  }, 10_000).unref();
   const events = new EventBus(repo);
 
   // ---- loopback API, bound early behind the readiness gate ----
@@ -276,6 +274,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await api.listen(config.apiPort);
   }
   const port = api.port;
+  bootPhase("listener");
   // the bearer token lives here — owner-only, and re-chmod'd because
   // writeFileSync's mode applies only when the file is first created
   const runtimeFile = join(config.dataDir, "runtime.json");
@@ -398,45 +397,18 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       );
   };
   const artifacts = new ArtifactStore(config.artifactsDir, repo, events);
-  let observationMaintenance: Promise<number> | null = null;
-  const observationMaintenanceTimer = setTimeout(() => {
-    observationMaintenance = minimizeLegacyObservationArtifacts(repo, config.artifactsDir);
-    void observationMaintenance.catch((error) =>
-      process.stderr.write(
-        `[runtime] observation artifact maintenance failed: ${error instanceof Error ? error.message : String(error)}\n`,
-      ),
-    );
-  }, 10_000).unref();
-
-  // ---- channel to the native browser host ----
-  if (!env.AUX_HOST_SOCKET && env.AUX_IPC === "1" && typeof process.send === "function") {
-    const transport: Transport = {
-      send: (m) => {
-        try {
-          process.send?.(m);
-        } catch {
-          /* parent gone */
-        }
-      },
-      onMessage: (cb) => process.on("message", cb),
-    };
-    channel = new RpcChannel(transport, "runtime->shell");
-  }
+  // ---- authenticated channel to the native browser host ----
   const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
   const runtimeIdentity = readRuntimeIdentity(import.meta.url);
   const nativeIdentity = env.AUX_HOST_SOCKET ? native.capabilities!() : undefined;
   const featureStages = nativeIdentity
     ? nativeIdentity
-        .then((capabilities) => developmentAcceptanceStages(
-          featureStagesFor(capabilities.methods,
-            runtimeIdentity && !runtimeIdentity.dirty && runtimeIdentity.label === capabilities.sourceCommit
-              ? capabilities.qualifiedFeatures : []),
-          config.dataDir, capabilities.sourceCommit, env.AUX_DEV_ACCEPTANCE_TOKEN))
+        .then((capabilities) => featureAvailabilityFor(capabilities.methods))
         .catch((error) => {
           process.stderr.write(`[runtime] native capabilities unavailable: ${String(error)}\n`);
-          return featureStagesFor([], []);
+          return featureAvailabilityFor([]);
         })
-    : undefined;
+    : Promise.resolve(featureAvailabilityFor([]));
   const blocking = env.AUX_HOST_SOCKET
     ? new ContentBlockingService(config.dataDir, native, env.AUX_BROWSER_PROFILE_ID ?? "default")
     : null;
@@ -472,7 +444,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // Register before service boot so the host can preload styles before restoring tabs.
   channel?.onMethod("zap.snapshot", async (params) => {
     const profileId = ZapSnapshotParamsSchema.parse(params).profileId;
-    const host = env.AUX_HOST_SOCKET ? "chromium-fork" : "electron";
+    const host = "chromium-fork";
     const stages = await featureStages;
     const snapshot = zap.snapshot(profileId);
     return auxFeatureEnabled("zapAndUserCss", host, stages) ? snapshot : [];
@@ -541,11 +513,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return browserEgress.captureCdpAuthority(pageId, lease);
   }) : null;
   let auxRecovery: ConnectionRecovery | undefined;
-  const hostCdp =
-    nativeCdp?.endpoint() ??
-    (env.AUX_INTERNAL_CDP === "1" && channel
-      ? await channel.call<string>("cdp.capability", {}, 15_000).catch(() => null)
-      : config.hostCdp);
+  const hostCdp = nativeCdp?.endpoint();
+  let connectAuxDriver: (() => Promise<void>) | undefined;
   if (hostCdp) {
     const d = new ManagedChromiumDriver(hostCdp, {
       trustedPages: native.listPages ? async () => (await native.listPages!()).pages : undefined,
@@ -570,37 +539,22 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       reportDisconnected?.();
       auxRecovery?.retry();
     };
-    try {
-      await d.connect();
-      repo.upsertSession({ sessionId: "aux", backend: "aux", label: "Aux", status: "connected" });
-    } catch (e) {
-      repo.upsertSession({
-        sessionId: "aux",
-        backend: "aux",
-        label: "Aux",
-        status: "degraded",
-        detail: `CDP connect failed: ${e instanceof Error ? e.message : e}`,
-      });
-      initialConnectionFailed = true;
-      auxRecovery.retry();
-    }
-  } else if (!channel && env.AUX_STANDALONE !== "0") {
-    // No native shell — drive a headless system Chrome so the full API still works.
-    const d = new StandaloneDriver();
-    watchDriver(d, "aux", "Aux (headless)");
-    try {
-      await d.connect();
-      drivers.aux = d;
-      repo.upsertSession({ sessionId: "aux", backend: "aux", label: "Aux (headless)", status: "connected" });
-    } catch (e) {
-      repo.upsertSession({
-        sessionId: "aux",
-        backend: "aux",
-        label: "Aux (headless)",
-        status: "degraded",
-        detail: e instanceof Error ? e.message : String(e),
-      });
-    }
+    connectAuxDriver = async () => {
+      try {
+        await d.connect();
+        repo.upsertSession({ sessionId: "aux", backend: "aux", label: "Aux", status: "connected" });
+      } catch (e) {
+        repo.upsertSession({
+          sessionId: "aux",
+          backend: "aux",
+          label: "Aux",
+          status: "degraded",
+          detail: `CDP connect failed: ${e instanceof Error ? e.message : e}`,
+        });
+        initialConnectionFailed = true;
+        auxRecovery?.retry();
+      }
+    };
   }
 
   const tracer = new Tracer(repo.db, { traceDir: join(config.dataDir, "traces") });
@@ -1441,34 +1395,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     void handlePageTakeover(pageId, controller, repo, runs).catch(error => console.error("[aux-runtime] page takeover retirement failed", error));
   });
 
-  // ---- chrome attach ----
-  const chromeAttach = async (port: number) => {
-    if (drivers.chrome?.isConnected()) {
-      return repo.listSessions().find((s) => s.backend === "chrome");
-    }
-    const d = new AttachedChromeDriver(`http://127.0.0.1:${port}`);
-    watchDriver(d, "chrome", `Chrome :${port}`);
-    await d.connect();
-    drivers.chrome = d;
-    repo.upsertSession({
-      sessionId: "chrome",
-      backend: "chrome",
-      label: `Chrome :${port}`,
-      status: "connected",
-      detail: "attached via CDP — borrowed tabs keep their session",
-    });
-    events.emit("session.changed", { backend: "chrome", status: "connected" });
-    return repo.listSessions().find((s) => s.backend === "chrome");
-  };
-  const chromeDetach = async () => {
-    await drivers.chrome?.disconnect();
-    drivers.chrome = null;
-    repo.upsertSession({ sessionId: "chrome", backend: "chrome", label: "Chrome", status: "disconnected" });
-    events.emit("session.changed", { backend: "chrome", status: "disconnected" });
-    return { ok: true };
-  };
-  const chromeTabs = async () => drivers.chrome?.listTargets() ?? [];
-  const cookies = new CookieService({ drivers: () => drivers, native });
+  const cookies = new CookieService({ native });
   agentConnections = new AgentConnectionService(repo);
   const externalSessions = new ExternalSessionService(repo, events, turnMentions);
   channel?.onMethod("agent.connections", () => agentConnections!.list());
@@ -1485,7 +1412,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const services: Services = {
     budgets,
     clock: createClock((await nativeIdentity?.catch(() => undefined))?.testClockScale),
-    featureHost: env.AUX_HOST_SOCKET ? "chromium-fork" : "electron",
+    featureHost: env.AUX_HOST_SOCKET ? "chromium-fork" : undefined,
     featureProfileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
     featureStages,
     nativeIdentity,
@@ -1523,9 +1450,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     tracer,
     vault,
     drivers: () => drivers,
-    chromeAttach,
-    chromeDetach,
-    chromeTabs,
     importCookies: (o) => cookies.importCookies(o),
     benchRun: async (task, repeats) =>
       runBench({
@@ -1690,8 +1614,29 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   releaseHostStartup?.();
   api.setReady();
   disarmWatchdog();
+  bootPhase("ready");
+  channel?.notify("runtime.ready", { port });
 
   let closed = false;
+  // Retention waits until startup has settled and no run is active.
+  let retentionTimer: NodeJS.Timeout;
+  const retainWhenIdle = () => {
+    if (closed) return;
+    if (repo.db.prepare("SELECT 1 FROM runs WHERE status IN ('queued','planning','running','paused','needs_input') LIMIT 1").get()) {
+      retentionTimer = setTimeout(retainWhenIdle, 5_000);
+      retentionTimer.unref();
+      return;
+    }
+    try {
+      repo.pruneEvents();
+      repo.pruneRetention();
+      void pruneContent();
+    } catch (error) {
+      console.error("Retention cleanup failed", error);
+    }
+  };
+  retentionTimer = setTimeout(retainWhenIdle, 5_000);
+  retentionTimer.unref();
   const browsingMemory = new BrowsingMemory(repo);
   const memoryExpiry = setInterval(() => {
     try {
@@ -1714,7 +1659,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       contentPruning = false;
     }
   };
-  void pruneContent();
   const contentExpiry = setInterval(() => { void pruneContent(); }, 60_000);
   memoryExpiry.unref();
   contentExpiry.unref();
@@ -1722,7 +1666,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     quiesce: () => {
       shutdownAdmission.beginShutdown();
       closed = true;
-      clearTimeout(observationMaintenanceTimer);
+      clearTimeout(retentionTimer);
       clearInterval(memoryExpiry);
       clearInterval(contentExpiry);
       clearInterval(dueTimer);
@@ -1755,7 +1699,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       { stage: "host-socket", run: () => { hostSocket?.close(); } },
       { stage: "tracer", run: () => { tracer.close(); } },
       { stage: "privacy-checkpoint", run: () => privacyCheckpoint.close() },
-      { stage: "observations", run: async () => { await observationMaintenance; } },
       { stage: "repository", run: () => repo.close() },
     ],
   });
@@ -1818,11 +1761,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // The same for durable page claims: a dead run cannot still own a tab.
   runs.pageClaims.releaseOrphans(liveRunIds);
 
+  await connectAuxDriver?.();
+  bootPhase("driver");
+
   // bring back the tabs that were open when the app last quit
   await pages.restoreTabs().catch(() => {});
   runs.messages.resumePending();
 
-  channel?.notify("runtime.ready", { port });
+  bootPhase("restored-tabs");
   return {
     port,
     token,

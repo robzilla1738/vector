@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { expect, it } from "vitest";
 import { EventBus, GoalService, HookService, openDb, Repo, SubagentService, TaskService } from "@aux/runtime";
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
+import { compactProtectedSqlite } from "../../apps/runtime/src/store/sqlite-protection.js";
 import { prepareProtectedDatabase } from "../../apps/runtime/src/store/protected-startup.js";
 
 it("migrates adapted data before repository reads, survives restart and refuses a missing factor", async () => {
@@ -104,6 +105,8 @@ it("migrates adapted data before repository reads, survives restart and refuses 
     protectedAgents.close();
     expect((db.prepare("SELECT count(*) AS n FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%'").get() as { n: number }).n)
       .toBe(37);
+    // Compaction is explicit maintenance, never part of runtime boot.
+    compactProtectedSqlite(db);
     expect(readFileSync(path).includes("private startup error")).toBe(false);
     expect(readFileSync(path).includes("private startup task")).toBe(false);
     expect(readFileSync(path).includes("private startup goal body")).toBe(false);

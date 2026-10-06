@@ -1,6 +1,7 @@
+import { StandaloneDriver } from "../support/standalone-driver.js";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { EventEmitter } from "node:events";
-import { CdpAttachedDriver, StandaloneDriver } from "@aux/chromium-driver";
+import { CdpAttachedDriver } from "@aux/chromium-driver";
 
 // playwright-core is not a dependency of the tests workspace; the drivers
 // accept injected connectors, so structural stand-ins are all we need.

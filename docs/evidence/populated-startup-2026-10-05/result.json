@@ -1,0 +1,10 @@
+{
+  "fixture": "copy of synthetic populated protected Profile",
+  "modelCalls": 10000,
+  "settings": 10000,
+  "runtimeReadyMs": 106.49,
+  "healthStatusWhileDriverConnectPending": 200,
+  "driverConnectedBeforeReady": false,
+  "nativeBuildOrRealProfileUsed": false,
+  "passed": true
+}

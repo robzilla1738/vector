@@ -6,7 +6,8 @@ import { WorkspacesSettings } from "./Workspaces";
 import { SpaceMemory } from "./SpaceMemory";
 
 const rpc = vi.hoisted(() => vi.fn());
-const state = vi.hoisted(() => ({ layout: { spaces: [{ id: "native-space", workspaceId: "space-1" }], archivedSpaces: [] } }));
+const state = vi.hoisted(() => ({ settings: {}, layout: { spaces: [{ id: "native-space", workspaceId: "space-1" }], archivedSpaces: [] } }));
+vi.mock("../../feature-availability", () => ({ featureAvailable: () => true, featureVisible: () => true, featureStage: () => "on" }));
 vi.mock("../../store", () => ({ call: rpc, errToast: vi.fn(), useStore: Object.assign((select: (value: typeof state) => unknown) => select(state), { getState: () => state }) }));
 let root: Root;
 let container: HTMLDivElement;
@@ -208,15 +209,4 @@ it("requires UI confirmation before forgetting all pending and historical notes"
   });
   expect(rpc).toHaveBeenCalledWith("memory.pipeline.forget", { workspaceId, all: true });
   expect(container.textContent).not.toContain("A pending Space note.");
-});
-
-it("shows the gated memory preview without an unusable toggle", async () => {
-  rpc.mockImplementation(async (method: string) => {
-    if (method === "workspaces.list") return [{ workspaceId: "space-1", name: "Personal" }];
-    if (method === "workspaces.folders.list" || method === "commands.escalations.list") return [];
-    throw new Error("AuxError: memory is preview in chromium-fork");
-  });
-  await act(async () => root.render(<SpaceMemory workspaceId="space-1" />));
-  expect(container.textContent).toContain("Space memory is in preview in this build.");
-  expect(container.querySelector('input[aria-label="Enable Space memory"]')).toBeNull();
 });

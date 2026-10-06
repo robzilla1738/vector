@@ -176,7 +176,7 @@ export interface DiscoveredTarget {
   type: string;
 }
 
-/** Portable cookie shape — maps to CDP Network.CookieParam / Electron cookies.set. */
+/** Portable cookie shape — maps to CDP Network.CookieParam. */
 export interface BrowserCookie {
   name: string;
   value: string;
@@ -189,10 +189,7 @@ export interface BrowserCookie {
   expires?: number;
 }
 
-/**
- * A backend connection: Aux's own Electron views over the app CDP port,
- * or the user's existing Chrome over its remote-debugging port.
- */
+/** A connection to the native Aux browser. */
 export interface BrowserDriver {
   readonly backend: Backend;
   connect(): Promise<void>;

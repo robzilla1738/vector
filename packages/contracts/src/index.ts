@@ -7,6 +7,7 @@ export * from "./safety-vocabulary.js";
 export * from "./egress.js";
 export * from "./webmcp.js";
 export * from "./aux-features.js";
+export * from "./features.js";
 export * from "./method-feature.js";
 export * from "./host-methods.js";
 export * from "./runtime-method-policy.js";
@@ -78,7 +79,6 @@ export * from "./generated-results.js";
 export * from "./tidy.js";
 export * from "./tab-name.js";
 export * from "./inline-assist.js";
-export * from "./electron-migration.js";
 export * from "./zap.js";
 
 export * from "./selection-capture.js";

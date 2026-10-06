@@ -1,5 +1,0 @@
-# Complete attached-image filename containment
-
-Request-only one declaration on .conversation-document b: overflow-wrap:anywhere from the supplied decoded06 utility. Surrounding original min-width0 flex anatomy, complete filename text, type/weight, controls, colors, reduced motion/transparency and all callbacks remain unchanged. Do not truncate the source filename or hide Preview/Remove.
-
-Actual ConversationImages control renders a long original attached-image filename, joins the real source rule, retains full text and checkbox state, then exercises original toggle/read/remove calls with exact chatId/imageId and original acknowledgements. Preview focuses the real button and shows full original filename as image alt. No file chooser, image import, native operation or model request occurs. Native physical narrow/normal geometry, focus/hit/color review still required; source/JSDOM controls cannot count F21. Strict CSS184320 budget unchanged. No production JS/command metadata change. Contextual composition must preserve separately adopted user-message wrap and any current source deltas; this packet owns only the filename hunk.

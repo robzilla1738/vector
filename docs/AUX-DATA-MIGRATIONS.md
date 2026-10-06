@@ -8,11 +8,9 @@ scoped agent connections, routines, vault grants, coordinator leases, and
 criterion verifications. WAL mode with `synchronous = FULL` provides committed
 durability for recorded action intents.
 
-Legacy development databases — including any `vector.sqlite` and any earlier
-incremental `user_version` — are not adopted. They are preserved untouched and
-the runtime fails closed with a recoverable message. These transitions cover
-runtime state only; they never touch the Chromium profile, browser cookies,
-or credential stores.
+Database validation applies only to `aux-state.sqlite`. Other database files
+in the selected directory do not block startup and are left untouched. Runtime
+state validation never touches Chromium cookies or credential stores.
 
 ## Startup behavior
 

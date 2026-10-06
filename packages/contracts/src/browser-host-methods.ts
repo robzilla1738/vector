@@ -27,8 +27,6 @@ const shell = <A extends z.ZodType, R extends z.ZodType>(feature: AuxFeature | "
 const shellFor = (feature: AuxFeature | "core") => <A extends z.ZodType, R extends z.ZodType>(args: A, result: R) => shell(feature, args, result);
 const coreShell = shellFor("core"), extensionShell = shellFor("extensions"), profileShell = shellFor("profiles"), siteShell = shellFor("sitePermissions"), blockingShell = shellFor("contentBlocking"),
   linkRoutingShell = shellFor("linkRouting"),
-  browserImportShell = shellFor("browserImport"),
-  electronMigrationShell = shellFor("electronMigration"),
   spacesShell = shellFor("spaces"),
   dictationShell = shellFor("dictation"),
   inboundAgentsShell = shellFor("inboundAgents"),
@@ -52,15 +50,6 @@ const freshWebUrl = () => z.string().url().max(8192);
 const freshStringArray = () => z.array(str);
 const nullableString = str.nullable();
 const noResult = z.union([z.undefined(), z.null()]);
-const token = strictObject({ contentHash: str, manifestSha256: str });
-const migrationProgress = strictObject({ status: z.literal("importing"), folders: number, bookmarks: number, tabs: number });
-const migrationReview = strictObject({
-  status: z.enum(["ready", "interrupted", "applied"]), contentHash: str, manifestSha256: str,
-  tabs: number, bookmarks: number, bookmarkFolders: number, spaces: number, vaultPending: bool,
-  omitted: strictObject({ unsafeTabs: number, unsafeBookmarks: number, missingArtifacts: number,
-    vaultMetadata: number, layoutMissing: bool }),
-  progress: migrationProgress.optional(),
-});
 const filterSource = strictObject({
   id: str, name: str, url: str, enabled: bool, kind: z.enum(["hosts", "cookie_banner"]),
   meta: strictObject({ fetchedAt: number, etag: freshOptional(str), hosts: number,
@@ -68,7 +57,7 @@ const filterSource = strictObject({
 });
 const filterStatus = strictObject({
   sources: z.array(filterSource), hosts: number, cookieSelectors: number, builtinHosts: number,
-  backend: z.enum(["electron_web_request", "subresource_filter", "declarative_net_request", "preview"]),
+  backend: z.enum(["subresource_filter", "declarative_net_request", "preview"]),
   cosmeticBackend: z.enum(["document_start_stylesheet", "unavailable"]).optional(),
 });
 const extension = strictObject({
@@ -125,11 +114,6 @@ export const BrowserHostMethods = {
   tabsSnapshot: coreShell(noArgs, TabCatalogSnapshotSchema),
   organizationSnapshot: spacesShell(noArgs, OrganizationSnapshotSchema),
   organizationCommit: spacesShell(tuple([OrganizationCommitSchema]), OrganizationSnapshotSchema),
-  migrationReview: browserImportShell(noArgs, migrationReview),
-  migrationBegin: browserImportShell(tuple([token.extend({ confirmed: z.literal(true) })]), z.union([migrationReview, migrationProgress])),
-  migrationBatch: browserImportShell(tuple([token.extend({ section: z.enum(["folders", "bookmarks", "tabs"]), offset: number })]), migrationProgress),
-  migrationFinish: browserImportShell(tuple([token]), migrationReview),
-  migrationRollback: browserImportShell(tuple([token.extend({ confirmed: z.literal(true) })]), migrationReview),
   tabsSince: coreShell(tuple([number]), z.discriminatedUnion("kind", [
     strictObject({ kind: z.literal("patches"), patches: z.array(TabPatchSchema) }),
     strictObject({ kind: z.literal("snapshot"), snapshot: TabCatalogSnapshotSchema }),
@@ -285,11 +269,10 @@ export const BrowserHostMethods = {
   revokeAgentConnection: inboundAgentsShell(tuple([str]), AgentConnectionSchema),
   // Diagnostics, backup and restore
   exportDiagnostics: coreShell(noArgs, nullableString),
-  exportRuntimeBackup: electronMigrationShell(noArgs, runtimeBackup.nullable()),
-  exportMigrationLayout: electronMigrationShell(tuple([str]), strictObject({ path: str }).nullable()),
-  stageRuntimeRestore: electronMigrationShell(noArgs, stagedRestore.nullable()),
-  cancelRuntimeRestore: electronMigrationShell(noArgs, strictObject({ cancelled: z.literal(true) })),
-  runtimeRestoreStatus: electronMigrationShell(noArgs, strictObject({
+  exportRuntimeBackup: coreShell(noArgs, runtimeBackup.nullable()),
+  stageRuntimeRestore: coreShell(noArgs, stagedRestore.nullable()),
+  cancelRuntimeRestore: coreShell(noArgs, strictObject({ cancelled: z.literal(true) })),
+  runtimeRestoreStatus: coreShell(noArgs, strictObject({
     pending: bool, lastAppliedAt: freshOptional(number),
     managedRecovery: strictObject({ generation: freshWholeNumber(), freshBackupIssued: bool }),
   })),

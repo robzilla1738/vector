@@ -496,9 +496,9 @@ it("queries saved work only in All or Work, retaining current failures and Retry
   } finally { featureWindow.auxChromiumHost = previousHost; }
 });
 it("does not query unavailable routines or fabricate a saved-work failure on a fresh Profile", async () => {
-  const featureWindow = window as Window & { auxChromiumHost?: { featureStages: { automations: "preview" } } };
+  const featureWindow = window as Window & { auxChromiumHost?: { featureStages: { automations: "off" } } };
   const previousHost = featureWindow.auxChromiumHost;
-  featureWindow.auxChromiumHost = { featureStages: { automations: "preview" } };
+  featureWindow.auxChromiumHost = { featureStages: { automations: "off" } };
   try {
     const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async method => {
       if (method === "routines.list") throw new Error("not qualified");
@@ -516,7 +516,7 @@ it("does not query unavailable routines or fabricate a saved-work failure on a f
 });
 
 it("hides retained routine results immediately when their trusted feature stage becomes unavailable", async () => {
-  const featureWindow = window as Window & { auxChromiumHost?: { featureStages: { automations: "on" | "preview" } } };
+  const featureWindow = window as Window & { auxChromiumHost?: { featureStages: { automations: "on" | "off" } } };
   const previousHost = featureWindow.auxChromiumHost;
   featureWindow.auxChromiumHost = { featureStages: { automations: "on" } };
   try {
@@ -526,7 +526,7 @@ it("hides retained routine results immediately when their trusted feature stage 
     await act(async () => type(host.querySelector("input")!, "project"));
     await act(async () => new Promise(resolve => setTimeout(resolve, 150)));
     expect(host.textContent).toContain("Project current skill");
-    featureWindow.auxChromiumHost = { featureStages: { automations: "preview" } };
+    featureWindow.auxChromiumHost = { featureStages: { automations: "off" } };
     await act(async () => root.render(<CommandBar surfaceMode="new-tab" />));
     expect(host.textContent).not.toContain("Project current skill");
   } finally { featureWindow.auxChromiumHost = previousHost; }

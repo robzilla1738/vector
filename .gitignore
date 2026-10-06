@@ -11,12 +11,6 @@ tests/benchmarks/reports/
 *.tsbuildinfo
 /index.js
 # tsc emit next to sources. Vite used to load these instead of the TypeScript.
-apps/desktop/renderer/src/**/*.js
-apps/desktop/renderer/src/**/*.js.map
-apps/desktop/main/**/*.js
-apps/desktop/main/**/*.js.map
-apps/desktop/vite.config.js
-apps/desktop/vite.config.js.map
 packages/contracts/src/**/*.js
 packages/contracts/src/**/*.js.map
 fixtures/dist-types/
@@ -24,3 +18,6 @@ fixtures/dist-types/
 .playwright-mcp/
 .native/
 .native-base/
+
+# Renderer resources are staged from the current build.
+chromium/shell-assets/

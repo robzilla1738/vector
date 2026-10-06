@@ -1,1 +1,0 @@
-Test-only successor: retain original global property descriptor and restore it after this suite. Only this test environment flag is touched; the original three tests/assertions are unchanged. Three controls PASS (/tmp/aux-static-props-test-environment-controls-001.log), no production/renderer/native change.

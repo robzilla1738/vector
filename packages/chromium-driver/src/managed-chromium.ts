@@ -3,13 +3,7 @@ import { AuxError } from "@aux/contracts";
 import { CdpAttachedDriver } from "./cdp-driver.js";
 import type { DiscoveredTarget, DriverPage } from "./types.js";
 
-/**
- * Driver for Aux-owned pages: real WebContentsView instances created by
- * the Electron main process. The main process injects a marker
- * `globalThis.__auxTid = "atab-<webContentsId>"` into every document of
- * each page view; that marker is the target identity — immune to same-URL
- * ambiguity, unlike URL matching or array position.
- */
+/** Native Aux pages use the trusted catalog and CDP target identity. */
 export const AUX_MARKER_GLOBAL = "__auxTid";
 export const auxMarkerForWebContents = (webContentsId: number) => `atab-${webContentsId}`;
 

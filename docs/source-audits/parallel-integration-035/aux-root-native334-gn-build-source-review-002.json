@@ -1,6 +1,0 @@
-{
-  "status": "DOWNSTREAM334_SOURCE002_STAGE_PATH_ONLY_PASS",
-  "requestSha256": "0e0a8aa74570395e549538d829c4b9811b8322bdaffde198e0061178f398d128",
-  "sameInputAndAllGuards": true,
-  "executionAdmission": false
-}

@@ -1,5 +1,0 @@
-# Original scoped owner reuse successor
-
-Request only after immutable32b9a173 original packet. Reuses actual PreferenceAction/registerScopedControl committed-element lifecycle rather than a redundant local live token. Original native window/query/intent/generation/Private response fences remain. The synchronous Retry callback reserves exact original browserResult object once; actual original scoped registration retires old mounted callbacks and requires original focused/event-owned element. No callback is exported or invoked from arbitrary owner labels.
-
-19 actual original/new controls and shell types PASS. Exact original441 metadata rows unchanged. The supported native154 diagnostic registration-factor build has total1843803, still603 over1843200. Startup/CSS pass. This is222 bytes lower than initial frozen candidate, not a budget acceptance claim. Current-window/direct-hook variant (+72B) and ranking-constructor combine (58B) remain unadopted negative diagnostics; no original constructor/loading changes in this successor. Root/Native325 untouched, native/F21 pending.

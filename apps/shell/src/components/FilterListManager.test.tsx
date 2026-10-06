@@ -62,7 +62,7 @@ it("requires review before adding a source and lets the user pause it", async ()
     hosts: sources.length ? 2 : 0,
     cookieSelectors: 0,
     builtinHosts: 50,
-    backend: "electron_web_request",
+    backend: "subresource_filter",
   }));
   api.addFilterSource.mockImplementation(async () => {
     sources = [source];
@@ -109,7 +109,7 @@ it("reviews cookie-banner type before adding and describes the cosmetic scope", 
     hosts: 0,
     cookieSelectors: 0,
     builtinHosts: 50,
-    backend: "electron_web_request",
+    backend: "subresource_filter",
   });
   api.addFilterSource.mockResolvedValue([]);
   await act(async () => root.render(<FilterListManager />));

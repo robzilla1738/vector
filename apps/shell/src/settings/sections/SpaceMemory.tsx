@@ -80,7 +80,6 @@ function SpaceMemoryContent({ workspaceId, includePasteImport }: { workspaceId: 
   const [sourceId, setSourceId] = useState("");
   const [pending, setPending] = useState<{scope: PipelineScope; operation: object} | null>(null);
   const [error, setError] = useState("");
-  const [preview, setPreview] = useState(false);
   const [needsFreshBackup, setNeedsFreshBackup] = useState(false);
   const decisions = useMemo(() => new DecisionControls(workspaceId), [workspaceId]);
   useLayoutEffect(() => () => decisions.retire(), [decisions]);
@@ -109,11 +108,11 @@ function SpaceMemoryContent({ workspaceId, includePasteImport }: { workspaceId: 
     if (policy.workspaceId !== workspaceId || overview.workspaceId !== workspaceId) throw new Error("The Space memory response changed its original workspace.");
     const next = { enabled: policy.enabled, overview, sources, inbox, claims, history };
     if (!ownsWorkspace() || !scope.publish(request, next)) return;
-    setSnapshot({scope, value:next}); setPending(null); setError(""); setPreview(false);
+    setSnapshot({scope, value:next}); setPending(null); setError("");
     setSourceId(value => sources.some(source => source.runId === value) ? value : sources[0]?.runId ?? "");
   }, [scope, workspaceId, ownsWorkspace]);
   useEffect(() => {
-    void Promise.resolve().then(refresh).catch(reason => { if (!scope.active || bridge.privateMode || !ownsWorkspace()) return; if (/feature_unavailable|preview/.test(String(reason))) setPreview(true); else setError(String(reason)); });
+    void Promise.resolve().then(refresh).catch(reason => { if (!scope.active || bridge.privateMode || !ownsWorkspace()) return; setError(String(reason)); });
   }, [scope, refresh, ownsWorkspace]);
   useEffect(() => bridge.onEvent(event => { if (event.type === "workspace.memory.updated" && event.payload.workspaceId === workspaceId) void refresh().catch(reason => { if (scope.active && !bridge.privateMode && ownsWorkspace()) setError(String(reason)); }); }), [workspaceId, scope, refresh, ownsWorkspace]);
   function act(work: () => Promise<unknown>) {
@@ -133,7 +132,6 @@ function SpaceMemoryContent({ workspaceId, includePasteImport }: { workspaceId: 
     })(), current);
   }
   return <SettingsField label="Space memory" hint="Eligible completed runs produce encrypted notes for your review. Only accepted notes appear in later runs. Memory is off by default.">
-    {preview ? <p {...staticHintProps}>Space memory is in preview in this build.</p> : <>
     {error && <p {...nativeAlertRoleProps}>{error}</p>}
     <label htmlFor={enabledId}><PipelineControl inputId={enabledId} command="toggle-space-memory-pipeline" scopeId={workspaceId} kind="checkbox" checked={enabled} disabled={!snapshot || busy || bridge.privateMode} onError={report} action={() => act(() => call("memory.pipeline.setPolicy", { workspaceId, enabled: !enabled }))}/> Enable memory for this Space</label>
     {includePasteImport && <><PipelineControl command="toggle-space-memory-import" expanded={showPasteImport} scopeId={workspaceId} {...smallGhostButtonProps} disabled={!snapshot || bridge.privateMode} onError={report} action={() => { assertCurrent(); setShowPasteImport(value => !value); }}>Import pasted assistant notes</PipelineControl>
@@ -188,7 +186,6 @@ function SpaceMemoryContent({ workspaceId, includePasteImport }: { workspaceId: 
           <PipelineControl command="restore-space-memory-revision" scopeId={`${workspaceId}:${revision.revisionId}`} disabled={busy} onError={report} action={() => act(() => call("memory.pipeline.revert", { workspaceId, revisionId: revision.revisionId }))}>Restore this revision</PipelineControl>
         </div>)}
       </details>
-    </>}
     </>}
     {confirmation}
   </SettingsField>;

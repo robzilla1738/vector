@@ -1,7 +1,0 @@
-# Conversation Restore/Reopen commands and completion ownership
-
-Exactly four source leaves against the frozen queued result. Two additive normal scoped rows register the original Restore to reply and Reopen buttons and focused remapped shortcuts. The original archive parameters, newTab producer, usable-person-page reuse, disabled/task/live conditions and disconnected availability remain intact.
-
-Each action synchronously reserves its original conversation owner and exact operation token. Retired ACKs and failures retain their original identity, without publishing into a new incarnation or clearing newer busy. Reopen additionally revalidates the actual latest retained run and original observation/URL before local context/openConversation delivery. An authorized tab creation is never cancelled or deleted by this UI guard; the actual store newTab test proves that tab survives a chat switch while local stale conversation delivery is refused. Current native-click errors report once; underlying newTab store handling remains unchanged.
-
-Final 60 mounted controls pass, including 14 new actual dispatcher/recovery cases and unchanged 46 queued/live/Conversation/Composer cases. Restoring only the old publication/finally policy produces two meaningful failures. Shell types and scoped lint pass; strict initial fixture type failures and original warnings are retained. Exact forward/reverse/forward result verification passes. No runtime/native changes, OS operations, Vite, or renderer-budget acceptance.

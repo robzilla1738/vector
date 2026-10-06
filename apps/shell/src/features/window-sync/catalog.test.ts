@@ -4,7 +4,7 @@ import type { PageTarget, TabRecord } from "@aux/contracts";
 import { bridge } from "../../bridge";
 import { useStore } from "../../store";
 import { emptyLayout } from "../../workspace";
-vi.mock("../../use-feature", () => ({ featureStage: () => "on" }));
+vi.mock("../../feature-availability", () => ({ featureStage: () => "on" }));
 afterEach(() => vi.restoreAllMocks());
 const tab = (pageId: string, windowId: string, fields = {}): TabRecord => ({
   pageId, windowId, windowKind: "normal", url: "https://example.com", title: pageId,

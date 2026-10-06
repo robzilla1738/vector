@@ -7,7 +7,7 @@ import { createServer } from "node:http";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { setTimeout as delay } from "node:timers/promises";
-import { rawPercentile } from "../host/lib/native-key-performance.mjs";
+import { rawPercentile } from "../support/native-key-performance.mjs";
 import { summarizeSamples } from "./statistics.mjs";
 
 const root = resolve(import.meta.dirname, "../..");

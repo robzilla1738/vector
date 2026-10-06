@@ -17,8 +17,8 @@ afterEach(async () => {
 });
 
 it("publishes actual page-free REPL openTab consent while retaining the parked destination", async () => {
-  const { createFixture } = await import("../host/lib/fixture.mjs");
-  const { createModelFixture } = await import("../host/lib/model-fixture.mjs");
+  const { createFixture } = await import("../support/fixture.mjs");
+  const { createModelFixture } = await import("../support/model-fixture.mjs");
   const fixture = await createFixture();
   cleanups.push(() => fixture.close());
   const model = createModelFixture(fixture);

@@ -1,3 +1,0 @@
-$ node scripts/check-renderer-format.mjs
-Checking formatting...
-All matched files use Prettier code style!

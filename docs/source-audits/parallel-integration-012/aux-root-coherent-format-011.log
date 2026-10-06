@@ -1,6 +1,0 @@
-$ node scripts/check-renderer-format.mjs
-Checking formatting...
-All matched files use Prettier code style!
-apps/shell/src/components/OutboundMcpSettings.test.tsx:213: line is 118 characters (limit 110)
-1 renderer line exceed the B7 limit.
-[ELIFECYCLE] Command failed with exit code 1.

@@ -1,9 +1,0 @@
-# Native overnight checkbox contract successor
-
-Apply AFTER NightSettings save/readback packet33c01f74 (SHA912c629355326da8b4138d6f209819f5e7f70c952b3b649e676e8c66d09411e8). Exact two-leaf successor request.patch, manifest pre/post pins. Original packet is immutable.
-
-Actual tests/host/native-window.swift elementRecord~909 serializes NSNumber AXCheckBox as checked Boolean, while value is restricted to nonsecure text fields/areas/combos. Original4ac overnight failure-ax.json confirms `{role:"AXCheckBox",name:"Enable overnight work",checked:false}` with no value. The journey previously coerced missing node.value to false. This toggles an already-enabled checkbox when enabled=true and fails to disable it when enabled=false, undermining its initial disabled queue setup. Correct journey now requires actual Boolean state and compares node.checked directly. Missing state fails explicitly before toggling or editing time.
-
-Meaningful tests export/call the actual journey helper with the genuine documented AX record shape (no simulated control implementation). They stop at the next physical time-edit boundary and assert exact button presses for enabled→disabled, disabled→enabled, unchanged enabled, unchanged disabled, and missing state with misleading text value. Baseline current helper RED3/5, fixed GREEN5/5. Focused lint zero errors/warnings, node --check and git diff --check PASS. No runtime/shell/product source changed; no runtime rebuild or unchanged suite rerun warranted. No native builds/app/helper/journeys/Stable operations or qualification claim. Actual next overnight physical journey remains mandatory.
-
-Independent review: actualTimeField original4ac evidence publishes `names:["Start","00:00"]`, so existing names readback is supported. Smart-download PDF fixture contains587bytes/32 genuine LF; download save helper already reads actual persisted settings. No additional download producer correction proven here.

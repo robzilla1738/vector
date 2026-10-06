@@ -13,7 +13,7 @@ export async function bootRuntimeFeatures(services: Services, invoke: ReturnType
   const cleanup: (() => void | Promise<void>)[] = [];
   try {
     for (const module of FEATURE_BOOTS as readonly FeatureBoot[]) {
-      if (auxFeatureStage(module.feature, services.featureHost ?? "electron", stages) !== "on") continue;
+      if (auxFeatureStage(module.feature, services.featureHost ?? "chromium-fork", stages) !== "on") continue;
       const stop = await module.boot(services, invoke);
       if (stop) cleanup.push(stop);
     }

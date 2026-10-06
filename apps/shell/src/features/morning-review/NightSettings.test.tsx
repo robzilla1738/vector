@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DEFAULT_NIGHT_SHIFT } from "@aux/contracts";
+vi.mock("../../feature-availability", () => ({ featureAvailable: (feature: string) => feature === "overnightReview", featureVisible: (feature: string) => feature === "overnightReview", featureStage: (feature: string) => feature === "overnightReview" ? "on" : "off" }));
 vi.mock("../../use-feature", () => ({ featureStage: (feature: string) => feature === "overnightReview" ? "on" : "off", useFeature: () => false }));
 import { bridge } from "../../bridge";
 import { useStore } from "../../store";

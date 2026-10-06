@@ -1,8 +1,0 @@
-{
-  "errorsDtsExact": true,
-  "actualHostDtsSha256": "3b7675f3f8bf287d09652f1f27c553ecf5bf27ed6c4ff1b22196d994dfdc393e",
-  "isolatedHostDtsDifferentEnumPropertyEmissionOrder": true,
-  "actualPublicMethodArgumentResultAndEventTypeEquality": true,
-  "configurationAndBudgetPinsUnchanged": true,
-  "sourceOnly": true
-}

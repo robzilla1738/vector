@@ -47,7 +47,7 @@ import { auxShellPathFromUrl } from "../settings/routes";
 import { commandCandidateKey, mergeCommandResults } from "../command-results";
 import type { ProviderSuggestion, Suggestion } from "./command-provider-types";
 import { commandTabRows } from "./command-tab-rows";
-import { featureStage } from "../use-feature";
+import { useFeature } from "../use-feature";
 import { openCommandSurface, type CommandSurfaceMode } from "../command-surface-state";
 import "./CommandBar.css";
 import {
@@ -198,7 +198,8 @@ export function CommandBar({
   }, [breakerVersion]);
   const [sel, setSel] = useState(0);
   const [providerScope, setProviderScope] = useState<ProviderScope>(initialPrefix === "@" ? "tabs" : "all");
-  const extensionEnabled = !bridge.privateMode && featureStage("extensions") === "on";
+  const extensionsFeature = useFeature("extensions");
+  const extensionEnabled = !bridge.privateMode && extensionsFeature;
   const [extensionItems, setExtensionItems] = useState<BrowserExtension[]>([]);
   const [rankingOpen, setRankingOpen] = useState(false);
   const rankingOpenedAt = useRef(Date.now());
@@ -537,7 +538,7 @@ export function CommandBar({
   const [workStatus, setWorkStatus] = useState({ query: "", pending: 0, failed: false });
   const [workRetry, setWorkRetry] = useState(0);
   const workSearch = (providerScope === "all" || providerScope === "work") && scopePrefix !== "@" && intent.kind !== "command";
-  const skillsEnabled = featureStage("automations") === "on";
+  const skillsEnabled = useFeature("automations");
   // Saved work joins after immediate local matches. Old responses never paint
   // a new query, and private browsing never queries the regular Profile.
   useEffect(() => {

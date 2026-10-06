@@ -104,7 +104,7 @@ export const mergedTab = (page: PageTarget, tab: TabRecord): PageTarget => ({
   split: tab.split,
   url: tab.url,
   // The runtime owns the error-page title ("Page couldn't load") — the catalog
-  // only knows Electron's last live title, which is stale once a page errors.
+  // only knows the browser's last live title, which is stale once a page errors.
   title: tab.navigationError ? page.title || tab.title : tab.title,
   themeColor: tab.navigationError ? undefined : tab.themeColor,
   favicon: tab.favicon ?? page.favicon,

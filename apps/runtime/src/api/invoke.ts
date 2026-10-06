@@ -25,7 +25,7 @@ export function makeInvoker(s: Services) {
     if ((client.external || client.codeMode) && policy.auth === "aux-webui") {
       throw new AuxError("permission_denied", `${method} is managed in Aux.`);
     }
-    const host = s.featureHost ?? "electron";
+    const host = s.featureHost ?? "chromium-fork";
     requireAuxMethod(method, host, await s.featureStages);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params: any = schema.parse(rawParams ?? {});

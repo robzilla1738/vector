@@ -1,7 +1,12 @@
 import { createCipheriv, createHash, pbkdf2Sync } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { MethodSchemas } from "@aux/contracts";
 import { chromeEpochToUnix, CookieService, decryptValue, mapSameSite } from "@aux/runtime";
-import type { BrowserCookie, BrowserDriver } from "@aux/chromium-driver";
+import type { BrowserCookie } from "@aux/chromium-driver";
 
 const KEY = pbkdf2Sync("test-password", "saltysalt", 1003, 16, "sha1");
 const IV = Buffer.alloc(16, 0x20);
@@ -10,22 +15,6 @@ function encryptV10(plain: string): Buffer {
   const c = createCipheriv("aes-128-cbc", KEY, IV);
   return Buffer.concat([Buffer.from("v10"), c.update(plain, "utf8"), c.final()]);
 }
-
-function fakeDriver(cookies: BrowserCookie[]): BrowserDriver {
-  const jar: BrowserCookie[] = [];
-  return {
-    backend: "aux",
-    async connect() {},
-    async disconnect() {},
-    isConnected: () => true,
-    async listTargets() { return []; },
-    async attach() { throw new Error("no"); },
-    async getAllCookies() { return cookies; },
-    async setCookies(cs) { jar.push(...cs); return cs.length; },
-  };
-}
-
-const nullNative = { available: () => false } as never;
 
 describe("chrome cookie helpers", () => {
   it("converts chrome's 1601 epoch to unix seconds", () => {
@@ -58,30 +47,66 @@ describe("chrome cookie helpers", () => {
   });
 });
 
-describe("CookieService.importCookies — attached source", () => {
-  const cookies: BrowserCookie[] = [
-    { name: "sid", value: "x", domain: ".example.com", path: "/", secure: true, httpOnly: true, sameSite: "Lax" },
-    { name: "", value: "bad", domain: ".example.com", path: "/", secure: false, httpOnly: false },
-  ];
+describe("CookieService.importCookies — native Profile import", () => {
+  const fixtures: string[] = [];
+  afterEach(() => { for (const fixture of fixtures.splice(0)) rmSync(fixture, { recursive: true, force: true }); });
 
-  it("imports from an attached chrome driver and skips malformed rows", async () => {
-    const aux = fakeDriver([]);
-    let setCount = 0;
-    const spy = aux.setCookies;
-    aux.setCookies = async (cs) => { setCount = cs.length; return spy!(cs); };
-    const chrome = fakeDriver(cookies);
-    (chrome as { backend: string }).backend = "chrome";
-    const svc = new CookieService({ drivers: () => ({ aux, chrome }), native: nullNative });
+  function profileSource() {
+    const directory = mkdtempSync(join(tmpdir(), "aux-cookie-import-test-"));
+    fixtures.push(directory);
+    const profile = join(directory, "Default");
+    mkdirSync(profile);
+    const db = new DatabaseSync(join(profile, "Cookies"));
+    db.exec(`CREATE TABLE meta (key TEXT, value TEXT);
+      INSERT INTO meta VALUES ('version', '23');
+      CREATE TABLE cookies (host_key TEXT, name TEXT, value TEXT, encrypted_value BLOB, path TEXT,
+        expires_utc INTEGER, is_secure INTEGER, is_httponly INTEGER, samesite INTEGER, is_persistent INTEGER);`);
+    const insert = db.prepare("INSERT INTO cookies VALUES (?, ?, ?, ?, '/', 0, 1, 1, 1, 0)");
+    insert.run(".example.com", "plain", "plaintext", Buffer.alloc(0));
+    insert.run(".example.com", "encrypted", "", encryptV10("session-token-123"));
+    insert.run(".example.com", "bound", "", Buffer.concat([Buffer.from("v20"), Buffer.alloc(40)]));
+    insert.run(".example.com", "", "malformed", Buffer.alloc(0));
+    db.close();
+    return { directory, safeStorageService: "Disposable Safe Storage" };
+  }
+
+  it("reads a disposable disk Profile, decrypts and imports through native Chromium", async () => {
+    const source = profileSource();
+    const received: BrowserCookie[] = [];
+    const services: string[] = [];
+    const svc = new CookieService({
+      native: { available: () => true, setCookies: async (cookies: BrowserCookie[]) => {
+        received.push(...cookies); return { count: cookies.length };
+      } } as never,
+      profileSources: [source],
+      readSafeStoragePassword: async service => { services.push(service); return "test-password"; },
+    });
     const res = await svc.importCookies({ source: "auto" });
-    expect(res.source).toBe("attached");
-    expect(res.imported).toBe(1);
-    expect(res.skipped).toBe(1);
-    expect(res.domains).toBe(1);
-    expect(setCount).toBe(1);
+    expect(res).toMatchObject({ ok: true, source: "profile", imported: 2, skipped: 2, domains: 1 });
+    expect(res.detail).toMatch(/1 cookie.*app-bound.*cannot be imported/);
+    expect(services).toEqual(["Disposable Safe Storage"]);
+    expect(received.map(cookie => [cookie.name, cookie.value])).toEqual([
+      ["plain", "plaintext"], ["encrypted", "session-token-123"],
+    ]);
+    expect(received.every(cookie => cookie.httpOnly && cookie.secure && cookie.sameSite === "Lax")).toBe(true);
+    expect(JSON.stringify(res)).not.toContain("session-token-123");
+    const original = new DatabaseSync(join(source.directory, "Default", "Cookies"), { readOnly: true });
+    try { expect(original.prepare("SELECT count(*) AS count FROM cookies").get()?.count).toBe(4); }
+    finally { original.close(); }
   });
 
-  it("errors clearly when 'attached' is requested but nothing is connected", async () => {
-    const svc = new CookieService({ drivers: () => ({ aux: fakeDriver([]), chrome: null }), native: nullNative });
-    await expect(svc.importCookies({ source: "attached" })).rejects.toThrow(/no Chrome attached/);
+  it("rejects unavailable native import before reading a Profile or keychain", async () => {
+    let keychainReads = 0;
+    const svc = new CookieService({
+      native: { available: () => false } as never,
+      profileSources: [],
+      readSafeStoragePassword: async () => { keychainReads++; return "test-password"; },
+    });
+    await expect(svc.importCookies({ source: "profile" })).rejects.toThrow(/Native Profile cookie import is unavailable/);
+    expect(keychainReads).toBe(0);
+  });
+
+  it("rejects the removed attached source at the API boundary", () => {
+    expect(MethodSchemas["chrome.importCookies"].safeParse({ source: "attached" }).success).toBe(false);
   });
 });

@@ -1,5 +1,0 @@
-# Default Browser initial transport recovery
-
-Source-only two-leaf request. The original defaultBrowser call now executes synchronously inside an async try/await. Original transport throws enter the existing guarded error delivery rather than escaping the effect. Original readSequence, measuredDefault readiness, window/Private/native predicates and focus-return OS rechecks remain intact. Mutation handler and complete rendered tail are byte-identical; no metadata/OS operation or new Retry button.
-
-Original8 action controls +2 legacy controls +2 new mounted controls pass12. Original source fails the new synchronous initial-read case; raw failure retained. Corrected source displays full safe-text diagnostics with unknown state disabled, recovers only through the original focus recheck, rejects stale ABA error delivery and removes that listener on unmount. Exact F/R/F, shell types and zero-warning scoped lint pass. No new renderer measurement/native/F21 acceptance. Last coherent frozen Autofill+chooseMore cohort remains total1843883 FAIL683; this request does not waive the byte cap.

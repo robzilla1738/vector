@@ -642,8 +642,8 @@ describe("runToolLoop (S5 host integration)", () => {
       } },
   ])("enforces the actual page-free streamed REPL openTab boundary for $target", async ({ target, status, gateCount, calls, checkEvidence }) => {
     const { createRequire } = await import("node:module");
-    const { createFixture } = await import("../host/lib/fixture.mjs");
-    const { createModelFixture } = await import("../host/lib/model-fixture.mjs");
+    const { createFixture } = await import("../support/fixture.mjs");
+    const { createModelFixture } = await import("../support/model-fixture.mjs");
     const runtimeRequire = createRequire(new URL("../../apps/runtime/package.json", import.meta.url));
     const { createOpenAI } = await import(runtimeRequire.resolve("@ai-sdk/openai"));
     const { streamText } = await import(runtimeRequire.resolve("ai"));

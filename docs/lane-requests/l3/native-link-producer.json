@@ -1,8 +1,0 @@
-{
-  "sourceBaseline": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-autonomy-native-replay-ijy9khf3",
-  "nativeScratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-link-producer-v4bxfnog",
-  "patch": "chromium/patches/aux/runtime/0170-committed-link-frecency.patch",
-  "sha256": "32d55550f104175d28baa9460981bf97aa3e21314c991e9e27d180bb4314bdfe",
-  "compiled": false,
-  "journeyVerified": false
-}

@@ -12,8 +12,7 @@ const RESULTS: Record<string, unknown> = {
   "capabilities": {
     "buildId": "mock-buildid",
     "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "methods": [],
-    "qualifiedFeatures": []
+    "methods": []
   },
   "appearanceSnapshot": {
     "producer": "aux-native-appearance-snapshot",
@@ -71,80 +70,6 @@ const RESULTS: Record<string, unknown> = {
     "revision": 0,
     "layout": null
   },
-  "migrationReview": {
-    "status": "ready",
-    "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "tabs": 0,
-    "bookmarks": 0,
-    "bookmarkFolders": 0,
-    "spaces": 0,
-    "vaultPending": false,
-    "omitted": {
-      "unsafeTabs": 0,
-      "unsafeBookmarks": 0,
-      "missingArtifacts": 0,
-      "vaultMetadata": 0,
-      "layoutMissing": false
-    }
-  },
-  "migrationBegin": {
-    "status": "ready",
-    "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "tabs": 0,
-    "bookmarks": 0,
-    "bookmarkFolders": 0,
-    "spaces": 0,
-    "vaultPending": false,
-    "omitted": {
-      "unsafeTabs": 0,
-      "unsafeBookmarks": 0,
-      "missingArtifacts": 0,
-      "vaultMetadata": 0,
-      "layoutMissing": false
-    }
-  },
-  "migrationBatch": {
-    "status": "importing",
-    "folders": 0,
-    "bookmarks": 0,
-    "tabs": 0
-  },
-  "migrationFinish": {
-    "status": "ready",
-    "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "tabs": 0,
-    "bookmarks": 0,
-    "bookmarkFolders": 0,
-    "spaces": 0,
-    "vaultPending": false,
-    "omitted": {
-      "unsafeTabs": 0,
-      "unsafeBookmarks": 0,
-      "missingArtifacts": 0,
-      "vaultMetadata": 0,
-      "layoutMissing": false
-    }
-  },
-  "migrationRollback": {
-    "status": "ready",
-    "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "manifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "tabs": 0,
-    "bookmarks": 0,
-    "bookmarkFolders": 0,
-    "spaces": 0,
-    "vaultPending": false,
-    "omitted": {
-      "unsafeTabs": 0,
-      "unsafeBookmarks": 0,
-      "missingArtifacts": 0,
-      "vaultMetadata": 0,
-      "layoutMissing": false
-    }
-  },
   "tabsSince": {
     "kind": "patches",
     "patches": []
@@ -201,14 +126,14 @@ const RESULTS: Record<string, unknown> = {
     "hosts": 0,
     "cookieSelectors": 0,
     "builtinHosts": 0,
-    "backend": "electron_web_request"
+    "backend": "subresource_filter"
   },
   "updateFilters": {
     "sources": [],
     "hosts": 0,
     "cookieSelectors": 0,
     "builtinHosts": 0,
-    "backend": "electron_web_request"
+    "backend": "subresource_filter"
   },
   "addFilterSource": [],
   "removeFilterSource": [],
@@ -435,7 +360,6 @@ const RESULTS: Record<string, unknown> = {
   },
   "exportDiagnostics": null,
   "exportRuntimeBackup": null,
-  "exportMigrationLayout": null,
   "stageRuntimeRestore": null,
   "cancelRuntimeRestore": {
     "cancelled": true
@@ -580,8 +504,7 @@ const RESULTS: Record<string, unknown> = {
   "native.capabilities": {
     "buildId": "mock-buildid",
     "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "methods": [],
-    "qualifiedFeatures": []
+    "methods": []
   },
   "native.downloadRenameReceipts": [],
   "native.downloadNamingCandidate": null,

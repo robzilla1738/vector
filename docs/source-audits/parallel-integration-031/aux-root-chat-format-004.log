@@ -1,7 +1,0 @@
-$ node scripts/check-renderer-format.mjs
-Checking formatting...
-[warn] apps/shell/src/ui/popover.tsx
-[warn] Code style issues found in the above file. Run Prettier with --write to fix.
-apps/shell/src/ui/popover.tsx:1: line is 121 characters (limit 110)
-1 renderer line exceed the B7 limit.
-[ELIFECYCLE] Command failed with exit code 1.

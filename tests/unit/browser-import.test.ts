@@ -186,28 +186,6 @@ it("runs a preview + partial-result import over injected sources", async () => {
   expect(events.some(e => e.type === "import.progress" && e.payload.done === true)).toBe(true);
 });
 
-it("opens live tabs from an attached Chrome and reports partial failures", async () => {
-  const repo = fixtureRepo();
-  const opened: string[] = [];
-  const importer = new BrowserImporter({
-    repo,
-    emit: () => {},
-    sources: () => [],
-    chromeTabs: async () => [
-      { type: "page", url: "https://one.example/", title: "One" },
-      { type: "page", url: "https://two.example/", title: "Two" },
-      { type: "page", url: "chrome://settings", title: "Settings" },
-      { type: "page", url: "https://fail.example/", title: "Fail" },
-    ],
-    openTab: async url => { if (url.includes("fail")) throw new Error("no"); opened.push(url); },
-  });
-  const report = await importer.runNow({ selections: [{ sourceId: "chrome-attached", categories: ["tabs"] }] });
-  expect(opened).toEqual(["https://one.example/", "https://two.example/"]);
-  expect(report.results[0]).toMatchObject({ source: "chrome-attached", state: "done", imported: 2, skipped: 1 });
-  expect(report.results[0]?.detail).toContain("1 tab could not open");
-  importer.cancel(report.jobId);
-  expect(importer.status(report.jobId)).toMatchObject({ done: true, cancelled: false });
-});
 
 it("cancel stops a running history import between batches", async () => {
   const profile = chromiumProfile(1500); // three 500-row batches

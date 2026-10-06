@@ -1,9 +1,0 @@
-{
-  "status": "NATIVE334_ORIGINAL17_524_LIST_ONLY_ADMISSION_PASS",
-  "launcher": "5aaa0123829d43d15974f53f748a27e08d4772156a6144a0fd6bf9d0efefd0c8",
-  "outer": "60f297a4e605dc231fe32dd2b558df008fafce2a39bcaff9a9662af1820addbe",
-  "originalControllerExceptReviewedLiterals": true,
-  "originalRequiredSetsAndPolicyExact": true,
-  "pairCompilerBound": true,
-  "scope": "serial list only; no assertions or App"
-}

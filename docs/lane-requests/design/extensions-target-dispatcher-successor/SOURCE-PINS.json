@@ -1,7 +1,0 @@
-{
-  "path": "apps/shell/src/components/Extensions.permissions-target.test.tsx",
-  "beforeSha256": "a466ee6a363b81c0c23d4f0ae1ab8bee0a9f8a4991b89e38114dc2caac751b63",
-  "afterSha256": "34b45705cbade44568ab802bab92752c1788e4918db276b40be1cb2b7f35e45e",
-  "patchSha256": "def9ca990fbb67a70d6b0cd7d4349a53d722c100821ed6753dfe8d0f060fd0b4",
-  "testOnly": true
-}

@@ -9,6 +9,7 @@ export interface SettingsRoute {
 const routes: readonly SettingsRoute[] = [
   { slug: "downloads", category: "Downloads" },
   { slug: "general", category: "General" },
+  { slug: "labs", category: "Labs" },
   { slug: "appearance", category: "Appearance" },
   { slug: "profiles", category: "Profiles" },
   { slug: "link-routing", category: "Link Routing" },

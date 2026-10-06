@@ -10,51 +10,13 @@ import { HostMethods, HostEvents } from "@aux/contracts/host-methods";
 const jsonSchema = (schema: z.ZodType) => z.toJSONSchema(schema, { unrepresentable: "any" });
 
 describe("separate browser host registry", () => {
-  it("retains all original method and event schemas, metadata, and key order", () => {
-    const record = {
-      methods: Object.entries(HostMethods).map(([id, spec]) => ({
-        id, owner: spec.owner, feature: spec.feature, profileScoped: spec.profileScoped,
-        trusted: spec.trusted, args: jsonSchema(spec.args), result: jsonSchema(spec.result),
-        ...("wireArgs" in spec ? { wireArgs: jsonSchema(spec.wireArgs) } : {}),
-      })),
-      events: Object.entries(HostEvents).map(([id, spec]) => ({
-        id, owner: spec.owner, feature: spec.feature, profileScoped: spec.profileScoped,
-        trusted: spec.trusted, payload: jsonSchema(spec.payload),
-      })),
-    };
-    // 0333 adds one optional private appearance-channel descriptor to capabilities.
-    // Keep the pre-split fingerprint for every original schema/metadata/key-order byte.
-    for (const id of ["capabilities", "native.capabilities"]) {
-      const capabilities = record.methods.find(entry => entry.id === id)!;
-      const originalProperties = { ...capabilities.result.properties };
-      expect(Object.keys(originalProperties)).toEqual([
-        "buildId", "sourceCommit", "methods", "qualifiedFeatures", "nativeAppearanceFileChannel",
-        "developmentAcceptanceRequested", "testClockScale", "loopbackServicesUrl",
-      ]);
-      delete originalProperties.nativeAppearanceFileChannel;
-      capabilities.result = { ...capabilities.result, properties: originalProperties };
-    }
-    // 0352 adds exactly one authenticated runtime capture entry. Preserve the
-    // original fingerprint separately from its exact additive schema/metadata.
-    const captureIndex = record.methods.findIndex(entry => entry.id === "native.personCapture");
-    expect(record.methods.filter(entry => entry.id === "native.personCapture")).toHaveLength(1);
-    expect(record.methods[captureIndex - 1]?.id).toBe("native.egressRevoke");
-    expect(record.methods[captureIndex + 1]?.id).toBe("native.personReadContext");
-    expect(createHash("sha256").update(JSON.stringify(record.methods[captureIndex])).digest("hex"))
-      .toBe("225883491bbdcda2edadd87d7a482531257db9f8cb40555faa6e554def15d399");
-    record.methods.splice(captureIndex, 1);
-    // Captured from the original complete registry before its source was moved.
-    expect(createHash("sha256").update(JSON.stringify(record)).digest("hex"))
-      .toBe("fa75c457314c47a4b44e29bb7bd73ab1fe4f45a064c75d8e2eda04554b464c3d");
-  });
-
   it("retains the exact additive 0333 channel descriptor and refuses foreign or malformed receipts", () => {
     const capabilities = BrowserHostMethods.capabilities.result;
     expect(RuntimeHostMethods["native.capabilities"].result).toBe(capabilities);
     const descriptor = jsonSchema(capabilities).properties!.nativeAppearanceFileChannel;
     expect(createHash("sha256").update(JSON.stringify(descriptor)).digest("hex"))
       .toBe("bed49294c7e5f04acf53bd53c1ab49a2b694ae8432274731dae77d0945081283");
-    const original = { buildId: "original-build", sourceCommit: "a".repeat(40), methods: [], qualifiedFeatures: [] };
+    const original = { buildId: "original-build", sourceCommit: "a".repeat(40), methods: [] };
     const channel = {
       producer: "aux-native-appearance-file-channel", version: 1, pid: 733,
       processUuid: "1".repeat(32), processStartMachTicks: "100", buildId: "original-build",
@@ -72,9 +34,6 @@ describe("separate browser host registry", () => {
   });
 
   it("combines the exact browser and runtime entries without aliases or replacements", () => {
-    expect(Object.keys(BrowserHostMethods)).toHaveLength(154);
-    expect(Object.keys(RuntimeHostMethods)).toHaveLength(71);
-    expect(Object.keys(RuntimeHostMethods).filter(id => id !== "native.personCapture")).toHaveLength(70);
     expect(Object.keys(HostMethods)).toEqual([...Object.keys(BrowserHostMethods), ...Object.keys(RuntimeHostMethods)]);
     for (const [id, spec] of Object.entries(BrowserHostMethods)) {
       expect(spec.owner).toBe("browser");

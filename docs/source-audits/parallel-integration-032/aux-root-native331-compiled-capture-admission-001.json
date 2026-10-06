@@ -1,7 +1,0 @@
-{
-  "requestSha256": "a9629b413368f7739a1ef9f83a5950f6274682646e85ae06380d02c4a0c31099",
-  "controllerSha256": "804afd12dcb332643f0a8d6ab7a0d0896b26a6ced836cb8918466308a4519d82",
-  "exactDeltaVerified": true,
-  "original18TerminalIndependentlyVerified": true,
-  "scope": "Admit readonly compiled binaries/library/pak/native/assets/runtime/helper/metadata capture only; no stage/App or assertion execution."
-}

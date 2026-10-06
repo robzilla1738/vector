@@ -1,9 +1,0 @@
-# Original operation construction request
-
-Ten original operation sites reuse two mechanical constructors: existing Promise chains retain their original synchronous producer capture, then/catch/finally and completion guard; immediate async operations retain a sole await and synchronous continuation/catch/finally. All per-surface semantic owners, admission, pending reservation, consent, arguments, result validation and delivery predicates remain local. No JSX/CSS/branding/load/compiler change.
-
-Four original chain callback bodies and four Content async producer/continuation/catch/finally/current expressions are byte-exact, independently checked from actual before source. Browsing retains its same plain local prior=saved snapshot before the sole native call; original response/current/pending/error predicates are unchanged. Paste retains one await/action and the exact original operation retirement. Nested conflict GET, nested recovery readback and attended Restore second completion guard remain local.
-
-156 actual cases across12 files PASS, including three constructor controls comparing original/refactored microtask tick ledgers across success/rejection/synchronous throw/publication/cleanup/retirement and a held chain refresh. The updated core control also proves retired failed completion notification remains guarded. Shell types PASS; scoped lint retains only two original Browsing warnings. First unused import lint failure retained, corrected without assertion changes. Exact9leaf F/R/F PASS.
-
-No renderer measurement yet: root will combine its complementary mechanical comparison group once. This does not claim3KB savings, budget PASS or native/F21 qualification. Accepted PageRecovery is excluded. All original transport ACK/rejection objects and completion guards remain; no native execution.

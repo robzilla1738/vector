@@ -1,8 +1,0 @@
-{
-  "commands": 524,
-  "scoped": 332,
-  "fullMetadata": "exact deep equality",
-  "keyOrderDescriptorsAndReferenceAliases": "exact graph equality",
-  "declarations": "exact normalized union-order equality",
-  "originalConstructors": "G/GL/S/C unchanged"
-}

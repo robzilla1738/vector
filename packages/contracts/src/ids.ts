@@ -1,8 +1,7 @@
 /** Branded id helpers shared across runtime, drivers, and UI. */
 
 /**
- * Page backends: `aux` — Aux's own Chromium views (Electron shell or
- * headless standalone); `chrome` — the user's attached Chrome over CDP.
+ * Page backends identify native Aux views and CDP-controlled Chromium pages.
  */
 export type Backend = "aux" | "chrome";
 export const BACKENDS = ["aux", "chrome"] as const;
@@ -15,7 +14,7 @@ export const isElementRef = (value: string): boolean => ELEMENT_REF.test(value);
 
 export interface TargetRef {
   backend: Backend;
-  /** Driver-native target identity (CDP target id, or Electron marker id). */
+  /** Driver-native target identity (CDP target id or native page id). */
   targetId: string;
 }
 

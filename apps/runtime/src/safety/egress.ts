@@ -1,3 +1,4 @@
+import { exactOrigin } from "@aux/contracts/util/exact-origin";
 /**
  * Request-path EGRESS authority. The native throttle must defer agent-attributed
  * requests until this service answers and must check again at every redirect.
@@ -28,14 +29,6 @@ interface ActiveLease {
   memoryFingerprints: Set<string>; revoked: boolean; runRetired: boolean; initialNavigationStarted: boolean;
 }
 
-function exactOrigin(raw: string): string | null {
-  try {
-    const url = new URL(raw);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    if (url.username || url.password) return null;
-    return url.origin;
-  } catch { return null; }
-}
 
 function variants(value: string): string[] {
   // URL and form encoders use both %20 and +. Base64 captures common encoded

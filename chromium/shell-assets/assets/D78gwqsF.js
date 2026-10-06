@@ -1,1 +1,0 @@
-function i(e=1,r=Date.now){if(!Number.isFinite(e)||e<1||e>1e5)throw new Error("Invalid clock scale.");return{scale:e,now:r,elapsedSince:n=>Math.max(0,r()-n)*e,delayMs:r=>{if(!Number.isFinite(r)||r<0)throw new Error("Invalid clock duration.");return r/e}}}export{i as c};

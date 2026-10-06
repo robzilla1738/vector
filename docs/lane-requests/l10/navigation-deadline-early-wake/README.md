@@ -1,5 +1,0 @@
-Original navigation deadline early-wakeup correction
-
-A one-shot deadline wake may arrive while Date.now is still before the absolute deadline. The previous waitRetired returned without rescheduling and could await SDK destruction indefinitely. The corrected wake checks the same original authority/deadline and schedules only its remaining interval if the original retirement observer is still enrolled. Cancellation, expiry, source failure, or exact SDK retirement removes that enrollment and prevents rearming. No fresh authority/deadline is introduced.
-
-The original 60ms receipt deadline fixture now uses fake time, releases the held original SDK in finally, and preserves every refusal/no-new-install/original-driver assertion. A separate early-wakeup control delivers the timer one wall-clock tick early: unchanged source deterministically fails settled=true; corrected source passes. Dist rebuilt before each verification. Final all23 controlled-native-navigation cases PASS; workspace rebuild/scopedlint/diffcheck PASS. Logs retained. No native/hardware/20AC qualification claim.

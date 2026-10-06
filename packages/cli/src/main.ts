@@ -13,7 +13,6 @@
  *   auxctl set create <name> <url...> · auxctl set map <setId> --program <steps-json> | --goal "<goal>"
  *   auxctl results <setId>
  *   auxctl events [--since <n>]
- *   auxctl chrome attach [--port 9222] · auxctl chrome tabs
  *   auxctl programs · auxctl programs run <programId> <pageId> [--param k=v...]
  *   auxctl bench [--task records-extract] [--repeats n]
  *   auxctl doctor
@@ -84,9 +83,7 @@ async function main() {
   results <setId> [--status ok|error]
   events [--since n] [--follow]
   artifacts [runId] · artifact <id>      list / read (base64)
-  chrome attach [--port 9222]
-  chrome tabs · chrome open-live <pageId> · chrome detach
-  chrome import-cookies [--source auto|attached|profile]
+  chrome import-cookies [--source auto|profile]
   programs · program-run <id> <pageId> [--param k=v] · validate <program-json|@file>
   ops [siteKey] · op-invoke <siteKey> <name> [pageId] [--inputs <json|@file>]
   op-explain <siteKey> <name> [pageId] · op-compile <runId> [name] [--site siteKey]
@@ -313,16 +310,11 @@ async function main() {
 
     case "chrome": {
       const sub = args[0];
-      if (sub === "attach") out(await rpc("chrome.attach", { port: flags.port ? Number(flags.port) : 9222 }));
-      else if (sub === "tabs") out(await rpc("chrome.tabs"));
-      else if (sub === "open-live") out(await rpc("chrome.openLive", { pageId: args[1] }));
-      else if (sub === "detach") out(await rpc("chrome.detach"));
+      if (sub === "open-live") out(await rpc("chrome.openLive", { pageId: args[1] }));
       else if (sub === "import-cookies")
         out(await rpc("chrome.importCookies", { source: flags.source ?? "auto" }));
       else
-        fail(
-          "usage: auxctl chrome attach|tabs|open-live|detach|import-cookies [--source auto|attached|profile]",
-        );
+        fail("usage: auxctl chrome open-live <pageId>|import-cookies [--source auto|profile]");
       return;
     }
 

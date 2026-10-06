@@ -102,7 +102,7 @@ export function toErrorPayload(e: unknown): { code: AuxErrorCode; errorId: strin
     if (key === "effect") return ["read", "write", "destructive", "egress", "credential", "external_tool"].includes(value);
     if (key === "stage") return ["off", "preview", "on"].includes(value);
     if (key === "suspensionKind") return ["ask-user-question", "approval", "action-confirmation", "handoff"].includes(value);
-    if (key === "host") return ["electron", "chromium-fork"].includes(value);
+    if (key === "host") return value === "chromium-fork";
     if (key === "feature") return /^[a-z][A-Za-z0-9]{0,50}$/.test(value);
     // Opaque IDs may be user supplied. Do not include them in a public error.
     return false;

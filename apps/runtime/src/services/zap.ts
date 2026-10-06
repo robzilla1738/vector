@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { digest as hash } from "@aux/contracts/util/digest";
 import { AuxError, ZapInstallReceiptSchema, ZapSitePolicySchema, ZapStylesheetInstallSchema,
   type ZapInstallReceipt, type ZapSitePolicy, type ZapStylesheetInstall } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
@@ -6,7 +6,6 @@ import type { NativeBridge } from "../native.js";
 
 const KEY = "zapSitePolicies";
 const MAX_SITES = 100;
-const hash = (text: string) => createHash("sha256").update(text).digest("hex");
 
 export function zapStylesheet(policy: Pick<ZapSitePolicy, "enabled" | "selectors" | "userCss">): string {
   if (!policy.enabled) return "";

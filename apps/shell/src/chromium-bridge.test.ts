@@ -45,16 +45,16 @@ describe("Chromium Aux shell bridge", () => {
     expect(rows).not.toContainEqual(expect.objectContaining({ commandId: "new-window", key: "n", meta: true }));
     expect(rows.length).toBeLessThanOrEqual(512);
   });
-  it("preserves native preview stages even when runtime reports on", async () => {
+  it("preserves missing native capabilities even when runtime reports on", async () => {
     const request = vi.fn(async () => ({ version: 1, featureStages: { spaces: "on", memory: "on" } }));
     const target = fakeWindow("chrome://aux/", {
       host: "chromium-fork", windowId: "win-1", profileId: "ordinary",
       platform: "darwin", privateMode: false, windowKind: "normal",
-      featureStages: { spaces: "preview", memory: "preview" },
+      featureStages: { spaces: "off", memory: "off" },
       request, subscribe: vi.fn(() => () => {}),
     });
     installChromiumBridge(target);
-    expect(chromiumFeatureStages(target)).toEqual({ spaces: "preview", memory: "preview" });
+    expect(chromiumFeatureStages(target)).toEqual({ spaces: "off", memory: "off" });
     expect(request).not.toHaveBeenCalled();
   });
   it("refuses ordinary pages and other WebUI origins", () => {

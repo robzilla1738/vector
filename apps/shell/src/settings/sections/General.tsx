@@ -1,6 +1,4 @@
-import { staticRowProps, staticHintProps } from "../../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../../ui/button-props";
-import { errorMessage } from "../../error-message";
 import { useEffect, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { SettingsRow as Field, SettingsGroup, Switch } from "../../ui";
@@ -11,7 +9,6 @@ import { SearchEngineSetting } from "../../components/SearchEngineSetting";
 import { SearchEnginesSetting, type EngineRow } from "../../components/SearchEnginesSetting";
 import { DefaultBrowserSetting } from "../../components/DefaultBrowserSetting";
 import { ImportDataSetting } from "../../components/ImportDataSetting";
-import { MigrationImport } from "../../components/MigrationImport";
 import { SettingsField as IndexedField } from "../primitives";
 import { DownloadFolderSetting } from "./DownloadFolder";
 import { AboutAuxSetting } from "./AboutAux";
@@ -53,8 +50,6 @@ export function GeneralSettings({
   onIndexChange: Dispatch<SetStateAction<number>>;
 }) {
   const connected = useStore(state => state.connected);
-  const [backupBusy, setBackupBusy] = useState(false);
-  const [backupMessage, setBackupMessage] = useState("");
   const [backupOperation, setBackupOperation] = useState<object | null>(null);
   const tabLifecycleEnabled = useFeature("tabLifecycle");
   const [memoryCycles, setMemoryCycles] = useState(readMemorySaverCycles);
@@ -168,7 +163,7 @@ export function GeneralSettings({
 
           <IndexedField
             label="Import browser data"
-            hint="Preview what each installed browser can share — bookmarks and folders, history, and live tabs from an attached Chrome — then import what you choose. Source profiles are only ever read, never changed."
+            hint="Preview what each installed browser can share — bookmarks and folders, history, and tabs — then import what you choose. Source profiles are only ever read, never changed."
           >
             <ImportDataSetting />
           </IndexedField>
@@ -241,10 +236,10 @@ export function GeneralSettings({
           label="Task data backup"
           hint="Backs up chats, tasks, Spaces, saved evidence, browsing records and preferences. New portable backups omit protected articles, selected-article answers, reports, and site grants. After Forget, older Aux-managed backups cannot be restored; create a fresh backup. Copies exported outside Aux remain under your control and cannot be revoked. Sign-ins, credentials, extensions, downloads, project files and cloud resources are not included. Chromium Cookies, Login Data, Web Data and other credential stores are never copied. Backups contain private content; keep them somewhere secure. Oldest complete backups are deleted after a new backup. Incomplete folders without a manifest are skipped. A process kill during backup leaves an incomplete folder that Aux ignores."
         >
-          <RestoreBackupControls active={active && !searching && subview === "Task data backup"} refreshVersion={refreshVersion} externalBusy={backupBusy || backupOperation !== null}
+          <RestoreBackupControls active={active && !searching && subview === "Task data backup"} refreshVersion={refreshVersion} externalBusy={backupOperation !== null}
             onOperation={(token, pending) => setBackupOperation(current => pending ? token : current === token ? null : current)}>
             {restore => <>
-              <BackupSettings active={active && !searching && subview === "Task data backup"} refreshVersion={refreshVersion} externalBusy={backupBusy || backupOperation !== null} restorePending={restore.status.pending}
+              <BackupSettings active={active && !searching && subview === "Task data backup"} refreshVersion={refreshVersion} externalBusy={backupOperation !== null} restorePending={restore.status.pending}
                 onOperation={(token, pending) => setBackupOperation(current => pending ? token : current === token ? null : current)}
                 attended={() => restore.actions} restore={(item, busy) => restore.listed(item, busy)} />
               {restore.statusView}
@@ -252,37 +247,6 @@ export function GeneralSettings({
             </>}
           </RestoreBackupControls>
 
-          {!(
-            typeof window !== "undefined" &&
-            Boolean((window as Window & { auxHostProof?: unknown }).auxHostProof)
-          ) && (
-            <div {...staticRowProps}>
-              <button
-                {...smallGhostButtonProps}
-                disabled={backupBusy || backupOperation !== null}
-                onClick={() => {
-                  setBackupBusy(true);
-                  setBackupMessage("");
-                  void bridge
-                    .exportMigrationLayout(JSON.stringify(useStore.getState().layout))
-                    .then((result) =>
-                      setBackupMessage(
-                        result ? `Migration layout saved to ${result.path}` : "Layout export cancelled.",
-                      ),
-                    )
-                    .catch((error) =>
-                      setBackupMessage(errorMessage(error)),
-                    )
-                    .finally(() => setBackupBusy(false));
-                }}
-              >
-                Export layout for Chromium migration…
-              </button>
-            </div>
-          )}
-          {typeof window !== "undefined" &&
-            Boolean((window as Window & { auxHostProof?: unknown }).auxHostProof) && <MigrationImport />}
-          {backupMessage && <output {...staticHintProps}>{backupMessage}</output>}
         </Field>
       </section>
     </>

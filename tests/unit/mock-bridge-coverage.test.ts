@@ -41,8 +41,7 @@ it("lists the runtime methods the renderer uses that the mock bridge does not im
 
 const UNMOCKED = [
   "artifacts.list", "bookmarks.folders.remove", "bookmarks.folders.rename", "bookmarks.markRead",
-  "bookmarks.offline.get", "bookmarks.offline.set", "bookmarks.readingList", "chrome.attach",
-  "chrome.detach", "chrome.tabs",
+  "bookmarks.offline.get", "bookmarks.offline.set", "bookmarks.readingList",
   "commands.escalations.decide", "commands.escalations.list", "commands.escalations.revoke",
   "downloads.projectNative",
   "goals.cancel", "goals.create", "goals.list", "goals.pause", "goals.resume", "goals.start",

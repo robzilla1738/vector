@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { digest } from "@aux/contracts/util/digest";
 import { lstat, readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
@@ -13,7 +13,6 @@ const manifestSchema = z.object({
 export type ImportedAsset = Pick<PluginAsset, "kind" | "name" | "description" | "content" | "digest">;
 export type ImportedPlugin = { format: "claude-code"; name: string; version?: string; description?: string; assets: ImportedAsset[] };
 
-const digest = (body: string) => createHash("sha256").update(body).digest("hex");
 const validName = (name: string) => /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/.test(name);
 
 async function regularFile(path: string, maxBytes = 64_000): Promise<string> {

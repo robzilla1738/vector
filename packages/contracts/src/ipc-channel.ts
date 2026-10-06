@@ -1,7 +1,7 @@
 /**
- * Bidirectional JSON-RPC over a message transport (fork IPC in production,
- * in-memory pair in tests). Used between the Electron main process (which
- * owns native surfaces) and the runtime (execution authority).
+ * Bidirectional JSON-RPC over the authenticated Chromium runtime socket,
+ * with in-memory transports for tests. Chromium owns native surfaces;
+ * the runtime owns execution authority.
  */
 import { toErrorPayload, AuxError } from "./errors.js";
 

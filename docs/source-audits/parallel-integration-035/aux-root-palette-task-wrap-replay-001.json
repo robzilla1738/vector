@@ -1,9 +1,0 @@
-{
-  "result": "EXACT3LEAF_ORDERED_F_R_F_ROOT_APPLY_PASS",
-  "packets": [
-    "library-palette-focus-observation",
-    "task-history-saved-label-wrap"
-  ],
-  "sourceReferenceAndOriginalProducerPinsExact": true,
-  "nativeVerification": "PENDING"
-}

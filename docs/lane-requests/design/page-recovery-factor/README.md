@@ -1,7 +1,0 @@
-Original recovery controls and command construction factor
-
-Shares one static RecoveryButton component returning the exact original button DOM (no wrapper), with original event/ref/command/disabled/class/children values. It preserves original button nodes across held completion and keeps PageRecovery statically imported. All original owner/native/copy source restores byte-exact outside the button templates; no manual fence or native authority changes. The internal component adds React component fibers but no DOM or deferred boundary; actual native performance gates remain required.
-
-24 closed literal groups share repeated command ID namespaces. Installed TypeScript preserves all original ShellCommandId literals; all402 ordered commands, metadata keys, scoped rows and nested bindings/windows alias relationships are exact. Expanding only these groups restores the whole original commands source. No metadata is removed and no generic map/callback purity is annotated.
-
-11 real component controls and5 constructor/source/type controls pass; owned contracts/full-shell types pass. One original status-role warning remains, no new lint suppression. Native154 strict-CSP/no-map isolated whole402 renderer passes all existing rounded budgets and strict501760 startup bytes. See MEASUREMENT.json for exact bytes and narrow margin. Root must independently apply/rebuild before acceptance. Native/focus/hit/pixel/performance/F21 and all-on final cohort remain pending.

@@ -1,8 +1,0 @@
-{
-  "sourceOnly": true,
-  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-complete-full-order-6piloe2b",
-  "unchangedBootstrapPath": "chrome/browser/resources/aux_host/aux_host_bootstrap.ts",
-  "sha256": "95d8334f28670faf7e485022919e346ae15e721890ade7004a404c56300092a2",
-  "nativeFiles": 95,
-  "defaultStableGate": "appearanceSnapshot missing until sole builder stages coherent candidate; not waived"
-}

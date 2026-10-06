@@ -103,6 +103,10 @@ beforeAll(() => {
     translateSteps: (_p, s) => s,
     nativeAvailable: () => false,
   });
+  // Bookmark handlers use the native BookmarkModel; keep its fixture separate
+  // from the runtime repository so tests exercise the current routing.
+  const nativeBookmarks = new Map<string, { nodeId: string; url: string; title: string;
+    createdAt: number; folderPath: string[] }>();
   const services: Services = { safetyAuthority: fixtureSafetyAuthority(repo), turnMentions,
     pages,
     sets,
@@ -113,6 +117,19 @@ beforeAll(() => {
     repo,
     native: {
       available: () => true,
+      bookmarksInvoke: async (method, raw) => {
+        const params = raw as { url?: string; title?: string; folderPath?: string[] };
+        switch (method) {
+          case "bookmarks.list": return [...nativeBookmarks.values()];
+          case "bookmarks.add": {
+            nativeBookmarks.set(params.url!, { nodeId: String(nativeBookmarks.size + 1), url: params.url!,
+              title: params.title ?? "", createdAt: Date.now(), folderPath: params.folderPath ?? [] });
+            return { ok: true };
+          }
+          case "bookmarks.remove": nativeBookmarks.delete(params.url!); return { ok: true };
+          default: throw new Error(`Unsupported native bookmark fixture method: ${method}`);
+        }
+      },
       // Schema boundary fixture has no registered native run family. The
       // actual stopped-family refusal is exercised by native-run-resume.
       egressCheckRunResume: async ({ runId }) => {
@@ -133,9 +150,6 @@ beforeAll(() => {
       readSecret: async () => ({}),
     },
     drivers: () => ({ aux: null, chrome: null }),
-    chromeAttach: async () => ({}),
-    chromeDetach: async () => ({ ok: true }),
-    chromeTabs: async () => [],
     importCookies: async () => ({}),
     benchRun: async () => ({ reportPath: "" }),
   };
@@ -540,8 +554,12 @@ describe("handler results conform to ResultSchemas", () => {
     repo.addHistory("http://x.test/", "x", "p1");
     await call("history.list", { limit: 10 });
     await call("bookmarks.add", { url: "http://x.test/", title: "x" });
-    await call("bookmarks.list");
+    expect(await call("bookmarks.list")).toEqual([
+      expect.objectContaining({ url: "http://x.test/", title: "x" }),
+    ]);
+    expect(repo.listBookmarks()).toEqual([]);
     await call("bookmarks.remove", { url: "http://x.test/" });
+    expect(await call("bookmarks.list")).toEqual([]);
     await call("downloads.list");
     await call("sessions.list");
     await call("workspace.get");

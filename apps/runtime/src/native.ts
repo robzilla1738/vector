@@ -89,7 +89,7 @@ import {
 } from "@aux/contracts";
 
 /**
- * Calls into the Electron main process, which owns all native surfaces.
+ * Calls into the native Chromium host, which owns all native surfaces.
  * In standalone mode (tests, external-only use) the bridge is absent and
  * aux page creation returns an explicit error.
  */

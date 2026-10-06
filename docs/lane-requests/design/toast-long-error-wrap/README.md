@@ -1,7 +1,0 @@
-# Full error notice containment
-
-The original360px/viewport-bounded toast has a text flex item with automatic min-content width. A long unbroken error token therefore cannot shrink/wrap within that bounded notice, crowding Dismiss and actions. Add only `.toast .toast-text { min-width:0; overflow-wrap:anywhere; }`, applying supplied06 wrap-anywhere recipe. Existing notice width, type, color/material/RT/RM, action/dismiss styles and all productionJS remain untouched. No truncation or normalization of full diagnostics.
-
-NEW real Toast control retains a300-character diagnostic token and safely rendered literal markup, error60-second persistence, original action/secondary callback identities, focused actual controls and explicit dismissal with original ID. Scope/source proof binds the flex/line-break rule to actual toast text, excludes buttons and unrelated spans, and keeps existing360px/viewport boundary. This is source containment evidence, not native pixels.
-
-Three controls/two files PASS `/tmp/aux-toast-wrap-controls-002.log` with unchanged original notice timing/focus test. Original CSS1RED/1PASS source-containment/behavior `/tmp/aux-toast-wrap-original-css.log`. Types/lint `/tmp/aux-toast-wrap-types-002.log` and `/tmp/aux-toast-wrap-lint-002.log`. Initial001 controls passed but retained warnings from focus updates outside act; final fixture wraps focus/click in act with every assertion unchanged. No renderer build, productionJS reserve or native/F21 qualification claim.

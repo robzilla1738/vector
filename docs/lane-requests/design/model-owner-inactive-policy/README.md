@@ -1,3 +1,0 @@
-# Original inactive-panel action policy
-
-Narrow two-line successor to038a. Original active prop controls discovery/visibility, not whether an already mounted Save key action is permitted. Every newly committed operation owner starts live even when active=false. Existing active/provider transitions still irreversibly retire the previous owner, so held replies cannot revive through inactive or provider ABA. Original Save falseACK draft/error and role reset assertions preserved verbatim; original Models2+probe2+newowner5 cases pass. No new metadata, callback/result contract, dependency or native operation.

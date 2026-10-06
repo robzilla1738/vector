@@ -1,4 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
+import { jsonDigest as digest } from "@aux/contracts/util/digest";
+import { randomUUID } from "node:crypto";
 import {
   AuxError,
   HookCreateParams,
@@ -40,7 +41,6 @@ export type HookAuthority = (
   workspaceId: string,
 ) => void;
 
-const digest = (handler: HookHandler) => createHash("sha256").update(JSON.stringify(handler)).digest("hex");
 export class HookService {
   private active = new Map<string, Set<AbortController>>();
 

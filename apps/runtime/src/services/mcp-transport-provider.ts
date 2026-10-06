@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { jsonDigest as digest, digest as bytesDigest } from "@aux/contracts/util/digest";
 import { access, realpath, rm, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { isIP } from "node:net";
@@ -9,7 +9,6 @@ import { AuxError, type OutboundMcpServer } from "@aux/contracts";
 import type { McpTransportProvider } from "./outbound-mcp.js";
 import { extractMcpBundle } from "./mcp-bundle.js";
 
-const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const forbiddenHost = (hostname: string) => {
   const host = hostname.replace(/^\[|\]$/g, "").toLowerCase();
   return isIP(host) !== 0 || host === "localhost" || host.endsWith(".localhost") ||
@@ -116,7 +115,7 @@ export function createMcpTransportProvider(
     }
     if (server.source.kind === "local") return sandboxedStdio(server.source, signal);
     if (!bundleBytes || bundleBytes.length > 20_000_000 ||
-      createHash("sha256").update(bundleBytes).digest("hex") !== server.source.sha256)
+      bytesDigest(bundleBytes) !== server.source.sha256)
       throw new AuxError("conflict", "Installed MCP bundle is missing or changed since approval.");
     const extracted = await extractMcpBundle(bundleBytes);
     try {

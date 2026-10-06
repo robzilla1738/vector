@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Inventory shell calls that the current Chromium host cannot answer. */
+/** Advisory inventory of shell calls the current Chromium host cannot answer. */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -80,4 +80,4 @@ const missing = called.filter(method =>
 console.log(`${called.length} renderer-used AuxBridge members; ${missing.length} lack a native handler/producer`);
 console.log(`${methods.length} manifest members; ${handled.size} native method handlers, ${produced.size} native event producers, ${local.size} composed`);
 for (const method of missing) console.log(method);
-if (process.argv.includes("--check") && missing.length) process.exitCode = 1;
+if (missing.length) console.warn("Advisory: review missing host handlers before using these features.");

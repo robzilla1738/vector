@@ -1,3 +1,4 @@
+import { exactOrigin } from "@aux/contracts/util/exact-origin";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -17,14 +18,11 @@ export const NATIVE_PERMISSION_TYPES = [
   "keyboard_lock",
   "pointer_lock",
 ] as const;
-const exactOrigin = z
+const exactOriginSchema = z
   .string()
   .url()
   .max(2048)
-  .refine((value) => {
-    const url = new URL(value);
-    return ["http:", "https:"].includes(url.protocol) && url.origin === value;
-  });
+  .refine((value) => exactOrigin(value) === value);
 export const NativePermissionRequestSchema = EgressLeaseSchema.pick({
   leaseId: true,
   isolationId: true,
@@ -39,8 +37,8 @@ export const NativePermissionRequestSchema = EgressLeaseSchema.pick({
 })
   .extend({
     batchId: z.string().min(1).max(160),
-    requestingOrigin: exactOrigin,
-    embeddingOrigin: exactOrigin,
+    requestingOrigin: exactOriginSchema,
+    embeddingOrigin: exactOriginSchema,
     permissionTypes: z
       .array(z.enum(NATIVE_PERMISSION_TYPES))
       .min(1)

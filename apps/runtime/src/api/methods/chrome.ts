@@ -3,18 +3,6 @@ import type { MethodName } from "@aux/contracts";
 import { AuxError, MethodSchemas } from "@aux/contracts";
 import { chromeBookmarkFiles, readChromeBookmarksFile } from "../../services/chrome-bookmarks.js";
 
-async function h_chrome_attach(ctx: MethodCtx): Promise<unknown> {
-  const { params, s } = ctx;
-  return s.chromeAttach((params as { port: number }).port);
-}
-async function h_chrome_detach(ctx: MethodCtx): Promise<unknown> {
-  const { s } = ctx;
-  return s.chromeDetach();
-}
-async function h_chrome_tabs(ctx: MethodCtx): Promise<unknown> {
-  const { s } = ctx;
-  return s.chromeTabs();
-}
 async function h_chrome_importCookies(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
   return s.importCookies(params);
@@ -58,9 +46,6 @@ async function h_chrome_openLive(ctx: MethodCtx): Promise<unknown> {
 }
 
 export const chromeMethods: Partial<Record<MethodName, MethodHandler>> = {
-  "chrome.attach": h_chrome_attach,
-  "chrome.detach": h_chrome_detach,
-  "chrome.tabs": h_chrome_tabs,
   "chrome.importCookies": h_chrome_importCookies,
   "chrome.importBookmarks": h_chrome_importBookmarks,
   "chrome.openLive": h_chrome_openLive,

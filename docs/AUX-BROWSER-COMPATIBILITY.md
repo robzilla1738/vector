@@ -1,6 +1,6 @@
 # Aux browser compatibility gate
 
-> **Host scope, September 25:** this document describes the Electron development/package baseline unless explicitly labeled otherwise. The working Chromium 154 AuxDev app is the current development target; Electron instructions and results do not qualify it. Start with [the current handoff](HANDOFF.md) and [native runbook](../experiments/chromium-fork/CONTINUATION.md). Final DMG/signing and release qualification are deferred.
+> **Host scope, September 25:** this document describes the Electron development/package baseline unless explicitly labeled otherwise. The working Chromium 154 AuxDev app is the current development target; Electron instructions and results do not qualify it. Start with [the current handoff](HANDOFF.md) and [native runbook](../chromium/BUILDING.md). Final DMG/signing and release qualification are deferred.
 
 Updated 2026-09-20. Phase 1 remains active. This record separates measured behavior
 from unqualified product claims. No real accounts or credential stores were accessed.

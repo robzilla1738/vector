@@ -1,7 +1,0 @@
-{
-  "status": "PASS",
-  "assetCount": 174,
-  "assetDigest": "418f98f64efba1a340dc2bbc57e88eec6aff8180a13ecb6cb1c60f8aa059b58c",
-  "actualModulesIncludeCommandCausality": true,
-  "nativeCompiled": false
-}

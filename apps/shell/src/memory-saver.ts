@@ -2,7 +2,7 @@ import { ownPages } from "./tab-window-transfer";
 import type { HostMethodResult, PageTarget } from "@aux/contracts";
 import { bridge, inNativeHost } from "./bridge";
 import { useStore } from "./store";
-import { featureStage } from "./use-feature";
+import { featureStage } from "./feature-availability";
 import type { Layout } from "./workspace";
 import { boundPin } from "./pin-layout";
 import { recordMemorySaverCycle } from "./memory-saver-report";

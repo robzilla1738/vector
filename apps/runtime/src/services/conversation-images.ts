@@ -1,11 +1,11 @@
-import { createHash, randomUUID } from "node:crypto";
+import { digest } from "@aux/contracts/util/digest";
+import { randomUUID } from "node:crypto";
 import { AuxError, type ConversationImage, type PageContextRef, type Run } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { ArtifactStore } from "./artifacts.js";
 
 type Record = ConversationImage & {sha256:string;removed?:boolean};
 const key = (chatId:string) => `conversationImages:${chatId}`;
-const digest = (buffer:Buffer) => createHash("sha256").update(buffer).digest("hex");
 
 /** User-selected captures; files are immutable, while future inclusion is reversible. */
 export class ConversationImages {

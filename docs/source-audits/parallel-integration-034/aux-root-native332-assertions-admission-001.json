@@ -1,8 +1,0 @@
-{
-  "result": "PASS",
-  "actual14Pins": true,
-  "original17Batches524FiltersArgumentsDeadlinesAndNoJourneysPreserved": true,
-  "correctedProposalOnlyOriginalCandidateStringShape": true,
-  "controllerAndOuterOnlyExactProposalAndLaunchRepin": true,
-  "assertionsNotYetExecuted": true
-}

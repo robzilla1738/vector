@@ -1,8 +1,0 @@
-{
-  "base": "1e6f4f8a5",
-  "path": "apps/shell/src/components/OutboundMcpSettings.tsx",
-  "before": "a0396f0ed5d225464bcf7a52e4980a9c403e66d3f98901f230984f2555800eda",
-  "after": "e1f55b7b64d3b471a59f486afb3207c7fe3c157bd0f3ac7ac0fe895082f2fbe1",
-  "patchSHA256": "76d6cf87808e33ab42b6f69cd6e7f959835047429a3d25ed0a6d2c6adb74357a",
-  "loweringFinal": "/tmp/aux-static-control-class-lowering-final-002.json"
-}

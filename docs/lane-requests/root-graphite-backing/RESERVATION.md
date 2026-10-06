@@ -1,3 +1,0 @@
-# 0320 Graphite backing and original draw successor
-
-Root owns request-only snapshots of native_stock_backing_read.cc and skia_output_surface_impl_on_gpu.cc, plus genuine GPU coverage as needed. Predecessor: independently reviewed a293 Stock raster native/caller packet and a975 Ganesh GPU fixture. No Stable changes, native compilation, runtime backend observation or performance qualification. Design owns0316 window/session/caller cohort and AX close receipt. Preserve original acquired texture, actual draw success, exact first group, original hardware retention, bounded stored alpha and matched Aux/Stock instrumentation overhead.

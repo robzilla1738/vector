@@ -1,5 +1,0 @@
-Checking formatting...
-[warn] apps/shell/src/components/CalendarSourceChoiceDialog.tsx
-[warn] Code style issues found in the above file. Run Prettier with --write to fix.
-apps/shell/src/components/CalendarSourceChoiceDialog.tsx:44: line is 112 characters (limit 110)
-1 renderer line exceed the B7 limit.

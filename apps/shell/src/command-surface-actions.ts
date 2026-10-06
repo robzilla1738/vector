@@ -51,8 +51,6 @@ export const COMMAND_SURFACE_ACTIONS = {
     return bridge.showOriginal(page.pageId);
   },
   "command-bookmarks": () => useStore.getState().setOverlay("bookmarks"),
-  "command-attach-chrome": () => call("chrome.attach", { port: 9222 }),
-  "command-detach-chrome": () => call("chrome.detach"),
   "command-open-live-chrome": () => {
     const page = personPage();
     if (page.backend !== "chrome") throw new Error("Choose an attached Chrome page.");

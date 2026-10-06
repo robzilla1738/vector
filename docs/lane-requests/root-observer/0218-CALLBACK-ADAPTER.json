@@ -1,8 +1,0 @@
-{
-  "path": "content/browser/media/session/media_session_controller.cc",
-  "baselineSha256": "0e0036934a295c7d661887cb589970bca411b3e3a5f23a4a3c3b3c74a68febb8",
-  "resultSha256": "2bae1672fe8d243011c1a231a164ceb65160a11bc402e5ebab5835852fbe3bbb",
-  "patchSha256": "362514099c39c92e32af12b5ba4539f2f8cf95bbf7bb6c0983dadf19a7c8c4f1",
-  "status": "reviewed compiler correction; native compile pending",
-  "semantics": "Adapt const-reference Mojo callback to value observer callback, preserve default empty-size refusal and one-use lifetime"
-}

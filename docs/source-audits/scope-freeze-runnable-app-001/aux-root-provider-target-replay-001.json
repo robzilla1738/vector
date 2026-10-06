@@ -1,6 +1,0 @@
-{
-  "patchSHA256": "7b8d588d8b48741c09a395b3a256cda00b93e59ccdd3df8e93dda74dd91bb6d4",
-  "twoLeafReplay": true,
-  "producerChangedOnlyStaticAttributesReviewedSeparately": true,
-  "nativeAcceptance": false
-}

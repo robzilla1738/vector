@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { bridge } from "../../bridge";
-import { featureStage } from "../../use-feature";
+import { featureStage, useFeature } from "../../use-feature";
 import { useStore } from "../../store";
 import { call } from "../../store/shared";
 
@@ -17,7 +17,8 @@ export async function toggleMinimalUi() {
 
 /** The saved sidebar preference survives Minimal UI; only its effective mode changes. */
 export function useLayoutChrome() {
-  const layoutMotion = isNormalLayoutWindow() && featureStage("minimalUi") === "on";
+  const minimalUiFeature = useFeature("minimalUi");
+  const layoutMotion = isNormalLayoutWindow() && minimalUiFeature;
   const minimal = useStore(state => state.settings.minimalUi === true) && layoutMotion;
   const sidebarWidth = useStore(state => state.sidebarWidth);
   const autoHide = useStore(state => state.settings.toolbarAutoHide !== false);

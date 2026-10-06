@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
 
-const source = readFileSync(new URL('../../experiments/chromium-fork/native/aux-host.js', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../../chromium/test-fixtures/aux-host.js', import.meta.url), 'utf8');
 function boot(origin = 'chrome://aux') {
   const window: any = {};
   const storage = new Map<string, string>();

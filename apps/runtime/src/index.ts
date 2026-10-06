@@ -180,12 +180,6 @@ export {
   runtimeRestoreStatus,
   BACKUP_KEEP_OPTIONS,
 } from "./services/runtime-backup.js";
-export { prepareElectronMigration, type ElectronMigrationReport } from "./services/electron-migration.js";
-export {
-  applyElectronMigration,
-  verifyElectronMigrationBundle,
-  type ElectronMigrationApplyReport,
-} from "./services/electron-migration-apply.js";
 export { ZapService, zapStylesheet, zapInstallRequest } from "./services/zap.js";
 export {
   classifyRepair,

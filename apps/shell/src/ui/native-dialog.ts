@@ -4,8 +4,14 @@ import { requestStageReport } from "../stage-obstruction";
 import { availableControls, availableForFocus, ownsFocus } from "./focus";
 
 const ownedDialogs = new Set<HTMLDialogElement>();
-const topModal = () => [...document.querySelectorAll<HTMLDialogElement>("dialog:modal")].some(item => !ownedDialogs.has(item))
-  ? null : [...ownedDialogs].findLast(item => item.open && item.isConnected);
+const topModal = () => {
+  // Fallback DOMs can expose dialog.open without implementing the native top layer.
+  // Only ask the selector engine for native modal state when it advertises support.
+  const nativeModalState = typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("selector(:modal)");
+  if (nativeModalState && [...document.querySelectorAll<HTMLDialogElement>("dialog:modal")]
+    .some(item => !ownedDialogs.has(item))) return null;
+  return [...ownedDialogs].findLast(item => item.open && item.isConnected);
+};
 
 /** One lifecycle for native top-layer dialogs, menus and popovers. */
 export function useNativeDialog(

@@ -1,6 +1,5 @@
 import { z } from "zod";
 const str = z.string();
-const bool = z.boolean();
 const decimal = str.regex(/^[1-9][0-9]{0,19}$/).refine(value => BigInt(value) <= 18446744073709551615n);
 const hex = (length: number) => str.regex(new RegExp(`^[a-f0-9]{${length}}$`));
 const NativeAppearanceFileChannelSchema = z.object({
@@ -14,9 +13,7 @@ const NativeAppearanceFileChannelSchema = z.object({
 }).strict();
 export const HostCapabilitiesSchema = z.object({
   buildId: str, sourceCommit: str.regex(/^[a-f0-9]{40}(\+dirty)?$/), methods: z.array(str),
-  qualifiedFeatures: z.array(str),
   nativeAppearanceFileChannel: NativeAppearanceFileChannelSchema.optional(),
-  developmentAcceptanceRequested: bool.optional(),
   testClockScale: z.number().finite().min(1).max(100000).optional(),
   loopbackServicesUrl: z.string().url().max(200).refine(value => {
     const url = new URL(value);

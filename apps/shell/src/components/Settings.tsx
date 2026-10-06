@@ -1,3 +1,4 @@
+import { LabsSettings } from "../settings/sections/Labs";
 import { staticIconButtonProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { FeatureSettings, featureSettingsAvailable } from "../features/registry";
@@ -59,6 +60,7 @@ const categoryDescriptions: Record<string, string> = {
   "Site permissions": "Choose what websites can access.",
   "Agent permissions": "Control what Aux can do on your behalf.",
   Extensions: "Manage browser extensions.",
+  Labs: "Choose which features appear in Aux.",
 };
 
 const connectionCategories = ["Models", "Connections", "External agents", "Vault"];
@@ -69,6 +71,7 @@ export function Settings() {
     window.addEventListener("aux-settings-refresh", refresh);
     return () => window.removeEventListener("aux-settings-refresh", refresh);
   }, []);
+  const settings = useStore((s) => s.settings);
   const memoryAvailable = useFeature("memory");
   const downloadNamingAvailable = useFeature("smartDownloadNames") && inNativeHost && !bridge.privateMode;
   const profilesAvailable = useFeature("profiles") && inNativeHost && !bridge.privateMode;
@@ -76,10 +79,10 @@ export function Settings() {
   const appleScriptAvailable = useFeature("appleScript") && inNativeHost && !bridge.privateMode;
   const skillsAvailable = useFeature("skills");
   const automationsFeatureAvailable = useFeature("automations");
-  const automationsAvailable = automationsFeatureAvailable || featureSettingsAvailable("Automations");
+  const automationsAvailable = automationsFeatureAvailable || featureSettingsAvailable("Automations", settings.featureOverrides as import("@aux/contracts").FeatureOverride | undefined);
   const outboundMcpAvailable = useFeature("outboundMcp");
   const connectorsAvailable = useFeature("connectors");
-  const servicesAvailable = outboundMcpAvailable || connectorsAvailable || featureSettingsAvailable("Connections");
+  const servicesAvailable = outboundMcpAvailable || connectorsAvailable || featureSettingsAvailable("Connections", settings.featureOverrides as import("@aux/contracts").FeatureOverride | undefined);
   const permissionsAvailable = useFeature("sitePermissions");
   const vaultAvailable = useFeature("vault");
   const extensionsAvailable = useFeature("extensions");
@@ -202,7 +205,6 @@ export function Settings() {
                 : "Services")
       : category === name && !subview);
   const [destination, setDestination] = useState<SettingsDestination | null>(null);
-  const settings = useStore((s) => s.settings);
   const dialogRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const firstCategory = useRef<HTMLButtonElement>(null);
@@ -487,6 +489,7 @@ export function Settings() {
             </section>
           )}
 
+          <LabsSettings active={visible("Labs")} settings={settings} onSave={set} />
           <AppearanceSettings active={visible("Appearance")} settings={settings} onSave={set} />
           {profilesAvailable && visible("Profiles") && <ProfilesSettings />}
           <AgentsSettings active={visible("Agent permissions")} settings={settings} onSave={set} />

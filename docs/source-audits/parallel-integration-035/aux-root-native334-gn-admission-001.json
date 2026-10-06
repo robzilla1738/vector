@@ -1,9 +1,0 @@
-{
-  "status": "AUTHENTIC334_GN_ONLY_ADMISSION_PASS",
-  "actual11Pins": true,
-  "stageTerminalIndependentlyReviewed": true,
-  "controllerSource002IndependentlyReviewed": true,
-  "launcher": "e9d93e1d82be9315e4370605ca1971d4c03dbdde64da61ee14cc96f9f4213c8d",
-  "outer": "9f55ac7b4b0861d1165af4400dbf984a3c5793ac81de2aaeb1f2c7386eb72213",
-  "scope": "GN only; original authentic VersionAction,eightflags,seals,watch,owner,cache unchanged; no build/App"
-}

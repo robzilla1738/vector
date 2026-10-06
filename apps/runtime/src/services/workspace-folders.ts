@@ -1,4 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
+import { digest as sha } from "@aux/contracts/util/digest";
+import { randomUUID } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, sep } from "node:path";
 import {
@@ -7,7 +8,6 @@ import {
 } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 
-const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 const inside = (path: string, root: string) => path === root || path.startsWith(root + sep);
 const key = (workspaceId: string) => `workspaceFolders:${workspaceId}`;
 

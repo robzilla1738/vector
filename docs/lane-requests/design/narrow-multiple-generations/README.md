@@ -1,9 +1,0 @@
-# Original narrow sessions across real restart
-
-Three-leaf additive successor against adopted0eb. Optional --appearance --narrow now restores and retires the original session BEFORE the existing restart/cold-open helper closure and app operation. Original native/runtime identity and configureAppearance execute unchanged after the new helper exists, then a fresh session binds that new app/helper/PID/kernel/window. No old receipts or requested geometry are reused. Ordinary/performance paths have no new effects.
-
-manifest.narrowGenerations retains each original preparation/error/restoration and one separate cleanupErrors entry per actual failed original cleanup. Failed restoration blocks replacement before the native effect. Concurrent cleanup joins the same original retirement promise and cannot create false replacement debt. Final cleanup restores the still-current session before original helper/app closure; primary errors remain original.
-
-Four meaningful controlled cases cover distinct restored PID/window generations, old cleanup refusal blocking replacement with one retained debt, fresh partial-input/cleanup errors and concurrent retirement. Prior eleven preparation controls/body unchanged. Syntax/lint/diff and exact forward/reverse/forward result pins pass. Actual source branch placement preserves all pre-existing identity/configuration checks. No native execution or F21 approval.
-
-This covers a sole-main-window restart such as Home remount once genuine native execution succeeds. Cold-open that actually creates normal+Little windows still refuses sole-window preparation; it needs an independently scoped distinct-owner geometry preparation, never a largest/title/size selection. Private inactive observation uses its separate approved artifact/owner path and is not borrowed by this normal active-runtime runner. All four appearance cells, reduced motion, narrow pixels/labels/focus/hit review remain pending.

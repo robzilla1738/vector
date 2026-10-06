@@ -33,7 +33,7 @@ vi.mock("./bridge", () => ({
 vi.mock("./store", () => ({
   useStore: { getState: () => harness.state, subscribe: () => () => {} },
 }));
-vi.mock("./use-feature", () => ({ featureStage: () => "on" }));
+vi.mock("./feature-availability", () => ({ featureStage: () => "on" }));
 
 const page = (pageId: string, overrides: Partial<PageTarget> = {}): PageTarget => ({
   pageId, windowId: "main", backend: "aux", targetId: `atab-${pageId}`,

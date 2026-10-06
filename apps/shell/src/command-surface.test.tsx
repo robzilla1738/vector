@@ -2,6 +2,11 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+vi.mock("./feature-availability", async () => {
+  const { featureEnabled } = await import("@aux/contracts");
+  return { featureStage: () => "on", featureAvailable: () => true,
+    featureVisible: featureEnabled };
+});
 vi.mock("./use-feature", () => ({ featureStage: () => "on", useFeature: () => true }));
 import { COMMANDS, type CommandDef } from "@aux/contracts";
 import { CommandSurface } from "./components/CommandSurface";
@@ -93,4 +98,14 @@ it("keeps tasks, archived notes, drafts and Sets in the explicit Work scope", as
   const note = rows.find(row => row.section === "memory")!;
   useStore.setState({ layout: { ...useStore.getState().layout, archivedSpaces: [] } });
   expect(() => note.run()).toThrow("The Space is no longer available");
+});
+
+
+it("removes disabled Labs commands immediately and restores them when enabled", async () => {
+  await act(async () => root.render(<CommandSurface request={{ mode: "command", sequence: 1, seed: "New Space" }} executeCommand={vi.fn()} />));
+  expect(host.querySelector('[data-command-id="command-new-space"]')).not.toBeNull();
+  await act(async () => useStore.setState({ settings: { featureOverrides: { spaces: false } } }));
+  expect(host.querySelector('[data-command-id="command-new-space"]')).toBeNull();
+  await act(async () => useStore.setState({ settings: { featureOverrides: { spaces: true } } }));
+  expect(host.querySelector('[data-command-id="command-new-space"]')).not.toBeNull();
 });

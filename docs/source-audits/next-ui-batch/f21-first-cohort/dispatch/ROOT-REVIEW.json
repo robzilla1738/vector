@@ -1,9 +1,0 @@
-{
-  "frozenPacket": "/tmp/aux-browser-runtime-design-f21-dispatch/docs/lane-requests/design/f21-first-dispatch",
-  "patchSha256": "ce552d3a5e96ab6ed15052a0e4f98a8f5a03eb47de1c7a1b8eb35d73357f9bb9",
-  "actualSourcePinsVerified": true,
-  "actualProducerLiteralJoins": 57,
-  "rootReviewedIncomingStatePreservation": true,
-  "nativeExecution": false,
-  "qualification": false
-}

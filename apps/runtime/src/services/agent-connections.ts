@@ -1,4 +1,5 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { digest } from "@aux/contracts/util/digest";
+import { randomBytes, randomUUID } from "node:crypto";
 import { AgentConnectionCreateParams, AgentConnectionSchema, AuxError, type AgentConnection, type AgentConnectionScope } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 
@@ -14,7 +15,6 @@ export interface ScopedExternalClient {
   scope: AgentConnectionScope;
 }
 
-const digest = (token: string) => createHash("sha256").update(token, "utf8").digest("hex");
 
 /** last_used_at is bookkeeping: written at most this often per connection. */
 const LAST_USED_WRITE_MS = 60_000;

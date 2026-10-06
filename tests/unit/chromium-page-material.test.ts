@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 import {describe, expect, it} from 'vitest';
 
-const header = readFileSync(new URL('../../experiments/chromium-fork/native/aux_page_material.h', import.meta.url), 'utf8');
+const header = readFileSync(new URL('../../chromium/test-fixtures/aux_page_material.h', import.meta.url), 'utf8');
 const script = header.split('R"AUX(')[1]!.split(')AUX";')[0]!;
 const setup = () => {
   const dom = new JSDOM('<html><body><a href="/">Page action</a></body></html>', {runScripts:'outside-only'});

@@ -34,7 +34,6 @@ export interface ImportRunOptions {
   selections: ImportSelection[];
 }
 
-const ATTACHED_TABS_SOURCE = "chrome-attached";
 const HISTORY_FILES: Record<string, string[]> = {
   arc: ["History"],
   safari: ["History.db"],
@@ -58,8 +57,6 @@ export class BrowserImporter {
     repo: Repo;
     native?: NativeBridge;
     emit: (type: string, payload: Record<string, unknown>) => void;
-    /** Live tab list of the attached Chrome, when one is connected. */
-    chromeTabs?: () => Promise<{ url: string; title: string; type: string }[]>;
     /** Opens an imported tab URL in Aux. */
     openTab?: (url: string, title: string) => Promise<void>;
     /** Source discovery — injectable so tests never scan the real filesystem. */
@@ -162,20 +159,6 @@ export class BrowserImporter {
       sources.push({ id: source.id, label: source.label, profiles: source.profiles.map(p => p.id),
         categories: profileCategories[0]?.categories ?? [], profileCategories });
     }
-    const liveTabs = this.deps.chromeTabs ? await this.deps.chromeTabs().catch(() => []) : [];
-    const pages = liveTabs.filter(t => t.type === "page" && safeImportUrl(t.url));
-    sources.push({
-      id: ATTACHED_TABS_SOURCE,
-      label: "Attached Chrome",
-      profiles: [],
-      profileCategories: [],
-      categories: [{
-        category: "tabs",
-        available: pages.length > 0,
-        count: pages.length || undefined,
-        blocker: pages.length ? undefined : "Attach Chrome over CDP (⌘⇧P → Attach Chrome) so its live tabs can be opened here.",
-      }],
-    });
     return { sources, recentJobs: structuredClone(this.recentJobs()) };
   }
 
@@ -230,11 +213,6 @@ export class BrowserImporter {
       const key = `${selection.sourceId}:${selection.profileId ?? ""}`;
       if (seen.has(key)) throw new AuxError("invalid_params", "Each browser Profile can be selected only once.");
       seen.add(key);
-      if (selection.sourceId === ATTACHED_TABS_SOURCE) {
-        if (selection.profileId || selection.categories.length !== 1 || selection.categories[0] !== "tabs")
-          throw new AuxError("invalid_params", "Attached Chrome can import live tabs only.");
-        return { categories: ["tabs" as const] };
-      }
       const source = sources.get(selection.sourceId);
       const profile = source?.profiles.find(item => item.id === selection.profileId);
       if (!source || !profile || source.blocker)
@@ -260,10 +238,6 @@ export class BrowserImporter {
         if (job.cancelled) break;
       }
 
-      if (selections.some(selection => selection.categories.includes("tabs")) && !job.cancelled) {
-        const result = await this.importAttachedTabs(job);
-        this.checkpoint(job, result);
-      }
     } catch (error) {
       job.error = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
     }
@@ -336,29 +310,4 @@ export class BrowserImporter {
     }
   }
 
-  private async importAttachedTabs(job: ImportJob): Promise<ImportCategoryResult> {
-    const base = { source: ATTACHED_TABS_SOURCE, label: "Attached Chrome", category: "tabs" as const };
-    if (!this.deps.chromeTabs || !this.deps.openTab) {
-      return { ...base, state: "skipped", imported: 0, skipped: 0, detail: "No Chrome is attached." };
-    }
-    const targets = await this.deps.chromeTabs();
-    const pages = targets.filter(t => t.type === "page" && safeImportUrl(t.url));
-    if (!pages.length) {
-      return { ...base, state: targets.length ? "done" : "skipped", imported: 0, skipped: 0, detail: targets.length ? "No http(s) tabs to open." : "No Chrome is attached." };
-    }
-    let imported = 0;
-    let firstFailure: string | undefined;
-    for (const page of pages.slice(0, 50)) {
-      if (job.cancelled) break;
-      try {
-        await this.deps.openTab(page.url, page.title);
-        imported++;
-        this.checkpoint(job, { ...base, state: "running", imported, skipped: 0 });
-      } catch (error) { firstFailure ??= error instanceof Error ? error.message : String(error); }
-    }
-    const skipped = pages.length - imported;
-    return { ...base, state: imported ? "done" : job.cancelled ? "skipped" : "error", imported, skipped,
-      detail: firstFailure ? `${skipped} tab${skipped === 1 ? "" : "s"} could not open: ${firstFailure.slice(0, 200)}`
-        : `${pages.length} live tab${pages.length === 1 ? "" : "s"}` };
-  }
 }

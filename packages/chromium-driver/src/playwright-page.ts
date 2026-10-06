@@ -306,7 +306,7 @@ export class PlaywrightDriverPage implements DriverPage {
     this.events.onDialog?.(info);
     try {
       if (dialog.type() === "beforeunload" && this.identity.backend === "aux") {
-        // Veto at the automation boundary. Electron's will-prevent-unload handler
+        // Veto at the automation boundary. The browser's beforeunload handler
         // owns the human Stay/Leave decision, including native close and reload.
         await dialog.dismiss();
         return;

@@ -1,8 +1,0 @@
-{
-  "path": "/private/tmp/aux-browser-runtime-builder-native325-source-001/.native/chrome/browser/ui/aux/native_input_ack_browsertest.cc",
-  "beforeSha256": "7ea35cd9a7db50ad408b471fa057968846a36d1c8a69ff3b7a3f62010c10bf29",
-  "beforeBytes": 8923,
-  "canonicalRequiredAbsent": true,
-  "sourceOnly": true,
-  "originalNative321SourceProof": "/private/tmp/aux-builder-native321-preparation-001/NATIVE321-FINAL-SOURCE-INPUT-001.json"
-}

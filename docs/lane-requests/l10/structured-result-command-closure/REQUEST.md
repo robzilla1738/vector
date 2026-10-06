@@ -1,3 +1,0 @@
-Register the three existing structured saved-result actions through actual mounted button/row controls. Preserve CSV keyboard selection and exact focus, inert JSON formatting, original source reset, disconnected availability, and accepted Saved read publication. Refuse original source/window retirement before local mutation and cancel keyboard defaults before dispatch. Three additive normal scoped rows only.
-
-Actual seven viewer suites: 68 PASS; shell types PASS; scoped lint original seven viewer warnings only. Removing the displayed-source publication fence reproduces the real layout-cut admission failure. Initial JSX newline fixture failure retained. No native, Vite, or budget acceptance.

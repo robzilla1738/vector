@@ -231,12 +231,6 @@ export const COMMAND_ACTIONS = {
     if (!spaceId || !st.layout.spaces.some(space => space.id === spaceId)) throw new Error("The Space is no longer available.");
     return st.switchSpace(spaceId);
   },
-  "command-borrow-chrome": () => openCommandSurface({ mode: "command", provider: "chrome" }),
-  "command-borrow-tab": (_st, context) => {
-    const value = context.payload;
-    if (!value || !("targetId" in value) || !("url" in value)) throw new Error("Choose an attached Chrome tab.");
-    return call("pages.open", { url: value.url, backend: "chrome", targetId: value.targetId, activate: true });
-  },
 
 
   "mute-tab": (st, context) => {

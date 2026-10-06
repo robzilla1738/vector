@@ -10,7 +10,7 @@ import { workspaceMemoryText } from "@aux/contracts/memory-context";
 import { textContextShares } from "@aux/contracts/text-context";
 /**
  * Scripted AuxBridge for `vite --mode mock`. Runs the whole shell in a
- * plain browser with no Electron and no runtime — for visual review, screenshot
+ * plain browser without the native host or runtime — for visual review, screenshot
  * baselines, and poking at states that are hard to reproduce live.
  *
  * Scenario is chosen by URL query:
@@ -30,7 +30,7 @@ import { textContextShares } from "@aux/contracts/text-context";
 import type { CommandRankingEntry, MethodName, Download, BrowsingMemoryPage, BrowsingMemoryPolicy, ContentMemoryPolicy, WorkspaceMemory, ConversationImage, ConversationSummary, RunMessage, BrowserSpace, PageTarget, Run, StepRecord, AuxEvent, ZapRule, PluginSkillGrant } from "@aux/contracts";
 import { normalizeCommandRankingQuery } from "@aux/contracts/command-ranking-query";
 import { OrganizationCommitSchema, type OrganizationSnapshot } from "@aux/contracts/organization";
-import type { BrowserExtension, AuxBridge, MigrationReview } from "../bridge";
+import type { BrowserExtension, AuxBridge } from "../bridge";
 import { DEFAULT_SPACE } from "../workspace";
 import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, SET, SIDEBAR_TABS, makePage, makeRun, makeSteps } from "./fixtures";
 
@@ -58,8 +58,6 @@ export function installMockBridge(q: URLSearchParams) {
   let zapRules: ZapRule[] = [];
   let rankingChoices: CommandRankingEntry[] = [];
   let organization: OrganizationSnapshot = { revision: 0, layout: null };
-  let migration: MigrationReview = { status:"ready",contentHash:"a".repeat(64),manifestSha256:"b".repeat(64),tabs:3,bookmarks:5,bookmarkFolders:2,spaces:2,vaultPending:false,omitted:{unsafeTabs:1,unsafeBookmarks:0,missingArtifacts:0,vaultMetadata:0,layoutMissing:false} };
-  const migrationProgress={status:"importing" as const,folders:0,bookmarks:0,tabs:0};
   const organizationListeners = new Set<(revision:number)=>void>();
   let history = [...HISTORY];
   const zoomLevels = new Map<string, number>();
@@ -669,7 +667,7 @@ export function installMockBridge(q: URLSearchParams) {
       return { ok: true, modelId: (p.modelId as string) || "meta/muse-spark-1.3-contributor", latencyMs: 42, vision: true };
     },
     "chrome.importCookies": async () => {
-      return { ok: true, source: "mock", imported: 0, skipped: 0, domains: 0, detail: "Cookie import is not available in mock." };
+      return { ok: false, source: "profile", imported: 0, skipped: 0, domains: 0, detail: "Cookie import is not available in mock." };
     },
     "programs.run": async p => {
       const id = `run-${Math.random().toString(36).slice(2, 6)}`;
@@ -1039,30 +1037,6 @@ export function installMockBridge(q: URLSearchParams) {
       for(const listener of organizationListeners)listener(organization.revision);
       return organization;
     },
-    migrationReview:async()=>structuredClone(migration),
-    migrationBegin:async input=>{
-      if(input.contentHash!==migration.contentHash||input.manifestSha256!==migration.manifestSha256)throw new Error("Migration review changed.");
-      if(migration.status==="ready")migration={...migration,status:"interrupted",progress:{...migrationProgress}};
-      return structuredClone(migration);
-    },
-    migrationBatch:async input=>{
-      if(migration.status!=="interrupted"||input.contentHash!==migration.contentHash||input.manifestSha256!==migration.manifestSha256)throw new Error("No reviewed import is in progress.");
-      const limit=input.section==="folders"?migration.bookmarkFolders:migration[input.section];
-      if(input.offset<0||input.offset>limit||input.offset%100!==0)throw new Error("Invalid migration batch.");
-      const progress={...(migration.progress??migrationProgress),[input.section]:Math.max(migration.progress?.[input.section]??0,Math.min(limit,input.offset+100))};
-      migration={...migration,progress};
-      return progress;
-    },
-    migrationFinish:async input=>{
-      if(input.contentHash!==migration.contentHash||input.manifestSha256!==migration.manifestSha256||!migration.progress||migration.progress.folders!==migration.bookmarkFolders||migration.progress.bookmarks!==migration.bookmarks||migration.progress.tabs!==migration.tabs)throw new Error("Migration batches are incomplete.");
-      migration={...migration,status:"applied",progress:undefined};
-      return structuredClone(migration);
-    },
-    migrationRollback:async input=>{
-      if(input.contentHash!==migration.contentHash||input.manifestSha256!==migration.manifestSha256||migration.status!=="interrupted")throw new Error("No import can be rolled back.");
-      migration={...migration,status:"ready",progress:undefined};
-      return structuredClone(migration);
-    },
     onOrganizationChanged:cb=>(organizationListeners.add(cb),()=>organizationListeners.delete(cb)),
     tabsSince:async()=>({kind:"snapshot" as const,snapshot:await bridge.tabsSnapshot()}),
     onTabsPatch:()=>()=>{},
@@ -1081,7 +1055,7 @@ export function installMockBridge(q: URLSearchParams) {
     onDownload: () => () => {},
     onLoading: (cb) => (loadingListeners.add(cb), () => loadingListeners.delete(cb)),
     surfaceContentId: async () => null,
-    capabilities: async () => ({ buildId: "mock", sourceCommit: "a".repeat(40), qualifiedFeatures: [], methods: Object.keys(HostMethods) }),
+    capabilities: async () => ({ buildId: "mock", sourceCommit: "a".repeat(40), methods: Object.keys(HostMethods) }),
     resolveSearch: async query => DEFAULT_SEARCH_ENGINE.replace("%s", encodeURIComponent(query)),
     setShortcuts: async () => true,
     autocomplete: async query => {
@@ -1178,7 +1152,6 @@ export function installMockBridge(q: URLSearchParams) {
     dataDir: async () => "/Users/you/Library/Application Support/Aux Browser",
     exportDiagnostics:async()=>null,
     exportRuntimeBackup:async()=>null,
-    exportMigrationLayout:async()=>null,
     stageRuntimeRestore:async()=>null,
     cancelRuntimeRestore:async()=>({cancelled:true}),
     runtimeRestoreStatus:async()=>({pending:false,managedRecovery:{generation:0,freshBackupIssued:false}}),

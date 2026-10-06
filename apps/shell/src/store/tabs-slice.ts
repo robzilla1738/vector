@@ -4,7 +4,7 @@ import { newPageId } from "@aux/contracts/ids";
 import { bridge } from "../bridge";
 import { rememberMovedSelection } from "../features/window-sync/moved-selection";
 import { canClaim, inSharedSidebar, isLocal } from "../tab-window-transfer";
-import { featureStage } from "../use-feature";
+import { featureStage } from "../feature-availability";
 import { readClosedTabs } from "../closed-tabs";
 import { errToast, toast } from "../store";
 import { type Folder, type Space, type SpaceColor, assignFolder, assignSpace, isTab, rememberActiveTab, setActiveSpace, splitForPage, syncLayout, syncOrder, withSyncedOrder } from "../workspace";

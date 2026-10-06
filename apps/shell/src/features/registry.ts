@@ -1,8 +1,8 @@
-import { COMMANDS, type AuxFeature, type ShellCommandId } from "@aux/contracts";
+import { COMMANDS, type AuxFeature, type ShellCommandId, type FeatureOverride } from "@aux/contracts";
 import { createElement, type ComponentType, type RefObject, useSyncExternalStore } from "react";
 import { bridge } from "../bridge";
-import { featureStage } from "../use-feature";
-import type { useStore } from "../store";
+import { featureAvailable, featureVisible } from "../feature-availability";
+import { useStore } from "../store";
 
 export type CommandContext = ReturnType<typeof useStore.getState>;
 export interface CommandInvocation {
@@ -79,42 +79,49 @@ for (const mount of featureMounts) {
     handlers.add(id);
   }
 }
-const enabled = (mount: FeatureMount) => featureStage(mount.feature) === "on" && (!bridge.privateMode || mount.privateWindows === true);
+const enabled = (mount: FeatureMount, overrides?: FeatureOverride) => featureVisible(mount.feature, overrides) && (!bridge.privateMode || mount.privateWindows === true);
 export function bootShellFeatures() {
-  const cleanup = featureMounts.filter(enabled).flatMap(mount => {
-    const stop = mount.boot?.();
-    return stop ? [stop] : [];
-  });
+  // Native restoration and synchronization follow capabilities. Labs only
+  // controls UI entry points, preserving existing browser state when hidden.
+  const cleanup = featureMounts.filter(mount => featureAvailable(mount.feature) &&
+    (!bridge.privateMode || mount.privateWindows === true)).flatMap(mount => {
+      const stop = mount.boot?.();
+      return stop ? [stop] : [];
+    });
   return () => { for (const stop of cleanup.reverse()) stop(); };
 }
 export function runFeatureCommand(id: string, context: CommandContext, invocation: CommandInvocation = {}): { handled: false } | { handled: true; result: unknown } {
-  const mount = featureMounts.find(mount => enabled(mount) && Object.hasOwn(mount.commands ?? {}, id));
+  const mount = featureMounts.find(mount => enabled(mount, context.settings.featureOverrides as FeatureOverride | undefined) && Object.hasOwn(mount.commands ?? {}, id));
   if (!mount) return { handled: false };
   return { handled: true, result: mount.commands![id as ShellCommandId]!(context, invocation) };
 }
 export function FeatureSlots({ slot }: { slot: "sidebarItems" | "sidebarFooterItems" | "toolbarItems" | "overlays" | "startItems" }) {
-  return featureMounts.filter(enabled).flatMap(mount => (mount[slot] ?? []).map((component, index) =>
+  const overrides = useStore(state => state.settings.featureOverrides as FeatureOverride | undefined);
+  return featureMounts.filter(mount => enabled(mount, overrides)).flatMap(mount => (mount[slot] ?? []).map((component, index) =>
     createElement(component, { key: `${mount.feature}:${index}` })));
 }
 /** Category visibility follows actual enabled registered sections, not unrelated
  * base-feature availability. Every section retains its own feature gate. */
-export function featureSettingsAvailable(category: string): boolean {
-  return featureMounts.some(mount => enabled(mount) &&
+export function featureSettingsAvailable(category: string, overrides?: FeatureOverride): boolean {
+  return featureMounts.some(mount => enabled(mount, overrides) &&
     (mount.settingsSections ?? []).some(section => section.category === category));
 }
 export function FeatureSettings({ category }: { category: string | null }) {
-  return featureMounts.filter(enabled).flatMap(mount => (mount.settingsSections ?? [])
+  const overrides = useStore(state => state.settings.featureOverrides as FeatureOverride | undefined);
+  return featureMounts.filter(mount => enabled(mount, overrides)).flatMap(mount => (mount.settingsSections ?? [])
     .map((section, index) => createElement("div", { key: `${mount.feature}:${index}`, hidden: section.category !== category }, createElement(section.component))));
 }
 export function FeatureComposer({ slot = "composerPlugins", ...props }: ComposerPluginProps & { slot?: "composerPlugins" | "composerActions" }) {
-  return featureMounts.filter(enabled).flatMap(mount => (mount[slot] ?? []).map((component, index) =>
+  const overrides = useStore(state => state.settings.featureOverrides as FeatureOverride | undefined);
+  return featureMounts.filter(mount => enabled(mount, overrides)).flatMap(mount => (mount[slot] ?? []).map((component, index) =>
     createElement(component, { ...props, key: `${mount.feature}:${index}` })));
 }
 
 export function useFeatureRailView() {
+  const overrides = useStore(state => state.settings.featureOverrides as FeatureOverride | undefined);
   const feature = useSyncExternalStore(listener => {
     const stops = featureMounts.flatMap(mount => mount.railView ? [mount.railView.subscribe(listener)] : []);
     return () => { for (const stop of stops) stop(); };
-  }, () => featureMounts.find(mount => enabled(mount) && mount.railView?.active())?.feature ?? null);
+  }, () => featureMounts.find(mount => enabled(mount, overrides) && mount.railView?.active())?.feature ?? null);
   return featureMounts.find(mount => mount.feature === feature)?.railView?.component ?? null;
 }

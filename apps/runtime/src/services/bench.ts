@@ -73,7 +73,6 @@ export async function runBench(opts: {
       node: process.version,
       os: `${platform()} ${release()} ${arch()}`,
       memoryMb: Math.round(totalmem() / 1048576),
-      electron: process.env.AUX_ELECTRON_VERSION ?? "unknown",
       playwright: pkgVersion("playwright-core"),
       aiSdk: pkgVersion("ai"),
       chromium: chromiumVersion ?? "unknown",
