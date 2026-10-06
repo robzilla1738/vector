@@ -76,23 +76,20 @@ const filterSource = strictObject({
   name: str,
   url: str,
   enabled: bool,
-  kind: z.enum(["hosts", "cookie_banner"]),
+  kind: z.enum(["adblock", "hosts"]),
   meta: strictObject({
     fetchedAt: number,
     etag: freshOptional(str),
-    hosts: number,
-    selectors: freshOptional(number),
+    bytes: number.int().nonnegative(),
     sha256: str,
     error: freshOptional(str),
   }).optional(),
 });
 const filterStatus = strictObject({
   sources: z.array(filterSource),
-  hosts: number,
-  cookieSelectors: number,
-  builtinHosts: number,
-  backend: z.enum(["subresource_filter", "declarative_net_request", "preview"]),
-  cosmeticBackend: z.enum(["document_start_stylesheet", "unavailable"]).optional(),
+  backend: z.enum(["ublock_origin", "unavailable"]),
+  engineVersion: z.literal("9df989ecc483cd7ada4b195c47a0584ab2d97450").optional(),
+  cosmeticBackend: z.enum(["native_user_styles", "unavailable"]),
 });
 const extension = strictObject({
   key: str,
@@ -311,7 +308,7 @@ export const BrowserHostMethods = {
   filterLists: blockingShell(noArgs, filterStatus),
   updateFilters: blockingShell(noArgs, filterStatus),
   addFilterSource: blockingShell(
-    tuple([str, str, z.enum(["hosts", "cookie_banner"]).optional()]),
+    tuple([str, str, z.enum(["adblock", "hosts"]).optional()]),
     z.array(filterSource),
   ),
   removeFilterSource: blockingShell(tuple([str]), z.array(filterSource)),

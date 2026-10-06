@@ -2,254 +2,250 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContentBlockingService } from "../../apps/runtime/src/services/content-blocking.js";
-import { AuxError, cookieRuleDigestInput, type CookieBannerRule } from "@aux/contracts";
+import { FilterLists } from "@aux/filter-lists";
+import {
+  filterSnapshotDigestInput,
+  MAX_FILTER_CHUNK_BYTES,
+  type ChromiumContentBlockReceipt,
+} from "@aux/contracts";
+import { BUNDLED_FILTER_SOURCES } from "@aux/contracts/filter-defaults.generated";
 import type {
   ContentBlockAppend,
   ContentBlockBegin,
   ContentBlockCommit,
-  CosmeticAppend,
-  CosmeticBegin,
-  CosmeticCommit,
   NativeBridge,
 } from "../../apps/runtime/src/native.js";
 
 const directories: string[] = [];
 afterEach(() => {
+  vi.restoreAllMocks();
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
-function fixture() {
+// A transport/ownership witness, deliberately not a second implementation of the Rust parser.
+function fixture(
+  body = "||ads.fixture.test^\nnews.fixture.test##.advert\nnews.fixture.test##+js(set-constant, advertising, false)",
+) {
   const directory = mkdtempSync(join(tmpdir(), "aux-blocking-"));
   directories.push(directory);
   let begun: ContentBlockBegin | undefined;
-  let hosts: string[] = [];
-  const guards: (ContentBlockBegin["siteGuard"] | undefined)[] = [];
-  const receipts: {
-    generation: number;
-    digest: string;
-    hosts: string[];
-    enabled: boolean;
-    allowed: string[];
-  }[] = [];
+  let receipt: ChromiumContentBlockReceipt | null = null;
+  const payload = new Map<string, string>();
+  const headers: ContentBlockBegin[] = [];
+  const appended: ContentBlockAppend[] = [];
   const native = {
+    async contentBlockState() {
+      return { receipt };
+    },
     async contentBlockBegin(input: ContentBlockBegin) {
       expect(input.profileId).toBe("Profile 1");
+      expect(input.generation).toBeGreaterThan(receipt?.generation ?? 0);
       begun = input;
-      guards.push(input.siteGuard);
-      hosts = [];
+      headers.push(input);
+      payload.clear();
       return { accepted: true as const };
     },
     async contentBlockAppend(input: ContentBlockAppend) {
+      expect(input.profileId).toBe(begun?.profileId);
       expect(input.generation).toBe(begun?.generation);
-      expect(input.offset).toBe(hosts.length);
-      expect(input.hosts.length).toBeLessThanOrEqual(1024);
-      hosts.push(...input.hosts);
+      expect(begun?.sources.find((source) => source.id === input.sourceId)?.bundled).toBe(false);
+      const previous = payload.get(input.sourceId) ?? "";
+      expect(input.offset).toBe(Buffer.byteLength(previous));
+      expect(Buffer.byteLength(input.text)).toBeLessThanOrEqual(MAX_FILTER_CHUNK_BYTES);
+      payload.set(input.sourceId, previous + input.text);
+      appended.push(input);
       return { accepted: true as const };
     },
     async contentBlockCommit(input: ContentBlockCommit) {
-      expect(input.generation).toBe(begun?.generation);
-      expect(input.hostsDigest).toBe(createHash("sha256").update(hosts.join("\n")).digest("hex"));
-      expect(hosts).toEqual([...hosts].sort());
-      expect(new Set(hosts).size).toBe(hosts.length);
-      expect(hosts.length).toBe(begun?.hostCount);
-      receipts.push({
+      const header = begun!;
+      expect(input.generation).toBe(header.generation);
+      expect(input.filterDigest).toBe(
+        createHash("sha256")
+          .update(filterSnapshotDigestInput(header.sources, header.enabled, header.allowedSiteHosts))
+          .digest("hex"),
+      );
+      for (const source of header.sources) {
+        if (source.bundled) {
+          expect(
+            BUNDLED_FILTER_SOURCES.some(
+              (bundled) =>
+                bundled.id === source.id &&
+                bundled.sha256 === source.sha256 &&
+                bundled.bytes === source.bytes,
+            ),
+          ).toBe(true);
+        } else {
+          const text = payload.get(source.id)!;
+          expect(Buffer.byteLength(text)).toBe(source.bytes);
+          expect(createHash("sha256").update(text).digest("hex")).toBe(source.sha256);
+        }
+      }
+      receipt = {
+        backend: "ublock_origin",
+        engineVersion: "9df989ecc483cd7ada4b195c47a0584ab2d97450",
+        profileId: header.profileId,
+        private: false,
         generation: input.generation,
-        digest: input.hostsDigest,
-        hosts: [...hosts],
-        enabled: begun!.enabled,
-        allowed: [...begun!.allowedSiteHosts],
-      });
-      return {
-        backend: "subresource_filter" as const,
-        generation: input.generation,
-        hostsDigest: input.hostsDigest,
-        installedRules: hosts.length,
+        filterDigest: input.filterDigest,
+        sourceHeaders: header.sources.map(({ id, url, kind, sha256, bytes }) => ({
+          id,
+          url,
+          kind,
+          sha256,
+          bytes,
+        })),
+        cosmeticBackend: "native_user_styles",
+        phase: "document_start",
+        futureDocuments: true,
       };
+      return receipt;
     },
-  } satisfies Pick<NativeBridge, "contentBlockBegin" | "contentBlockAppend" | "contentBlockCommit">;
-  const service = new ContentBlockingService(directory, native, "Profile 1", async () => ({
-    status: 200,
-    etag: "fixture-v1",
-    text: async () => "0.0.0.0 ads.fixture.test\ntracker.fixture.test\n||unsupported.test^",
-  }));
-  return { directory, native, service, receipts, guards };
+  } satisfies Pick<
+    NativeBridge,
+    "contentBlockState" | "contentBlockBegin" | "contentBlockAppend" | "contentBlockCommit"
+  >;
+  const fetchText = vi.fn(async () => ({ status: 200, text: async () => body }));
+  const service = new ContentBlockingService(directory, native, "Profile 1", fetchText);
+  return { directory, native, service, headers, appended, payload, fetchText };
 }
 
-describe("Chromium content blocking snapshots", () => {
-  it("installs, replays, and revokes reviewed cookie selectors with document-start receipts", async () => {
-    const { directory, native: network } = fixture();
-    let header: CosmeticBegin | undefined;
-    let rules: CookieBannerRule[] = [];
-    const applied: { rules: CookieBannerRule[]; enabled: boolean; allowed: string[] }[] = [];
-    const native = {
-      ...network,
-      async cosmeticBegin(input: CosmeticBegin) {
-        header = input;
-        rules = [];
-        return { accepted: true as const };
-      },
-      async cosmeticAppend(input: CosmeticAppend) {
-        expect(input.offset).toBe(rules.length);
-        expect(input.rules.length).toBeLessThanOrEqual(128);
-        rules.push(...input.rules);
-        return { accepted: true as const };
-      },
-      async cosmeticCommit(input: CosmeticCommit) {
-        expect(input.generation).toBe(header?.generation);
-        expect(input.rulesDigest).toBe(
-          createHash("sha256").update(cookieRuleDigestInput(rules)).digest("hex"),
-        );
-        expect(rules).toHaveLength(header!.ruleCount);
-        applied.push({ rules: [...rules], enabled: header!.enabled, allowed: [...header!.allowedSiteHosts] });
-        return {
-          backend: "isolated_world_stylesheet" as const,
-          profileId: "Profile 1",
-          private: false,
-          generation: input.generation,
-          rulesDigest: input.rulesDigest,
-          installedRules: rules.length,
-          phase: "document_start" as const,
-          futureDocuments: true as const,
-        };
-      },
-    } satisfies Pick<
-      NativeBridge,
-      | "contentBlockBegin"
-      | "contentBlockAppend"
-      | "contentBlockCommit"
-      | "cosmeticBegin"
-      | "cosmeticAppend"
-      | "cosmeticCommit"
-    >;
-    const service = new ContentBlockingService(directory, native, "Profile 1", async () => ({
-      status: 200,
-      etag: undefined,
-      text: async () =>
-        [
-          "##.cookie-banner",
-          "shop.fixture.test##[data-cookie-consent]",
-          "##.cookie-banner{color:red}",
-          "##.cookie-banner:has(script)",
-        ].join("\n"),
-    }));
+describe("Chromium content blocking snapshot boundary", () => {
+  it("boots with exact native bundled assets, attests exact source headers only after ACK, and binds site policy", async () => {
+    const { service, headers, appended, fetchText } = fixture();
+    expect(service.status().backend).toBe("unavailable");
     await service.boot();
-    expect(service.status().cosmeticBackend).toBe("document_start_stylesheet");
-    expect(applied.at(-1)!.rules).toEqual([]);
-    const [source] = await service.add("Cookies", "https://lists.fixture.test/cookies", "cookie_banner");
-    expect(applied.at(-1)!.rules).toEqual([
-      { domains: [], selector: ".cookie-banner" },
-      { domains: ["shop.fixture.test"], selector: "[data-cookie-consent]" },
-    ]);
-    expect(service.status().cookieSelectors).toBe(2);
-    await service.setSiteAllowed("shop.fixture.test", true);
-    expect(applied.at(-1)!.allowed).toEqual(["shop.fixture.test"]);
-    await service.setEnabled(false);
-    expect(applied.at(-1)!.enabled).toBe(false);
-    const restarted = new ContentBlockingService(directory, native, "Profile 1");
+    expect(fetchText).not.toHaveBeenCalled();
+    expect(appended).toHaveLength(0);
+    expect(headers[0]!.sources).toHaveLength(BUNDLED_FILTER_SOURCES.length);
+    expect(service.status().backend).toBe("ublock_origin");
+    expect(service.status()).not.toHaveProperty("networkRules");
+    expect(service.status().sources[0]?.meta).not.toHaveProperty("networkRules");
+    const before = headers[0]!.filterDigest;
+    const siteGuard = {
+      pageId: "native-page",
+      expectedUrl: "https://news.fixture.test/story",
+      navigationId: 7,
+    };
+    await service.setSiteAllowed("news.fixture.test", true, siteGuard);
+    expect(headers.at(-1)!.siteGuard).toEqual(siteGuard);
+    expect(headers.at(-1)!.filterDigest).not.toBe(before);
+    expect(service.privacy().allowedHosts).toEqual(["news.fixture.test"]);
+    await service.close();
+  });
+
+  it("rejects an exception for a different site than the reviewed original document", async () => {
+    const { service, headers } = fixture();
+    await service.boot();
+    await expect(
+      service.setSiteAllowed("other.fixture.test", true, {
+        pageId: "native-page",
+        expectedUrl: "https://news.fixture.test/story",
+        navigationId: 7,
+      }),
+    ).rejects.toThrow("does not match");
+    await expect(service.setSiteAllowed("news.fixture.test", true)).rejects.toThrow("Review the original");
+    expect(service.privacy().allowedHosts).toEqual([]);
+    expect(headers).toHaveLength(1);
+    await service.close();
+  });
+
+  it("transports complete Standard rules with byte offsets and intact multibyte boundaries", async () => {
+    const body = "||ads.fixture.test^\nnews.fixture.test##.advert\n! " + "🌙".repeat(70_000);
+    const { service, payload, appended } = fixture(body);
+    await service.boot();
+    const sources = await service.add("Reviewed Standard list", "https://lists.fixture.test/standard");
+    const added = sources.at(-1)!;
+    expect(added.kind).toBe("adblock");
+    expect(payload.get(added.id)).toBe(body);
+    expect(appended.filter((chunk) => chunk.sourceId === added.id).length).toBeGreaterThan(1);
+    expect(appended.every((chunk) => !chunk.text.includes("�"))).toBe(true);
+    await service.close();
+  });
+
+  it("keeps the activated configuration when the exact document changes before native commit", async () => {
+    const { service, native, directory } = fixture();
+    await service.boot();
+    const previous = readFileSync(join(directory, "filters/active.json"), "utf8");
+    vi.spyOn(native, "contentBlockCommit").mockRejectedValueOnce(new Error("Original document changed"));
+    await expect(
+      service.setSiteAllowed("news.fixture.test", true, {
+        pageId: "page",
+        expectedUrl: "https://news.fixture.test/",
+        navigationId: 1,
+      }),
+    ).rejects.toThrow("Original document changed");
+    expect(service.privacy().allowedHosts).toEqual([]);
+    expect(readFileSync(join(directory, "filters/active.json"), "utf8")).toBe(previous);
+    await service.close();
+  });
+
+  it("revalidates cached bytes on restart instead of accepting saved statistics as native authority", async () => {
+    const { service, native, directory, fetchText } = fixture();
+    await service.boot();
+    const added = (await service.add("Custom", "https://lists.fixture.test/custom")).at(-1)!;
+    await service.close();
+    const state = JSON.parse(readFileSync(join(directory, "filters/active.json"), "utf8"));
+    const meta = state.sources.find((source: { id: string }) => source.id === added.id).meta;
+    writeFileSync(join(directory, "filters", `${meta.sha256}.txt`), "tampered");
+    const restarted = new ContentBlockingService(directory, native, "Profile 1", fetchText);
+    expect(restarted.status().backend).toBe("unavailable");
+    await expect(restarted.boot()).rejects.toThrow("damaged");
+    await restarted.close();
+  });
+
+  it("recovers a matching native ACK journal before installing a later generation", async () => {
+    const { service, native, directory, fetchText, headers } = fixture();
+    await service.boot();
+    vi.spyOn(FilterLists.prototype, "publish").mockRejectedValueOnce(
+      new Error("Interrupted manifest publication"),
+    );
+    await expect(service.setEnabled(false)).rejects.toThrow("Interrupted manifest publication");
+    await service.close();
+    const restarted = new ContentBlockingService(directory, native, "Profile 1", fetchText);
     await restarted.boot();
-    expect(applied.at(-1)!.rules).toHaveLength(2);
-    await restarted.remove(source!.id);
-    expect(applied.at(-1)!.rules).toEqual([]);
-    expect(restarted.status().cookieSelectors).toBe(0);
+    expect(restarted.privacy().trackerBlock).toBe(false);
+    expect(headers.at(-1)!.enabled).toBe(false);
+    expect(headers.at(-1)!.generation).toBeGreaterThan(headers.at(-2)!.generation);
+    await restarted.close();
   });
 
-  it("applies the built-in seed then a reviewed downloaded list with a native receipt", async () => {
-    const { service, receipts } = fixture();
+  it("rejects included sources on a different origin without changing the active policy", async () => {
+    const { service } = fixture("!#include https://other.fixture.test/fragment\n||ads.fixture.test^");
     await service.boot();
-    expect(receipts).toHaveLength(1);
-    expect(receipts[0]!.hosts.length).toBeGreaterThan(50);
-    expect(service.status().backend).toBe("subresource_filter");
-    const sources = await service.add("Fixture hosts", "https://lists.fixture.test/hosts.txt", "hosts");
-    expect(sources).toHaveLength(1);
-    expect(receipts.at(-1)!.hosts).toContain("ads.fixture.test");
-    expect(receipts.at(-1)!.hosts).toContain("tracker.fixture.test");
-    expect(receipts.at(-1)!.hosts).not.toContain("unsupported.test");
-    expect(service.status().hosts).toBe(2);
-    await service.setSiteAllowed("news.fixture.test", true);
-    expect(receipts.at(-1)!.allowed).toEqual(["news.fixture.test"]);
-    await service.setEnabled(false);
-    expect(receipts.at(-1)!.enabled).toBe(false);
-    await service.setSourceEnabled(sources[0]!.id, false);
-    expect(receipts.at(-1)!.hosts).not.toContain("ads.fixture.test");
-  });
-
-  it("replays saved sources and preferences after restart, ignoring a modified cache", async () => {
-    const { directory, native, service, receipts } = fixture();
-    await service.boot();
-    const [source] = await service.add("Fixture hosts", "https://lists.fixture.test/hosts.txt", "hosts");
-    await service.setSiteAllowed("news.fixture.test", true);
-    const restart = new ContentBlockingService(directory, native, "Profile 1", async () => {
-      throw new Error("offline");
-    });
-    await restart.boot();
-    expect(receipts.at(-1)!.hosts).toContain("ads.fixture.test");
-    expect(restart.privacy().allowedHosts).toEqual(["news.fixture.test"]);
-    writeFileSync(join(directory, "filters", `${source!.id}.txt`), "0.0.0.0 injected.fixture.test\n");
-    const tampered = new ContentBlockingService(directory, native, "Profile 1");
-    await tampered.boot();
-    expect(receipts.at(-1)!.hosts).not.toContain("injected.fixture.test");
-    expect(JSON.parse(readFileSync(join(directory, "filters", "blocking.json"), "utf8")).generation).toBe(
-      receipts.at(-1)!.generation,
+    const previous = service.status().sources;
+    await expect(service.add("Unreviewed include", "https://lists.fixture.test/root")).rejects.toThrow(
+      "original public HTTPS origin",
     );
+    expect(service.status().sources).toEqual(previous);
+    await service.close();
   });
 
-  it("rejects a mismatched native receipt and never claims cosmetic rules were installed", async () => {
-    const { directory } = fixture();
-    const native = {
-      contentBlockBegin: async () => ({ accepted: true as const }),
-      contentBlockAppend: async () => ({ accepted: true as const }),
-      contentBlockCommit: async () => ({
-        backend: "subresource_filter" as const,
-        generation: 9,
-        hostsDigest: "0".repeat(64),
-        installedRules: 0,
-      }),
-    };
-    const service = new ContentBlockingService(directory, native, "Profile 1");
-    await expect(service.boot()).rejects.toThrow(/attest/);
-    await expect(
-      service.add("Cosmetic", "https://lists.fixture.test/cosmetic.txt", "cookie_banner"),
-    ).rejects.toThrow(/cosmetic filtering is unavailable/);
-  });
-
-  it("requires the selected page and navigation epoch for site-control writes", async () => {
-    const { service, receipts, guards } = fixture();
-    await service.boot();
-    expect(() => service.handle("blocking.setSiteAllowed", { hostname: "shop.test", allowed: true })).toThrow(
-      /Missing page review/,
-    );
-    await service.handle("blocking.setSiteAllowed", {
-      hostname: "shop.test",
-      allowed: true,
-      siteGuard: { pageId: "page-1", expectedUrl: "https://shop.test/", navigationId: 7 },
+  it("cancels a pending subscription fetch and drains it before shutdown", async () => {
+    const { directory, native } = fixture();
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
     });
-    expect(receipts.at(-1)!.allowed).toContain("shop.test");
-    expect(guards.at(-1)).toEqual({ pageId: "page-1", expectedUrl: "https://shop.test/", navigationId: 7 });
-  });
-
-  it("keeps a stale-page exception out of persisted preferences", async () => {
-    const { directory, native, service } = fixture();
-    await service.boot();
-    const rejectStale = {
-      ...native,
-      contentBlockBegin: async (input: ContentBlockBegin) => {
-        if (input.siteGuard) throw new AuxError("conflict", "Content blocking page changed");
-        return native.contentBlockBegin(input);
+    const service = new ContentBlockingService(
+      directory,
+      native,
+      "Profile 1",
+      async (_url, _etag, signal) => {
+        entered();
+        await new Promise<void>((_resolve, reject) =>
+          signal!.addEventListener("abort", () => reject(signal!.reason), { once: true }),
+        );
+        throw new Error("Unreachable");
       },
-    };
-    const guarded = new ContentBlockingService(directory, rejectStale, "Profile 1");
-    await guarded.boot();
-    await expect(
-      guarded.handle("blocking.setSiteAllowed", {
-        hostname: "stale.test",
-        allowed: true,
-        siteGuard: { pageId: "page-1", expectedUrl: "https://stale.test/", navigationId: 2 },
-      }),
-    ).rejects.toMatchObject({ code: "conflict" });
-    expect(guarded.privacy().allowedHosts).toEqual([]);
-    const restart = new ContentBlockingService(directory, native, "Profile 1");
-    expect(restart.privacy().allowedHosts).toEqual([]);
+    );
+    await service.boot();
+    const update = service.update();
+    const refusal = expect(update).rejects.toThrow("closed");
+    await started;
+    await service.close();
+    await refusal;
+    expect(service.status().backend).toBe("ublock_origin");
   });
 });

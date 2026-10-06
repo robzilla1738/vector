@@ -21,7 +21,11 @@ const source = {
   url: "https://lists.example.test/hosts",
   enabled: true,
   kind: "hosts" as const,
-  meta: { fetchedAt: 1000, hosts: 2, sha256: "b".repeat(64) },
+  meta: {
+    fetchedAt: 1000,
+    bytes: 100,
+    sha256: "b".repeat(64),
+  },
 };
 
 function button(label: string) {
@@ -59,10 +63,8 @@ it("requires review before adding a source and lets the user pause it", async ()
   let sources: (typeof source)[] = [];
   api.filterLists.mockImplementation(async () => ({
     sources,
-    hosts: sources.length ? 2 : 0,
-    cookieSelectors: 0,
-    builtinHosts: 50,
-    backend: "subresource_filter",
+    backend: "ublock_origin",
+    cosmeticBackend: "native_user_styles",
   }));
   api.addFilterSource.mockImplementation(async () => {
     sources = [source];
@@ -81,81 +83,48 @@ it("requires review before adding a source and lets the user pause it", async ()
   expect(container.textContent).toContain("The source sees this browser's network address.");
   await act(async () => button("Add selected list").click());
   await flush();
-  expect(api.addFilterSource).toHaveBeenCalledWith("Research list", source.url, "hosts");
+  expect(api.addFilterSource).toHaveBeenCalledWith("Research list", source.url, "adblock");
   await act(async () => button("Pause list").click());
   await flush();
   expect(api.setFilterSourceEnabled).toHaveBeenCalledWith(source.id, false);
   expect(container.textContent).toContain("Paused");
 });
 
-it("states preview limits and disables filter mutations", async () => {
+it("states native unavailability and disables filter mutations", async () => {
   api.filterLists.mockResolvedValue({
     sources: [],
-    hosts: 0,
-    cookieSelectors: 0,
-    builtinHosts: 0,
-    backend: "preview",
+    backend: "unavailable",
+    cosmeticBackend: "unavailable",
   });
   await act(async () => root.render(<FilterListManager />));
   await flush();
-  expect(container.textContent).toContain("no requests are blocked here");
+  expect(container.textContent).toContain("Native filtering unavailable");
   expect(button("Review list").hasAttribute("disabled")).toBe(true);
   expect(api.addFilterSource).not.toHaveBeenCalled();
 });
 
-it("reviews cookie-banner type before adding and describes the cosmetic scope", async () => {
+it("offers full Standard and Hosts formats with truthful native scope", async () => {
   api.filterLists.mockResolvedValue({
     sources: [],
-    hosts: 0,
-    cookieSelectors: 0,
-    builtinHosts: 50,
-    backend: "subresource_filter",
+    backend: "ublock_origin",
+    cosmeticBackend: "native_user_styles",
   });
   api.addFilterSource.mockResolvedValue([]);
   await act(async () => root.render(<FilterListManager />));
   await flush();
   const select = container.querySelector<HTMLSelectElement>('[aria-label="Filter list type"]')!;
-  await act(async () => {
-    select.value = "cookie_banner";
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-  write("Filter list URL", "https://lists.example.test/cookies.txt");
+  expect(select.value).toBe("adblock");
+  expect(container.textContent).toContain("uBlock Origin native filtering");
+  expect(container.textContent).not.toContain("network rules");
+  expect(select.querySelector<HTMLOptionElement>('option[value="adblock"]')!.disabled).toBe(false);
+  expect(select.querySelector<HTMLOptionElement>('option[value="hosts"]')).toBeTruthy();
+  write("Filter list URL", "https://lists.example.test/filters.txt");
   act(() => button("Review list").click());
-  expect(container.textContent).toContain("hide cookie banners on matching sites");
+  expect(container.textContent).toContain("native network, cosmetic and bundled scriptlet rules");
   await act(async () => button("Add selected list").click());
   expect(api.addFilterSource).toHaveBeenCalledWith(
     "lists.example.test",
-    "https://lists.example.test/cookies.txt",
-    "cookie_banner",
+    "https://lists.example.test/filters.txt",
+    "adblock",
   );
-});
-
-it("offers only installed native host filtering in Chromium", async () => {
-  api.filterLists.mockResolvedValue({
-    sources: [],
-    hosts: 0,
-    cookieSelectors: 0,
-    builtinHosts: 88,
-    backend: "subresource_filter",
-  });
-  await act(async () => root.render(<FilterListManager />));
-  await flush();
-  const cosmetic = container.querySelector<HTMLOptionElement>('option[value="cookie_banner"]')!;
-  expect(cosmetic.disabled).toBe(true);
-  expect(container.textContent).toContain("Chromium applies downloaded domain lists");
-});
-
-it("offers cookie-banner lists when Chromium attests document-start stylesheets", async () => {
-  api.filterLists.mockResolvedValue({
-    sources: [],
-    hosts: 0,
-    cookieSelectors: 0,
-    builtinHosts: 88,
-    backend: "subresource_filter",
-    cosmeticBackend: "document_start_stylesheet",
-  });
-  await act(async () => root.render(<FilterListManager />));
-  await flush();
-  expect(container.querySelector<HTMLOptionElement>('option[value="cookie_banner"]')!.disabled).toBe(false);
-  expect(container.textContent).not.toContain("native stylesheet backend");
 });

@@ -1,327 +1,354 @@
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, statSync } from "node:fs";
+import { readFile, open, rename, readdir, unlink, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { createHash } from "node:crypto";
-import { Worker } from "node:worker_threads";
+import { createHash, randomUUID } from "node:crypto";
 import {
   filterSourceUrl,
   MAX_FILTER_BYTES,
-  MAX_FILTER_HOSTS,
+  MAX_FILTER_SNAPSHOT_BYTES,
   MAX_FILTER_SOURCES,
-  MAX_COOKIE_SELECTORS,
-  parseHostsList,
-  parseCookieBannerList,
-  type CookieBannerRule,
   type FilterSourceKind,
   type FilterSourceDefinition,
+  type ContentBlockSource,
+  type ChromiumContentBlockReceipt,
 } from "@aux/contracts";
-export { parseHostsList } from "@aux/contracts";
-
-/**
- * User-selected host and cookie-banner lists. Sources are fetched over HTTPS,
- * validated, and cached atomically. Hosts merge with the built-in seed;
- * cookie selectors apply only to matching sites after policy checks.
- */
-
+import { BUNDLED_FILTER_SOURCES } from "@aux/contracts/filter-defaults.generated";
 export type FilterSource = FilterSourceDefinition;
-interface SourceMeta {
+export interface SourceMeta {
   fetchedAt: number;
   etag?: string;
-  hosts: number;
-  selectors?: number;
+  bytes: number;
   sha256: string;
   error?: string;
 }
 export interface FilterListStatus {
   sources: (FilterSource & { meta?: SourceMeta })[];
-  hosts: number;
-  cookieSelectors: number;
-  builtinHosts: number;
-  backend: "subresource_filter";
-  cosmeticBackend?: "document_start_stylesheet" | "unavailable";
+  backend: ChromiumContentBlockReceipt["backend"] | "unavailable";
+  engineVersion?: ChromiumContentBlockReceipt["engineVersion"];
+  cosmeticBackend: ChromiumContentBlockReceipt["cosmeticBackend"] | "unavailable";
 }
+export interface BlockingState {
+  generation: number;
+  enabled: boolean;
+  allowedSiteHosts: string[];
+  sources: (FilterSource & { meta?: SourceMeta })[];
+  receipt?: ChromiumContentBlockReceipt;
+}
+export interface PreparedFilters {
+  state: BlockingState;
+  sources: ContentBlockSource[];
+}
+export interface FilterResponse {
+  status: number;
+  etag?: string;
+  text(): Promise<string>;
+}
+export type FetchFilter = (url: string, etag?: string, signal?: AbortSignal) => Promise<FilterResponse>;
+export const sourceId = (url: string) => createHash("sha256").update(url).digest("hex").slice(0, 12);
+const digest = (text: string) => createHash("sha256").update(text).digest("hex");
+const validDigest = (value: unknown): value is string =>
+  typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+const validHost = (host: unknown): host is string => {
+  if (typeof host !== "string" || !host || host.length > 253 || /[/?#@\\]/.test(host)) return false;
+  try {
+    return new URL(`https://${host}/`).hostname === host;
+  } catch {
+    return false;
+  }
+};
 
-const sourceId = (url: string) => createHash("sha256").update(url).digest("hex").slice(0, 12);
-const validId = (id: string) => /^[a-f0-9]{12}$/.test(id);
-
+/** Immutable byte cache and one atomic Profile manifest. Parsing and activation belong to Chromium. */
 export class FilterLists {
   readonly dir: string;
-  private readonly sourcesFile: string;
-
-  constructor(
-    dataDir: string,
-    private readonly backend: FilterListStatus["backend"] = "subresource_filter",
-  ) {
+  private state: BlockingState;
+  private attestedReceipt: ChromiumContentBlockReceipt | undefined;
+  private readonly activePath: string;
+  private readonly pendingPath: string;
+  private readonly generationPath: string;
+  constructor(dataDir: string) {
     this.dir = join(dataDir, "filters");
-    this.sourcesFile = join(this.dir, "sources.json");
     mkdirSync(this.dir, { recursive: true, mode: 0o700 });
+    this.activePath = join(this.dir, "active.json");
+    this.pendingPath = join(this.dir, "pending.json");
+    this.generationPath = join(this.dir, "generation.json");
+    this.state = this.readState(this.activePath) ?? {
+      generation: 0,
+      enabled: true,
+      allowedSiteHosts: [],
+      sources: BUNDLED_FILTER_SOURCES.map(({ bytes, sha256, ...source }) => ({
+        ...source,
+        meta: { fetchedAt: 0, bytes, sha256 },
+      })),
+    };
   }
-
+  private readState(path: string): BlockingState | undefined {
+    let text: string;
+    try {
+      if (statSync(path).size > 2 * 1024 * 1024) throw new Error("Oversized filter manifest");
+      text = readFileSync(path, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+      throw error;
+    }
+    const state = JSON.parse(text) as BlockingState;
+    if (
+      !state ||
+      !Number.isSafeInteger(state.generation) ||
+      state.generation < 0 ||
+      typeof state.enabled !== "boolean" ||
+      !Array.isArray(state.allowedSiteHosts) ||
+      state.allowedSiteHosts.length > 4096 ||
+      !state.allowedSiteHosts.every(validHost) ||
+      state.allowedSiteHosts.some((host, index) => index > 0 && host <= state.allowedSiteHosts[index - 1]!) ||
+      !Array.isArray(state.sources) ||
+      state.sources.length > MAX_FILTER_SOURCES
+    )
+      throw new Error("Invalid filter manifest");
+    const ids = new Set<string>();
+    for (const source of state.sources) {
+      if (
+        !source ||
+        source.id !== sourceId(filterSourceUrl(source.url)) ||
+        ids.has(source.id) ||
+        typeof source.name !== "string" ||
+        source.name.length > 120 ||
+        typeof source.enabled !== "boolean" ||
+        (source.kind !== "adblock" && source.kind !== "hosts")
+      )
+        throw new Error("Invalid filter source");
+      ids.add(source.id);
+      if (
+        source.meta &&
+        (!validDigest(source.meta.sha256) ||
+          !Number.isSafeInteger(source.meta.bytes) ||
+          source.meta.bytes < 0 ||
+          source.meta.bytes > MAX_FILTER_BYTES ||
+          !Number.isSafeInteger(source.meta.fetchedAt) ||
+          source.meta.fetchedAt < 0)
+      )
+        throw new Error("Invalid filter source metadata");
+      if (source.meta) {
+        const { fetchedAt, etag, bytes, sha256, error } = source.meta;
+        source.meta = { fetchedAt, bytes, sha256, ...(etag ? { etag } : {}), ...(error ? { error } : {}) };
+      }
+    }
+    return state;
+  }
+  current(): BlockingState {
+    return structuredClone(this.state);
+  }
+  pending(): BlockingState | undefined {
+    return this.readState(this.pendingPath);
+  }
   sources(): FilterSource[] {
-    try {
-      const parsed = JSON.parse(readFileSync(this.sourcesFile, "utf8")) as FilterSource[];
-      if (Array.isArray(parsed)) {
-        return parsed.slice(0, MAX_FILTER_SOURCES).flatMap((s) => {
-          if (!s || typeof s.id !== "string" || !validId(s.id) || typeof s.url !== "string") return [];
-          try {
-            const url = filterSourceUrl(s.url);
-            if (sourceId(url) !== s.id) return [];
-            if (s.kind !== undefined && s.kind !== "hosts" && s.kind !== "cookie_banner") return [];
-            return [
-              {
-                id: s.id,
-                name: String(s.name ?? s.id).slice(0, 120),
-                url,
-                enabled: s.enabled !== false,
-                kind: s.kind ?? "hosts",
-              },
-            ];
-          } catch {
-            return [];
-          }
-        });
-      }
-    } catch {
-      /* no configured sources yet */
-    }
-    return [];
+    return this.state.sources.map(({ meta: _meta, ...source }) => source);
   }
-
-  saveSources(sources: FilterSource[]) {
-    const temp = `${this.sourcesFile}.tmp`;
-    writeFileSync(temp, JSON.stringify(sources, null, 2), { mode: 0o600 });
-    renameSync(temp, this.sourcesFile);
+  status(): FilterListStatus {
+    const state = this.current();
+    const receipt = this.attestedReceipt;
+    return {
+      sources: state.sources,
+      backend: receipt?.backend ?? "unavailable",
+      ...(receipt ? { engineVersion: receipt.engineVersion } : {}),
+      cosmeticBackend: receipt?.cosmeticBackend ?? "unavailable",
+    };
   }
-
-  addSource(name: string, url: string, kind: FilterSourceKind = "hosts"): FilterSource[] {
-    url = filterSourceUrl(url);
-    if (kind !== "hosts" && kind !== "cookie_banner") throw new Error("Choose a supported filter list type.");
-    const sources = this.sources();
-    if (sources.length >= MAX_FILTER_SOURCES) throw new Error("Remove a filter list before adding another.");
-    const id = sourceId(url);
-    if (sources.some((s) => s.id === id || s.url === url))
+  addSource(state: BlockingState, name: string, rawUrl: string, kind: FilterSourceKind): void {
+    const url = filterSourceUrl(rawUrl),
+      id = sourceId(url);
+    if (kind !== "hosts" && kind !== "adblock") throw new Error("Choose a supported filter list format.");
+    if (state.sources.length >= MAX_FILTER_SOURCES)
+      throw new Error("Remove a filter list before adding another.");
+    if (state.sources.some((source) => source.id === id))
       throw new Error("That filter list is already added.");
-    sources.push({ id, name: name.trim().slice(0, 120) || new URL(url).hostname, url, enabled: true, kind });
-    this.saveSources(sources);
-    return sources;
-  }
-
-  removeSource(id: string): FilterSource[] {
-    if (!validId(id) || !this.sources().some((source) => source.id === id))
-      throw new Error("Choose a saved filter list.");
-    const sources = this.sources().filter((s) => s.id !== id);
-    this.saveSources(sources);
-    rmSync(this.listPath(id), { force: true });
-    rmSync(this.metaPath(id), { force: true });
-    return sources;
-  }
-
-  setEnabled(id: string, enabled: boolean): FilterSource[] {
-    if (!validId(id) || typeof enabled !== "boolean") throw new Error("Choose a saved filter list state.");
-    const sources = this.sources();
-    const current = sources.find((source) => source.id === id);
-    if (!current) throw new Error("Choose a saved filter list.");
-    current.enabled = enabled;
-    this.saveSources(sources);
-    return sources;
-  }
-
-  private listPath(id: string) {
-    return join(this.dir, `${id}.txt`);
-  }
-  private metaPath(id: string) {
-    return join(this.dir, `${id}.meta.json`);
-  }
-  private cacheMatches(id: string, digest: string | undefined): boolean {
-    if (!digest || !/^[a-f0-9]{64}$/.test(digest)) return false;
-    try {
-      const path = this.listPath(id);
-      if (statSync(path).size > MAX_FILTER_BYTES) return false;
-      return createHash("sha256").update(readFileSync(path)).digest("hex") === digest;
-    } catch {
-      return false;
-    }
-  }
-  meta(id: string): SourceMeta | undefined {
-    try {
-      return JSON.parse(readFileSync(this.metaPath(id), "utf8")) as SourceMeta;
-    } catch {
-      return undefined;
-    }
-  }
-
-  /**
-   * `loadHosts` on a worker thread: multi-megabyte lists parse without
-   * blocking the main process. Resolves to the merged hosts, newline-joined.
-   */
-  loadHostsOffThread(): Promise<string[]> {
-    const entries = this.sources()
-      .filter((source) => source.enabled && source.kind === "hosts")
-      .map((source) => ({ path: this.listPath(source.id), digest: this.meta(source.id)?.sha256 }));
-    if (!entries.length) return Promise.resolve([]);
-    const source = `const { parentPort, workerData } = require("node:worker_threads");
-const { readFileSync, statSync } = require("node:fs");
-const { createHash } = require("node:crypto");
-const parse = (${parseHostsList.toString()});
-const hosts = new Set();
-for (const { path, digest } of workerData.entries) {
-  let text; try { if(statSync(path).size>workerData.bytes)continue;text = readFileSync(path, "utf8"); } catch { continue; }
-  if (!digest || createHash("sha256").update(text).digest("hex") !== digest) continue;
-  for (const host of parse(text, workerData.max)) { hosts.add(host); if (hosts.size >= workerData.max) break; }
-  if (hosts.size >= workerData.max) break;
-}
-parentPort.postMessage([...hosts].join("\\n"));`;
-    return new Promise((resolve, reject) => {
-      const worker = new Worker(source, {
-        eval: true,
-        workerData: { entries, max: MAX_FILTER_HOSTS, bytes: MAX_FILTER_BYTES },
-      });
-      worker.once("message", (joined: string) => {
-        resolve(joined ? joined.split("\n") : []);
-        void worker.terminate();
-      });
-      worker.once("error", reject);
-      worker.once("exit", (code) => {
-        if (code !== 0) reject(new Error(`filter list worker exited with ${code}`));
-      });
+    state.sources.push({
+      id,
+      url,
+      name: name.trim().slice(0, 120) || new URL(url).hostname,
+      kind,
+      enabled: true,
     });
   }
-
-  loadCookieRulesOffThread(): Promise<CookieBannerRule[]> {
-    const entries = this.sources()
-      .filter((source) => source.enabled && source.kind === "cookie_banner")
-      .map((source) => ({ path: this.listPath(source.id), digest: this.meta(source.id)?.sha256 }));
-    if (!entries.length) return Promise.resolve([]);
-    const source = `const { parentPort, workerData } = require("node:worker_threads");
-const { readFileSync, statSync } = require("node:fs");
-const { createHash } = require("node:crypto");
-const parse = (${parseCookieBannerList.toString()});
-const rules = []; const seen = new Set();
-for (const { path, digest } of workerData.entries) {
-  let text; try { if (statSync(path).size > workerData.bytes) continue; text = readFileSync(path, "utf8"); } catch { continue; }
-  if (!digest || createHash("sha256").update(text).digest("hex") !== digest) continue;
-  for (const rule of parse(text, workerData.max)) {
-    const key = JSON.stringify(rule); if (seen.has(key)) continue;
-    seen.add(key); rules.push(rule); if (rules.length >= workerData.max) break;
+  removeSource(state: BlockingState, id: string): void {
+    if (!state.sources.some((source) => source.id === id)) throw new Error("Choose a saved filter list.");
+    state.sources = state.sources.filter((source) => source.id !== id);
   }
-  if (rules.length >= workerData.max) break;
-}
-parentPort.postMessage(rules);`;
-    return new Promise((resolve, reject) => {
-      const worker = new Worker(source, {
-        eval: true,
-        workerData: { entries, max: MAX_COOKIE_SELECTORS, bytes: MAX_FILTER_BYTES },
-      });
-      worker.once("message", (rules: CookieBannerRule[]) => {
-        resolve(rules);
-        void worker.terminate();
-      });
-      worker.once("error", reject);
-      worker.once("exit", (code) => {
-        if (code !== 0) reject(new Error(`cookie list worker exited with ${code}`));
-      });
-    });
+  setEnabled(state: BlockingState, id: string, enabled: boolean): void {
+    const source = state.sources.find((source) => source.id === id);
+    if (!source || typeof enabled !== "boolean") throw new Error("Choose a saved filter list state.");
+    source.enabled = enabled;
   }
-
-  /** Merged hosts from every enabled, downloaded list — safe at startup. */
-  loadHosts(): Set<string> {
-    const hosts = new Set<string>();
-    for (const source of this.sources()) {
-      if (!source.enabled || source.kind !== "hosts") continue;
+  private async atomic(path: string, text: string): Promise<void> {
+    const temporary = `${path}.${randomUUID()}.tmp`;
+    try {
+      const file = await open(temporary, "wx", 0o600);
       try {
-        if (statSync(this.listPath(source.id)).size > MAX_FILTER_BYTES) continue;
-        const text = readFileSync(this.listPath(source.id), "utf8");
-        const digest = this.meta(source.id)?.sha256;
-        if (!digest || createHash("sha256").update(text).digest("hex") !== digest) continue;
-        for (const host of parseHostsList(text)) {
-          hosts.add(host);
-          if (hosts.size >= MAX_FILTER_HOSTS) return hosts;
-        }
-      } catch {
-        /* list not downloaded yet — the built-in seed still applies */
+        await file.writeFile(text, "utf8");
+        await file.sync();
+      } finally {
+        await file.close();
       }
-    }
-    return hosts;
-  }
-
-  /**
-   * Fetch every enabled source with its cached etag; each accepted response is
-   * validated, bounded and committed atomically so a bad fetch keeps the old
-   * list. Returns per-source status for the Settings surface.
-   */
-  async update(
-    fetchText: (
-      url: string,
-      etag?: string,
-    ) => Promise<{ status: number; etag?: string; text: () => Promise<string> }>,
-    kinds: readonly FilterSourceKind[] = ["hosts", "cookie_banner"],
-  ): Promise<FilterListStatus> {
-    for (const source of this.sources()) {
-      if (!source.enabled || !kinds.includes(source.kind)) continue;
-      const prior = this.meta(source.id);
+      await rename(temporary, path);
+      const directory = await open(this.dir, "r");
       try {
-        const response = await fetchText(source.url, prior?.etag);
+        await directory.sync();
+      } finally {
+        await directory.close();
+      }
+    } finally {
+      await unlink(temporary).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== "ENOENT") throw error;
+      });
+    }
+  }
+  async reserveGeneration(nativeFloor: number): Promise<number> {
+    let last = 0;
+    try {
+      if ((await stat(this.generationPath)).size > 64) throw new Error("Oversized filter generation journal");
+      const text = await readFile(this.generationPath, "utf8");
+      last = JSON.parse(text) as number;
+      if (!Number.isSafeInteger(last) || last < 0) throw new Error("Invalid filter generation journal");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    const next = Math.max(last, nativeFloor, this.state.generation, this.pending()?.generation ?? 0) + 1;
+    if (!Number.isSafeInteger(next)) throw new Error("Filter generation exhausted");
+    await this.atomic(this.generationPath, JSON.stringify(next));
+    return next;
+  }
+  private async cached(source: BlockingState["sources"][number]): Promise<ContentBlockSource> {
+    const meta = source.meta;
+    if (!meta) throw new Error(`Download ${source.name} before enabling it.`);
+    const header = {
+      id: source.id,
+      url: source.url,
+      kind: source.kind,
+      bytes: meta.bytes,
+      sha256: meta.sha256,
+    };
+    const bundled = BUNDLED_FILTER_SOURCES.find(
+      (item) =>
+        item.id === source.id &&
+        item.url === source.url &&
+        item.kind === source.kind &&
+        item.sha256 === meta.sha256 &&
+        item.bytes === meta.bytes,
+    );
+    if (bundled) return header; // Native verifies the exact same compiled asset header.
+    const path = join(this.dir, `${meta.sha256}.txt`);
+    const info = await stat(path);
+    if (info.size !== meta.bytes || info.size > MAX_FILTER_BYTES)
+      throw new Error(`The cached ${source.name} is damaged.`);
+    const bytes = await readFile(path);
+    const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    if (digest(text) !== meta.sha256) throw new Error(`The cached ${source.name} is damaged.`);
+    return { ...header, text };
+  }
+  async prepare(state: BlockingState): Promise<PreparedFilters> {
+    const sources: ContentBlockSource[] = [];
+    for (const source of state.sources) if (source.enabled) sources.push(await this.cached(source));
+    if (sources.reduce((sum, source) => sum + source.bytes, 0) > MAX_FILTER_SNAPSHOT_BYTES)
+      throw new Error("Filter snapshot is too large.");
+    return { state, sources };
+  }
+  async stage(prepared: PreparedFilters): Promise<void> {
+    await this.atomic(this.pendingPath, JSON.stringify(prepared.state));
+  }
+  async publish(prepared: PreparedFilters, receipt: ChromiumContentBlockReceipt): Promise<void> {
+    const state = { ...prepared.state, receipt };
+    await this.atomic(this.activePath, JSON.stringify(state));
+    this.state = structuredClone(state);
+    this.attestedReceipt = receipt;
+    await unlink(this.pendingPath).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") throw error;
+    });
+  }
+  async collectUnused(): Promise<void> {
+    const keep = new Set(
+      [...this.state.sources, ...(this.pending()?.sources ?? [])].flatMap((source) =>
+        source.meta ? [`${source.meta.sha256}.txt`] : [],
+      ),
+    );
+    for (const file of await readdir(this.dir))
+      if (/^[a-f0-9]{64}\.txt$/.test(file) && !keep.has(file)) await unlink(join(this.dir, file));
+  }
+  /** No candidate body/configuration becomes active before the matching native ACK. */
+  async update(
+    state: BlockingState,
+    fetchText: FetchFilter,
+    signal: AbortSignal,
+    requiredId?: string,
+  ): Promise<void> {
+    for (const source of state.sources) {
+      if (!source.enabled || (requiredId && source.id !== requiredId)) continue;
+      const previous = source.meta;
+      try {
+        signal.throwIfAborted();
+        // Standard lists may include independently updated fragments; never reuse
+        // a root 304 as proof that those fragments are unchanged.
+        const response = await fetchText(
+          source.url,
+          source.kind === "hosts" ? previous?.etag : undefined,
+          signal,
+        );
         if (response.status === 304) {
-          if (!this.cacheMatches(source.id, prior?.sha256))
-            throw new Error("The cached filter list is unavailable; download a full copy.");
-          this.writeMeta(source.id, {
-            ...prior!,
-            fetchedAt: Date.now(),
-            etag: prior?.etag,
-            hosts: prior?.hosts ?? 0,
-            sha256: prior?.sha256 ?? "",
-          });
+          await this.cached(source);
+          source.meta = { ...previous!, fetchedAt: Date.now(), error: undefined };
           continue;
         }
         if (response.status !== 200) throw new Error(`HTTP ${response.status}`);
-        const text = await response.text();
-        if (Buffer.byteLength(text, "utf8") > MAX_FILTER_BYTES)
-          throw new Error("The list is too large to use safely.");
-        const count =
-          source.kind === "hosts" ? parseHostsList(text).size : parseCookieBannerList(text).length;
-        if (!count)
-          throw new Error(
-            `The download did not look like a ${source.kind === "hosts" ? "hosts" : "cookie-banner"} filter list.`,
-          );
-        const sha256 = createHash("sha256").update(text).digest("hex");
-        if (!this.cacheMatches(source.id, sha256)) {
-          const temp = `${this.listPath(source.id)}.tmp`;
-          writeFileSync(temp, text, { mode: 0o600 });
-          renameSync(temp, this.listPath(source.id));
-        }
-        this.writeMeta(source.id, {
+        const raw = await response.text();
+        const text =
+          source.kind === "adblock" ? await this.expandIncludes(source.url, raw, fetchText, signal) : raw;
+        const bytes = Buffer.byteLength(text, "utf8");
+        if (bytes > MAX_FILTER_BYTES) throw new Error("The list is too large.");
+        const sha256 = digest(text);
+        await this.atomic(join(this.dir, `${sha256}.txt`), text);
+        source.meta = {
           fetchedAt: Date.now(),
-          etag: response.etag ?? prior?.etag,
-          hosts: source.kind === "hosts" ? count : 0,
-          selectors: source.kind === "cookie_banner" ? count : 0,
+          bytes,
           sha256,
-        });
+          etag: response.etag,
+        };
       } catch (error) {
-        this.writeMeta(source.id, {
-          ...(prior ?? { fetchedAt: 0, hosts: 0, sha256: "" }),
-          error: error instanceof Error ? error.message : String(error),
-        });
+        if (signal.aborted || source.id === requiredId || !previous) throw error;
+        source.meta = { ...previous, error: error instanceof Error ? error.message : String(error) };
       }
     }
-    return this.status(0);
   }
-
-  private writeMeta(id: string, meta: SourceMeta) {
-    const temp = `${this.metaPath(id)}.tmp`;
-    writeFileSync(temp, JSON.stringify(meta), { mode: 0o600 });
-    renameSync(temp, this.metaPath(id));
-  }
-
-  status(builtinHosts: number): FilterListStatus {
-    const sources = this.sources().map((s) => ({ ...s, meta: this.meta(s.id) }));
-    return {
-      sources,
-      hosts: sources.reduce((n, s) => n + (s.enabled && s.kind === "hosts" ? (s.meta?.hosts ?? 0) : 0), 0),
-      cookieSelectors: sources.reduce(
-        (n, s) => n + (s.enabled && s.kind === "cookie_banner" ? (s.meta?.selectors ?? 0) : 0),
-        0,
-      ),
-      builtinHosts,
-      backend: this.backend,
+  private async expandIncludes(
+    url: string,
+    text: string,
+    fetchText: FetchFilter,
+    signal: AbortSignal,
+  ): Promise<string> {
+    let count = 0,
+      bytes = 0;
+    const expand = async (
+      currentUrl: string,
+      body: string,
+      ancestors: readonly string[],
+    ): Promise<string> => {
+      signal.throwIfAborted();
+      bytes += Buffer.byteLength(body, "utf8");
+      if (bytes > MAX_FILTER_BYTES) throw new Error("Included filter lists exceed their byte limit.");
+      const output: string[] = [];
+      for (const line of body.split(/\r?\n/)) {
+        const directive = /^!#include\s+(\S+)\s*$/.exec(line.trim());
+        if (!directive) {
+          output.push(line);
+          continue;
+        }
+        if (++count > 64 || ancestors.length >= 8) throw new Error("Too many included filter lists.");
+        const child = filterSourceUrl(new URL(directive[1]!, currentUrl).href);
+        if (new URL(child).origin !== new URL(url).origin || ancestors.includes(child))
+          throw new Error("Filter includes must stay on their original public HTTPS origin without cycles.");
+        const response = await fetchText(child, undefined, signal);
+        if (response.status !== 200) throw new Error(`Included filter list HTTP ${response.status}`);
+        output.push(await expand(child, await response.text(), [...ancestors, child]));
+      }
+      return output.join("\n");
     };
+    return expand(url, text, [url]);
   }
 }

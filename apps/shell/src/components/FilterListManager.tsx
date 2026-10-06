@@ -1,3 +1,4 @@
+import { BUNDLED_FILTER_SOURCES } from "@aux/contracts/filter-defaults.generated";
 import { staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
@@ -12,23 +13,19 @@ import { nativeStatusRoleProps, nativeAlertRoleProps } from "../ui/native-attrib
 
 const messageOf = (reason: unknown) => errorMessage(reason);
 
-/** User-selected hosts lists. Mock preview never claims to block network requests. */
+/** Real native subscription status; unavailable builds never claim filtering. */
 export function FilterListManager() {
   const [status, setStatus] = useState<FilterListStatus | null>(null);
   const [selectedId, setSelectedId] = useState("");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-  const [kind, setKind] = useState<"hosts" | "cookie_banner">("hosts");
-  const [review, setReview] = useState<{ name: string; url: string; kind: "hosts" | "cookie_banner" } | null>(
-    null,
-  );
+  const [kind, setKind] = useState<"adblock" | "hosts">("adblock");
+  const [review, setReview] = useState<{ name: string; url: string; kind: "adblock" | "hosts" } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const selected = status?.sources.find((source) => source.id === selectedId);
-  const preview = status?.backend === "preview";
-  const nativeHostsOnly =
-    status?.backend === "subresource_filter" && status.cosmeticBackend !== "document_start_stylesheet";
+  const unavailable = status?.backend === "unavailable";
 
   const refresh = async () => {
     const next = await bridge.filterLists();
@@ -70,14 +67,12 @@ export function FilterListManager() {
     <section className="filter-manager" aria-label="Filter lists">
       <div {...auxClassDrawerSectionProps}>Filter lists</div>
       <p {...staticHintProps}>
-        Choose HTTPS hosts or cookie-banner lists you trust. Downloads update in Aux while it is open. The
-        built-in protection works without a download.
+        EasyList, EasyPrivacy and uBlock lists protect browsing from the first document. Add trusted HTTPS
+        Standard or Hosts lists. Updates preserve the previous working copy when a source fails.
       </p>
       {status && (
         <p {...staticHintProps}>
-          {status.builtinHosts.toLocaleString()} built-in domains · {status.hosts.toLocaleString()} enabled
-          list entries · {status.cookieSelectors.toLocaleString()} cookie-banner selectors
-          {preview && " · Browser preview only; no requests are blocked here."}
+          {unavailable ? "Native filtering unavailable." : "uBlock Origin native filtering."}
         </p>
       )}
       <div className="filter-manager-layout">
@@ -91,10 +86,8 @@ export function FilterListManager() {
             >
               <strong>{source.name}</strong>
               <span>
-                {source.enabled ? "Enabled" : "Paused"} ·{" "}
-                {source.kind === "cookie_banner"
-                  ? `${source.meta?.selectors?.toLocaleString() ?? 0} cookie-banner selectors`
-                  : `${source.meta?.hosts?.toLocaleString() ?? 0} domains`}
+                {source.enabled ? "Enabled" : "Paused"}
+                {source.meta ? ` · ${source.meta.bytes.toLocaleString()} bytes` : " · Not downloaded"}
               </span>
             </button>
           ))}
@@ -110,7 +103,11 @@ export function FilterListManager() {
               <span {...staticHintProps}>
                 {selected.meta?.fetchedAt
                   ? `Last checked ${new Date(selected.meta.fetchedAt).toLocaleString()}`
-                  : "No downloaded copy yet."}
+                  : BUNDLED_FILTER_SOURCES.some(
+                        (source) => source.id === selected.id && source.sha256 === selected.meta?.sha256,
+                      )
+                    ? "Using the verified bundled copy."
+                    : "Not downloaded."}
               </span>
               {selected.meta?.error && (
                 <p {...staticFieldErrorProps} {...nativeStatusRoleProps}>
@@ -120,14 +117,14 @@ export function FilterListManager() {
               <div {...staticRowProps}>
                 <button
                   {...smallButtonProps}
-                  disabled={busy || preview}
+                  disabled={busy || unavailable}
                   onClick={() =>
                     void action(async () => {
                       await bridge.setFilterSourceEnabled(selected.id, !selected.enabled);
                       await refresh();
                       setNotice(
                         selected.enabled
-                          ? "List paused. Its rules are no longer used."
+                          ? "List paused for new requests and documents. Reload an open page to clear changes already applied."
                           : "List enabled. Check its update status above.",
                       );
                     })
@@ -137,7 +134,7 @@ export function FilterListManager() {
                 </button>
                 <button
                   {...smallGhostButtonProps}
-                  disabled={busy || preview}
+                  disabled={busy || unavailable}
                   onClick={() =>
                     void action(async () => {
                       await bridge.removeFilterSource(selected.id);
@@ -159,31 +156,23 @@ export function FilterListManager() {
           <select
             aria-label="Filter list type"
             value={kind}
-            disabled={busy || preview}
+            disabled={busy || unavailable}
             onChange={(event) => {
-              setKind(event.target.value as "hosts" | "cookie_banner");
+              setKind(event.target.value as "adblock" | "hosts");
               setReview(null);
             }}
           >
             <option value="hosts">Domain blocking hosts list</option>
-            <option value="cookie_banner" disabled={nativeHostsOnly}>
-              Cookie-banner cosmetic list
-            </option>
+            <option value="adblock">Standard adblock list (network, cosmetic and scriptlets)</option>
           </select>
         </label>
-        {nativeHostsOnly && (
-          <p {...staticHintProps}>
-            Chromium applies downloaded domain lists to network requests. Cosmetic lists need a separate
-            native stylesheet backend.
-          </p>
-        )}
         <label>
           List name
           <input
             aria-label="Filter list name"
             value={name}
             maxLength={120}
-            disabled={busy || preview}
+            disabled={busy || unavailable}
             onChange={(event) => {
               setName(event.target.value);
               setReview(null);
@@ -197,7 +186,7 @@ export function FilterListManager() {
             value={url}
             maxLength={2048}
             placeholder="https://example.com/hosts.txt"
-            disabled={busy || preview}
+            disabled={busy || unavailable}
             onChange={(event) => {
               setUrl(event.target.value);
               setReview(null);
@@ -205,12 +194,12 @@ export function FilterListManager() {
           />
         </label>
         <div {...staticRowProps}>
-          <button {...smallButtonProps} disabled={busy || preview || !url.trim()} onClick={inspect}>
+          <button {...smallButtonProps} disabled={busy || unavailable || !url.trim()} onClick={inspect}>
             Review list
           </button>
           <button
             {...smallGhostButtonProps}
-            disabled={busy || preview || !status?.sources.length}
+            disabled={busy || unavailable || !status?.sources.length}
             onClick={() =>
               void action(async () => {
                 const next = await bridge.updateFilters();
@@ -231,8 +220,8 @@ export function FilterListManager() {
             <p {...staticHintProps}>
               Aux will fetch this source and use{" "}
               {review.kind === "hosts"
-                ? "validated host entries for subresource blocking"
-                : "validated cosmetic selectors to hide cookie banners on matching sites"}
+                ? "native Hosts-format network rules"
+                : "native network, cosmetic and bundled scriptlet rules"}
               . The source sees this browser's network address.
             </p>
             <div {...staticRowProps}>
