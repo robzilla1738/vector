@@ -717,7 +717,7 @@ Each schema carries a `byline` for the tool rail.
 - **Link routing** rules, and Profile/Space linking.
 
 **Content and extensions**
-- **Content blocking:** Brave's `adblock-rust` (MPL-2.0) in the browser process, supporting full EasyList, EasyPrivacy and uBO syntax (network, cosmetic, scriptlets). Default lists, and a per-site toggle in the site chip. Replaces the hosts-only engine (0028/0031/0090/0094).
+- **Content blocking:** maintained uBlock Origin semantics with browser-owned network admission and document-scoped cosmetic/scriptlet execution. Default EasyList, EasyPrivacy and uBO lists, with a per-site toggle in the site chip. The maintained engine replaces the retired hosts-only and incomplete Rust implementations. Full syntax and actual network, body, cosmetic, scriptlet, popup and canonical-host behavior require native evidence before P5 acceptance.
 - **Extensions:**
   - Web Store install on by default (0025);
   - pinning and an extensions menu like Aside's;
