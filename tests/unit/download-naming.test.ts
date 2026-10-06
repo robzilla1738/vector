@@ -1,6 +1,4 @@
 import { DEFAULT_DOWNLOAD_NAMING } from "@aux/contracts";
-import { createHash } from "node:crypto";
-import { SqliteColumnCipher } from "../../apps/runtime/src/store/sqlite-protection.js";
 import { settingsMethods } from "../../apps/runtime/src/api/methods/settings.js";
 import { downloadNamingMethods } from "../../apps/runtime/src/api/methods/download-naming.js";
 import type { MethodCtx } from "../../apps/runtime/src/api/methods/context.js";
@@ -24,9 +22,9 @@ const info = {
   tabTitle: "Invoice 4471",
   endedAt: 1000,
 };
-function fixture(cipher?: SqliteColumnCipher) {
+function fixture() {
   const db = openDb(":memory:"),
-    repo = new Repo(db, cipher),
+    repo = new Repo(db),
     events = new EventBus(repo);
   const native: DownloadNamingNative = {
     downloadRenameReceipts: vi.fn(async () => []),
@@ -270,45 +268,16 @@ describe("smart download naming", () => {
       f.db.close();
     }
   });
-  it("encrypts receipts with their actual download primary key and decrypts after reopening the service", async () => {
-    const saved = new Map<string, string>();
-    const suffix = createHash("sha256").update("download-fixture-profile").digest("hex").slice(0, 24);
-    const cipher = await SqliteColumnCipher.create(
-      {
-        readSecret: async (name) => ({ value: saved.get(name) }),
-        storeSecret: async (name, value) => {
-          saved.set(name, value);
-          return { ok: true };
-        },
-        profileStorageRoot: async () => {
-          const value = Buffer.alloc(32, 2).toString("base64");
-          saved.set(`aux_root_v1_${suffix}`, value);
-          return { value };
-        },
-        profileStorageFactor: async () => {
-          const value = Buffer.alloc(32, 1).toString("base64");
-          saved.set(`sqlite_factor_v1_${suffix}`, value);
-          return { value };
-        },
-      },
-      "download-fixture-profile",
-      false,
-    );
-    const f = fixture(cipher);
+  it("stores receipts under their download primary key and reads them after reopening the service", async () => {
+    const f = fixture();
     try {
       await f.service.completed(info);
       const row = f.repo.db
         .prepare("SELECT receipt FROM download_renames WHERE download_id=?")
         .get(info.id) as { receipt: string };
-      expect(row.receipt).toMatch(/^auxenc:/);
-      expect(row.receipt).not.toContain("Invoice");
-      const restarted = new DownloadNamingService(
-        new Repo(f.db, cipher),
-        f.settings,
-        f.native,
-        f.events,
-        () => 3000,
-      );
+      expect(row.receipt).not.toMatch(/^auxenc:/);
+      expect(row.receipt).toContain("Invoice");
+      const restarted = new DownloadNamingService(new Repo(f.db), f.settings, f.native, f.events, () => 3000);
       expect((await restarted.receipts())[0]?.receiptId).toBe("receipt");
     } finally {
       f.db.close();

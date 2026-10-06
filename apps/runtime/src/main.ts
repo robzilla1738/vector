@@ -61,7 +61,7 @@ import type { RpcChannel } from "@aux/contracts";
 import { ManagedChromiumDriver, type BrowserDriver } from "@aux/chromium-driver";
 import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
 import { openDb, SCHEMA_VERSION } from "./store/db.js";
-import { prepareProtectedDatabase } from "./store/protected-startup.js";
+import { FieldCodec, initializeFieldCodec } from "./store/field-codec.js";
 import {
   bootstrapWatchdog,
   developmentPeerIdentity,
@@ -154,7 +154,7 @@ function loopbackPortTaken(port: number): Promise<boolean> {
  * Take over only a strictly older daemon with the same unsigned development
  * identity. A busy older peer gets the idle wait. A foreign, changed, or
  * unverifiable peer is left running. The database stays closed until this
- * returns: opening it migrates, and that lock makes a live peer look changed.
+ * returns: opening it initializes schema, and that lock makes a live peer look changed.
  */
 async function takeoverOrDecline(
   dataDir: string,
@@ -206,7 +206,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let channel: RpcChannel | null = null;
   let hostSocket: HostSocketTransport | null = null;
   let releaseHostStartup: (() => void) | undefined;
-  let columnCipher: Awaited<ReturnType<typeof prepareProtectedDatabase>> | undefined;
+  let columnCipher: FieldCodec | undefined;
   try {
     if (env.AUX_HOST_SOCKET) {
       const generation = env.AUX_HOST_GENERATION ?? "";
@@ -216,7 +216,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       channel = startup.channel;
       releaseHostStartup = startup.release;
       const native = new ChannelNativeBridge(channel);
-      columnCipher = await prepareProtectedDatabase(db, native, env.AUX_BROWSER_PROFILE_ID ?? "");
+      columnCipher = await initializeFieldCodec(db, native, env.AUX_BROWSER_PROFILE_ID ?? "");
     }
   } catch (error) {
     db.close();
@@ -275,9 +275,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     workspaceFolders: () => new WorkspaceFolderService(repo, () => [config.dataDir]),
     settings: () => new SettingsService(repo, config.settingsPath, env),
     durableWrites: () => new DurableWriteLedger(repo.db),
-    safetyAudit: () => new SafetyAuditStore(repo.db, repo.columnCipher),
-    approvals: () =>
-      new ApprovalStore(repo.db, (event) => runtimeServices.safetyAudit.record(event), repo.columnCipher),
+    safetyAudit: () => new SafetyAuditStore(repo.db),
+    approvals: () => new ApprovalStore(repo.db, (event) => runtimeServices.safetyAudit.record(event)),
     suspensions: () => new SuspensionStore(repo.db, (event) => runtimeServices.safetyAudit.record(event)),
     pageClaims: () => new PageClaimStore(repo.db),
     safetyGate: () =>
@@ -325,7 +324,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         : undefined,
     memoryPipeline: () =>
       native.available() && env.AUX_BROWSER_PROFILE_ID
-        ? new MemoryPipeline(repo, native, join(config.dataDir, "space-memory"), env.AUX_BROWSER_PROFILE_ID)
+        ? new MemoryPipeline(repo, native, env.AUX_BROWSER_PROFILE_ID)
         : undefined,
     pages: () =>
       new PageService({
@@ -383,7 +382,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             try {
               const row = repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId) as
                 { json: string } | undefined;
-              const task = row ? TaskSchema.parse(JSON.parse(repo.taskJson(taskId, row.json))) : undefined;
+              const task = row ? TaskSchema.parse(JSON.parse(row.json)) : undefined;
               for (const resource of task?.resources ?? [])
                 if (resource.kind === "file" || resource.kind === "repository") roots.push(resource.locator);
             } catch {

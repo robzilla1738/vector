@@ -210,9 +210,9 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     taskEvidence: () => new TaskEvidenceService(s.repo, s.events, s.pages, s.native, s.downloadsDir),
     vault: () => s.vault ?? new VaultService(s.repo, s.native),
     translate: () => new TranslateService(s.settings),
-    safetyAudit: () => new SafetyAuditStore(s.repo.db, s.repo.columnCipher),
+    safetyAudit: () => new SafetyAuditStore(s.repo.db),
     approvals: () =>
-      new ApprovalStore(s.repo.db, (event) => d.safetyAudit.record(event), s.repo.columnCipher),
+      new ApprovalStore(s.repo.db, (event) => d.safetyAudit.record(event)),
     suspensions: () => new SuspensionStore(s.repo.db, (event) => d.safetyAudit.record(event)),
     decisions: () => new DecisionJournal(s.repo.db),
     routines: () =>

@@ -97,18 +97,9 @@ export class NightShiftService {
     return [...ids].every((id) => this.budgets.runCostComplete(id));
   }
   private read(row: Record<string, unknown>): NightShiftItem {
-    if (!this.repo.columnCipher)
-      throw new AuxError("backend_unavailable", "Night shift requires protected Profile storage.");
     return NightShiftItemSchema.parse({
       id: row.id,
-      payload: JSON.parse(
-        this.repo.columnCipher.decrypt(
-          "night_queue",
-          JSON.stringify([row.id]),
-          "payload",
-          String(row.payload),
-        ),
-      ),
+      payload: JSON.parse(String(row.payload)),
       budgetUsd: row.budget_usd,
       status: row.status,
       createdBy: row.created_by,
@@ -134,19 +125,12 @@ export class NightShiftService {
   private add(input: unknown, person: boolean) {
     const parsed = NightShiftQueueSchema.parse(input),
       settings = this.settings();
-    if (!this.repo.columnCipher)
-      throw new AuxError("backend_unavailable", "Night shift requires protected Profile storage.");
     if (parsed.budgetUsd > settings.perTaskUsd)
       throw new AuxError("permission_denied", "This item exceeds the per-task night budget.");
     if (this.list().length >= 1000)
       throw new AuxError("conflict", "Review the overnight inbox before adding more items.");
     const id = randomUUID();
-    const payload = this.repo.columnCipher.encrypt(
-      "night_queue",
-      JSON.stringify([id]),
-      "payload",
-      JSON.stringify(parsed.payload),
-    );
+    const payload = JSON.stringify(parsed.payload);
     this.repo.db
       .prepare(
         "INSERT INTO night_queue(id,kind,payload,budget_usd,status,created_by,created_at) VALUES(?,?,?,?,?,?,?)",

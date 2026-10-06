@@ -187,18 +187,7 @@ export class TaskEvidenceService {
         .prepare(
           "INSERT INTO criterion_reviews(review_id,task_id,task_revision,criterion_id,json) VALUES(?,?,?,?,?)",
         )
-        .run(
-          record.reviewId,
-          record.taskId,
-          record.taskRevision,
-          record.criterionId,
-          this.repo.protectRecordField(
-            "criterion_reviews",
-            [record.reviewId],
-            "json",
-            JSON.stringify(record),
-          ),
-        );
+        .run(record.reviewId, record.taskId, record.taskRevision, record.criterionId, JSON.stringify(record));
       return record;
     });
     this.events.emit("task.reviewed", { taskId: p.taskId, reviewId: review.reviewId });
@@ -574,12 +563,7 @@ export class TaskEvidenceService {
         record.taskId,
         record.taskRevision,
         record.criterionId,
-        this.repo.protectRecordField(
-          "criterion_verifications",
-          [record.verificationId],
-          "json",
-          JSON.stringify(record),
-        ),
+        JSON.stringify(record),
         record.recordedAt,
       );
     this.events.emit("task.criterion_verified", {
@@ -823,13 +807,7 @@ export class TaskEvidenceService {
           "SELECT review_id,json FROM criterion_reviews WHERE task_id=? AND task_revision=? AND criterion_id=? ORDER BY seq DESC LIMIT 1",
         )
         .get(taskId, task.revision, criterion.criterionId) as { review_id: string; json: string } | undefined;
-      const review = reviewRow
-        ? CriterionReviewSchema.parse(
-            JSON.parse(
-              this.repo.revealRecordField("criterion_reviews", [reviewRow.review_id], "json", reviewRow.json),
-            ),
-          )
-        : undefined;
+      const review = reviewRow ? CriterionReviewSchema.parse(JSON.parse(reviewRow.json)) : undefined;
       let status: TaskReceipt["criteria"][number]["status"] = evidence.length ? "needs_review" : "unverified";
       if (review) {
         const stale = review.evidenceIds.some(
@@ -930,11 +908,7 @@ export class TaskEvidenceService {
           )
           .all(taskId, task.revision) as { verification_id: string; json: string }[]
       ).flatMap((row) => {
-        const parsed = CriterionVerificationSchema.safeParse(
-          JSON.parse(
-            this.repo.revealRecordField("criterion_verifications", [row.verification_id], "json", row.json),
-          ),
-        );
+        const parsed = CriterionVerificationSchema.safeParse(JSON.parse(row.json));
         return parsed.success ? [parsed.data] : [];
       }),
     };
@@ -974,11 +948,7 @@ export class TaskEvidenceService {
         )
         .all(taskId, revision, criterion.criterionId) as { review_id: string; json: string }[];
       const review = reviews
-        .map((item) =>
-          CriterionReviewSchema.parse(
-            JSON.parse(this.repo.revealRecordField("criterion_reviews", [item.review_id], "json", item.json)),
-          ),
-        )
+        .map((item) => CriterionReviewSchema.parse(JSON.parse(item.json)))
         .find(
           (item) =>
             rows.length > 0 &&
@@ -1056,9 +1026,7 @@ export class TaskEvidenceService {
         .all(taskId, revision, criterionId ?? null, criterionId ?? null) as EvidenceRow[]
     ).map((row) => ({
       seq: row.seq,
-      record: TaskEvidenceSchema.parse(
-        JSON.parse(this.repo.revealRecordField("task_evidence", [row.evidence_id], "json", row.json)),
-      ),
+      record: TaskEvidenceSchema.parse(JSON.parse(row.json)),
     }));
   }
 
@@ -1073,12 +1041,7 @@ export class TaskEvidenceService {
         validated.taskId,
         validated.taskRevision,
         validated.criterionId,
-        this.repo.protectRecordField(
-          "task_evidence",
-          [validated.evidenceId],
-          "json",
-          JSON.stringify(validated),
-        ),
+        JSON.stringify(validated),
       );
     this.events.emit("task.evidence_recorded", {
       taskId: validated.taskId,

@@ -607,7 +607,7 @@ it("leaves a strictly older database unchanged when the loopback port is already
   expect(userVersion(dbPath)).toBe(SCHEMA_VERSION - 1);
 });
 
-it("migrates a strictly older database when the loopback port is free", async () => {
+it("refuses an incompatible database even when the loopback port is free", async () => {
   const parent = mkdtempSync(join(tmpdir(), "aux-trust-preflight-free-"));
   cleanup.push(() => rmSync(parent, { recursive: true, force: true }));
   const dataDir = join(parent, "data");
@@ -623,14 +623,10 @@ it("migrates a strictly older database when the loopback port is free", async ()
       });
     });
   });
-  let handle: Awaited<ReturnType<typeof startRuntime>> | undefined;
-  try {
-    handle = await startRuntime({ ...runtimeEnv(dataDir), AUX_API_PORT: String(port) });
-    expect(handle.port).toBe(port);
-  } finally {
-    await handle?.close();
-  }
-  expect(userVersion(dbPath)).toBe(SCHEMA_VERSION);
+  await expect(startRuntime({ ...runtimeEnv(dataDir), AUX_API_PORT: String(port) })).rejects.toThrow(
+    /incompatible with Aux v3/,
+  );
+  expect(userVersion(dbPath)).toBe(SCHEMA_VERSION - 1);
 });
 
 it("reopens a crashed runtime without widening a scoped replay gap", async () => {

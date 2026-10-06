@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, expect, it, vi } from "vitest";
@@ -30,7 +30,7 @@ function fixture(profile = "profile-paste") {
       return { value: secrets.get(key)! };
     }),
   };
-  const pipeline = new MemoryPipeline(repo, native, dir, profile);
+  const pipeline = new MemoryPipeline(repo, native, profile);
   disposals.push(() => {
     db.close();
     rmSync(dir, { recursive: true, force: true });
@@ -43,7 +43,7 @@ function fixture(profile = "profile-paste") {
     native,
     secrets,
     pipeline,
-    restart: () => new MemoryPipeline(repo, native, dir, profile),
+    restart: () => new MemoryPipeline(repo, native, profile),
   };
 }
 function ready(preview: MemoryPastePreview) {
@@ -62,11 +62,6 @@ const selection = (p: Extract<MemoryPastePreview, { status: "ready" }>) => ({
   previewId: p.previewId,
   selectedIds: p.candidates.map((item) => item.candidateId),
 });
-function bytesBelow(path: string): Buffer[] {
-  return readdirSync(path, { withFileTypes: true }).flatMap((entry) =>
-    entry.isDirectory() ? bytesBelow(join(path, entry.name)) : [readFileSync(join(path, entry.name))],
-  );
-}
 
 it("previews locally without enabling Memory, writing files, calling Keychain or storing the original paste", async () => {
   const f = fixture(),
@@ -151,7 +146,11 @@ it("uses a separate explicit acceptance step and keeps pasted provenance unverif
     restarted.commitPaste({ ...selection(p), selectedIds: [p.candidates[0]!.candidateId] }),
   ).rejects.toThrow(/different selection/);
   const source = p.candidates[0]!.text;
-  expect(bytesBelow(f.dir).every((bytes) => !bytes.includes(source))).toBe(true);
+  expect(
+    JSON.stringify(
+      f.db.prepare("SELECT content FROM memory_files UNION ALL SELECT content FROM memory_history").all(),
+    ),
+  ).not.toContain(source);
   expect(JSON.stringify(f.repo.db.prepare("SELECT * FROM kv").all())).not.toContain(source);
 });
 
@@ -243,16 +242,16 @@ it("keeps imported data scoped to the owning Profile and refuses archived destin
   await expect(prepare(f)).rejects.toThrow(/Restore this Space/);
 });
 
-it("keeps receipt and inbox in one authoritative generation when Git fails after the old key is retired", async () => {
+it("keeps the authoritative receipt when retirement completes before its response arrives", async () => {
   const f = fixture();
   f.pipeline.setPolicy(f.workspaceId, true);
   await f.pipeline.commitPaste(selection(await prepare(f)));
   const p = await prepare(f, "A third note survives a lost response.");
-  const internals = f.pipeline as unknown as { git(directory: string, ...args: string[]): Promise<void> };
-  const git = internals.git.bind(internals);
-  vi.spyOn(internals, "git").mockImplementation(async (directory, ...args) => {
-    if (args[0] === "commit") throw new Error("Fixture Git commit interruption");
-    return git(directory, ...args);
+  const store = f.native.storeSecret.getMockImplementation()!;
+  f.native.storeSecret.mockImplementation(async (name, value) => {
+    const result = await store(name, value);
+    if (name.startsWith("mem_") && !value) throw new Error("Retirement response was lost");
+    return result;
   });
   expect(await f.pipeline.commitPaste(selection(p))).toMatchObject({ added: 1, pending: 1 });
   expect(await f.restart().commitPaste(selection(p))).toMatchObject({ added: 1, pending: 1 });

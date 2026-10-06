@@ -1,10 +1,7 @@
+import { currentSpaceMemory, spaceMemoryDigest } from "./space-memory-backup.js";
 import { digest as sha } from "@aux/contracts/util/digest";
-import { createDecipheriv, randomBytes, randomUUID } from "node:crypto";
-import { execFile } from "node:child_process";
-import { lstat, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { lstatSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { promisify } from "node:util";
 import {
   AuxError,
   MemoryClaimSchema,
@@ -36,25 +33,26 @@ import {
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
 import { consolidateMemoryClaims } from "./night-memory.js";
-import { ProtectedStore } from "./protected-store.js";
+import {
+  SpaceMemoryStore,
+  type MemoryGeneration,
+  type MemoryRevision,
+} from "./space-memory-store.js";
 import { renderObservation } from "./observation-render.js";
 
-const exec = promisify(execFile);
-type Manifest = { generation: string; keyName: string; version?: 2 };
-type Revision = { revisionId: string; capturedAt: number; claims: MemoryClaim[] };
 export type RecoverySpaceMemory = {
   workspaceId: string;
   claims: MemoryClaim[];
   inbox: MemoryClaim[];
-  history: Revision[];
+  history: MemoryRevision[];
   verifiedFiles: string[];
   imports?: MemoryPasteReceipt[];
 };
 type Secrets = Pick<NativeBridge, "storeSecret" | "readSecret">;
 
-/** Opt-in, encrypted, git-backed Space memory. All derived views are rebuilt from source claims. */
+/** Opt-in encrypted Space memory. Derived views are rebuilt from source claims. */
 export class MemoryPipeline {
-  private protectedStore: ProtectedStore;
+  private storage: SpaceMemoryStore;
   private pastePreviews = new Map<
     string,
     {
@@ -65,12 +63,11 @@ export class MemoryPipeline {
   >();
   constructor(
     private repo: Repo,
-    private secrets: Secrets,
-    private baseDir: string,
-    private profileId: string,
+    secrets: Secrets,
+    profileId: string,
   ) {
     if (!profileId) throw new Error("Memory pipeline requires a Profile identity.");
-    this.protectedStore = new ProtectedStore(secrets, profileId);
+    this.storage = new SpaceMemoryStore(repo, secrets, profileId);
   }
 
   private async leased<T>(workspaceId: string, work: () => Promise<T>): Promise<T> {
@@ -96,10 +93,6 @@ export class MemoryPipeline {
   private requireSpace(workspaceId: string) {
     if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(workspaceId))
       throw new AuxError("not_found", "Space does not exist.");
-  }
-
-  private directory(workspaceId: string) {
-    return join(this.baseDir, sha(this.profileId).slice(0, 24), sha(workspaceId).slice(0, 24));
   }
 
   policy(workspaceId: string) {
@@ -250,211 +243,56 @@ export class MemoryPipeline {
     );
   }
 
-  private async git(directory: string, ...args: string[]) {
-    await exec(
-      "git",
-      [
-        "-C",
-        directory,
-        "-c",
-        "core.hooksPath=/dev/null",
-        "-c",
-        "commit.gpgsign=false",
-        "-c",
-        "gc.autoDetach=false",
-        "-c",
-        "maintenance.autoDetach=false",
-        "-c",
-        "user.name=Aux Memory",
-        "-c",
-        "user.email=memory@aux.invalid",
-        ...args,
-      ],
-      { timeout: 10_000, maxBuffer: 64_000, env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1" } },
-    );
+  async ordinaryRestoreMemory() {
+    const before = currentSpaceMemory(this.repo.db);
+    await this.recoverySnapshot();
+    if (spaceMemoryDigest(before) !== spaceMemoryDigest(currentSpaceMemory(this.repo.db)))
+      throw new AuxError("conflict", "Space memory changed while restore was prepared.");
+    return before;
   }
 
-  private async init(directory: string) {
-    await mkdir(directory, { recursive: true, mode: 0o700 });
-    try {
-      await readdir(join(directory, ".git"));
-    } catch {
-      await this.git(directory, "init", "-q");
-    }
+  currentStateDigest() {
+    return spaceMemoryDigest(currentSpaceMemory(this.repo.db));
   }
 
-  private async manifest(directory: string): Promise<Manifest | null> {
-    let value: unknown;
-    try {
-      value = JSON.parse(await readFile(join(directory, "manifest.json"), "utf8"));
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-      throw error;
-    }
-    if (
-      !value ||
-      typeof value !== "object" ||
-      !/^g-[a-f0-9-]{36}$/.test((value as Manifest).generation) ||
-      !/^mem_[a-f0-9_]{1,59}$/.test((value as Manifest).keyName) ||
-      ((value as Manifest).version !== undefined && (value as Manifest).version !== 2)
-    )
-      throw new Error("Space memory manifest is invalid.");
-    return value as Manifest;
-  }
-
-  private async key(manifest: Manifest): Promise<Buffer> {
-    const value = (await this.secrets.readSecret(manifest.keyName)).value;
-    if (!value)
-      throw new Error(
-        "Space memory key is unavailable. Restore the original OS credential store or forget this memory.",
-      );
-    const factor = Buffer.from(value, "base64");
-    if (factor.length !== 32 || factor.toString("base64") !== value)
-      throw new Error("Space memory key is invalid.");
-    return manifest.version === 2 ? this.protectedStore.generationKey("space-memory", factor) : factor;
-  }
-
-  private open(key: Buffer, workspaceId: string, filename: string, bytes: Buffer, version?: 2) {
-    if (version === 2)
-      return this.protectedStore
-        .open(key, "space-memory", `${workspaceId}/${filename}`, bytes.toString("utf8"))
-        .toString("utf8");
-    if (bytes.length < 29) throw new Error("Space memory file is incomplete.");
-    const decipher = createDecipheriv("aes-256-gcm", key, bytes.subarray(0, 12));
-    decipher.setAAD(Buffer.from(`${this.profileId}\0${workspaceId}\0${filename}`));
-    decipher.setAuthTag(bytes.subarray(-16));
-    return Buffer.concat([decipher.update(bytes.subarray(12, -16)), decipher.final()]).toString("utf8");
-  }
-
-  private async readClaims(
-    workspaceId: string,
-  ): Promise<{
-    claims: MemoryClaim[];
-    inbox: MemoryClaim[];
-    history: Revision[];
-    imports: MemoryPasteReceipt[];
-    importsStored: boolean;
-    prior: Manifest | null;
-  }> {
-    const directory = this.directory(workspaceId);
-    const prior = await this.manifest(directory);
-    if (!prior) return { claims: [], inbox: [], history: [], imports: [], importsStored: false, prior: null };
-    const key = await this.key(prior);
-    const filename = "claims.json.enc";
-    const bytes = await readFile(join(directory, prior.generation, filename));
-    const parsed = JSON.parse(this.open(key, workspaceId, filename, bytes, prior.version));
-    if (!Array.isArray(parsed)) throw new Error("Space memory claims are invalid.");
-    let inbox: MemoryClaim[] = [];
-    try {
-      inbox = MemoryPipelineInboxSchema.parse(
-        JSON.parse(
-          this.open(
-            key,
-            workspaceId,
-            "inbox.json.enc",
-            await readFile(join(directory, prior.generation, "inbox.json.enc")),
-            prior.version,
-          ),
-        ),
-      );
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
-    let history: Revision[] = [];
-    try {
-      const revisions = JSON.parse(
-        this.open(
-          key,
-          workspaceId,
-          "history.json.enc",
-          await readFile(join(directory, prior.generation, "history.json.enc")),
-          prior.version,
-        ),
-      );
-      if (!Array.isArray(revisions) || revisions.length > 20)
-        throw new Error("Space memory history is invalid.");
-      history = revisions.map((revision: Revision) => ({
-        revisionId: revision.revisionId,
-        capturedAt: revision.capturedAt,
-        claims: MemoryPipelineInboxSchema.parse(revision.claims),
-      }));
-      if (
-        history.some(
-          (revision) =>
-            !/^[a-f0-9-]{36}$/.test(revision.revisionId) ||
-            !Number.isSafeInteger(revision.capturedAt) ||
-            revision.capturedAt < 0,
-        )
-      )
-        throw new Error("Space memory history is invalid.");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
-    let imports: MemoryPasteReceipt[] = [],
-      importsStored = false;
-    try {
-      imports = MemoryPasteReceiptSchema.array()
-        .max(20)
-        .parse(
-          JSON.parse(
-            this.open(
-              key,
-              workspaceId,
-              "imports.json.enc",
-              await readFile(join(directory, prior.generation, "imports.json.enc")),
-              prior.version,
-            ),
-          ),
-        );
-      importsStored = true;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
+  private async readClaims(workspaceId: string) {
+    const state = await this.storage.read(workspaceId);
+    if (!state.prior)
+      return {
+        ...state,
+        claims: [] as MemoryClaim[],
+        inbox: [] as MemoryClaim[],
+        imports: [] as MemoryPasteReceipt[],
+      };
+    const parse = (name: string) => {
+      const value = state.files.get(name);
+      if (value === undefined) throw new Error(`Space memory file ${name} is missing.`);
+      return JSON.parse(value) as unknown;
+    };
     return {
-      claims: parsed.map((value) => MemoryClaimSchema.parse(value)),
-      inbox,
-      history,
-      imports,
-      importsStored,
-      prior,
+      ...state,
+      claims: MemoryClaimSchema.array().max(200).parse(parse("claims.json.enc")),
+      inbox: MemoryPipelineInboxSchema.parse(parse("inbox.json.enc")),
+      imports: MemoryPasteReceiptSchema.array().max(20).parse(parse("imports.json.enc")),
     };
   }
 
-  /** Authenticate the complete current generation; retired Git objects are intentionally unreadable. */
+  /** Authenticate all logical files and indexed revisions before recovery. */
   async recoverySnapshot(): Promise<RecoverySpaceMemory[]> {
-    let inspectedBytes = 0;
+    const generationDigest = this.currentStateDigest();
     const workspaceIds = (
       this.repo.db.prepare("SELECT workspace_id FROM workspaces ORDER BY workspace_id").all() as {
         workspace_id: string;
       }[]
     ).map((row) => row.workspace_id);
-    const expectedDirectories = new Set(workspaceIds.map((id) => sha(id).slice(0, 24)));
-    const profileDirectory = join(this.baseDir, sha(this.profileId).slice(0, 24));
-    try {
-      for (const entry of await readdir(this.baseDir))
-        if (entry !== sha(this.profileId).slice(0, 24))
-          throw new Error("Recovery found Space memory from another Profile.");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
-    let directories: string[];
-    try {
-      directories = await readdir(profileDirectory);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      if (this.repo.db.prepare("SELECT 1 FROM memory_pipeline_watermarks LIMIT 1").get())
-        throw new Error("Recovery is missing extracted Space memory.");
-      return [];
-    }
-    if (!(await lstat(profileDirectory)).isDirectory() || (await lstat(profileDirectory)).isSymbolicLink())
-      throw new Error("Recovery Space-memory Profile directory is unsafe.");
-    for (const directory of directories)
-      if (!expectedDirectories.has(directory)) throw new Error("Recovery found unaccounted Space memory.");
+    const expected = new Set(workspaceIds);
+    if (this.storage.workspaceIds().some((id) => !expected.has(id)))
+      throw new Error("Recovery found unaccounted Space memory.");
+    let inspectedBytes = 0;
     const output: RecoverySpaceMemory[] = [];
     for (const workspaceId of workspaceIds) {
-      const directory = this.directory(workspaceId);
-      const prior = await this.manifest(directory);
-      if (!prior) {
+      const state = await this.readClaims(workspaceId);
+      if (!state.prior) {
         if (
           this.repo.db
             .prepare("SELECT 1 FROM memory_pipeline_watermarks WHERE workspace_id=? LIMIT 1")
@@ -463,72 +301,39 @@ export class MemoryPipeline {
           throw new Error("Recovery is missing extracted Space memory.");
         continue;
       }
-      if (!(await lstat(directory)).isDirectory() || (await lstat(directory)).isSymbolicLink())
-        throw new Error("Recovery Space-memory directory is unsafe.");
-      const manifestInfo = await lstat(join(directory, "manifest.json"));
-      if (!manifestInfo.isFile() || manifestInfo.isSymbolicLink())
-        throw new Error("Recovery Space-memory manifest is unsafe.");
-      for (const entry of await readdir(directory))
-        if (entry !== ".git" && entry !== "manifest.json" && entry !== prior.generation)
-          throw new Error("Recovery found an unaccounted Space-memory generation.");
-      const { claims, inbox, history, imports, importsStored } = await this.readClaims(workspaceId);
-      const generationDirectory = join(directory, prior.generation);
-      if (
-        !(await lstat(generationDirectory)).isDirectory() ||
-        (await lstat(generationDirectory)).isSymbolicLink()
-      )
-        throw new Error("Recovery Space-memory generation is unsafe.");
+      inspectedBytes += state.inspectedBytes;
+      if (inspectedBytes > 32 * 1024 * 1024)
+        throw new Error("Recovery Space memory exceeds the 32 MB reviewed size cap. No export was created.");
+      const derived = new Map<string, string>([
+        ["summary.md.enc", this.summary(state.claims)],
+        ["handbook.md.enc", this.handbook(state.claims)],
+        ...state.claims.map(
+          (claim) => [`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim)] as const,
+        ),
+      ]);
       const files = [
         "claims.json.enc",
         "inbox.json.enc",
         "history.json.enc",
-        "summary.md.enc",
-        "handbook.md.enc",
-        ...(importsStored ? ["imports.json.enc"] : []),
-        ...claims.map((claim) => `rollouts/${claim.claimId}.json.enc`),
+        "imports.json.enc",
+        ...derived.keys(),
       ].sort();
-      const top = (await readdir(generationDirectory)).filter((name) => name !== "rollouts");
-      const rolloutInfo = await lstat(join(generationDirectory, "rollouts"));
-      if (!rolloutInfo.isDirectory() || rolloutInfo.isSymbolicLink())
-        throw new Error("Recovery Space-memory rollout directory is unsafe.");
-      const rollouts = (await readdir(join(generationDirectory, "rollouts"))).map(
-        (name) => `rollouts/${name}`,
-      );
-      if (JSON.stringify([...top, ...rollouts].sort()) !== JSON.stringify(files))
+      if (JSON.stringify([...state.files.keys()].sort()) !== JSON.stringify(files))
         throw new Error("Recovery found a missing or unaccounted Space memory file.");
-      const key = await this.key(prior);
-      const derived = new Map<string, string>([
-        ["summary.md.enc", this.summary(claims)],
-        ["handbook.md.enc", this.handbook(claims)],
-        ...claims.map((claim) => [`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim)] as const),
-      ]);
-      for (const filename of files) {
-        const info = await lstat(join(generationDirectory, filename));
-        if (!info.isFile() || info.isSymbolicLink()) throw new Error("Recovery Space-memory file is unsafe.");
-        inspectedBytes += info.size;
-        if (inspectedBytes > 32 * 1024 * 1024)
-          throw new Error(
-            "Recovery Space memory exceeds the 32 MB reviewed size cap. No export was created.",
-          );
-        const value = this.open(
-          key,
-          workspaceId,
-          filename,
-          await readFile(join(generationDirectory, filename)),
-          prior.version,
-        );
-        if (derived.has(filename) && value !== derived.get(filename))
+      for (const [name, value] of derived)
+        if (state.files.get(name) !== value)
           throw new Error("Recovery Space-memory derivative differs from its claims.");
-      }
       output.push({
         workspaceId,
-        claims,
-        inbox,
-        history,
+        claims: state.claims,
+        inbox: state.inbox,
+        history: state.history,
         verifiedFiles: files,
-        ...(importsStored ? { imports } : {}),
+        imports: state.imports,
       });
     }
+    if (this.currentStateDigest() !== generationDigest)
+      throw new AuxError("conflict", "Space memory changed while recovery was prepared.");
     return output;
   }
 
@@ -536,9 +341,9 @@ export class MemoryPipeline {
   async importRecoverySnapshot(spaces: RecoverySpaceMemory[]): Promise<void> {
     for (const space of spaces) {
       this.requireSpace(space.workspaceId);
-      if (await this.manifest(this.directory(space.workspaceId)))
+      if (this.storage.workspaceIds().includes(space.workspaceId))
         throw new Error("Recovery destination already has Space memory.");
-      const claims = space.claims.map((value) => MemoryClaimSchema.parse(value));
+      const claims = MemoryClaimSchema.array().max(200).parse(space.claims);
       const inbox = MemoryPipelineInboxSchema.parse(space.inbox);
       const history = space.history.map((value) => ({
         revisionId: value.revisionId,
@@ -596,7 +401,7 @@ export class MemoryPipeline {
       .join("\n\n");
   }
 
-  private snapshot(claims: MemoryClaim[]): Revision {
+  private snapshot(claims: MemoryClaim[]): MemoryRevision {
     return { revisionId: randomUUID(), capturedAt: Date.now(), claims };
   }
 
@@ -604,75 +409,20 @@ export class MemoryPipeline {
     workspaceId: string,
     claims: MemoryClaim[],
     inbox: MemoryClaim[],
-    history: Revision[],
-    prior: Manifest | null,
+    history: MemoryRevision[],
+    prior: MemoryGeneration | null,
     imports?: MemoryPasteReceipt[],
   ) {
     const receipts = imports ?? (await this.readClaims(workspaceId)).imports;
-    const directory = this.directory(workspaceId);
-    await this.init(directory);
-    const generation = `g-${randomUUID()}`;
-    const keyName = `mem_${sha(this.profileId).slice(0, 10)}_${sha(workspaceId).slice(0, 10)}_${generation.slice(2, 10)}`;
-    const factor = randomBytes(32);
-    const key = await this.protectedStore.generationKey(
-      "space-memory",
-      factor,
-      !prior || prior.version !== 2,
-    );
-    const target = join(directory, generation);
-    let priorKeyRetired = false;
-    try {
-      await this.secrets.storeSecret(keyName, factor.toString("base64"));
-      if ((await this.secrets.readSecret(keyName)).value !== factor.toString("base64"))
-        throw new Error("Space memory key could not be confirmed.");
-      await mkdir(join(target, "rollouts"), { recursive: true, mode: 0o700 });
-      const put = (name: string, value: string) =>
-        writeFile(
-          join(target, name),
-          this.protectedStore.seal(key, "space-memory", `${workspaceId}/${name}`, Buffer.from(value)),
-          { mode: 0o600 },
-        );
-      await put("claims.json.enc", JSON.stringify(claims));
-      await put("inbox.json.enc", JSON.stringify(inbox));
-      await put("history.json.enc", JSON.stringify(history));
-      await put("imports.json.enc", JSON.stringify(receipts));
-      await put("summary.md.enc", this.summary(claims));
-      await put("handbook.md.enc", this.handbook(claims));
-      for (const claim of claims) await put(`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim));
-      const manifest: Manifest = { generation, keyName, version: 2 };
-      const temp = join(directory, `manifest-${randomUUID()}.tmp`);
-      await writeFile(temp, JSON.stringify(manifest), { mode: 0o600 });
-      await rename(temp, join(directory, "manifest.json"));
-      if (prior) {
-        // The prior key is destroyed before its encrypted generation is removed or committed.
-        // Historical Git objects are therefore unable to reveal forgotten claims.
-        await this.secrets.storeSecret(prior.keyName, "");
-        priorKeyRetired = true;
-        await rm(join(directory, prior.generation), { recursive: true, force: true });
-      }
-      await this.git(directory, "add", "-A");
-      await this.git(
-        directory,
-        "commit",
-        "-q",
-        "--allow-empty",
-        "-m",
-        prior ? "Update Space memory" : "Initialize Space memory",
-      );
-    } catch (error) {
-      // Before key retirement, restore the old pointer so failures cannot strand readable data.
-      // After retirement the new generation is authoritative even if Git commit must be retried.
-      if (!priorKeyRetired) {
-        if ((await this.manifest(directory))?.generation === generation) {
-          if (prior)
-            await writeFile(join(directory, "manifest.json"), JSON.stringify(prior), { mode: 0o600 });
-          else await rm(join(directory, "manifest.json"), { force: true });
-        }
-        await rm(target, { recursive: true, force: true });
-        await this.secrets.storeSecret(keyName, "");
-      }
-      throw error;
-    }
+    const files = new Map<string, string>([
+      ["claims.json.enc", JSON.stringify(claims)],
+      ["inbox.json.enc", JSON.stringify(inbox)],
+      ["imports.json.enc", JSON.stringify(receipts)],
+      ["summary.md.enc", this.summary(claims)],
+      ["handbook.md.enc", this.handbook(claims)],
+      ...claims.map((claim) => [`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim)] as const),
+    ]);
+    await this.storage.write(workspaceId, files, history, prior);
   }
 
   private clearPastePreviews(workspaceId: string) {
@@ -731,7 +481,7 @@ export class MemoryPipeline {
 
   private pasteReceipt(
     receipt: MemoryPasteReceipt,
-    state: { claims: MemoryClaim[]; inbox: MemoryClaim[]; history: Revision[] },
+    state: { claims: MemoryClaim[]; inbox: MemoryClaim[]; history: MemoryRevision[] },
   ): MemoryPasteStatus {
     const fromImport = (claim: MemoryClaim) =>
       claim.source?.kind === "owner-paste" && claim.source.importId === receipt.importId;
@@ -977,15 +727,13 @@ export class MemoryPipeline {
   async history(workspaceId: string) {
     if (!this.policy(workspaceId).enabled) return [];
     const { history } = await this.readClaims(workspaceId);
-    return [...history]
-      .reverse()
-      .map((revision) => ({
-        revisionId: revision.revisionId,
-        capturedAt: revision.capturedAt,
-        claimCount: revision.claims.length,
-        summary: this.summary(revision.claims),
-        sourceRunIds: [...new Set(revision.claims.map((claim) => claim.sourceRunId))],
-      }));
+    return [...history].reverse().map((revision) => ({
+      revisionId: revision.revisionId,
+      capturedAt: revision.capturedAt,
+      claimCount: revision.claims.length,
+      summary: this.summary(revision.claims),
+      sourceRunIds: [...new Set(revision.claims.map((claim) => claim.sourceRunId))],
+    }));
   }
 
   async consolidate(workspaceId: string) {

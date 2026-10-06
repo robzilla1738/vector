@@ -8,7 +8,6 @@ import {
   type SafetyAction,
   type StandingGrant,
 } from "@aux/contracts";
-import type { SqliteColumnCipher } from "../store/sqlite-protection.js";
 import { preapprovableCategory } from "./confirmation.js";
 import type { OriginPolicyDecision } from "./origin-policy.js";
 
@@ -65,7 +64,6 @@ export class ApprovalStore {
   constructor(
     private readonly db: DatabaseSync,
     private readonly audit: (event: Record<string, unknown>) => void = () => {},
-    private readonly columnCipher?: SqliteColumnCipher,
   ) {}
 
   issue(actionInput: SafetyAction, lifetime: "turn" | "thread", now = Date.now()): string {
@@ -90,12 +88,7 @@ export class ApprovalStore {
       .run(
         approvalId,
         fingerprint(action, lifetime),
-        this.columnCipher?.encrypt(
-          "safety_approval_requests",
-          JSON.stringify([approvalId]),
-          "action_json",
-          JSON.stringify(action),
-        ) ?? JSON.stringify(action),
+        JSON.stringify(action),
         action.turnId,
         action.threadId,
         lifetime,
@@ -139,16 +132,7 @@ export class ApprovalStore {
       .all(threadId, now) as { approvalId: string; actionJson: string; expiresAt: number }[];
     return rows.map((row) => ({
       approvalId: row.approvalId,
-      action: SafetyActionSchema.parse(
-        JSON.parse(
-          this.columnCipher?.decrypt(
-            "safety_approval_requests",
-            JSON.stringify([row.approvalId]),
-            "action_json",
-            row.actionJson,
-          ) ?? row.actionJson,
-        ),
-      ),
+      action: SafetyActionSchema.parse(JSON.parse(row.actionJson)),
       expiresAt: row.expiresAt,
     }));
   }
@@ -162,16 +146,7 @@ export class ApprovalStore {
       )
       .get(decision.approvalId) as { actionJson: string; turnId: string } | undefined;
     if (!row || row.turnId !== expectedTurnId) throw new Error("Stale or unknown approval turn");
-    const action = SafetyActionSchema.parse(
-      JSON.parse(
-        this.columnCipher?.decrypt(
-          "safety_approval_requests",
-          JSON.stringify([decision.approvalId]),
-          "action_json",
-          row.actionJson,
-        ) ?? row.actionJson,
-      ),
-    );
+    const action = SafetyActionSchema.parse(JSON.parse(row.actionJson));
     this.recordLocalDecision(decision, action, now);
     return action;
   }
@@ -195,13 +170,7 @@ export class ApprovalStore {
             state: string;
           }
         | undefined;
-      if (row && this.columnCipher)
-        this.columnCipher.decrypt(
-          "safety_approval_requests",
-          JSON.stringify([decision.approvalId]),
-          "action_json",
-          row.action_json,
-        );
+
       if (
         !row ||
         row.state !== "pending" ||
@@ -447,13 +416,7 @@ export class ApprovalStore {
               state: string;
             }
           | undefined;
-        if (row && this.columnCipher)
-          this.columnCipher.decrypt(
-            "safety_approval_requests",
-            JSON.stringify([input.approvalId]),
-            "action_json",
-            row.action_json,
-          );
+
         if (
           row?.state === "accepted" &&
           row.expires_at > now &&

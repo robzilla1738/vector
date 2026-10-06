@@ -92,7 +92,7 @@ export class AgentConnectionService {
       )
       .run(
         connection.connectionId,
-        this.repo.protectRecordField("agent_connections", [connection.connectionId], "name", connection.name),
+        connection.name,
         connection.client,
         connection.scope.kind,
         connection.scope.workspaceId,
@@ -205,7 +205,7 @@ export class AgentConnectionService {
   private record(row: Row): AgentConnection {
     return AgentConnectionSchema.parse({
       connectionId: row.connection_id,
-      name: this.repo.revealRecordField("agent_connections", [row.connection_id], "name", row.name),
+      name: row.name,
       client: row.client,
       scope:
         row.scope_kind === "task"

@@ -96,35 +96,13 @@ export class OutboundMcpService {
         .prepare(
           "INSERT INTO outbound_mcp_servers(server_id,workspace_id,state,body,created_at,updated_at) VALUES(?,?,?,?,?,?)",
         )
-        .run(
-          server.serverId,
-          server.workspaceId,
-          server.state,
-          this.repo.protectRecordField(
-            "outbound_mcp_servers",
-            [server.serverId],
-            "body",
-            JSON.stringify(server),
-          ),
-          now,
-          now,
-        );
+        .run(server.serverId, server.workspaceId, server.state, JSON.stringify(server), now, now);
       if (bundleBytes && source.kind === "bundle")
         this.repo.db
           .prepare(
             "INSERT INTO outbound_mcp_bundles(server_id,sha256,archive_base64,installed_at) VALUES(?,?,?,?)",
           )
-          .run(
-            server.serverId,
-            source.sha256,
-            this.repo.protectRecordField(
-              "outbound_mcp_bundles",
-              [server.serverId],
-              "archive_base64",
-              bundleBytes.toString("base64"),
-            ),
-            now,
-          );
+          .run(server.serverId, source.sha256, bundleBytes.toString("base64"), now);
       this.repo.db.exec("COMMIT");
     } catch (error) {
       this.repo.db.exec("ROLLBACK");
@@ -153,7 +131,7 @@ export class OutboundMcpService {
       .get(serverId) as ServerRow | undefined;
     if (!row) throw new AuxError("not_found", "MCP server does not exist");
     return OutboundMcpServerSchema.parse({
-      ...JSON.parse(this.repo.revealRecordField("outbound_mcp_servers", [serverId], "body", row.body)),
+      ...JSON.parse(row.body),
       state: row.state,
     });
   }
@@ -199,12 +177,7 @@ export class OutboundMcpService {
       .get(server.serverId) as BundleRow | undefined;
     if (!row || row.sha256 !== server.source.sha256 || row.archive_base64.length > 40_000_000)
       throw new AuxError("conflict", "Installed MCP bundle is missing or changed. Review a new source.");
-    const encoded = this.repo.revealRecordField(
-      "outbound_mcp_bundles",
-      [server.serverId],
-      "archive_base64",
-      row.archive_base64,
-    );
+    const encoded = row.archive_base64;
     if (encoded.length > 26_666_668 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded))
       throw new AuxError("conflict", "Installed MCP bundle is invalid. Review a new source.");
     const bytes = Buffer.from(encoded, "base64");
@@ -238,12 +211,7 @@ export class OutboundMcpService {
     const grant = OutboundMcpGrantSchema.parse({ ...input, grantId: randomUUID(), createdAt: Date.now() });
     this.repo.db
       .prepare("INSERT INTO outbound_mcp_grants(grant_id,server_id,tool_name,body) VALUES(?,?,?,?)")
-      .run(
-        grant.grantId,
-        grant.serverId,
-        grant.toolName,
-        this.repo.protectRecordField("outbound_mcp_grants", [grant.grantId], "body", JSON.stringify(grant)),
-      );
+      .run(grant.grantId, grant.serverId, grant.toolName, JSON.stringify(grant));
     return grant;
   }
 
@@ -253,7 +221,7 @@ export class OutboundMcpService {
       .get(grantId) as GrantRow | undefined;
     if (!row) throw new AuxError("not_found", "MCP tool grant does not exist");
     return OutboundMcpGrantSchema.parse({
-      ...JSON.parse(this.repo.revealRecordField("outbound_mcp_grants", [grantId], "body", row.body)),
+      ...JSON.parse(row.body),
       revokedAt: row.revoked_at ?? undefined,
       consumedAt: row.consumed_at ?? undefined,
     });

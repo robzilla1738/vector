@@ -90,7 +90,7 @@ export class ExternalSessionService {
     if (!resumed) {
       const run = RunSchema.parse({
         runId,
-        goal: `${this.repo.revealRecordField("agent_connections", [client.connectionId], "name", row.name)} — external agent session`,
+        goal: `${row.name} — external agent session`,
         status: "running",
         pageIds: [],
         config: {

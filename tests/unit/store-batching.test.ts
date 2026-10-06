@@ -37,13 +37,13 @@ describe("deferred hot-path writes", () => {
     expect((db.prepare("SELECT title FROM pages").get() as { title: string }).title).toBe("later");
   });
 
-  it("commit without their own fsync but leave the connection at synchronous=FULL for the action journal", async () => {
+  it("commit deferred writes without changing synchronous=NORMAL", () => {
     const db = openDb(":memory:");
     const repo = new Repo(db);
-    expect(sync(db)).toBe(2);
+    expect(sync(db)).toBe(1);
     repo.defer("x", () => db.prepare("INSERT INTO kv VALUES('k','v')").run());
     repo.flush();
-    expect(sync(db)).toBe(2);
+    expect(sync(db)).toBe(1);
     expect((db.prepare("SELECT value FROM kv WHERE key='k'").get() as { value: string }).value).toBe("v");
   });
 

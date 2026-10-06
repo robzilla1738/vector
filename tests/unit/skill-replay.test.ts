@@ -1,5 +1,5 @@
 import { randomBytes, createHash } from "node:crypto";
-import { SqliteColumnCipher } from "../../apps/runtime/src/store/sqlite-protection.js";
+import { initializeFieldCodec } from "../../apps/runtime/src/store/field-codec.js";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   EventBus,
@@ -28,7 +28,8 @@ async function protectedRepo(db: ReturnType<typeof openDb>) {
     if (!keys.has(key)) keys.set(key, randomBytes(32).toString("base64"));
     return { value: keys.get(key)! };
   };
-  const cipher = await SqliteColumnCipher.create(
+  const cipher = await initializeFieldCodec(
+    db,
     {
       readSecret: async (key) => ({ value: keys.get(key) }),
       storeSecret: async (key, value) => {
@@ -41,7 +42,6 @@ async function protectedRepo(db: ReturnType<typeof openDb>) {
         make(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`),
     },
     "fixture",
-    false,
   );
   return new Repo(db, cipher);
 }

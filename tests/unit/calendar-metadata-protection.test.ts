@@ -7,14 +7,9 @@ import { openDb, Repo } from "@aux/runtime";
 import { CalendarConnectionService } from "../../apps/runtime/src/services/calendar-connections.js";
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
 import { createRuntimeBackup } from "../../apps/runtime/src/services/runtime-backup.js";
-import {
-  compactProtectedSqlite,
-  migrateCalendarConnections,
-  SqliteColumnCipher,
-} from "../../apps/runtime/src/store/sqlite-protection.js";
+import { initializeFieldCodec } from "../../apps/runtime/src/store/field-codec.js";
 
 const scope = "https://www.googleapis.com/auth/calendar.readonly";
-const LEGACY_ID = "00000000-0000-4000-8000-000000000001";
 const endpoints = {
   auth: "https://provider.test/auth",
   token: "https://provider.test/token",
@@ -87,40 +82,25 @@ async function connect(service: CalendarConnectionService, account: string) {
   return (await fetch(callback)).status;
 }
 
-it("migrates legacy Calendar accounts, preserves unique reconnects, and protects backup and restart", async () => {
+it("encrypts Calendar metadata at write time and preserves unique reconnects, backup and restart", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "aux-calendar-protected-"));
   const dbPath = join(dataDir, "aux-state.sqlite");
   const native = nativeSecrets();
-  let repo = new Repo(openDb(dbPath));
+  const db = openDb(dbPath);
+  let repo = new Repo(db, await initializeFieldCodec(db, native as unknown as NativeBridge, "profile-one"));
   let service: CalendarConnectionService | undefined;
   try {
-    repo.db
-      .prepare(
-        `INSERT INTO calendar_connections(connection_id,provider,account_key,label,secret_name,scopes,state,created_at,updated_at)
-      VALUES(?,'google','alice@example.test','Calendar alice','calendar-legacy',?,'active',1,1)`,
-      )
-      .run(LEGACY_ID, JSON.stringify([scope]));
-    repo.db.exec("DROP INDEX idx_calendar_account_active");
-    repo.db.exec("ALTER TABLE calendar_connections DROP COLUMN account_key_lookup");
-    repo.db.exec(
-      "CREATE UNIQUE INDEX idx_calendar_account_active ON calendar_connections(provider,account_key) WHERE revoked_at IS NULL",
-    );
-    repo.db.exec("PRAGMA user_version=26");
-    repo.close();
-
-    const cipher = await SqliteColumnCipher.create(native, "profile-one", false);
-    repo = new Repo(openDb(dbPath), cipher);
-    expect(migrateCalendarConnections(repo.db, cipher)).toBe(3);
-    compactProtectedSqlite(repo.db);
     service = calendar(repo, native);
+    expect(await connect(service, "alice")).toBe(200);
+    const connectionId = service.list().connections[0]!.connectionId;
     expect(service.list().connections[0]).toMatchObject({
-      connectionId: LEGACY_ID,
+      connectionId: connectionId,
       accountKey: "alice@example.test",
       label: "Calendar alice",
     });
     expect(await connect(service, "alice")).toBe(200);
     expect(service.list().connections).toHaveLength(1);
-    expect(service.list().connections[0]?.connectionId).toBe(LEGACY_ID);
+    expect(service.list().connections[0]?.connectionId).toBe(connectionId);
     expect(await connect(service, "bob")).toBe(200);
     expect(
       service
@@ -148,9 +128,11 @@ it("migrates legacy Calendar accounts, preserves unique reconnects, and protects
     service = undefined;
     repo.close();
 
-    const restartedCipher = await SqliteColumnCipher.create(native, "profile-one", true);
-    repo = new Repo(openDb(dbPath), restartedCipher);
-    expect(migrateCalendarConnections(repo.db, restartedCipher)).toBe(0);
+    const restarted = openDb(dbPath);
+    repo = new Repo(
+      restarted,
+      await initializeFieldCodec(restarted, native as unknown as NativeBridge, "profile-one"),
+    );
     service = calendar(repo, native);
     expect(service.list().connections).toHaveLength(2);
     expect(
@@ -161,7 +143,7 @@ it("migrates legacy Calendar accounts, preserves unique reconnects, and protects
     const lookup = repo.exactRecordLookup("calendar_connections", "account_key", "alice@example.test");
     repo.db
       .prepare("UPDATE calendar_connections SET account_key_lookup='invalid' WHERE connection_id=?")
-      .run(LEGACY_ID);
+      .run(connectionId);
     expect(() => service!.list()).toThrow();
     expect(await connect(service, "alice")).toBe(400);
     expect((repo.db.prepare("SELECT count(*) AS n FROM calendar_connections").get() as { n: number }).n).toBe(
@@ -169,13 +151,13 @@ it("migrates legacy Calendar accounts, preserves unique reconnects, and protects
     );
     repo.db
       .prepare("UPDATE calendar_connections SET account_key_lookup=? WHERE connection_id=?")
-      .run(lookup, LEGACY_ID);
+      .run(lookup, connectionId);
     const other = repo.db
       .prepare("SELECT account_key FROM calendar_connections WHERE connection_id<>?")
-      .get(LEGACY_ID) as { account_key: string };
+      .get(connectionId) as { account_key: string };
     repo.db
       .prepare("UPDATE calendar_connections SET account_key=? WHERE connection_id=?")
-      .run(other.account_key, LEGACY_ID);
+      .run(other.account_key, connectionId);
     expect(() => service!.list()).toThrow();
   } finally {
     await service?.close();
@@ -184,45 +166,30 @@ it("migrates legacy Calendar accounts, preserves unique reconnects, and protects
   }
 });
 
-it("rolls back Calendar conversion on duplicate active lookup or wrong-row ciphertext", async () => {
-  const repo = new Repo(openDb(":memory:"));
+it("rejects wrong-row Calendar metadata without changing another account", async () => {
+  const db = openDb(":memory:");
+  const native = nativeSecrets();
+  const codec = await initializeFieldCodec(db, native as unknown as NativeBridge, "profile-one");
+  const repo = new Repo(db, codec);
+  const service = calendar(repo, native);
   try {
-    const insert = repo.db
-      .prepare(`INSERT INTO calendar_connections(connection_id,provider,account_key,label,secret_name,scopes,state,created_at,updated_at)
-      VALUES(?,'google',?,?,?,'[]','active',1,1)`);
-    insert.run("first", "alice@example.test", "private-first", "secret-first");
-    insert.run("second", "bob@example.test", "private-second", "secret-second");
-    const cipher = await SqliteColumnCipher.create(nativeSecrets(), "profile-one", false);
-    repo.db
-      .prepare("UPDATE calendar_connections SET label=? WHERE connection_id='second'")
-      .run(cipher.encrypt("calendar_connections", JSON.stringify(["wrong"]), "label", "tampered"));
-    expect(() => migrateCalendarConnections(repo.db, cipher)).toThrow();
+    expect(await connect(service, "alice")).toBe(200);
+    expect(await connect(service, "bob")).toBe(200);
+    const first = service.list().connections.find((item) => item.accountKey === "alice@example.test")!;
+    const second = service.list().connections.find((item) => item.accountKey === "bob@example.test")!;
+    db.prepare("UPDATE calendar_connections SET label=? WHERE connection_id=?").run(
+      codec.encrypt("calendar_connections", JSON.stringify([first.connectionId]), "label", "wrong row"),
+      second.connectionId,
+    );
+    expect(() => service.list()).toThrow();
+    const raw = db
+      .prepare("SELECT label FROM calendar_connections WHERE connection_id=?")
+      .get(first.connectionId) as { label: string };
     expect(
-      (
-        repo.db.prepare("SELECT label FROM calendar_connections WHERE connection_id='first'").get() as {
-          label: string;
-        }
-      ).label,
-    ).toBe("private-first");
-    expect(
-      repo.db
-        .prepare("SELECT value FROM aux_meta WHERE key='protected_sqlite_v1:calendar_connections'")
-        .get(),
-    ).toBeUndefined();
-    repo.db
-      .prepare(
-        "UPDATE calendar_connections SET label='private-second',account_key='alice@example.test' WHERE connection_id='second'",
-      )
-      .run();
-    expect(() => migrateCalendarConnections(repo.db, cipher)).toThrow();
-    expect(
-      (
-        repo.db.prepare("SELECT account_key FROM calendar_connections WHERE connection_id='first'").get() as {
-          account_key: string;
-        }
-      ).account_key,
-    ).toBe("alice@example.test");
+      codec.decrypt("calendar_connections", JSON.stringify([first.connectionId]), "label", raw.label),
+    ).toBe("Calendar alice");
   } finally {
+    await service.close();
     repo.close();
   }
 });

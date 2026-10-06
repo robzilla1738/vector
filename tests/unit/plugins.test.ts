@@ -314,14 +314,15 @@ it("binds task grants to a revision and rejects another Space", async () => {
   ).toThrow(/not active/);
 });
 
-it("migrates an existing v21 profile before accepting Skill grants", async () => {
+it("refuses an incompatible Skill Profile and creates grants on a fresh Profile", async () => {
   const dir = mkdtempSync(join(tmpdir(), "aux-plugin-migration-"));
   cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
   const path = join(dir, "state.sqlite");
   const old = openDb(path);
   old.exec("DROP TABLE plugin_skill_grants; PRAGMA user_version=21");
   old.close();
-  const db = openDb(path);
+  expect(() => openDb(path)).toThrow(/incompatible with Aux v3/);
+  const db = openDb(join(dir, "fresh.sqlite"));
   cleanup.push(() => db.close());
   expect((db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version).toBe(
     SCHEMA_VERSION,

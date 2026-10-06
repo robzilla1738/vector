@@ -450,7 +450,7 @@ export class RoutineService {
       .prepare("SELECT json,workspace_id FROM tasks WHERE task_id=?")
       .get(input.taskId) as { json: string; workspace_id: string } | undefined;
     if (!taskRow) throw new AuxError("not_found", "Save a task before turning it into a routine.");
-    const task = JSON.parse(this.repo.taskJson(input.taskId, taskRow.json)) as {
+    const task = JSON.parse(taskRow.json) as {
       title: string;
       objective: string;
       criteria: Routine["successCriteria"];
@@ -1409,7 +1409,7 @@ export class RoutineService {
         .get(routine.sourceTaskId ?? "") as { json: string } | undefined;
       const resources =
         (task
-          ? (JSON.parse(this.repo.taskJson(routine.sourceTaskId!, task.json)) as {
+          ? (JSON.parse(task.json) as {
               resources?: { kind: string; locator: string }[];
             })
           : {}
@@ -1464,7 +1464,7 @@ export class RoutineService {
       .get(routine.sourceTaskId ?? "") as { json: string } | undefined;
     const resources =
       (task
-        ? (JSON.parse(this.repo.taskJson(routine.sourceTaskId!, task.json)) as {
+        ? (JSON.parse(task.json) as {
             resources?: { kind: string; locator: string }[];
           })
         : {}
@@ -1905,7 +1905,7 @@ export class RoutineService {
       .get(taskId) as { workspace_id: string; state: string; revision: number; json: string } | undefined;
     if (!row || row.workspace_id !== workspaceId || (requireOpen && row.state !== "open"))
       throw new AuxError("conflict", "Choose an open saved task in this Space for the routine.");
-    const task = JSON.parse(this.repo.taskJson(taskId, row.json)) as {
+    const task = JSON.parse(row.json) as {
       sourceOrigin?: "external" | "conversation";
       conversationId?: string;
     };
@@ -1920,7 +1920,7 @@ export class RoutineService {
     const row = this.repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(routine.sourceTaskId!) as {
       json: string;
     };
-    const task = JSON.parse(this.repo.taskJson(routine.sourceTaskId!, row.json)) as {
+    const task = JSON.parse(row.json) as {
       criteria: Routine["successCriteria"];
     };
     if (

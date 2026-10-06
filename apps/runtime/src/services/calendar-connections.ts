@@ -118,9 +118,17 @@ export class CalendarConnectionService {
   /** A crash or Keychain error after local revocation cannot reactivate the account. */
   async cleanupRevokedSecrets(): Promise<void> {
     const rows = this.deps.repo.db
-      .prepare("SELECT secret_name FROM calendar_connections WHERE revoked_at IS NOT NULL")
-      .all() as { secret_name: string }[];
-    for (const row of rows) await this.deps.native.storeSecret(row.secret_name, "").catch(() => undefined);
+      .prepare("SELECT connection_id,secret_name FROM calendar_connections WHERE revoked_at IS NOT NULL")
+      .all() as { connection_id: string; secret_name: string }[];
+    for (const row of rows) {
+      const name = this.deps.repo.revealRecordField(
+        "calendar_connections",
+        [row.connection_id],
+        "secret_name",
+        row.secret_name,
+      );
+      await this.deps.native.storeSecret(name, "").catch(() => undefined);
+    }
   }
 
   private get http() {
@@ -176,6 +184,7 @@ export class CalendarConnectionService {
       ...row,
       account_key,
       label: repo.revealRecordField("calendar_connections", id, "label", row.label),
+      secret_name: repo.revealRecordField("calendar_connections", id, "secret_name", row.secret_name),
       scopes: repo.revealRecordField("calendar_connections", id, "scopes", row.scopes),
     };
   }
@@ -455,7 +464,12 @@ export class CalendarConnectionService {
           )
           .run(
             this.deps.repo.protectRecordField("calendar_connections", [connectionId], "label", label),
-            secretName,
+            this.deps.repo.protectRecordField(
+              "calendar_connections",
+              [connectionId],
+              "secret_name",
+              secretName,
+            ),
             this.deps.repo.protectRecordField(
               "calendar_connections",
               [connectionId],
@@ -481,7 +495,12 @@ export class CalendarConnectionService {
             ),
             lookup,
             this.deps.repo.protectRecordField("calendar_connections", [connectionId], "label", label),
-            secretName,
+            this.deps.repo.protectRecordField(
+              "calendar_connections",
+              [connectionId],
+              "secret_name",
+              secretName,
+            ),
             this.deps.repo.protectRecordField(
               "calendar_connections",
               [connectionId],
@@ -591,7 +610,15 @@ export class CalendarConnectionService {
     const current = this.deps.repo.db
       .prepare("SELECT secret_name FROM calendar_connections WHERE connection_id=? AND revoked_at IS NULL")
       .get(row.connection_id) as { secret_name: string } | undefined;
-    if (current?.secret_name !== row.secret_name) {
+    const currentName = current
+      ? this.deps.repo.revealRecordField(
+          "calendar_connections",
+          [row.connection_id],
+          "secret_name",
+          current.secret_name,
+        )
+      : undefined;
+    if (currentName !== row.secret_name) {
       await this.deps.native.storeSecret(row.secret_name, "").catch(() => undefined);
       throw new AuxError("cancelled", "Calendar connection changed during refresh.");
     }

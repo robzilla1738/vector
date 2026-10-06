@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import { createHash, randomBytes } from "node:crypto";
 import {
   copyFileSync,
@@ -17,7 +18,7 @@ import { EventBus, GoalService, HookService, openDb, Repo, TaskService } from "@
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
 import { installationMethods } from "../../apps/runtime/src/api/methods/installation.js";
 import { memoryMethods } from "../../apps/runtime/src/api/methods/memory.js";
-import { prepareProtectedDatabase } from "../../apps/runtime/src/store/protected-startup.js";
+import { initializeFieldCodec } from "../../apps/runtime/src/store/field-codec.js";
 import { ContentMemoryStore } from "../../apps/runtime/src/services/content-memory.js";
 import { MemoryPipeline } from "../../apps/runtime/src/services/memory-pipeline.js";
 import {
@@ -85,7 +86,7 @@ async function fixture() {
   const sourceNative = native(sourceId),
     targetNative = native(targetId);
   const sourceDb = openDb(join(sourceDir, "state.sqlite"));
-  const sourceCipher = await prepareProtectedDatabase(sourceDb, sourceNative.bridge, sourceId);
+  const sourceCipher = await initializeFieldCodec(sourceDb, sourceNative.bridge, sourceId);
   const source = new Repo(sourceDb, sourceCipher);
   const tasks = new TaskService(source, new EventBus(source));
   const space = tasks.createWorkspace("Protected research space");
@@ -153,11 +154,11 @@ async function fixture() {
     title: "Protected article",
     text: "Protected article memory for a second Profile.",
   });
-  const memory = new MemoryPipeline(source, sourceNative.bridge, join(sourceDir, "space-memory"), sourceId);
+  const memory = new MemoryPipeline(source, sourceNative.bridge, sourceId);
   memory.setPolicy(space.workspaceId, true);
   await memory.extractRun(space.workspaceId, "recovery-run");
   const targetDb = openDb(join(targetDir, "state.sqlite"));
-  const targetCipher = await prepareProtectedDatabase(targetDb, targetNative.bridge, targetId);
+  const targetCipher = await initializeFieldCodec(targetDb, targetNative.bridge, targetId);
   const target = new Repo(targetDb, targetCipher);
   return {
     sourceDir,
@@ -202,7 +203,6 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const sourceMemory = new MemoryPipeline(
     f.source,
     f.sourceNative.bridge,
-    join(f.sourceDir, "space-memory"),
     f.sourceId,
   );
   await sourceMemory.forget({ workspaceId: f.space.workspaceId, all: true }, () => {
@@ -267,7 +267,7 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
     (await applyPendingRuntimeRestore(f.targetDir, join(f.targetDir, "state.sqlite"), f.targetId)).applied,
   ).toBe(true);
   const reopenedDb = openDb(join(f.targetDir, "state.sqlite"));
-  const cipher = await prepareProtectedDatabase(reopenedDb, f.targetNative.bridge, f.targetId);
+  const cipher = await initializeFieldCodec(reopenedDb, f.targetNative.bridge, f.targetId);
   const restored = new Repo(reopenedDb, cipher);
   expect(restored.listWorkspaces()[0]?.name).toBe("Protected research space");
   expect(restored.getRun("recovery-run")?.goal).toBe("Protected source goal");
@@ -292,7 +292,6 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const memory = new MemoryPipeline(
     restored,
     f.targetNative.bridge,
-    join(f.targetDir, "space-memory"),
     f.targetId,
   );
   expect(await memory.inbox(f.space.workspaceId)).toHaveLength(1);
@@ -328,7 +327,6 @@ it("keeps a copied phrase package restorable after Forget refuses the older mana
   const pipeline = new MemoryPipeline(
     f.source,
     f.sourceNative.bridge,
-    join(f.sourceDir, "space-memory"),
     f.sourceId,
   );
   const forgotten = (await memoryMethods["memory.pipeline.forget"]!({
@@ -409,13 +407,12 @@ it("keeps a copied phrase package restorable after Forget refuses the older mana
     (await applyPendingRuntimeRestore(f.targetDir, join(f.targetDir, "state.sqlite"), f.targetId)).applied,
   ).toBe(true);
   const reopenedDb = openDb(join(f.targetDir, "state.sqlite"));
-  const cipher = await prepareProtectedDatabase(reopenedDb, f.targetNative.bridge, f.targetId);
+  const cipher = await initializeFieldCodec(reopenedDb, f.targetNative.bridge, f.targetId);
   const restored = new Repo(reopenedDb, cipher);
   expect(restored.listWorkspaces()[0]?.name).toBe("Protected research space");
   const memory = new MemoryPipeline(
     restored,
     f.targetNative.bridge,
-    join(f.targetDir, "space-memory"),
     f.targetId,
   );
   expect(await memory.inbox(f.space.workspaceId)).toHaveLength(1);
@@ -521,4 +518,36 @@ it("refuses a missing protected factor, a missing artifact and a nonempty destin
   expect(existsSync(join(f.targetDir, "pending-runtime-restore.json"))).toBe(false);
   f.target.close();
   f.source.close();
+});
+
+it("ordinary backups omit retired memory and restore preserves current authenticated Space revisions", async () => {
+  const f = await fixture();
+  const memory = new MemoryPipeline(f.source, f.sourceNative.bridge, f.sourceId);
+  const unrelated = new TaskService(f.source, new EventBus(f.source)).createWorkspace("Unrelated backup name");
+  const ordinary = await createRuntimeBackup(f.source, f.sourceDir);
+  f.source.db.prepare("UPDATE workspaces SET name='Current unrelated name' WHERE workspace_id=?").run(unrelated.workspaceId);
+  const snapshot = new DatabaseSync(join(ordinary.path, "state.sqlite"), { readOnly: true });
+  try {
+    expect(snapshot.prepare("SELECT COUNT(*) AS n FROM memory_files").get()?.n).toBe(0);
+    expect(snapshot.prepare("SELECT COUNT(*) AS n FROM memory_history").get()?.n).toBe(0);
+  } finally { snapshot.close(); }
+  await memory.review(f.space.workspaceId, (await memory.inbox(f.space.workspaceId))[0]!.claimId, "accept");
+  const current = f.source.db.prepare("SELECT * FROM memory_files ORDER BY name").all();
+  await stageRuntimeRestore(f.sourceDir, ordinary.path, f.source.columnCipher, memory);
+  await applyPendingRuntimeRestore(f.sourceDir, join(f.sourceDir, "state.sqlite"), f.sourceId);
+  const restored = new DatabaseSync(join(f.sourceDir, "state.sqlite"), { readOnly: true });
+  try {
+    expect(restored.prepare("SELECT * FROM memory_files ORDER BY name").all()).toEqual(current);
+    expect(restored.prepare("SELECT name FROM workspaces WHERE workspace_id=?").get(unrelated.workspaceId)?.name).toBe("Unrelated backup name");
+  }
+  finally { restored.close(); }
+});
+
+it("refuses an ordinary staged restore after Space memory changes", async () => {
+  const f = await fixture();
+  const memory = new MemoryPipeline(f.source, f.sourceNative.bridge, f.sourceId);
+  const ordinary = await createRuntimeBackup(f.source, f.sourceDir);
+  await stageRuntimeRestore(f.sourceDir, ordinary.path, f.source.columnCipher, memory);
+  await memory.review(f.space.workspaceId, (await memory.inbox(f.space.workspaceId))[0]!.claimId, "accept");
+  await expect(applyPendingRuntimeRestore(f.sourceDir, join(f.sourceDir, "state.sqlite"), f.sourceId)).rejects.toThrow(/Space memory changed/);
 });

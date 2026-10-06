@@ -21,9 +21,8 @@ import type {
 } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
 import { redactSettledRunInvocations } from "@aux/contracts/forgotten-run-invocations";
-import { commitRelaxed, kvGet, kvSet } from "./db.js";
-import type { SqliteColumnCipher } from "./sqlite-protection.js";
-import { protectedKvKey } from "./sqlite-protection.js";
+import { commitRelaxed, kvGet, kvSet, withSecureDelete } from "./db.js";
+import type { FieldCodec } from "./field-codec.js";
 
 const now = () => Date.now();
 const J = JSON.stringify;
@@ -70,7 +69,7 @@ export class Repo {
 
   constructor(
     readonly db: DatabaseSync,
-    readonly columnCipher?: SqliteColumnCipher,
+    readonly columnCipher?: FieldCodec,
   ) {}
   requireChromiumHistory() {
     this.chromiumHistoryRequired = true;
@@ -128,9 +127,7 @@ export class Repo {
     const row = this.q(
       "SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces WHERE workspace_id=?",
     ).get(workspaceId) as { workspaceId: string; name: string; createdAt: number } | undefined;
-    return row
-      ? { ...row, name: this.revealRecordField("workspaces", [workspaceId], "name", row.name) }
-      : undefined;
+    return row ? { ...row, name: row.name } : undefined;
   }
 
   listWorkspaces(): { workspaceId: string; name: string; createdAt: number }[] {
@@ -140,31 +137,16 @@ export class Repo {
       ).all() as { workspaceId: string; name: string; createdAt: number }[]
     ).map((row) => ({
       ...row,
-      name: this.revealRecordField("workspaces", [row.workspaceId], "name", row.name),
+      name: row.name,
     }));
   }
 
   insertWorkspace(workspaceId: string, name: string, createdAt: number): void {
-    this.q("INSERT INTO workspaces VALUES(?,?,?)").run(
-      workspaceId,
-      this.protectRecordField("workspaces", [workspaceId], "name", name),
-      createdAt,
-    );
+    this.q("INSERT INTO workspaces VALUES(?,?,?)").run(workspaceId, name, createdAt);
   }
 
   renameWorkspace(workspaceId: string, name: string): void {
-    this.q("UPDATE workspaces SET name=? WHERE workspace_id=?").run(
-      this.protectRecordField("workspaces", [workspaceId], "name", name),
-      workspaceId,
-    );
-  }
-
-  taskJson(taskId: string, raw: string): string {
-    return this.revealRecordField("tasks", [taskId], "json", raw);
-  }
-
-  protectTaskJson(taskId: string, raw: string): string {
-    return this.protectRecordField("tasks", [taskId], "json", raw);
+    this.q("UPDATE workspaces SET name=? WHERE workspace_id=?").run(name, workspaceId);
   }
 
   saveTaskLookup(taskId: string, conversationId?: string, sourceOrigin?: string): void {
@@ -177,18 +159,14 @@ export class Repo {
   private getKvJson<T>(key: string): T | undefined {
     const raw = kvGet(this.db, key);
     if (raw === undefined) return undefined;
-    const value = this.columnCipher && protectedKvKey(key) ? this.revealField("kv", key, "value", raw)! : raw;
+    const value = raw;
     return JSON.parse(value) as T;
   }
 
   private setKvJson(key: string, value: unknown): void {
     const raw = J(value);
     if (typeof raw !== "string") throw new Error("KV value must be JSON serializable.");
-    kvSet(
-      this.db,
-      key,
-      this.columnCipher && protectedKvKey(key) ? this.protectField("kv", key, "value", raw)! : raw,
-    );
+    kvSet(this.db, key, raw);
   }
 
   /** Enumerate keys only; values remain behind the protected settings reader. */
@@ -436,10 +414,10 @@ export class Repo {
          ON CONFLICT(set_id) DO UPDATE SET name=excluded.name,member_ids=excluded.member_ids,result_schema=excluded.result_schema,program_id=excluded.program_id`,
     ).run(
       s.setId,
-      this.protectField("page_sets", s.setId, "name", s.name),
+      s.name,
       s.source,
       J(s.memberIds),
-      this.protectField("page_sets", s.setId, "result_schema", s.resultSchema ? J(s.resultSchema) : null),
+      s.resultSchema ? J(s.resultSchema) : null,
       s.programId ?? null,
       s.createdAt,
     );
@@ -449,13 +427,10 @@ export class Repo {
     if (!r) return undefined;
     return {
       setId: r.set_id,
-      name: this.revealField("page_sets", r.set_id, "name", r.name)!,
+      name: r.name!,
       source: r.source,
       memberIds: P(r.member_ids, []),
-      resultSchema: P(
-        this.revealField("page_sets", r.set_id, "result_schema", r.result_schema),
-        undefined as never,
-      ),
+      resultSchema: P(r.result_schema, undefined as never),
       programId: r.program_id ?? undefined,
       createdAt: r.created_at,
     };
@@ -463,13 +438,10 @@ export class Repo {
   listSets(): PageSet[] {
     return (this.q("SELECT * FROM page_sets ORDER BY created_at DESC").all() as any[]).map((r) => ({
       setId: r.set_id,
-      name: this.revealField("page_sets", r.set_id, "name", r.name)!,
+      name: r.name!,
       source: r.source,
       memberIds: P(r.member_ids, []),
-      resultSchema: P(
-        this.revealField("page_sets", r.set_id, "result_schema", r.result_schema),
-        undefined as never,
-      ),
+      resultSchema: P(r.result_schema, undefined as never),
       programId: r.program_id ?? undefined,
       createdAt: r.created_at,
     }));
@@ -483,13 +455,13 @@ export class Repo {
       m.memberId,
       m.setId,
       m.ordinal,
-      this.protectField("set_members", m.memberId, "url", m.url ?? null),
-      this.protectField("set_members", m.memberId, "record_key", m.recordKey ?? null),
-      this.protectField("set_members", m.memberId, "label", m.label ?? null),
+      m.url ?? null,
+      m.recordKey ?? null,
+      m.label ?? null,
       m.pageId ?? null,
       m.status,
       m.resultId ?? null,
-      this.protectField("set_members", m.memberId, "error", m.error ?? null),
+      m.error ?? null,
     );
   }
   listMembers(setId: string): SetMember[] {
@@ -498,13 +470,13 @@ export class Repo {
         memberId: r.member_id,
         setId: r.set_id,
         ordinal: r.ordinal,
-        url: this.revealField("set_members", r.member_id, "url", r.url) ?? undefined,
-        recordKey: this.revealField("set_members", r.member_id, "record_key", r.record_key) ?? undefined,
-        label: this.revealField("set_members", r.member_id, "label", r.label) ?? undefined,
+        url: r.url ?? undefined,
+        recordKey: r.record_key ?? undefined,
+        label: r.label ?? undefined,
         pageId: r.page_id ?? undefined,
         status: r.status,
         resultId: r.result_id ?? undefined,
-        error: this.revealField("set_members", r.member_id, "error", r.error) ?? undefined,
+        error: r.error ?? undefined,
       }),
     );
   }
@@ -515,13 +487,13 @@ export class Repo {
       memberId: r.member_id,
       setId: r.set_id,
       ordinal: r.ordinal,
-      url: this.revealField("set_members", r.member_id, "url", r.url) ?? undefined,
-      recordKey: this.revealField("set_members", r.member_id, "record_key", r.record_key) ?? undefined,
-      label: this.revealField("set_members", r.member_id, "label", r.label) ?? undefined,
+      url: r.url ?? undefined,
+      recordKey: r.record_key ?? undefined,
+      label: r.label ?? undefined,
       pageId: r.page_id ?? undefined,
       status: r.status,
       resultId: r.result_id ?? undefined,
-      error: this.revealField("set_members", r.member_id, "error", r.error) ?? undefined,
+      error: r.error ?? undefined,
     };
   }
 
@@ -558,9 +530,8 @@ export class Repo {
         : undefined;
       let title = r.goal.slice(0, 160);
       if (taskRow) {
-        const taskJson = this.taskJson(r.config!.taskId!, taskRow.json);
         try {
-          title = String((JSON.parse(taskJson) as { title?: string }).title || title).slice(0, 160);
+          title = String((JSON.parse(taskRow.json) as { title?: string }).title || title).slice(0, 160);
         } catch {
           /* retain run goal */
         }
@@ -1001,8 +972,15 @@ export class Repo {
         "artifacts",
         "results",
         "steps",
-      ])
-        this.q(`DELETE FROM ${table} WHERE run_id IN (${owned})`).run(chatId);
+      ]) {
+        if (table === "model_calls") {
+          withSecureDelete(this.db, () =>
+            this.q(`DELETE FROM ${table} WHERE run_id IN (${owned})`).run(chatId),
+          );
+        } else {
+          this.q(`DELETE FROM ${table} WHERE run_id IN (${owned})`).run(chatId);
+        }
+      }
       for (const runId of runIds) {
         const prefix = `ckpt:run:${runId}:`.replace(/[\\%_]/g, "\\$&");
         this.q("DELETE FROM kv WHERE key LIKE ? ESCAPE '\\'").run(`${prefix}%`);
@@ -1014,8 +992,11 @@ export class Repo {
         "conversationWorkspace",
       ])
         this.q("DELETE FROM kv WHERE key=?").run(`setting:${key}:${chatId}`);
-      this.q(`DELETE FROM runs WHERE run_id IN (${owned})`).run(chatId);
-      this.q("DELETE FROM conversations WHERE chat_id=?").run(chatId);
+      withSecureDelete(this.db, () => {
+        this.q(`DELETE FROM run_transcript WHERE run_id IN (${owned})`).run(chatId);
+        this.q(`DELETE FROM runs WHERE run_id IN (${owned})`).run(chatId);
+        this.q("DELETE FROM conversations WHERE chat_id=?").run(chatId);
+      });
     });
     return { deletedRuns: runIds.length, artifactPaths };
   }
@@ -1045,9 +1026,9 @@ export class Repo {
       s.runId,
       s.pageId ?? null,
       s.op,
-      this.protectField("steps", s.stepId, "inputs", s.inputs ? J(s.inputs) : null),
-      this.protectField("steps", s.stepId, "expected", s.expected ?? null),
-      this.protectField("steps", s.stepId, "outcome", s.outcome ? J(s.outcome) : null),
+      s.inputs ? J(s.inputs) : null,
+      s.expected ?? null,
+      s.outcome ? J(s.outcome) : null,
       s.startedAt,
     );
   }
@@ -1057,16 +1038,9 @@ export class Repo {
       runId: r.run_id as string,
       pageId: (r.page_id as string | null) ?? undefined,
       op: r.op as string,
-      inputs: P(
-        this.revealField("steps", r.step_id as string, "inputs", r.inputs as string | null),
-        undefined as never,
-      ),
-      expected:
-        this.revealField("steps", r.step_id as string, "expected", r.expected as string | null) ?? undefined,
-      outcome: P(
-        this.revealField("steps", r.step_id as string, "outcome", r.outcome as string | null),
-        undefined as never,
-      ),
+      inputs: P(r.inputs as string | null, undefined as never),
+      expected: (r.expected as string | null) ?? undefined,
+      outcome: P(r.outcome as string | null, undefined as never),
       startedAt: r.started_at as number,
     };
   }
@@ -1080,23 +1054,6 @@ export class Repo {
     ).map((r) => this.stepFromRow(r));
   }
   downloadStep(downloadId: string): StepRecord | undefined {
-    if (this.columnCipher) {
-      let before: number | undefined;
-      for (;;) {
-        const rows = this.q(
-          `SELECT rowid AS aux_rowid,* FROM steps WHERE op='download'
-          ${before === undefined ? "" : "AND rowid<?"} ORDER BY rowid DESC LIMIT 256`,
-        ).all(...(before === undefined ? [] : [before])) as (Record<string, unknown> & {
-          aux_rowid: number;
-        })[];
-        for (const row of rows) {
-          const step = this.stepFromRow(row);
-          if (step.inputs?.downloadId === downloadId) return step;
-        }
-        if (rows.length < 256) return undefined;
-        before = rows.at(-1)!.aux_rowid;
-      }
-    }
     const row = this.q(
       "SELECT * FROM steps WHERE op='download' AND json_extract(inputs,'$.downloadId')=? ORDER BY rowid DESC LIMIT 1",
     ).get(downloadId) as Record<string, unknown> | undefined;
@@ -1121,12 +1078,12 @@ export class Repo {
       r.runId ?? null,
       r.memberId ?? null,
       r.pageId ?? null,
-      this.protectField("results", r.resultId, "source_url", r.sourceUrl),
-      this.protectField("results", r.resultId, "values_json", J(r.values)),
-      this.protectField("results", r.resultId, "evidence", r.evidence ? J(r.evidence) : null),
+      r.sourceUrl,
+      J(r.values),
+      r.evidence ? J(r.evidence) : null,
       r.observedAt,
       r.status,
-      this.protectField("results", r.resultId, "error", r.error ?? null),
+      r.error ?? null,
     );
   }
   getResult(resultId: string): ResultRecord | undefined {
@@ -1168,12 +1125,12 @@ export class Repo {
       runId: r.run_id ?? undefined,
       memberId: r.member_id ?? undefined,
       pageId: r.page_id ?? undefined,
-      sourceUrl: this.revealField("results", r.result_id, "source_url", r.source_url)!,
-      values: P(this.revealField("results", r.result_id, "values_json", r.values_json), {}),
-      evidence: P(this.revealField("results", r.result_id, "evidence", r.evidence), undefined as never),
+      sourceUrl: r.source_url!,
+      values: P(r.values_json, {}),
+      evidence: P(r.evidence, undefined as never),
       observedAt: r.observed_at,
       status: r.status,
-      error: this.revealField("results", r.result_id, "error", r.error) ?? undefined,
+      error: r.error ?? undefined,
     };
   }
 
@@ -1188,24 +1145,14 @@ export class Repo {
            use_count=excluded.use_count,last_used_at=excluded.last_used_at`,
     ).run(
       p.programId,
-      this.protectField("programs", p.programId, "name", p.name),
-      this.protectField("programs", p.programId, "description", p.description ?? null),
+      p.name,
+      p.description ?? null,
       p.version,
-      this.protectField("programs", p.programId, "site_key", p.siteKey),
-      this.protectField("programs", p.programId, "parameters", J(p.parameters)),
-      this.protectField("programs", p.programId, "steps_json", p.stepsJson),
-      this.protectField(
-        "programs",
-        p.programId,
-        "preconditions",
-        p.preconditions ? J(p.preconditions) : null,
-      ),
-      this.protectField(
-        "programs",
-        p.programId,
-        "postconditions",
-        p.postconditions ? J(p.postconditions) : null,
-      ),
+      p.siteKey,
+      J(p.parameters),
+      p.stepsJson,
+      p.preconditions ? J(p.preconditions) : null,
+      p.postconditions ? J(p.postconditions) : null,
       p.useCount,
       p.lastUsedAt ?? null,
       p.createdAt,
@@ -1226,20 +1173,14 @@ export class Repo {
   private rowToProgram(r: any): SavedProgram {
     return {
       programId: r.program_id,
-      name: this.revealField("programs", r.program_id, "name", r.name)!,
-      description: this.revealField("programs", r.program_id, "description", r.description) ?? undefined,
+      name: r.name!,
+      description: r.description ?? undefined,
       version: r.version,
-      siteKey: this.revealField("programs", r.program_id, "site_key", r.site_key)!,
-      parameters: P(this.revealField("programs", r.program_id, "parameters", r.parameters), []),
-      stepsJson: this.revealField("programs", r.program_id, "steps_json", r.steps_json)!,
-      preconditions: P(
-        this.revealField("programs", r.program_id, "preconditions", r.preconditions),
-        undefined as never,
-      ),
-      postconditions: P(
-        this.revealField("programs", r.program_id, "postconditions", r.postconditions),
-        undefined as never,
-      ),
+      siteKey: r.site_key!,
+      parameters: P(r.parameters, []),
+      stepsJson: r.steps_json!,
+      preconditions: P(r.preconditions, undefined as never),
+      postconditions: P(r.postconditions, undefined as never),
       useCount: r.use_count,
       lastUsedAt: r.last_used_at ?? undefined,
       createdAt: r.created_at,
@@ -1310,7 +1251,7 @@ export class Repo {
       c.outputTokens ?? null,
       c.costUsd ?? null,
       c.costEstimated ? 1 : 0,
-      this.protectField("model_calls", c.callId, "error", c.error ?? null),
+      c.error ?? null,
       c.createdAt,
     );
   }
@@ -1331,7 +1272,7 @@ export class Repo {
           outputTokens: r.output_tokens ?? undefined,
           costUsd: r.cost_usd ?? undefined,
           costEstimated: !!r.cost_estimated,
-          error: this.revealField("model_calls", r.call_id, "error", r.error) ?? undefined,
+          error: r.error ?? undefined,
           createdAt: r.created_at,
         };
       },
@@ -1361,29 +1302,14 @@ export class Repo {
     return r.s ?? undefined;
   }
   appendEvent(e: Omit<AuxEvent, "seq" | "streamId">): number {
-    const seq = this.columnCipher
-      ? this.transaction(() => {
-          const info = this.q("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)").run(
-            e.runId ?? null,
-            e.type,
-            "",
-            e.ts,
-          );
-          const id = Number(info.lastInsertRowid);
-          this.q("UPDATE events SET payload=? WHERE seq=?").run(
-            this.protectField("events", id, "payload", J(e.payload)),
-            id,
-          );
-          return id;
-        })
-      : Number(
-          this.q("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)").run(
-            e.runId ?? null,
-            e.type,
-            J(e.payload),
-            e.ts,
-          ).lastInsertRowid,
-        );
+    const seq = Number(
+      this.q("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)").run(
+        e.runId ?? null,
+        e.type,
+        J(e.payload),
+        e.ts,
+      ).lastInsertRowid,
+    );
     if (seq % 64 === 0) this.pruneEvents();
     return seq;
   }
@@ -1394,7 +1320,7 @@ export class Repo {
         e.seq,
         e.runId ?? null,
         e.type,
-        this.protectField("events", e.seq, "payload", J(e.payload)),
+        J(e.payload),
         e.ts,
       );
       if (e.seq % 64 === 0) this.pruneEvents();
@@ -1462,7 +1388,7 @@ export class Repo {
       streamId,
       runId: r.run_id ?? undefined,
       type: r.type,
-      payload: P(this.revealField("events", r.seq, "payload", r.payload), {}),
+      payload: P(r.payload, {}),
       ts: r.ts,
     }));
     return { streamId, events, lastSeq: events.length ? events[events.length - 1]!.seq : sinceSeq };
@@ -1971,10 +1897,10 @@ export class Repo {
     ).run(
       r.requestId,
       r.pageId,
-      this.protectField("response_metadata", r.requestId, "url", r.url),
-      this.protectField("response_metadata", r.requestId, "method", r.method),
+      r.url,
+      r.method,
       r.status ?? null,
-      this.protectField("response_metadata", r.requestId, "content_type", r.contentType ?? null),
+      r.contentType ?? null,
       r.startedAt,
       r.endedAt ?? null,
       r.durationMs ?? null,
@@ -1984,7 +1910,7 @@ export class Repo {
       r.runId ?? null,
       r.sessionId ?? null,
       r.documentEpoch ?? null,
-      this.protectField("response_metadata", r.requestId, "document_url", r.documentUrl ?? null),
+      r.documentUrl ?? null,
     );
   }
   getResponse(requestId: string) {
@@ -2035,14 +1961,12 @@ export class Repo {
       requestId: r.request_id as string,
       sessionId: r.session_id ?? undefined,
       documentEpoch: r.document_epoch ?? undefined,
-      documentUrl:
-        this.revealField("response_metadata", r.request_id, "document_url", r.document_url) ?? undefined,
+      documentUrl: r.document_url ?? undefined,
       pageId: r.page_id as string,
-      url: this.revealField("response_metadata", r.request_id, "url", r.url)!,
-      method: this.revealField("response_metadata", r.request_id, "method", r.method)!,
+      url: r.url!,
+      method: r.method!,
       status: r.status ?? undefined,
-      contentType:
-        this.revealField("response_metadata", r.request_id, "content_type", r.content_type) ?? undefined,
+      contentType: r.content_type ?? undefined,
       startedAt: r.started_at as number,
       endedAt: r.ended_at ?? undefined,
       durationMs: r.duration_ms ?? undefined,
@@ -2071,11 +1995,11 @@ export class Repo {
       d.datasetId,
       d.runId ?? null,
       d.pageId ?? null,
-      this.protectField("datasets", d.datasetId, "source", d.source),
-      this.protectField("datasets", d.datasetId, "schema_json", J(d.schema ?? [])),
+      d.source,
+      J(d.schema ?? []),
       d.rows.length,
-      this.protectField("datasets", d.datasetId, "values_json", J(d.rows)),
-      this.protectField("datasets", d.datasetId, "provenance", d.provenance ?? null),
+      J(d.rows),
+      d.provenance ?? null,
       now(),
     );
   }
@@ -2099,11 +2023,11 @@ export class Repo {
       datasetId: r.dataset_id as string,
       runId: r.run_id ?? undefined,
       pageId: r.page_id ?? undefined,
-      source: this.revealField("datasets", r.dataset_id, "source", r.source)!,
-      schema: P<any[]>(this.revealField("datasets", r.dataset_id, "schema_json", r.schema_json), []),
-      rows: P<any[]>(this.revealField("datasets", r.dataset_id, "values_json", r.values_json), []),
+      source: r.source!,
+      schema: P<any[]>(r.schema_json, []),
+      rows: P<any[]>(r.values_json, []),
       rowCount: r.row_count as number,
-      provenance: this.revealField("datasets", r.dataset_id, "provenance", r.provenance) ?? undefined,
+      provenance: r.provenance ?? undefined,
       createdAt: r.created_at as number,
       stale: !!r.stale,
     };
@@ -2187,10 +2111,10 @@ export class Repo {
       i.implId,
       i.operationId,
       i.kind,
-      this.protectField("operation_implementations", i.implId, "executable", i.executable),
+      i.executable,
       i.state ?? "candidate",
-      this.protectField("operation_implementations", i.implId, "evidence", J(i.evidence ?? [])),
-      this.protectField("operation_implementations", i.implId, "stats", J(i.stats ?? {})),
+      J(i.evidence ?? []),
+      J(i.stats ?? {}),
       now(),
       now(),
     );
@@ -2198,7 +2122,7 @@ export class Repo {
   setImplState(implId: string, state: string, evidence?: unknown) {
     this.q("UPDATE operation_implementations SET state=?, evidence=?, updated_at=? WHERE impl_id=?").run(
       state,
-      this.protectField("operation_implementations", implId, "evidence", J(evidence ?? [])),
+      J(evidence ?? []),
       now(),
       implId,
     );
@@ -2224,13 +2148,10 @@ export class Repo {
       implId: r.impl_id as string,
       operationId: r.operation_id as string,
       kind: r.kind as string,
-      executable: this.revealField("operation_implementations", r.impl_id, "executable", r.executable)!,
+      executable: r.executable!,
       state: r.state as string,
-      evidence: P<any[]>(
-        this.revealField("operation_implementations", r.impl_id, "evidence", r.evidence),
-        [],
-      ),
-      stats: P(this.revealField("operation_implementations", r.impl_id, "stats", r.stats), {}),
+      evidence: P<any[]>(r.evidence, []),
+      stats: P(r.stats, {}),
       createdAt: r.created_at as number,
       updatedAt: r.updated_at as number,
     }));
@@ -2254,7 +2175,7 @@ export class Repo {
       input.taskRevision,
       input.outcome,
       input.evidenceId,
-      this.protectField("operation_reconciliations", input.invocationId, "note", input.note),
+      input.note,
       input.recordedAt,
     );
   }

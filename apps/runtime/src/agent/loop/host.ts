@@ -141,7 +141,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     return;
   }
 
-  const transcript = new TranscriptStore(self.deps.repo.db);
+  const transcript = new TranscriptStore(self.deps.repo.db, self.deps.repo.columnCipher);
   const answer = new AnswerDeltaEmitter(self.deps.events, runId);
   const threadId = run.config?.chatId ?? runId;
   const goalRun = !!self.deps.repo.db.prepare("SELECT 1 FROM goals WHERE run_id=?").get(runId);

@@ -20,6 +20,7 @@ type RecallConfig = {
 /** The caller supplies the source Profile cipher for protected portable copies. */
 export type PortableRecallCipher = {
   isEncrypted(value: string): boolean;
+  protects(table: string, column: string): boolean;
   decrypt(table: string, rowId: string, column: string, value: string): string;
   encrypt(table: string, rowId: string, column: string, value: string): string;
 };
@@ -82,32 +83,17 @@ export function redactedPageRecallConfig<T extends RecallConfig>(config: T, arti
 export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRecallCipher): Set<string> {
   const has = (table: string) =>
     !!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table);
-  const protectedTable = (table: string) =>
-    !!db.prepare("SELECT 1 FROM aux_meta WHERE key=?").get(`protected_sqlite_v1:${table}`);
-  const field = (table: string, id: string, column: string, value: string): string => {
-    if (!protectedTable(table)) return value;
-    if (!cipher) throw new Error("Protected portable data requires the source Profile key.");
-    return cipher.decrypt(table, JSON.stringify([id]), column, value);
-  };
+  if (db.prepare("SELECT 1 FROM aux_meta WHERE key='field_codec_v3'").get() && !cipher)
+    throw new Error("Encrypted portable data requires the source Profile key.");
+  const field = (table: string, id: string, column: string, value: string): string =>
+    cipher?.protects(table, column) ? cipher.decrypt(table, JSON.stringify([id]), column, value) : value;
   const sealed = (table: string, id: string, column: string, value: string): string =>
-    protectedTable(table) ? cipher!.encrypt(table, JSON.stringify([id]), column, value) : value;
-  const kvProtected = !!db
-    .prepare("SELECT 1 FROM aux_meta WHERE key='protected_sqlite_v1:kv_filtered'")
-    .get();
-  const kvValue = (key: string, value: string): string => {
-    if (!kvProtected) return value;
-    if (!cipher) throw new Error("Protected portable data requires the source Profile key.");
-    return cipher.decrypt("kv", JSON.stringify([key]), "value", value);
-  };
-  const sealKv = (key: string, value: string): string =>
-    kvProtected ? cipher!.encrypt("kv", JSON.stringify([key]), "value", value) : value;
+    cipher?.protects(table, column) ? cipher.encrypt(table, JSON.stringify([id]), column, value) : value;
   const artifactIds = new Set<string>();
   const affectedChats = new Set<string>();
   db.exec("BEGIN");
   try {
-    // Startup has already scrubbed legacy input samples before protecting this table.
-    // The sanitizer's SQL JSON scan cannot inspect ciphertext.
-    if (!protectedTable("operation_implementations")) sanitizeOperationInputSamples(db);
+    sanitizeOperationInputSamples(db);
     if (has("runs")) {
       const rows = db.prepare("SELECT run_id AS runId, config FROM runs").all() as {
         runId: string;
@@ -196,9 +182,8 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
       for (const { key, value } of entries) {
         let records: unknown;
         try {
-          records = JSON.parse(kvValue(key, value));
+          records = JSON.parse(value);
         } catch {
-          if (kvProtected) throw new Error("Protected attachment metadata could not be authenticated.");
           if (affectedChats.has(key.slice("setting:conversationAttachments:".length)))
             db.prepare("DELETE FROM kv WHERE key=?").run(key);
           continue;
@@ -212,7 +197,7 @@ export function sanitizePortablePageRecall(db: DatabaseSync, cipher?: PortableRe
             !artifactIds.has(item.sourceArtifactId),
         );
         if (kept.length !== records.length)
-          db.prepare("UPDATE kv SET value=? WHERE key=?").run(sealKv(key, JSON.stringify(kept)), key);
+          db.prepare("UPDATE kv SET value=? WHERE key=?").run(JSON.stringify(kept), key);
       }
     }
     if (has("content_memory")) db.prepare("DELETE FROM content_memory").run();

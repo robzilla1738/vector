@@ -41,20 +41,13 @@ export type HookAuthority = (handler: HookHandler, workspaceId: string) => void;
 export class HookService {
   private active = new Map<string, Set<AbortController>>();
 
-  private sealHook(hookId: string, body: object): string {
-    return this.repo.protectRecordField("hooks", [hookId], "body", JSON.stringify(body));
-  }
-
   private invocation(row: InvocationRow): HookInvocation {
     return HookInvocationSchema.parse({
       invocationId: row.invocation_id,
       hookId: row.hook_id,
       eventId: row.event_id,
       state: row.state,
-      error:
-        row.error === null
-          ? undefined
-          : this.repo.revealRecordField("hook_invocations", [row.invocation_id], "error", row.error),
+      error: row.error === null ? undefined : row.error,
       createdAt: row.created_at,
       endedAt: row.ended_at ?? undefined,
     });
@@ -106,7 +99,7 @@ export class HookService {
       .prepare(
         "INSERT INTO hooks(hook_id,workspace_id,event,trust,body,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
       )
-      .run(hook.hookId, hook.workspaceId, hook.event, hook.trust, this.sealHook(hook.hookId, hook), now, now);
+      .run(hook.hookId, hook.workspaceId, hook.event, hook.trust, JSON.stringify(hook), now, now);
     return hook;
   }
 
@@ -115,7 +108,7 @@ export class HookService {
       HookRow | undefined;
     if (!row) throw new AuxError("not_found", "Hook does not exist");
     return HookSchema.parse({
-      ...JSON.parse(this.repo.revealRecordField("hooks", [row.hook_id], "body", row.body)),
+      ...JSON.parse(row.body),
       hookId: row.hook_id,
       workspaceId: row.workspace_id,
       event: row.event,
@@ -243,14 +236,7 @@ export class HookService {
       if (modified) this.revoke(hook.hookId);
       this.repo.db
         .prepare("UPDATE hook_invocations SET state=?,error=?,ended_at=? WHERE invocation_id=?")
-        .run(
-          state,
-          error === undefined
-            ? null
-            : this.repo.protectRecordField("hook_invocations", [invocationId], "error", error),
-          Date.now(),
-          invocationId,
-        );
+        .run(state, error === undefined ? null : error, Date.now(), invocationId);
       const saved = this.repo.db
         .prepare("SELECT * FROM hook_invocations WHERE hook_id=? AND event_id=?")
         .get(hook.hookId, context.eventId) as InvocationRow;

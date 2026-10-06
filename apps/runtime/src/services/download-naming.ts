@@ -143,29 +143,14 @@ export class DownloadNamingService {
         .prepare(
           "INSERT INTO download_renames(download_id,receipt_id,receipt,status,created_at) VALUES(?,?,?,'renamed',?) ON CONFLICT(download_id) DO UPDATE SET receipt_id=excluded.receipt_id,receipt=excluded.receipt,status='renamed',created_at=excluded.created_at",
         )
-        .run(
-          receipt.downloadId,
-          receipt.receiptId,
-          this.repo.protectRecordField(
-            "download_renames",
-            [receipt.downloadId],
-            "receipt",
-            JSON.stringify(receipt),
-          ),
-          receipt.renamedAt,
-        );
+        .run(receipt.downloadId, receipt.receiptId, JSON.stringify(receipt), receipt.renamedAt);
     }
     const rows = this.repo.db
       .prepare(
         "SELECT download_id, receipt_id, receipt FROM download_renames WHERE status='renamed' AND created_at>? ORDER BY created_at DESC LIMIT 1000",
       )
       .all(this.now() - DAY) as { download_id: string; receipt_id: string; receipt: string }[];
-    return rows.map(
-      (row) =>
-        JSON.parse(
-          this.repo.revealRecordField("download_renames", [row.download_id], "receipt", row.receipt),
-        ) as RenameReceipt,
-    );
+    return rows.map((row) => JSON.parse(row.receipt) as RenameReceipt);
   }
   completed(input: unknown): Promise<unknown> {
     const info = DownloadCompletedNativeSchema.parse(input);
@@ -263,17 +248,7 @@ export class DownloadNamingService {
         .prepare(
           "UPDATE download_renames SET receipt_id=?,receipt=?,status='renamed',created_at=? WHERE download_id=?",
         )
-        .run(
-          receipt.receiptId,
-          this.repo.protectRecordField(
-            "download_renames",
-            [receipt.downloadId],
-            "receipt",
-            JSON.stringify(receipt),
-          ),
-          renamedAt,
-          info.id,
-        );
+        .run(receipt.receiptId, JSON.stringify(receipt), renamedAt, info.id);
       this.events.emit("download.renamed", { ...receipt });
       return { status: "renamed", receiptId: receipt.receiptId, filename: receipt.filename };
     } finally {

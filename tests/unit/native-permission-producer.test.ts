@@ -457,7 +457,7 @@ it("a hidden overnight permission uses only its exact standing grant and remains
 
 it("a real closed overnight window denies a standing native permission before scheduler reconciliation", async () => {
   const { Repo } = await import("@aux/runtime");
-  const { SqliteColumnCipher } = await import("../../apps/runtime/src/store/sqlite-protection.js");
+  const { initializeFieldCodec } = await import("../../apps/runtime/src/store/field-codec.js");
   const { NightShiftService } = await import("../../apps/runtime/src/services/night-shift.js");
   const { BudgetsService } = await import("../../apps/runtime/src/services/budgets.js");
   const { installOvernightAuthority } =
@@ -473,7 +473,8 @@ it("a real closed overnight window denies a standing native permission before sc
     if (!stored.has(key)) stored.set(key, randomBytes(32).toString("base64"));
     return { value: stored.get(key)! };
   };
-  const cipher = await SqliteColumnCipher.create(
+  const cipher = await initializeFieldCodec(
+    db,
     {
       readSecret: async (key) => ({ value: stored.get(key) }),
       storeSecret: async (key, value) => {
@@ -486,7 +487,6 @@ it("a real closed overnight window denies a standing native permission before sc
         secret(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`),
     },
     "fixture",
-    false,
   );
   const repo = new Repo(db, cipher);
   let now = new Date(2026, 9, 1, 1).getTime();
@@ -697,7 +697,7 @@ it("central authority mutation awaits native exact-ticket retirement before chan
 
 it("the actual shared model ledger waits for native retirement and budgets see its exact run-linked Guardian cost", async () => {
   const { Repo } = await import("@aux/runtime");
-  const { SqliteColumnCipher } = await import("../../apps/runtime/src/store/sqlite-protection.js");
+  const { initializeFieldCodec } = await import("../../apps/runtime/src/store/field-codec.js");
   const { installOvernightAuthority } =
     await import("../../apps/runtime/src/services/overnight-authority.js");
   const { saveAuthorizedModelCall } = await import("../../apps/runtime/src/services/model-call-authority.js");
@@ -710,7 +710,8 @@ it("the actual shared model ledger waits for native retirement and budgets see i
     if (!stored.has(key)) stored.set(key, randomBytes(32).toString("base64"));
     return { value: stored.get(key)! };
   };
-  const cipher = await SqliteColumnCipher.create(
+  const cipher = await initializeFieldCodec(
+    db,
     {
       readSecret: async (key) => ({ value: stored.get(key) }),
       storeSecret: async (key, value) => {
@@ -723,7 +724,6 @@ it("the actual shared model ledger waits for native retirement and budgets see i
         secret(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`),
     },
     "fixture",
-    false,
   );
   const repo = new Repo(db, cipher);
   let acknowledge!: () => void;
@@ -773,7 +773,7 @@ it("the actual shared model ledger waits for native retirement and budgets see i
 
 it("window reconciliation retires a native receipt before cancelling the run or changing its queue status", async () => {
   const { Repo } = await import("@aux/runtime");
-  const { SqliteColumnCipher } = await import("../../apps/runtime/src/store/sqlite-protection.js");
+  const { initializeFieldCodec } = await import("../../apps/runtime/src/store/field-codec.js");
   const { NightShiftService } = await import("../../apps/runtime/src/services/night-shift.js");
   const { BudgetsService } = await import("../../apps/runtime/src/services/budgets.js");
   const { installOvernightAuthority } =
@@ -789,7 +789,8 @@ it("window reconciliation retires a native receipt before cancelling the run or 
     if (!stored.has(key)) stored.set(key, randomBytes(32).toString("base64"));
     return { value: stored.get(key)! };
   };
-  const cipher = await SqliteColumnCipher.create(
+  const cipher = await initializeFieldCodec(
+    db,
     {
       readSecret: async (key) => ({ value: stored.get(key) }),
       storeSecret: async (key, value) => {
@@ -802,7 +803,6 @@ it("window reconciliation retires a native receipt before cancelling the run or 
         secret(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`),
     },
     "fixture",
-    false,
   );
   const repo = new Repo(db, cipher);
   let now = new Date(2026, 9, 1, 1).getTime();

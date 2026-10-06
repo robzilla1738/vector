@@ -55,7 +55,7 @@ it("consolidates the real protected pipeline under a lease, rebuilds recall, and
       return { value: secrets.get(name)! };
     },
   };
-  const pipeline = new MemoryPipeline(repo, native, directory, "fixture");
+  const pipeline = new MemoryPipeline(repo, native, "fixture");
   try {
     await expect(pipeline.consolidate(workspace.workspaceId)).rejects.toThrow(/Enable/);
     pipeline.setPolicy(workspace.workspaceId, true);

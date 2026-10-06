@@ -20,12 +20,8 @@ type EdgeRow = {
 };
 
 function edge(repo: Repo, row: EdgeRow) {
-  const agent = SubagentSchema.parse(
-    JSON.parse(repo.revealRecordField("subagents", [row.agent_id], "body", row.body)),
-  );
-  const group = SubagentGroupSchema.parse(
-    JSON.parse(repo.revealRecordField("subagent_groups", [row.group_id], "body", row.group_body)),
-  );
+  const agent = SubagentSchema.parse(JSON.parse(row.body));
+  const group = SubagentGroupSchema.parse(JSON.parse(row.group_body));
   if (
     agent.agentId !== row.agent_id ||
     agent.groupId !== row.group_id ||

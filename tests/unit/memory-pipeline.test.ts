@@ -1,7 +1,6 @@
 import { expect, it } from "vitest";
-import { execFileSync } from "node:child_process";
-import { createCipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EventBus, MemoryPipeline, openDb, Repo, TaskService } from "@aux/runtime";
@@ -27,7 +26,7 @@ function fixture() {
       return { value: secrets.get(name)! };
     },
   };
-  const pipeline = new MemoryPipeline(repo, native, directory, "profile-one");
+  const pipeline = new MemoryPipeline(repo, native, "profile-one");
   const save = (runId: string, report: string) =>
     repo.saveRun({
       runId,
@@ -82,22 +81,18 @@ it("extracts completed Space runs only after opt-in and exposes bounded progress
     expect(overview.summary.length).toBeLessThan(10_000);
     expect(await f.pipeline.search(f.workspace.workspaceId, "green fixture")).toHaveLength(1);
     expect(overview.summary).toContain(`#${second!.source!.quoteSha256.slice(0, 12)}`);
-    const profileDir = join(f.directory, readdirSync(f.directory)[0]!);
-    const spaceDir = join(profileDir, readdirSync(profileDir)[0]!);
-    const history = execFileSync("git", ["-C", spaceDir, "log", "--all", "-p"], { encoding: "utf8" });
-    expect(history).not.toContain("green fixture");
-    const manifest = JSON.parse(readFileSync(join(spaceDir, "manifest.json"), "utf8")) as {
-      generation: string;
-    };
-    expect(readdirSync(join(spaceDir, manifest.generation))).toEqual(
+    const rows = f.db.prepare("SELECT name,content FROM memory_files").all();
+    expect(JSON.stringify(rows)).not.toContain("green fixture");
+    expect(rows.map((row) => row.name)).toEqual(
       expect.arrayContaining([
+        "claims.json.enc",
         "inbox.json.enc",
         "history.json.enc",
         "summary.md.enc",
         "handbook.md.enc",
-        "rollouts",
       ]),
     );
+    expect(readdirSync(f.directory)).toEqual([]);
   } finally {
     f.close();
   }
@@ -123,7 +118,7 @@ it("reverts accepted memory and scrubs forgotten claims from every recoverable r
     await f.pipeline.revert(f.workspace.workspaceId, history[0]!.revisionId);
     expect(await f.pipeline.search(f.workspace.workspaceId, "violet")).toHaveLength(1);
     await f.pipeline.forget({ workspaceId: f.workspace.workspaceId, sourceRunId: "run-one" });
-    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
     for (const revision of await restarted.history(f.workspace.workspaceId)) {
       expect(revision.summary).not.toContain("amber");
       await restarted.revert(f.workspace.workspaceId, revision.revisionId);
@@ -157,7 +152,7 @@ it("forgets a claim that exists only in an older revision and preserves the pre-
     expect(await f.pipeline.forget({ workspaceId: f.workspace.workspaceId, sourceRunId: "run-two" })).toEqual(
       { forgotten: 1, remaining: 1 },
     );
-    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
     for (const revision of await restarted.history(f.workspace.workspaceId)) {
       expect(revision.summary).not.toContain("violet");
       expect(revision.sourceRunIds).not.toContain("run-two");
@@ -187,7 +182,7 @@ it("rebuilds derived claims on Forget, erases old keys, and stays forgotten afte
     });
     expect(forgotten).toEqual({ forgotten: 1, remaining: 1 });
     expect(f.secrets.has(oldKey)).toBe(false);
-    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
     expect(await restarted.search(f.workspace.workspaceId, "amber")).toEqual([]);
     expect(await restarted.search(f.workspace.workspaceId, "violet")).toHaveLength(1);
     expect((await restarted.overview(f.workspace.workspaceId)).summary).not.toContain("amber");
@@ -196,62 +191,27 @@ it("rebuilds derived claims on Forget, erases old keys, and stays forgotten afte
       remaining: 0,
     });
     expect(
-      (
-        await new MemoryPipeline(f.repo, f.native, f.directory, "profile-one").overview(
-          f.workspace.workspaceId,
-        )
-      ).claimCount,
+      (await new MemoryPipeline(f.repo, f.native, "profile-one").overview(f.workspace.workspaceId))
+        .claimCount,
     ).toBe(0);
   } finally {
     f.close();
   }
 });
 
-it("migrates legacy encrypted generations without exposing or restoring forgotten claims", async () => {
+it("authenticates reversible history inventory before exposing memory", async () => {
   const f = fixture();
   try {
-    const workspaceId = f.workspace.workspaceId;
-    f.pipeline.setPolicy(workspaceId, true);
-    const pathPart = (value: string) => createHash("sha256").update(value).digest("hex").slice(0, 24);
-    const directory = join(f.directory, pathPart("profile-one"), pathPart(workspaceId));
-    const generation = `g-${randomUUID()}`;
-    const keyName = "mem_abc123";
-    const key = randomBytes(32);
-    mkdirSync(join(directory, generation), { recursive: true });
-    await f.native.storeSecret(keyName, key.toString("base64"));
-    const claim = {
-      claimId: randomUUID(),
-      sourceRunId: "legacy-run",
-      text: "A legacy amber fixture belongs to this Space.",
-      capturedAt: 1,
-    };
-    const legacySeal = (name: string, value: unknown) => {
-      const iv = randomBytes(12);
-      const cipher = createCipheriv("aes-256-gcm", key, iv);
-      cipher.setAAD(Buffer.from(`profile-one\0${workspaceId}\0${name}`));
-      return Buffer.concat([iv, cipher.update(JSON.stringify(value)), cipher.final(), cipher.getAuthTag()]);
-    };
-    for (const [name, value] of Object.entries({
-      "claims.json.enc": [claim],
-      "inbox.json.enc": [],
-      "history.json.enc": [{ revisionId: randomUUID(), capturedAt: 1, claims: [claim] }],
-    }))
-      writeFileSync(join(directory, generation, name), legacySeal(name, value));
-    writeFileSync(join(directory, "manifest.json"), JSON.stringify({ generation, keyName }));
-    // Historical encrypted claims without an available source run are kept for
-    // reviewed removal, but never presented as attributable recall.
-    expect(await f.pipeline.search(workspaceId, "amber")).toEqual([]);
-    await f.pipeline.forget({ workspaceId, all: true });
-    expect(JSON.parse(readFileSync(join(directory, "manifest.json"), "utf8")).version).toBe(2);
-    expect(f.secrets.has(keyName)).toBe(false);
-    expect([...f.secrets.keys()].some((name) => name.startsWith("aux_root_v1_"))).toBe(true);
-    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
-    expect(await restarted.search(workspaceId, "amber")).toEqual([]);
-    expect(
-      (await restarted.history(workspaceId)).every(
-        (revision) => !revision.sourceRunIds.includes("legacy-run"),
-      ),
-    ).toBe(true);
+    f.pipeline.setPolicy(f.workspace.workspaceId, true);
+    f.save("run-one", "The authenticated amber fixture belongs in this report.");
+    await f.pipeline.extractRun(f.workspace.workspaceId, "run-one");
+    await f.pipeline.review(
+      f.workspace.workspaceId,
+      (await f.pipeline.inbox(f.workspace.workspaceId))[0]!.claimId,
+      "accept",
+    );
+    f.db.prepare("DELETE FROM memory_history WHERE workspace_id=?").run(f.workspace.workspaceId);
+    await expect(f.pipeline.history(f.workspace.workspaceId)).rejects.toThrow(/inventory/);
   } finally {
     f.close();
   }
@@ -276,7 +236,7 @@ it("keeps the prior generation readable if credential erasure fails", async () =
         return f.native.storeSecret(name, value);
       },
     };
-    const pipeline = new MemoryPipeline(f.repo, failingNative, f.directory, "profile-one");
+    const pipeline = new MemoryPipeline(f.repo, failingNative, "profile-one");
     await expect(pipeline.forget({ workspaceId: f.workspace.workspaceId, all: true })).rejects.toThrow(
       /credential store/,
     );
@@ -326,7 +286,7 @@ it("persists pending notes across restart and never re-extracts discarded or for
     f.save("run-one", "The private silver sentinel is awaiting review.");
     expect(await f.pipeline.sources(f.workspace.workspaceId)).toMatchObject([{ runId: "run-one" }]);
     await f.pipeline.extractRun(f.workspace.workspaceId, "run-one");
-    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
     expect((await restarted.inbox(f.workspace.workspaceId))[0]?.text).toContain("silver sentinel");
     expect((await restarted.overview(f.workspace.workspaceId)).summary).toBe("");
     const pending = (await restarted.inbox(f.workspace.workspaceId))[0]!;
@@ -373,7 +333,7 @@ it("removes an approved report quote from recall when its source changes", async
     await f.pipeline.review(workspaceId, note.claimId, "accept");
     expect(await f.pipeline.search(workspaceId, "copper fixture")).toHaveLength(1);
     f.save("run-one", "This changed report no longer supports the prior note.");
-    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
     expect(await restarted.search(workspaceId, "copper fixture")).toEqual([]);
     expect((await restarted.overview(workspaceId)).summary).toBe("");
   } finally {
@@ -561,7 +521,7 @@ it("requires run-owned cited page evidence and refuses changed source identity a
     await f.pipeline.review(workspaceId, note.claimId, "accept");
     expect(await f.pipeline.search(workspaceId, "blue fixture")).toHaveLength(1);
     f.repo.upsertPage({ ...page, documentEpoch: 2, lastRevision: 2 });
-    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
     expect(await restarted.search(workspaceId, "blue fixture")).toEqual([]);
     expect((await restarted.overview(workspaceId)).summary).toBe("");
     f.repo.upsertPage(page);
@@ -636,7 +596,7 @@ it("scrubs descendants from current memory and history when a source claim is fo
       forgotten: 2,
       remaining: 0,
     });
-    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    const restarted = new MemoryPipeline(f.repo, f.native, "profile-one");
     expect(await restarted.claims(workspaceId)).toEqual([]);
     expect((await restarted.history(workspaceId)).every((item) => item.claimCount === 0)).toBe(true);
   } finally {
@@ -665,6 +625,36 @@ it("allows an empty enabled-Memory marker before any approved note exists", asyn
     });
     expect((await f.pipeline.sources(workspaceId)).map((item) => item.runId)).toEqual(["first-run"]);
     expect((await f.pipeline.extractRun(workspaceId, "first-run")).extracted).toBe(1);
+  } finally {
+    f.close();
+  }
+});
+
+it("rejects a recovery snapshot when Forget completes during generation authentication", async () => {
+  const f = fixture();
+  try {
+    const id = f.workspace.workspaceId;
+    f.pipeline.setPolicy(id, true);
+    f.save("run-race", "A concurrent Forget must exclude this confidential fixture.");
+    await f.pipeline.extractRun(id, "run-race");
+    let forgotten = false;
+    const interrupted = new MemoryPipeline(
+      f.repo,
+      {
+        ...f.native,
+        async readSecret(name: string) {
+          const value = await f.native.readSecret(name);
+          if (!forgotten && name.startsWith("mem_")) {
+            forgotten = true;
+            await f.pipeline.forget({ workspaceId: id, all: true });
+          }
+          return value;
+        },
+      },
+      "profile-one",
+    );
+    await expect(interrupted.recoverySnapshot()).rejects.toThrow(/memory changed/);
+    expect(await f.pipeline.inbox(id)).toEqual([]);
   } finally {
     f.close();
   }

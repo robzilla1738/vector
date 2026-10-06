@@ -238,8 +238,6 @@ export function startSkillReplay(input: {
   nightShiftItemId?: string;
 }): { runId: string } {
   const { repo, pages, events, routine, pageId, parameters } = input;
-  if (!repo.columnCipher)
-    throw new AuxError("permission_denied", "Skill replay requires protected local storage.");
   if (!pages.get(pageId).sessionId) throw new AuxError("conflict", "The Skill page has no live attachment.");
   const replay = routine.replay;
   if (!replay || skillReplayProofDigest(replay) !== replay.digest)

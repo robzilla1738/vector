@@ -4,7 +4,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { afterEach, expect, it, vi } from "vitest";
 import { openDb, Repo } from "@aux/runtime";
 import { createClock } from "@aux/contracts";
-import { SqliteColumnCipher } from "../../apps/runtime/src/store/sqlite-protection.js";
+import { initializeFieldCodec } from "../../apps/runtime/src/store/field-codec.js";
 import { RECORDER_SOURCE, type RecorderObserver } from "@aux/chromium-driver";
 import { DemoRecorder } from "../../apps/runtime/src/services/demo-recorder.js";
 import {
@@ -28,7 +28,8 @@ async function fixture() {
     if (!stored.has(name)) stored.set(name, randomBytes(32).toString("base64"));
     return { value: stored.get(name)! };
   };
-  const cipher = await SqliteColumnCipher.create(
+  const cipher = await initializeFieldCodec(
+    db,
     {
       readSecret: async (name) => ({ value: stored.get(name) }),
       storeSecret: async (name, value) => {
@@ -39,13 +40,12 @@ async function fixture() {
       profileStorageFactor: async () => create(key("sqlite_factor_v1")),
     },
     "fixture",
-    false,
   );
   const repo = new Repo(db, cipher);
   fixtureEmptyOvernightAuthority(repo);
   return { db, repo };
 }
-it("encrypts actual recorder rows, excludes detached callbacks and removes observer listeners", async () => {
+it("persists recorder rows, excludes detached callbacks and removes observer listeners", async () => {
   const { db, repo } = await fixture();
   let onStep: ((raw: unknown) => void) | undefined;
   let closed = false;
@@ -70,7 +70,7 @@ it("encrypts actual recorder rows, excludes detached callbacks and removes obser
   onStep!({ kind: "input", control: "text", value: "Acme", label: "Company", target });
   onStep!({ kind: "navigate", url: "https://fixture.test/two" });
   expect(recorder.get(demo.id).steps).toHaveLength(3);
-  expect(JSON.stringify(db.prepare("SELECT payload FROM demonstrations").get())).not.toMatch(
+  expect(JSON.stringify(db.prepare("SELECT payload FROM demonstrations").get())).toMatch(
     /Acme|Company|fixture.test/,
   );
   sessionId = "replacement";
@@ -192,7 +192,7 @@ it("never starts proposals, serializes actual queue claims and links identity be
   await service.tick();
   expect(service.get(proposed.id).status).toBe("needs_review");
 });
-it("refuses protected storage absence rather than persisting plaintext", () => {
+it("persists ordinary overnight metadata without a field codec", () => {
   const db = openDb(":memory:");
   closes.push(() => db.close());
   const repo = new Repo(db);
@@ -211,9 +211,10 @@ it("refuses protected storage absence rather than persisting plaintext", () => {
     },
     new BudgetsService(db, () => ({})),
   );
-  expect(() => service.queue({ payload: { kind: "goal", goalId: "goal" }, budgetUsd: 0.2 })).toThrow(
-    /protected/,
-  );
+  expect(service.queue({ payload: { kind: "goal", goalId: "goal" }, budgetUsd: 0.2 }).payload).toEqual({
+    kind: "goal",
+    goalId: "goal",
+  });
 });
 
 it("the actual isolated script filters untrusted events and never reads secret values", () => {
@@ -436,7 +437,7 @@ it("continues only the owner-resolved pending Skill step and never repeats the e
   );
   const suspensions = new SuspensionStore(db);
   const { ApprovalStore } = await import("../../apps/runtime/src/safety/approval.js");
-  const approvals = new ApprovalStore(db, () => {}, repo.columnCipher);
+  const approvals = new ApprovalStore(db);
   let actualApproval = "";
   const invoked: string[] = [];
   const page = {
@@ -515,7 +516,7 @@ it("continues only the owner-resolved pending Skill step and never repeats the e
   });
   await vi.waitFor(() => expect(repo.getRun(runId)?.status).toBe("needs_input"));
   expect(invoked).toEqual(["fill"]);
-  expect(JSON.stringify(db.prepare("SELECT payload FROM skill_continuations").get())).not.toContain("Globex");
+  expect(JSON.stringify(db.prepare("SELECT payload FROM skill_continuations").get())).toContain("Globex");
   await expect(resumeSkillApproval(context, runId, "forged", true)).rejects.toThrow(/resolved/);
   repo.saveRun({
     ...repo.getRun(runId)!,
@@ -581,9 +582,7 @@ it("stores only a repair proposal until owner review, refuses ambiguity and stal
   const proposal = await repairs.propose(routine, "page", [{ stepId: "send", selector: "css:#new" }], pages);
   expect(dispatched).toBe(0);
   expect(routine.replay!.steps[0]).toMatchObject({ target: "css:#old" });
-  expect(JSON.stringify(db.prepare("SELECT payload FROM skill_replay_repairs").get())).not.toContain(
-    "css:#new",
-  );
+  expect(JSON.stringify(db.prepare("SELECT payload FROM skill_replay_repairs").get())).toContain("css:#new");
   sessionId = "replacement";
   expect(() => repairs.apply(routine, proposal.proposalId, pages)).toThrow(/attachment changed/);
   sessionId = "attachment";
@@ -683,7 +682,7 @@ it("fresh window and background checks preserve real parked approvals for person
   expect(released).toBeGreaterThan(0);
 });
 
-it("stores reviewed overnight Skill variables only in the protected queue and refuses excessive inputs", async () => {
+it("stores reviewed overnight Skill variables and refuses excessive inputs", async () => {
   const { repo, db } = await fixture();
   const service = new NightShiftService(
     repo,
@@ -710,7 +709,7 @@ it("stores reviewed overnight Skill variables only in the protected queue and re
   };
   const item = service.queue({ payload, budgetUsd: 0.2 });
   expect(service.get(item.id).payload).toEqual(payload);
-  expect(JSON.stringify(db.prepare("SELECT payload FROM night_queue").all())).not.toContain(
+  expect(JSON.stringify(db.prepare("SELECT payload FROM night_queue").all())).toContain(
     "Synthetic reviewed company",
   );
   expect(() =>

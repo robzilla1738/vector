@@ -49,17 +49,6 @@ export class GoalService {
       .run(Date.now());
   }
 
-  private seal(goalId: string, body: object): string {
-    return this.repo.protectRecordField("goals", [goalId], "body", JSON.stringify(body));
-  }
-
-  private open(goalId: string, body: string): Record<string, unknown> {
-    return JSON.parse(this.repo.revealRecordField("goals", [goalId], "body", body)) as Record<
-      string,
-      unknown
-    >;
-  }
-
   private ledger(runId: string): BudgetLedger {
     return this.repo.getSetting<BudgetLedger>(`goalBudget:${runId}`) ?? { reservations: [] };
   }
@@ -185,7 +174,7 @@ export class GoalService {
       if (
         peers.some(
           (peer) =>
-            this.open(peer.goal_id, peer.body).chatId === input.chatId &&
+            (JSON.parse(peer.body) as Record<string, unknown>).chatId === input.chatId &&
             !["completed", "failed", "cancelled"].includes(this.get(peer.goal_id).status),
         )
       )
@@ -206,7 +195,7 @@ export class GoalService {
       .prepare(
         "INSERT INTO goals(goal_id,workspace_id,status,run_id,body,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
       )
-      .run(goal.goalId, goal.workspaceId, goal.status, null, this.seal(goal.goalId, goal), now, now);
+      .run(goal.goalId, goal.workspaceId, goal.status, null, JSON.stringify(goal), now, now);
     return goal;
   }
 
@@ -214,7 +203,7 @@ export class GoalService {
     const row = this.repo.db.prepare("SELECT * FROM goals WHERE goal_id=?").get(goalId) as Row | undefined;
     if (!row) throw new AuxError("not_found", "Goal does not exist");
     const goal = GoalSchema.parse({
-      ...this.open(row.goal_id, row.body),
+      ...(JSON.parse(row.body) as Record<string, unknown>),
       goalId: row.goal_id,
       workspaceId: row.workspace_id,
       status: row.status,
@@ -326,7 +315,7 @@ export class GoalService {
         });
         this.repo.db
           .prepare("UPDATE goals SET status=?,body=?,updated_at=? WHERE goal_id=?")
-          .run(next.status, this.seal(next.goalId, next), next.updatedAt, next.goalId);
+          .run(next.status, JSON.stringify(next), next.updatedAt, next.goalId);
         if (status === "paused" || blocked) await this.runs.pause(runId);
         return blocked
           ? { status: "blocked" }
@@ -348,7 +337,7 @@ export class GoalService {
       const next = GoalSchema.parse({ ...goal, status: "cancelled", updatedAt: Date.now() });
       this.repo.db
         .prepare("UPDATE goals SET status=?,body=?,updated_at=? WHERE goal_id=?")
-        .run(next.status, this.seal(next.goalId, next), next.updatedAt, next.goalId);
+        .run(next.status, JSON.stringify(next), next.updatedAt, next.goalId);
       return next;
     }
     return this.control(goalId, "cancel");
@@ -365,19 +354,17 @@ export class GoalService {
       throw new AuxError("conflict", "This goal cannot make that transition.");
     await this.runs[action](goal.runId);
     if (action === "resume" && goal.status === "blocked") {
-      this.repo.db
-        .prepare("UPDATE goals SET status='active',body=?,updated_at=? WHERE goal_id=?")
-        .run(
-          this.seal(goal.goalId, {
-            ...goal,
-            status: "active",
-            blocker: undefined,
-            blockerStreak: 0,
-            lastBlockerTurn: undefined,
-          }),
-          Date.now(),
-          goal.goalId,
-        );
+      this.repo.db.prepare("UPDATE goals SET status='active',body=?,updated_at=? WHERE goal_id=?").run(
+        JSON.stringify({
+          ...goal,
+          status: "active",
+          blocker: undefined,
+          blockerStreak: 0,
+          lastBlockerTurn: undefined,
+        }),
+        Date.now(),
+        goal.goalId,
+      );
     }
     return this.get(goalId);
   }
@@ -442,7 +429,7 @@ export class GoalService {
     });
     this.repo.db
       .prepare("UPDATE goals SET status=?,body=?,updated_at=? WHERE goal_id=?")
-      .run(next.status, this.seal(next.goalId, next), next.updatedAt, next.goalId);
+      .run(next.status, JSON.stringify(next), next.updatedAt, next.goalId);
     return next;
   }
 }

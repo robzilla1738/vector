@@ -1,20 +1,12 @@
+import { omitSpaceMemory } from "./space-memory-backup.js";
 import { digest as sha } from "@aux/contracts/util/digest";
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID, scryptSync } from "node:crypto";
-import { lstat, mkdir, readFile, realpath, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import type { NativeBridge } from "../native.js";
 import type { Repo } from "../store/repo.js";
-import {
-  protectedKvKey,
-  protectedSqliteIdentity,
-  SENSITIVE_SQLITE_COLUMNS,
-  migrateCalendarConnections,
-  migrateSensitiveKv,
-  migrateSensitiveTable,
-  SqliteColumnCipher,
-} from "../store/sqlite-protection.js";
-import { ACTIVE_PROTECTED_TABLES } from "../store/protected-startup.js";
+import { ENCRYPTED_FIELDS, FieldCodec } from "../store/field-codec.js";
 import { ContentMemoryStore, type RecoveryPageMemory } from "./content-memory.js";
 import { MemoryPipeline, type RecoverySpaceMemory } from "./memory-pipeline.js";
 
@@ -85,29 +77,17 @@ async function requireOwnerAuth(native: NativeBridge, purpose: "export" | "resto
     throw new Error("Device authentication is required for protected recovery.");
 }
 
-function readProtectedSnapshot(db: DatabaseSync, cipher: SqliteColumnCipher): string[] {
-  const markers = (
-    db.prepare("SELECT key FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%' ORDER BY key").all() as {
-      key: string;
-    }[]
-  ).map((row) => row.key);
-  for (const marker of markers) {
-    const table = marker.slice("protected_sqlite_v1:".length);
-    if (table === "kv_filtered") {
-      for (const row of db.prepare("SELECT key,value FROM kv").all() as { key: string; value: string }[])
-        if (protectedKvKey(row.key))
-          db.prepare("UPDATE kv SET value=? WHERE key=?").run(
-            cipher.decrypt("kv", JSON.stringify([row.key]), "value", row.value),
-            row.key,
-          );
-      continue;
-    }
-    const columns = SENSITIVE_SQLITE_COLUMNS[table];
-    if (!columns || table === "kv") throw new Error("Recovery found an unknown protected SQLite plan.");
+/** Translate only selected fields in an explicit, authenticated cross-Profile recovery. */
+function recodeSnapshot(db: DatabaseSync, cipher: FieldCodec, direction: "encrypt" | "decrypt"): string[] {
+  const tables = Object.keys(ENCRYPTED_FIELDS);
+  for (const [table, columns] of Object.entries(ENCRYPTED_FIELDS)) {
     const info = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];
-    const identity = protectedSqliteIdentity(table, info);
+    const identity = info
+      .filter((item) => item.pk > 0)
+      .sort((a, b) => a.pk - b.pk)
+      .map((item) => item.name);
     if (!identity.length || columns.some((column) => !info.some((item) => item.name === column)))
-      throw new Error("Recovery found a changed protected SQLite schema.");
+      throw new Error("Recovery found a changed encrypted SQLite schema.");
     const rows = db
       .prepare(`SELECT rowid AS aux_rowid,${[...new Set([...identity, ...columns])].join(",")} FROM ${table}`)
       .all() as (Record<string, unknown> & { aux_rowid: number })[];
@@ -116,8 +96,8 @@ function readProtectedSnapshot(db: DatabaseSync, cipher: SqliteColumnCipher): st
       const updates = columns.filter((column) => row[column] !== null && row[column] !== undefined);
       if (!updates.length) continue;
       const values = updates.map((column) => {
-        if (typeof row[column] !== "string") throw new Error("Recovery found a non-text protected field.");
-        return cipher.decrypt(table, id, column, row[column]);
+        if (typeof row[column] !== "string") throw new Error("Recovery found a non-text encrypted field.");
+        return cipher[direction](table, id, column, row[column]);
       });
       db.prepare(`UPDATE ${table} SET ${updates.map((column) => `${column}=?`).join(",")} WHERE rowid=?`).run(
         ...values,
@@ -125,11 +105,14 @@ function readProtectedSnapshot(db: DatabaseSync, cipher: SqliteColumnCipher): st
       );
     }
   }
-  db.prepare(
-    "DELETE FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%' OR key='portable_profile_proof_v1'",
-  ).run();
+  if (direction === "decrypt")
+    db.prepare("DELETE FROM aux_meta WHERE key IN ('field_codec_v3','portable_profile_proof_v3')").run();
+  else
+    db.prepare(
+      "INSERT INTO aux_meta(key,value) VALUES('field_codec_v3','1') ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+    ).run();
   db.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
-  return markers;
+  return tables;
 }
 
 function requireQuiescent(db: DatabaseSync) {
@@ -264,25 +247,6 @@ async function readArtifacts(db: DatabaseSync, dataDir: string): Promise<Artifac
   return output;
 }
 
-async function memoryFiles(root: string): Promise<{ relativePath: string; bytes: number; sha256: string }[]> {
-  const output: { relativePath: string; bytes: number; sha256: string }[] = [];
-  const walk = async (directory: string, relativePath = "") => {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      if (entry.name === ".git") continue;
-      const rel = relativePath ? `${relativePath}/${entry.name}` : entry.name;
-      if (entry.isSymbolicLink() || !/^[A-Za-z0-9._-]+$/.test(entry.name))
-        throw new Error("Recovery Space-memory path is unsafe.");
-      if (entry.isDirectory()) await walk(join(directory, entry.name), rel);
-      else if (entry.isFile()) {
-        const bytes = await readFile(join(directory, entry.name));
-        output.push({ relativePath: rel, bytes: bytes.length, sha256: sha(bytes) });
-      } else throw new Error("Recovery Space memory contains an unsupported entry.");
-    }
-  };
-  await walk(root);
-  return output.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-}
-
 function seal(payload: Payload, phrase: string): Buffer {
   const plain = Buffer.from(JSON.stringify(payload));
   if (plain.length > MAX_PACKAGE)
@@ -365,9 +329,10 @@ export async function exportRecoveryPackage(
     throw new Error("Recovery needs a protected Profile and a phrase of 16 to 200 characters.");
   await requireOwnerAuth(native, "export");
   const pageStore = new ContentMemoryStore(repo, native, profileId);
-  const memory = new MemoryPipeline(repo, native, join(dataDir, "space-memory"), profileId);
-  const sourceCipher = await SqliteColumnCipher.create(native, profileId, true);
+  const memory = new MemoryPipeline(repo, native, profileId);
+  const sourceCipher = await FieldCodec.create(native, profileId, false);
   const pageMemory = await pageStore.recoverySnapshot();
+  const spaceMemoryGeneration = memory.currentStateDigest();
   const spaceMemory = await memory.recoverySnapshot();
   requireQuiescent(repo.db);
   const pages = (repo.db.prepare("PRAGMA page_count").get() as { page_count: number }).page_count;
@@ -383,8 +348,9 @@ export async function exportRecoveryPackage(
     serializable(db).deserialize(serialized);
     requireQuiescent(db);
     const artifacts = await readArtifacts(db, dataDir);
-    const tables = readProtectedSnapshot(db, sourceCipher);
+    const tables = recodeSnapshot(db, sourceCipher, "decrypt");
     db.prepare("DELETE FROM content_memory").run();
+    omitSpaceMemory(db);
     const manifest: Manifest = {
       version: 1,
       createdAt: Date.now(),
@@ -411,7 +377,13 @@ export async function exportRecoveryPackage(
   const directory = join(dataDir, "recovery-exports");
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const path = join(directory, `aux-recovery-${new Date().toISOString().replace(/[:.]/g, "-")}.auxrec`);
+  if (memory.currentStateDigest() !== spaceMemoryGeneration)
+    throw new Error("Space memory changed during recovery export. Prepare the export again.");
   await writeFile(path, bytes, { flag: "wx", mode: 0o600 });
+  if (memory.currentStateDigest() !== spaceMemoryGeneration) {
+    await rm(path, { force: true });
+    throw new Error("Space memory changed during recovery export. Prepare the export again.");
+  }
   return { path, sha256: sha(bytes), manifest: payload.manifest };
 }
 
@@ -459,7 +431,6 @@ export async function stageRecoveryPackage(
     "pending-runtime-restore.json",
     "pending-runtime-restore.sqlite",
     "pending-runtime-restore-artifacts",
-    "pending-runtime-restore-space-memory",
   ]) {
     try {
       await lstat(join(dataDir, name));
@@ -494,19 +465,17 @@ export async function stageRecoveryPackage(
     if (!Array.isArray(sourceTables) || sourceTables.some((table) => typeof table !== "string"))
       throw new Error("Recovery SQLite inventory is invalid.");
     rebindProfile(db, manifest.sourceProfileId, profileId);
-    for (const table of ACTIVE_PROTECTED_TABLES) migrateSensitiveTable(db, repo.columnCipher, table);
-    migrateSensitiveKv(db, repo.columnCipher);
-    migrateCalendarConnections(db, repo.columnCipher);
+    if (JSON.stringify([...sourceTables].sort()) !== JSON.stringify(Object.keys(ENCRYPTED_FIELDS).sort()))
+      throw new Error("Recovery SQLite inventory is invalid.");
+    recodeSnapshot(db, repo.columnCipher, "encrypt");
     const stagedRepo = new (
       repo.constructor as new (db: DatabaseSync, cipher: typeof repo.columnCipher) => Repo
     )(db, repo.columnCipher);
     const pageStore = new ContentMemoryStore(stagedRepo, native, profileId);
     await pageStore.importRecoverySnapshot(payload.pageMemory);
     pageStore.close();
-    await mkdir(join(staging, "space-memory"), { mode: 0o700 });
-    const spaceMemory = new MemoryPipeline(stagedRepo, native, join(staging, "space-memory"), profileId);
+    const spaceMemory = new MemoryPipeline(stagedRepo, native, profileId);
     await spaceMemory.importRecoverySnapshot(payload.spaceMemory);
-    const stagedMemoryFiles = await memoryFiles(join(staging, "space-memory"));
     interrupt?.();
     const artifactRoot = join(staging, "artifacts");
     await mkdir(artifactRoot, { mode: 0o700 });
@@ -552,7 +521,6 @@ export async function stageRecoveryPackage(
     const stagedFiles = files;
     await rename(join(staging, "state.sqlite"), join(dataDir, "pending-runtime-restore.sqlite"));
     await rename(artifactRoot, join(dataDir, "pending-runtime-restore-artifacts"));
-    await rename(join(staging, "space-memory"), join(dataDir, "pending-runtime-restore-space-memory"));
     await writeFile(
       pending,
       JSON.stringify(
@@ -565,7 +533,6 @@ export async function stageRecoveryPackage(
           artifactFiles: stagedFiles,
           recoveryPackage: true,
           recoveryProfileId: profileId,
-          spaceMemoryFiles: stagedMemoryFiles,
         },
         null,
         2,
@@ -584,8 +551,7 @@ export async function stageRecoveryPackage(
       [
         "pending-runtime-restore.sqlite",
         "pending-runtime-restore-artifacts",
-        "pending-runtime-restore-space-memory",
-      ].map((name) => rm(join(dataDir, name), { recursive: true, force: true })),
+          ].map((name) => rm(join(dataDir, name), { recursive: true, force: true })),
     );
     throw error;
   } finally {

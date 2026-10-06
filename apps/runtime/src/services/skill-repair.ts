@@ -20,7 +20,7 @@ export class SkillReplayRepairs {
     pages: PageService,
   ) {
     const replay = routine.replay;
-    if (!routine.paused || replay?.state !== "needs_repair" || !this.repo.columnCipher)
+    if (!routine.paused || replay?.state !== "needs_repair")
       throw new AuxError(
         "conflict",
         "Pause and review a failed Skill replay before proposing a target repair.",
@@ -79,12 +79,7 @@ export class SkillReplayRepairs {
       documentEpoch: epoch,
       changes: diff,
     });
-    const payload = this.repo.columnCipher.encrypt(
-      "skill_replay_repairs",
-      JSON.stringify([proposal.proposalId]),
-      "payload",
-      JSON.stringify(proposal),
-    );
+    const payload = JSON.stringify(proposal);
     this.repo.db
       .prepare("INSERT INTO skill_replay_repairs VALUES(?,?,'proposed')")
       .run(proposal.proposalId, payload);
@@ -93,13 +88,9 @@ export class SkillReplayRepairs {
   get(id: string): SkillRepairProposal {
     const row = this.repo.db.prepare("SELECT payload,state FROM skill_replay_repairs WHERE id=?").get(id) as
       { payload: string; state: string } | undefined;
-    if (!row || row.state !== "proposed" || !this.repo.columnCipher)
+    if (!row || row.state !== "proposed")
       throw new AuxError("conflict", "This repair proposal is no longer current.");
-    return Proposal.parse(
-      JSON.parse(
-        this.repo.columnCipher.decrypt("skill_replay_repairs", JSON.stringify([id]), "payload", row.payload),
-      ),
-    );
+    return Proposal.parse(JSON.parse(row.payload));
   }
   apply(routine: Routine, id: string, pages: PageService): Routine["replay"] {
     const proposal = this.get(id),

@@ -145,10 +145,8 @@ function staleManagedBackup(): never {
 export function assertManagedRecoveryGeneration(
   dataDir: string,
   candidate: unknown,
-  allowLegacyAtGenerationZero = false,
 ): ManagedRecoveryGeneration {
   const current = currentManagedRecoveryGeneration(dataDir);
-  if (candidate === undefined && allowLegacyAtGenerationZero && current.generation === 0) return current;
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) staleManagedBackup();
   const value = candidate as Record<string, unknown>;
   if (value.lineageId !== current.lineageId || value.generation !== current.generation) staleManagedBackup();

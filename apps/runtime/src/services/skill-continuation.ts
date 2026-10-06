@@ -23,25 +23,18 @@ type Continuation = {
   receipts: string[];
 };
 const active = new WeakMap<Repo, Set<string>>();
-function initialize(repo: Repo): void {
-  if (!repo.columnCipher)
-    throw new AuxError("permission_denied", "Skill replay requires protected local storage.");
-}
 function save(repo: Repo, runId: string, state: Continuation): void {
   repo.db
     .prepare(
       "INSERT INTO skill_continuations(run_id,payload) VALUES(?,?) ON CONFLICT(run_id) DO UPDATE SET payload=excluded.payload",
     )
-    .run(runId, repo.protectRecordField("skill_continuations", [runId], "payload", JSON.stringify(state)));
+    .run(runId, JSON.stringify(state));
 }
 function load(repo: Repo, runId: string): Continuation {
-  initialize(repo);
   const row = repo.db.prepare("SELECT payload FROM skill_continuations WHERE run_id=?").get(runId) as
     { payload: string } | undefined;
   if (!row) throw new AuxError("conflict", "This Skill has no resumable reviewed execution.");
-  return JSON.parse(
-    repo.revealRecordField("skill_continuations", [runId], "payload", row.payload)!,
-  ) as Continuation;
+  return JSON.parse(row.payload!) as Continuation;
 }
 async function update(
   context: Context,
@@ -209,7 +202,6 @@ async function execute(context: Context, runId: string, approvalId?: string): Pr
 export function launchSkillContinuation(
   input: Context & { run: Run; routine: Routine; pageId: string; steps: PlanStep[] },
 ): void {
-  initialize(input.repo);
   const page = input.pages.get(input.pageId);
   if (!page.sessionId) throw new AuxError("conflict", "The Skill page has no live attachment.");
   save(input.repo, input.run.runId, {

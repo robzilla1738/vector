@@ -142,7 +142,8 @@ export class PageService {
         current.sessionId !== page.sessionId ||
         current.documentEpoch !== page.documentEpoch ||
         current.url !== page.url ||
-        saved?.url !== record.url ||
+        !saved ||
+        saved.url !== record.url ||
         saved.sessionId !== page.sessionId ||
         saved.documentEpoch !== page.documentEpoch ||
         saved.documentUrl !== page.url

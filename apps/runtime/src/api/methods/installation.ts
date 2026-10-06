@@ -51,7 +51,7 @@ async function h_installation_stageRestore(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
   if (client.external)
     throw new AuxError("permission_denied", "Runtime restore requires an explicit action in Aux.");
-  return stageRuntimeRestore(s.settings.all().dataDir, params.path, s.repo.columnCipher);
+  return stageRuntimeRestore(s.settings.all().dataDir, params.path, s.repo.columnCipher, s.memoryPipeline);
 }
 async function h_installation_stageListedRestore(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
@@ -62,6 +62,7 @@ async function h_installation_stageListedRestore(ctx: MethodCtx): Promise<unknow
     params.name,
     params.expectedSha256,
     s.repo.columnCipher,
+    s.memoryPipeline,
   );
 }
 async function h_installation_cancelRestore(ctx: MethodCtx): Promise<unknown> {

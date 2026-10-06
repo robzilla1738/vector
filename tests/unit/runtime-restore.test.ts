@@ -22,11 +22,7 @@ import {
   runtimeRestoreStatus,
   stageRuntimeRestore,
 } from "@aux/runtime";
-import {
-  migrateSensitiveKv,
-  migrateSensitiveTable,
-  SqliteColumnCipher,
-} from "../../apps/runtime/src/store/sqlite-protection.js";
+import { initializeFieldCodec } from "../../apps/runtime/src/store/field-codec.js";
 import {
   advanceManagedRecoveryGeneration,
   currentManagedRecoveryGeneration,
@@ -93,29 +89,6 @@ it("sanitizes protected article recall and authenticates the same Profile before
   directories.push(dataDir);
   const dbPath = join(dataDir, "aux-state.sqlite");
   const db = openDb(dbPath);
-  const legacy = new Repo(db);
-  legacy.saveRun({
-    runId: "article",
-    goal: "private goal",
-    status: "completed",
-    pageIds: [],
-    config: { chatId: "chat", contextMemoryIds: ["source"], context: "private source paragraph" },
-    result: { answer: "private answer" },
-    createdAt: 1,
-  });
-  legacy.setSetting("conversationAttachments:chat", [
-    { sourceArtifactId: "unrelated", filename: "retained.txt" },
-  ]);
-  db.prepare("INSERT INTO workspaces(workspace_id,name,created_at) VALUES('space','private space',1)").run();
-  db.prepare(
-    "INSERT INTO tasks(task_id,workspace_id,revision,state,updated_at,json) VALUES('task','space',1,'open',1,?)",
-  ).run(JSON.stringify({ title: "private task" }));
-  db.prepare(
-    "INSERT INTO task_evidence(evidence_id,task_id,task_revision,criterion_id,json) VALUES('evidence','task',1,'criterion',?)",
-  ).run(JSON.stringify({ note: "private evidence" }));
-  db.prepare(
-    "INSERT INTO criterion_reviews(review_id,task_id,task_revision,criterion_id,json) VALUES('review','task',1,'criterion',?)",
-  ).run(JSON.stringify({ note: "private review" }));
   const saved = new Map<string, string>();
   const profileId = "restore-profile";
   const secretName = (prefix: string) =>
@@ -139,17 +112,36 @@ it("sanitizes protected article recall and authenticates the same Profile before
       return { value: saved.get(name)! };
     },
   };
-  const cipher = await SqliteColumnCipher.create(secrets, profileId, false);
-  migrateSensitiveTable(db, cipher, "runs");
-  migrateSensitiveKv(db, cipher);
-  for (const table of ["workspaces", "tasks", "task_evidence", "criterion_reviews"])
-    migrateSensitiveTable(db, cipher, table);
+  const cipher = await initializeFieldCodec(db, secrets, profileId);
   const repo = new Repo(db, cipher);
+  repo.saveRun({
+    runId: "article",
+    goal: "private goal",
+    status: "completed",
+    pageIds: [],
+    config: { chatId: "chat", contextMemoryIds: ["source"], context: "private source paragraph" },
+    result: { answer: "private answer" },
+    createdAt: 1,
+  });
+  repo.setSetting("conversationAttachments:chat", [
+    { sourceArtifactId: "unrelated", filename: "retained.txt" },
+  ]);
+  db.prepare("INSERT INTO workspaces(workspace_id,name,created_at) VALUES('space','private space',1)").run();
+  db.prepare(
+    "INSERT INTO tasks(task_id,workspace_id,revision,state,updated_at,json) VALUES('task','space',1,'open',1,?)",
+  ).run(JSON.stringify({ title: "private task" }));
+  db.prepare(
+    "INSERT INTO task_evidence(evidence_id,task_id,task_revision,criterion_id,json) VALUES('evidence','task',1,'criterion',?)",
+  ).run(JSON.stringify({ note: "private evidence" }));
+  db.prepare(
+    "INSERT INTO criterion_reviews(review_id,task_id,task_revision,criterion_id,json) VALUES('review','task',1,'criterion',?)",
+  ).run(JSON.stringify({ note: "private review" }));
+
   const backup = await createRuntimeBackup(repo, dataDir);
   const backupBytes = readFileSync(join(backup.path, "state.sqlite"));
   expect(backupBytes.includes("private source paragraph")).toBe(false);
-  expect(backupBytes.includes("retained.txt")).toBe(false);
-  expect(backupBytes.includes("private evidence")).toBe(false);
+  expect(backupBytes.includes("retained.txt")).toBe(true);
+  expect(backupBytes.includes("private evidence")).toBe(true);
   repo.close();
   await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(/original Profile key/);
   expect(existsSync(join(dataDir, "pending-runtime-restore.json"))).toBe(false);
@@ -172,14 +164,12 @@ it("sanitizes protected article recall and authenticates the same Profile before
   const evidence = restored.db
     .prepare("SELECT json FROM task_evidence WHERE evidence_id='evidence'")
     .get() as { json: string };
-  expect(
-    JSON.parse(cipher.decrypt("task_evidence", JSON.stringify(["evidence"]), "json", evidence.json)),
-  ).toMatchObject({ note: "private evidence" });
+  expect(JSON.parse(evidence.json)).toMatchObject({ note: "private evidence" });
   restored.close();
   const backupDbPath = join(backup.path, "state.sqlite");
   const tampered = new DatabaseSync(backupDbPath);
   tampered
-    .prepare("UPDATE aux_meta SET value='auxenc:v1:tampered' WHERE key='portable_profile_proof_v1'")
+    .prepare("UPDATE aux_meta SET value='auxenc:v3:tampered' WHERE key='portable_profile_proof_v3'")
     .run();
   tampered.close();
   const manifestPath = join(backup.path, "manifest.json");
@@ -350,8 +340,8 @@ it("does not publish a backup if Forget advances generation during its snapshot"
   }
 });
 
-it("stages an existing same-Profile legacy backup only before the first Forget", async () => {
-  const dataDir = mkdtempSync(join(tmpdir(), "aux-legacy-recovery-"));
+it("rejects backups without a recovery generation, including a fresh Profile", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "aux-recovery-generation-"));
   directories.push(dataDir);
   const repo = new Repo(openDb(join(dataDir, "aux-state.sqlite")));
   try {
@@ -360,19 +350,11 @@ it("stages an existing same-Profile legacy backup only before the first Forget",
     const manifest = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
     delete manifest.recoveryGeneration;
     writeFileSync(path, JSON.stringify(manifest));
-    // Simulate a Profile and backup created before generation anchors shipped.
-    rmSync(join(dataDir, "managed-recovery-generation.json"));
-    rmSync(join(dataDir, "managed-recovery-initialized"));
-    await expect(stageRuntimeRestore(dataDir, backup.path)).resolves.toMatchObject({ staged: true });
-    const pending = JSON.parse(readFileSync(join(dataDir, "pending-runtime-restore.json"), "utf8"));
-    expect(pending.recoveryGeneration).toEqual(currentManagedRecoveryGeneration(dataDir));
-    advanceManagedRecoveryGeneration(dataDir);
     await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(
       /predates the current recovery generation/,
     );
-    await expect(applyPendingRuntimeRestore(dataDir, join(dataDir, "aux-state.sqlite"))).rejects.toThrow(
-      /predates the current recovery generation/,
-    );
+    expect(existsSync(join(dataDir, "pending-runtime-restore.json"))).toBe(false);
+    expect((await listRuntimeBackups(dataDir))[0]?.restorable).toBe(false);
   } finally {
     repo.close();
   }

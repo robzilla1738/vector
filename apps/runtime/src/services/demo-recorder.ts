@@ -41,14 +41,7 @@ export class DemoRecorder {
     private readonly now: () => number = Date.now,
   ) {}
   private save(demo: Demonstration) {
-    if (!this.repo.columnCipher)
-      throw new AuxError("backend_unavailable", "Recording requires protected Profile storage.");
-    const payload = this.repo.columnCipher.encrypt(
-      "demonstrations",
-      JSON.stringify([demo.id]),
-      "payload",
-      JSON.stringify(demo),
-    );
+    const payload = JSON.stringify(demo);
     this.repo.db
       .prepare(
         "INSERT INTO demonstrations VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,payload=excluded.payload",
@@ -59,17 +52,11 @@ export class DemoRecorder {
   get(id: string): Demonstration {
     const row = this.repo.db.prepare("SELECT payload FROM demonstrations WHERE id=?").get(id) as
       { payload: string } | undefined;
-    if (!row || !this.repo.columnCipher) throw new AuxError("not_found", "Recording is unavailable.");
-    return DemonstrationSchema.parse(
-      JSON.parse(
-        this.repo.columnCipher.decrypt("demonstrations", JSON.stringify([id]), "payload", row.payload),
-      ),
-    );
+    if (!row) throw new AuxError("not_found", "Recording is unavailable.");
+    return DemonstrationSchema.parse(JSON.parse(row.payload));
   }
   async start(pageId: string) {
     if (this.closed) throw new AuxError("feature_unavailable", "Recording stopped in this Profile.");
-    if (!this.repo.columnCipher)
-      throw new AuxError("backend_unavailable", "Recording requires protected Profile storage.");
     const initial = this.page(pageId);
     if (!safeCaptureUrl(initial.url))
       throw new AuxError(

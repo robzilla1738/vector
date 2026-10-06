@@ -55,10 +55,8 @@ function decryptVaultTransfer(pkgInput: unknown, passphrase: string) {
   }
 }
 
-function rowItem(repo: Repo, row: Record<string, unknown>): VaultItem {
-  const id = [String(row.item_id)];
-  const reveal = (column: string) =>
-    row[column] == null ? undefined : repo.revealRecordField("vault_items", id, column, String(row[column]));
+function rowItem(row: Record<string, unknown>): VaultItem {
+  const reveal = (column: string) => (row[column] == null ? undefined : String(row[column]));
   return {
     itemId: String(row.item_id),
     label: reveal("label")!,
@@ -73,10 +71,8 @@ function rowItem(repo: Repo, row: Record<string, unknown>): VaultItem {
   };
 }
 
-function rowGrant(repo: Repo, row: Record<string, unknown>): VaultGrant {
-  const id = [String(row.grant_id)];
-  const reveal = (column: string) =>
-    row[column] == null ? undefined : repo.revealRecordField("vault_grants", id, column, String(row[column]));
+function rowGrant(row: Record<string, unknown>): VaultGrant {
+  const reveal = (column: string) => (row[column] == null ? undefined : String(row[column]));
   return {
     grantId: String(row.grant_id),
     itemId: String(row.item_id),
@@ -115,32 +111,20 @@ export class VaultService {
       actor?: VaultAccessRecord["actor"];
     } = {},
   ) {
-    this.repo.db.exec("SAVEPOINT vault_access_record");
-    try {
-      const result = this.repo.db
-        .prepare(
-          "INSERT INTO vault_access(item_id,grant_id,action,actor,task_id,origin,detail,recorded_at) VALUES(?,?,?,?,NULL,NULL,NULL,?)",
-        )
-        .run(opts.itemId ?? null, opts.grantId ?? null, action, opts.actor ?? "desktop_user", Date.now());
-      const seq = Number(result.lastInsertRowid);
-      this.repo.db
-        .prepare("UPDATE vault_access SET task_id=?,origin=?,detail=? WHERE seq=?")
-        .run(
-          opts.taskId ?? null,
-          opts.origin == null
-            ? null
-            : this.repo.protectRecordField("vault_access", [seq], "origin", opts.origin),
-          opts.detail == null
-            ? null
-            : this.repo.protectRecordField("vault_access", [seq], "detail", opts.detail),
-          seq,
-        );
-      this.repo.db.exec("RELEASE vault_access_record");
-    } catch (error) {
-      this.repo.db.exec("ROLLBACK TO vault_access_record");
-      this.repo.db.exec("RELEASE vault_access_record");
-      throw error;
-    }
+    this.repo.db
+      .prepare(
+        "INSERT INTO vault_access(item_id,grant_id,action,actor,task_id,origin,detail,recorded_at) VALUES(?,?,?,?,?,?,?,?)",
+      )
+      .run(
+        opts.itemId ?? null,
+        opts.grantId ?? null,
+        action,
+        opts.actor ?? "desktop_user",
+        opts.taskId ?? null,
+        opts.origin ?? null,
+        opts.detail ?? null,
+        Date.now(),
+      );
   }
 
   status(now = Date.now()): VaultStatus {
@@ -184,9 +168,7 @@ export class VaultService {
     const sql = includeRevoked
       ? "SELECT * FROM vault_items ORDER BY updated_at DESC, item_id"
       : "SELECT * FROM vault_items WHERE revoked_at IS NULL ORDER BY updated_at DESC, item_id";
-    return (this.repo.db.prepare(sql).all() as Record<string, unknown>[]).map((row) =>
-      rowItem(this.repo, row),
-    );
+    return (this.repo.db.prepare(sql).all() as Record<string, unknown>[]).map((row) => rowItem(row));
   }
 
   async save(input: {
@@ -227,15 +209,11 @@ export class VaultService {
       )
       .run(
         item.itemId,
-        this.repo.protectRecordField("vault_items", [item.itemId], "label", item.label),
+        item.label,
         item.kind,
-        item.username == null
-          ? null
-          : this.repo.protectRecordField("vault_items", [item.itemId], "username", item.username),
-        item.accountLabel == null
-          ? null
-          : this.repo.protectRecordField("vault_items", [item.itemId], "account_label", item.accountLabel),
-        this.repo.protectRecordField("vault_items", [item.itemId], "origin", item.origin),
+        item.username == null ? null : item.username,
+        item.accountLabel == null ? null : item.accountLabel,
+        item.origin,
         item.createdAt,
         item.updatedAt,
         item.expiresAt ?? null,
@@ -314,15 +292,8 @@ export class VaultService {
         grant.credentialRef,
         grant.taskId ?? null,
         grant.workspaceId ?? null,
-        this.repo.protectRecordField("vault_grants", [grant.grantId], "origin", grant.origin),
-        grant.accountLabel == null
-          ? null
-          : this.repo.protectRecordField(
-              "vault_grants",
-              [grant.grantId],
-              "account_label",
-              grant.accountLabel,
-            ),
+        grant.origin,
+        grant.accountLabel == null ? null : grant.accountLabel,
         grant.createdAt,
         grant.expiresAt,
       );
@@ -336,7 +307,7 @@ export class VaultService {
       .prepare("SELECT * FROM vault_grants WHERE grant_id=?")
       .get(input.grantId) as Record<string, unknown> | undefined;
     if (!grantRow) throw new AuxError("not_found", "That vault grant was not found.");
-    const grant = rowGrant(this.repo, grantRow);
+    const grant = rowGrant(grantRow);
     const item = this.item(grant.itemId);
     const now = Date.now();
     if (grant.revokedAt || item.revokedAt)
@@ -369,7 +340,7 @@ export class VaultService {
       ORDER BY g.expires_at DESC`,
       )
       .all(now, now) as Record<string, unknown>[];
-    return rows.map((row) => rowGrant(this.repo, row));
+    return rows.map((row) => rowGrant(row));
   }
 
   grants(filter: { taskId?: string; origin?: string; accountLabels?: string[] } = {}): VaultGrant[] {
@@ -383,7 +354,7 @@ export class VaultService {
     const all = (
       this.repo.db.prepare(`${sql} ORDER BY created_at DESC`).all(...args) as Record<string, unknown>[]
     )
-      .map((row) => rowGrant(this.repo, row))
+      .map((row) => rowGrant(row))
       .filter((grant) => !filter.origin || grant.origin === filter.origin);
     // A declared account boundary (from a routine) hides every grant that is
     // not one of its labeled accounts — unlabeled grants are never in scope.
@@ -409,14 +380,8 @@ export class VaultService {
       action: row.action as VaultAccessRecord["action"],
       actor: row.actor as VaultAccessRecord["actor"],
       taskId: row.task_id ? String(row.task_id) : undefined,
-      origin:
-        row.origin == null
-          ? undefined
-          : this.repo.revealRecordField("vault_access", [Number(row.seq)], "origin", String(row.origin)),
-      detail:
-        row.detail == null
-          ? undefined
-          : this.repo.revealRecordField("vault_access", [Number(row.seq)], "detail", String(row.detail)),
+      origin: row.origin == null ? undefined : String(row.origin),
+      detail: row.detail == null ? undefined : String(row.detail),
       recordedAt: Number(row.recorded_at),
     }));
   }
@@ -431,7 +396,7 @@ export class VaultService {
       this.record("revoke", {
         itemId: String(grant.item_id),
         grantId: input.grantId,
-        origin: rowGrant(this.repo, grant).origin,
+        origin: rowGrant(grant).origin,
       });
       return { ok: true };
     }
@@ -472,7 +437,7 @@ export class VaultService {
         "That vault reference is not valid. Grant access again from the vault.",
       );
     }
-    const grant = rowGrant(this.repo, grantRow);
+    const grant = rowGrant(grantRow);
     const item = this.item(grant.itemId);
     const now = Date.now();
     if (grant.revokedAt || item.revokedAt) {
@@ -570,7 +535,7 @@ export class VaultService {
     const row = this.repo.db.prepare("SELECT * FROM vault_items WHERE item_id=?").get(itemId) as
       Record<string, unknown> | undefined;
     if (!row) throw new AuxError("not_found", "That vault item was not found.");
-    return rowItem(this.repo, row);
+    return rowItem(row);
   }
 
   /** Replace an item's secret in place — the update-prompt path. */
@@ -610,7 +575,7 @@ export class VaultService {
         )
         .all() as Record<string, unknown>[]
     )
-      .map((row) => rowItem(this.repo, row))
+      .map((row) => rowItem(row))
       .filter((item) => item.origin === normalized);
   }
 
