@@ -1649,12 +1649,22 @@ export const MethodSchemas = {
       texts: z.array(z.string().max(4000)).min(1).max(400),
       target: z.string().min(2).max(40).optional(),
       context: z.string().max(200).optional(),
+      source: z.object({
+        pageId: z.string().min(1).max(200),
+        expectedUrl: z.string().max(8192),
+        expectedDocumentEpoch: z.number().int().nonnegative().optional(),
+      }).strict().optional(),
     })
     .strict(),
   "translate.text": z
     .object({
       text: z.string().min(1).max(12000),
       context: z.string().max(200).optional(),
+      source: z.object({
+        pageId: z.string().min(1).max(200),
+        expectedUrl: z.string().max(8192),
+        expectedDocumentEpoch: z.number().int().nonnegative().optional(),
+      }).strict().optional(),
       target: z.string().min(2).max(40).optional(),
     })
     .strict(),

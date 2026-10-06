@@ -20,8 +20,9 @@ export function assertSpaceMemorySize(db: DatabaseSync, workspaceId?: string) {
     throw new Error("Space memory exceeds the 32 MB reviewed size cap.");
 }
 
-export function omitSpaceMemory(db: DatabaseSync) {
+export function omitDerivedAndSpaceMemory(db: DatabaseSync) {
   withSecureDelete(db, () => {
+    db.prepare("DELETE FROM ai_result_cache").run();
     db.prepare("DELETE FROM memory_files").run();
     db.prepare("DELETE FROM memory_history").run();
   });
@@ -67,7 +68,7 @@ export function spaceMemoryDigest(snapshot: SpaceMemorySnapshot) {
   return digest(JSON.stringify(snapshot));
 }
 export function retainSpaceMemory(db: DatabaseSync, snapshot: SpaceMemorySnapshot) {
-  omitSpaceMemory(db);
+  omitDerivedAndSpaceMemory(db);
   db.prepare("DELETE FROM memory_pipeline_watermarks").run();
   db.prepare("DELETE FROM memory_pipeline_leases").run();
   const clearSetting = db.prepare("DELETE FROM kv WHERE key=?");

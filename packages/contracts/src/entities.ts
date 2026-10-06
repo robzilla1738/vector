@@ -23,6 +23,8 @@ export const PageTargetSchema = z.object({
   pageId: z.string(),
   anchor: z.boolean().optional(),
   windowKind: WindowKindSchema.optional(),
+  /** Browser-owned Space identity from the native tab catalog. */
+  workspaceId: z.string().min(1).max(200).optional(),
   split: z
     .object({ id: z.string().min(1), index: z.number().int().min(0).max(1) })
     .strict()

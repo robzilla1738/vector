@@ -51,9 +51,10 @@ async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown
   let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
   let result: Awaited<ReturnType<typeof pipeline.forget>>;
   try {
-    result = await pipeline.forget(params, () => {
+    result = await pipeline.forget(params, async () => {
       generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir);
       advanced = true;
+      await s.contentMemory?.invalidateDerivatives();
     });
   } catch (error) {
     if (advanced)

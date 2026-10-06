@@ -105,6 +105,7 @@ export class ContentMemoryStore {
   private protectedStore: ProtectedStore;
   private rotationQueue: Promise<unknown> = Promise.resolve();
   private indexes = new Map<string, Index>();
+  private derivativeEpoch = 0;
   private unsubscribe?: () => void;
 
   constructor(
@@ -245,7 +246,7 @@ export class ContentMemoryStore {
       await this.rotateSelection(
         (row) =>
           row.workspace_id === workspaceId &&
-          (expires(row) <= this.now() || !allowedOrigins.includes(row.origin)),
+          (!policy.enabled || expires(row) <= this.now() || !allowedOrigins.includes(row.origin)),
         expires,
         () => this.repo.setSetting(policyKey(workspaceId), next),
         beforeRemoval,
@@ -261,9 +262,10 @@ export class ContentMemoryStore {
       const hasNewRows = !!this.repo.db
         .prepare("SELECT 1 FROM content_memory WHERE profile_id=? AND ciphertext LIKE 'v2:%' LIMIT 1")
         .get(this.profileId);
+      const hasDerivatives = !!this.repo.db.prepare("SELECT 1 FROM ai_result_cache WHERE profile_id=? LIMIT 1").get(this.profileId);
       let saved = (await this.native.readSecret(factorName)).value;
       if (!saved) {
-        if (hasNewRows)
+        if (hasNewRows || hasDerivatives)
           throw new Error(
             "Protected page-memory factor is missing. Restore the original OS credential store or use reviewed recovery.",
           );
@@ -277,7 +279,7 @@ export class ContentMemoryStore {
         throw new Error(
           "Protected page-memory key is invalid. Restore the original OS credential store or forget this memory.",
         );
-      const key = await this.protectedStore.generationKey("page-memory", factor, !hasNewRows);
+      const key = await this.protectedStore.generationKey("page-memory", factor, !hasNewRows && !hasDerivatives);
       await this.migrateLegacy(key);
       return key;
     })().catch((error) => {
@@ -288,6 +290,62 @@ export class ContentMemoryStore {
       await this.retirePendingFactors();
       return key;
     });
+  }
+
+  /** Only admitted page derivatives enter this cache; model receipts and action authority never do. */
+  async cachedDerivative<T>(input: {
+    workspaceId: string;
+    signature: string;
+    eligible: () => boolean;
+    parse: (value: unknown) => T;
+    cacheable?: (value: T) => boolean;
+    compute: () => Promise<T>;
+  }): Promise<T> {
+    const maxEntryBytes = 1024 * 1024;
+    const maxCacheBytes = 200 * 1024 * 1024;
+    if (!input.eligible() || Buffer.byteLength(input.signature) > maxEntryBytes) return input.compute();
+    const epoch = this.derivativeEpoch;
+    const factor = this.factorName();
+    const key = await this.key();
+    const current = () => epoch === this.derivativeEpoch && factor === this.factorName() && input.eligible();
+    if (!current()) return input.compute();
+    const cacheKey = createHmac("sha256", key)
+      .update(`${this.profileId}\0${input.workspaceId}\0${input.signature}`).digest("hex");
+    const cached = this.repo.transaction(() => {
+      const size = this.repo.db.prepare(
+        "SELECT length(CAST(ciphertext AS BLOB)) AS bytes FROM ai_result_cache WHERE cache_key=? AND profile_id=? AND workspace_id=? AND expires_at>?",
+      ).get(cacheKey, this.profileId, input.workspaceId, this.now()) as { bytes: number } | undefined;
+      if (!size) return undefined;
+      if (size.bytes > maxEntryBytes) throw new Error("AI cache entry exceeds its reviewed size cap.");
+      const row = this.repo.db.prepare("SELECT ciphertext FROM ai_result_cache WHERE cache_key=?").get(cacheKey) as { ciphertext: string };
+      const body = JSON.parse(this.protectedStore.open(key, "ai-result-cache", cacheKey, row.ciphertext).toString("utf8")) as {
+        profileId: string; workspaceId: string; result: unknown;
+      };
+      if (body.profileId !== this.profileId || body.workspaceId !== input.workspaceId)
+        throw new Error("AI cache provenance does not match this Profile and Space.");
+      const result = input.parse(body.result);
+      this.repo.db.prepare("UPDATE ai_result_cache SET accessed_at=? WHERE cache_key=?").run(this.now(), cacheKey);
+      return { result };
+    });
+    if (cached && current()) return cached.result;
+    const result = input.parse(await input.compute());
+    if (!current() || input.cacheable?.(result) === false) return result;
+    const bytes = Buffer.from(JSON.stringify({ profileId: this.profileId, workspaceId: input.workspaceId, result }));
+    if (bytes.length > maxEntryBytes / 2) return result;
+    const ciphertext = this.protectedStore.seal(key, "ai-result-cache", cacheKey, bytes);
+    if (Buffer.byteLength(ciphertext) > maxEntryBytes) return result;
+    this.repo.transaction(() => {
+      if (!current()) return;
+      this.repo.db.prepare("DELETE FROM ai_result_cache WHERE expires_at<=?").run(this.now());
+      this.repo.db.prepare(
+        "INSERT INTO ai_result_cache(cache_key,workspace_id,profile_id,ciphertext,created_at,accessed_at,expires_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(cache_key) DO UPDATE SET ciphertext=excluded.ciphertext,accessed_at=excluded.accessed_at,expires_at=excluded.expires_at",
+      ).run(cacheKey, input.workspaceId, this.profileId, ciphertext, this.now(), this.now(), this.now() + DAY);
+      const total = () => (this.repo.db.prepare("SELECT COALESCE(SUM(length(CAST(ciphertext AS BLOB))),0) AS bytes FROM ai_result_cache").get() as { bytes: number }).bytes;
+      while (total() > maxCacheBytes) this.repo.db.prepare(
+        "DELETE FROM ai_result_cache WHERE cache_key=(SELECT cache_key FROM ai_result_cache ORDER BY accessed_at,cache_key LIMIT 1)",
+      ).run();
+    });
+    return result;
   }
 
   private encrypt(key: Buffer, body: RecordBody): string {
@@ -658,6 +716,10 @@ export class ContentMemoryStore {
     return record && this.readable(record) ? record : undefined;
   }
 
+  async invalidateDerivatives(): Promise<void> {
+    await this.serialized(async () => { await this.rotateSelection(() => false); });
+  }
+
   async forget(
     workspaceId: string,
     memoryId?: string,
@@ -682,6 +744,8 @@ export class ContentMemoryStore {
     onCommit: () => void = () => {},
     beforeRemoval?: () => void | Promise<void>,
   ): Promise<number> {
+    this.derivativeEpoch++;
+    const hasDerivatives = !!this.repo.db.prepare("SELECT 1 FROM ai_result_cache WHERE profile_id=? LIMIT 1").get(this.profileId);
     const query = () =>
       this.repo.db
         .prepare(
@@ -690,7 +754,7 @@ export class ContentMemoryStore {
         )
         .all(this.profileId) as (Row & { workspace_id: string })[];
     let rows = query();
-    if (!rows.some(select)) {
+    if (!rows.some(select) && !hasDerivatives) {
       this.repo.transaction(() => {
         const update = this.repo.db.prepare("UPDATE content_memory SET expires_at=? WHERE memory_id=?");
         for (const row of rows)
@@ -705,7 +769,7 @@ export class ContentMemoryStore {
     const oldFactor = this.factorName();
     rows = query();
     const removed = rows.filter(select);
-    if (!removed.length) {
+    if (!removed.length && !hasDerivatives) {
       this.repo.transaction(onCommit);
       return 0;
     }
@@ -748,6 +812,7 @@ export class ContentMemoryStore {
             .digest("hex");
           update.run(sourceKey, this.encrypt(nextKey, body), expiryFor(row), row.memory_id);
         }
+        this.repo.db.prepare("DELETE FROM ai_result_cache WHERE profile_id=?").run(this.profileId);
         onCommit();
         this.repo.setSetting(this.factorSetting(), nextName);
         const pending = this.repo.getSetting<string[]>(this.retiredSetting()) ?? [];

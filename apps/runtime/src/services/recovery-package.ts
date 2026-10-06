@@ -1,4 +1,4 @@
-import { omitSpaceMemory } from "./space-memory-backup.js";
+import { omitDerivedAndSpaceMemory } from "./space-memory-backup.js";
 import { digest as sha } from "@aux/contracts/util/digest";
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID, scryptSync } from "node:crypto";
 import { lstat, mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
@@ -194,6 +194,7 @@ function rebindProfile(db: DatabaseSync, source: string, destination: string) {
     )
     .all() as { key: string }[])
     db.prepare("DELETE FROM kv WHERE key=?").run(row.key);
+  db.prepare("DELETE FROM ai_result_cache").run();
   db.prepare("DELETE FROM content_memory").run();
   db.prepare("UPDATE calendar_connections SET account_key_lookup=account_key").run();
   const at = Date.now();
@@ -350,7 +351,7 @@ export async function exportRecoveryPackage(
     const artifacts = await readArtifacts(db, dataDir);
     const tables = recodeSnapshot(db, sourceCipher, "decrypt");
     db.prepare("DELETE FROM content_memory").run();
-    omitSpaceMemory(db);
+    omitDerivedAndSpaceMemory(db);
     const manifest: Manifest = {
       version: 1,
       createdAt: Date.now(),

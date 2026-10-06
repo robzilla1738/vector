@@ -1,3 +1,4 @@
+import { pageDerivativeCache } from "../../services/ai-result-cache.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AgentImageTools } from "../../agent/image-tools.js";
@@ -40,7 +41,7 @@ async function h_agent_tidy_propose(ctx: MethodCtx): Promise<unknown> {
     throw new AuxError("permission_denied", "Tab Tidy suggestions must be requested in Aux.");
   const model = s.settings.model();
   if (!model) throw new AuxError("backend_unavailable", "Connect a model in Settings before using AI Tidy.");
-  const proposal = await proposeTabTidy(params, s.pages.list(), model, s.settings.agentRoute("fast"));
+  const proposal = await proposeTabTidy(params, s.pages.list(), model, s.settings.agentRoute("fast"), pageDerivativeCache(s, params.pageIds));
   s.events.emit("agent.tidy.proposed", {
     tabCount: proposal.pages.length,
     groupCount: proposal.groups.length,
@@ -59,6 +60,7 @@ async function h_agent_tabName_suggest(ctx: MethodCtx): Promise<unknown> {
     s.pages.list().find((page) => page.pageId === params.pageId),
     model,
     s.settings.agentRoute("fast"),
+    pageDerivativeCache(s, [params.pageId]),
   );
   s.events.emit("agent.tabName.suggested", { pageId: suggestion.pageId, modelId: suggestion.modelId });
   return suggestion;

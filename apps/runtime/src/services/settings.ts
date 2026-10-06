@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   DownloadNamingSettingsSchema,
   DEFAULT_DOWNLOAD_NAMING,
@@ -441,6 +442,7 @@ export class SettingsService {
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
     if (connectionChange) {
       this.connectionEpoch++;
+      this.repo.setSetting("modelCacheGeneration", randomUUID());
       this.repo.deleteSetting("modelProbe");
     }
     for (const [k, v] of Object.entries(next)) {
@@ -687,6 +689,16 @@ export class SettingsService {
       models: this.mergedCatalog as ModelCapability[],
       source,
     };
+  }
+
+  /** Nonsecret generation changes whenever provider connection configuration changes. */
+  modelCacheGeneration(): string {
+    let generation = this.repo.getSetting<string>("modelCacheGeneration");
+    if (!generation) {
+      generation = randomUUID();
+      this.repo.setSetting("modelCacheGeneration", generation);
+    }
+    return generation;
   }
 
   /** Tiny structured-output + optional screenshot-understanding probe. */

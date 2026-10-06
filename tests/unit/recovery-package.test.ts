@@ -524,10 +524,14 @@ it("ordinary backups omit retired memory and restore preserves current authentic
   const f = await fixture();
   const memory = new MemoryPipeline(f.source, f.sourceNative.bridge, f.sourceId);
   const unrelated = new TaskService(f.source, new EventBus(f.source)).createWorkspace("Unrelated backup name");
+  const pages = new ContentMemoryStore(f.source, f.sourceNative.bridge, f.sourceId);
+  await pages.cachedDerivative({ workspaceId: f.space.workspaceId, signature: "naming-v1", eligible: () => true,
+    parse: (value) => String(value), compute: async () => "Research label" });
   const ordinary = await createRuntimeBackup(f.source, f.sourceDir);
   f.source.db.prepare("UPDATE workspaces SET name='Current unrelated name' WHERE workspace_id=?").run(unrelated.workspaceId);
   const snapshot = new DatabaseSync(join(ordinary.path, "state.sqlite"), { readOnly: true });
   try {
+    expect(snapshot.prepare("SELECT COUNT(*) AS n FROM ai_result_cache").get()?.n).toBe(0);
     expect(snapshot.prepare("SELECT COUNT(*) AS n FROM memory_files").get()?.n).toBe(0);
     expect(snapshot.prepare("SELECT COUNT(*) AS n FROM memory_history").get()?.n).toBe(0);
   } finally { snapshot.close(); }
@@ -537,6 +541,7 @@ it("ordinary backups omit retired memory and restore preserves current authentic
   await applyPendingRuntimeRestore(f.sourceDir, join(f.sourceDir, "state.sqlite"), f.sourceId);
   const restored = new DatabaseSync(join(f.sourceDir, "state.sqlite"), { readOnly: true });
   try {
+    expect(restored.prepare("SELECT COUNT(*) AS n FROM ai_result_cache").get()?.n).toBe(0);
     expect(restored.prepare("SELECT * FROM memory_files ORDER BY name").all()).toEqual(current);
     expect(restored.prepare("SELECT name FROM workspaces WHERE workspace_id=?").get(unrelated.workspaceId)?.name).toBe("Unrelated backup name");
   }

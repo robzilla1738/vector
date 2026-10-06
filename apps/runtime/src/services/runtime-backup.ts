@@ -1,6 +1,6 @@
 import {
   currentSpaceMemory,
-  omitSpaceMemory,
+  omitDerivedAndSpaceMemory,
   retainSpaceMemory,
   spaceMemoryDigest,
 } from "./space-memory-backup.js";
@@ -313,7 +313,7 @@ export async function createRuntimeBackup(
     const sanitized = new DatabaseSync(database);
     try {
       authenticateProtectedCopy(sanitized, repo.columnCipher);
-      omitSpaceMemory(sanitized);
+      omitDerivedAndSpaceMemory(sanitized);
       sanitized.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
       sanitizePortablePageRecall(sanitized, repo.columnCipher);
       if (repo.columnCipher && sanitized.prepare("SELECT 1 FROM aux_meta WHERE key='field_codec_v3'").get())
@@ -719,7 +719,7 @@ async function stageRuntimeRestoreSource(
     try {
       authenticateProtectedCopy(staged, cipher);
       if (preservedMemory) retainSpaceMemory(staged, preservedMemory);
-      else omitSpaceMemory(staged);
+      else omitDerivedAndSpaceMemory(staged);
       staged.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
       omittedArtifacts = sanitizePortablePageRecall(staged, cipher);
       const rows = staged
@@ -1106,7 +1106,7 @@ export async function applyPendingRuntimeRestore(dataDir: string, dbPath: string
       }
       const recoveryCopy = new DatabaseSync(join(recoveryRoot, "state.sqlite"));
       try {
-        omitSpaceMemory(recoveryCopy);
+        omitDerivedAndSpaceMemory(recoveryCopy);
         recoveryCopy.exec("VACUUM");
       } finally {
         recoveryCopy.close();

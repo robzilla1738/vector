@@ -145,6 +145,14 @@ export class NativeViewSync {
     }
   }
 
+  private syncMemoryAdmission(pageId: string, windowKind: PageTarget["windowKind"], workspaceId?: string) {
+    const lp = this.pages.live.get(pageId);
+    if (!lp) return;
+    lp.target.windowKind = windowKind;
+    lp.target.workspaceId = workspaceId;
+    this.pages.persist(lp);
+  }
+
   private syncSplit(pageId: string, split: PageTarget["split"]) {
     const lp = this.pages.live.get(pageId);
     if (!lp || (lp.target.split?.id === split?.id && lp.target.split?.index === split?.index)) return;
@@ -161,6 +169,7 @@ export class NativeViewSync {
         this.pages.lastKnownWindow.set(tab.pageId, tab.windowId);
         const lp = this.pages.live.get(tab.pageId);
         if (lp) {
+          this.syncMemoryAdmission(tab.pageId, tab.windowKind, tab.workspaceId);
           if (!lp.driver && !lp.target.ownedByRuntime && !lp.target.agentIsolation) {
             if (lp.target.url !== tab.url) {
               lp.target.url = tab.url;
@@ -226,6 +235,7 @@ export class NativeViewSync {
           // surface must invalidate observations made against the old one.
           restored: this.pages.deps.repo.getPage(tab.pageId),
         });
+        this.syncMemoryAdmission(tab.pageId, tab.windowKind, tab.workspaceId);
         await this.publishReadContext(tab.pageId);
         this.syncSplit(tab.pageId, tab.split);
         if (this.pages.pendingRestore.delete(tab.pageId)) {
