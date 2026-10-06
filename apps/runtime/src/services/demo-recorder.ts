@@ -39,11 +39,7 @@ export class DemoRecorder {
     private readonly attach: (id: string) => Promise<RecorderObserver>,
     private readonly emit: (demo: Demonstration, failure?: unknown) => void,
     private readonly now: () => number = Date.now,
-  ) {
-    repo.db.exec(
-      "CREATE TABLE IF NOT EXISTS demonstrations(id TEXT PRIMARY KEY,page_id TEXT NOT NULL,state TEXT NOT NULL,payload TEXT NOT NULL,started_at INTEGER NOT NULL)",
-    );
-  }
+  ) {}
   private save(demo: Demonstration) {
     if (!this.repo.columnCipher)
       throw new AuxError("backend_unavailable", "Recording requires protected Profile storage.");

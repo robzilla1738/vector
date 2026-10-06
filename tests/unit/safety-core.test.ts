@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { DatabaseSync } from "node:sqlite";
 import { AuxError, toErrorPayload, type OriginRule, type SafetyAction } from "@aux/contracts";
 import { evaluateOriginPolicy } from "../../apps/runtime/src/safety/origin-policy.js";
 import {
@@ -142,7 +141,7 @@ describe("B5 safety core", () => {
   });
 
   it("rejects forged and stale approvals and rechecks revocation at dispatch", () => {
-    const db = new DatabaseSync(":memory:");
+    const db = openDb(":memory:");
     try {
       const store = new ApprovalStore(db);
       const approvalId = store.issue(action, "turn", 100);
@@ -199,7 +198,7 @@ describe("B5 safety core", () => {
   });
 
   it("does not transfer approvals or standing grants across Profiles", () => {
-    const db = new DatabaseSync(":memory:");
+    const db = openDb(":memory:");
     try {
       const store = new ApprovalStore(db);
       const otherProfile = { ...action, profileId: "other-profile" };
@@ -334,7 +333,7 @@ describe("B5 safety core", () => {
   });
 
   it("parks a crash-interrupted send and never dispatches it twice on unknown acceptance", async () => {
-    const db = new DatabaseSync(":memory:");
+    const db = openDb(":memory:");
     try {
       const journal = new SendJournal(db);
       const message = journal.queue(
@@ -444,7 +443,7 @@ describe("B5 safety core", () => {
   });
 
   it("links resend nonces into an ordered chain and recovers the draft", async () => {
-    const db = new DatabaseSync(":memory:");
+    const db = openDb(":memory:");
     try {
       const journal = new SendJournal(db);
       const first = journal.queue(

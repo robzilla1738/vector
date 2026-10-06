@@ -5,10 +5,15 @@ import { createRequire } from "node:module";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { generateRuntimeSchema } from "./gen-runtime-schema.mjs";
+
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const runtimeDir = join(root, "apps", "runtime");
 
 export async function bundleRuntime(rtOut, target) {
+  // Generated SQL is a JSON asset: refresh its compiled copy before bundling.
+  const schemaAsset = generateRuntimeSchema();
+  copyFileSync(schemaAsset, join(runtimeDir, "dist/store/schema.generated.json"));
   // The runtime ships as one esbuild bundle (workspace packages and registry
   // deps inlined, lazy SDK imports split into chunks) plus playwright-core,
   // which stays external for its dynamic requires and assets. It lives in

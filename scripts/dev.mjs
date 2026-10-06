@@ -87,6 +87,7 @@ async function main() {
       await run(command, commandArgs);
       return;
     }
+    await run("node", ["scripts/gen-runtime-schema.mjs"]);
     await run("npx", ["tsc", "-b"]);
     await run("npx", ["tsc", "-p", "apps/shell/tsconfig.json"]);
     await run("pnpm", ["--filter", "@aux/shell", "build"], { AUX_CHROMIUM_SHELL_BUILD: "1" });

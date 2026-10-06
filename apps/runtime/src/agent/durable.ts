@@ -426,15 +426,7 @@ function rowToClaim(row: ClaimRow): PageClaim {
 const CLAIM_SELECT = `SELECT claim_id,page_id,run_id,kind,status,created_at,released_at FROM page_claims`;
 
 export class PageClaimStore {
-  constructor(private readonly db: DatabaseSync) {
-    db.exec(`CREATE TABLE IF NOT EXISTS page_claims(
-      claim_id TEXT PRIMARY KEY, page_id TEXT NOT NULL, run_id TEXT NOT NULL,
-      kind TEXT NOT NULL CHECK(kind IN ('owned','borrowed')),
-      status TEXT NOT NULL CHECK(status IN ('active','released')),
-      created_at INTEGER NOT NULL, released_at INTEGER);
-      CREATE INDEX IF NOT EXISTS idx_page_claims_page ON page_claims(page_id, status);
-      CREATE INDEX IF NOT EXISTS idx_page_claims_run ON page_claims(run_id, status);`);
-  }
+  constructor(private readonly db: DatabaseSync) {}
 
   /** Record a claim; one active claim per (run,page) — re-acquiring reuses it. */
   claim(opts: { pageId: string; runId: string; kind: PageClaim["kind"]; now?: number }): PageClaim {

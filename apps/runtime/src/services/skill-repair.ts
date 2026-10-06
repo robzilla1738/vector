@@ -12,11 +12,7 @@ import { skillPageOrigin, skillReplayProofDigest } from "./skill-replay.js";
 export type SkillRepairProposal = z.infer<typeof Proposal>;
 /** A proposed target diff has no start or approval authority. */
 export class SkillReplayRepairs {
-  constructor(private readonly repo: Repo) {
-    repo.db.exec(
-      "CREATE TABLE IF NOT EXISTS skill_replay_repairs(id TEXT PRIMARY KEY,payload TEXT NOT NULL,state TEXT NOT NULL)",
-    );
-  }
+  constructor(private readonly repo: Repo) {}
   async propose(
     routine: Routine,
     pageId: string,

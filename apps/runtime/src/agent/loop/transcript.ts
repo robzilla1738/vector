@@ -33,14 +33,7 @@ export interface ParkedCall {
 }
 
 export class TranscriptStore {
-  constructor(private readonly db: DatabaseSync) {
-    db.exec(`CREATE TABLE IF NOT EXISTS run_transcript(
-      run_id TEXT NOT NULL, seq INTEGER NOT NULL,
-      kind TEXT NOT NULL DEFAULT 'message' CHECK(kind IN ('message','park')),
-      message TEXT, park TEXT,
-      appended_at INTEGER NOT NULL,
-      PRIMARY KEY(run_id, seq));`);
-  }
+  constructor(private readonly db: DatabaseSync) {}
 
   private nextSeq(runId: string): number {
     const row = this.db.prepare(`SELECT MAX(seq) AS s FROM run_transcript WHERE run_id=?`).get(runId) as

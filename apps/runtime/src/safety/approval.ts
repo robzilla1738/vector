@@ -66,20 +66,7 @@ export class ApprovalStore {
     private readonly db: DatabaseSync,
     private readonly audit: (event: Record<string, unknown>) => void = () => {},
     private readonly columnCipher?: SqliteColumnCipher,
-  ) {
-    db.exec(`CREATE TABLE IF NOT EXISTS safety_approval_requests(
-      approval_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, action_json TEXT NOT NULL, turn_id TEXT NOT NULL, thread_id TEXT NOT NULL,
-      lifetime TEXT NOT NULL CHECK(lifetime IN ('turn','thread')), expires_at INTEGER NOT NULL,
-      state TEXT NOT NULL CHECK(state IN ('pending','accepted','declined','cancelled','consumed')),
-      decision TEXT, created_at INTEGER NOT NULL, decided_at INTEGER);
-      CREATE TABLE IF NOT EXISTS safety_standing_grants(
-      grant_id TEXT PRIMARY KEY, profile_id TEXT NOT NULL, scope_kind TEXT NOT NULL, scope_id TEXT NOT NULL,
-      effect TEXT NOT NULL, action TEXT NOT NULL, category TEXT, origin TEXT, recipient TEXT,
-      lifetime TEXT NOT NULL CHECK(lifetime IN ('session','always')), session_id TEXT,
-      created_at INTEGER NOT NULL, revoked_at INTEGER);
-      CREATE INDEX IF NOT EXISTS idx_safety_grants_lookup ON safety_standing_grants(profile_id,scope_kind,scope_id,effect,action,origin,recipient,revoked_at);
-      CREATE INDEX IF NOT EXISTS idx_safety_approvals_turn ON safety_approval_requests(turn_id,state);`);
-  }
+  ) {}
 
   issue(actionInput: SafetyAction, lifetime: "turn" | "thread", now = Date.now()): string {
     const action = SafetyActionSchema.parse(actionInput);

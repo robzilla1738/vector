@@ -71,11 +71,6 @@ export class MemoryPipeline {
   ) {
     if (!profileId) throw new Error("Memory pipeline requires a Profile identity.");
     this.protectedStore = new ProtectedStore(secrets, profileId);
-    repo.db.exec(`CREATE TABLE IF NOT EXISTS memory_pipeline_leases(
-      workspace_id TEXT PRIMARY KEY, owner TEXT NOT NULL, expires_at INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS memory_pipeline_watermarks(
-      workspace_id TEXT NOT NULL, run_id TEXT NOT NULL, captured_at INTEGER NOT NULL,
-      PRIMARY KEY(workspace_id,run_id));`);
   }
 
   private async leased<T>(workspaceId: string, work: () => Promise<T>): Promise<T> {

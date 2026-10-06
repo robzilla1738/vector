@@ -6,10 +6,7 @@ export class SafetyAuditStore {
   constructor(
     private readonly db: DatabaseSync,
     private readonly columnCipher?: SqliteColumnCipher,
-  ) {
-    db.exec(`CREATE TABLE IF NOT EXISTS safety_audit(
-      seq INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, payload TEXT NOT NULL, recorded_at INTEGER NOT NULL)`);
-  }
+  ) {}
 
   record(event: Record<string, unknown>): void {
     const { kind, at, ...rest } = event;

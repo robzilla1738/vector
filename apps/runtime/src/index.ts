@@ -1,6 +1,6 @@
 export { startRuntime, type RuntimeHandle } from "./main.js";
 export { Repo } from "./store/repo.js";
-export { openDb, applyMigrations, SCHEMA_VERSION } from "./store/db.js";
+export { openDb, applySchema, SCHEMA_VERSION, withSecureDelete } from "./store/db.js";
 export { PrivacyCheckpoint } from "./store/privacy-checkpoint.js";
 export { TaskService } from "./services/tasks.js";
 export { VaultService } from "./services/vault.js";

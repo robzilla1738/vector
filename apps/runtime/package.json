@@ -13,8 +13,8 @@
     "aux-runtime": "./dist/main.js"
   },
   "scripts": {
-    "build": "tsc -b",
-    "typecheck": "tsc -b --force",
+    "build": "node ../../scripts/gen-runtime-schema.mjs && tsc -b",
+    "typecheck": "node ../../scripts/gen-runtime-schema.mjs && tsc -b --force",
     "start": "node dist/main.js"
   },
   "dependencies": {

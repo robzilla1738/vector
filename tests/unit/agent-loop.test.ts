@@ -5,7 +5,6 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import {
   MockModelClient,
   GoalService,
@@ -727,7 +726,7 @@ describe("TranscriptStore misc", () => {
   it("shares a db with unrelated runtime tables without collisions", () => {
     const directory = mkdtempSync(join(tmpdir(), "aux-loop2-"));
     cleanup.push(() => rmSync(directory, { recursive: true, force: true }));
-    const db = new DatabaseSync(join(directory, "shared.sqlite"));
+    const db = openDb(join(directory, "shared.sqlite"));
     cleanup.push(() => db.close());
     const store = new TranscriptStore(db);
     store.append("r", [userTask]);

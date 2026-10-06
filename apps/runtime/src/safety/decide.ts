@@ -74,15 +74,7 @@ export interface DecisionRecord {
 
 /** Durable audit of every decision. One row per decide() call. */
 export class DecisionJournal {
-  constructor(private readonly db: DatabaseSync) {
-    db.exec(`CREATE TABLE IF NOT EXISTS safety_decisions(
-      decision_id TEXT PRIMARY KEY, at INTEGER NOT NULL,
-      profile_id TEXT NOT NULL, scope_kind TEXT NOT NULL, scope_id TEXT NOT NULL,
-      actor TEXT NOT NULL, effect TEXT NOT NULL, category TEXT NOT NULL, action TEXT NOT NULL,
-      origin TEXT, destination TEXT, status TEXT NOT NULL, source TEXT NOT NULL,
-      authorized_by TEXT, refusal_id TEXT, suspension_kind TEXT, request_json TEXT NOT NULL, decision_json TEXT NOT NULL);
-      CREATE INDEX IF NOT EXISTS idx_safety_decisions_run ON safety_decisions(profile_id, action, at);`);
-  }
+  constructor(private readonly db: DatabaseSync) {}
 
   record(
     request: EffectRequest,

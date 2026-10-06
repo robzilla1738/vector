@@ -26,9 +26,6 @@ const active = new WeakMap<Repo, Set<string>>();
 function initialize(repo: Repo): void {
   if (!repo.columnCipher)
     throw new AuxError("permission_denied", "Skill replay requires protected local storage.");
-  repo.db.exec(
-    "CREATE TABLE IF NOT EXISTS skill_continuations(run_id TEXT PRIMARY KEY,payload TEXT NOT NULL)",
-  );
 }
 function save(repo: Repo, runId: string, state: Continuation): void {
   repo.db

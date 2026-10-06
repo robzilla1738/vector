@@ -43,16 +43,7 @@ export class SuspensionStore {
   constructor(
     private readonly db: DatabaseSync,
     private readonly audit: (event: Record<string, unknown>) => void = () => {},
-  ) {
-    db.exec(`CREATE TABLE IF NOT EXISTS safety_suspensions(
-      suspension_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, thread_id TEXT NOT NULL, turn_id TEXT NOT NULL,
-      kind TEXT NOT NULL CHECK(kind IN ('ask-user-question','approval','action-confirmation','handoff')),
-      request_json TEXT NOT NULL, approval_id TEXT,
-      state TEXT NOT NULL CHECK(state IN ('pending','answered','cancelled','expired')),
-      created_at INTEGER NOT NULL, resolved_at INTEGER);
-      CREATE INDEX IF NOT EXISTS idx_suspensions_run ON safety_suspensions(run_id, state);
-      CREATE INDEX IF NOT EXISTS idx_suspensions_approval ON safety_suspensions(approval_id, state);`);
-  }
+  ) {}
 
   /** Park the run on a suspension; an identical pending suspension is reused, not duplicated. */
   park(input: {

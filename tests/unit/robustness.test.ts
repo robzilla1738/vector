@@ -1,7 +1,7 @@
 import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
-import { applyMigrations, EventBus, executeProgram, openDb, Repo, RunCoordinator } from "@aux/runtime";
+import { applySchema, EventBus, executeProgram, openDb, Repo, RunCoordinator } from "@aux/runtime";
 import type { ModelClient } from "@aux/runtime";
 import type { DriverPage } from "@aux/chromium-driver";
 import type { Observation } from "@aux/contracts";
@@ -78,15 +78,15 @@ describe("Repo.transaction (P1-9)", () => {
     expect(got.description).toBe("d");
   });
 
-  it("migrations apply atomically and roll back on any error", () => {
+  it("schema statements apply atomically and roll back on any error", () => {
     const db = new DatabaseSync(":memory:");
     db.exec("CREATE TABLE t(a INTEGER); INSERT INTO t VALUES (1)");
-    applyMigrations(db, ["ALTER TABLE t ADD COLUMN b INTEGER"]);
+    applySchema(db, ["ALTER TABLE t ADD COLUMN b INTEGER"]);
     expect(db.prepare("SELECT b FROM t").all()).toEqual([{ b: null }]);
     // a failure mid-batch rolls back every statement in it
-    expect(() => applyMigrations(db, ["ALTER TABLE t ADD COLUMN c INTEGER", "THIS IS NOT SQL"])).toThrow();
+    expect(() => applySchema(db, ["ALTER TABLE t ADD COLUMN c INTEGER", "THIS IS NOT SQL"])).toThrow();
     expect(() => db.prepare("SELECT c FROM t")).toThrow(/no such column/);
-    expect(() => applyMigrations(db, ["ALTER TABLE nope ADD COLUMN d INTEGER"])).toThrow(/no such table/);
+    expect(() => applySchema(db, ["ALTER TABLE nope ADD COLUMN d INTEGER"])).toThrow(/no such table/);
   });
 });
 

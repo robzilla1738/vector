@@ -1,3 +1,4 @@
+import schema from "./schema.generated.json" with { type: "json" };
 import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
@@ -79,17 +80,8 @@ export class SpendLedger {
     this.capUsd = spendCap(env);
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
-    this.db.exec(`PRAGMA busy_timeout=5000;
-      CREATE TABLE IF NOT EXISTS ai_spend(
-        reservation_id TEXT PRIMARY KEY,
-        source TEXT NOT NULL,
-        model_id TEXT NOT NULL,
-        reserved_nanos INTEGER NOT NULL CHECK(reserved_nanos >= 0),
-        actual_nanos INTEGER CHECK(actual_nanos >= 0),
-        cost_estimated INTEGER NOT NULL DEFAULT 1,
-        created_at INTEGER NOT NULL,
-        settled_at INTEGER
-      );`);
+    this.db.exec("PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL");
+    this.db.exec(schema.spend);
   }
 
   summary(): SpendSummary {

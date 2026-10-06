@@ -57,10 +57,6 @@ export class NightShiftService {
     private readonly clock: Clock = createClock(),
   ) {
     repo.db
-      .exec(`CREATE TABLE IF NOT EXISTS night_queue(id TEXT PRIMARY KEY,kind TEXT NOT NULL,payload TEXT NOT NULL,
-      budget_usd REAL NOT NULL,status TEXT NOT NULL,created_by TEXT NOT NULL,created_at INTEGER NOT NULL,
-      run_id TEXT,window_date TEXT,window_start INTEGER,window_end INTEGER,foreground INTEGER NOT NULL DEFAULT 0)`);
-    repo.db
       .prepare(
         "UPDATE night_queue SET status='needs_review' WHERE status='running' AND (run_id IS NULL OR run_id NOT IN (SELECT run_id FROM runs))",
       )

@@ -45,17 +45,6 @@ export class SendJournal {
     private readonly db: DatabaseSync,
     private readonly columnCipher?: SqliteColumnCipher,
   ) {
-    db.exec(`CREATE TABLE IF NOT EXISTS safety_send_journal(
-      nonce TEXT PRIMARY KEY, thread_id TEXT NOT NULL, turn_id TEXT NOT NULL, text TEXT NOT NULL,
-      digest TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','offline','sending','accepted','acknowledged','parked','failed','cancelled')),
-      acceptance_id TEXT, supersedes TEXT, root_nonce TEXT, error_code TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-      CREATE INDEX IF NOT EXISTS idx_safety_send_turn ON safety_send_journal(turn_id,created_at);
-      CREATE INDEX IF NOT EXISTS idx_safety_send_state ON safety_send_journal(state,created_at);`);
-    const columns = new Set(
-      (db.prepare("PRAGMA table_info(safety_send_journal)").all() as { name: string }[]).map((c) => c.name),
-    );
-    if (!columns.has("supersedes")) db.exec("ALTER TABLE safety_send_journal ADD COLUMN supersedes TEXT");
-    if (!columns.has("root_nonce")) db.exec("ALTER TABLE safety_send_journal ADD COLUMN root_nonce TEXT");
     this.recoverInterrupted();
   }
 

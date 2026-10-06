@@ -135,9 +135,6 @@ export class DownloadNamingService {
     private events: EventBus,
     private now = Date.now,
   ) {
-    repo.db.exec(
-      `CREATE TABLE IF NOT EXISTS download_renames(download_id TEXT PRIMARY KEY, receipt_id TEXT UNIQUE, receipt TEXT, status TEXT NOT NULL, created_at INTEGER NOT NULL)`,
-    );
     repo.db.prepare("DELETE FROM download_renames WHERE created_at<=?").run(this.now() - DAY);
   }
   async receipts(): Promise<RenameReceipt[]> {
