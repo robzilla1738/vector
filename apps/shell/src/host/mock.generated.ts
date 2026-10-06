@@ -7,7 +7,7 @@ import { HostMethods, HostEvents } from "@aux/contracts/host-methods";
 import { AuxError } from "@aux/contracts";
 import type { createHostClient } from "./client.generated";
 
-const NATIVE_ONLY = new Set(["native.cdpReset","native.cdpCatalog","native.cdpAttach","native.cdpStartNavigation","native.cdpTakeNavigationReceipt","native.cdpDispatch","native.egressContext","native.egressInstall","native.egressRevoke","native.egressResumePerson","native.egressResumeRun","native.egressCheckRunResume","native.egressRunTerminal","native.createAgentPage","native.creatorCleanupProof","native.closeCreatedPage","native.recorderStart","native.recorderDrain","native.recorderStop","native.personRead","native.personReadContext","native.credentialContext","native.credentialAdmit","native.permissionRetire"]);
+const NATIVE_ONLY = new Set(["native.copilotStart","native.copilotEndpoint","native.copilotStop","native.cdpReset","native.cdpCatalog","native.cdpAttach","native.cdpStartNavigation","native.cdpTakeNavigationReceipt","native.cdpDispatch","native.egressContext","native.egressInstall","native.egressRevoke","native.egressResumePerson","native.egressResumeRun","native.egressCheckRunResume","native.egressRunTerminal","native.createAgentPage","native.creatorCleanupProof","native.closeCreatedPage","native.recorderStart","native.recorderDrain","native.recorderStop","native.personRead","native.personReadContext","native.credentialContext","native.credentialAdmit","native.permissionRetire"]);
 const RESULTS: Record<string, unknown> = {
   "capabilities": {
     "buildId": "mock-buildid",
@@ -123,17 +123,13 @@ const RESULTS: Record<string, unknown> = {
   "removeAllowedHost": [],
   "filterLists": {
     "sources": [],
-    "hosts": 0,
-    "cookieSelectors": 0,
-    "builtinHosts": 0,
-    "backend": "subresource_filter"
+    "backend": "ublock_origin",
+    "cosmeticBackend": "native_user_styles"
   },
   "updateFilters": {
     "sources": [],
-    "hosts": 0,
-    "cookieSelectors": 0,
-    "builtinHosts": 0,
-    "backend": "subresource_filter"
+    "backend": "ublock_origin",
+    "cosmeticBackend": "native_user_styles"
   },
   "addFilterSource": [],
   "removeFilterSource": [],

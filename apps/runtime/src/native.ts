@@ -104,12 +104,31 @@ import {
   type CredentialHandoffResult,
 } from "@aux/contracts";
 
+import type {
+  CopilotNativeStart,
+  CopilotNativeStartResult,
+  CopilotNativeEndpointResult,
+  CopilotNativeStopResult,
+} from "@aux/contracts/native-copilot";
+
 /**
  * Calls into the native Chromium host, which owns all native surfaces.
  * In standalone mode (tests, external-only use) the bridge is absent and
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge extends Partial<DownloadNamingNative> {
+  copilotStart?(input: CopilotNativeStart): Promise<CopilotNativeStartResult>;
+  copilotEndpoint?(input: {
+    token: string;
+    requestId: string;
+    helperId: string;
+  }): Promise<CopilotNativeEndpointResult>;
+  copilotStop?(input: {
+    token: string;
+    requestId: string;
+    helperId?: string;
+    reconcile?: true;
+  }): Promise<CopilotNativeStopResult>;
   personCapture?(input: NativePersonCaptureParams): Promise<NativePersonCaptureReceipt>;
   personReadContext?(pageId: string): Promise<NativePersonReadContext>;
   personRead?(input: { pageId: string; request: PersonReadRequest }): Promise<NativePersonReadReceipt>;
@@ -252,6 +271,24 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
 
 export class ChannelNativeBridge implements NativeBridge {
   constructor(private channel: RpcChannel) {}
+  copilotStart(input: CopilotNativeStart): Promise<CopilotNativeStartResult> {
+    return this.channel.call("native.copilotStart", input, 45_000);
+  }
+  copilotEndpoint(input: {
+    token: string;
+    requestId: string;
+    helperId: string;
+  }): Promise<CopilotNativeEndpointResult> {
+    return this.channel.call("native.copilotEndpoint", input, 45_000);
+  }
+  copilotStop(input: {
+    token: string;
+    requestId: string;
+    helperId?: string;
+    reconcile?: true;
+  }): Promise<CopilotNativeStopResult> {
+    return this.channel.call("native.copilotStop", input, 45_000);
+  }
   async recorderStart(input: { pageId: string }): Promise<HostMethodResult<"native.recorderStart">> {
     return NativeRecorderStartedSchema.parse(await this.channel.call("native.recorderStart", input));
   }

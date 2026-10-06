@@ -164,6 +164,14 @@ function emitNode(schema, index) {
         );
         add("for (char c : navigation) if (c < '0' || c > '9') return false;");
         add('if (navigation.size() == 19 && navigation > "9223372036854775807") return false;');
+      } else if (schema.pattern === "^gho_[A-Za-z0-9_]{16,500}$") {
+        add("const auto& token = value.GetString();");
+        add("if (token.size() < 20 || token.size() > 504 || !token.starts_with(\"gho_\")) return false;");
+        add("for (char c : std::string_view(token).substr(4)) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_')) return false;");
+      } else if (schema.pattern === "^[A-Za-z0-9_-]{43}$") {
+        add("const auto& token = value.GetString();");
+        add("if (token.size() != 43) return false;");
+        add("for (char c : token) if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) return false;");
       } else if (schema.pattern === "^[A-Za-z][\\w-]{0,63}$") {
         add("const auto& name = value.GetString();");
         add("const auto alpha = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); };");
@@ -550,6 +558,9 @@ function firstValid(schema, hint, depth) {
 }
 // A browser mock cannot issue native document, lease or effect receipts.
 const nativeOnlyHostMethods = new Set([
+  "native.copilotStart",
+  "native.copilotEndpoint",
+  "native.copilotStop",
   "native.cdpReset",
   "native.cdpCatalog",
   "native.cdpAttach",

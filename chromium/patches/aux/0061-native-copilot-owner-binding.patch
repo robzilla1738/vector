@@ -1,0 +1,1188 @@
+diff --git a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
+index 2cf82e9..f98e43a 100644
+--- a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
++++ b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
+@@ -95,6 +95,8 @@ std::ostream& operator<<(std::ostream& out,
+       return out << "kOmniboxEverywhere";
+     case ProfileKeepAliveOrigin::kAuxBrowserImport:
+       return out << "kAuxBrowserImport";
++    case ProfileKeepAliveOrigin::kAuxCopilotHelper:
++      return out << "kAuxCopilotHelper";
+     case ProfileKeepAliveOrigin::kAuxContentFilterCommit:
+       return out << "kAuxContentFilterCommit";
+     case ProfileKeepAliveOrigin::kAuxShellWarmup:
+diff --git a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
+index 243b95f..fe5e4f3 100644
+--- a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
++++ b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
+@@ -198,7 +198,10 @@ enum class ProfileKeepAliveOrigin {
+ 
+   kAuxBrowserImport = 49,
+ 
+-  kMaxValue = kAuxBrowserImport,
++  // Original privately owned Copilot helper awaiting actual group/pipe join.
++  kAuxCopilotHelper = 50,
++
++  kMaxValue = kAuxCopilotHelper,
+ };
+ // LINT.ThenChange(/tools/metrics/histograms/metadata/profile/enums.xml)
+ 
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 0decd87..229e25d 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -184,6 +184,8 @@ source_set("runtime") {
+   ]
+   if (is_mac) {
+     sources += [
++      "native_copilot_session.cc",
++      "native_copilot_session.h",
+       "native_owned_headless_process.cc",
+       "native_owned_headless_process.h",
+       "owned_headless_protocol.h",
+diff --git a/chrome/browser/ui/aux/native_copilot_session.cc b/chrome/browser/ui/aux/native_copilot_session.cc
+new file mode 100644
+index 0000000..2dfe3e1
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_copilot_session.cc
+@@ -0,0 +1,274 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_copilot_session.h"
++
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/task/thread_pool.h"
++#include "base/time/time.h"
++#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++
++namespace aux {
++namespace {
++base::DictValue Fault(std::string message) {
++  return base::DictValue().Set("error",
++                               base::DictValue()
++                                   .Set("code", "operation_uncertain")
++                                   .Set("message", std::move(message)));
++}
++}  // namespace
++
++class NativeCopilotSession::Worker {
++ public:
++  Worker(std::string request_id,
++         std::shared_ptr<std::atomic<OwnedHeadlessAdmission>> admission);
++  ~Worker();
++
++  base::DictValue Prepare() {
++    return Identity().Set("state", "prepared").Set("launched", false);
++  }
++  base::DictValue Start(OwnedCopilotLaunch launch,
++                        std::shared_ptr<std::atomic<OwnedHeadlessAdmission>>
++                            execution_admission) {
++    // UI committed the ONE execute admission before this sequential task.
++    // Timeout/source retirement and process acceptance share this exact word.
++    admission_ = std::move(execution_admission);
++    auto started =
++        process_->Start(std::move(launch),
++                        base::TimeTicks::Now() + base::Seconds(20), admission_);
++    launched_ = process_->has_cleanup_debt();
++    if (!started.has_value() || admission_->load(std::memory_order_acquire) ==
++                                    OwnedHeadlessAdmission::kRetired) {
++      const std::string error = started.has_value()
++                                    ? "Original helper owner retired"
++                                    : started.error();
++      auto result = Identity().Set("state", "failed").Set("error", error);
++      auto cleanup = Stop();
++      const auto* receipt = cleanup.FindDict("result");
++      result.Set("joined",
++                 receipt && receipt->FindBool("joined").value_or(false));
++      return result;
++    }
++    return Identity().Set("state", "started").Set("joined", false);
++  }
++  base::DictValue Endpoint() {
++    if (admission_->load(std::memory_order_acquire) !=
++        OwnedHeadlessAdmission::kAccepted) {
++      return Fault("Original helper admission retired");
++    }
++    auto endpoint = process_->LoopbackUri();
++    if (!endpoint.has_value()) {
++      return Fault(endpoint.error());
++    }
++    if (admission_->load(std::memory_order_acquire) !=
++        OwnedHeadlessAdmission::kAccepted) {
++      return Fault("Original helper admission retired");
++    }
++    auto result = Identity().Set("ready", endpoint->has_value());
++    if (endpoint->has_value()) {
++      result.Set("uri", **endpoint);
++    }
++    return base::DictValue().Set("result", std::move(result));
++  }
++  base::DictValue Stop() {
++    admission_->exchange(OwnedHeadlessAdmission::kRetired,
++                         std::memory_order_acq_rel);
++    // No spawn is an explicit reduction receipt, never an invented exit code.
++    if (!launched_) {
++      return base::DictValue().Set(
++          "result", Identity().Set("joined", true).Set("launched", false));
++    }
++    auto joined = process_->Stop(base::TimeTicks::Now() + base::Seconds(10));
++    if (!joined.has_value()) {
++      return Fault(joined.error());
++    }
++    return base::DictValue().Set("result",
++                                 Identity()
++                                     .Set("joined", true)
++                                     .Set("launched", true)
++                                     .Set("exitCode", joined->exit_code)
++                                     .Set("exitSignal", joined->exit_signal));
++  }
++
++ private:
++  base::DictValue Identity() const {
++    return base::DictValue()
++        .Set("requestId", request_id_)
++        .Set("helperId", process_->handle().ToString());
++  }
++  const std::string request_id_;
++  std::shared_ptr<std::atomic<OwnedHeadlessAdmission>> admission_;
++  const scoped_refptr<NativeOwnedHeadlessProcess> process_;
++  bool launched_ = false;
++};
++
++NativeCopilotSession::Worker::Worker(
++    std::string request_id,
++    std::shared_ptr<std::atomic<OwnedHeadlessAdmission>> admission)
++    : request_id_(std::move(request_id)),
++      admission_(std::move(admission)),
++      process_(base::MakeRefCounted<NativeOwnedHeadlessProcess>()) {}
++NativeCopilotSession::Worker::~Worker() = default;
++
++NativeCopilotSession::NativeCopilotSession(
++    content::WebContents* original_contents,
++    std::string token,
++    std::string request_id,
++    uint64_t original_generation,
++    std::string account_id,
++    std::string authorization_generation,
++    std::string credential_revision,
++    std::shared_ptr<std::atomic<OwnedHeadlessAdmission>> admission,
++    base::RepeatingCallback<bool()> source_current)
++    : base::RefCountedDeleteOnSequence<NativeCopilotSession>(
++          base::SequencedTaskRunner::GetCurrentDefault()),
++      content::WebContentsObserver(original_contents),
++      token_(std::move(token)),
++      request_id_(std::move(request_id)),
++      original_generation_(original_generation),
++      account_id_(std::move(account_id)),
++      authorization_generation_(std::move(authorization_generation)),
++      credential_revision_(std::move(credential_revision)),
++      admission_(std::move(admission)),
++      source_current_(std::move(source_current)),
++      worker_(
++          base::ThreadPool::CreateSequencedTaskRunner(
++              {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN}),
++          request_id_,
++          admission_) {}
++NativeCopilotSession::~NativeCopilotSession() = default;
++
++bool NativeCopilotSession::Current() {
++  if (admission_->load(std::memory_order_acquire) ==
++          OwnedHeadlessAdmission::kRetired ||
++      !source_current_.Run()) {
++    Retire();
++    return false;
++  }
++  return true;
++}
++void NativeCopilotSession::Prepare(Reply reply) {
++  CheckSource();
++  worker_.AsyncCall(&Worker::Prepare)
++      .Then(base::BindOnce(
++          [](scoped_refptr<NativeCopilotSession> self, Reply reply,
++             base::DictValue result) {
++            if (!self->Current()) {
++              std::move(reply).Run(
++                  Fault("Original Copilot reservation retired"));
++              return;
++            }
++            const auto* handle = result.FindString("helperId");
++            CHECK(handle);
++            self->helper_id_ = *handle;
++            self->prepared_ = true;
++            std::move(reply).Run(
++                base::DictValue().Set("result", std::move(result)));
++          },
++          base::WrapRefCounted(this), std::move(reply)));
++}
++void NativeCopilotSession::Start(
++    OwnedCopilotLaunch launch,
++    std::unique_ptr<ScopedProfileKeepAlive> profile_lease,
++    std::shared_ptr<std::atomic<OwnedHeadlessAdmission>> execution_admission,
++    Reply reply) {
++  CHECK(profile_lease && prepared_ && !execution_requested_);
++  execution_requested_ = true;
++  // Only the acknowledged reservation may make this UI-serialized transfer.
++  // Never keep prepare's timed-out request state as execution authority.
++  admission_ = std::move(execution_admission);
++  profile_lease_ = std::move(profile_lease);
++  retained_ = this;
++  Current();  // Prepare already started the one original-source monitor.
++  worker_.AsyncCall(&Worker::Start)
++      .WithArgs(std::move(launch), admission_)
++      .Then(base::BindOnce(&NativeCopilotSession::OnStart,
++                           base::WrapRefCounted(this), std::move(reply)));
++}
++void NativeCopilotSession::OnStart(Reply reply, base::DictValue result) {
++  if (const auto* handle = result.FindString("helperId")) {
++    helper_id_ = *handle;
++  }
++  joined_ = result.FindBool("joined").value_or(false);
++  if (!Current()) {
++    result.Set("state", "failed");
++  }
++  if (joined_) {
++    profile_lease_.reset();  // UI sequence, only after real reduction receipt.
++    retained_.reset();
++  }
++  std::move(reply).Run(base::DictValue().Set("result", std::move(result)));
++}
++void NativeCopilotSession::Endpoint(Reply reply) {
++  if (!Current()) {
++    std::move(reply).Run(Fault("Original helper owner retired"));
++    return;
++  }
++  worker_.AsyncCall(&Worker::Endpoint)
++      .Then(base::BindOnce(
++          [](scoped_refptr<NativeCopilotSession> self, Reply reply,
++             base::DictValue result) {
++            if (!self->Current()) {
++              result = Fault("Original helper owner retired");
++            }
++            std::move(reply).Run(std::move(result));
++          },
++          base::WrapRefCounted(this), std::move(reply)));
++}
++void NativeCopilotSession::Stop(Reply reply) {
++  admission_->exchange(OwnedHeadlessAdmission::kRetired,
++                       std::memory_order_acq_rel);
++  worker_.AsyncCall(&Worker::Stop)
++      .Then(base::BindOnce(&NativeCopilotSession::OnStop,
++                           base::WrapRefCounted(this), std::move(reply)));
++}
++void NativeCopilotSession::OnStop(Reply reply, base::DictValue result) {
++  if (const auto* receipt = result.FindDict("result")) {
++    if (const auto* handle = receipt->FindString("helperId")) {
++      helper_id_ = *handle;
++    }
++    joined_ = receipt->FindBool("joined").value_or(false);
++  }
++  if (joined_) {
++    Observe(nullptr);
++    profile_lease_.reset();
++    retained_.reset();
++  }
++  // Failure retains the exact process/session and lease. Explicit retry is
++  // reduction-only; no new helper may sidestep this account's unjoined debt.
++  std::move(reply).Run(std::move(result));
++}
++void NativeCopilotSession::Reconcile() {
++  CHECK(joined_);
++  reconciled_ = true;
++}
++void NativeCopilotSession::Retire() {
++  admission_->exchange(OwnedHeadlessAdmission::kRetired,
++                       std::memory_order_acq_rel);
++  if (!retirement_stop_queued_ && !joined_) {
++    retirement_stop_queued_ = true;
++    Stop(base::BindOnce([](base::DictValue) {}));
++  }
++}
++void NativeCopilotSession::CheckSource() {
++  if (!joined_ && Current()) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++        FROM_HERE,
++        base::BindOnce(&NativeCopilotSession::CheckSource,
++                       weak_factory_.GetWeakPtr()),
++        base::Milliseconds(50));
++  }
++}
++void NativeCopilotSession::PrimaryPageChanged(content::Page&) {
++  Current();
++}
++void NativeCopilotSession::RenderFrameDeleted(content::RenderFrameHost*) {
++  Current();
++}
++void NativeCopilotSession::WebContentsDestroyed() {
++  Retire();
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/native_copilot_session.h b/chrome/browser/ui/aux/native_copilot_session.h
+new file mode 100644
+index 0000000..b7bd161
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_copilot_session.h
+@@ -0,0 +1,95 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_COPILOT_SESSION_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_COPILOT_SESSION_H_
++
++#include <atomic>
++#include <memory>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/ref_counted_delete_on_sequence.h"
++#include "base/memory/weak_ptr.h"
++#include "base/threading/sequence_bound.h"
++#include "base/values.h"
++#include "chrome/browser/ui/aux/native_owned_headless_process.h"
++#include "content/public/browser/web_contents_observer.h"
++
++class ScopedProfileKeepAlive;
++
++namespace aux {
++// UI-owned original source and Profile lease. Only its private worker touches
++// the process, retained leader and sockets. Failed join retains this SAME
++// owner.
++class NativeCopilotSession final
++    : public base::RefCountedDeleteOnSequence<NativeCopilotSession>,
++      public content::WebContentsObserver {
++ public:
++  using Reply = base::OnceCallback<void(base::DictValue)>;
++  NativeCopilotSession(
++      content::WebContents* original_contents,
++      std::string token,
++      std::string request_id,
++      uint64_t original_generation,
++      std::string account_id,
++      std::string authorization_generation,
++      std::string credential_revision,
++      std::shared_ptr<std::atomic<OwnedHeadlessAdmission>> admission,
++      base::RepeatingCallback<bool()> source_current);
++  void Prepare(Reply reply);
++  void Start(
++      OwnedCopilotLaunch launch,
++      std::unique_ptr<ScopedProfileKeepAlive> profile_lease,
++      std::shared_ptr<std::atomic<OwnedHeadlessAdmission>> execution_admission,
++      Reply reply);
++  void Endpoint(Reply reply);
++  void Stop(Reply reply);
++  void Retire();
++  bool Current();
++  bool prepared() const { return prepared_; }
++  bool execution_requested() const { return execution_requested_; }
++  bool joined() const { return joined_; }
++  bool reconciled() const { return reconciled_; }
++  void Reconcile();
++  uint64_t original_generation() const { return original_generation_; }
++  const std::string& token() const { return token_; }
++  const std::string& account_id() const { return account_id_; }
++  const std::string& helper_id() const { return helper_id_; }
++  const std::string& authorization_generation() const {
++    return authorization_generation_;
++  }
++  const std::string& credential_revision() const {
++    return credential_revision_;
++  }
++
++ private:
++  friend class base::RefCountedDeleteOnSequence<NativeCopilotSession>;
++  friend class base::DeleteHelper<NativeCopilotSession>;
++  class Worker;
++  ~NativeCopilotSession() override;
++  void CheckSource();
++  void OnStart(Reply reply, base::DictValue result);
++  void OnStop(Reply reply, base::DictValue result);
++  void PrimaryPageChanged(content::Page& page) override;
++  void RenderFrameDeleted(content::RenderFrameHost* frame) override;
++  void WebContentsDestroyed() override;
++  const std::string token_;
++  const std::string request_id_;
++  const uint64_t original_generation_;
++  const std::string account_id_;
++  const std::string authorization_generation_;
++  const std::string credential_revision_;
++  std::shared_ptr<std::atomic<OwnedHeadlessAdmission>> admission_;
++  const base::RepeatingCallback<bool()> source_current_;
++  std::unique_ptr<ScopedProfileKeepAlive> profile_lease_;
++  base::SequenceBound<Worker> worker_;
++  scoped_refptr<NativeCopilotSession> retained_;
++  std::string helper_id_;
++  bool prepared_ = false;
++  bool execution_requested_ = false;
++  bool joined_ = false;
++  bool reconciled_ = false;
++  bool retirement_stop_queued_ = false;
++  base::WeakPtrFactory<NativeCopilotSession> weak_factory_{this};
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_owned_headless_process.cc b/chrome/browser/ui/aux/native_owned_headless_process.cc
+index c8a8dee..0fa5a15 100644
+--- a/chrome/browser/ui/aux/native_owned_headless_process.cc
++++ b/chrome/browser/ui/aux/native_owned_headless_process.cc
+@@ -251,9 +251,13 @@ bool NativeOwnedHeadlessProcess::has_cleanup_debt() const {
+ }
+ base::expected<void, std::string> NativeOwnedHeadlessProcess::Start(
+     OwnedCopilotLaunch launch,
+-    base::TimeTicks setup_deadline) {
++    base::TimeTicks setup_deadline,
++    std::shared_ptr<std::atomic<OwnedHeadlessAdmission>> admission) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+-  if (pid_ != -1 || joined_ || base::TimeTicks::Now() >= setup_deadline ||
++  if (!admission ||
++      admission->load(std::memory_order_acquire) !=
++          OwnedHeadlessAdmission::kPending ||
++      pid_ != -1 || joined_ || base::TimeTicks::Now() >= setup_deadline ||
+       !ExclusiveDisposition() || !Secret(launch.access_token) ||
+       !Secret(launch.connection_token)) {
+     return base::unexpected("Invalid launch or incompatible exclusive waiter");
+@@ -350,6 +354,10 @@ base::expected<void, std::string> NativeOwnedHeadlessProcess::Start(
+   int error = posix_spawnattr_setflags(
+       &attributes, POSIX_SPAWN_SETSID | POSIX_SPAWN_CLOEXEC_DEFAULT |
+                        POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK);
++  if (!error && admission->load(std::memory_order_acquire) !=
++                    OwnedHeadlessAdmission::kPending) {
++    error = ECANCELED;
++  }
+   if (!error) {
+     error = posix_spawnattr_setsigmask(&attributes, &mask);
+   }
+@@ -423,6 +431,15 @@ base::expected<void, std::string> NativeOwnedHeadlessProcess::Start(
+         "Spawned owner retained: setup acknowledgement failed");
+   }
+   private_group_ = true;
++  auto expected = OwnedHeadlessAdmission::kPending;
++  // This is the acceptance point. Retirement after this CAS queues Stop of
++  // THIS owner, never transfers the accepted launch to a replacement caller.
++  if (!admission->compare_exchange_strong(expected,
++                                          OwnedHeadlessAdmission::kAccepted,
++                                          std::memory_order_acq_rel)) {
++    return base::unexpected(
++        "Spawned owner retained: original admission retired");
++  }
+   if (!WriteAcceptance(gate_write.get(), setup_deadline)) {
+     return base::unexpected("Spawned owner retained: exec acceptance failed");
+   }
+@@ -587,7 +604,7 @@ bool NativeOwnedHeadlessProcess::DrainPipes() {
+   Drain(errors_);
+   return !output_.is_valid() && !errors_.is_valid();
+ }
+-base::expected<std::string, std::string>
++base::expected<std::optional<std::string>, std::string>
+ NativeOwnedHeadlessProcess::LoopbackUri() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   if (pid_ <= 0 || reaped_ || stopping_ || !started_ || !private_group_) {
+@@ -599,12 +616,67 @@ NativeOwnedHeadlessProcess::LoopbackUri() {
+   }
+   DrainPipes();
+   if (!endpoint_) {
+-    const auto listeners = FindProjectListeners(identity_);
+-    if (listeners.size() != 1 || listeners.front().host != "127.0.0.1" ||
+-        !ProjectListenerCurrent(identity_, listeners.front())) {
+-      return base::unexpected("Unique original loopback endpoint not ready");
++    // The generic Project scanner intentionally collapses uncertain inventory
++    // to an empty list. That cannot truthfully mean Copilot ready:false.
++    // No-fork policy admits only the retained leader; scan its exact live FDs
++    // with explicit uncertainty, never adopt a child's or replacement socket.
++    auto only_leader = OnlyRetainedLeader();
++    if (!only_leader.has_value() || !*only_leader) {
++      return base::unexpected("Original helper group inventory is uncertain");
++    }
++    std::array<proc_fdinfo, 4096> fds{};
++    const int count =
++        proc_pidinfo(pid_, PROC_PIDLISTFDS, 0, fds.data(), sizeof(fds));
++    if (count <= 0 || count >= static_cast<int>(sizeof(fds)) ||
++        count % sizeof(proc_fdinfo) != 0) {
++      return base::unexpected(
++          "Original helper descriptor inventory is uncertain");
++    }
++    std::optional<NativeProjectListener> found;
++    for (const auto& fd : base::span(fds).first(count / sizeof(proc_fdinfo))) {
++      if (fd.proc_fdtype != PROX_FDTYPE_SOCKET) {
++        continue;
++      }
++      socket_fdinfo socket{};
++      if (proc_pidfdinfo(pid_, fd.proc_fd, PROC_PIDFDSOCKETINFO, &socket,
++                         sizeof(socket)) != static_cast<int>(sizeof(socket))) {
++        return base::unexpected("Original helper socket inventory changed");
++      }
++      if (socket.psi.soi_kind != SOCKINFO_TCP ||
++          socket.psi.soi_protocol != IPPROTO_TCP ||
++          socket.psi.soi_proto.pri_tcp.tcpsi_state != TSI_S_LISTEN) {
++        continue;
++      }
++      const auto& tcp = socket.psi.soi_proto.pri_tcp;
++      const auto port = ntohs(static_cast<uint16_t>(tcp.tcpsi_ini.insi_lport));
++      if (found || !port || (socket.psi.soi_options & SO_REUSEPORT) ||
++          socket.psi.soi_family != AF_INET ||
++          ntohl(tcp.tcpsi_ini.insi_laddr.ina_46.i46a_addr4.s_addr) !=
++              INADDR_LOOPBACK) {
++        return base::unexpected(
++            "Original helper listener is not unique IPv4 loopback");
++      }
++      found = NativeProjectListener{pid_,
++                                    static_cast<int>(fd.proc_fd),
++                                    identity_.seconds,
++                                    identity_.microseconds,
++                                    socket.psi.soi_so,
++                                    tcp.tcpsi_ini.insi_gencnt,
++                                    "127.0.0.1",
++                                    port};
++    }
++    if (!ProjectProcessCurrent(identity_)) {
++      return base::unexpected(
++          "Original helper changed during endpoint inventory");
++    }
++    if (!found) {
++      return std::optional<std::string>();
++    }
++    if (!ProjectListenerCurrent(identity_, *found)) {
++      return base::unexpected(
++          "Original helper listener changed during inventory");
+     }
+-    endpoint_ = listeners.front();
++    endpoint_ = *found;
+   }
+   socket_fdinfo socket{};
+   const auto& listener = *endpoint_;
+@@ -616,7 +688,8 @@ NativeOwnedHeadlessProcess::LoopbackUri() {
+       !ProjectListenerCurrent(identity_, listener)) {
+     return base::unexpected("Original endpoint is not explicit IPv4 loopback");
+   }
+-  return "127.0.0.1:" + std::to_string(listener.port);
++  return std::optional<std::string>("127.0.0.1:" +
++                                    std::to_string(listener.port));
+ }
+ base::expected<OwnedGroupJoined, std::string> NativeOwnedHeadlessProcess::Stop(
+     base::TimeTicks deadline) {
+diff --git a/chrome/browser/ui/aux/native_owned_headless_process.h b/chrome/browser/ui/aux/native_owned_headless_process.h
+index f4dfa59..de421fe 100644
+--- a/chrome/browser/ui/aux/native_owned_headless_process.h
++++ b/chrome/browser/ui/aux/native_owned_headless_process.h
+@@ -4,6 +4,8 @@
+ 
+ #include <sys/types.h>
+ 
++#include <atomic>
++#include <memory>
+ #include <optional>
+ #include <string>
+ 
+@@ -18,6 +20,9 @@
+ #include "chrome/browser/ui/aux/native_project_listener.h"
+ 
+ namespace aux {
++// Shared by the UI owner, RPC cancellation and fixed launcher acceptance.
++// Retirement and acceptance use the SAME atomic; no check-then-write race.
++enum class OwnedHeadlessAdmission { kPending, kAccepted, kRetired };
+ // Browser-only, immutable installed-payload receipt. Its installer lease must
+ // prevent replacement of the executable/private Home until Joined is returned.
+ // No renderer/API accepts this object or any PID.
+@@ -57,11 +62,13 @@ class NativeOwnedHeadlessProcess
+  public:
+   NativeOwnedHeadlessProcess();
+   const base::UnguessableToken& handle() const { return handle_; }
+-  base::expected<void, std::string> Start(OwnedCopilotLaunch launch,
+-                                          base::TimeTicks setup_deadline);
++  base::expected<void, std::string> Start(
++      OwnedCopilotLaunch launch,
++      base::TimeTicks setup_deadline,
++      std::shared_ptr<std::atomic<OwnedHeadlessAdmission>> admission);
+   // Finds a unique actual loopback listener in the original live group;
+   // connection-token authentication remains the SDK adapter's next step.
+-  base::expected<std::string, std::string> LoopbackUri();
++  base::expected<std::optional<std::string>, std::string> LoopbackUri();
+   base::expected<OwnedGroupJoined, std::string> Stop(base::TimeTicks deadline);
+   bool has_cleanup_debt() const;
+ 
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index 9f6150f..50c162c 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -3,23 +3,10 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+-#include "chrome/browser/ui/aux/runtime_host.h"
+-
+-#include <cmath>
+-#include "chrome/browser/ui/aux/native_terminal.h"
+-#include "chrome/browser/ui/aux/native_recorder_controller.h"
+-#include "chrome/browser/ui/aux/native_person_observer_controller.h"
+-#include "chrome/browser/ui/aux/native_person_capture_controller.h"
+-#include "content/public/browser/render_frame_host.h"
+-#include "chrome/browser/ui/aux/power_activity_mac.h"
+-
+-#include "base/task/thread_pool.h"
+-#include "chrome/browser/devtools/remote_debugging_server.h"
+-
+ #include <fcntl.h>
+ #include <libproc.h>
+-#include <sys/proc_info.h>
+ #include <poll.h>
++#include <sys/proc_info.h>
+ #include <sys/socket.h>
+ #include <sys/stat.h>
+ #include <sys/un.h>
+@@ -27,12 +14,12 @@
+ 
+ #include <algorithm>
+ #include <array>
+-#include <cerrno>
+ #include <cctype>
++#include <cerrno>
+ #include <cmath>
+ #include <cstdlib>
+-#include <memory>
+ #include <limits>
++#include <memory>
+ #include <optional>
+ #include <utility>
+ #include <vector>
+@@ -47,51 +34,63 @@
+ #include "base/path_service.h"
+ #include "base/process/launch.h"
+ #include "base/rand_util.h"
+-#include "base/strings/utf_string_conversions.h"
+ #include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
+ #include "base/synchronization/waitable_event.h"
+-#include "base/time/time.h"
+-#include "base/uuid.h"
+ #include "base/task/bind_post_task.h"
++#include "base/task/thread_pool.h"
++#include "base/time/time.h"
+ #include "base/timer/timer.h"
+-#include "chrome/browser/profiles/profile.h"
++#include "base/uuid.h"
+ #include "chrome/browser/device_reauth/chrome_device_authenticator_factory.h"
++#include "chrome/browser/devtools/remote_debugging_server.h"
++#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
++#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/browser_profile_importer.h"
+ #include "chrome/browser/ui/aux/cdp_broker.h"
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+-#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/browser/ui/aux/cookie_import.h"
+ #include "chrome/browser/ui/aux/credential_fill.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
+ #include "chrome/browser/ui/aux/method_registry.h"
+-#include "chrome/browser/ui/aux/cookie_import.h"
++#include "chrome/browser/ui/aux/native_copilot_session.h"
++#include "chrome/browser/ui/aux/native_find.h"
++#include "chrome/browser/ui/aux/native_person_capture_controller.h"
++#include "chrome/browser/ui/aux/native_person_observer_controller.h"
++#include "chrome/browser/ui/aux/native_recorder_controller.h"
++#include "chrome/browser/ui/aux/native_terminal.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+-#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
+-#include "chrome/common/webui_url_constants.h"
+-#include "components/prefs/pref_service.h"
+-#include "content/public/common/url_constants.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/permission_broker.h"
++#include "chrome/browser/ui/aux/power_activity_mac.h"
+ #include "chrome/browser/ui/aux/profile_library.h"
+-#include "chrome/browser/ui/aux/browser_profile_importer.h"
+ #include "chrome/browser/ui/aux/profile_search_engine.h"
+ #include "chrome/browser/ui/aux/readable_capture.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
+ #include "chrome/browser/ui/aux/secret_store_mac.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+-#include "chrome/browser/ui/aux/permission_broker.h"
+ #include "chrome/browser/ui/aux/webmcp.h"
+-#include "chrome/browser/ui/aux/native_find.h"
+ #include "chrome/browser/ui/aux/zap_controller.h"
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+-#include "components/sessions/core/session_id.h"
+-#include "components/find_in_page/find_result_observer.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "chrome/common/webui_url_constants.h"
+ #include "components/device_reauth/device_authenticator.h"
++#include "components/find_in_page/find_result_observer.h"
+ #include "components/find_in_page/find_tab_helper.h"
++#include "components/prefs/pref_service.h"
++#include "components/sessions/core/session_id.h"
+ #include "components/version_info/version_info.h"
+ #include "components/zoom/zoom_controller.h"
+ #include "content/public/browser/devtools_agent_host.h"
+ #include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/common/stop_find_action.h"
++#include "content/public/common/url_constants.h"
+ #include "ui/base/base_window.h"
+ #include "url/gurl.h"
+ 
+@@ -656,8 +655,252 @@ void AuxRuntimeHost::HandleNativeProjectCall(const std::string& method, const ba
+   controller->Start(method, std::move(callback));
+ }
+ 
+-void AuxRuntimeHost::HandleNativeTerminalCall(const std::string& method, const base::DictValue& params,
+-    uint64_t generation, base::OnceCallback<void(base::DictValue)> callback) {
++void AuxRuntimeHost::HandleNativeCopilotCall(
++    const std::string& method,
++    const base::DictValue& params,
++    uint64_t generation,
++    std::shared_ptr<std::atomic<aux::OwnedHeadlessAdmission>> admission,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  const auto* token = params.FindString("token");
++  const auto* request = params.FindString("requestId");
++  scoped_refptr<aux::NativeCopilotSession> start_record;
++  auto fail = [&callback, &start_record](std::string code,
++                                         std::string message) {
++    if (start_record) {
++      start_record->Retire();
++    }
++    std::move(callback).Run(NativeFault(std::move(code), std::move(message)));
++  };
++  if (!token || !request || !base::Uuid::ParseLowercase(*token).is_valid() ||
++      !base::Uuid::ParseLowercase(*request).is_valid()) {
++    fail("invalid_params", "Original Copilot request identity is required");
++    return;
++  }
++  auto found = native_copilots_.find(*request);
++  if (method == "native.copilotStop") {
++    const auto* handle = params.FindString("helperId");
++    // Reduction remains callable after original document/socket retirement.
++    // The authenticated runtime cannot adopt arbitrary processes: saved token
++    // and request are mandatory and a supplied handle must match exactly.
++    const auto reconcile = params.FindBool("reconcile");
++    if (params.size() !=
++            (handle ? 3u : 2u) + (reconcile.has_value() ? 1u : 0u) ||
++        (reconcile.has_value() && (!*reconcile || !handle)) ||
++        found == native_copilots_.end() || found->second->token() != *token ||
++        (handle && *handle != found->second->helper_id()) ||
++        (!handle && found->second->execution_requested()) ||
++        (reconcile.value_or(false) && !found->second->joined())) {
++      fail("ref_stale", "Original Copilot cleanup receipt is unavailable");
++      return;
++    }
++    if (reconcile.value_or(false)) {
++      found->second->Reconcile();
++    }
++    found->second->Stop(std::move(callback));
++    return;
++  }
++  const auto prepare = params.FindBool("prepare");
++  if (method == "native.copilotStart" && prepare.value_or(false)) {
++    if (params.size() != 6 || found != native_copilots_.end() || !generation ||
++        generation != admitted_native_generation_ || shutting_down_) {
++      fail("ref_stale", "Original Copilot reservation cannot be admitted");
++      return;
++    }
++    // Close retired scopes irreversibly before pruning acknowledged records.
++    // Restored documents must obtain a fresh original native turn token.
++    std::erase_if(turn_contexts_, [this](const auto& entry) {
++      return !TurnContextCurrent(entry.second);
++    });
++    std::erase_if(native_copilots_, [this](const auto& entry) {
++      const auto& record = entry.second;
++      auto owner = turn_contexts_.find(record->token());
++      const bool retired =
++          owner == turn_contexts_.end() ||
++          owner->second.generation != record->original_generation();
++      return record->joined() && record->reconciled() && retired;
++    });
++    if (native_copilots_.size() >= 64) {
++      fail("backend_unavailable",
++           "Original Copilot reservation registry is full");
++      return;
++    }
++    const auto* account = params.FindString("accountId");
++    const auto* authorization = params.FindString("authorizationGeneration");
++    const auto* credential = params.FindString("credentialRevision");
++    const bool valid_account =
++        account && account->size() == 64 &&
++        std::ranges::all_of(*account, [](char c) {
++          return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++        });
++    auto original = turn_contexts_.find(*token);
++    if (!valid_account || !authorization || !credential ||
++        !base::Uuid::ParseLowercase(*authorization).is_valid() ||
++        !base::Uuid::ParseLowercase(*credential).is_valid() ||
++        original == turn_contexts_.end() ||
++        !TurnContextCurrent(original->second) ||
++        admission->load(std::memory_order_acquire) !=
++            aux::OwnedHeadlessAdmission::kPending) {
++      fail("ref_stale", "Original Copilot reservation scope retired");
++      return;
++    }
++    for (const auto& [id, record] : native_copilots_) {
++      if (!record->joined() && record->account_id() == *account) {
++        fail("operation_uncertain",
++             "Reduce the original account reservation before another prepare");
++        return;
++      }
++    }
++    auto current = base::BindRepeating(
++        [](base::WeakPtr<AuxRuntimeHost> host, std::string token,
++           uint64_t generation) {
++          if (!host) {
++            return false;
++          }
++          auto original = host->turn_contexts_.find(token);
++          return original != host->turn_contexts_.end() &&
++                 original->second.generation == generation &&
++                 host->TurnContextCurrent(original->second);
++        },
++        weak_factory_.GetWeakPtr(), *token, generation);
++    start_record = base::MakeRefCounted<aux::NativeCopilotSession>(
++        content::WebContents::FromRenderFrameHost(
++            original->second.document.AsRenderFrameHostIfValid()),
++        *token, *request, generation, *account, *authorization, *credential,
++        admission, std::move(current));
++    native_copilots_.emplace(*request, start_record);
++    // No token, installation, Home, launch or gate acceptance reaches worker.
++    // A lost prepare ACK cannot execute; no native handle reached the caller.
++    start_record->Prepare(std::move(callback));
++    return;
++  }
++  if (method == "native.copilotStart") {
++    const auto* handle = params.FindString("helperId");
++    if (prepare.has_value() || !handle || found == native_copilots_.end() ||
++        found->second->token() != *token ||
++        found->second->helper_id() != *handle ||
++        found->second->original_generation() != generation ||
++        !found->second->prepared() || found->second->execution_requested()) {
++      fail("ref_stale",
++           "The acknowledged original Copilot reservation is required");
++      return;
++    }
++    start_record = found->second;
++  }
++  auto original = turn_contexts_.find(*token);
++  if (shutting_down_ || !generation ||
++      generation != admitted_native_generation_ ||
++      original == turn_contexts_.end() ||
++      !TurnContextCurrent(original->second) ||
++      admission->load(std::memory_order_acquire) ==
++          aux::OwnedHeadlessAdmission::kRetired) {
++    fail("ref_stale", "Original Copilot window/document retired");
++    return;
++  }
++  if (method == "native.copilotEndpoint") {
++    const auto* handle = params.FindString("helperId");
++    if (params.size() != 3 || !handle || found == native_copilots_.end() ||
++        found->second->token() != *token ||
++        found->second->helper_id() != *handle || !found->second->Current()) {
++      fail("ref_stale", "Original Copilot helper receipt retired");
++      return;
++    }
++    found->second->Endpoint(std::move(callback));
++    return;
++  }
++  if (method != "native.copilotStart") {
++    fail("unsupported", "Unknown Copilot native operation");
++    return;
++  }
++  const auto* account = params.FindString("accountId");
++  const auto* authorization = params.FindString("authorizationGeneration");
++  const auto* credential = params.FindString("credentialRevision");
++  const auto* access = params.FindString("accessToken");
++  const auto* connection = params.FindString("connectionToken");
++  auto decimal = [&params](const char* name) -> std::optional<uint64_t> {
++    const auto* value = params.FindString(name);
++    uint64_t parsed = 0;
++    if (!value || !base::StringToUint64(*value, &parsed) || !parsed ||
++        base::NumberToString(parsed) != *value) {
++      return std::nullopt;
++    }
++    return parsed;
++  };
++  const auto runtime_device = decimal("runtimeDevice");
++  const auto runtime_inode = decimal("runtimeInode");
++  const auto executable_device = decimal("executableDevice");
++  const auto executable_inode = decimal("executableInode");
++  const auto home_device = decimal("homeDevice");
++  const auto home_inode = decimal("homeInode");
++  const auto is_account = [](const std::string& value) {
++    return value.size() == 64 && std::ranges::all_of(value, [](char c) {
++             return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
++           });
++  };
++  const auto connection_valid = [](const std::string& value) {
++    return value.size() == 43 && std::ranges::all_of(value, [](char c) {
++             return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
++                    (c >= '0' && c <= '9') || c == '-' || c == '_';
++           });
++  };
++  if (params.size() != 14 || !start_record || !account ||
++      !is_account(*account) || !authorization || !credential ||
++      !base::Uuid::ParseLowercase(*authorization).is_valid() ||
++      !base::Uuid::ParseLowercase(*credential).is_valid() || !access ||
++      access->empty() || access->size() > 8192 ||
++      access->find_first_of("\r\n") != std::string::npos || !connection ||
++      !connection_valid(*connection) || !runtime_device || !runtime_inode ||
++      !executable_device || !executable_inode || !home_device || !home_inode ||
++      start_record->account_id() != *account ||
++      start_record->authorization_generation() != *authorization ||
++      start_record->credential_revision() != *credential ||
++      !start_record->Current()) {
++    fail("invalid_params",
++         "Immutable Copilot installation/account receipt is required");
++    return;
++  }
++  for (const auto& [id, session] : native_copilots_) {
++    if (session.get() != start_record.get() && !session->joined() &&
++        session->account_id() == *account) {
++      fail("operation_uncertain",
++           "Join the original account helper before another launch");
++      return;
++    }
++  }
++  auto profile_lease = ScopedProfileKeepAlive::TryAcquire(
++      profile_, ProfileKeepAliveOrigin::kAuxCopilotHelper);
++  if (!profile_lease || !TurnContextCurrent(original->second)) {
++    fail("ref_stale", "Original Copilot Profile is retiring");
++    return;
++  }
++  aux::OwnedCopilotLaunch launch;
++  // This is EXACTLY the root supplied as AUX_DATA_DIR by this original host.
++  const auto data = profile_->GetPath().Append("Aux Runtime Data");
++  launch.runtime_root =
++      data.Append("provider-runtimes").Append("copilot-1.0.16-darwin-arm64");
++  launch.executable = launch.runtime_root.Append("prebuilds")
++                          .Append("darwin-arm64")
++                          .Append("copilot-runtime");
++  launch.private_home = data.Append("copilot-homes").Append(*request);
++  launch.working_directory = launch.private_home;
++  launch.runtime_device = *runtime_device;
++  launch.runtime_inode = *runtime_inode;
++  launch.executable_device = *executable_device;
++  launch.executable_inode = *executable_inode;
++  launch.home_device = *home_device;
++  launch.home_inode = *home_inode;
++  launch.working_device = *home_device;
++  launch.working_inode = *home_inode;
++  launch.access_token = *access;
++  launch.connection_token = *connection;
++  start_record->Start(std::move(launch), std::move(profile_lease), admission,
++                      std::move(callback));
++}
++
++void AuxRuntimeHost::HandleNativeTerminalCall(
++    const std::string& method,
++    const base::DictValue& params,
++    uint64_t generation,
++    base::OnceCallback<void(base::DictValue)> callback) {
+   const auto fail = [&](const std::string& message) { std::move(callback).Run(NativeFault("permission_denied", message)); };
+   const auto* token = params.FindString("token");
+   const auto* id = params.FindString("terminalId");
+@@ -810,6 +1053,11 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+   native_person_connection_id_.clear();
+   native_projects_.clear();
+   native_terminals_.clear();
++  // Retire acceptance synchronously; blocking process/group join stays on the
++  // separate BLOCK_SHUTDOWN sequence. Keep original unjoined debts in registry.
++  for (const auto& [id, session] : native_copilots_) {
++    session->Retire();
++  }
+   if (browser_importer_) {
+     std::vector<std::string> import_owners;
+     for (const auto& [token, owner] : turn_contexts_)
+@@ -1648,13 +1896,31 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+     const std::string& method,
+     base::DictValue params) {
+   auto state = std::make_shared<NativeReplyState>();
++  auto copilot_admission =
++      std::make_shared<std::atomic<aux::OwnedHeadlessAdmission>>(
++          aux::OwnedHeadlessAdmission::kPending);
+   ui_runner_->PostTask(
+       FROM_HERE, base::BindOnce(
+                      [](base::WeakPtr<AuxRuntimeHost> owner, std::string method,
+-                        base::DictValue params,
+-                        uint64_t connection_generation,
+-                        std::shared_ptr<NativeReplyState> state) {
+-                       if (owner && method.starts_with("native.browserImport")) {
++                        base::DictValue params, uint64_t connection_generation,
++                        std::shared_ptr<NativeReplyState> state,
++                        std::shared_ptr<std::atomic<
++                            aux::OwnedHeadlessAdmission>> copilot_admission) {
++                       if (owner && method.starts_with("native.copilot")) {
++                         owner->HandleNativeCopilotCall(
++                             method, params, connection_generation,
++                             copilot_admission,
++                             base::BindOnce(
++                                 [](std::shared_ptr<NativeReplyState> state,
++                                    base::DictValue reply) {
++                                   state->reply = std::move(reply);
++                                   state->ready.Signal();
++                                 },
++                                 state));
++                         return;
++                       }
++                       if (owner &&
++                           method.starts_with("native.browserImport")) {
+                          owner->HandleNativeBrowserImportCall(method, params, connection_generation, state->cancelled,
+                              base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
+                                state->reply = std::move(reply); state->ready.Signal();
+@@ -1798,7 +2064,8 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+                              state->cancelled->load(std::memory_order_acquire) ||
+                              !owner->RemoteDebuggingOwnerCurrent(*token, connection_generation)) {
+                            state->reply = NativeFault("ref_stale", "Original Developers window retired");
+-                           state->ready.Signal(); return;
++                           state->ready.Signal();
++                           return;
+                          }
+                          RemoteDebuggingServer::SetAuxEnabled(*enabled, base::BindOnce(
+                              [](base::WeakPtr<AuxRuntimeHost> owner,
+@@ -1818,7 +2085,8 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+                        if (owner && (method == "native.contentBlockState" || method == "native.contentBlockCommit")) {
+                          if (!owner->DeviceConfirmationConnectionCurrent(connection_generation) || state->cancelled->load()) {
+                            state->reply = NativeFault("conflict", "The original native connection retired");
+-                           state->ready.Signal(); return;
++                           state->ready.Signal();
++                           return;
+                          }
+                          auto* blocker = aux::ContentBlockingController::ForProfile(owner->profile_);
+                          owner->native_content_blocker_ = blocker->GetWeakPtr();
+@@ -1832,8 +2100,12 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+                                : NativeFault("conflict", error.empty() ? "The original native connection retired" : std::move(error));
+                            state->ready.Signal();
+                          }, state, current);
+-                         if (method == "native.contentBlockState") blocker->State(std::move(reply));
+-                         else blocker->Commit(params, connection_generation, std::move(current), std::move(reply));
++                         if (method == "native.contentBlockState")
++                           blocker->State(std::move(reply));
++                         else
++                           blocker->Commit(params, connection_generation,
++                                           std::move(current),
++                                           std::move(reply));
+                          return;
+                        }
+                        if (owner && (method == "native.webmcpList" ||
+@@ -1875,11 +2147,14 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+                        state->ready.Signal();
+                      },
+                      owner_, method, std::move(params), connection_generation_,
+-                     state));
+-  if (!state->ready.TimedWait(base::Seconds(
+-          method == "native.recoveryOwnerAuth" ? 120 :
+-          method == "native.fillSavedPassword" ? 60 : 30))) {
++                     state, copilot_admission));
++  if (!state->ready.TimedWait(
++          base::Seconds(method == "native.recoveryOwnerAuth"   ? 120
++                        : method == "native.fillSavedPassword" ? 60
++                                                               : 30))) {
+     state->cancelled->store(true);
++    copilot_admission->exchange(aux::OwnedHeadlessAdmission::kRetired,
++                                std::memory_order_acq_rel);
+     return NativeFault("backend_unavailable",
+                        "The browser did not answer the native request");
+   }
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index d5005c2..766c9c5 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -7,31 +7,31 @@
+ 
+ #include <atomic>
+ #include <cstdint>
++#include <map>
+ #include <memory>
+ #include <optional>
+-#include <map>
+-#include <string>
+ #include <set>
++#include <string>
+ 
+-#include "build/build_config.h"
+-#include "chrome/browser/buildflags.h"
+ #include "base/callback_list.h"
+ #include "base/files/file_path.h"
+ #include "base/files/scoped_temp_dir.h"
+ #include "base/functional/callback.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/scoped_refptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/process/process.h"
+ #include "base/supports_user_data.h"
+-#include "content/public/browser/weak_document_ptr.h"
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/threading/sequence_bound.h"
+ #include "base/threading/thread.h"
+-#include "base/values.h"
++#include "base/time/time.h"
+ #include "base/timer/timer.h"
+ #include "base/unguessable_token.h"
+-#include "base/time/time.h"
++#include "base/values.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "content/public/browser/weak_document_ptr.h"
+ 
+ class Profile;
+@@ -55,6 +55,8 @@ class NativePersonObserverController;
+ class NativePersonCaptureController;
+ class CredentialFill;
+ class NativeTerminal;
++class NativeCopilotSession;
++enum class OwnedHeadlessAdmission;
+ class NativeProject;
+ }  // namespace aux
+ 
+@@ -297,8 +299,19 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   void HandleNativeTerminalCall(const std::string& method, const base::DictValue& params,
+       uint64_t connection_generation, base::OnceCallback<void(base::DictValue)> callback);
+   std::map<std::string, std::unique_ptr<aux::NativeTerminal>> native_terminals_;
+-  void HandleNativeBrowserImportCall(const std::string& method, const base::DictValue& params,
+-      uint64_t generation, std::shared_ptr<std::atomic_bool> cancelled,
++  void HandleNativeCopilotCall(
++      const std::string& method,
++      const base::DictValue& params,
++      uint64_t generation,
++      std::shared_ptr<std::atomic<aux::OwnedHeadlessAdmission>> admission,
++      base::OnceCallback<void(base::DictValue)> callback);
++  std::map<std::string, scoped_refptr<aux::NativeCopilotSession>>
++      native_copilots_;
++  void HandleNativeBrowserImportCall(
++      const std::string& method,
++      const base::DictValue& params,
++      uint64_t generation,
++      std::shared_ptr<std::atomic_bool> cancelled,
+       base::OnceCallback<void(base::DictValue)> callback);
+   struct TurnContextOwner {
+     base::WeakPtr<BrowserWindowInterface> window;
+diff --git a/tools/metrics/histograms/metadata/profile/enums.xml b/tools/metrics/histograms/metadata/profile/enums.xml
+index b733783..319d149 100644
+--- a/tools/metrics/histograms/metadata/profile/enums.xml
++++ b/tools/metrics/histograms/metadata/profile/enums.xml
+@@ -433,6 +433,7 @@ chromium-metrics-reviews@google.com.
+   <int value="47" label="kAuxShellWarmup"/>
+   <int value="48" label="kAuxContentFilterCommit"/>
+   <int value="49" label="kAuxBrowserImport"/>
++  <int value="50" label="kAuxCopilotHelper"/>
+ </enum>
+ 
+ <!-- LINT.IfChange(ProfileLockStatus) -->
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index 532a9a0..8dd0494 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -135,8 +135,13 @@ AuxMethodRegistry::AuxMethodRegistry() {
+                     "native.acquireStage", "native.releaseStage"});
+   register_runtime(AuxRuntimeMethodGroup::kPageControls,
+                    {"native.stopFind", "native.setZoom"});
+-  register_runtime(AuxRuntimeMethodGroup::kAsync,
+-                   {"native.cdpAttach", "native.cdpTakeNavigationReceipt", "native.closeCreatedPage", "native.personReadContext", "native.personRead", "native.personCapture", "native.recorderStart", "native.recorderDrain", "native.recorderStop"});
++  register_runtime(
++      AuxRuntimeMethodGroup::kAsync,
++      {"native.copilotStart", "native.copilotEndpoint", "native.copilotStop",
++       "native.cdpAttach", "native.cdpTakeNavigationReceipt",
++       "native.closeCreatedPage", "native.personReadContext",
++       "native.personRead", "native.personCapture", "native.recorderStart",
++       "native.recorderDrain", "native.recorderStop"});
+   register_runtime(AuxRuntimeMethodGroup::kAsync,
+                    {"native.downloadRenameReceipts", "native.downloadNamingCandidate", "native.downloadPreviewText",
+                     "native.renameDownload", "native.undoDownloadRename",

@@ -1,4 +1,12 @@
 import {
+  NativeCopilotStartParams,
+  NativeCopilotStartSchema,
+  NativeCopilotEndpointParams,
+  NativeCopilotEndpointSchema,
+  NativeCopilotStopParams,
+  NativeCopilotStoppedSchema,
+} from "./native-copilot.js";
+import {
   NativeCredentialContextParamsSchema,
   NativeCredentialContextSchema,
   NativeCredentialAdmissionParamsSchema,
@@ -107,6 +115,9 @@ const nativePage = z
 
 /** Methods admitted only from the authenticated runtime connection. */
 export const RuntimeHostMethods = {
+  "native.copilotStart": runtime("core", NativeCopilotStartParams, NativeCopilotStartSchema),
+  "native.copilotEndpoint": runtime("core", NativeCopilotEndpointParams, NativeCopilotEndpointSchema),
+  "native.copilotStop": runtime("core", NativeCopilotStopParams, NativeCopilotStoppedSchema),
   "native.contentBlockBegin": runtime(
     "contentBlocking",
     contentBase.extend({ hostsDigest: str, hostCount: number }),

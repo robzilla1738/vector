@@ -37,6 +37,9 @@ it("validates stub results against the live manifest schemas", async () => {
   expect(failures).toEqual([]);
   expect(refused.map((row) => row.name).sort()).toEqual(
     [
+      "native.copilotStart",
+      "native.copilotEndpoint",
+      "native.copilotStop",
       "native.cdpReset",
       "native.cdpCatalog",
       "native.cdpAttach",

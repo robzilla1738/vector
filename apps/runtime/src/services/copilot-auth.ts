@@ -51,7 +51,12 @@ export interface CopilotAuthDeps {
   /** Resolve/revalidate the saved native token's original WeakDocument and window; compare requester's real window. */
   checkOwner(original: string, requester?: string): Promise<void>;
   /** Inspect the selected account's actual SDK catalog without sending a prompt. */
-  eligible(account: CopilotAccount, signal: AbortSignal): Promise<void>;
+  eligible(
+    account: CopilotAccount,
+    signal: AbortSignal,
+    owner: string,
+    checkOriginal: () => Promise<void>,
+  ): Promise<void>;
   /** Settings owns its own serialized CAS receipt, including rollback on a later original-owner refusal. */
   activate(
     account: CopilotAccount,
@@ -301,7 +306,10 @@ export class CopilotAuthService {
           grant,
           registration,
           () => this.current(a).then(() => {}),
-          this.deps.eligible,
+          (prospective, signal) =>
+            this.deps.eligible(prospective, signal, a.owner, () =>
+              this.current(a).then(() => {}),
+            ),
           a.controller.signal,
         );
         await this.current(a);

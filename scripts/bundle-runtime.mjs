@@ -70,8 +70,11 @@ function dependencyNotices(inputs) {
           const id = `${metadata.name}@${metadata.version}`;
           if (!packages.has(id)) {
             const licenses = readdirSync(directory).filter(name => /^(?:licen[sc]e|notice)(?:[.-].*)?$/i.test(name) && statSync(join(directory,name)).isFile());
+            const supplemental = metadata.name === "@github/copilot-sdk" && metadata.version === "1.0.16" && !licenses.length
+              ? [readFileSync(join(runtimeDir, "licenses/copilot-sdk-MIT.txt"), "utf8")]
+              : [];
             packages.set(id, [id, `License: ${typeof metadata.license === "string" ? metadata.license : JSON.stringify(metadata.license ?? "See upstream notice")}`,
-              ...licenses.sort().map(name => readFileSync(join(directory,name),"utf8"))].join("\n\n"));
+              ...licenses.sort().map(name => readFileSync(join(directory,name),"utf8")), ...supplemental].join("\n\n"));
           }
           break;
         }

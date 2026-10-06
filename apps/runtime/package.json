@@ -33,6 +33,7 @@
     "@aux/chromium-driver": "workspace:*",
     "@aux/contracts": "workspace:*",
     "@aux/filter-lists": "workspace:*",
+    "@github/copilot-sdk": "1.0.16",
     "@jitl/quickjs-wasmfile-release-asyncify": "0.31.0",
     "@modelcontextprotocol/client": "2.1.0",
     "@resvg/resvg-js": "2.6.2",
