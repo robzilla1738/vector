@@ -281,7 +281,7 @@ CREATE TABLE goals(
 CREATE INDEX idx_goals_workspace ON goals(workspace_id,updated_at);
 CREATE TABLE hooks(
   hook_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
-  event TEXT NOT NULL, trust TEXT NOT NULL CHECK(trust IN ('untrusted','approved','revoked')),
+  event TEXT NOT NULL, trust TEXT NOT NULL CHECK(trust IN ('approved','revoked')),
   body TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE INDEX idx_hooks_event ON hooks(workspace_id,event,trust);
 CREATE TABLE hook_invocations(
@@ -292,19 +292,15 @@ CREATE TABLE hook_invocations(
 CREATE INDEX idx_hook_invocations_state ON hook_invocations(state,created_at);
 CREATE TABLE outbound_mcp_servers(
   server_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
-  state TEXT NOT NULL CHECK(state IN ('pending','approved','revoked')),
+  state TEXT NOT NULL CHECK(state IN ('active','revoked')),
   body TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE INDEX idx_outbound_mcp_servers_workspace ON outbound_mcp_servers(workspace_id,state);
 CREATE TABLE outbound_mcp_bundles(
   server_id TEXT PRIMARY KEY REFERENCES outbound_mcp_servers(server_id) ON DELETE CASCADE,
   sha256 TEXT NOT NULL, archive_base64 TEXT NOT NULL, installed_at INTEGER NOT NULL);
-CREATE TABLE outbound_mcp_grants(
-  grant_id TEXT PRIMARY KEY, server_id TEXT NOT NULL REFERENCES outbound_mcp_servers(server_id),
-  tool_name TEXT NOT NULL, body TEXT NOT NULL, revoked_at INTEGER, consumed_at INTEGER);
-CREATE INDEX idx_outbound_mcp_grants_server ON outbound_mcp_grants(server_id,tool_name,revoked_at);
 CREATE TABLE outbound_mcp_calls(
   call_id TEXT PRIMARY KEY, server_id TEXT NOT NULL REFERENCES outbound_mcp_servers(server_id),
-  grant_id TEXT NOT NULL REFERENCES outbound_mcp_grants(grant_id), tool_name TEXT NOT NULL,
+  tool_name TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('invoking','completed','uncertain')),
   created_at INTEGER NOT NULL, ended_at INTEGER);
 CREATE INDEX idx_outbound_mcp_calls_state ON outbound_mcp_calls(status,created_at);
@@ -348,7 +344,7 @@ CREATE TABLE safety_decisions(
 -- safety/suspensions.ts
 CREATE TABLE safety_suspensions(
       suspension_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, thread_id TEXT NOT NULL, turn_id TEXT NOT NULL,
-      kind TEXT NOT NULL CHECK(kind IN ('ask-user-question','approval','action-confirmation','touch-id','handoff')),
+      kind TEXT NOT NULL CHECK(kind IN ('ask-user-question','approval','action-confirmation','touch-id','handoff','budget')),
       request_json TEXT NOT NULL, approval_id TEXT,
       state TEXT NOT NULL CHECK(state IN ('pending','answered','cancelled','expired')),
       created_at INTEGER NOT NULL, resolved_at INTEGER);

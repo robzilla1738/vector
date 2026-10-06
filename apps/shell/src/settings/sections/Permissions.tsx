@@ -11,6 +11,7 @@ import { pushSettingsPath } from "../routes";
 import { useStore } from "../../store";
 import "./Permissions.css";
 import { AgentModeControl } from "../../features/permissions/AgentModeControl";
+import { McpPermissions } from "../../features/mcp/Permissions";
 import { ActivityLog } from "../../features/permissions/ActivityLog";
 import { PolicyTable, replacementRules } from "../../features/permissions/PolicyTable";
 
@@ -316,7 +317,12 @@ export function PermissionsSettings({
           Manage folders
         </button>
       </SettingsField>
-      <SettingsField label="Connected tools" hint="Review connected MCP servers and their tool access.">
+      <SettingsField
+        label="Connected tools"
+        hint="Adding a server enables its tools. Disable individual tools here."
+        searchTerms={["MCP", "tools", "connections", "enable", "disable"]}
+      >
+        <McpPermissions active={active} />
         <button {...smallButtonProps} onClick={() => openSettings("Connections", "Services")}>
           Manage MCP tools
         </button>

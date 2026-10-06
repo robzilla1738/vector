@@ -12,6 +12,7 @@ import {
   type FinalReviewArtifact,
   type OriginRule,
   type SafetyAction,
+  type SavedCredentialTarget,
   type Step,
   type SuspensionRequest,
 } from "@aux/contracts";
@@ -30,6 +31,8 @@ export interface StepSafetyContext {
   runId?: string;
   pageId?: string;
   observedTarget?: ObservedActionTarget;
+  /** Validated native metadata from the original executable attachment. */
+  credentialTarget?: SavedCredentialTarget;
   actor?: "builtin_agent" | "subagent" | "code_mode" | "external_token" | "user";
   sessionId?: string;
   approvalId?: string;
@@ -96,6 +99,7 @@ export class SafetyDispatchGate {
       ...(input.context.runId ? { runId: input.context.runId } : {}),
       ...(input.context.actor ? { actor: input.context.actor } : {}),
       observedTarget: input.context.observedTarget,
+      credentialTarget: input.context.credentialTarget,
       digest: createHash("sha256").update(JSON.stringify(input.step)).digest("hex"),
     });
     return this.checkRequest(request, input.context, input.phase, input.origin);
@@ -169,26 +173,44 @@ export class SafetyDispatchGate {
   ): void {
     const site = exactOrigin(origin);
     const saved = suspension.approvalId
-      ? this.deps.approvals.pending(context.threadId).find((value) => value.approvalId === suspension.approvalId)?.action
+      ? this.deps.approvals
+          .pending(context.threadId)
+          .find((value) => value.approvalId === suspension.approvalId)?.action
       : undefined;
     const category = saved?.category ?? request.category;
     const action = saved?.action ?? request.action;
     const amount = saved?.amount ?? request.amount;
-    const presented: SuspensionRequest = { ...suspension, context: {
-      ...(context.pageId ? { pageId: context.pageId } : {}),
-      ...(site ? { site } : {}), policyCategory: agentPolicyCategoryFor(category, action),
-      category, action,
-      ...(amount !== undefined ? { amount } : {}),
-    } };
-    if (((suspension.kind === "approval" || suspension.kind === "touch-id") && suspension.approvalId) || suspension.kind === "handoff") {
-      if ((suspension.kind === "approval" || suspension.kind === "touch-id") && (!saved?.category || !saved.confirmation))
+    const presented: SuspensionRequest = {
+      ...suspension,
+      context: {
+        ...(context.pageId ? { pageId: context.pageId } : {}),
+        ...(site ? { site } : {}),
+        policyCategory: agentPolicyCategoryFor(category, action),
+        category,
+        action,
+        ...(amount !== undefined ? { amount } : {}),
+      },
+    };
+    if (
+      ((suspension.kind === "approval" || suspension.kind === "touch-id") && suspension.approvalId) ||
+      suspension.kind === "handoff"
+    ) {
+      if (
+        (suspension.kind === "approval" || suspension.kind === "touch-id") &&
+        (!saved?.category || !saved.confirmation)
+      )
         throw new AuxError("needs_input", "This approval must be refreshed.");
       this.deps.onConfirmation?.({
         ...(suspension.approvalId ? { approvalId: suspension.approvalId } : {}),
         turnId: context.turnId,
         threadId: context.threadId,
         instruction: suspension.instruction,
-        kind: suspension.kind === "touch-id" ? "touch-id" : suspension.kind === "handoff" ? "handoff" : "approval",
+        kind:
+          suspension.kind === "touch-id"
+            ? "touch-id"
+            : suspension.kind === "handoff"
+              ? "handoff"
+              : "approval",
         policyCategory: agentPolicyCategoryFor(category, action),
         site: site ?? "",
         ...(amount !== undefined ? { amount } : {}),
@@ -215,11 +237,18 @@ export class SafetyDispatchGate {
   }
 
   /** Synchronous live fence retained through action preparation and the final dispatch. */
+  policyRevision(): number {
+    return this.deps.agentPolicy().agentPolicyRevision;
+  }
+
   policyFence(): () => void {
     const snapshot = this.policySnapshot();
     return () => {
       if (this.policySnapshot() !== snapshot)
-        throw new AuxError("permission_denied", "Agent permissions changed while preparing this action. Retry against the current policy.");
+        throw new AuxError(
+          "permission_denied",
+          "Agent permissions changed while preparing this action. Retry against the current policy.",
+        );
     };
   }
 

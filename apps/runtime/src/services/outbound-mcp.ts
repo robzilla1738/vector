@@ -3,19 +3,16 @@ import { open, realpath } from "node:fs/promises";
 import { Client, type Transport } from "@modelcontextprotocol/client";
 import {
   AuxError,
-  OutboundMcpGrantParams,
-  OutboundMcpGrantSchema,
+  OutboundMcpToolToggleParams,
   OutboundMcpRegisterParams,
   OutboundMcpServerSchema,
   OutboundMcpToolSchema,
-  type OutboundMcpGrant,
   type OutboundMcpServer,
 } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import { inspectMcpBundle } from "./mcp-bundle.js";
 
-type ServerRow = { body: string; state: OutboundMcpServer["state"] };
-type GrantRow = { body: string; revoked_at: number | null; consumed_at: number | null };
+type ServerRow = { body: string; state: OutboundMcpServer["state"]; updated_at: number };
 type BundleRow = { sha256: string; archive_base64: string };
 export type McpTransportProvider = (
   server: OutboundMcpServer,
@@ -44,7 +41,7 @@ async function readBoundedBundle(path: string): Promise<Buffer> {
   }
 }
 
-/** Reviewed MCP sources, grants, calls, and revocation. */
+/** User-connected MCP sources, tool toggles, calls, and revocation. */
 export class OutboundMcpService {
   private active = new Map<string, Set<AbortController>>();
 
@@ -85,7 +82,10 @@ export class OutboundMcpService {
       ...input,
       source,
       serverId: randomUUID(),
-      state: "pending",
+      state: "active",
+      toolsRevision: 0,
+      disabledTools: [],
+      toolNames: [],
       sourceDigest: createHash("sha256").update(JSON.stringify(source)).digest("hex"),
       createdAt: now,
       updatedAt: now,
@@ -127,12 +127,13 @@ export class OutboundMcpService {
 
   get(serverId: string): OutboundMcpServer {
     const row = this.repo.db
-      .prepare("SELECT body,state FROM outbound_mcp_servers WHERE server_id=?")
+      .prepare("SELECT body,state,updated_at FROM outbound_mcp_servers WHERE server_id=?")
       .get(serverId) as ServerRow | undefined;
     if (!row) throw new AuxError("not_found", "MCP server does not exist");
     return OutboundMcpServerSchema.parse({
       ...JSON.parse(row.body),
       state: row.state,
+      updatedAt: row.updated_at,
     });
   }
 
@@ -144,26 +145,10 @@ export class OutboundMcpService {
     ).map((row) => this.get(row.server_id));
   }
 
-  approve(serverId: string, expectedDigest: string): OutboundMcpServer {
-    const server = this.get(serverId);
-    if (server.state !== "pending" || server.sourceDigest !== expectedDigest)
-      throw new AuxError("conflict", "Server source changed. Review it before approval.");
-    if (server.source.kind === "bundle") this.installedBundle(server);
-    this.repo.db
-      .prepare(
-        "UPDATE outbound_mcp_servers SET state='approved',updated_at=? WHERE server_id=? AND state='pending'",
-      )
-      .run(Date.now(), serverId);
-    return this.get(serverId);
-  }
-
   revoke(serverId: string): OutboundMcpServer {
     this.get(serverId);
     this.repo.db
       .prepare("UPDATE outbound_mcp_servers SET state='revoked',updated_at=? WHERE server_id=?")
-      .run(Date.now(), serverId);
-    this.repo.db
-      .prepare("UPDATE outbound_mcp_grants SET revoked_at=? WHERE server_id=? AND revoked_at IS NULL")
       .run(Date.now(), serverId);
     this.cancelActive(serverId);
     this.repo.db.prepare("DELETE FROM outbound_mcp_bundles WHERE server_id=?").run(serverId);
@@ -194,55 +179,70 @@ export class OutboundMcpService {
     for (const controller of this.active.get(serverId) ?? []) controller.abort();
   }
 
-  grant(raw: unknown): OutboundMcpGrant {
-    const input = OutboundMcpGrantParams.parse(raw);
-    const server = this.get(input.serverId);
-    if (server.state !== "approved")
-      throw new AuxError("permission_denied", "Approve the server before granting tools.");
-    if (input.scope.kind === "workspace" && input.scope.workspaceId !== server.workspaceId)
-      throw new AuxError("permission_denied", "Grant Space does not match the server.");
-    if (input.scope.kind === "task") {
-      const task = this.repo.db
-        .prepare("SELECT workspace_id,revision FROM tasks WHERE task_id=?")
-        .get(input.scope.taskId) as { workspace_id: string; revision: number } | undefined;
-      if (!task || task.workspace_id !== server.workspaceId || task.revision !== input.scope.revision)
-        throw new AuxError("conflict", "Task scope changed. Review the current revision.");
+  setEnabled(raw: unknown): OutboundMcpServer {
+    const input = OutboundMcpToolToggleParams.parse(raw);
+    this.repo.db.exec("BEGIN IMMEDIATE");
+    try {
+      const server = this.get(input.serverId);
+      if (server.state !== "active" || server.toolsRevision !== input.expectedRevision)
+        throw new AuxError("conflict", "MCP tools changed. Refresh this connection.");
+      if (!server.toolNames.includes(input.toolName))
+        throw new AuxError("not_found", "Refresh the server's tool catalog first.");
+      const disabled = new Set(server.disabledTools);
+      if (input.enabled) disabled.delete(input.toolName);
+      else disabled.add(input.toolName);
+      const next = {
+        ...server,
+        disabledTools: [...disabled].sort(),
+        toolsRevision: server.toolsRevision + 1,
+        updatedAt: Date.now(),
+      };
+      this.saveServer(next);
+      this.repo.db.exec("COMMIT");
+      this.cancelActive(server.serverId);
+      return next;
+    } catch (error) {
+      this.repo.db.exec("ROLLBACK");
+      throw error;
     }
-    const grant = OutboundMcpGrantSchema.parse({ ...input, grantId: randomUUID(), createdAt: Date.now() });
+  }
+
+  private saveServer(server: OutboundMcpServer): void {
     this.repo.db
-      .prepare("INSERT INTO outbound_mcp_grants(grant_id,server_id,tool_name,body) VALUES(?,?,?,?)")
-      .run(grant.grantId, grant.serverId, grant.toolName, JSON.stringify(grant));
-    return grant;
+      .prepare("UPDATE outbound_mcp_servers SET body=?,updated_at=? WHERE server_id=?")
+      .run(JSON.stringify(server), server.updatedAt, server.serverId);
   }
 
-  getGrant(grantId: string): OutboundMcpGrant {
-    const row = this.repo.db
-      .prepare("SELECT body,revoked_at,consumed_at FROM outbound_mcp_grants WHERE grant_id=?")
-      .get(grantId) as GrantRow | undefined;
-    if (!row) throw new AuxError("not_found", "MCP tool grant does not exist");
-    return OutboundMcpGrantSchema.parse({
-      ...JSON.parse(row.body),
-      revokedAt: row.revoked_at ?? undefined,
-      consumedAt: row.consumed_at ?? undefined,
-    });
-  }
-
-  grants(serverId: string): OutboundMcpGrant[] {
-    this.get(serverId);
-    return (
-      this.repo.db
-        .prepare("SELECT grant_id FROM outbound_mcp_grants WHERE server_id=? ORDER BY rowid DESC")
-        .all(serverId) as { grant_id: string }[]
-    ).map((row) => this.getGrant(row.grant_id));
-  }
-
-  revokeGrant(grantId: string): OutboundMcpGrant {
-    const grant = this.getGrant(grantId);
-    this.repo.db
-      .prepare("UPDATE outbound_mcp_grants SET revoked_at=? WHERE grant_id=? AND revoked_at IS NULL")
-      .run(Date.now(), grantId);
-    for (const controller of this.active.get(grant.serverId) ?? []) controller.abort();
-    return this.getGrant(grantId);
+  private checkCall(
+    server: OutboundMcpServer,
+    toolName: string,
+    context: { workspaceId: string; taskId?: string; revision?: number },
+  ): void {
+    const current = this.get(server.serverId);
+    if (
+      current.state !== "active" ||
+      current.sourceDigest !== server.sourceDigest ||
+      current.toolsRevision !== server.toolsRevision ||
+      !current.toolNames.includes(toolName) ||
+      current.disabledTools.includes(toolName)
+    )
+      throw new AuxError("permission_denied", "MCP tool access changed.");
+    if (current.workspaceId !== context.workspaceId)
+      throw new AuxError("permission_denied", "MCP tool is outside this Space.");
+    if ((context.taskId === undefined) !== (context.revision === undefined))
+      throw new AuxError("invalid_params", "Task and revision must be supplied together.");
+    if (context.taskId) {
+      const task = this.repo.db
+        .prepare("SELECT workspace_id,revision,state FROM tasks WHERE task_id=?")
+        .get(context.taskId) as { workspace_id: string; revision: number; state: string } | undefined;
+      if (
+        !task ||
+        task.state !== "open" ||
+        task.workspace_id !== current.workspaceId ||
+        task.revision !== context.revision
+      )
+        throw new AuxError("conflict", "Task revision changed before the tool call.");
+    }
   }
 
   private async connected<T>(
@@ -263,15 +263,15 @@ export class OutboundMcpService {
     let client: Client | undefined;
     try {
       const current = this.get(server.serverId);
-      if (current.state !== "approved" || current.sourceDigest !== server.sourceDigest)
-        throw new AuxError("permission_denied", "MCP server approval was revoked.");
+      if (current.state !== "active" || current.sourceDigest !== server.sourceDigest)
+        throw new AuxError("permission_denied", "MCP connection was revoked.");
       transport = await this.transportProvider(
         current,
         controller.signal,
         current.source.kind === "bundle" ? this.installedBundle(current) : undefined,
       );
-      if (controller.signal.aborted || this.get(server.serverId).state !== "approved")
-        throw new AuxError("permission_denied", "MCP server approval was revoked.");
+      if (controller.signal.aborted || this.get(server.serverId).state !== "active")
+        throw new AuxError("permission_denied", "MCP connection was revoked.");
       client = new Client({ name: "aux", version: "0.1.0" });
       await client.connect(transport);
       return await action(client, controller.signal);
@@ -286,87 +286,84 @@ export class OutboundMcpService {
 
   async listTools(serverId: string) {
     const server = this.get(serverId);
-    if (server.state !== "approved") throw new AuxError("permission_denied", "MCP server is not approved.");
-    return this.connected(server, async (client) => {
-      const { tools } = await client.listTools();
-      if (tools.length > 100 || Buffer.byteLength(JSON.stringify(tools), "utf8") > 128_000)
-        throw new AuxError("invalid_params", "MCP tool catalog exceeds the review limit.");
-      return tools.map((tool) =>
-        OutboundMcpToolSchema.parse({
-          name: tool.name,
-          description: tool.description?.slice(0, 2000),
-          inputSchema: tool.inputSchema,
-        }),
-      );
+    if (server.state !== "active") throw new AuxError("permission_denied", "MCP connection is not active.");
+    return this.connected(server, async (client, signal) => {
+      const tools = [];
+      const cursors = new Set<string>();
+      let cursor: string | undefined;
+      do {
+        const page = await client.listTools(cursor ? { cursor } : undefined, {signal});
+        tools.push(...page.tools);
+        if (Buffer.byteLength(JSON.stringify(tools), "utf8") > 128_000)
+          throw new AuxError("invalid_params", "MCP tool catalog exceeds the metadata limit.");
+        cursor = page.nextCursor;
+        if (cursor && cursors.has(cursor))
+          throw new AuxError("invalid_params", "MCP catalog pagination repeated.");
+        if (cursor) cursors.add(cursor);
+      } while (cursor);
+      const current = this.get(serverId);
+      if (current.state !== "active" || current.toolsRevision !== server.toolsRevision)
+        throw new AuxError("conflict", "MCP tool access changed while listing tools.");
+      const catalog = tools.map((tool) => OutboundMcpToolSchema.parse({
+        name: tool.name,
+        enabled: !current.disabledTools.includes(tool.name),
+        description: tool.description?.slice(0, 2000),
+        inputSchema: tool.inputSchema,
+      }));
+      const names = [...new Set(catalog.map(tool => tool.name))].sort();
+      if (names.length !== catalog.length)
+        throw new AuxError("invalid_params", "MCP tool catalog contains duplicate names.");
+      if (JSON.stringify(names) !== JSON.stringify(current.toolNames)) {
+        current.toolNames = names;
+        current.toolsRevision += 1;
+        current.updatedAt = Date.now();
+        this.saveServer(current);
+        this.cancelActive(serverId);
+      }
+      return catalog;
     });
   }
 
   async callTool(
-    grantId: string,
+    serverId: string,
+    toolName: string,
     args: Record<string, unknown>,
     context: { workspaceId: string; taskId?: string; revision?: number },
     externalSignal?: AbortSignal,
+    authorizeDispatch?: () => Promise<() => void>,
   ) {
     if (!this.transportProvider)
       throw new AuxError("backend_unavailable", "Supervised MCP transport is unavailable.");
-    const grant = this.getGrant(grantId);
-    const server = this.get(grant.serverId);
-    if (server.state !== "approved" || grant.revokedAt || grant.consumedAt)
-      throw new AuxError("permission_denied", "MCP tool grant is not active.");
-    if (
-      server.workspaceId !== context.workspaceId ||
-      (grant.scope.kind === "workspace" && grant.scope.workspaceId !== context.workspaceId) ||
-      (grant.scope.kind === "task" &&
-        (grant.scope.taskId !== context.taskId || grant.scope.revision !== context.revision))
-    )
-      throw new AuxError("permission_denied", "MCP tool grant does not cover this task and revision.");
-    if (grant.scope.kind === "task") {
-      const task = this.repo.db
-        .prepare("SELECT workspace_id,revision FROM tasks WHERE task_id=?")
-        .get(grant.scope.taskId) as { workspace_id: string; revision: number } | undefined;
-      if (!task || task.workspace_id !== server.workspaceId || task.revision !== grant.scope.revision)
-        throw new AuxError("conflict", "Task revision changed before the tool call.");
-    }
-    if (JSON.stringify(args).length > 64_000)
+    const server = this.get(serverId);
+    this.checkCall(server, toolName, context);
+    if (Buffer.byteLength(JSON.stringify(args), "utf8") > 64_000)
       throw new AuxError("invalid_params", "MCP tool arguments are too large.");
     const callId = randomUUID();
-    const at = Date.now();
-    this.repo.db.exec("BEGIN IMMEDIATE");
-    try {
-      if (grant.mode === "once") {
-        const result = this.repo.db
-          .prepare(
-            "UPDATE outbound_mcp_grants SET consumed_at=? WHERE grant_id=? AND consumed_at IS NULL AND revoked_at IS NULL",
-          )
-          .run(at, grantId);
-        if (result.changes !== 1) throw new AuxError("permission_denied", "MCP tool grant was already used.");
-      } else if (this.getGrant(grantId).revokedAt)
-        throw new AuxError("permission_denied", "MCP tool grant was revoked.");
-      this.repo.db
-        .prepare(
-          "INSERT INTO outbound_mcp_calls(call_id,server_id,grant_id,tool_name,status,created_at) VALUES(?,?,?,?,'invoking',?)",
-        )
-        .run(callId, server.serverId, grantId, grant.toolName, at);
-      this.repo.db.exec("COMMIT");
-    } catch (error) {
-      this.repo.db.exec("ROLLBACK");
-      throw error;
-    }
+    let invoking = false;
     try {
       const result = await this.connected(
         server,
         async (client, signal) => {
-          const output = await client.callTool({ name: grant.toolName, arguments: args }, { signal });
-          if (
-            signal.aborted ||
-            this.get(server.serverId).state !== "approved" ||
-            this.getGrant(grantId).revokedAt
-          )
-            throw new AuxError("permission_denied", "MCP tool authority was revoked during execution.");
+          this.checkCall(server, toolName, context);
+          if (signal.aborted) throw new AuxError("permission_denied", "MCP call was cancelled.");
+          const checkAuthorization = await authorizeDispatch?.();
+          this.checkCall(server, toolName, context);
+          if (signal.aborted) throw new AuxError("permission_denied", "MCP call was cancelled.");
+          checkAuthorization?.();
+          this.repo.db
+            .prepare(
+              "INSERT INTO outbound_mcp_calls(call_id,server_id,tool_name,status,created_at) VALUES(?,?,?,'invoking',?)",
+            )
+            .run(callId, serverId, toolName, Date.now());
+          invoking = true;
+          const output = await client.callTool({ name: toolName, arguments: args }, { signal });
+          checkAuthorization?.();
+          this.checkCall(server, toolName, context);
+          if (signal.aborted) throw new AuxError("permission_denied", "MCP call was cancelled.");
           const serialized = JSON.stringify(output);
-          const exceeded = Buffer.byteLength(serialized, "utf8") > grant.outputTokenLimit * 4;
+          const exceeded = Buffer.byteLength(serialized, "utf8") > 128_000;
           return {
-            output: exceeded ? "Tool output exceeded the approved limit." : serialized,
+            output: exceeded ? "Tool output exceeded the display limit." : serialized,
             isError: exceeded || Boolean(output.isError),
           };
         },
@@ -376,7 +373,8 @@ export class OutboundMcpService {
         .prepare("UPDATE outbound_mcp_calls SET status='completed',ended_at=? WHERE call_id=?")
         .run(Date.now(), callId);
       return { callId, status: "completed" as const, ...result };
-    } catch {
+    } catch (error) {
+      if (!invoking) throw error;
       this.repo.db
         .prepare("UPDATE outbound_mcp_calls SET status='uncertain',ended_at=? WHERE call_id=?")
         .run(Date.now(), callId);

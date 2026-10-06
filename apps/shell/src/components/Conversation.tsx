@@ -1,3 +1,4 @@
+import { BudgetPrompt } from "../features/budget/BudgetPrompt";
 import { orderedPages } from "../store/pages";
 import { errorMessage } from "../error-message";
 import {
@@ -2339,10 +2340,15 @@ export function Conversation({
                         <p>{suspension?.request.instruction}</p>
                       </div>
                     )}
+                    {last?.status === "needs_input" && suspension?.kind === "budget" && (
+                      <BudgetPrompt key={suspension.suspensionId} run={last} suspension={suspension} />
+                    )}
                     {last?.status === "needs_input" &&
+                      suspension?.kind !== "budget" &&
                       !answering &&
                       pendingConfirmation?.turnId === last.runId && <SuspensionPrompt runId={last.runId} />}
                     {last?.status === "needs_input" &&
+                      suspension?.kind !== "budget" &&
                       !answering &&
                       pendingConfirmation?.turnId !== last.runId && (
                         <div className="composer-question" role="status">

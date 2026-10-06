@@ -9,7 +9,6 @@ vi.mock("../store", () => ({ call: rpc }));
 let root: Root;
 let container: HTMLDivElement;
 const serverId = "11111111-1111-4111-8111-111111111111";
-const grantId = "22222222-2222-4222-8222-222222222222";
 const hookId = "33333333-3333-4333-8333-333333333333";
 const digest = "a".repeat(64);
 
@@ -45,32 +44,19 @@ function change(selector: string, value: string) {
   field.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-it("binds a selected run-start event to an exact standing Space grant and digest review", async () => {
+it("creates a selected run-start Hook with the exact enabled tool and no second approval", async () => {
   let hook: Record<string, unknown> | undefined;
   rpc.mockImplementation(async (method: string, params: Record<string, unknown>) => {
     if (method === "hooks.list") return hook ? [hook] : [];
     if (method === "mcp.servers.list")
-      return [{ serverId, workspaceId: "space-1", name: "Fixture", state: "approved" }];
-    if (method === "mcp.grants.list")
-      return [
-        {
-          grantId,
-          serverId,
-          toolName: "record",
-          mode: "standing",
-          scope: { kind: "workspace", workspaceId: "space-1" },
-        },
-      ];
+      return [{ serverId, workspaceId: "space-1", name: "Fixture", state: "active" }];
+    if (method === "mcp.tools.list") return [{ name: "record", enabled: true, inputSchema: {} }];
     if (method === "workspaces.folders.list") return [];
     if (method === "hooks.register") {
-      hook = { hookId, ...params, handlerDigest: digest, trust: "untrusted" };
+      hook = { hookId, ...params, handlerDigest: digest, trust: "approved" };
       return hook;
     }
     if (method === "hooks.invocations") return [];
-    if (method === "hooks.approve") {
-      hook = { ...hook, trust: "approved" };
-      return hook;
-    }
     if (method === "hooks.test")
       return { hookId, eventId: "manual:test", state: "completed", createdAt: Date.now() };
     if (method === "hooks.revoke") {
@@ -81,16 +67,15 @@ it("binds a selected run-start event to an exact standing Space grant and digest
   });
   await act(async () => root.render(<Hooks workspaceId="space-1" />));
   await act(async () => change('select[aria-label="Hook run event"]', "run.start"));
-  await act(async () => change('select[aria-label="Hook MCP tool grant"]', grantId));
-  await act(async () => button("Save Hook for review").click());
+  await act(async () => change('select[aria-label="Hook MCP tool"]', JSON.stringify([serverId, "record"])));
+  await act(async () => button("Create Hook").click());
   expect(rpc).toHaveBeenCalledWith("hooks.register", {
     workspaceId: "space-1",
     event: "run.start",
-    handler: { type: "mcp_tool", serverId, grantId, toolName: "record", arguments: {} },
+    handler: { type: "mcp_tool", serverId, toolName: "record", arguments: {} },
   });
   expect(container.textContent).toContain(digest);
-  await act(async () => button("Approve exact Hook").click());
-  expect(rpc).toHaveBeenCalledWith("hooks.approve", { hookId, expectedDigest: digest });
+  expect(container.textContent).not.toContain("Approve exact Hook");
   await act(async () => button("Test Hook now").click());
   expect(rpc).toHaveBeenCalledWith("hooks.test", { hookId });
   await act(async () => button("Revoke Hook").click());
@@ -105,7 +90,7 @@ it("reviews a command Hook in an already bound writable Space folder", async () 
     if (method === "workspaces.folders.list")
       return [{ folderId: "folder-1", path: "/tmp/project", access: "readWrite", workspaceId: "space-1" }];
     if (method === "hooks.register") {
-      hook = { hookId, ...params, handlerDigest: digest, trust: "untrusted" };
+      hook = { hookId, ...params, handlerDigest: digest, trust: "approved" };
       return hook;
     }
     if (method === "hooks.invocations") return [];
@@ -115,7 +100,7 @@ it("reviews a command Hook in an already bound writable Space folder", async () 
   await act(async () => change('select[aria-label="Hook handler"]', "command"));
   await act(async () => change('select[aria-label="Hook command folder"]', "/tmp/project"));
   await act(async () => change('textarea[aria-label="Hook command"]', "pwd"));
-  await act(async () => button("Save Hook for review").click());
+  await act(async () => button("Create Hook").click());
   expect(rpc).toHaveBeenCalledWith("hooks.register", {
     workspaceId: "space-1",
     event: "run.end",

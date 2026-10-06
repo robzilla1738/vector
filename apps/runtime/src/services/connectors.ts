@@ -48,7 +48,7 @@ export class ConnectorCatalogService {
         serverId: server.serverId,
         label: server.name,
         state: server.state,
-        authority: "reviewed_server_and_tool_grant" as const,
+        authority: "connected_server" as const,
       })),
     ];
     const access: ConnectorCatalog["access"] = [];
@@ -70,24 +70,17 @@ export class ConnectorCatalogService {
           });
       }
       for (const server of servers) {
-        if (server.state !== "approved") continue;
-        for (const grant of this.deps.mcp.grants(server.serverId)) {
-          if (grant.revokedAt !== undefined || grant.consumedAt !== undefined) continue;
-          if (
-            grant.scope.kind === "task" &&
-            (grant.scope.taskId !== task.taskId || grant.scope.revision !== task.revision)
-          )
-            continue;
-          if (grant.scope.kind === "workspace" && grant.scope.workspaceId !== workspaceId) continue;
+        if (server.state !== "active") continue;
+        for (const toolName of server.toolNames) {
+          if (server.disabledTools.includes(toolName)) continue;
           access.push({
             kind: "mcp",
             connectorId: `mcp:${server.serverId}`,
             taskId: task.taskId,
             taskRevision: task.revision,
-            grantId: grant.grantId,
-            toolName: grant.toolName,
-            scope: grant.scope.kind,
-            authority: "mcp_tool_grant",
+            toolsRevision: server.toolsRevision,
+            toolName,
+            authority: "enabled_mcp_tool",
           });
         }
       }

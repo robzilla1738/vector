@@ -92,6 +92,13 @@ export interface CosmeticCommit {
 }
 
 import {
+  NativeCredentialContextParamsSchema,
+  NativeCredentialContextSchema,
+  NativeCredentialAdmissionParamsSchema,
+  NativeCredentialAdmissionSchema,
+  NativeCredentialFillParamsSchema,
+  type NativeCredentialContext,
+  type NativeCredentialAdmissionParams,
   CredentialHandoffResultSchema,
   type CredentialHandoffRequest,
   type CredentialHandoffResult,
@@ -228,6 +235,12 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
     workspaceId: string,
     expectedUrl: string,
   ): Promise<{ url: string; title: string; text: string }>;
+  credentialContext?(input: { pageId: string; expectedUrl: string }): Promise<NativeCredentialContext>;
+  credentialAdmit?(input: NativeCredentialAdmissionParams): Promise<{ receiptId: string }>;
+  fillAdmittedSavedPassword?(
+    request: CredentialHandoffRequest,
+    receiptId: string,
+  ): Promise<CredentialHandoffResult>;
   fillSavedPassword?(request: CredentialHandoffRequest): Promise<CredentialHandoffResult>;
   movePage?(
     pageId: string,
@@ -534,6 +547,28 @@ export class ChannelNativeBridge implements NativeBridge {
       "native.captureReadablePage",
       { pageId, workspaceId, expectedUrl },
       15_000,
+    );
+  }
+  async credentialContext(input: { pageId: string; expectedUrl: string }): Promise<NativeCredentialContext> {
+    return NativeCredentialContextSchema.parse(
+      await this.channel.call("native.credentialContext", NativeCredentialContextParamsSchema.parse(input)),
+    );
+  }
+  async credentialAdmit(input: NativeCredentialAdmissionParams): Promise<{ receiptId: string }> {
+    return NativeCredentialAdmissionSchema.parse(
+      await this.channel.call("native.credentialAdmit", NativeCredentialAdmissionParamsSchema.parse(input)),
+    );
+  }
+  async fillAdmittedSavedPassword(
+    request: CredentialHandoffRequest,
+    receiptId: string,
+  ): Promise<CredentialHandoffResult> {
+    return CredentialHandoffResultSchema.parse(
+      await this.channel.call(
+        "native.fillSavedPassword",
+        NativeCredentialFillParamsSchema.parse({ ...request, receiptId }),
+        65_000,
+      ),
     );
   }
   async fillSavedPassword(request: CredentialHandoffRequest): Promise<CredentialHandoffResult> {

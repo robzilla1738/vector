@@ -68,8 +68,8 @@ function fixture() {
         connectorId: "connector",
         serverId: "11111111-1111-4111-8111-111111111111",
         label: "Fixture",
-        state: "approved",
-        authority: "reviewed_server_and_tool_grant",
+        state: "active",
+        authority: "connected_server",
       },
     ],
     access: [],
@@ -144,10 +144,9 @@ describe("Profile-owned turn mention service", () => {
           connectorId: "connector",
           taskId: "11111111-1111-4111-8111-111111111111",
           taskRevision: 1,
-          grantId: "22222222-2222-4222-8222-222222222222",
+          toolsRevision: 1,
           toolName: "search",
-          scope: "task",
-          authority: "mcp_tool_grant",
+          authority: "enabled_mcp_tool",
         },
       ],
     });
@@ -365,17 +364,16 @@ describe("Profile-owned turn mention service", () => {
       ).rejects.toThrow();
     }
   });
-  it("allows single-use connector transport consumption but withholds results after connector revocation", async () => {
+  it("withholds connector results after current tool access is revoked", async () => {
     const f = fixture();
     const grant = {
       kind: "mcp" as const,
       connectorId: "connector",
       taskId: "11111111-1111-4111-8111-111111111111",
       taskRevision: 1,
-      grantId: "22222222-2222-4222-8222-222222222222",
+      toolsRevision: 1,
       toolName: "search",
-      scope: "task" as const,
-      authority: "mcp_tool_grant" as const,
+      authority: "enabled_mcp_tool" as const,
     };
     f.setCatalog({ ...f.catalog(), access: [grant] });
     await f.service.begin("run", [{ kind: "connector", connectorId: "connector" }], [], {

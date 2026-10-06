@@ -33,7 +33,10 @@ export const OutboundMcpServerSchema = z.object({
       })
       .strict(),
   ]),
-  state: z.enum(["pending", "approved", "revoked"]),
+  state: z.enum(["active", "revoked"]),
+  toolsRevision: z.number().int().nonnegative(),
+  disabledTools: z.array(z.string().min(1).max(200)),
+  toolNames: z.array(z.string().min(1).max(200)),
   sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
   createdAt: z.number(),
   updatedAt: z.number(),
@@ -50,31 +53,17 @@ export const OutboundMcpBundleInspectionSchema = z.object({
   name: z.string().max(200),
   server: z.record(z.string(), z.unknown()),
 });
-export const OutboundMcpGrantSchema = z.object({
-  grantId: z.string().uuid(),
-  serverId: z.string().uuid(),
-  toolName: z.string().min(1).max(200),
-  scope: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("workspace"), workspaceId: z.string().min(1) }).strict(),
-    z
-      .object({ kind: z.literal("task"), taskId: z.string().min(1), revision: z.number().int().positive() })
-      .strict(),
-  ]),
-  mode: z.enum(["once", "standing"]),
-  outputTokenLimit: z.number().int().min(1).max(32_000),
-  createdAt: z.number(),
-  revokedAt: z.number().optional(),
-  consumedAt: z.number().optional(),
-});
-export const OutboundMcpGrantParams = OutboundMcpGrantSchema.pick({
-  serverId: true,
-  toolName: true,
-  scope: true,
-  mode: true,
-  outputTokenLimit: true,
-});
+export const OutboundMcpToolToggleParams = z
+  .object({
+    serverId: z.string().uuid(),
+    toolName: z.string().min(1).max(200),
+    enabled: z.boolean(),
+    expectedRevision: z.number().int().nonnegative(),
+  })
+  .strict();
 export const OutboundMcpToolSchema = z.object({
-  name: z.string(),
+  name: z.string().min(1).max(200),
+  enabled: z.boolean(),
   description: z.string().optional(),
   inputSchema: z.record(z.string(), z.unknown()),
 });
@@ -116,7 +105,6 @@ export const McpOAuthTokenSchema = z
   })
   .strict();
 export type OutboundMcpServer = z.infer<typeof OutboundMcpServerSchema>;
-export type OutboundMcpGrant = z.infer<typeof OutboundMcpGrantSchema>;
 export type OutboundMcpTool = z.infer<typeof OutboundMcpToolSchema>;
 export type OutboundMcpCallResult = z.infer<typeof OutboundMcpCallResultSchema>;
 export type McpStdioLaunchPermit = z.infer<typeof McpStdioLaunchPermitSchema>;

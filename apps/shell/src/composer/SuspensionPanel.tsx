@@ -1,3 +1,4 @@
+import { BudgetPrompt } from "../features/budget/BudgetPrompt";
 import { SuspensionPrompt } from "../features/permissions/SuspensionPrompt";
 import { staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
@@ -13,6 +14,7 @@ const TITLE: Record<Suspension["kind"], string> = {
   "action-confirmation": "Action confirmation needed",
   "touch-id": "Device confirmation needed",
   handoff: "Your turn in the browser",
+  budget: "Budget reached",
 };
 
 /** Standalone run views share the same approval controller as the composer. */
@@ -90,6 +92,9 @@ export function SuspensionPanel({
       setBusy(false);
     }
   }
+
+  if (typed?.kind === "budget" && !readOnly)
+    return <BudgetPrompt key={typed.suspensionId} run={run} suspension={typed} />;
 
   if (typed && !readOnly && ["approval", "action-confirmation", "touch-id"].includes(typed.kind))
     return <SuspensionPrompt runId={run.runId} />;

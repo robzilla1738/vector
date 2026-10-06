@@ -203,8 +203,7 @@ function rebindProfile(db: DatabaseSync, source: string, destination: string) {
     "calendar_task_grants",
     "vault_items",
     "vault_grants",
-    "outbound_mcp_grants",
-    "agent_connections",
+      "agent_connections",
     "plugin_skill_grants",
   ])
     db.prepare(`UPDATE ${table} SET revoked_at=? WHERE revoked_at IS NULL`).run(at);

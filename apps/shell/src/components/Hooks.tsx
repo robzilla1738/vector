@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type {
   Hook,
   HookInvocation,
-  OutboundMcpGrant,
+  OutboundMcpTool,
   OutboundMcpServer,
   WorkspaceFolder,
 } from "@aux/contracts";
@@ -13,37 +13,29 @@ import { call } from "../store";
 import { staticGrowProps as auxClassGrowProps } from "../ui/class-props";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
-type GrantChoice = { grant: OutboundMcpGrant; server: OutboundMcpServer };
+type ToolChoice = { tool: OutboundMcpTool; server: OutboundMcpServer };
+const toolKey = (choice: ToolChoice) => JSON.stringify([choice.server.serverId, choice.tool.name]);
 
-async function loadHooks(workspaceId: string): Promise<{ hooks: Hook[]; choices: GrantChoice[] }> {
+async function loadHooks(workspaceId: string): Promise<{ hooks: Hook[]; choices: ToolChoice[] }> {
   const hooks = await call("hooks.list", { workspaceId });
   const servers = await call("mcp.servers.list", { workspaceId });
-  const choices: GrantChoice[] = [];
+  const choices: ToolChoice[] = [];
   for (const server of servers) {
-    if (server.state !== "approved") continue;
-    const grants = await call("mcp.grants.list", { serverId: server.serverId });
-    for (const grant of grants) {
-      if (
-        grant.mode === "standing" &&
-        !grant.revokedAt &&
-        !grant.consumedAt &&
-        grant.scope.kind === "workspace" &&
-        grant.scope.workspaceId === workspaceId
-      )
-        choices.push({ grant, server });
-    }
+    if (server.state !== "active") continue;
+    const tools = await call("mcp.tools.list", { serverId: server.serverId });
+    for (const tool of tools) if (tool.enabled) choices.push({ tool, server });
   }
   return { hooks, choices };
 }
 
 export function Hooks({ workspaceId }: { workspaceId: string }) {
   const [hooks, setHooks] = useState<Hook[]>([]);
-  const [choices, setChoices] = useState<GrantChoice[]>([]);
+  const [choices, setChoices] = useState<ToolChoice[]>([]);
   const [folders, setFolders] = useState<WorkspaceFolder[]>([]);
   const [handlerType, setHandlerType] = useState<"mcp_tool" | "command">("mcp_tool");
   const [command, setCommand] = useState("");
   const [workdir, setWorkdir] = useState("");
-  const [grantId, setGrantId] = useState("");
+  const [chosenTool, setChosenTool] = useState("");
   const [hookEvent, setHookEvent] = useState<"run.start" | "run.end">("run.end");
   const [argumentsText, setArgumentsText] = useState("{}");
   const [selectedId, setSelectedId] = useState("");
@@ -94,7 +86,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
     }
   }
 
-  const chosen = choices.find((item) => item.grant.grantId === grantId);
+  const chosen = choices.find((item) => toolKey(item) === chosenTool);
   const selected = hooks.find((item) => item.hookId === selectedId);
   let argumentsValue: Record<string, unknown> | undefined;
   try {
@@ -114,13 +106,13 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
         </button>
       </div>
       <p {...staticHintProps}>
-        A run lifecycle Hook calls a granted MCP tool or a sandboxed local command. Review its exact handler
-        before approving it; revoking its grant, folder, or Hook stops future calls.
+        Creating a run lifecycle Hook enables its selected MCP tool or sandboxed command. Review the handler
+        before creating it. Disabling the tool, archiving its folder, or revoking the Hook stops future calls.
       </p>
       {error && <p {...nativeAlertRoleProps}>{error}</p>}
       {handlerType === "mcp_tool" && !choices.length && !error && (
         <p {...staticHintProps}>
-          No standing MCP tool grants in this Space. Create one in MCP &amp; Connectors.
+          No enabled MCP tools in this Space. Add or connect a server in Connections.
         </p>
       )}
       <label>
@@ -130,7 +122,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
           value={handlerType}
           onChange={(event) => setHandlerType(event.target.value as "mcp_tool" | "command")}
         >
-          <option value="mcp_tool">Granted MCP tool</option>
+          <option value="mcp_tool">Enabled MCP tool</option>
           <option value="command">Sandboxed command</option>
         </select>
       </label>
@@ -147,16 +139,16 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
       </label>
       {handlerType === "mcp_tool" && (
         <label>
-          Granted MCP tool
+          Enabled MCP tool
           <select
-            aria-label="Hook MCP tool grant"
-            value={grantId}
-            onChange={(event) => setGrantId(event.target.value)}
+            aria-label="Hook MCP tool"
+            value={chosenTool}
+            onChange={(event) => setChosenTool(event.target.value)}
           >
-            <option value="">Choose a standing Space grant</option>
-            {choices.map(({ grant, server }) => (
-              <option key={grant.grantId} value={grant.grantId}>
-                {server.name} · {grant.toolName}
+            <option value="">Choose an enabled tool</option>
+            {choices.map((choice) => (
+              <option key={toolKey(choice)} value={toolKey(choice)}>
+                {choice.server.name} · {choice.tool.name}
               </option>
             ))}
           </select>
@@ -226,8 +218,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
                   : {
                       type: "mcp_tool",
                       serverId: chosen!.server.serverId,
-                      grantId: chosen!.grant.grantId,
-                      toolName: chosen!.grant.toolName,
+                      toolName: chosen!.tool.name,
                       arguments: argumentsValue,
                     },
             });
@@ -235,7 +226,7 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
           })
         }
       >
-        Save Hook for review
+        Create Hook
       </button>
       <label>
         Review Hook
@@ -271,8 +262,8 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
           {selected.handler.type === "mcp_tool" && (
             <>
               <p>
-                Server <code>{selected.handler.serverId}</code> · grant{" "}
-                <code>{selected.handler.grantId}</code> · tool <code>{selected.handler.toolName}</code>
+                Server <code>{selected.handler.serverId}</code> · tool{" "}
+                <code>{selected.handler.toolName}</code>
               </p>
               <p>
                 Arguments <code>{JSON.stringify(selected.handler.arguments ?? {})}</code>
@@ -290,22 +281,6 @@ export function Hooks({ workspaceId }: { workspaceId: string }) {
             </>
           )}
           <div {...staticRowProps}>
-            {selected.trust === "untrusted" && (
-              <button
-                {...smallButtonProps}
-                disabled={busy}
-                onClick={() =>
-                  void act(() =>
-                    call("hooks.approve", {
-                      hookId: selected.hookId,
-                      expectedDigest: selected.handlerDigest,
-                    }),
-                  )
-                }
-              >
-                Approve exact Hook
-              </button>
-            )}
             {selected.trust !== "revoked" && (
               <button
                 {...smallButtonProps}

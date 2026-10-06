@@ -152,6 +152,21 @@ export class ExternalSessionService {
     this.events.emit("run.updated", { run: updated }, runId);
   }
 
+  /** A producer already parked the exact suspension; publish it on the original session run. */
+  needsInput(connectionId: string, runId: string): boolean {
+    const run = this.repo.getRun(runId);
+    if (!run || run.config?.externalConnectionId !== connectionId ||
+        !["running", "needs_input"].includes(run.status)) return false;
+    const pending = this.repo.db.prepare("SELECT request_json FROM safety_suspensions WHERE run_id=? AND state='pending' ORDER BY created_at DESC LIMIT 1")
+      .get(runId) as {request_json: string} | undefined;
+    if (!pending) return false;
+    const request = JSON.parse(pending.request_json) as {instruction?: string};
+    const updated: Run = {...run, status: "needs_input", statusMessage: request.instruction ?? "External agent needs your input"};
+    this.repo.saveRun(updated);
+    this.events.emit("run.updated", {run: updated}, runId);
+    return true;
+  }
+
   /** End the session run — revoked connections cancel, expired/idle complete. */
   end(connectionId: string, status: "completed" | "cancelled", statusMessage?: string) {
     const mapped = this.active.get(connectionId);

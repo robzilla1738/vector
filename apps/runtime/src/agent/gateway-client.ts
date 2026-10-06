@@ -522,7 +522,7 @@ export class GatewayModelClient implements ModelClient {
 
   async generateStructured<T>(opts: CallOpts & { schema: z.ZodType<T> }): Promise<StructuredCallResult<T>> {
     await this.loadSdk();
-    return this.withFailover(opts, (o) => this.generateStructuredInner(o));
+    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) => this.generateStructuredInner(o));
   }
 
   private async generateStructuredInner<T>(
@@ -583,7 +583,7 @@ export class GatewayModelClient implements ModelClient {
     opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void },
   ): Promise<StructuredCallResult<T>> {
     await this.loadSdk();
-    return this.withFailover(opts, (o) => this.streamStructuredInner(o));
+    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) => this.streamStructuredInner(o));
   }
 
   private async streamStructuredInner<T>(
@@ -690,11 +690,12 @@ export class GatewayModelClient implements ModelClient {
     imageDataUrl?: string;
     signal?: AbortSignal;
     maxOutputTokens?: number;
+    maxAttempts?: number;
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<TextCallResult> {
     await this.loadSdk();
-    return this.withFailover(opts, (o) => this.generateTextInner(o));
+    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) => this.generateTextInner(o));
   }
 
   private async generateTextInner(opts: {
@@ -705,6 +706,7 @@ export class GatewayModelClient implements ModelClient {
     imageDataUrl?: string;
     signal?: AbortSignal;
     maxOutputTokens?: number;
+    maxAttempts?: number;
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<TextCallResult> {

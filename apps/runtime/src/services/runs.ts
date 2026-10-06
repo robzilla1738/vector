@@ -1122,6 +1122,8 @@ export class RunService {
       },
       tracer: deps.tracer,
       durableWrites,
+      approvals: deps.approvals,
+      suspensions: deps.suspensions,
       vault: deps.vault,
       calendar: deps.calendar,
       operations: deps.operations,
@@ -1322,9 +1324,7 @@ export class RunService {
   }): ResearchLimits {
     return {
       maxModelCalls:
-        opts.maxModelCalls && opts.maxModelCalls > 0
-          ? opts.maxModelCalls
-          : this.deps.settings.maxModelCalls() || 16,
+        opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
       maxTokens: opts.maxTokens ?? 200_000,
       deadlineMs: opts.deadlineMs ?? 300_000,
       ...(opts.maxCostUsd !== undefined ? { maxCostUsd: opts.maxCostUsd } : {}),
@@ -1919,7 +1919,14 @@ export class RunService {
     );
   }
 
+  continueBudget(runId: string, suspensionId: string,
+    limits?: { maxModelCalls?: number; maxSteps?: number; deadlineMs?: number }): Promise<Run> {
+    return this.coordinator.continueBudget(runId, suspensionId, limits);
+  }
+
   async resume(runId: string): Promise<Run> {
+    if (this.coordinator.suspensions.pending(runId)?.kind === "budget")
+      throw new AuxError("conflict", "Use Continue on the current budget request.");
     return withRunAuthorityMutation(
       this.deps.repo,
       async () => {

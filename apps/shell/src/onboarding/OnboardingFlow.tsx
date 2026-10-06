@@ -664,8 +664,10 @@ export function OnboardingFlow({
                               <p {...staticHintProps}>Calendar connected · task approval still required</p>
                             )}
                           {catalog?.entries.some(
-                            (entry) => entry.kind === "mcp" && entry.state === "approved",
-                          ) && <p {...staticHintProps}>MCP connected · tool approval still required</p>}
+                            (entry) => entry.kind === "mcp" && entry.state === "active",
+                          ) && (
+                            <p {...staticHintProps}>MCP connected · manage enabled tools in Permissions</p>
+                          )}
                           <button
                             {...auxClassButtonProps}
                             disabled={

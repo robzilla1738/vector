@@ -43,6 +43,48 @@ export type OriginRule = z.infer<typeof OriginRuleSchema>;
 export const EffectCategorySchema = z.enum(EFFECT_CATEGORIES);
 export type EffectCategory = z.infer<typeof EffectCategorySchema>;
 
+export const CredentialSelectorSchema = z
+  .string()
+  .min(1)
+  .max(1000)
+  .refine(
+    (value) =>
+      [...value].every((character) => {
+        const code = character.charCodeAt(0);
+        return code >= 0x20 && code !== 0x7f;
+      }),
+    "Selectors cannot contain control characters.",
+  );
+
+export const CredentialExpectedUrlSchema = z
+      .string()
+      .url()
+      .max(8192)
+      .refine((value) => {
+        try {
+          const url = new URL(value);
+          return url.protocol === "https:" && !url.username && !url.password && url.href === value;
+        } catch {
+          return false;
+        }
+      });
+
+export const SavedCredentialTargetSchema = z.object({
+  pageId: id,
+  sessionId: id,
+  documentEpoch: z.number().int().nonnegative(),
+  expectedUrl: CredentialExpectedUrlSchema,
+  passwordSelector: CredentialSelectorSchema,
+  usernameSelector: CredentialSelectorSchema.optional(),
+  nativeContext: z.object({
+    documentToken: z.string().min(1).max(160),
+    windowId: z.string().min(1).max(160),
+    ownerIncarnation: z.string().min(1).max(160),
+    connectionGeneration: z.string().max(160).regex(/^[1-9][0-9]*$/),
+  }).strict(),
+}).strict();
+export type SavedCredentialTarget = z.infer<typeof SavedCredentialTargetSchema>;
+
 export const SafetyActionSchema = z
   .object({
     profileId: id,
@@ -52,6 +94,7 @@ export const SafetyActionSchema = z
     category: EffectCategorySchema.optional(),
     confirmation: ConfirmationLevelSchema.optional(),
     authentication: z.literal("touch_id").optional(),
+    credentialTarget: SavedCredentialTargetSchema.optional(),
     policyRevision: z.number().int().nonnegative().optional(),
     amount: z.number().finite().nonnegative().optional(),
     invocationDigest: z.string().regex(/^[a-f0-9]{64}$/),
@@ -138,34 +181,10 @@ export const ConfirmationRequestSchema = z
   .strict();
 export type ConfirmationRequest = z.infer<typeof ConfirmationRequestSchema>;
 
-export const CredentialSelectorSchema = z
-  .string()
-  .min(1)
-  .max(1000)
-  .refine(
-    (value) =>
-      [...value].every((character) => {
-        const code = character.charCodeAt(0);
-        return code >= 0x20 && code !== 0x7f;
-      }),
-    "Selectors cannot contain control characters.",
-  );
-
 export const CredentialHandoffRequestSchema = z
   .object({
     pageId: id,
-    expectedUrl: z
-      .string()
-      .url()
-      .max(8192)
-      .refine((value) => {
-        try {
-          const url = new URL(value);
-          return url.protocol === "https:" && !url.username && !url.password && url.href === value;
-        } catch {
-          return false;
-        }
-      }),
+    expectedUrl: CredentialExpectedUrlSchema,
     usernameSelector: CredentialSelectorSchema.optional(),
     passwordSelector: CredentialSelectorSchema,
   })
@@ -253,6 +272,7 @@ export const EffectRequestSchema = z
     actor: EffectActorSchema,
     effect: EffectSchema,
     category: EffectCategorySchema,
+    credentialTarget: SavedCredentialTargetSchema.optional(),
     action: id,
     /** Raw endpoint as observed — decide() normalizes with exactOrigin and can deny it. */
     origin: z.string().trim().min(1).max(2048).optional(),
@@ -277,8 +297,16 @@ export const SuspensionKindSchema = z.enum([
   "action-confirmation",
   "touch-id",
   "handoff",
+  "budget",
 ]);
 export type SuspensionKind = z.infer<typeof SuspensionKindSchema>;
+export const BudgetSuspensionSchema = z.object({
+  reason: z.enum(["model_calls", "steps", "time", "spend"]),
+  limit: z.number().finite().nonnegative(),
+  used: z.number().finite().nonnegative(),
+  scope: z.enum(["run", "day", "routine", "nightShift"]).optional(),
+}).strict();
+export type BudgetSuspension = z.infer<typeof BudgetSuspensionSchema>;
 /** The parked side of an `ask` decision; one pending suspension per run. */
 export const SuspensionRequestSchema = z
   .object({
@@ -294,6 +322,7 @@ export const SuspensionRequestSchema = z
       amount: z.number().finite().nonnegative().optional(),
     }).strict().optional(),
     approvalId: id.optional(),
+    budget: BudgetSuspensionSchema.optional(),
     instruction: z.string().trim().min(1).max(4000),
     guidance: z.string().trim().min(1).max(4000),
   })

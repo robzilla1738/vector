@@ -512,7 +512,7 @@ export function installMockBridge(q: URLSearchParams) {
     searchEngine: DEFAULT_SEARCH_ENGINE,
     plannerModel: "meta/muse-spark-1.3-contributor",
     maxWorkers: 4,
-    maxModelCalls: 8,
+    maxModelCalls: 0,
     gatewayApiKey: "••••••••",
     effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   };

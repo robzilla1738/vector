@@ -252,7 +252,9 @@ export function makeInvoker(s: Services) {
         s.externalSessions.noteInvocation(client.connectionId, externalRunId, method, startedAt, true);
         return result;
       } catch (error) {
-        s.externalSessions.noteInvocation(client.connectionId, externalRunId, method, startedAt, false);
+        const parked = error instanceof AuxError && error.code === "needs_input" &&
+          s.externalSessions.needsInput(client.connectionId, externalRunId);
+        if (!parked) s.externalSessions.noteInvocation(client.connectionId, externalRunId, method, startedAt, false);
         throw error;
       }
     };

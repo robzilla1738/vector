@@ -19,7 +19,7 @@ it("keeps preview connector access bound to reviewed task grants and revocation"
   const handlers = connectorFixtures(workspaceId, async () => [task], true);
   const query = { workspaceId, taskId: task.taskId, expectedRevision: task.revision };
   const first = ConnectorCatalogSchema.parse(await handlers["connectors.catalog"](query));
-  expect(first.access.map((item) => item.kind).sort()).toEqual(["mcp"]);
+  expect([...new Set(first.access.map((item) => item.kind))].sort()).toEqual(["mcp"]);
   const calendar = first.entries.find((item) => item.kind === "calendar");
   if (calendar?.kind !== "calendar") throw new Error("Preview Calendar account is unavailable");
   const grant = await handlers["calendar.taskGrants.create"]({
@@ -30,13 +30,14 @@ it("keeps preview connector access bound to reviewed task grants and revocation"
   expect(
     ConnectorCatalogSchema.parse(await handlers["connectors.catalog"](query))
       .access.map((item) => item.kind)
+      .filter((kind, index, kinds) => kinds.indexOf(kind) === index)
       .sort(),
   ).toEqual(["calendar", "mcp"]);
   await handlers["calendar.taskGrants.revoke"]({ taskId: task.taskId, grantId: grant.grantId });
   const after = ConnectorCatalogSchema.parse(await handlers["connectors.catalog"](query));
-  expect(after.access.map((item) => item.kind)).toEqual(["mcp"]);
+  expect([...new Set(after.access.map((item) => item.kind))]).toEqual(["mcp"]);
   const mcp = after.access.find((item) => item.kind === "mcp");
-  if (mcp?.kind !== "mcp") throw new Error("Preview MCP grant is unavailable");
-  await handlers["mcp.grants.revoke"]({ grantId: mcp.grantId });
+  if (mcp?.kind !== "mcp") throw new Error("Preview MCP tool is unavailable");
+  await handlers["mcp.servers.revoke"]({ serverId: mcp.connectorId.slice("mcp:".length) });
   expect(ConnectorCatalogSchema.parse(await handlers["connectors.catalog"](query)).access).toEqual([]);
 });

@@ -1,11 +1,11 @@
 import {
   ConnectorCatalogSchema,
-  OutboundMcpGrantParams,
+  OutboundMcpToolToggleParams,
+  MethodSchemas,
   OutboundMcpRegisterParams,
   type CalendarTaskGrant,
   type ConnectorAccess,
   type ConnectorEntry,
-  type OutboundMcpGrant,
   type OutboundMcpServer,
   type Task,
 } from "@aux/contracts";
@@ -26,26 +26,18 @@ export function connectorFixtures(workspaceId: string, tasks: () => Promise<Task
           workspaceId,
           name: "Research tools",
           source: { kind: "remote", url: "https://tools.example.test/mcp", auth: "none" },
-          state: "approved",
+          state: "active",
+          toolsRevision: 1,
+          disabledTools: [],
+          toolNames: ["search", "summarize"],
           sourceDigest: "a".repeat(64),
           createdAt: now,
           updatedAt: now,
         },
       ]
     : [];
-  let tools: OutboundMcpGrant[] = enabled
-    ? [
-        {
-          grantId: "91919191-9191-4919-8919-919191919191",
-          serverId,
-          toolName: "search",
-          scope: { kind: "workspace", workspaceId },
-          mode: "standing",
-          outputTokenLimit: 2000,
-          createdAt: now,
-        },
-      ]
-    : [];
+  const toolNames = ["search", "summarize"];
+  const discovered = new Map<string, string[]>(enabled ? [[serverId, [...toolNames]]] : []);
   const account = {
     connectionId: calendarId,
     provider: "google" as const,
@@ -87,7 +79,7 @@ export function connectorFixtures(workspaceId: string, tasks: () => Promise<Task
         serverId: item.serverId,
         label: item.name,
         state: item.state,
-        authority: "reviewed_server_and_tool_grant" as const,
+        authority: "connected_server" as const,
       })),
     ] as ConnectorEntry[];
     const access: ConnectorAccess[] = task
@@ -105,26 +97,21 @@ export function connectorFixtures(workspaceId: string, tasks: () => Promise<Task
               grantId: item.grantId,
               authority: "calendar_task_grant" as const,
             })),
-          ...tools
-            .filter(
-              (item) =>
-                !item.revokedAt &&
-                !item.consumedAt &&
-                server(item.serverId).state === "approved" &&
-                (item.scope.kind === "workspace"
-                  ? item.scope.workspaceId === workspaceId
-                  : item.scope.taskId === task.taskId && item.scope.revision === task.revision),
-            )
-            .map((item) => ({
-              kind: "mcp" as const,
-              connectorId: `mcp:${item.serverId}`,
-              taskId: task.taskId,
-              taskRevision: task.revision,
-              grantId: item.grantId,
-              toolName: item.toolName,
-              scope: item.scope.kind,
-              authority: "mcp_tool_grant" as const,
-            })),
+          ...servers
+            .filter((item) => item.state === "active")
+            .flatMap((item) =>
+              (discovered.get(item.serverId) ?? [])
+                .filter((name) => !item.disabledTools.includes(name))
+                .map((toolName) => ({
+                  kind: "mcp" as const,
+                  connectorId: `mcp:${item.serverId}`,
+                  taskId: task.taskId,
+                  taskRevision: task.revision,
+                  toolsRevision: item.toolsRevision,
+                  toolName,
+                  authority: "enabled_mcp_tool" as const,
+                })),
+            ),
         ]
       : [];
     return ConnectorCatalogSchema.parse({ entries, access });
@@ -225,7 +212,10 @@ export function connectorFixtures(workspaceId: string, tasks: () => Promise<Task
         workspaceId,
         name: input.name,
         source: input.source,
-        state: "pending" as const,
+        state: "active" as const,
+        toolsRevision: 0,
+        disabledTools: [],
+        toolNames: [],
         sourceDigest: [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join(""),
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -233,73 +223,75 @@ export function connectorFixtures(workspaceId: string, tasks: () => Promise<Task
       servers = [...servers, item];
       return item;
     },
-    "mcp.servers.approve": async (params: Record<string, unknown>) => {
-      const item = server(params.serverId);
-      if (item.sourceDigest !== params.expectedDigest) throw new Error("Server source changed.");
-      servers = servers.map((current) =>
-        current.serverId === item.serverId ? { ...current, state: "approved" } : current,
-      );
-      return server(item.serverId);
-    },
     "mcp.servers.revoke": async (params: Record<string, unknown>) => {
       const item = server(params.serverId);
       servers = servers.map((current) =>
         current.serverId === item.serverId ? { ...current, state: "revoked" } : current,
       );
-      tools = tools.map((current) =>
-        current.serverId === item.serverId ? { ...current, revokedAt: Date.now() } : current,
-      );
       return server(item.serverId);
     },
     "mcp.tools.list": async (params: Record<string, unknown>) => {
-      if (server(params.serverId).state !== "approved")
-        throw new Error("Approve the server before loading tools.");
-      return [
-        { name: "search", description: "Search synthetic preview notes", inputSchema: {} },
-        { name: "summarize", description: "Summarize a synthetic preview note", inputSchema: {} },
-      ];
-    },
-    "mcp.grants.list": async (params: Record<string, unknown>) =>
-      tools.filter((item) => item.serverId === params.serverId),
-    "mcp.grants.create": async (params: Record<string, unknown>) => {
-      const input = OutboundMcpGrantParams.parse(params);
-      const item = server(input.serverId);
-      if (item.state !== "approved") throw new Error("Approve the server before granting tools.");
-      if (input.toolName !== "search" && input.toolName !== "summarize")
-        throw new Error("Tool is unavailable on this mock server.");
-      if (input.scope.kind === "workspace" && input.scope.workspaceId !== workspaceId)
-        throw new Error("Preview Space is unavailable.");
-      if (input.scope.kind === "task") {
-        const scope = input.scope;
-        if (
-          !(await tasks()).some(
-            (task) =>
-              task.taskId === scope.taskId &&
-              task.revision === scope.revision &&
-              task.workspaceId === workspaceId,
-          )
-        )
-          throw new Error("Preview task revision changed.");
+      let item = server(params.serverId);
+      if (item.state !== "active") throw new Error("Server is disconnected.");
+      if (!discovered.has(item.serverId)) {
+        discovered.set(item.serverId, [...toolNames]);
+        servers = servers.map((current) =>
+          current.serverId === item.serverId
+            ? { ...current, toolNames: [...toolNames], toolsRevision: current.toolsRevision + 1 }
+            : current,
+        );
+        item = server(item.serverId);
       }
-      const grant = {
-        grantId: crypto.randomUUID(),
-        serverId: item.serverId,
-        toolName: input.toolName,
-        scope: input.scope,
-        mode: input.mode,
-        outputTokenLimit: input.outputTokenLimit,
-        createdAt: Date.now(),
-      };
-      tools = [...tools, grant];
-      return grant;
+      return toolNames.map((name) => ({
+        name,
+        description: `${name} synthetic preview notes`,
+        inputSchema: {},
+        enabled: !item.disabledTools.includes(name),
+      }));
     },
-    "mcp.grants.revoke": async (params: Record<string, unknown>) => {
-      tools = tools.map((item) =>
-        item.grantId === params.grantId ? { ...item, revokedAt: Date.now() } : item,
+    "mcp.tools.setEnabled": async (params: Record<string, unknown>) => {
+      const input = OutboundMcpToolToggleParams.parse(params),
+        item = server(input.serverId);
+      if (item.state !== "active" || !(discovered.get(item.serverId) ?? []).includes(input.toolName))
+        throw new Error("Tool is unavailable.");
+      if (input.expectedRevision !== item.toolsRevision)
+        throw new Error("Tool permissions changed. Refresh the current tools.");
+      const disabledTools = input.enabled
+        ? item.disabledTools.filter((name) => name !== input.toolName)
+        : [...new Set([...item.disabledTools, input.toolName])];
+      servers = servers.map((current) =>
+        current.serverId === item.serverId
+          ? { ...current, disabledTools, toolsRevision: current.toolsRevision + 1, updatedAt: Date.now() }
+          : current,
       );
-      const grant = tools.find((item) => item.grantId === params.grantId);
-      if (!grant) throw new Error("Preview grant is unavailable.");
-      return grant;
+      return server(item.serverId);
+    },
+    "mcp.tools.call": async (params: Record<string, unknown>) => {
+      const input = MethodSchemas["mcp.tools.call"].parse(params),
+        item = server(input.serverId);
+      if (
+        input.context.workspaceId !== item.workspaceId ||
+        item.state !== "active" ||
+        !(discovered.get(item.serverId) ?? []).includes(input.toolName) ||
+        item.disabledTools.includes(input.toolName)
+      )
+        throw new Error("Tool is unavailable in this Space.");
+      if (
+        input.context.taskId &&
+        !(await tasks()).some(
+          (task) =>
+            task.taskId === input.context.taskId &&
+            task.workspaceId === workspaceId &&
+            task.revision === input.context.revision,
+        )
+      )
+        throw new Error("Preview task revision changed.");
+      return {
+        callId: crypto.randomUUID(),
+        status: "completed" as const,
+        output: `Synthetic ${input.toolName} result`,
+        isError: false,
+      };
     },
   };
 }

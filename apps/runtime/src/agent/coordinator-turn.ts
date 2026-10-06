@@ -63,6 +63,7 @@ export type LoopControl = {
   paused: boolean;
   dispatchAbort?: AbortController;
   takeoverInterrupted?: boolean;
+  budgetInterrupted?: boolean;
   interruptPlanning?: () => void;
   deadlineHit?: boolean;
   answerWaiter?: { resolve: (answer: string) => void };
@@ -187,6 +188,7 @@ async function waitForSuspension(s: TurnState, suspensionId: string, question: s
     s.self.suspensions.resolve(suspensionId, "cancelled");
     return false;
   }
+  if (s.c.deadlineHit || s.c.budgetInterrupted || s.c.takeoverInterrupted) return true;
   // resolve() is a no-op when the approval path already settled this row —
   // the recorded state (answered on accept, cancelled on decline) stands.
   s.self.suspensions.resolve(suspensionId, "answered");
@@ -247,7 +249,11 @@ export async function structuredCall<T>(
   stream?: { onText: (delta: string) => void; firstDispatchAt: () => number | undefined },
   signal = s.c.abort.signal,
 ) {
-  s.modelCalls++;
+  const limit = s.self.get(s.runId).config?.maxModelCalls ?? 0;
+  if (limit > 0 && s.modelCalls >= limit) {
+    await s.self.pauseForBudget(s.runId, { reason: "model_calls", limit, used: s.modelCalls });
+    throw new AuxError("cancelled", "Budget continuation requires a fresh observation.");
+  }
   const started = Date.now();
   let modelReturned = false;
   let modelStarted = false;
@@ -268,7 +274,7 @@ export async function structuredCall<T>(
           `SAVED ARTICLE ${index + 1}: ${item.title}\nSource: ${item.url}\nSaved: ${new Date(item.capturedAt).toISOString()}\n${item.text}`,
       )
       .join("\n\n");
-    await s.self.deps.checkBudget?.({ runId: s.runId });
+    await s.self.checkModelBudget(s.runId);
     const category: AgentModelCategory = role === "final" ? "fast" : role === "repair" ? "deep" : "standard";
     const reasoning = s.self.deps.routeModel?.(category).reasoning ?? agentModelRoute(category).reasoning;
     const input = {
@@ -288,11 +294,13 @@ export async function structuredCall<T>(
           }
         : {}),
     };
+    if (signal.aborted) throw new AuxError("cancelled", "Model planning was interrupted.");
+    s.modelCalls++;
     modelStarted = true;
     const call =
       stream && s.model.streamStructured
-        ? await s.model.streamStructured<T>({ ...input, signal, onText: stream.onText })
-        : await s.model.generateStructured<T>({ ...input, signal });
+        ? await s.model.streamStructured<T>({ ...input, signal, ...(limit > 0 ? { maxAttempts: 1 } : {}), onText: stream.onText })
+        : await s.model.generateStructured<T>({ ...input, signal, ...(limit > 0 ? { maxAttempts: 1 } : {}) });
     modelReturned = true;
     for (const retry of call.retries ?? []) {
       s.modelCalls++;
@@ -545,6 +553,16 @@ function dispatchDeps(s: TurnState) {
   return { pages: s.self.deps.pages, durable: s.self.durable, readOnly: turnReadOnly(s) };
 }
 
+async function executeWithinBudget(s: TurnState, ...args: Parameters<typeof guardedExecute>) {
+  const limit = s.self.get(s.runId).config?.maxSteps ?? 0;
+  const used = Math.max(s.stepsRun, s.outcomes.filter((outcome) => outcome.op !== "human_input").length);
+  if (limit > 0 && used + args[1].steps.length > limit) {
+    await s.self.pauseForBudget(s.runId, { reason: "steps", limit, used });
+    throw new AuxError("cancelled", "Budget continuation requires a fresh observation.");
+  }
+  return guardedExecute(...args);
+}
+
 function dispatchOpts(
   s: TurnState,
   obs: Observation,
@@ -622,7 +640,7 @@ export async function planTurn(
     const epoch = obs.documentEpoch;
     const dispatcher = new EarlyDispatcher(async (steps, { first, last }) => {
       const live = s.self.deps.pages.get(s.activePageId!);
-      const g = await guardedExecute(
+      const g = await executeWithinBudget(s,
         dispatchDeps(s),
         dispatchOpts(s, obs, steps, {
           documentEpoch: live.documentEpoch ?? epoch,
@@ -692,6 +710,11 @@ export async function planTurn(
       s.visionPending = false;
       const visionId = s.self.deps.visionModel?.();
       if (visionId) {
+        const limit = s.self.get(s.runId).config?.maxModelCalls ?? 0;
+        if (limit > 0 && s.modelCalls >= limit) {
+          await s.self.pauseForBudget(s.runId, { reason: "model_calls", limit, used: s.modelCalls });
+          throw new AuxError("cancelled", "Budget continuation requires a fresh observation.");
+        }
         await s.self.setStatus(s.runId, "planning", "Looking at the page…");
         const v = await s.self.tryVisionPlan({
           runId: s.runId,
@@ -765,6 +788,11 @@ export async function dispatchSourcePlan(
     stepId = newStepId();
   const { kind: _kind, ...sourceFields } = plan.sourceRequest;
   const request = { taskId, ...sourceFields };
+  const stepLimit = s.self.get(s.runId).config?.maxSteps ?? 0;
+  if (stepLimit > 0 && s.stepsRun >= stepLimit) {
+    await s.self.pauseForBudget(s.runId, { reason: "steps", limit: stepLimit, used: s.stepsRun });
+    return "continue";
+  }
   s.stepsRun++;
   let delivered: Awaited<ReturnType<typeof operations.invokeCalendarTaskEvents>>;
   try {
@@ -900,7 +928,7 @@ export async function handlePlannerFailure(
     if (partial.steps.length) s.stepsRun += partial.steps.length;
   }
   if (s.self.durable.unresolved(s.runId).length) return "continue";
-  if (s.c.paused && !s.c.abort.signal.aborted) return "continue";
+  if ((s.c.paused || s.c.deadlineHit || s.c.budgetInterrupted) && !s.c.abort.signal.aborted) return "continue";
   if (s.c.abort.signal.aborted) throw e;
   const failure = await classifyModelFailure(e);
   if (TRANSIENT_FAILURES.has(failure.category) && (s.transientRetries ?? 0) < TRANSIENT_RETRY_LIMIT) {
@@ -963,7 +991,7 @@ async function runTerminalSteps(
   obs: Observation,
   attempt: PlanAttempt,
 ): Promise<PlanChunk | "return" | "continue"> {
-  const g = await guardedExecute(
+  const g = await executeWithinBudget(s,
     dispatchDeps(s),
     dispatchOpts(s, obs, plan.steps ?? [], {
       exec: {
@@ -1149,7 +1177,7 @@ export async function dispatchPlan(
     result = await early!.finish(steps);
   } else {
     early?.halt();
-    const g = await guardedExecute(
+    const g = await executeWithinBudget(s,
       dispatchDeps(s),
       dispatchOpts(s, obs, steps, {
         guards,
@@ -1228,7 +1256,7 @@ export async function dispatchPlan(
       /* invalid page URL — skip skill compile */
     }
   }
-  if (result.status === "cancelled") return "return";
+  if (result.status === "cancelled") return s.c.deadlineHit || s.c.budgetInterrupted ? "continue" : "return";
   const needsInput = result.steps.find((o) => o.error?.code === "needs_input");
   if (needsInput)
     return (await awaitSuspendedInput(s, needsInput.error?.message ?? "This action needs your input."))
@@ -1263,7 +1291,7 @@ async function recoverFailedChunk(s: TurnState, error: string | undefined): Prom
       maxOutputTokens: 8192,
     });
     if (repair.object.steps.length) {
-      const g = await guardedExecute(
+      const g = await executeWithinBudget(s,
         dispatchDeps(s),
         dispatchOpts(s, fresh, repair.object.steps, { observedEpoch: fresh.documentEpoch }),
       );

@@ -541,7 +541,7 @@ export function ModelsSettings({
     plannerModel === DEFAULT_PLANNER_MODEL_ID ||
     modelDraft.trim() === DEFAULT_PLANNER_MODEL_ID ||
     Object.values(roleRoutes).some((route) => route.modelId === DEFAULT_PLANNER_MODEL_ID);
-  const turnValue = (settings.maxModelCalls as number) ?? 8;
+  const turnValue = (settings.maxModelCalls as number) ?? 0;
   const turnOptions = TURN_OPTIONS.includes(turnValue) ? TURN_OPTIONS : [turnValue, ...TURN_OPTIONS];
   const hasKey =
     settings.modelApiKey === KEY_MASK || (provider === "gateway" && settings.gatewayApiKey === KEY_MASK);

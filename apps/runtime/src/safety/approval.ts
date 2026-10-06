@@ -36,6 +36,7 @@ function fingerprint(action: SafetyAction, lifetime: "turn" | "thread"): string 
         action.confirmation ?? null,
         action.authentication ?? null,
         action.policyRevision ?? 0,
+        action.credentialTarget ?? null,
         action.amount ?? null,
         action.origin ?? null,
         action.recipient ?? null,

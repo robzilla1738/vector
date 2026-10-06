@@ -1,4 +1,11 @@
 import {
+  NativeCredentialContextParamsSchema,
+  NativeCredentialContextSchema,
+  NativeCredentialAdmissionParamsSchema,
+  NativeCredentialAdmissionSchema,
+  NativeCredentialFillParamsSchema,
+} from "./native-credentials.js";
+import {
   NativeCdpCatalogSchema,
   NativeCdpAttachSchema,
   NativeCdpAttachedSchema,
@@ -28,7 +35,7 @@ import {
 } from "./native-person-read.js";
 import { LiveFolderSchema } from "./live-folders.js";
 import { NativeMethods } from "./bridge.js";
-import { CredentialHandoffRequestSchema, CredentialHandoffResultSchema } from "./safety.js";
+import { CredentialHandoffResultSchema } from "./safety.js";
 import { WebmcpCallResultSchema, WebmcpToolSchema } from "./webmcp.js";
 import { ZapStylesheetInstallSchema, ZapInstallReceiptSchema } from "./zap.js";
 import type { AuxFeature } from "./aux-features.js";
@@ -385,9 +392,19 @@ export const RuntimeHostMethods = {
     NativeMethods["native.captureReadablePage"],
     z.object({ url: str, title: str, text: str }).strict(),
   ),
+  "native.credentialContext": runtime(
+    "passwordManager",
+    NativeCredentialContextParamsSchema,
+    NativeCredentialContextSchema,
+  ),
+  "native.credentialAdmit": runtime(
+    "passwordManager",
+    NativeCredentialAdmissionParamsSchema,
+    NativeCredentialAdmissionSchema,
+  ),
   "native.fillSavedPassword": runtime(
     "passwordManager",
-    CredentialHandoffRequestSchema,
+    NativeCredentialFillParamsSchema,
     CredentialHandoffResultSchema,
   ),
   "native.cdpReset": runtime("fourLayerTabApi", z.object({}).strict(), z.unknown()),

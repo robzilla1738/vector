@@ -182,8 +182,9 @@ export const generatedSettingsFields: SettingsSearchItem[] = [
   {
     category: "Permissions",
     label: "Connected tools",
-    description: "Review connected MCP servers and their tool access.",
+    description: "Adding a server enables its tools. Disable individual tools here.",
     target: "Connected tools",
+    searchTerms: ["MCP", "tools", "connections", "enable", "disable"],
   },
   {
     category: "Permissions",

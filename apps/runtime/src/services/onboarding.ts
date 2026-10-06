@@ -204,7 +204,7 @@ export class OnboardingService {
             chatId: first.chatId,
             pageIds: [page.pageId],
             contextPageRefs: [input.page],
-            maxModelCalls: Math.min(8, this.deps.maxModelCalls?.() || 8),
+            maxModelCalls: this.deps.maxModelCalls?.() ?? 0,
           });
           if (run.runId !== first.runId) {
             identityMismatch = true;

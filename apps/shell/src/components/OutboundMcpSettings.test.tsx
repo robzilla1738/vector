@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { OutboundMcpGrantSchema, OutboundMcpServerSchema } from "@aux/contracts";
+import { OutboundMcpServerSchema } from "@aux/contracts";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -21,7 +21,10 @@ const server = () => ({
   workspaceId: "workspace-1",
   name: "Research tools",
   source: { kind: "remote", url: "https://tools.example/mcp", auth: "oauth" },
-  state: "pending",
+  state: "active",
+  toolsRevision: 7,
+  toolNames: ["search"],
+  disabledTools: [] as string[],
   sourceDigest: digest,
   createdAt: 1,
   updatedAt: 1,
@@ -53,108 +56,79 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("requires exact server-source review and a separate tool, scope and limit grant", async () => {
+it("preserves OAuth review and revision-bound tool toggles and exact call context", async () => {
   let current = server();
-  let grants: unknown[] = [];
   rpc.mockImplementation(async (method: string, params: Record<string, unknown>) => {
     if (method === "workspaces.list") return [{ workspaceId: "workspace-1", name: "Research" }];
     if (method === "tasks.list") return [];
     if (method === "mcp.servers.list") return [current];
-    if (method === "mcp.grants.list") return grants;
-    if (method === "mcp.servers.approve") {
-      current = { ...current, state: "approved" };
-      return current;
-    }
-    if (method === "mcp.oauth.status") return { connected: true, expiresAt: Date.now() + 60_000 };
+    if (method === "mcp.oauth.status") return { connected: true };
+    if (method === "mcp.oauth.clear") return { connected: false };
     if (method === "mcp.oauth.start")
       return {
         state: "authorization",
         url: "https://auth.example.test/authorize",
         expiresAt: Date.now() + 60_000,
       };
-    if (method === "mcp.oauth.clear") return { connected: false };
-    if (method === "mcp.tools.list")
-      return [{ name: "search", description: "Search a fixture", inputSchema: {} }];
-    if (method === "mcp.grants.create") {
-      grants = [{ ...params, grantId: "grant-1", createdAt: 1 }];
-      return grants[0];
+    if (method === "mcp.tools.list") {
+      current = { ...current, toolsRevision: 8 };
+      return [{ name: "search", description: "Search a fixture", inputSchema: {}, enabled: true }];
+    }
+    if (method === "mcp.tools.setEnabled") {
+      current = {
+        ...current,
+        toolsRevision: current.toolsRevision + 1,
+        disabledTools: params.enabled ? [] : ["search"],
+      };
+      return current;
     }
     if (method === "mcp.tools.call")
       return { callId: "call-1", status: "completed", output: "Fixture result", isError: false };
-    if (method === "mcp.grants.revoke") {
-      grants = grants.map((grant) => ({ ...(grant as object), revokedAt: 2 }));
-      return grants[0];
-    }
     if (method === "mcp.servers.revoke") {
       current = { ...current, state: "revoked" };
       return current;
     }
     throw new Error(`Unexpected RPC ${method}`);
   });
-
   await act(async () => root.render(<OutboundMcpSettings />));
   await flush();
   await flush();
-  expect(container.textContent).toContain("https://tools.example/mcp");
   expect(container.textContent).toContain(digest);
-  expect(container.textContent).toContain("Server approval alone never grants tool access.");
-  await act(async () => button("Approve this server source").click());
-  await flush();
-  expect(rpc).toHaveBeenCalledWith("mcp.servers.approve", { serverId, expectedDigest: digest });
-
-  await flush();
   expect(container.textContent).toContain("Connected in this Profile");
   await act(async () => button("Disconnect OAuth").click());
   expect(rpc).toHaveBeenCalledWith("mcp.oauth.clear", { serverId });
   await act(async () => button("Connect OAuth").click());
   expect(bridge.openExternal).not.toHaveBeenCalled();
-  expect(container.textContent).toContain("https://auth.example.test/authorize");
   await act(async () => button("Open reviewed authorization page").click());
   expect(bridge.openExternal).toHaveBeenCalledWith("https://auth.example.test/authorize");
-
   await act(async () => button("Load available tools").click());
   await flush();
-  const tool = container.querySelector<HTMLSelectElement>('select[aria-label="MCP tool"]')!;
-  const scope = container.querySelector<HTMLSelectElement>('select[aria-label="MCP tool scope"]')!;
-  const mode = container.querySelector<HTMLSelectElement>('select[aria-label="MCP grant duration"]')!;
-  act(() => {
-    tool.value = "search";
-    tool.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-  act(() => {
-    scope.value = "workspace";
-    scope.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-  act(() => {
-    mode.value = "standing";
-    mode.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-  act(() => button("Review tool grant").click());
-  expect(container.textContent).toContain("Every task in Research");
-  expect(container.textContent).toContain("2,000 tokens");
-  await act(async () => button("Approve tool grant").click());
-  await flush();
-  expect(rpc).toHaveBeenCalledWith("mcp.grants.create", {
+  const toggle = container.querySelector<HTMLInputElement>('input[aria-label="Enable search"]')!;
+  await act(async () => toggle.click());
+  expect(rpc).toHaveBeenCalledWith("mcp.tools.setEnabled", {
     serverId,
     toolName: "search",
-    scope: { kind: "workspace", workspaceId: "workspace-1" },
-    mode: "standing",
-    outputTokenLimit: 2000,
+    enabled: false,
+    expectedRevision: 8,
+  });
+  expect(button("Call tool…").disabled).toBe(true);
+  await act(async () => toggle.click());
+  expect(rpc).toHaveBeenCalledWith("mcp.tools.setEnabled", {
+    serverId,
+    toolName: "search",
+    enabled: true,
+    expectedRevision: 9,
   });
   act(() => button("Call tool…").click());
-  await act(async () => button("Run approved tool").click());
-  await flush();
+  await act(async () => button("Run tool").click());
   expect(rpc).toHaveBeenCalledWith("mcp.tools.call", {
-    grantId: "grant-1",
+    serverId,
+    toolName: "search",
     arguments: {},
     context: { workspaceId: "workspace-1" },
   });
   expect(container.textContent).toContain("Fixture result");
-  await act(async () => button("Revoke tool").click());
-  await flush();
-  expect(rpc).toHaveBeenCalledWith("mcp.grants.revoke", { grantId: "grant-1" });
-  await act(async () => button("Revoke server and grants").click());
-  await flush();
+  await act(async () => button("Disconnect server").click());
   expect(rpc).toHaveBeenCalledWith("mcp.servers.revoke", { serverId });
   expect(container.textContent).toContain("This server is revoked.");
 });
@@ -184,7 +158,6 @@ it("inspects a bundle before registration and submits its reviewed file fingerpr
       };
       return registered;
     }
-    if (method === "mcp.grants.list") return [];
     throw new Error(`Unexpected RPC ${method}`);
   });
 
@@ -200,69 +173,57 @@ it("inspects a bundle before registration and submits its reviewed file fingerpr
   expect(rpc).toHaveBeenCalledWith("mcp.bundles.inspect", { path });
   expect(container.textContent).toContain("server.js");
   expect(container.textContent).toContain(sha256);
-  await act(async () => button("Save server for review").click());
+  await act(async () => button("Add server").click());
   await flush();
   expect(rpc).toHaveBeenCalledWith("mcp.servers.register", {
     workspaceId: "workspace-1",
     name: inspection.name,
     source: { kind: "bundle", path, sha256, format: "mcpb" },
   });
-  expect(container.textContent).toContain("Approve this server source");
+  expect(container.textContent).toContain("active");
 });
 
-it("contains full long tool and Space names in the original grant row without altering actions", async () => {
+it("wraps full long tool names and retains keyboard access to actual controls", async () => {
   const toolName = "tool_" + "x".repeat(180),
     spaceName = "Research_" + "y".repeat(80);
-  const approved = OutboundMcpServerSchema.parse({ ...server(), state: "approved" });
-  const grant = OutboundMcpGrantSchema.parse({
-    grantId: "22222222-2222-4222-8222-222222222222",
-    serverId,
-    toolName,
-    scope: { kind: "workspace", workspaceId: "workspace-1" },
-    mode: "standing",
-    outputTokenLimit: 1024,
-    createdAt: 1,
-  });
+  const active = OutboundMcpServerSchema.parse(server());
   rpc.mockImplementation(async (method: string) => {
     if (method === "workspaces.list") return [{ workspaceId: "workspace-1", name: spaceName }];
-    if (method === "tasks.list" || method === "mcp.tools.list") return [];
-    if (method === "mcp.servers.list") return [approved];
+    if (method === "tasks.list") return [];
+    if (method === "mcp.tools.list") return [{ name: toolName, inputSchema: {}, enabled: true }];
+    if (method === "mcp.servers.list") return [active];
     if (method === "mcp.oauth.status") return { connected: true };
-    if (method === "mcp.grants.list") return [grant];
     throw new Error(`Unexpected long-label read ${method}`);
   });
   await act(async () => root.render(<OutboundMcpSettings />));
   await flush();
   await flush();
-  const row = container.querySelector<HTMLElement>(".mcp-grant-row")!;
+  await act(async () => button("Load available tools").click());
+  const row = container.querySelector<HTMLElement>(".mcp-tool-access-row")!;
   expect(row.querySelector("strong")?.textContent).toBe(toolName);
-  expect(row.querySelector(".hint")?.textContent).toContain(spaceName);
+  expect(container.querySelector('select[aria-label="MCP Space"]')?.textContent).toContain(spaceName);
   const require = createRequire(import.meta.url),
     postcss = createRequire(require.resolve("vite"))("postcss");
-  const css = readFileSync(new URL("./OutboundMcpSettings.css", new URL(import.meta.url)), "utf8"),
-    sheet = postcss.parse(css);
+  const sheet = postcss.parse(
+    readFileSync(new URL("../features/mcp/ToolAccess.css", new URL(import.meta.url)), "utf8"),
+  );
   let originalRule = "";
   sheet.walkRules((rule: { selector: string; toString(): string }) => {
-    if (rule.selector === ".outbound-mcp .mcp-grant-row > div") originalRule = rule.toString();
+    if (rule.selector === ".mcp-tool-access-row label > span") originalRule = rule.toString();
   });
   const style = document.createElement("style");
   style.textContent = originalRule;
   document.head.append(style);
   try {
-    const text = row.firstElementChild as HTMLElement,
-      computed = getComputedStyle(text);
-    expect(computed.maxWidth).toBe("100%");
+    const computed = getComputedStyle(row.querySelector("label > span")!);
     expect(computed.overflowWrap).toBe("anywhere");
     expect(computed.display).toBe("grid");
-    const actions = [...row.querySelectorAll("button")];
-    expect(actions.map((action) => action.textContent?.trim())).toEqual(["Call tool…", "Revoke tool"]);
-    expect(actions.every((action) => !action.disabled)).toBe(true);
-    actions[0]!.focus();
-    expect(document.activeElement).toBe(actions[0]);
+    const action = button("Call tool…");
+    expect(action.disabled).toBe(false);
+    action.focus();
+    expect(document.activeElement).toBe(action);
     expect(
-      rpc.mock.calls.some(([method]) =>
-        ["mcp.grants.create", "mcp.tools.call", "mcp.grants.revoke"].includes(method),
-      ),
+      rpc.mock.calls.some(([method]) => method === "mcp.tools.call" || method === "mcp.tools.setEnabled"),
     ).toBe(false);
   } finally {
     style.remove();

@@ -15,7 +15,12 @@ export async function resumeApproval(s: Pick<Services, "repo" | "pages" | "event
   // refusal (chooses a different action) instead of a silent timeout.
   if (resolved) {
     try {
-      if (action.action === "browser.request") {
+      const run = s.repo.getRun(resolved.runId);
+      if (run?.config?.implementation === "external-agent") {
+        // The peer retries the exact invocation; do not manufacture a built-in model answer.
+        if (run.status === "needs_input")
+          await s.runs.coordinator.setStatus(run.runId, "running", approved ? "External action approved" : "External action declined");
+      } else if (action.action === "browser.request") {
         // The native request is already waiting. Do not queue an answer that
         // could accidentally answer the run's next unrelated user question.
         if (s.repo.getRun(resolved.runId)?.status === "needs_input")

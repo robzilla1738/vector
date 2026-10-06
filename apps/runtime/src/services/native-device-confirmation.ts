@@ -90,7 +90,12 @@ export function registerNativeDeviceConfirmation(
       " ",
     );
     const reason = `Approve Aux ${action.category ?? action.effect}${action.amount === undefined ? "" : ` (amount ${action.amount})`}${destination ? ` at ${destination}` : ""}`;
-    return { challengeId, expiresAt, reason };
+    return {
+      challengeId,
+      expiresAt,
+      reason,
+      ...(action.credentialTarget ? { credentialTarget: action.credentialTarget } : {}),
+    };
   });
   channel.onMethod("safety.deviceAuth.cancel", (raw) => {
     take(raw);

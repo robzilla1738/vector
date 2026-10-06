@@ -83,7 +83,7 @@ export type AgentLoopOutcome =
   | { kind: "exhausted" }
   | { kind: "failed"; error: AuxError };
 
-const DEFAULT_MAX_LOOP_STEPS = 24;
+const DEFAULT_MAX_LOOP_STEPS = 0;
 
 /** Provider markup a model leaks when it serialises calls into text rather than emitting real tool calls. */
 const LEAKED_TOOL_MARKUP =
@@ -252,7 +252,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       webEnabled: !!(opts.deps.webFetch || opts.deps.webSearch),
       webmcp: opts.webmcp === true,
     });
-  const maxSteps = Math.max(1, opts.maxSteps ?? DEFAULT_MAX_LOOP_STEPS);
+  const maxSteps = opts.maxSteps ?? DEFAULT_MAX_LOOP_STEPS;
   const sdkTools = Object.fromEntries(
     Object.entries(tools).map(([name, tool]) => [
       name,
@@ -298,7 +298,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     }
   }
 
-  for (let index = 0; index < maxSteps; index++) {
+  for (let index = 0; maxSteps === 0 || index < maxSteps; index++) {
     if (opts.signal?.aborted) return { kind: "failed", error: new AuxError("cancelled", "cancelled") };
     if (opts.steerCheck?.()) return { kind: "steered" };
 

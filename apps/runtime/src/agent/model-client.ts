@@ -144,6 +144,7 @@ export interface ModelClient {
     schema: z.ZodType<T>;
     signal?: AbortSignal;
     maxOutputTokens?: number;
+    maxAttempts?: number;
     reasoning?: "low" | "medium" | "xhigh";
     sessionId?: string;
     onText: (delta: string) => void;
@@ -158,6 +159,7 @@ export interface ModelClient {
     imageDataUrl?: string;
     signal?: AbortSignal;
     maxOutputTokens?: number;
+    maxAttempts?: number;
     reasoning?: "low" | "medium" | "xhigh";
     sessionId?: string;
   }): Promise<TextCallResult>;
@@ -196,12 +198,12 @@ export const LUNA_FAST_MODEL = "openai/gpt-5.6-luna-fast";
 export const FALLBACK_MODELS = modelPickerEntries(MODEL_REGISTRY);
 
 /** Product default per-turn model-call budget, shared by settings and the coordinator. */
-export const DEFAULT_MAX_MODEL_CALLS = 16;
+export const DEFAULT_MAX_MODEL_CALLS = 0;
 
 /** `0` means no per-run model-call cap. */
 export function modelCallBudget(raw: unknown, fallback = DEFAULT_MAX_MODEL_CALLS): number {
   const n = Number(raw);
   if (n === 0) return 0;
   if (!Number.isFinite(n) || n < 1) return fallback;
-  return Math.min(256, Math.floor(n));
+  return Math.floor(n);
 }

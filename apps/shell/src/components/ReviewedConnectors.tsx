@@ -29,12 +29,9 @@ function errorText(reason: unknown) {
 function stateLabel(entry: ConnectorEntry) {
   switch (entry.state) {
     case "active":
-    case "approved":
       return "Connected";
     case "needs_reauth":
       return "Reconnect required";
-    case "pending":
-      return "Source review needed";
     case "revoked":
       return "Revoked";
   }
@@ -177,8 +174,8 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
     >
       <div {...auxClassDrawerSectionProps}>Connector access</div>
       <p {...staticHintProps}>
-        Review each connection and the access currently available to a saved task. A connected account or
-        approved server alone does not grant a task access.
+        Review each connection and the access currently available to a saved task. Connected MCP servers make
+        enabled tools available; Calendar access remains scoped to the selected task.
       </p>
       {!workspaces.length ? (
         <p {...staticHintProps}>{loading ? "Loading Spaces…" : "Create a Space to review connectors."}</p>
@@ -319,23 +316,24 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                   {entry.kind === "mcp" && (
                     <>
                       <p {...staticHintProps}>
-                        Each MCP server source needs review. Each tool needs a separate Space or task grant.
+                        Adding an MCP server enables its tools in this Space. Individual tools can be disabled
+                        in Permissions.
                       </p>
                       {task &&
                         access
                           .filter((item) => item.kind === "mcp")
                           .map((item) => (
-                            <div className="reviewed-connectors-grant" key={item.grantId}>
+                            <div
+                              className="reviewed-connectors-grant"
+                              key={`${item.connectorId}:${item.toolName}`}
+                            >
                               <span>
-                                {item.toolName} ·{" "}
-                                {item.scope === "workspace"
-                                  ? "Space-wide grant"
-                                  : `task revision ${item.taskRevision}`}
+                                {item.toolName} · enabled · tools revision {item.toolsRevision}
                               </span>
                             </div>
                           ))}
                       <button {...smallGhostButtonProps} onClick={() => onManage("mcp")}>
-                        Review server and tool grants
+                        Manage server and tools
                       </button>
                     </>
                   )}

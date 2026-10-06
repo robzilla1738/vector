@@ -12,6 +12,7 @@ import {
   type Run,
   type Step,
   type StepOutcome,
+  type BudgetSuspension,
 } from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
@@ -19,6 +20,7 @@ import type { PageService } from "../services/pages.js";
 import type { ModelClient } from "./model-client.js";
 import type { AgentModelCategory, AgentModelRoute } from "@aux/contracts/model-registry";
 import { DurableWriteLedger } from "./durable.js";
+import { ApprovalStore } from "../safety/approval.js";
 import { SuspensionStore } from "../safety/suspensions.js";
 import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
 import { PageOwnership } from "../scheduler/page-ownership.js";
@@ -44,9 +46,11 @@ export interface RunControl {
   paused: boolean;
   dispatchAbort?: AbortController;
   takeoverInterrupted?: boolean;
+  budgetInterrupted?: boolean;
   interruptPlanning?: () => void;
   deadlineHit?: boolean;
   deadlineTimer?: ReturnType<typeof setTimeout>;
+  budgetWaiter?: { suspensionId: string; resolve: () => void };
   answerWaiter?: { resolve: (answer: string) => void };
   span?: {
     spanId: string;
@@ -103,6 +107,7 @@ export interface CoordinatorDeps {
   readOnly?: boolean;
   durableWrites?: DurableWriteLedger;
   suspensions?: SuspensionStore;
+  approvals?: ApprovalStore;
   vault?: import("../services/vault.js").VaultService;
   calendar?: import("../services/calendar-connections.js").CalendarConnectionService;
   operations?: import("../services/operations.js").OperationService;
@@ -265,18 +270,13 @@ export class RunCoordinator {
     const control: RunControl = {
       abort: new AbortController(),
       paused: false,
+      dispatchAbort: new AbortController(),
       span: this.deps.tracer?.start("run", {
         runId: run.runId,
         attrs: { goal: opts.goal.slice(0, 120), pages: opts.pageIds.length, modelId: opts.modelId },
       }),
     };
-    if (run.config?.deadlineMs)
-      control.deadlineTimer = setTimeout(() => {
-        if (control.abort.signal.aborted) return;
-        control.deadlineHit = true;
-        control.abort.abort();
-        control.answerWaiter?.resolve("");
-      }, run.config.deadlineMs);
+    this.armDeadline(run.runId, control, run.config?.deadlineMs);
     this.controls.set(run.runId, control);
     this.deps.tracer?.incr("run.started");
     void this.loop(run.runId).catch(async (e) => {
@@ -289,6 +289,121 @@ export class RunCoordinator {
       this.controls.delete(run.runId);
     });
     return run;
+  }
+
+  private retirePendingProofs(runId: string): void {
+    const run = this.get(runId);
+    const approvals = this.deps.approvals ?? new ApprovalStore(this.deps.repo.db);
+    this.deps.repo.transaction(() => {
+      const pending = this.suspensions.pending(runId);
+      if (pending) approvals.retireTurn(pending.turnId, pending.threadId);
+      approvals.retireTurn(runId, run.config?.chatId ?? runId);
+      this.suspensions.resolveRun(runId, "cancelled");
+    });
+  }
+
+  private armDeadline(runId: string, control: RunControl, limit?: number): void {
+    if (control.deadlineTimer) clearTimeout(control.deadlineTimer);
+    control.deadlineHit = false;
+    if (!limit) return;
+    const run = this.get(runId);
+    const remaining = limit - (Date.now() - (run.startedAt ?? run.createdAt));
+    control.deadlineTimer = setTimeout(() => {
+      if (control.abort.signal.aborted) return;
+      control.deadlineHit = true;
+      // A sheet may still be open: revoke its original proof synchronously.
+      this.retirePendingProofs(runId);
+      control.interruptPlanning?.();
+      control.dispatchAbort?.abort();
+      control.budgetWaiter?.resolve();
+      control.budgetWaiter = undefined;
+      control.answerWaiter?.resolve("");
+    }, Math.max(0, remaining));
+  }
+
+  async pauseForBudget(runId: string, budget: BudgetSuspension): Promise<void> {
+    const control = this.controls.get(runId);
+    if (!control || control.abort.signal.aborted) throw new AuxError("cancelled", "run cancelled");
+    const run = this.get(runId);
+    this.retirePendingProofs(runId);
+    control.budgetInterrupted = true;
+    control.interruptPlanning?.();
+    control.dispatchAbort?.abort();
+    const suspension = this.suspensions.park({
+      runId, turnId: runId, threadId: run.config?.chatId ?? runId, kind: "budget",
+      request: { kind: "budget", budget,
+        instruction: "The configured budget has been reached.",
+        guidance: "Raise the limit and choose Continue, or stop this run." },
+    });
+    const continued = new Promise<void>((resolve) => {
+      control.budgetWaiter = { suspensionId: suspension.suspensionId, resolve };
+    });
+    run.status = "needs_input";
+    run.statusMessage = "Budget reached — waiting for Continue";
+    this.deps.repo.saveRun(run);
+    this.deps.events.emit(EventTypes.RunStatus, { runId, status: run.status, message: run.statusMessage }, runId);
+    this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+    this.releasePages(runId, true);
+    await continued;
+    if (control.abort.signal.aborted) throw new AuxError("cancelled", "run cancelled");
+    if (control.dispatchAbort?.signal.aborted) control.dispatchAbort = new AbortController();
+    await this.waitIfPaused(control, runId);
+  }
+
+  async checkModelBudget(runId: string): Promise<void> {
+    while (true) {
+      try { await this.deps.checkBudget?.({ runId }); return; }
+      catch (error) {
+        const detail = error instanceof AuxError ? error.detail : undefined;
+        if (!(error instanceof AuxError) || error.code !== "permission_denied" || !detail ||
+            typeof detail !== "object" || !("scope" in detail) || !("limitUsd" in detail) || !("spentUsd" in detail) ||
+            !["run", "day", "routine", "nightShift"].includes(String(detail.scope)) ||
+            typeof detail.limitUsd !== "number" || !Number.isFinite(detail.limitUsd) || detail.limitUsd <= 0 ||
+            typeof detail.spentUsd !== "number" || !Number.isFinite(detail.spentUsd) || detail.spentUsd < 0) throw error;
+        await this.pauseForBudget(runId, { reason: "spend", limit: detail.limitUsd, used: detail.spentUsd,
+          scope: detail.scope as BudgetSuspension["scope"] });
+        throw new AuxError("cancelled", "Budget continuation requires a fresh observation.");
+      }
+    }
+  }
+
+  async continueBudget(runId: string, suspensionId: string,
+    limits?: { maxModelCalls?: number; maxSteps?: number; deadlineMs?: number }): Promise<Run> {
+    const original = this.suspensions.pending(runId);
+    if (!original || original.kind !== "budget" || original.suspensionId !== suspensionId || !original.request.budget)
+      throw new AuxError("conflict", "The budget request changed.");
+    await this.deps.checkBudget?.({ runId });
+    return withRunAuthorityMutation(this.deps.repo, async () => {
+      const control = this.controls.get(runId);
+      const run = this.get(runId);
+      const current = this.suspensions.pending(runId);
+      if (!control || control.abort.signal.aborted || control.paused || run.status !== "needs_input" ||
+          control.budgetWaiter?.suspensionId !== suspensionId || current?.suspensionId !== suspensionId ||
+          JSON.stringify(current) !== JSON.stringify(original))
+        throw new AuxError("conflict", "The original budget request is no longer pending.");
+      const budget = original.request.budget!;
+      const field = budget.reason === "model_calls" ? "maxModelCalls" : budget.reason === "steps" ? "maxSteps" : budget.reason === "time" ? "deadlineMs" : undefined;
+      if (Object.keys(limits ?? {}).some((key) => key !== field))
+        throw new AuxError("invalid_params", "Change only the limit for this budget request.");
+      const limit = field ? limits?.[field] ?? run.config?.[field] ?? 0 : undefined;
+      const used = budget.reason === "time" ? Date.now() - (run.startedAt ?? run.createdAt) : budget.used;
+      if (field && (limit === undefined || !Number.isSafeInteger(limit) || limit < 0 || (limit !== 0 && limit <= Math.max(used, budget.limit))))
+        throw new AuxError("conflict", "Raise the configured limit before continuing.");
+      run.config = { ...run.config, ...(field ? { [field]: limit } : {}) };
+      run.status = "running";
+      run.statusMessage = "Continuing after budget review";
+      this.deps.repo.transaction(() => {
+        this.suspensions.resolve(suspensionId, "answered");
+        this.deps.repo.saveRun(run);
+      });
+      if (budget.reason === "time") this.armDeadline(runId, control, limit);
+      const waiter = control.budgetWaiter;
+      control.budgetWaiter = undefined;
+      this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+      this.deps.events.emit(EventTypes.RunStatus, { runId, status: run.status, message: run.statusMessage }, runId);
+      waiter.resolve();
+      return run;
+    }, runId);
   }
 
   async pause(runId: string): Promise<Run> {
@@ -309,6 +424,8 @@ export class RunCoordinator {
     c.takeoverInterrupted = true;
     c.interruptPlanning?.();
     c.dispatchAbort?.abort();
+    c.budgetWaiter?.resolve();
+    c.budgetWaiter = undefined;
     c.answerWaiter?.resolve("Page control changed; the pending action was cancelled.");
     this.deps.browserEgress?.suspendRun(runId);
   }
@@ -316,6 +433,8 @@ export class RunCoordinator {
   async resume(runId: string): Promise<Run> {
     const c = this.controls.get(runId);
     const run = this.get(runId);
+    if (this.suspensions.pending(runId)?.kind === "budget")
+      throw new AuxError("conflict", "Use Continue on the current budget request.");
     if (c?.paused) {
       c.paused = false;
       if (run.status === "paused") await this.setStatus(runId, "running", "Resumed");
@@ -330,6 +449,8 @@ export class RunCoordinator {
     const c = this.controls.get(runId);
     if (c) {
       c.abort.abort();
+      c.budgetWaiter?.resolve();
+      c.budgetWaiter = undefined;
       c.answerWaiter?.resolve("");
     }
     const run = this.get(runId);
@@ -433,7 +554,7 @@ export class RunCoordinator {
     if (!c || c.abort.signal.aborted) return;
     c.interruptPlanning?.();
     c.dispatchAbort?.abort();
-    c.answerWaiter?.resolve("");
+      c.answerWaiter?.resolve("");
   }
 
   async answerWithMentions(
@@ -477,11 +598,15 @@ export class RunCoordinator {
     return withRunAuthorityMutation(
       this.deps.repo,
       async () => {
+        if (this.suspensions.pending(runId)?.kind === "budget")
+          throw new AuxError("conflict", "Use Continue on the current budget request.");
         const c = this.controls.get(runId);
         const run = this.get(runId);
         if (run.status === "needs_input") await this.setStatus(runId, "running", `Answer received`);
-        this.answers.set(runId, answer);
-        c?.answerWaiter?.resolve(answer);
+        if (c?.answerWaiter) {
+          this.answers.delete(runId);
+          c.answerWaiter.resolve(answer);
+        } else this.answers.set(runId, answer);
         return this.get(runId);
       },
       runId,
@@ -700,7 +825,16 @@ export class RunCoordinator {
         run.pageIds = this.deps.turnMentions.selectedPages(runId);
         this.deps.repo.saveRun(run);
       }
-      await this.acquirePages(runId);
+      while (true) {
+        try { await this.acquirePages(runId); break; }
+        catch (error) {
+          const c = this.controls.get(runId);
+          if (!c?.deadlineHit || c.abort.signal.aborted) throw error;
+          const current = this.get(runId);
+          await this.pauseForBudget(runId, { reason: "time", limit: current.config?.deadlineMs ?? 0,
+            used: Date.now() - (current.startedAt ?? current.createdAt) });
+        }
+      }
       const control = this.controls.get(runId);
       if (!control) throw new AuxError("cancelled", "Run ended while preparing its pages.");
       await this.waitIfPaused(control, runId);
@@ -779,7 +913,7 @@ export class RunCoordinator {
           await this.pageOwnership.acquireMany(
             run.pageIds,
             { actor: "coordinator", runId },
-            control.abort.signal,
+            AbortSignal.any([control.abort.signal, ...(control.dispatchAbort ? [control.dispatchAbort.signal] : [])]),
           ),
         );
         const humanHeld = run.pageIds.find((pageId) => this.deps.pages.get(pageId).controller === "human");
@@ -849,7 +983,9 @@ export class RunCoordinator {
       const c = this.controls.get(run.runId);
       if (c) {
         c.abort.abort();
-        c.answerWaiter?.resolve("");
+        c.budgetWaiter?.resolve();
+      c.budgetWaiter = undefined;
+      c.answerWaiter?.resolve("");
       }
       await this.finish(run.runId, "failed", undefined, reason, "Stopped by a runtime fault");
       failed.push(run.runId);

@@ -1,7 +1,7 @@
 import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import { APICallError, JSONParseError, NoObjectGeneratedError, TypeValidationError } from "ai";
-import { EventBus, openDb, Repo, RunCoordinator } from "@aux/runtime";
+import { ApprovalStore, BudgetsService, EventBus, openDb, Repo, RunCoordinator } from "@aux/runtime";
 import type { ModelClient } from "@aux/runtime";
 import type { Observation } from "@aux/contracts";
 import {
@@ -110,7 +110,6 @@ function harness(model: ModelClient) {
     recordModelCall: (c) => {
       recorded.push({ role: c.role, error: c.error });
     },
-    grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   });
   return { repo, coordinator, recorded };
 }
@@ -126,8 +125,8 @@ async function waitForRun(repo: Repo, runId: string, ms = 5000) {
   throw new Error(`run did not finish: ${repo.getRun(runId)?.status}`);
 }
 
-describe("run deadline as an abort signal", () => {
-  it("interrupts a hung model call and settles the run as failed with a deadline error", async () => {
+describe("run deadline budget", () => {
+  it("interrupts a hung model call and parks until an explicitly increased deadline", async () => {
     let seen: AbortSignal | undefined;
     const model: ModelClient = {
       generateStructured: (o) =>
@@ -143,13 +142,99 @@ describe("run deadline as an abort signal", () => {
     const h = harness(model);
     const started = Date.now();
     const run = await h.coordinator.start({ goal: "g", pageIds: ["p1"], deadlineMs: 120 });
-    const done = await waitForRun(h.repo, run.runId);
+    await vi.waitFor(() => expect(h.repo.getRun(run.runId)?.status).toBe("needs_input"));
     expect(Date.now() - started).toBeLessThan(3000);
-    expect(done.status).toBe("failed");
-    expect(done.error).toMatch(/deadline exceeded/);
+    const pending = h.coordinator.suspensions.pending(run.runId)!;
+    expect(pending.kind).toBe("budget");
+    expect(pending.request.budget).toMatchObject({ reason: "time", limit: 120 });
+    await expect(h.coordinator.continueBudget(run.runId, pending.suspensionId)).rejects.toMatchObject({ code: "conflict" });
     expect(seen?.aborted).toBe(true);
     // the hung call was counted and recorded with its error
     expect(h.recorded.filter((c) => c.role === "planner" && c.error)).toHaveLength(1);
+    await h.coordinator.cancel(run.runId);
+    await vi.waitFor(() => expect(h.coordinator.controls.has(run.runId)).toBe(false));
+    h.repo.db.close();
+  });
+});
+
+describe("explicit run call budgets", () => {
+  const askingModel = () => {
+    let calls = 0;
+    const model: ModelClient = {
+      generateStructured: async (options) => ({
+        object: options.schema.parse({ status: "needs_input", message: "Need input", question: `Question ${++calls}` }),
+        durationMs: 1,
+      }),
+      generateText: async () => ({ text: "", durationMs: 0 }),
+      listModels: async () => [],
+    };
+    return { model, calls: () => calls };
+  };
+  it("has no default sixteen-call cap", async () => {
+    const model = askingModel();
+    const h = harness(model.model);
+    const run = await h.coordinator.start({ goal: "Gather the requested details", pageIds: ["p1"] });
+    expect(run.config?.maxModelCalls).toBe(0);
+    expect(run.config?.maxSteps).toBe(0);
+    for (let index = 1; index <= 18; index++) {
+      await vi.waitFor(() => expect(model.calls()).toBe(index));
+      await vi.waitFor(() => expect(h.repo.getRun(run.runId)?.status).toBe("needs_input"));
+      expect(h.coordinator.suspensions.pending(run.runId)?.kind).toBe("ask-user-question");
+      if (index < 18) await h.coordinator.answer(run.runId, "Continue gathering details");
+    }
+    await h.coordinator.cancel(run.runId);
+    await vi.waitFor(() => expect(h.coordinator.controls.has(run.runId)).toBe(false));
+    h.repo.db.close();
+  });
+  it("rechecks actual spend and refuses Continue until Settings raises the live limit", async () => {
+    const model = askingModel();
+    const h = harness(model.model);
+    let dayUsd = 1;
+    h.repo.saveModelCall({ callId: "previous-billed-call", role: "agent", modelId: "fixture", durationMs: 1,
+      costUsd: 1, createdAt: Date.now() });
+    const budgets = new BudgetsService(h.repo.db, () => ({ dayUsd }));
+    h.coordinator.deps.checkBudget = ({ runId }) => budgets.assertWithin({ runId });
+    const run = await h.coordinator.start({ goal: "Gather details", pageIds: ["p1"] });
+    await vi.waitFor(() => expect(h.coordinator.suspensions.pending(run.runId)?.kind).toBe("budget"));
+    const pending = h.coordinator.suspensions.pending(run.runId)!;
+    expect(pending.request.budget).toMatchObject({ reason: "spend", scope: "day", used: 1, limit: 1 });
+    await expect(h.coordinator.continueBudget(run.runId, pending.suspensionId)).rejects.toMatchObject({ code: "permission_denied" });
+    expect(model.calls()).toBe(0);
+    dayUsd = 2;
+    await h.coordinator.continueBudget(run.runId, pending.suspensionId);
+    await vi.waitFor(() => expect(model.calls()).toBe(1));
+    expect(budgets.spentDayUsd()).toBe(1);
+    await h.coordinator.cancel(run.runId);
+    await vi.waitFor(() => expect(h.coordinator.controls.has(run.runId)).toBe(false));
+    h.repo.db.close();
+  });
+  it("requires an exact current request and an increased limit before continuing", async () => {
+    const model = askingModel();
+    const h = harness(model.model);
+    const run = await h.coordinator.start({ goal: "Gather details", pageIds: ["p1"], maxModelCalls: 1 });
+    await vi.waitFor(() => expect(h.repo.getRun(run.runId)?.status).toBe("needs_input"));
+    const approvals = new ApprovalStore(h.repo.db);
+    const approvalId = approvals.issue({ profileId: "profile", scope: { kind: "task", id: "task" },
+      effect: "write", action: "click", category: "purchase", authentication: "touch_id",
+      invocationDigest: "a".repeat(64), origin: "https://site.test", turnId: run.runId,
+      threadId: run.runId, requestedAt: Date.now() }, "turn");
+    const proof = approvals.prepareDevice(approvalId, run.runId);
+    await h.coordinator.answer(run.runId, "The requested detail");
+    await vi.waitFor(() => expect(h.coordinator.suspensions.pending(run.runId)?.kind).toBe("budget"));
+    expect(() => approvals.confirmDevice(approvalId, run.runId, proof.fingerprint)).toThrow();
+    const pending = h.coordinator.suspensions.pending(run.runId)!;
+    expect(pending.request.budget).toMatchObject({ reason: "model_calls", used: 1, limit: 1 });
+    await expect(h.coordinator.answer(run.runId, "Continue")).rejects.toMatchObject({ code: "conflict" });
+    await expect(h.coordinator.resume(run.runId)).rejects.toMatchObject({ code: "conflict" });
+    await expect(h.coordinator.continueBudget(run.runId, "different-request", { maxModelCalls: 2 })).rejects.toMatchObject({ code: "conflict" });
+    await expect(h.coordinator.continueBudget(run.runId, pending.suspensionId)).rejects.toMatchObject({ code: "conflict" });
+    expect(model.calls()).toBe(1);
+    await h.coordinator.continueBudget(run.runId, pending.suspensionId, { maxModelCalls: 2 });
+    await vi.waitFor(() => expect(model.calls()).toBe(2));
+    await expect(h.coordinator.continueBudget(run.runId, pending.suspensionId, { maxModelCalls: 3 })).rejects.toMatchObject({ code: "conflict" });
+    await h.coordinator.cancel(run.runId);
+    await vi.waitFor(() => expect(h.coordinator.controls.has(run.runId)).toBe(false));
+    h.repo.db.close();
   });
 });
 

@@ -192,7 +192,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   // A resumed process inherits the calls already billed for this run. The
   // step cap must not reset just because the in-memory host restarted.
   let modelCalls = self.deps.repo.listModelCalls(runId).filter((call) => call.role === "agent").length;
-  const maxModelCalls = run.config?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
+  const modelCallLimit = () => self.get(runId).config?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
   /** One re-observe chance when an uncertain dispatch blocks a done turn. */
   let blockedOnLedger = false;
   let blockedOnRepl = false;
@@ -258,6 +258,12 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       return recordObs(obs);
     },
     act: async ({ pageId, steps }): Promise<LoopToolResult> => {
+      const maxSteps = self.get(runId).config?.maxSteps ?? 0;
+      const used = self.deps.repo.listSteps(runId).length;
+      if (maxSteps > 0 && used + steps.length > maxSteps) {
+        await self.pauseForBudget(runId, { reason: "steps", limit: maxSteps, used });
+        throw new AuxError("cancelled", "Budget continuation requires a fresh observation.");
+      }
       await self.assertPage(runId, pageId, "act");
       const obs =
         lastObs.get(pageId) ?? (lastObs.set(pageId, await observePage(pageId, {})), lastObs.get(pageId)!);
@@ -1161,7 +1167,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   }
 
   await self.setStatus(runId, "running", "Working…");
-  const startedAt = Date.now();
+  const startedAt = run.startedAt ?? run.createdAt;
   self.deps.repo.saveRun({ ...self.get(runId), startedAt });
   run.startedAt = startedAt;
 
@@ -1221,11 +1227,16 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       pageId: () => activePageId,
       signal,
       deps,
-      maxSteps: Math.max(1, maxModelCalls - modelCalls),
+      maxSteps: modelCallLimit() === 0 ? 0 : Math.max(1, modelCallLimit() - modelCalls),
       steerCheck: steerPending,
       beforeModelCall: async (request) => {
         self.deps.turnMentions.skills(runId);
-        await self.deps.checkBudget?.({ runId });
+        const limit = modelCallLimit();
+        if (limit > 0 && modelCalls >= limit) {
+          await self.pauseForBudget(runId, { reason: "model_calls", limit, used: modelCalls });
+          throw new AuxError("cancelled", "Budget continuation requires a fresh observation.");
+        }
+        await self.checkModelBudget(runId);
         if (goalRun && !self.deps.agentLoop?.goalBudget)
           throw new AuxError(
             "capability_unsupported",
@@ -1233,7 +1244,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           );
         return goalRun ? self.deps.agentLoop!.goalBudget!.reserve(runId, request) : undefined;
       },
-      maxAttempts: goalRun ? 1 : undefined,
+      maxAttempts: goalRun || modelCallLimit() > 0 ? 1 : undefined,
       onStep: async ({ step, reservationId }) => {
         for (const a of step.retries ?? []) {
           modelCalls++;
@@ -1315,6 +1326,11 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     let hasResume = false;
     let freshHandoff = false;
     while (true) {
+      if (c.deadlineHit) {
+        const latest = self.get(runId);
+        await self.pauseForBudget(runId, { reason: "time", limit: latest.config?.deadlineMs ?? 0,
+          used: Date.now() - (latest.startedAt ?? latest.createdAt) });
+      }
       await self.waitIfPaused(c, runId);
       if (c.abort.signal.aborted) return;
       if (signal.aborted) {
@@ -1324,6 +1340,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         signal = AbortSignal.any([c.abort.signal, c.dispatchAbort.signal]);
         const takeover = c.takeoverInterrupted === true;
         c.takeoverInterrupted = false;
+        c.budgetInterrupted = false;
         lastObs.clear();
         hasResume = false;
         if (takeover) {
@@ -1404,7 +1421,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         const raw = await self.waitForAnswer(c, runId);
         if (signal.aborted || c.abort.signal.aborted) {
           self.suspensions.resolve(suspension.suspensionId, "cancelled");
-          if (!c.abort.signal.aborted && c.takeoverInterrupted) continue;
+          if (!c.abort.signal.aborted && (c.takeoverInterrupted || c.deadlineHit || c.budgetInterrupted)) continue;
           return;
         }
         self.suspensions.resolve(suspension.suspensionId, "answered");
@@ -1412,9 +1429,16 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         resumeAnswer = raw.trim() ? raw : { resolved: true };
         hasResume = true;
       }
+      const maxModelCalls = modelCallLimit();
       if (maxModelCalls > 0 && modelCalls >= maxModelCalls) {
-        await self.finish(runId, "failed", undefined, "model call budget exhausted");
-        return;
+        await self.pauseForBudget(runId, { reason: "model_calls", limit: maxModelCalls, used: modelCalls });
+        continue;
+      }
+      const maxSteps = self.get(runId).config?.maxSteps ?? 0;
+      const stepsRun = self.deps.repo.listSteps(runId).length;
+      if (maxSteps > 0 && stepsRun >= maxSteps) {
+        await self.pauseForBudget(runId, { reason: "steps", limit: maxSteps, used: stepsRun });
+        continue;
       }
       if (freshHandoff) {
         freshHandoff = false;
@@ -1461,6 +1485,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
 
       if ((c.paused || signal.aborted) && !c.abort.signal.aborted) continue;
 
+      if (c.deadlineHit || c.budgetInterrupted) continue;
       if (outcome.kind === "done") {
         if (goalRun && !outcome.result) {
           await self.finish(
@@ -1551,7 +1576,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         const raw = await self.waitForAnswer(c, runId);
         if (signal.aborted || c.abort.signal.aborted) {
           self.suspensions.resolve(suspension.suspensionId, "cancelled");
-          if (!c.abort.signal.aborted && c.takeoverInterrupted) continue;
+          if (!c.abort.signal.aborted && (c.takeoverInterrupted || c.deadlineHit || c.budgetInterrupted)) continue;
           return;
         }
         self.suspensions.resolve(suspension.suspensionId, "answered");
@@ -1577,16 +1602,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         if (fresh.length) transcript.append(runId, [steerMessage(fresh)]);
         continue;
       }
-      if (outcome.kind === "exhausted") {
-        await self.finish(
-          runId,
-          "failed",
-          undefined,
-          "agent loop exhausted its step budget",
-          "Ran out of room — stopped before repeating work",
-        );
-        return;
-      }
+      if (outcome.kind === "exhausted") continue;
+      if ((c.deadlineHit || c.budgetInterrupted) && !c.abort.signal.aborted) continue;
       if (outcome.error.code === "cancelled" || signal.aborted) return;
       await self.finish(runId, "failed", undefined, outcome.error.message, "The agent loop failed");
       return;
@@ -1599,15 +1616,6 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     }
   } finally {
     unregisterPerformanceRepl();
-    if (c.deadlineHit && !TERMINAL_STATUSES.has(self.get(runId).status)) {
-      await self.finish(
-        runId,
-        "failed",
-        undefined,
-        `run deadline exceeded (${run.config?.deadlineMs}ms)`,
-        "Ran out of time",
-      );
-    }
     replPool.disposeAll();
     for (const release of [...openedTabs.values()].reverse()) release();
     self.controls.delete(runId);

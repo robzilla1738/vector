@@ -93,6 +93,12 @@ async function h_runs_cancel(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
   return s.runs.cancel(params.runId);
 }
+async function h_runs_continue_budget(ctx: MethodCtx): Promise<unknown> {
+  if (ctx.client.external || ctx.client.codeMode)
+    throw new AuxError("permission_denied", "Review and continue budgets through the Aux window.");
+  const p = MethodSchemas["runs.continueBudget"].parse(ctx.params);
+  return ctx.s.runs.continueBudget(p.runId, p.suspensionId, p.limits);
+}
 async function h_runs_answer(ctx: MethodCtx): Promise<unknown> {
   const { client, params: p, s, suspensions } = ctx;
   if (client.external)
@@ -165,6 +171,7 @@ export const runsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "runs.resume": h_runs_resume,
   "runs.cancel": h_runs_cancel,
   "runs.answer": h_runs_answer,
+  "runs.continueBudget": h_runs_continue_budget,
   "runs.queue": h_runs_queue,
   "runs.steer": h_runs_steer,
   "runs.messages.list": h_runs_messages_list,

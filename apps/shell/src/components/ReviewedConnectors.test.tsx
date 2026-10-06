@@ -50,8 +50,8 @@ const entries = [
     connectorId: `mcp:${serverId}`,
     serverId,
     label: "Research tools",
-    state: "approved",
-    authority: "reviewed_server_and_tool_grant",
+    state: "active",
+    authority: "connected_server",
   },
 ];
 
@@ -157,10 +157,9 @@ it("shows MCP authority and opens its management surface", async () => {
             connectorId: `mcp:${serverId}`,
             taskId,
             taskRevision: 2,
-            grantId,
+            toolsRevision: 3,
             toolName: "search",
-            scope: "workspace",
-            authority: "mcp_tool_grant",
+            authority: "enabled_mcp_tool",
           },
         ],
       };
@@ -170,8 +169,8 @@ it("shows MCP authority and opens its management surface", async () => {
   await flush();
   await flush();
   selectConnector("Research tools");
-  expect(container.textContent).toContain("search · Space-wide grant");
-  act(() => button("Review server and tool grants").click());
+  expect(container.textContent).toContain("search · enabled · tools revision 3");
+  act(() => button("Manage server and tools").click());
   expect(onManage).toHaveBeenCalledWith("mcp");
   expect(rpc).not.toHaveBeenCalledWith("mcp.grants.create", expect.anything());
 });

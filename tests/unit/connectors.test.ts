@@ -10,6 +10,7 @@ import { EventBus } from "../../apps/runtime/src/events.js";
 import { openDb } from "../../apps/runtime/src/store/db.js";
 import { Repo } from "../../apps/runtime/src/store/repo.js";
 import { makeInvoker, type Services } from "../../apps/runtime/src/api/invoke.js";
+import { fakeTransport } from "../fixtures/mcp-transport.js";
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
 
 const databases: ReturnType<typeof openDb>[] = [];
@@ -53,7 +54,7 @@ async function fixture(githubToken = "synthetic-token") {
   settings.attachNative(native);
   await settings.initializeCredentials();
   const calendar = new CalendarConnectionService({ repo, native, clientId: "synthetic-client" });
-  const mcp = new OutboundMcpService(repo);
+  const mcp = new OutboundMcpService(repo, async () => fakeTransport([]));
   const catalog = new ConnectorCatalogService({ repo, tasks, settings, calendar, mcp });
   const operations = new OperationService({ repo, events, pages: {} as never, calendar });
   return {
@@ -86,7 +87,7 @@ describe("reviewed connector catalog", () => {
     await f.calendar.close();
   });
 
-  it("derives Calendar, GitHub and MCP access from their original grants and removes it on revocation", async () => {
+  it("derives calendar grants and enabled MCP tools from current connections", async () => {
     const f = await fixture();
     const connectionId = randomUUID(),
       now = Date.now(),
@@ -111,14 +112,7 @@ describe("reviewed connector catalog", () => {
       name: "Research tools",
       source: { kind: "remote", url: "https://mcp.example.test/api", auth: "none" },
     });
-    f.mcp.approve(server.serverId, server.sourceDigest);
-    const mcpGrant = f.mcp.grant({
-      serverId: server.serverId,
-      toolName: "search",
-      scope: { kind: "task", taskId: f.task.taskId, revision: f.task.revision },
-      mode: "standing",
-      outputTokenLimit: 1000,
-    });
+    await f.mcp.listTools(server.serverId);
     const first = f.catalog.list({
       workspaceId: f.workspace.workspaceId,
       taskId: f.task.taskId,
@@ -129,13 +123,13 @@ describe("reviewed connector catalog", () => {
       grantId: calendarGrant.grantId,
     });
     expect(first.access.find((item) => item.kind === "mcp")).toMatchObject({
-      grantId: mcpGrant.grantId,
-      toolName: "search",
-      scope: "task",
+      toolsRevision: 1,
+      toolName: "read",
+      authority: "enabled_mcp_tool",
     });
 
     f.calendar.revokeTaskGrant(f.task.taskId, calendarGrant.grantId);
-    f.mcp.revokeGrant(mcpGrant.grantId);
+    f.mcp.setEnabled({ serverId: server.serverId, toolName: "read", enabled: false, expectedRevision: 1 });
     const second = f.catalog.list({
       workspaceId: f.workspace.workspaceId,
       taskId: f.task.taskId,

@@ -20,50 +20,45 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("requires source review before mock tool grants and revokes all grants with the server", async () => {
+it("models adding consent, exact catalog revisions, disabled tools and server revocation", async () => {
   const workspaceId = "workspace:space-personal";
-  const source = { kind: "remote" as const, url: "https://tools.example/mcp", auth: "oauth" as const };
+  const source = { kind: "remote" as const, url: "https://tools.example/mcp", auth: "none" as const };
   const server = await bridge.invoke("mcp.servers.register", { workspaceId, name: "Research", source });
   expect(server.sourceDigest).toMatch(/^[a-f0-9]{64}$/);
-  expect(server.state).toBe("pending");
-  await expect(bridge.invoke("mcp.tools.list", { serverId: server.serverId })).rejects.toThrow(
-    "Approve the server",
-  );
-  await expect(
-    bridge.invoke("mcp.servers.approve", { serverId: server.serverId, expectedDigest: "0".repeat(64) }),
-  ).rejects.toThrow("Server source changed");
-
-  const approved = await bridge.invoke("mcp.servers.approve", {
-    serverId: server.serverId,
-    expectedDigest: server.sourceDigest,
-  });
-  expect(approved.state).toBe("approved");
+  expect(server.state).toBe("active");
   expect(
     (await bridge.invoke("mcp.tools.list", { serverId: server.serverId })).map((tool) => tool.name),
   ).toEqual(["search", "summarize"]);
-  const grant = await bridge.invoke("mcp.grants.create", {
-    serverId: server.serverId,
-    toolName: "search",
-    scope: { kind: "workspace", workspaceId },
-    mode: "once",
-    outputTokenLimit: 2000,
-  });
-  expect((await bridge.invoke("mcp.grants.list", { serverId: server.serverId }))[0]?.grantId).toBe(
-    grant.grantId,
-  );
-  await bridge.invoke("mcp.servers.revoke", { serverId: server.serverId });
-  expect((await bridge.invoke("mcp.grants.list", { serverId: server.serverId }))[0]?.revokedAt).toBeTypeOf(
-    "number",
-  );
+  const current = (await bridge.invoke("mcp.servers.list", { workspaceId })).find(
+    (item) => item.serverId === server.serverId,
+  )!;
   await expect(
-    bridge.invoke("mcp.grants.create", {
+    bridge.invoke("mcp.tools.setEnabled", {
       serverId: server.serverId,
       toolName: "search",
-      scope: { kind: "workspace", workspaceId },
-      mode: "once",
-      outputTokenLimit: 2000,
+      enabled: false,
+      expectedRevision: server.toolsRevision,
     }),
-  ).rejects.toThrow("Approve the server");
+  ).rejects.toThrow("changed");
+  const disabled = await bridge.invoke("mcp.tools.setEnabled", {
+    serverId: server.serverId,
+    toolName: "search",
+    enabled: false,
+    expectedRevision: current.toolsRevision,
+  });
+  expect(disabled.disabledTools).toEqual(["search"]);
+  await expect(
+    bridge.invoke("mcp.tools.call", {
+      serverId: server.serverId,
+      toolName: "search",
+      arguments: {},
+      context: { workspaceId },
+    }),
+  ).rejects.toThrow("unavailable");
+  await bridge.invoke("mcp.servers.revoke", { serverId: server.serverId });
+  await expect(bridge.invoke("mcp.tools.list", { serverId: server.serverId })).rejects.toThrow(
+    "disconnected",
+  );
 });
 
 it("returns bounded bundle inspection fixture and rejects other suffixes", async () => {

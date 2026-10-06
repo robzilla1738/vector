@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Profile-owned integrations are visible here; access is always derived from their original grants. */
+/** Profile-owned integrations are visible here; access follows their original connection and current tool settings. */
 export const ConnectorEntrySchema = z.discriminatedUnion("kind", [
   z
     .object({
@@ -19,8 +19,8 @@ export const ConnectorEntrySchema = z.discriminatedUnion("kind", [
       connectorId: z.string(),
       serverId: z.string().uuid(),
       label: z.string(),
-      state: z.enum(["pending", "approved", "revoked"]),
-      authority: z.literal("reviewed_server_and_tool_grant"),
+      state: z.enum(["active", "revoked"]),
+      authority: z.literal("connected_server"),
     })
     .strict(),
 ]);
@@ -43,10 +43,9 @@ export const ConnectorAccessSchema = z.discriminatedUnion("kind", [
       connectorId: z.string(),
       taskId: z.string().uuid(),
       taskRevision: z.number().int().positive(),
-      grantId: z.string().uuid(),
+      toolsRevision: z.number().int().nonnegative(),
       toolName: z.string(),
-      scope: z.enum(["workspace", "task"]),
-      authority: z.literal("mcp_tool_grant"),
+      authority: z.literal("enabled_mcp_tool"),
     })
     .strict(),
 ]);

@@ -63,7 +63,9 @@ export function matchesRunAttentionActivation(
     suspension.runId === run.runId &&
     suspension.turnId === run.runId &&
     suspension.suspensionId === activation.identity &&
-    ["ask-user-question", "approval", "action-confirmation", "touch-id", "handoff"].includes(suspension.kind)
+    ["ask-user-question", "approval", "action-confirmation", "touch-id", "budget", "handoff"].includes(
+      suspension.kind,
+    )
   );
 }
 export type RunView = {
@@ -136,7 +138,12 @@ export class RunNotificationGate {
         suspension.state !== "pending"
       )
         return null;
-      if (["ask-user-question", "approval", "action-confirmation", "touch-id"].includes(suspension.kind)) kind = "question";
+      if (
+        ["ask-user-question", "approval", "action-confirmation", "touch-id", "budget"].includes(
+          suspension.kind,
+        )
+      )
+        kind = "question";
       else if (suspension.kind === "handoff") kind = "handoff";
       else return null;
       identity = suspension.suspensionId;

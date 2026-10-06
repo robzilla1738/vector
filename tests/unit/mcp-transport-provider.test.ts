@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -5,6 +6,9 @@ import { join } from "node:path";
 import { expect, it } from "vitest";
 import JSZip from "jszip";
 import {
+  AgentConnectionService,
+  ExternalSessionService,
+  SettingsService,
   createMcpTransportProvider,
   EventBus,
   makeInvoker,
@@ -25,9 +29,9 @@ function fixture(provider: ReturnType<typeof createMcpTransportProvider>) {
     db,
     workspaceId,
     service,
-    async approve(source: OutboundMcpServer["source"]) {
+    async connect(source: OutboundMcpServer["source"]) {
       const server = await service.register({ workspaceId, name: "Fixture", source });
-      return service.approve(server.serverId, server.sourceDigest);
+      return server;
     },
   };
 }
@@ -72,9 +76,10 @@ it("uses the approved HTTPS origin without redirects and no ambient credential",
   }[] = [];
   const f = fixture(createMcpTransportProvider(undefined, protocolFetch(calls)));
   try {
-    const server = await f.approve({ kind: "remote", url: "https://mcp.example.test/api", auth: "none" });
+    const server = await f.connect({ kind: "remote", url: "https://mcp.example.test/api", auth: "none" });
     expect(await f.service.listTools(server.serverId)).toMatchObject([{ name: "read" }]);
     expect(calls.some((call) => call.method === "POST")).toBe(true);
+
     expect(
       calls.every(
         (call) =>
@@ -105,7 +110,7 @@ it("fetches an OAuth token only for the approved remote server", async () => {
   };
   const f = fixture(createMcpTransportProvider(oauth, protocolFetch(calls)));
   try {
-    const server = await f.approve({ kind: "remote", url: "https://mcp.example.test/api", auth: "oauth" });
+    const server = await f.connect({ kind: "remote", url: "https://mcp.example.test/api", auth: "oauth" });
     expect(await f.service.listTools(server.serverId)).toMatchObject([{ name: "read" }]);
     expect(calls.some((call) => call.authorization === "Bearer ephemeral-token")).toBe(true);
     current = "wrong";
@@ -116,7 +121,7 @@ it("fetches an OAuth token only for the approved remote server", async () => {
 });
 
 it.skipIf(process.platform !== "darwin")(
-  "runs a reviewed local server under seatbelt and revokes its grant",
+  "runs a reviewed local server under seatbelt and disables its tool",
   async () => {
     const directory = mkdtempSync(join(tmpdir(), "aux-mcp-launch-"));
     const script = join(directory, "server.mjs");
@@ -156,25 +161,25 @@ process.stdin.on("data", chunk => { input += chunk; let at;
     symlinkSync(process.execPath, alias);
     const f = fixture(createMcpTransportProvider());
     try {
-      const server = await f.approve({ kind: "local", command: alias, args: [script], cwd: directory });
+      const server = await f.connect({ kind: "local", command: alias, args: [script], cwd: directory });
       expect(server.source.kind === "local" && server.source.command).toBe(process.execPath);
       unlinkSync(alias);
       symlinkSync("/bin/false", alias);
       expect(await f.service.listTools(server.serverId)).toMatchObject([{ name: "local-read" }]);
-      const grant = f.service.grant({
-        serverId: server.serverId,
-        toolName: "local-read",
-        scope: { kind: "workspace", workspaceId: f.workspaceId },
-        mode: "once",
-        outputTokenLimit: 100,
-      });
-      const result = await f.service.callTool(grant.grantId, {}, { workspaceId: f.workspaceId });
+      const toolName = "local-read";
+      await f.service.listTools(server.serverId);
+      const result = await f.service.callTool(server.serverId, toolName, {}, { workspaceId: f.workspaceId });
       expect(result.status).toBe("completed");
       expect(result.output).toContain('\\"writeDenied\\":true');
       expect(result.output).toContain('\\"networkDenied\\":true');
-      f.service.revokeGrant(grant.grantId);
+      f.service.setEnabled({
+        serverId: server.serverId,
+        toolName,
+        enabled: false,
+        expectedRevision: f.service.get(server.serverId).toolsRevision,
+      });
       await expect(
-        f.service.callTool(grant.grantId, {}, { workspaceId: f.workspaceId }),
+        f.service.callTool(server.serverId, toolName, {}, { workspaceId: f.workspaceId }),
       ).rejects.toMatchObject({ code: "permission_denied" });
     } finally {
       f.db.close();
@@ -231,21 +236,16 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     writeFileSync(path, bytes);
     const f = fixture(createMcpTransportProvider());
     try {
-      const server = await f.approve({
+      const server = await f.connect({
         kind: "bundle",
         path,
         sha256: createHash("sha256").update(bytes).digest("hex"),
         format: "mcpb",
       });
       expect(await f.service.listTools(server.serverId)).toMatchObject([{ name: "packaged-read" }]);
-      const grant = f.service.grant({
-        serverId: server.serverId,
-        toolName: "packaged-read",
-        scope: { kind: "workspace", workspaceId: f.workspaceId },
-        mode: "once",
-        outputTokenLimit: 100,
-      });
-      const result = await f.service.callTool(grant.grantId, {}, { workspaceId: f.workspaceId });
+      const toolName = "packaged-read";
+      await f.service.listTools(server.serverId);
+      const result = await f.service.callTool(server.serverId, toolName, {}, { workspaceId: f.workspaceId });
       expect(result).toMatchObject({ status: "completed", isError: false });
       expect(result.output).toContain("bundle-done");
     } finally {
@@ -295,20 +295,15 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     writeFileSync(path, bytes);
     const f = fixture(createMcpTransportProvider());
     try {
-      const server = await f.approve({
+      const server = await f.connect({
         kind: "bundle",
         path,
         sha256: createHash("sha256").update(bytes).digest("hex"),
         format: "mcpb",
       });
-      const grant = f.service.grant({
-        serverId: server.serverId,
-        toolName: "env",
-        scope: { kind: "workspace", workspaceId: f.workspaceId },
-        mode: "once",
-        outputTokenLimit: 32_000,
-      });
-      const result = await f.service.callTool(grant.grantId, {}, { workspaceId: f.workspaceId });
+      const toolName = "env";
+      await f.service.listTools(server.serverId);
+      const result = await f.service.callTool(server.serverId, toolName, {}, { workspaceId: f.workspaceId });
       expect(result).toMatchObject({ status: "completed", isError: false });
       const body = JSON.parse(result.output) as { content: { type: string; text: string }[] };
       const seen = JSON.parse(body.content[0]?.text ?? "{}") as Record<string, string | null>;
@@ -325,13 +320,13 @@ it("fails closed for unbounded local roots, local URLs, and changed bundles", as
   const f = fixture(createMcpTransportProvider());
   const directory = mkdtempSync(join(tmpdir(), "aux-mcp-deny-"));
   try {
-    const local = await f.approve({ kind: "local", command: "/bin/echo", args: [], cwd: "/" });
+    const local = await f.connect({ kind: "local", command: "/bin/echo", args: [], cwd: "/" });
     await expect(createMcpTransportProvider()(local, new AbortController().signal)).rejects.toThrow(
       /bounded working directory|requires macOS/,
     );
-    const oauth = await f.approve({ kind: "remote", url: "https://mcp.example.test/api", auth: "oauth" });
+    const oauth = await f.connect({ kind: "remote", url: "https://mcp.example.test/api", auth: "oauth" });
     await expect(f.service.listTools(oauth.serverId)).rejects.toThrow(/OAuth is unavailable/);
-    const loopback = await f.approve({ kind: "remote", url: "https://127.0.0.1/api", auth: "none" });
+    const loopback = await f.connect({ kind: "remote", url: "https://127.0.0.1/api", auth: "none" });
     await expect(f.service.listTools(loopback.serverId)).rejects.toThrow(/public HTTPS/);
     const path = join(directory, "bundle.mcpb");
     writeFileSync(path, "one");
@@ -354,7 +349,7 @@ it("fails closed for unbounded local roots, local URLs, and changed bundles", as
   }
 });
 
-it("lets a scoped agent call only a grant for its current Space and task revision", async () => {
+it("lets a scoped agent call only a connected tool in its current Space and task revision", async () => {
   const db = openDb(":memory:"),
     repo = new Repo(db),
     events = new EventBus(repo);
@@ -380,26 +375,31 @@ it("lets a scoped agent call only a grant for its current Space and task revisio
     name: "Reviewed",
     source: { kind: "remote", url: "https://mcp.example.test/api", auth: "none" },
   });
-  service.approve(server.serverId, server.sourceDigest);
-  const grant = service.grant({
-    serverId: server.serverId,
-    toolName: "read",
-    scope: { kind: "task", taskId: task.taskId, revision: task.revision },
-    mode: "standing",
-    outputTokenLimit: 100,
-  });
+
+  const toolName = "read";
+  await service.listTools(server.serverId);
+  const directory = mkdtempSync(join(tmpdir(), "aux-scoped-mcp-policy-"));
+  const settings = new SettingsService(repo, join(directory, "settings.json"), {});
+  const turnMentions = fixtureTurnMentions((pageId) => repo.getPage(pageId));
+  const agentConnections = new AgentConnectionService(repo);
+  const externalSessions = new ExternalSessionService(repo, events, turnMentions);
+  const scope = { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId };
+  const created = agentConnections.create({ name: "MCP fixture", client: "codex", scope });
+  const client = agentConnections.authorize(created.token)!;
   const invoke = makeInvoker({
     repo,
     events,
+    settings,
+    turnMentions,
+    agentConnections,
+    externalSessions,
+    outboundMcp: service,
     mcpTransportProvider: provider,
-    runs: {
-      pageOwnership: { snapshot: () => ({}) },
-    },
+    runs: { pageOwnership: { snapshot: () => ({}) } },
   } as unknown as Services);
-  const scope = { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId };
-  const client = { external: true, connectionId: "scoped", scope };
   const input = {
-    grantId: grant.grantId,
+    serverId: server.serverId,
+    toolName,
     arguments: {},
     context: { workspaceId: workspace.workspaceId, taskId: task.taskId, revision: task.revision },
   };
@@ -423,16 +423,47 @@ it("lets a scoped agent call only a grant for its current Space and task revisio
     ).rejects.toMatchObject({ code: "conflict" });
     expect(await invoke("mcp.tools.call", input, client)).toMatchObject({ status: "completed" });
     expect(calls.some((call) => call.method === "POST")).toBe(true);
-    service.revokeGrant(grant.grantId);
+    const run = repo.conversationRuns(`external:${client.connectionId}`)[0]!;
+    expect(run).toMatchObject({
+      status: "running",
+      config: { externalConnectionId: client.connectionId, taskId: task.taskId },
+    });
+    expect(repo.db.prepare("SELECT count(*) AS n FROM outbound_mcp_calls").get()).toMatchObject({ n: 1 });
+    await settings.set({ agentMode: "ask", agentPolicyRevision: settings.agentPolicy().agentPolicyRevision });
+    await expect(invoke("mcp.tools.call", input, client)).rejects.toMatchObject({ code: "needs_input" });
+    expect(repo.getRun(run.runId)?.status).toBe("needs_input");
+    expect(repo.db.prepare("SELECT count(*) AS n FROM outbound_mcp_calls").get()).toMatchObject({ n: 1 });
+    const pending = repo.db
+      .prepare("SELECT run_id,turn_id,kind,approval_id FROM safety_suspensions WHERE state='pending'")
+      .all();
+    expect(pending).toEqual([
+      expect.objectContaining({ run_id: run.runId, turn_id: run.runId, kind: "approval", approval_id: expect.any(String) }),
+    ]);
+    const decision = repo.db
+      .prepare("SELECT request_json FROM safety_decisions ORDER BY rowid DESC LIMIT 1")
+      .get() as { request_json: string };
+    expect(JSON.parse(decision.request_json)).toMatchObject({
+      runId: run.runId,
+      action: "mcp.tools.call",
+      recipient: `mcp:${server.serverId}:read`,
+    });
+    service.setEnabled({
+      serverId: server.serverId,
+      toolName,
+      enabled: false,
+      expectedRevision: service.get(server.serverId).toolsRevision,
+    });
     await expect(invoke("mcp.tools.call", input, client)).rejects.toMatchObject({
       code: "permission_denied",
     });
   } finally {
+    invoke.dispose();
     db.close();
+    rmSync(directory, { recursive: true, force: true });
   }
 });
 
-it("aborts an in-flight HTTPS tool request when its grant is revoked", async () => {
+it("aborts an in-flight HTTPS tool request when its tool is disabled", async () => {
   const calls: {
     method: string;
     url: string;
@@ -463,17 +494,17 @@ it("aborts an in-flight HTTPS tool request when its grant is revoked", async () 
   };
   const f = fixture(createMcpTransportProvider(undefined, networkFetch));
   try {
-    const server = await f.approve({ kind: "remote", url: "https://mcp.example.test/api", auth: "none" });
-    const grant = f.service.grant({
-      serverId: server.serverId,
-      toolName: "read",
-      scope: { kind: "workspace", workspaceId: f.workspaceId },
-      mode: "once",
-      outputTokenLimit: 100,
-    });
-    const pending = f.service.callTool(grant.grantId, {}, { workspaceId: f.workspaceId });
+    const server = await f.connect({ kind: "remote", url: "https://mcp.example.test/api", auth: "none" });
+    const toolName = "read";
+    await f.service.listTools(server.serverId);
+    const pending = f.service.callTool(server.serverId, toolName, {}, { workspaceId: f.workspaceId });
     await sent;
-    f.service.revokeGrant(grant.grantId);
+    f.service.setEnabled({
+      serverId: server.serverId,
+      toolName,
+      enabled: false,
+      expectedRevision: f.service.get(server.serverId).toolsRevision,
+    });
     expect((await pending).status).toBe("uncertain");
     expect(aborted).toBe(true);
   } finally {

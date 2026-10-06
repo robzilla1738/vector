@@ -153,6 +153,10 @@ function emitNode(schema, index) {
         add("const auto& token = value.GetString();");
         add("if (token.size() != 32 || token == std::string(32, '0')) return false;");
         add("for (char c : token) if (!((c >= 'A' && c <= 'F') || (c >= '0' && c <= '9'))) return false;");
+      } else if (schema.pattern === "^[1-9][0-9]*$") {
+        add("const auto& decimal = value.GetString();");
+        add("if (decimal.empty() || decimal[0] < '1' || decimal[0] > '9') return false;");
+        add("for (char c : decimal) if (c < '0' || c > '9') return false;");
       } else if (schema.pattern === "^[1-9][0-9]{0,18}$") {
         add("const auto& navigation = value.GetString();");
         add(
@@ -567,6 +571,8 @@ const nativeOnlyHostMethods = new Set([
   "native.recorderStop",
   "native.personRead",
   "native.personReadContext",
+  "native.credentialContext",
+  "native.credentialAdmit",
   "native.permissionRetire",
 ]);
 const mockResults = {};

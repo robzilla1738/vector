@@ -10,6 +10,8 @@ import {
   type ProgramResult,
   type Step,
   type StepRecord,
+  type SavedCredentialTarget,
+  SavedCredentialTargetSchema,
   newStepId,
 } from "@aux/contracts";
 import { beginConsequentialWrite, settleWrite } from "../../agent/durable.js";
@@ -138,11 +140,13 @@ export class ProgramExecutor {
         // any non-read step (including hover, scroll, and stop) takes transmission protection.
         if (ctx.runId && allSteps.some((step) => classifyStep(step.op) !== "read"))
           await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
+        let credentialDispatch: { target: SavedCredentialTarget; policyRevision: number } | undefined;
         const authorize = async (
           step: Step,
           projectedOrigin?: string,
           phase: "preflight" | "dispatch" = "dispatch",
         ) => {
+          credentialDispatch = undefined;
           checkIncarnation();
           if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
           ctx.taskRead?.check();
@@ -194,6 +198,42 @@ export class ProgramExecutor {
               checkIncarnation();
               if (lp.target.documentEpoch !== documentEpoch || liveOrigin() !== topOrigin)
                 throw new AuxError("ref_stale", "The document changed while reading the action target.");
+              let credentialTarget: SavedCredentialTarget | undefined;
+              if (step.op === "fillCredential") {
+                if (!this.pages.deps.native.credentialContext || !lp.target.sessionId)
+                  throw new AuxError(
+                    "backend_unavailable",
+                    "The original native credential context is unavailable.",
+                  );
+                const expectedUrl = lp.driver!.url();
+                const native = await this.pages.deps.native.credentialContext({ pageId, expectedUrl });
+                checkIncarnation();
+                if (
+                  native.pageId !== pageId ||
+                  native.expectedUrl !== expectedUrl ||
+                  lp.driver!.url() !== expectedUrl ||
+                  lp.target.documentEpoch !== documentEpoch
+                )
+                  throw new AuxError(
+                    "ref_stale",
+                    "The credential document changed while preparing approval.",
+                  );
+                const nativeContext = {
+                  documentToken: native.documentToken,
+                  windowId: native.windowId,
+                  ownerIncarnation: native.ownerIncarnation,
+                  connectionGeneration: native.connectionGeneration,
+                };
+                credentialTarget = SavedCredentialTargetSchema.parse({
+                  pageId,
+                  sessionId: lp.target.sessionId,
+                  documentEpoch,
+                  expectedUrl,
+                  passwordSelector: step.passwordSelector,
+                  ...(step.usernameSelector ? { usernameSelector: step.usernameSelector } : {}),
+                  nativeContext,
+                });
+              }
               const taskId = ctx.taskId ?? run?.config?.taskId;
               const provenance = await this.pages.deps.safetyGate.check({
                 step,
@@ -203,6 +243,7 @@ export class ProgramExecutor {
                   taskRead: ctx.taskRead,
                   pageId,
                   observedTarget,
+                  credentialTarget,
                   actor:
                     run?.config?.implementation === "external-agent" ? "external_token" : "builtin_agent",
                   profileId: this.pages.deps.profileId ?? "default",
@@ -223,6 +264,11 @@ export class ProgramExecutor {
               });
               checkIncarnation();
               if (provenance) authorized = provenance;
+              if (credentialTarget && phase === "dispatch")
+                credentialDispatch = {
+                  target: credentialTarget,
+                  policyRevision: this.pages.deps.safetyGate.policyRevision(),
+                };
             }
           }
           if (phase === "dispatch" && classifyStep(step.op) !== "read") {
@@ -378,8 +424,41 @@ export class ProgramExecutor {
                 this.pages.deps.nativePasswordFillEnabled && this.pages.deps.native.fillSavedPassword
                   ? (request) =>
                       secureCredentialHandoff(request, {
-                        fillSavedPassword: (validated) =>
-                          this.pages.deps.native.fillSavedPassword!(validated),
+                        fillSavedPassword: async (validated) => {
+                          const dispatch = credentialDispatch;
+                          credentialDispatch = undefined;
+                          checkIncarnation();
+                          if (
+                            !dispatch ||
+                            !ctx.runId ||
+                            !this.pages.deps.native.credentialAdmit ||
+                            !this.pages.deps.native.fillAdmittedSavedPassword
+                          )
+                            throw new AuxError(
+                              "permission_denied",
+                              "The original credential dispatch authority is unavailable.",
+                            );
+                          const target = dispatch.target;
+                          if (
+                            validated.pageId !== target.pageId ||
+                            validated.expectedUrl !== target.expectedUrl ||
+                            validated.passwordSelector !== target.passwordSelector ||
+                            validated.usernameSelector !== target.usernameSelector ||
+                            lp.target.sessionId !== target.sessionId ||
+                            lp.target.documentEpoch !== target.documentEpoch
+                          )
+                            throw new AuxError("ref_stale", "The approved credential target changed.");
+                          const admission = await this.pages.deps.native.credentialAdmit({
+                            target,
+                            runId: ctx.runId,
+                            policyRevision: dispatch.policyRevision,
+                          });
+                          checkIncarnation();
+                          return this.pages.deps.native.fillAdmittedSavedPassword(
+                            validated,
+                            admission.receiptId,
+                          );
+                        },
                       })
                   : undefined,
               observe: (req) => this.observation.observe(pageId, req).then((o) => o.content),

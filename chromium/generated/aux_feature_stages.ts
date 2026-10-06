@@ -478,6 +478,8 @@ const requirements = {
   },
   "passwordManager": {
     "requires": [
+      "native.credentialContext",
+      "native.credentialAdmit",
       "native.fillSavedPassword"
     ]
   },

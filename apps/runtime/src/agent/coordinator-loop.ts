@@ -5,7 +5,6 @@ import {
   DEFAULT_MAX_MODEL_CALLS,
   DEFAULT_MAX_STEPS,
   MODEL_ERROR_LIMIT,
-  partialResult,
   TERMINAL_STATUSES,
   type CoordinatorLoopHost,
 } from "./coordinator-verify.js";
@@ -28,8 +27,6 @@ import {
 } from "./coordinator-turn.js";
 import { ModelFailureError } from "./model-failure.js";
 import { isConsequential } from "./permissions.js";
-import { withDeadline } from "../safety/policies.js";
-
 export {
   DEFAULT_MAX_MODEL_CALLS,
   DEFAULT_MAX_STEPS,
@@ -41,24 +38,6 @@ export {
   NAV_OPS,
 } from "./coordinator-verify.js";
 export type { CoordinatorLoopHost } from "./coordinator-verify.js";
-
-/** Bound on the out-of-time final answer: a quarter of the deadline, 1-15 s. */
-const deadlineFinalMs = (deadlineMs = 0) => Math.min(15_000, Math.max(1_000, deadlineMs / 4));
-
-/** A controller whose lifetime follows `signal`, so run controls keep their AbortController shape. */
-function controllerFor(signal: AbortSignal): AbortController {
-  const controller = new AbortController();
-  if (signal.aborted) controller.abort(signal.reason);
-  else signal.addEventListener("abort", () => controller.abort(signal.reason), { once: true });
-  return controller;
-}
-
-/** Out of budget: one final answer from the evidence before failing. Never asks a human. */
-async function finalBeforeFailing(s: TurnState, reason: string): Promise<boolean> {
-  if (!s.activePageId) return false;
-  const obs = await observeActivePage(s).catch(() => undefined);
-  return !!obs && (await tryFinalDecision(s, reason, obs, { allowInput: false })) === "done";
-}
 
 export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: string): Promise<void> {
   const run = self.get(runId);
@@ -100,8 +79,6 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     appliedRevision: run.config?.messageRevision ?? 0,
     steers: self.deps.repo.listRunSteers(runId).map((message) => message.text),
   };
-  const maxSteps = run.config?.maxSteps ?? DEFAULT_MAX_STEPS;
-  const maxModelCalls = run.config?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
   const prior = run.config?.checkpoint as { unresolvedEffects?: string[] } | undefined;
   if (prior?.unresolvedEffects?.length) {
     const recovery = recoverAfterCrash({
@@ -122,13 +99,18 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     }
   }
   await self.setStatus(runId, "planning", "Planning");
-  const startedAt = Date.now();
+  const startedAt = run.startedAt ?? run.createdAt;
   self.deps.repo.saveRun({ ...self.get(runId), startedAt });
   run.startedAt = startedAt;
 
   try {
     while (true) {
       try {
+        if (c.budgetInterrupted) {
+          c.budgetInterrupted = false;
+          s.observedPages.clear(); s.carriedObs = undefined; s.pendingObs = undefined;
+          resetGuards(s);
+        }
         const latest = self.get(runId);
         const unresolved = self.durable.unresolved(runId);
         if (unresolved.length) {
@@ -160,13 +142,22 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
         }
         s.run = latest;
         await self.waitIfPaused(c, runId);
-        if (maxModelCalls > 0 && s.modelCalls >= maxModelCalls) {
-          if (await finalBeforeFailing(s, "model call budget exhausted")) return;
-          throw new AuxError("step_failed", "model call budget exhausted");
+        if (c.deadlineHit) {
+          await self.pauseForBudget(runId, { reason: "time", limit: latest.config?.deadlineMs ?? 0,
+            used: Date.now() - (latest.startedAt ?? latest.createdAt) });
+          s.observedPages.clear(); s.carriedObs = undefined; s.pendingObs = undefined;
+          resetGuards(s);
+          continue;
         }
-        if (s.stepsRun >= maxSteps) {
-          if (await finalBeforeFailing(s, "step budget exhausted")) return;
-          throw new AuxError("step_failed", "step budget exhausted");
+        const maxModelCalls = latest.config?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
+        const maxSteps = latest.config?.maxSteps ?? DEFAULT_MAX_STEPS;
+        if (maxModelCalls > 0 && s.modelCalls >= maxModelCalls) {
+          await self.pauseForBudget(runId, { reason: "model_calls", limit: maxModelCalls, used: s.modelCalls });
+          continue;
+        }
+        if (maxSteps > 0 && s.stepsRun >= maxSteps) {
+          await self.pauseForBudget(runId, { reason: "steps", limit: maxSteps, used: s.stepsRun });
+          continue;
         }
         if (!s.activePageId) throw new AuxError("invalid_params", "run has no target page");
 
@@ -186,7 +177,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
 
         await self.setStatus(runId, "planning", "Thinking…");
         const attempt = await planTurn(s, obs, obsArtifactId);
-        if (hasNewSteer(s)) {
+        if (hasNewSteer(s) || c.deadlineHit || c.budgetInterrupted) {
           if (attempt.early) {
             attempt.early.discardPending();
             const settled = await attempt.early.finish([]);
@@ -214,6 +205,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
         if (hasNewSteer(s) && !TERMINAL_STATUSES.has(self.get(runId).status)) continue;
         if (next === "return") return;
       } catch (error) {
+        if ((c.deadlineHit || c.budgetInterrupted) && !c.abort.signal.aborted) continue;
         // Accounting/retirement may finish after the owner has already returned
         // the page. The old aborted planning turn still cannot become a failure
         // or a retry against its stale observation merely because pause ended.
@@ -241,26 +233,6 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     if (e instanceof ModelFailureError) await giveUpRepair(s, e.failure.message, e.failure);
     else await giveUpRepair(s, e instanceof Error ? e.message : String(e));
   } finally {
-    if (c.deadlineHit && self.ownsPages(runId) && !TERMINAL_STATUSES.has(self.get(runId).status)) {
-      await withDeadline(
-        async (signal) => {
-          s.c = { ...c, abort: controllerFor(signal), answerWaiter: undefined };
-          await finalBeforeFailing(s, `run deadline exceeded (${run.config?.deadlineMs}ms)`);
-        },
-        deadlineFinalMs(run.config?.deadlineMs),
-        c.abort.signal,
-      ).catch(() => false);
-    }
-    if (c.deadlineHit && !TERMINAL_STATUSES.has(self.get(runId).status)) {
-      const partial = partialResult(s.outcomes);
-      await self.finish(
-        runId,
-        partial ? "partially_completed" : "failed",
-        partial,
-        `run deadline exceeded (${run.config?.deadlineMs}ms)`,
-        partial ? "Ran out of time — here's what I found" : "Ran out of time",
-      );
-    }
     self.controls.delete(runId);
   }
 }

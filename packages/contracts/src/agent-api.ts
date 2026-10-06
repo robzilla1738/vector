@@ -94,7 +94,7 @@ export const AgentApiManifest = [
     path: "mcp.call_tool",
     method: "mcp.tools.call",
     layer: "management",
-    summary: "Call one approved MCP tool under a scoped, revision-bound grant.",
+    summary: "Call an enabled MCP tool in the current Space and task revision.",
     documented: "lookup",
   }),
   entry({

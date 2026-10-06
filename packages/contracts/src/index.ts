@@ -13,6 +13,7 @@ export * from "./host-methods.js";
 export * from "./runtime-method-policy.js";
 export * from "./observation.js";
 export * from "./native-person-read.js";
+export * from "./native-credentials.js";
 export * from "./native-person-capture.js";
 export * from "./program.js";
 export * from "./plan.js";

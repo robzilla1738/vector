@@ -25,7 +25,7 @@ it("wires the connector preview through the same renderer bridge methods as Sett
   const task = tasks.find((item) => item.resources.some((resource) => resource.kind === "repository"))!;
   const query = { workspaceId, taskId: task.taskId, expectedRevision: task.revision };
   const first = ConnectorCatalogSchema.parse(await bridge.invoke("connectors.catalog", query));
-  expect(first.access.map((item) => item.kind).sort()).toEqual(["mcp"]);
+  expect([...new Set(first.access.map((item) => item.kind))].sort()).toEqual(["mcp"]);
   const calendar = first.entries.find((item) => item.kind === "calendar");
   if (calendar?.kind !== "calendar") throw new Error("Preview Calendar account is unavailable");
   await bridge.invoke("calendar.taskGrants.create", {
@@ -34,5 +34,5 @@ it("wires the connector preview through the same renderer bridge methods as Sett
     connectionId: calendar.connectionId,
   });
   const granted = ConnectorCatalogSchema.parse(await bridge.invoke("connectors.catalog", query));
-  expect(granted.access.map((item) => item.kind).sort()).toEqual(["calendar", "mcp"]);
+  expect([...new Set(granted.access.map((item) => item.kind))].sort()).toEqual(["calendar", "mcp"]);
 });

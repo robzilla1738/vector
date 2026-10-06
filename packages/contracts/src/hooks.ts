@@ -26,7 +26,6 @@ export const HookHandlerSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal("mcp_tool"),
       serverId: z.string().min(1).max(200),
-      grantId: z.string().uuid(),
       toolName: z.string().min(1).max(200),
       arguments: z.record(z.string(), z.unknown()).optional(),
     })
@@ -40,7 +39,7 @@ export const HookSchema = z.object({
   event: HookEventSchema,
   handler: HookHandlerSchema,
   handlerDigest: z.string().regex(/^[a-f0-9]{64}$/),
-  trust: z.enum(["untrusted", "approved", "revoked"]),
+  trust: z.enum(["approved", "revoked"]),
   sourcePluginId: z.string().uuid().optional(),
   createdAt: z.number(),
   updatedAt: z.number(),

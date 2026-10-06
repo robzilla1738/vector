@@ -116,7 +116,7 @@ export class TurnMentionService {
               .entries.some(
                 (entry) =>
                   entry.connectorId === ref.connectorId &&
-                  (entry.state === "active" || entry.state === "approved"),
+                  entry.state === "active",
               ),
         }),
         refs,
@@ -422,6 +422,6 @@ export class TurnMentionService {
     );
     return authorized
       ? { status: "available" }
-      : { status: "unavailable", reason: "This connector needs a current reviewed task or tool grant." };
+      : { status: "unavailable", reason: "Connect this server and enable the tool for the current task." };
   }
 }

@@ -126,7 +126,7 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
             ? (opts.pageIds?.[0] ?? (opts.scope === "page" ? before.activePageId : null))
             : opts.pageId;
       const n = Number(before.settings.maxModelCalls);
-      const budget = n === 0 ? 0 : Math.min(256, Math.max(1, Number.isFinite(n) ? n : 8));
+      const budget = Number.isInteger(n) && n > 0 ? n : 0;
       const pageIds = [...new Set([...(pageId ? [pageId] : []), ...(opts.pageIds ?? [])])];
       const run = await call("runs.start", {
         goal: g,

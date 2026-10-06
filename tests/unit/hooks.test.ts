@@ -34,11 +34,11 @@ it("rechecks a Hook's capability and exact handler bytes before automatic dispat
         handler: {
           type: "mcp_tool",
           serverId: "fixture",
-          grantId: "11111111-1111-4111-8111-111111111111",
+
           toolName: "record_result",
         },
       });
-      f.hooks.approve(hook.hookId, hook.handlerDigest);
+
       return hook;
     };
     const revokedGrant = create("run.start");
@@ -91,8 +91,11 @@ it("rechecks a Hook's capability and exact handler bytes before automatic dispat
   }
 });
 
-it("rejects unavailable handlers, then dispatches a grant-bound hook once after exact approval", async () => {
-  const f = fixture();
+it("rejects unauthorized creation, then dispatches a consented exact handler once", async () => {
+  let allowed = false;
+  const f = fixture(() => {
+    if (!allowed) throw new AuxError("permission_denied", "The connected handler is unavailable.");
+  });
   expect(() =>
     f.hooks.register({
       workspaceId: f.workspace.workspaceId,
@@ -100,13 +103,22 @@ it("rejects unavailable handlers, then dispatches a grant-bound hook once after 
       handler: { type: "command", command: "printf REVIEWED" },
     }),
   ).toThrow();
+  expect(() =>
+    f.hooks.register({
+      workspaceId: f.workspace.workspaceId,
+      event: "run.end",
+      handler: { type: "mcp_tool", serverId: "local", toolName: "summarize" },
+    }),
+  ).toThrow(/unavailable/);
+  expect(f.repo.db.prepare("SELECT count(*) AS n FROM hooks").get()).toMatchObject({ n: 0 });
+  allowed = true;
   const hook = f.hooks.register({
     workspaceId: f.workspace.workspaceId,
     event: "run.end",
     handler: {
       type: "mcp_tool",
       serverId: "local",
-      grantId: "11111111-1111-4111-8111-111111111111",
+
       toolName: "summarize",
       arguments: {},
     },
@@ -121,9 +133,7 @@ it("rejects unavailable handlers, then dispatches a grant-bound hook once after 
   const executor = async () => {
     calls++;
   };
-  expect(await f.hooks.dispatch(event, executor)).toEqual([]);
-  expect(() => f.hooks.approve(hook.hookId, "0".repeat(64))).toThrow(/Review/);
-  expect(f.hooks.approve(hook.hookId, hook.handlerDigest).trust).toBe("approved");
+  expect(hook.trust).toBe("approved");
   expect((await f.hooks.dispatch(event, executor))[0]?.state).toBe("completed");
   expect(await f.hooks.dispatch(event, executor)).toEqual([]);
   expect(calls).toBe(1);
@@ -131,7 +141,7 @@ it("rejects unavailable handlers, then dispatches a grant-bound hook once after 
   expect((await f.hooks.test(hook.hookId, executor)).state).toBe("completed");
   expect(calls).toBe(2);
   f.hooks.revoke(hook.hookId);
-  await expect(f.hooks.test(hook.hookId, executor)).rejects.toThrow(/Approve/);
+  await expect(f.hooks.test(hook.hookId, executor)).rejects.toMatchObject({ code: "permission_denied" });
   expect(await f.hooks.dispatch({ ...event, eventId: "event-2" }, executor)).toEqual([]);
   expect(calls).toBe(2);
   f.db.close();
@@ -145,11 +155,11 @@ it("aborts a revoked in-flight hook and never replays an uncertain dispatch afte
     handler: {
       type: "mcp_tool",
       serverId: "local",
-      grantId: "11111111-1111-4111-8111-111111111111",
+
       toolName: "summarize",
     },
   });
-  f.hooks.approve(hook.hookId, hook.handlerDigest);
+
   const event = {
     eventId: "event-race",
     workspaceId: f.workspace.workspaceId,
@@ -189,12 +199,12 @@ it("dispatches a terminal run update once and records the invocation", async () 
     handler: {
       type: "mcp_tool",
       serverId: "local",
-      grantId: "11111111-1111-4111-8111-111111111111",
+
       toolName: "summarize",
       arguments: { marker: "reviewed" },
     },
   });
-  f.hooks.approve(hook.hookId, hook.handlerDigest);
+
   let calls = 0;
   const stop = installRunEndHooks(eventBus, f.hooks, async (handler) => {
     expect(handler).toMatchObject({ type: "mcp_tool", arguments: { marker: "reviewed" } });
@@ -224,7 +234,7 @@ it("dispatches a run-start Hook once when the run is queued, independently of ru
     handler: {
       type: "mcp_tool",
       serverId: "local",
-      grantId: "11111111-1111-4111-8111-111111111111",
+
       toolName: "notify",
       arguments: { phase: "start" },
     },
@@ -235,13 +245,12 @@ it("dispatches a run-start Hook once when the run is queued, independently of ru
     handler: {
       type: "mcp_tool",
       serverId: "local",
-      grantId: "11111111-1111-4111-8111-111111111111",
+
       toolName: "notify",
       arguments: { phase: "end" },
     },
   });
-  f.hooks.approve(start.hookId, start.handlerDigest);
-  f.hooks.approve(end.hookId, end.handlerDigest);
+
   const seen: string[] = [];
   const stop = installRunEndHooks(eventBus, f.hooks, async (_handler, context) => {
     seen.push(context.event);
@@ -276,7 +285,7 @@ it("dispatches run.start once when a run is first seen running, then run.end onc
     handler: {
       type: "mcp_tool",
       serverId: "local",
-      grantId: "11111111-1111-4111-8111-111111111111",
+
       toolName: "notify",
       arguments: { phase: "start" },
     },
@@ -287,13 +296,12 @@ it("dispatches run.start once when a run is first seen running, then run.end onc
     handler: {
       type: "mcp_tool",
       serverId: "local",
-      grantId: "11111111-1111-4111-8111-111111111111",
+
       toolName: "notify",
       arguments: { phase: "end" },
     },
   });
-  f.hooks.approve(start.hookId, start.handlerDigest);
-  f.hooks.approve(end.hookId, end.handlerDigest);
+
   const seen: string[] = [];
   const stop = installRunEndHooks(eventBus, f.hooks, async (_handler, context) => {
     seen.push(`${context.event}:${context.runId}`);
@@ -353,12 +361,10 @@ it("executes an exactly approved command Hook inside the confined folder and sto
       );
       expect(result).toMatchObject({ exitCode: 0 });
     };
-    await expect(f.hooks.test(hook.hookId, executor)).rejects.toThrow(/Approve/);
-    f.hooks.approve(hook.hookId, hook.handlerDigest);
     expect((await f.hooks.test(hook.hookId, executor)).state).toBe("completed");
     expect(launches).toEqual(["/usr/bin/sandbox-exec pwd"]);
     f.hooks.revoke(hook.hookId);
-    await expect(f.hooks.test(hook.hookId, executor)).rejects.toThrow(/Approve/);
+    await expect(f.hooks.test(hook.hookId, executor)).rejects.toMatchObject({ code: "permission_denied" });
   } finally {
     f.db.close();
     rmSync(root, { recursive: true, force: true });

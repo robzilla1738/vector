@@ -70,7 +70,7 @@ export class HookService {
     if (input.handler.type !== "mcp_tool" && input.handler.type !== "command")
       throw new AuxError(
         "capability_unsupported",
-        "Only grant-bound MCP and reviewed command Hooks can run. Other handlers are unavailable.",
+        "Only connected MCP tools and reviewed command Hooks can run.",
       );
     if (input.handler.type === "mcp_tool" && JSON.stringify(input.handler.arguments ?? {}).length > 64_000)
       throw new AuxError("invalid_params", "Hook tool arguments are too large.");
@@ -86,12 +86,15 @@ export class HookService {
         .get(input.sourcePluginId, input.workspaceId, input.event)
     )
       throw new AuxError("permission_denied", "That imported hook is unavailable in this Space.");
+    if (!this.authorize)
+      throw new AuxError("capability_unsupported", "A supervised Hook executor is unavailable.");
+    this.authorize(input.handler, input.workspaceId);
     const now = Date.now();
     const hook = HookSchema.parse({
       ...input,
       hookId: randomUUID(),
       handlerDigest: digest(input.handler),
-      trust: "untrusted",
+      trust: "approved",
       createdAt: now,
       updatedAt: now,
     });
@@ -126,24 +129,6 @@ export class HookService {
     ).map((row) => this.get(row.hook_id));
   }
 
-  /** Approval is bound to the exact reviewed handler bytes. Imported hooks remain untrusted. */
-  approve(hookId: string, expectedDigest: string): Hook {
-    const hook = this.get(hookId);
-    if (
-      hook.trust !== "untrusted" ||
-      hook.handlerDigest !== expectedDigest ||
-      digest(hook.handler) !== hook.handlerDigest
-    )
-      throw new AuxError("conflict", "This hook changed. Review its handler before approval.");
-    if (!this.authorize)
-      throw new AuxError("capability_unsupported", "A supervised Hook executor is unavailable.");
-    this.authorize(hook.handler, hook.workspaceId);
-    this.repo.db
-      .prepare("UPDATE hooks SET trust='approved',updated_at=? WHERE hook_id=? AND trust='untrusted'")
-      .run(Date.now(), hookId);
-    return this.get(hookId);
-  }
-
   revoke(hookId: string): Hook {
     const hook = this.get(hookId);
     if (hook.trust === "revoked") return hook;
@@ -166,8 +151,7 @@ export class HookService {
   /** A reviewed Hook can be tried once through the same executor used by automatic dispatch. */
   async test(hookId: string, executor: HookExecutor): Promise<HookInvocation> {
     const hook = this.get(hookId);
-    if (hook.trust !== "approved")
-      throw new AuxError("permission_denied", "Approve this Hook before testing it.");
+    if (hook.trust !== "approved") throw new AuxError("permission_denied", "This Hook is no longer active.");
     const result = await this.dispatch(
       {
         eventId: `manual:${randomUUID()}`,

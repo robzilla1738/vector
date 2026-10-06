@@ -448,22 +448,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         if (handler.type !== "mcp_tool")
           throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
         const server = runtimeServices.outboundMcp.get(handler.serverId);
-        const grant = runtimeServices.outboundMcp.getGrant(handler.grantId);
-        if (
-          server.state !== "approved" ||
-          server.workspaceId !== workspaceId ||
-          grant.serverId !== handler.serverId ||
-          grant.toolName !== handler.toolName ||
-          grant.scope.kind !== "workspace" ||
-          grant.scope.workspaceId !== workspaceId ||
-          grant.mode !== "standing" ||
-          grant.revokedAt ||
-          grant.consumedAt
-        )
-          throw new AuxError(
-            "permission_denied",
-            "Approve a standing Space grant for this exact MCP tool first.",
-          );
+        if (server.state !== "active" || server.workspaceId !== workspaceId ||
+            !server.toolNames.includes(handler.toolName) || server.disabledTools.includes(handler.toolName))
+          throw new AuxError("permission_denied", "Connect this MCP server and enable its tool first.");
       }),
     calendar: () =>
       new CalendarConnectionService({
@@ -1017,7 +1004,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     if (handler.type !== "mcp_tool")
       throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
     const result = await runtimeServices.outboundMcp.callTool(
-      handler.grantId,
+      handler.serverId,
+      handler.toolName,
       handler.arguments ?? {},
       { workspaceId: context.workspaceId },
       signal,

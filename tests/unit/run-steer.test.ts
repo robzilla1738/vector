@@ -74,7 +74,6 @@ function harness(
     defaultModel: () => "fixture",
     recoveryModel: () => undefined,
     recordModelCall: () => {},
-    grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
     pageOwnership,
   });
   const messages = new RunMessageQueue(
@@ -148,7 +147,7 @@ describe("run steering", () => {
       generateStructured: async (options) => {
         calls++;
         return {
-          object: options.schema.parse({ status: "done", result: { answer: "Example result" } }),
+          object: options.schema.parse({ status: "done", message: "Found the result", result: { answer: "Example result" } }),
           durationMs: 1,
         };
       },
@@ -158,10 +157,13 @@ describe("run steering", () => {
     const { repo, coordinator, messages, pageOwnership } = harness(model);
     const release = pageOwnership.tryAcquire({ pageId: "page", actor: "set_member", runId: "set-run" });
     const run = await coordinator.start({ goal: "Find the result", pageIds: ["page"], deadlineMs: 40 });
-    await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("failed"));
-    expect(repo.getRun(run.runId)?.error).toMatch(/deadline exceeded/);
+    await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("needs_input"));
+    const pending = coordinator.suspensions.pending(run.runId)!;
+    expect(pending.request.budget).toMatchObject({ reason: "time", limit: 40 });
     expect(calls).toBe(0);
     release();
+    await coordinator.continueBudget(run.runId, pending.suspensionId, { deadlineMs: 0 });
+    await vi.waitFor(() => expect(repo.getRun(run.runId)?.status, repo.getRun(run.runId)?.error).toBe("completed"));
     expect(pageOwnership.snapshot().page).toBeUndefined();
     await messages.stop();
   });

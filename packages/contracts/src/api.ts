@@ -140,9 +140,8 @@ import {
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
 import {
   OutboundMcpRegisterParams,
-  OutboundMcpGrantParams,
+  OutboundMcpToolToggleParams,
   OutboundMcpServerSchema,
-  OutboundMcpGrantSchema,
   OutboundMcpToolSchema,
   OutboundMcpCallResultSchema,
   OutboundMcpBundleInspectionSchema,
@@ -489,7 +488,7 @@ export const SetsMapParams = z.object({
   concurrency: z.number().int().min(1).max(16).optional(),
   memberIds: z.array(z.string()).optional(),
   /** Shared across every model-driven member, including concurrent pilots. */
-  maxModelCalls: z.number().int().min(1).max(256).optional(),
+  maxModelCalls: z.number().int().nonnegative().optional(),
   maxTokens: z.number().int().min(8192).max(2_000_000).optional(),
   deadlineMs: z.number().int().min(1000).max(3_600_000).optional(),
   maxCostUsd: z.number().positive().max(1000).optional(),
@@ -508,7 +507,7 @@ export const RunsStartParams = z.object({
   contextPageRefs: z.array(PageContextRefSchema).max(9).optional(),
   setId: z.string().optional(),
   modelId: z.string().optional(),
-  maxSteps: z.number().int().positive().optional(),
+  maxSteps: z.number().int().nonnegative().optional(),
   maxTokens: z.number().int().min(8192).max(2_000_000).optional(),
   maxCostUsd: z.number().positive().max(1000).optional(),
   /** `0` = no per-run cap. */
@@ -532,6 +531,15 @@ export const RunsEventsParams = z.object({
   /** Stream identity the cursor was issued against — a mismatch answers `resync` (D9). */
   streamId: z.string().optional(),
 });
+export const RunsContinueBudgetParams = z.object({
+  runId: id,
+  suspensionId: id,
+  limits: z.object({
+    maxModelCalls: z.number().int().nonnegative().optional(),
+    maxSteps: z.number().int().nonnegative().optional(),
+    deadlineMs: z.number().int().nonnegative().optional(),
+  }).strict().optional(),
+}).strict();
 export const RunsAnswerParams = z.object({
   runId: id,
   answer: z.string(),
@@ -849,7 +857,7 @@ export const SettingsSetParams = z.object({
   maxWorkers: z.number().int().min(1).max(16).optional(),
   perOrigin: z.number().int().min(1).max(8).optional(),
   /** `0` = no per-run cap. */
-  maxModelCalls: z.number().int().min(0).max(256).optional(),
+  maxModelCalls: z.number().int().nonnegative().optional(),
   theme: z.enum(["system", "dark", "light"]).optional(),
   sidebarAppearance: z.enum(["solid", "translucent"]).optional(),
   sidebarMaterial: SidebarMaterialSchema.optional(),
@@ -1288,9 +1296,6 @@ export const MethodSchemas = {
   "hooks.register": HookCreateParams,
   "hooks.get": z.object({ hookId: z.string().uuid() }).strict(),
   "hooks.list": z.object({ workspaceId: id }).strict(),
-  "hooks.approve": z
-    .object({ hookId: z.string().uuid(), expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) })
-    .strict(),
   "hooks.revoke": z.object({ hookId: z.string().uuid() }).strict(),
   "hooks.test": z.object({ hookId: z.string().uuid() }).strict(),
   "hooks.invocations": z
@@ -1390,20 +1395,16 @@ export const MethodSchemas = {
   "mcp.servers.register": OutboundMcpRegisterParams,
   "mcp.bundles.inspect": z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
   "mcp.servers.list": z.object({ workspaceId: id }).strict(),
-  "mcp.servers.approve": z
-    .object({ serverId: z.string().uuid(), expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) })
-    .strict(),
   "mcp.servers.revoke": z.object({ serverId: z.string().uuid() }).strict(),
   "mcp.oauth.start": z.object({ serverId: z.string().uuid() }).strict(),
   "mcp.oauth.status": z.object({ serverId: z.string().uuid() }).strict(),
   "mcp.oauth.clear": z.object({ serverId: z.string().uuid() }).strict(),
   "mcp.tools.list": z.object({ serverId: z.string().uuid() }).strict(),
-  "mcp.grants.create": OutboundMcpGrantParams,
-  "mcp.grants.list": z.object({ serverId: z.string().uuid() }).strict(),
-  "mcp.grants.revoke": z.object({ grantId: z.string().uuid() }).strict(),
+  "mcp.tools.setEnabled": OutboundMcpToolToggleParams,
   "mcp.tools.call": z
     .object({
-      grantId: z.string().uuid(),
+      serverId: z.string().uuid(),
+      toolName: z.string().min(1).max(200),
       arguments: z.record(z.string(), z.unknown()),
       context: z
         .object({ workspaceId: id, taskId: id.optional(), revision: z.number().int().positive().optional() })
@@ -1580,6 +1581,7 @@ export const MethodSchemas = {
   "runs.resume": RunsControlParams,
   "runs.cancel": RunsControlParams,
   "runs.answer": RunsAnswerParams,
+  "runs.continueBudget": RunsContinueBudgetParams,
   "runs.queue": RunsQueueParams,
   "runs.steer": RunsSteerParams,
   "runs.messages.list": z.object({ chatId: id }),
@@ -2038,7 +2040,6 @@ export const ResultSchemas = {
   "hooks.register": HookSchema,
   "hooks.get": HookSchema,
   "hooks.list": z.array(HookSchema),
-  "hooks.approve": HookSchema,
   "hooks.revoke": HookSchema,
   "hooks.test": HookInvocationSchema,
   "hooks.invocations": z.array(HookInvocationSchema),
@@ -2117,7 +2118,6 @@ export const ResultSchemas = {
   "mcp.servers.register": OutboundMcpServerSchema,
   "mcp.bundles.inspect": OutboundMcpBundleInspectionSchema,
   "mcp.servers.list": z.array(OutboundMcpServerSchema),
-  "mcp.servers.approve": OutboundMcpServerSchema,
   "mcp.servers.revoke": OutboundMcpServerSchema,
   "mcp.oauth.start": z.discriminatedUnion("state", [
     z.object({ state: z.literal("connected") }).strict(),
@@ -2128,9 +2128,7 @@ export const ResultSchemas = {
   "mcp.oauth.status": z.object({ connected: z.boolean(), expiresAt: z.number().int().optional() }).strict(),
   "mcp.oauth.clear": z.object({ connected: z.literal(false) }).strict(),
   "mcp.tools.list": z.array(OutboundMcpToolSchema),
-  "mcp.grants.create": OutboundMcpGrantSchema,
-  "mcp.grants.list": z.array(OutboundMcpGrantSchema),
-  "mcp.grants.revoke": OutboundMcpGrantSchema,
+  "mcp.tools.setEnabled": OutboundMcpServerSchema,
   "mcp.tools.call": OutboundMcpCallResultSchema,
   "memory.paste.preview": MemoryPastePreviewSchema,
   "memory.paste.commit": MemoryPasteStatusSchema,
@@ -2342,6 +2340,7 @@ export const ResultSchemas = {
   "runs.resume": RunSchema,
   "runs.cancel": RunSchema,
   "runs.answer": RunSchema,
+  "runs.continueBudget": RunSchema,
   "runs.queue": RunMessageSchema,
   "runs.steer": RunMessageSchema,
   "runs.messages.list": z.array(RunMessageSchema),

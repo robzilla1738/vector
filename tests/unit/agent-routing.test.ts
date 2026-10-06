@@ -203,6 +203,21 @@ describe("runtime failover", () => {
     expect(resolved).toEqual([MUSE, LUNA]);
   });
 
+  it.each(["text", "structured", "streamed"] as const)("an explicit one-attempt budget prevents hidden %s failover", async (kind) => {
+    const resolved: string[] = [];
+    const primary = new MockLanguageModelV4({doStream: async () => {throw apiError(429);}});
+    const client = new GatewayModelClient("fixture", {
+      model: (id) => {resolved.push(id); return primary;},
+      candidatesFor: () => [{modelId: MUSE}, {modelId: LUNA}],
+    });
+    const opts = {modelId: MUSE, system: "fixture", prompt: "hi", maxAttempts: 1};
+    const pending = kind === "text" ? client.generateText(opts)
+      : kind === "structured" ? client.generateStructured({...opts, schema: z.object({ok: z.boolean()})})
+      : client.streamStructured({...opts, schema: z.object({ok: z.boolean()}), onText: () => {}});
+    await expect(pending).rejects.toThrow(/429/);
+    expect(resolved).toEqual([MUSE]);
+  });
+
   it("a non-retriable status does not advance the chain", async () => {
     const resolved: string[] = [];
     const primary = new MockLanguageModelV4({

@@ -184,6 +184,7 @@ export function effectRequestForStep(input: {
   actor?: EffectRequest["actor"];
   digest: string;
   observedTarget?: ObservedActionTarget;
+  credentialTarget?: EffectRequest["credentialTarget"];
   at?: number;
 }): EffectRequest {
   const category = input.observedTarget
@@ -210,6 +211,7 @@ export function effectRequestForStep(input: {
     turnId: input.turnId,
     threadId: input.threadId,
     ...(input.runId ? { runId: input.runId } : {}),
+    ...(input.step.op === "fillCredential" && input.credentialTarget ? { credentialTarget: input.credentialTarget } : {}),
     requestedAt: input.at ?? Date.now(),
   });
 }
@@ -228,6 +230,7 @@ export function actionFor(request: EffectRequest, normalizedOrigin?: string): Sa
     threadId: request.threadId,
     requestedAt: request.requestedAt,
     ...(request.amount !== undefined ? { amount: request.amount } : {}),
+    ...(request.credentialTarget ? { credentialTarget: request.credentialTarget } : {}),
   });
 }
 

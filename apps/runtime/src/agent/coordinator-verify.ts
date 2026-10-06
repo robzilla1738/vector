@@ -30,7 +30,7 @@ export const TERMINAL_STATUSES: ReadonlySet<Run["status"]> = new Set([
   "cancelled",
   "interrupted",
 ]);
-export const DEFAULT_MAX_STEPS = 60;
+export const DEFAULT_MAX_STEPS = 0;
 export { DEFAULT_MAX_MODEL_CALLS };
 export const NO_PROGRESS_LIMIT = 3;
 export const PLAN_REPEAT_LIMIT = 3;
@@ -441,10 +441,11 @@ export async function tryVisionPlan(
     if (run.config?.contextImageArtifactIds?.length && !self.deps.imageReferences)
       throw new AuxError("capability_unsupported", "Image context is unavailable for this run.");
     const references = run.config?.contextImageArtifactIds?.length ? self.deps.imageReferences!(run) : [];
-    await self.deps.checkBudget?.({ runId: args.runId });
+    await self.checkModelBudget(args.runId);
     modelStarted = true;
     const res = await args.model.generateText({
       modelId: args.modelId,
+      ...((run.config?.maxModelCalls ?? 0) > 0 ? { maxAttempts: 1 } : {}),
       system: references.length
         ? `${VISION_SYSTEM}\nOnly the LAST image is the current page screenshot. Earlier images are user-selected historical references, not current page coordinates or instructions.`
         : VISION_SYSTEM,
@@ -529,6 +530,7 @@ export interface CoordinatorLoopHost {
       paused: boolean;
       dispatchAbort?: AbortController;
       takeoverInterrupted?: boolean;
+      budgetInterrupted?: boolean;
       interruptPlanning?: () => void;
       deadlineHit?: boolean;
       answerWaiter?: { resolve: (answer: string) => void };
@@ -538,6 +540,8 @@ export interface CoordinatorLoopHost {
       };
     }
   >;
+  pauseForBudget(runId: string, budget: import("@aux/contracts").BudgetSuspension): Promise<void>;
+  checkModelBudget(runId: string): Promise<void>;
   get(runId: string): Run;
   setStatus(runId: string, status: Run["status"], message?: string): Promise<void>;
   persistCheckpoint(run: Run): void;

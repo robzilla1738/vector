@@ -126,7 +126,7 @@ export function createMcpTransportProvider(
 ): McpTransportProvider {
   return async (server: OutboundMcpServer, signal: AbortSignal, bundleBytes?: Buffer): Promise<Transport> => {
     if (signal.aborted) throw new AuxError("cancelled", "MCP connection was cancelled.");
-    if (server.state !== "approved" || digest(server.source) !== server.sourceDigest)
+    if (server.state !== "active" || digest(server.source) !== server.sourceDigest)
       throw new AuxError("permission_denied", "MCP server source is not approved.");
     if (server.source.kind === "remote") {
       const url = new URL(server.source.url);
