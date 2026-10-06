@@ -252,6 +252,27 @@ it("claims the actual blank document before first navigation and records even ca
   );
 });
 
+it("reuses observations only when the fingerprint stayed stable throughout the authorized read", async () => {
+  const f = pageFixture();
+  const fingerprint = vi.fn()
+    .mockResolvedValueOnce("before")
+    .mockResolvedValueOnce("changed-during-read")
+    .mockResolvedValue("before");
+  f.driverPage.observeFingerprint = fingerprint;
+  const page = await f.pages.open({ url: "https://source.test/", background: true, ownedByRuntime: true });
+
+  const first = await f.pages.observe(page.pageId, {});
+  const second = await f.pages.observe(page.pageId, {});
+  const third = await f.pages.observe(page.pageId, {});
+
+  expect(first.cached).not.toBe(true);
+  expect(second.cached).not.toBe(true);
+  expect(third.cached).toBe(true);
+  expect(f.observe).toHaveBeenCalledTimes(2);
+  expect(fingerprint).toHaveBeenCalledTimes(5);
+  expect(f.record).toHaveBeenCalledTimes(3);
+});
+
 it("closes the inert native blank and never navigates after authority installation fails", async () => {
   const f = pageFixture();
   await expect(

@@ -93,7 +93,7 @@ export class ObservationService {
       // main-document fingerprint. Re-read it instead of returning stale refs.
       if (req.scope !== "subtree" && dp.observeFingerprint && lp) {
         fingerprint = await dp.observeFingerprint().catch(() => undefined);
-        if (lp.target.documentEpoch !== startingEpoch)
+        if (this.pages.live.get(pageId) !== lp || lp.target.documentEpoch !== startingEpoch)
           throw new AuxError("conflict", "This page changed while it was being observed. Observe it again.");
         const hit = lp.lastObs;
         if (
@@ -119,8 +119,17 @@ export class ObservationService {
       }
       // console lines reach lp.consoleLines through onConsole; observations do not carry them
       const content = await dp.observe(req);
-      if (lp?.target.documentEpoch !== startingEpoch)
+      if (this.pages.live.get(pageId) !== lp || lp?.target.documentEpoch !== startingEpoch)
         throw new AuxError("conflict", "This page changed while it was being observed. Observe it again.");
+      // Only retain a reusable snapshot when its fingerprint remained stable
+      // throughout the walk. Scroll, focus, and DOM changes can race a read
+      // without changing the document epoch.
+      if (fingerprint && dp.observeFingerprint) {
+        const after = await dp.observeFingerprint().catch(() => undefined);
+        if (this.pages.live.get(pageId) !== lp || lp?.target.documentEpoch !== startingEpoch)
+          throw new AuxError("conflict", "This page changed while it was being observed. Observe it again.");
+        if (after !== fingerprint) fingerprint = undefined;
+      }
       return this.recordObservation(pageId, content, req, fingerprint);
     });
   }
