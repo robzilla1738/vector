@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { faviconCandidates, hostLetter } from "../favicon";
 import { hostOf } from "../workspace";
 import { unreadBadge } from "../unread-badge";
-import { shellIconGlobe, shellIconGlobeLg } from "./icons";
+import { shellIconGlobe, shellIconGlobeLg } from "../ui/icons";
 
 export function FavIcon({
   url,

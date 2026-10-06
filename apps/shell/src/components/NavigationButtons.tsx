@@ -4,7 +4,7 @@ import { isHomeAddress } from "../chrome";
 import type { PageTarget } from "@aux/contracts";
 import { bridge, inNativeHost } from "../bridge";
 import { errToast, tabCommand } from "../store";
-import { shellIconBack, shellIconFwd, shellIconReload, shellIconStop } from "./icons";
+import { shellIconBack, shellIconFwd, shellIconReload, shellIconStop } from "../ui/icons";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
 /** Shared browser navigation for expanded, collapsed and horizontal chrome. */

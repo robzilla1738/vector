@@ -8,7 +8,7 @@ import {
   type InlineAssistCapture,
 } from "@aux/contracts";
 import { call, toast, useStore } from "../store";
-import { shellIconAgentSm, shellIconClose } from "./icons";
+import { shellIconAgentSm, shellIconClose } from "../ui/icons";
 import { bridge } from "../bridge";
 import "./inline-assist.css";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";

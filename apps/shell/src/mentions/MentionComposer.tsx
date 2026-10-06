@@ -7,7 +7,7 @@ import { executeCommand } from "../commands";
 import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
 import { moveListFocus } from "../keyboard-list";
-import { shellIconGlobe, shellIconClose } from "../components/icons";
+import { shellIconGlobe, shellIconClose } from "../ui/icons";
 import { caretAnchor } from "./caret";
 import { mentionCandidates, mentionChipStatus } from "./candidates";
 import { readMentionDraft, writeMentionDraft } from "./drafts";

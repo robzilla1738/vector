@@ -16,7 +16,7 @@ import { createPortal } from "react-dom";
 import { useNativeDialog } from "../ui/native-dialog";
 import { useDismissable } from "../use-dismissable";
 import { DetailPane } from "../ui";
-import { shellIconOpen, shellIconResult } from "./icons";
+import { shellIconOpen, shellIconResult } from "../ui/icons";
 import "./SupportingContent.css";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 

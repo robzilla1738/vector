@@ -12,7 +12,7 @@ import {
   shellIconGlobe,
   shellIconLock,
   shellIconShield,
-} from "./icons";
+} from "../ui/icons";
 import { SiteAgentAccess } from "../features/trust/SiteAgentAccess";
 import { useFeature } from "../use-feature";
 import { PageZoom } from "./PageZoom";

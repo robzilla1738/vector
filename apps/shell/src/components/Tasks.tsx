@@ -9,7 +9,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Run, Task, TaskReceipt } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
-import { shellIconBack, shellIconClose, shellIconFolder, shellIconPlusSm } from "./icons";
+import { shellIconBack, shellIconClose, shellIconFolder, shellIconPlusSm } from "../ui/icons";
 import {
   readTaskDraft,
   writeTaskDraft,

@@ -4,7 +4,7 @@ import { smallGhostButtonProps } from "../ui/button-props";
 import { constructAwaitedOperation } from "./owned-operation-construction";
 import { memoryControlElement, useMemoryElementControl } from "./memory-control-construction";
 import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
-import { shellIconGlobe } from "./icons";
+import { shellIconGlobe } from "../ui/icons";
 import {
   useEffect,
   useLayoutEffect,

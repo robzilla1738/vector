@@ -1,7 +1,7 @@
 import { smallGhostButtonProps } from "../ui/button-props";
 import { memo, useMemo, useState } from "react";
 import type { CompactObservation } from "@aux/contracts";
-import { shellIconCopy, shellIconRight } from "./icons";
+import { shellIconCopy, shellIconRight } from "../ui/icons";
 import {
   staticNumericCountProps as auxClassNumericCountProps,
   staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps,

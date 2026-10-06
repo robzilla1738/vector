@@ -11,7 +11,7 @@ import {
   shellIconFolder,
   shellIconGlobe,
   shellIconPerson,
-} from "./icons";
+} from "../ui/icons";
 import { Menu } from "../ui/dialog";
 import "./ProfileSwitcher.css";
 import { BrowserHostMethods as HostMethods } from "@aux/contracts/browser-host-methods";

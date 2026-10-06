@@ -32,7 +32,7 @@ import {
   shellIconLock,
   shellIconReload,
   shellIconRight,
-} from "./icons";
+} from "../ui/icons";
 import { openSavedTask } from "../task-navigation";
 import { AnswerMarkdown } from "./AnswerMarkdown";
 import { RunTranscriptDetails } from "../transcript/RunTranscriptDetails";

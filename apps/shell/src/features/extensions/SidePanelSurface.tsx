@@ -1,7 +1,7 @@
 import { staticIconButtonProps } from "../../ui/class-props";
 import { useStore as useBoundStore } from "zustand";
 import { runCommand } from "../../commands";
-import { shellIconClose } from "../../components/icons";
+import { shellIconClose } from "../../ui/icons";
 import { extensionPanel } from "./extension-panel";
 import "./extensions.css";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../../ui/native-attribute-props";

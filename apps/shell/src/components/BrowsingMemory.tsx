@@ -4,7 +4,7 @@ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { constructAwaitedOperation } from "./owned-operation-construction";
 import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
-import { shellIconGlobe } from "./icons";
+import { shellIconGlobe } from "../ui/icons";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory } from "@aux/contracts";
 import { memorySourceExcluded } from "@aux/contracts/memory-context";

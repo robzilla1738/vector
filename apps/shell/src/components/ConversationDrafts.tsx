@@ -11,7 +11,7 @@ import type { PreparedConversation } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { conversationDraftEntries } from "../conversation-drafts";
-import { shellIconClose, shellIconRight, shellIconTrash } from "./icons";
+import { shellIconClose, shellIconRight, shellIconTrash } from "../ui/icons";
 
 export function ConversationDrafts({
   query = "",

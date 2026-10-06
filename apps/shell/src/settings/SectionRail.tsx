@@ -13,7 +13,7 @@ import {
   shellIconModel,
   shellIconResult,
   shellIconSun,
-} from "../components/icons";
+} from "../ui/icons";
 import { settingsPath, type ConnectionTab } from "./routes";
 
 interface RailItem {

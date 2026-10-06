@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import type { Artifact } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { ImageViewer } from "./ImageViewer";
-import { shellIconResult } from "./icons";
+import { shellIconResult } from "../ui/icons";
 import { staticNumericCountProps as auxClassNumericCountProps } from "../ui/class-props";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 

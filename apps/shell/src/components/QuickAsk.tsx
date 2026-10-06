@@ -4,7 +4,7 @@ import { useShallow } from "zustand/react/shallow";
 import { Conversation } from "./Conversation";
 import { bridge } from "../bridge";
 import { useStore, errToast } from "../store";
-import { shellIconOpen } from "./icons";
+import { shellIconOpen } from "../ui/icons";
 import "./QuickAsk.css";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
 import { nativePoliteLiveProps } from "../ui/native-attribute-props";

@@ -15,7 +15,7 @@ import { BrowserContextPicker } from "./BrowserContextPicker";
 import { Popover } from "../ui/popover";
 import "./ContextPicker.css";
 import { Checkbox } from "../ui";
-import { shellIconClose, shellIconGlobe, shellIconReload } from "./icons";
+import { shellIconClose, shellIconGlobe, shellIconReload } from "../ui/icons";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 
 const availableSource = (page: PageTarget, primaryPageId?: string) =>

@@ -3,7 +3,7 @@ import { useStore } from "../store";
 import { runCommand } from "../commands";
 import { localSplitPage } from "../features/surfaces/split-actions";
 import { FavIcon } from "./SiteTile";
-import { shellIconPip } from "./icons";
+import { shellIconPip } from "../ui/icons";
 import "./PictureInPictureMedia.css";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";

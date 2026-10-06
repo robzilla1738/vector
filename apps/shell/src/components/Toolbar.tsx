@@ -16,7 +16,7 @@ import {
   shellIconGear,
   shellIconGrid,
   shellIconSidebarOpen,
-} from "./icons";
+} from "../ui/icons";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import {
   nativeAriaHiddenProps as auxNativeAriaHiddenProps,

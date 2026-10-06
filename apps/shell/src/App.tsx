@@ -40,7 +40,7 @@ import { spaceThemeStyle } from "./workspace";
 
 import { Toolbar } from "./components/Toolbar";
 import { Stage } from "./components/Stage";
-import { shellIconAlert, shellIconSidebarOpen } from "./components/icons";
+import { shellIconAlert, shellIconSidebarOpen } from "./ui/icons";
 import { SidebarReveal } from "./components/SidebarReveal";
 import { Toasts } from "./components/Toasts";
 

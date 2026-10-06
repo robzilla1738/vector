@@ -8,7 +8,7 @@ import { bridge } from "../bridge";
 import { isHomeAddress } from "../chrome";
 import { fromOrganizationLayout } from "../store/organization-layout";
 import { Dialog, Menu } from "../ui";
-import { shellIconCopy, shellIconDown, shellIconDownloadSm, shellIconLock } from "./icons";
+import { shellIconCopy, shellIconDown, shellIconDownloadSm, shellIconLock } from "../ui/icons";
 import { runCommand } from "../commands";
 import { ownPages } from "../tab-window-transfer";
 import { CommandBar } from "./CommandBar";

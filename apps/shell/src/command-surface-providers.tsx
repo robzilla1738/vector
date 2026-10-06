@@ -2,7 +2,7 @@ import type { PreparedConversation, Task } from "@aux/contracts";
 import { conversationDraftEntries } from "./conversation-drafts";
 import { openSavedTask } from "./task-navigation";
 import { useStore } from "./store";
-import { shellIconLayersSm, shellIconPencil, shellIconResult } from "./components/icons";
+import { shellIconLayersSm, shellIconPencil, shellIconResult } from "./ui/icons";
 import type { Suggestion } from "./components/command-provider-types";
 
 export interface CommandSurfaceWork {

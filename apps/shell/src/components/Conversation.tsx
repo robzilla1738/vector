@@ -103,7 +103,7 @@ import {
   shellIconRail,
   shellIconSend,
   shellIconSplit,
-} from "./icons";
+} from "../ui/icons";
 import "./Conversation.css";
 import "./ConversationContextMenu.css";
 import {

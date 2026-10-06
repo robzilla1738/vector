@@ -1,7 +1,7 @@
 import { useId, useRef, type ReactNode } from "react";
 import { bridge } from "../bridge";
 import { useSidebarControl } from "./use-sidebar-control";
-import { shellIconDown } from "./icons";
+import { shellIconDown } from "../ui/icons";
 import { nativeAriaHiddenProps as auxNativeAriaHiddenProps } from "../ui/native-attribute-props";
 
 export function SidebarSection({

@@ -2,7 +2,7 @@ import { errorMessage } from "../error-message";
 import { useState } from "react";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
-import { shellIconGlobe } from "./icons";
+import { shellIconGlobe } from "../ui/icons";
 import { Button } from "../ui";
 
 /** Chrome-style bar shown while a page is translated in place. */

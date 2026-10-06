@@ -24,7 +24,7 @@ import { applyTidyProposal, tidyUndoRecord } from "../tidy-layout";
 import { commitTidyLayout } from "../tidy-commit";
 import { archivePages, restoreArchivedTab } from "../archive-actions";
 import { FavIcon } from "./SiteTile";
-import { shellIconClose, shellIconGrid, shellIconPlusSm, shellIconSearch } from "./icons";
+import { shellIconClose, shellIconGrid, shellIconPlusSm, shellIconSearch } from "../ui/icons";
 import { useShortcutLabels } from "../use-shortcut-label";
 import { useFeature } from "../use-feature";
 import "./Overview.css";

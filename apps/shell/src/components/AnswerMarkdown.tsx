@@ -9,7 +9,7 @@ import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { errToast, useStore } from "../store";
 import { bridge } from "../bridge";
-import { shellIconCheck, shellIconCopy, shellIconDownloadSm } from "./icons";
+import { shellIconCheck, shellIconCopy, shellIconDownloadSm } from "../ui/icons";
 
 // Model output is untrusted. Only explicit HTTP(S) links may leave the answer.
 export const answerUrl = browserLinkUrl;

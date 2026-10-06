@@ -1,7 +1,7 @@
 import { useStore } from "../store";
 import { runCommand } from "../commands";
 import { useFeature } from "../use-feature";
-import { shellIconPip, shellIconVolume, shellIconVolumeOff } from "./icons";
+import { shellIconPip, shellIconVolume, shellIconVolumeOff } from "../ui/icons";
 import { staticTextProps as auxClassTextProps } from "../ui/class-props";
 
 export function TabAudioButton({

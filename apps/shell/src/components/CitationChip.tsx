@@ -6,7 +6,7 @@ import { requestStageReport } from "../stage-obstruction";
 import { useDismissable } from "../use-dismissable";
 import { hostOf } from "../workspace";
 import { sourceDescription } from "./SourceRow";
-import { shellIconGlobe } from "./icons";
+import { shellIconGlobe } from "../ui/icons";
 import "./reading.css";
 
 export function CitationChip({

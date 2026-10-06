@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { shellIconClose } from "./icons";
+import { shellIconClose } from "../ui/icons";
 import "./ViewerFrame.css";
 import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 

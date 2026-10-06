@@ -7,7 +7,7 @@ import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { siteControlsOpener } from "../site-controls-opener";
 import { Dialog } from "../ui";
-import { shellIconClose } from "./icons";
+import { shellIconClose } from "../ui/icons";
 import "./SiteCustomization.css";
 import {
   staticButtonProps as auxClassButtonProps,

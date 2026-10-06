@@ -4,7 +4,7 @@ import { backgroundLink, browserLinkUrl, openBrowserLink } from "../browser-link
 import { bridge } from "../bridge";
 import { RunPanelAction, useRunPanelCommand } from "./RunPanelAction";
 import { errToast, useStore } from "../store";
-import { shellIconCheck, shellIconClose, shellIconObs, shellIconRight } from "./icons";
+import { shellIconCheck, shellIconClose, shellIconObs, shellIconRight } from "../ui/icons";
 import { nativeAriaHiddenProps as auxNativeAriaHiddenProps } from "../ui/native-attribute-props";
 import {
   staticMetadataKeyProps as auxClassMetadataKeyProps,

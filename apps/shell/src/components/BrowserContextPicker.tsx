@@ -10,7 +10,7 @@ import type { PageTarget } from "@aux/contracts";
 import { useStore, errToast } from "../store";
 import { hostOf } from "../workspace";
 import { Popover } from "../ui/popover";
-import { shellIconCheck, shellIconDown, shellIconGlobe } from "./icons";
+import { shellIconCheck, shellIconDown, shellIconGlobe } from "../ui/icons";
 import "./ContextPicker.css";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 

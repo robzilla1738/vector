@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { ConversationArtifact } from "@aux/contracts";
 import { csvPreview } from "../csv-preview";
 import { AnswerPreview } from "./surfaces";
-import { shellIconOpen, shellIconResult } from "./icons";
+import { shellIconOpen, shellIconResult } from "../ui/icons";
 import "./ResultCard.css";
 import { nativeAriaHiddenProps as auxNativeAriaHiddenProps } from "../ui/native-attribute-props";
 

@@ -15,7 +15,7 @@ import {
   shellIconClose,
   shellIconLayersSm,
   shellIconSearch,
-} from "./icons";
+} from "../ui/icons";
 import {
   staticNumericCountProps as auxClassNumericCountProps,
   staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps,

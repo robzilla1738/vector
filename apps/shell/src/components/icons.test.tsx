@@ -1,3 +1,4 @@
+import { isValidElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
@@ -13,13 +14,14 @@ import {
   shellIconSidebarSm,
   shellIconStop,
   shellIconUnplug,
-} from "./icons";
-import * as shellIcons from "./icons";
-import { Mic } from "./central-icons";
+} from "../ui/icons";
+import * as shellIcons from "../ui/icons";
+import { Mic } from "../ui/icons";
 
 describe("Central Icons", () => {
   it("keeps the supplied viewbox and hides decorative icons from assistive technology", () => {
-    for (const icon of Object.values(shellIcons)) {
+    for (const [name, icon] of Object.entries(shellIcons)) {
+      if (!name.startsWith("shellIcon") || !isValidElement(icon)) continue;
       const markup = renderToStaticMarkup(icon);
       expect(markup).toContain('viewBox="0 0 24 24"');
       expect(markup).toContain('aria-hidden="true"');

@@ -9,7 +9,7 @@ import { ConversationDrafts } from "./ConversationDrafts";
 import { mergeHistory } from "../run-history";
 import { RecentConversationCard } from "./RecentWorkCard";
 import { openSavedTask } from "../task-navigation";
-import { shellIconRight } from "./icons";
+import { shellIconRight } from "../ui/icons";
 import { RecentWorkEmpty } from "./RecentWorkEmpty";
 import { Tabs } from "../ui";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";

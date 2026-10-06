@@ -19,7 +19,7 @@ import type {
 } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { bridge } from "../bridge";
-import { shellIconBack, shellIconClock, shellIconSearch } from "./icons";
+import { shellIconBack, shellIconClock, shellIconSearch } from "../ui/icons";
 import { RoutineSchedule, routineScheduleSummary, type CalendarTriggerAccounts } from "./RoutineSchedule";
 import { SkillMetadata } from "./SkillMetadata";
 import { SkillReplayPanel } from "./SkillReplayPanel";

@@ -4,7 +4,7 @@ import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { SettingsRow as Field, SettingsGroup, Switch } from "../../ui";
 import { bridge } from "../../bridge";
 import { useStore } from "../../store";
-import { shellIconRight } from "../../components/icons";
+import { shellIconRight } from "../../ui/icons";
 import { SearchEngineSetting } from "../../components/SearchEngineSetting";
 import { SearchEnginesSetting, type EngineRow } from "../../components/SearchEnginesSetting";
 import { DefaultBrowserSetting } from "../../components/DefaultBrowserSetting";

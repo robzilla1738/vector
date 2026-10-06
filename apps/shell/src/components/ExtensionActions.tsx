@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import type { HostMethodResult } from "@aux/contracts";
 import { bridge, inNativeHost } from "../bridge";
 import { runCommand } from "../commands";
-import { shellIconExtension, shellIconGearSm } from "./icons";
+import { shellIconExtension, shellIconGearSm } from "../ui/icons";
 import { Menu } from "../ui";
 import { useFeature } from "../use-feature";
 import { useExtensionActions } from "../features/extensions/use-extension-actions";

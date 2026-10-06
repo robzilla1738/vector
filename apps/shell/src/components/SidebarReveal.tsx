@@ -1,5 +1,5 @@
 import { runCommand } from "../commands";
-import { shellIconSidebarOpen } from "./icons";
+import { shellIconSidebarOpen } from "../ui/icons";
 import "./SidebarReveal.css";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 

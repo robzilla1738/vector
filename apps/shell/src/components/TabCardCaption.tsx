@@ -2,7 +2,7 @@ import type { PageTarget } from "@aux/contracts";
 import { hostOf, tabLabel } from "../workspace";
 import { useStore } from "../store";
 import { FavIcon } from "./SiteTile";
-import { shellIconPin } from "./icons";
+import { shellIconPin } from "../ui/icons";
 import "./TabCardCaption.css";
 
 /** Identical recorded page identity in the overview and delayed hover preview. */

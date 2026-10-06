@@ -12,7 +12,7 @@ import {
   shellIconLayers,
   shellIconPlay,
   shellIconTable,
-} from "./icons";
+} from "../ui/icons";
 import {
   staticSpacerProps as auxClassSpacerProps,
   staticNumericCountProps as auxClassNumericCountProps,

@@ -5,7 +5,7 @@ import "./FindBar.css";
 import { conversationFinder, readerFinder } from "../text-surface-find";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { useStore, call } from "../store";
-import { shellIconClose, shellIconDown, shellIconFind, shellIconUp } from "./icons";
+import { shellIconClose, shellIconDown, shellIconFind, shellIconUp } from "../ui/icons";
 import { bridge } from "../bridge";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { nativePoliteLiveProps } from "../ui/native-attribute-props";

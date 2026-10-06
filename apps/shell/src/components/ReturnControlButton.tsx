@@ -1,7 +1,7 @@
 import { bridge } from "../bridge";
 import { runCommand } from "../commands";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
-import { shellIconHandSm } from "./icons";
+import { shellIconHandSm } from "../ui/icons";
 
 export function ReturnControlButton({ pageId, compact = false }: { pageId: string; compact?: boolean }) {
   const key = useShortcutLabels();

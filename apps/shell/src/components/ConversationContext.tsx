@@ -3,7 +3,7 @@ import type { ConversationContext as Context } from "@aux/contracts";
 import { Popover } from "../ui/popover";
 import "./ContextPicker.css";
 import { Checkbox } from "../ui";
-import { shellIconLayersSm } from "./icons";
+import { shellIconLayersSm } from "../ui/icons";
 import { call, errToast } from "../store";
 
 /** Mounted per chat so pending responses cannot replace another chat's context. */

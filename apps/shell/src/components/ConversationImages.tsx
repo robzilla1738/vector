@@ -12,7 +12,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ConversationImage, PageContextRef, PageTarget } from "@aux/contracts";
 import { call, errToast, useStore } from "../store";
 import { bridge } from "../bridge";
-import { shellIconClose } from "./icons";
+import { shellIconClose } from "../ui/icons";
 import { staticExtraSmallIconButtonProps as auxReuseStaticExtraSmallIconButtonProps } from "../ui/class-props";
 
 type Rect = { x: number; y: number; width: number; height: number };

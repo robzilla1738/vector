@@ -4,7 +4,7 @@ import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import "./MemoryItems.css";
 import { ActionMenu, Checkbox, DetailPane, ListRow, Select, TextField } from "../ui";
-import { shellIconFolder } from "./icons";
+import { shellIconFolder } from "../ui/icons";
 import { MemoryExclusions } from "./MemoryExclusions";
 import { memorySourceExcluded } from "@aux/contracts/memory-context";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";

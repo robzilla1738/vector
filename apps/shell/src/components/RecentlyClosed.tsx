@@ -4,7 +4,7 @@ import { moveListFocus } from "../keyboard-list";
 import { useStore } from "../store";
 import { hostOf } from "../workspace";
 import { CLOSED_TAB_LIMIT } from "../closed-tabs";
-import { shellIconReopen } from "./icons";
+import { shellIconReopen } from "../ui/icons";
 import { useShortcutLabels } from "../use-shortcut-label";
 import { memo, type RefObject } from "react";
 

@@ -5,7 +5,7 @@ import type { LiveFolderItem } from "@aux/contracts";
 import { call } from "../store";
 import { executeCommand } from "../commands";
 import { FavIcon } from "./SiteTile";
-import { shellIconReload } from "./icons";
+import { shellIconReload } from "../ui/icons";
 import { beginOrganizationWork } from "../organization-performance";
 
 export function LiveFolderRows({ folderId }: { folderId: string }) {

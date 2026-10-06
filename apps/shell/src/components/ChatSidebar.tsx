@@ -6,7 +6,7 @@ import { bridge } from "../bridge";
 import { ChatSessions } from "./ChatSessions";
 import { useStore } from "../store";
 import { ResizeHandle } from "./ResizeHandle";
-import { shellIconFolder, shellIconGear, shellIconPencil, shellIconSearch } from "./icons";
+import { shellIconFolder, shellIconGear, shellIconPencil, shellIconSearch } from "../ui/icons";
 
 import "./ChatSidebar.css";
 

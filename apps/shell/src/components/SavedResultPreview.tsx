@@ -12,7 +12,7 @@ import { guardCommandCompletion } from "../command-completion";
 import { useConversationOwner } from "./ConversationControls";
 import { useConversationAttachmentOwner } from "./ConversationAttachmentControls";
 import { ResultPreviewControl, useResultPreviewCommand } from "./ResultPreviewControls";
-import { shellIconClose } from "./icons";
+import { shellIconClose } from "../ui/icons";
 import { ViewerFrame } from "./ViewerFrame";
 import { ActionMenu } from "../ui";
 import { isolatedHtmlDocument } from "../isolated-html";

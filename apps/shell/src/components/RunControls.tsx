@@ -10,7 +10,7 @@ import { bridge } from "../bridge";
 import { executeCommand } from "../commands";
 import { registerRunControlCommands, type RunControlCommand } from "../run-control-commands";
 import { performStopWork } from "../features/native-cdp-measurement/stop";
-import { shellIconHand, shellIconHandSm, shellIconPause, shellIconPlay, shellIconSquare } from "./icons";
+import { shellIconHand, shellIconHandSm, shellIconPause, shellIconPlay, shellIconSquare } from "../ui/icons";
 import { RunPanelDisclosure } from "./RunPanelAction";
 import "./RunControls.css";
 import { nativeStatusRoleProps, nativeAlertRoleProps } from "../ui/native-attribute-props";

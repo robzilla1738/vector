@@ -16,7 +16,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
-import { shellIconClose, shellIconFolder, shellIconMore } from "../components/icons";
+import { shellIconClose, shellIconFolder, shellIconMore } from "./icons";
 import { Menu } from "./dialog";
 import "./ui.css";
 import {

@@ -23,7 +23,7 @@ import {
   shellIconPencil,
   shellIconRight,
   shellIconTrash,
-} from "./icons";
+} from "../ui/icons";
 import { nativeButtonTypeProps as auxNativeButtonTypeProps } from "../ui/native-attribute-props";
 import {
   staticGhostButtonProps as auxClassGhostButtonProps,

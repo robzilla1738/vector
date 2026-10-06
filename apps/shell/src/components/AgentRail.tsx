@@ -7,7 +7,7 @@ import { useStore } from "../store";
 import { ResizeHandle } from "./ResizeHandle";
 import { Conversation } from "./surfaces";
 import { deferSurface } from "./DeferredSurface";
-import { shellIconChats, shellIconLeft, shellIconOpen, shellIconPlus, shellIconRail } from "./icons";
+import { shellIconChats, shellIconLeft, shellIconOpen, shellIconPlus, shellIconRail } from "../ui/icons";
 import { RunPresence } from "../agent/RunPresence";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";

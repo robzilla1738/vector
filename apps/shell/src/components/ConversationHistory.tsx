@@ -20,7 +20,7 @@ import {
   shellIconResult,
   shellIconSearch,
   shellIconTrash,
-} from "./icons";
+} from "../ui/icons";
 import { ConversationDrafts } from "./ConversationDrafts";
 import { draftKey } from "../conversation-drafts";
 import { AnswerMarkdown } from "./AnswerMarkdown";

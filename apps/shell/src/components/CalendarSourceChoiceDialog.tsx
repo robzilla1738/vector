@@ -4,7 +4,7 @@ import type { ConversationSource } from "@aux/contracts";
 import type { ReactNode, RefObject } from "react";
 import type { BrowserProfile } from "../bridge";
 import { Dialog } from "../ui";
-import { shellIconClose } from "./icons";
+import { shellIconClose } from "../ui/icons";
 import "./CalendarSourceChoiceDialog.css";
 
 interface Props {

@@ -1,6 +1,6 @@
 import "./FileTree.css";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { shellIconCode, shellIconFolder, shellIconFolderClosed, shellIconRight } from "./icons";
+import { shellIconCode, shellIconFolder, shellIconFolderClosed, shellIconRight } from "../ui/icons";
 import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
   nativeAriaHiddenProps as auxNativeAriaHiddenProps,

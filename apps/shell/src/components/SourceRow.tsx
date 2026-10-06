@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import type { ConversationSource } from "@aux/contracts";
 import { hostOf } from "../workspace";
-import { shellIconGlobe, shellIconOpen } from "./icons";
+import { shellIconGlobe, shellIconOpen } from "../ui/icons";
 import { ListRow } from "../ui";
 
 export function sourceDescription(source: ConversationSource, profileNames: Record<string, string> = {}) {

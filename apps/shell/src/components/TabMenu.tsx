@@ -27,7 +27,7 @@ import {
   shellIconRight,
   shellIconSidebarSm,
   shellIconSplit,
-} from "./icons";
+} from "../ui/icons";
 import { useShortcutLabels } from "../use-shortcut-label";
 import { useFeature } from "../use-feature";
 import { staticTextProps as auxClassTextProps } from "../ui/class-props";

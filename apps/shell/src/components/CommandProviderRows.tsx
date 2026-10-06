@@ -21,7 +21,7 @@ import {
   shellIconLayersSm,
   shellIconResult,
   shellIconSearch,
-} from "./icons";
+} from "../ui/icons";
 import type { ProviderSuggestion } from "./command-provider-types";
 import { commandTabRows } from "./command-tab-rows";
 import { bridge, type BrowserExtension } from "../bridge";

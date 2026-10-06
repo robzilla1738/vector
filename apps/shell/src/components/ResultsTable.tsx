@@ -8,7 +8,7 @@ import { useStore } from "../store";
 import { bridge, inNativeHost } from "../bridge";
 import { hostOf } from "../workspace";
 import type { ResultRecord } from "@aux/contracts";
-import { shellIconBack, shellIconDown, shellIconLayers, shellIconSearch, shellIconUp } from "./icons";
+import { shellIconBack, shellIconDown, shellIconLayers, shellIconSearch, shellIconUp } from "../ui/icons";
 import { staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
 import {
   staticNumericCountProps as auxClassNumericCountProps,

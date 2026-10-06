@@ -1,7 +1,7 @@
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { errorMessage } from "../error-message";
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { Mic } from "./central-icons";
+import { Mic } from "../ui/icons";
 import { setDictationDraft, useDictationDrafts } from "../dictation-drafts";
 import { bridge } from "../bridge";
 import { parseVoiceCommand, runVoiceCommand, voiceCommandLabels } from "../voice-commands";

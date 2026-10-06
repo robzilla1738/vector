@@ -1,6 +1,6 @@
 import { staticIconButtonProps } from "../ui/class-props";
 import type { RefObject } from "react";
-import { shellIconClose, shellIconSearch } from "../components/icons";
+import { shellIconClose, shellIconSearch } from "../ui/icons";
 import { moveListFocus } from "../keyboard-list";
 import { SectionRail } from "./SectionRail";
 import type { ConnectionTab } from "./routes";

@@ -11,7 +11,7 @@ import {
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { RunPanelAction, RunPanelDisclosure } from "../components/RunPanelAction";
-import { shellIconClose } from "../components/icons";
+import { shellIconClose } from "../ui/icons";
 import { ViewerFrame } from "../components/ViewerFrame";
 import { SuspensionPanel } from "../composer/SuspensionPanel";
 import { TextProposal } from "./TextProposal";

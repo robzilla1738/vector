@@ -10,7 +10,7 @@ import { useShallow } from "zustand/react/shallow";
 import type { Download } from "@aux/contracts";
 import { useStore, errToast, call, toast } from "../store";
 import { bridge } from "../bridge";
-import { shellIconClose, shellIconDownloadSm, shellIconSearch } from "./icons";
+import { shellIconClose, shellIconDownloadSm, shellIconSearch } from "../ui/icons";
 import { canDismissDownload, mergeDownloadSnapshot } from "../downloads";
 import {
   staticNumericCountProps as auxClassNumericCountProps,

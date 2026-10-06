@@ -6,7 +6,7 @@ import { call, useStore } from "../store";
 import { useConversationOwner } from "./ConversationControls";
 import { useConversationAttachmentOwner } from "./ConversationAttachmentControls";
 import { DocumentSnapshotControl } from "./DocumentSnapshotControls";
-import { shellIconClose } from "./icons";
+import { shellIconClose } from "../ui/icons";
 import { DocumentContent, DocumentExtractionNote } from "./DocumentContent";
 import { ViewerFrame } from "./ViewerFrame";
 import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";

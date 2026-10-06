@@ -12,7 +12,7 @@ import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
 
 import { Conversation } from "./surfaces";
-import { shellIconChrome } from "./icons";
+import { shellIconChrome } from "../ui/icons";
 import { AgentOverlay } from "../agent/AgentOverlay";
 import { visibleSplitGroup } from "../features/surfaces/split-actions";
 import { useSurfaceState } from "../features/surfaces/drag-state";

@@ -3,7 +3,7 @@ import type { ConversationArtifact, ConversationSummary } from "@aux/contracts";
 import { draftKey } from "../conversation-drafts";
 import { STATUS_LABEL } from "../run-status";
 import { useStore } from "../store";
-import { shellIconOpen, shellIconResult } from "./icons";
+import { shellIconOpen, shellIconResult } from "../ui/icons";
 import { ResultExcerpt } from "./ResultCard";
 import { AnswerPreview } from "./surfaces";
 

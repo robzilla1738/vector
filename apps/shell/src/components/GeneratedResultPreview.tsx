@@ -17,7 +17,7 @@ import { guardCommandCompletion } from "../command-completion";
 import { useConversationOwner } from "./ConversationControls";
 import { useConversationAttachmentOwner } from "./ConversationAttachmentControls";
 import { ResultPreviewControl } from "./ResultPreviewControls";
-import { shellIconClose } from "./icons";
+import { shellIconClose } from "../ui/icons";
 import { ViewerFrame } from "./ViewerFrame";
 import { staticExtraSmallIconButtonProps as auxClassExtraSmallIconButtonProps } from "../ui/class-props";
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ConversationImageAction, ConversationImageChoice } from "./ConversationImageControl";
 import { Checkbox } from "../ui";
-import { shellIconClose, shellIconResult } from "./icons";
+import { shellIconClose, shellIconResult } from "../ui/icons";
 import "./AttachmentTray.css";
 import { nativeAriaHiddenProps as auxNativeAriaHiddenProps } from "../ui/native-attribute-props";
 

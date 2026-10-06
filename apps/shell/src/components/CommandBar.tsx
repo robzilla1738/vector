@@ -48,7 +48,7 @@ import {
   shellIconSearch,
   shellIconSearchLg,
   shellIconSend,
-} from "./icons";
+} from "../ui/icons";
 import { bridge, type BrowserExtension } from "../bridge";
 import { recentConversations } from "../conversations";
 import { rememberSiteControlsOpener } from "../site-controls-opener";

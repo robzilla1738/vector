@@ -1,4 +1,4 @@
-import { shellIconPlusSm } from "./icons";
+import { shellIconPlusSm } from "../ui/icons";
 import { staticGhostButtonProps as auxClassGhostButtonProps } from "../ui/class-props";
 
 /** The home composer is already the empty chat state's primary action. */

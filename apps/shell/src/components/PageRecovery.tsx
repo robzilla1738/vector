@@ -7,7 +7,7 @@ import { call, useStore } from "../store";
 import { navigationFailure } from "../navigation-failure";
 import { guardCommandCompletion } from "../command-completion";
 import { useScopedCommandControls } from "../scoped-command-controls";
-import { shellIconAlert, shellIconGlobe } from "./icons";
+import { shellIconAlert, shellIconGlobe } from "../ui/icons";
 import {
   staticPrimaryButtonProps as auxClassPrimaryButtonProps,
   staticGhostButtonProps as auxClassGhostButtonProps,

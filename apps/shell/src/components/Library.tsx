@@ -27,7 +27,7 @@ import {
   shellIconRight,
   shellIconSearch,
   shellIconTrash,
-} from "./icons";
+} from "../ui/icons";
 import { bridge, inNativeHost } from "../bridge";
 import { RecentlyClosed } from "./RecentlyClosed";
 import { ClearHistory } from "./ClearHistory";
