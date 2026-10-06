@@ -1268,6 +1268,7 @@ export class RunService {
       queuedMessageId: message.messageId,
       goal: message.text,
       nativeTurnContext: target.config.nativeTurnContext,
+      executionTarget: target.config.executionTarget ?? "local",
       chatId: message.chatId,
       pageIds: message.pageIds,
       contextPageRefs: message.contextPageRefs,
@@ -2246,7 +2247,11 @@ export class RunService {
     const savedPrivateTask = opts.chatId ? this.deps.repo.conversationPrivateTask(opts.chatId) : undefined;
     if (savedPrivateTask === false && opts.privateTask === true)
       throw new AuxError("conflict", "Start a new private chat to change this conversation’s privacy mode.");
-    opts = { ...opts, privateTask: savedPrivateTask ?? opts.privateTask ?? false };
+    opts = {
+      ...opts,
+      privateTask: savedPrivateTask ?? opts.privateTask ?? false,
+      executionTarget: opts.executionTarget ?? "local",
+    };
     const selectedModel = opts.reasoning
       ? this.deps.settings
           .registryModels()
@@ -2831,12 +2836,28 @@ export class RunService {
     });
   }
 
+  async retryCloudSetup(
+    runId: string,
+    suspensionId: string,
+    token: string,
+    originalOwner: () => Promise<void>,
+  ): Promise<Run> {
+    if (!token || this.coordinator.get(runId).config?.nativeTurnContext !== token)
+      throw new AuxError("permission_denied", "Retry Cloud setup from the original Aux window.");
+    return this.coordinator.retryCloudSetup(runId, suspensionId, async () => {
+      if (this.coordinator.get(runId).config?.nativeTurnContext !== token)
+        throw new AuxError("permission_denied", "The original Aux window changed.");
+      await originalOwner();
+    });
+  }
+
   async resume(runId: string): Promise<Run> {
     const rootId = runRoot(this.deps.repo, runId, true);
     const parentSuspension = this.coordinator.suspensions.pending(rootId);
     if (
       parentSuspension?.request.resourceFunding ||
       parentSuspension?.request.resourceLimits ||
+      parentSuspension?.request.cloudSetup ||
       parentSuspension?.request.modelLimits
     )
       throw new AuxError(

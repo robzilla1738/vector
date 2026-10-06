@@ -1,3 +1,4 @@
+import { CloudSetupUnavailable } from "./cloud-setup-unavailable.js";
 import type { CloudExecutionContext, CloudReplExecutor } from "./cloud-execution.js";
 import { readFile } from "node:fs/promises";
 import { CloudReplClient } from "./cloud-repl-client.js";
@@ -83,12 +84,12 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
       configuration(): Promise<CloudConfiguration>;
       funding: CloudFunding;
       /** Actual saved run, original native turn/source, live policy and money consent checks. */
-      assertOwner(ctx: CloudExecutionContext, quote: CloudResourceQuote): Promise<void>;
+      assertOwner(ctx: CloudExecutionContext, quote?: CloudResourceQuote): Promise<void>;
       /** Immutable original source remains valid while the exact family is parked. */
-      assertOriginal(ctx: CloudExecutionContext, quote: CloudResourceQuote): Promise<void>;
+      assertOriginal(ctx: CloudExecutionContext, quote?: CloudResourceQuote): Promise<void>;
       resourceScopes(runId: string): ResourceLimitsReview["scopes"];
       pauseForResourceFunding(
-        error: ResourceFundingUnavailable | ResourceLimitsUnavailable,
+        error: ResourceFundingUnavailable | ResourceLimitsUnavailable | CloudSetupUnavailable,
         current?: () => Promise<void>,
       ): Promise<void>;
       /** One actual money decision before creating a VM; existing-session checks never repeat it. */
@@ -152,11 +153,47 @@ export class VercelSandboxExecutor implements CloudReplExecutor {
     return resource;
   }
 
-  private async create(
-    ctx: CloudExecutionContext,
-    signal: AbortSignal | undefined,
-  ): Promise<LiveResource> {
-    const configuration = await this.deps.configuration();
+  private async create(ctx: CloudExecutionContext, signal: AbortSignal | undefined): Promise<LiveResource> {
+    // Establish the immutable original source before reading protected configuration.
+    await this.deps.assertOwner(ctx);
+    let configuration: CloudConfiguration;
+    try {
+      configuration = await this.deps.configuration();
+    } catch (error) {
+      if (!(error instanceof AuxError) || error.code !== "needs_input") throw error;
+      await this.deps.assertOriginal(ctx);
+      const pending = this.resources.get(ctx.runId);
+      if (!pending) throw new AuxError("conflict", "Original cloud creation is unavailable.");
+      const review = { pending };
+      this.unsentReviews.set(ctx.runId, review);
+      try {
+        await this.deps.pauseForResourceFunding(
+          new CloudSetupUnavailable(
+            ctx.runId,
+            {
+              runId: ctx.runId,
+              originalDigest: createHash("sha256").update(JSON.stringify(ctx)).digest("hex"),
+            },
+            async () => {
+              await this.deps.assertOriginal(ctx);
+              const reviewed = await this.deps.configuration();
+              const digest = cloudQuoteIdentity(CloudResourceQuoteSchema.parse(reviewed.quote)).digest;
+              await this.deps.assertOriginal(ctx);
+              if (cloudQuoteIdentity((await this.deps.configuration()).quote).digest !== digest)
+                throw new AuxError("ref_stale", "The reviewed Cloud account changed during retry.");
+              await this.deps.assertOriginal(ctx);
+            },
+          ),
+          () => this.deps.assertOriginal(ctx),
+        );
+      } finally {
+        if (this.unsentReviews.get(ctx.runId) === review) this.unsentReviews.delete(ctx.runId);
+      }
+      throw new AuxError(
+        "cancelled",
+        "Cloud setup was reviewed. Observe the original turn before fresh admission.",
+      );
+    }
     const quote = CloudResourceQuoteSchema.parse(configuration.quote);
     await this.deps.assertOwner(ctx, quote);
     if (this.closed || signal?.aborted)

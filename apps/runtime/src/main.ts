@@ -1,3 +1,6 @@
+import type { VercelSandboxExecutor } from "./services/vercel-sandbox-executor.js";
+import type { CloudExecutionContext } from "./services/cloud-execution.js";
+import type { CloudRunAdmission } from "./services/cloud-run-admission.js";
 import type { CopilotServices } from "./services/copilot-services.js";
 import { deferRuntimeWork, isRuntimeIdle } from "./services/idle.js";
 import { markInterruptedRuns } from "./services/startup-recovery.js";
@@ -1514,8 +1517,104 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   };
 
 
+  let cloudRuntime: Promise<{ executor: VercelSandboxExecutor; admission: CloudRunAdmission }> | undefined;
+  let cloudExecutor: VercelSandboxExecutor | undefined;
+  const getCloudRuntime = () => {
+    shutdownAdmission.assertOpen();
+    if (cloudRuntime) return cloudRuntime;
+    const pending = (async () => {
+      const [execution, authority, settings] = await Promise.all([
+        import("./services/vercel-sandbox-executor.js"),
+        import("./services/cloud-run-admission.js"),
+        import("./services/cloud-settings.js"),
+      ]);
+      shutdownAdmission.assertOpen();
+      const admission = new authority.CloudRunAdmission({
+        repo,
+        native,
+        turns: runtimeServices.turnMentions,
+        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+        taskRevision: (taskId) => runtimeServices.tasks.get(taskId).revision,
+        checkMoney: async (request) => {
+          await runtimeServices.safetyGate.checkTrustedEffect(request, {
+            profileId: request.profileId,
+            scope: request.scope,
+            actor: request.actor,
+            turnId: request.turnId,
+            threadId: request.threadId,
+            runId: request.runId,
+          });
+        },
+      });
+      const owner = async (ctx: CloudExecutionContext, parked = false) => {
+        const current = () => {
+          shutdownAdmission.assertOpen();
+          const control = runtimeServices.runs.coordinator.controls.get(ctx.runId);
+          if (!control || control.abort.signal.aborted || (!parked && control.dispatchAbort?.signal.aborted))
+            throw new AuxError("cancelled", "The original cloud dispatch stopped.");
+        };
+        current();
+        if (parked) await admission.assertOriginal(ctx);
+        else await admission.assertOwner(ctx);
+        current();
+      };
+      const executor = new execution.VercelSandboxExecutor({
+        repo,
+        funding: runtimeServices.runs.funding,
+        configuration: () => settings.cloudSettingsFor(repo, native).configuration(),
+        assertOwner: (ctx) => owner(ctx),
+        assertOriginal: (ctx) => owner(ctx, true),
+        resourceScopes: (runId) => runtimeServices.budgets.resourceFundingScopes(runId),
+        pauseForResourceFunding: (error, current) =>
+          runtimeServices.runs.coordinator.pauseForResourceFunding(error, current),
+        authorizeCreate: (ctx, quote, quoteDigest) => admission.authorizeCreate(ctx, quote, quoteDigest),
+        authorizeBash: async (ctx, input) => {
+          await owner(ctx);
+          const before = JSON.stringify(runtimeServices.settings.agentPolicy());
+          const defaultNetwork = runtimeServices.settings.agentPolicy().agentMode !== "ask";
+          const network = input.network ?? defaultNetwork;
+          if (network && !defaultNetwork) {
+            const verdict = await recipientGate(ctx, {
+              action: "agent.bash.network",
+              recipient: "process:network",
+              digestParts: ["agent.bash.network", input.command],
+            });
+            if (verdict !== "allow") return verdict;
+          }
+          await owner(ctx);
+          if (JSON.stringify(runtimeServices.settings.agentPolicy()) !== before)
+            throw new AuxError("ref_stale", "Permissions changed before cloud command dispatch.");
+          return network;
+        },
+      });
+      cloudExecutor = executor;
+      return { executor, admission };
+    })();
+    cloudRuntime = pending;
+    void pending.catch(() => {
+      if (cloudRuntime === pending) cloudRuntime = undefined;
+    });
+    return pending;
+  };
+  agentLoop.cloudExecutor = {
+    selected: (runId) => repo.getRun(runId)?.config?.executionTarget === "cloud",
+    eval: async (ctx, deps, code, options) =>
+      (await getCloudRuntime()).executor.eval(ctx, deps, code, options),
+    wait: async (ctx, cellId, yieldTimeMs, terminate) =>
+      (await getCloudRuntime()).executor.wait(ctx, cellId, yieldTimeMs, terminate),
+    hasOpen: (runId) => cloudExecutor?.hasOpen(runId) ?? false,
+    closeRun: async (runId) => {
+      if (!cloudRuntime) return;
+      const { executor, admission } = await cloudRuntime;
+      await executor.closeRun(runId);
+      if (!runtimeServices.runs.coordinator.controls.has(runId)) admission.release(runId);
+    },
+  };
   agentLoop.bash = async (input, ctx) => {
-    const result = await runtimeServices.bashSeatbelt.run(input, ctx);
+    const result =
+      repo.getRun(ctx.runId)?.config?.executionTarget === "cloud"
+        ? await (await getCloudRuntime()).executor.bash(input, ctx)
+        : await runtimeServices.bashSeatbelt.run(input, ctx);
     return "park" in result ? result : { output: result };
   };
   // 06-X routine_update: a model-proposed automation change confirms with the
@@ -1938,7 +2037,21 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     retireAuthority: async () => {
       try {
         const results = await Promise.allSettled([
-          serviceContainer.peek("runs")?.close(),
+          (async () => {
+            const failures: unknown[] = [];
+            try {
+              await serviceContainer.peek("runs")?.close();
+            } catch (error) {
+              failures.push(error);
+            }
+            try {
+              await cloudRuntime?.then(({ executor }) => executor.close());
+            } catch (error) {
+              failures.push(error);
+            }
+            if (failures.length)
+              throw new AggregateError(failures, "Run and cloud resource cleanup awaits acknowledgement.");
+          })(),
           import("./services/cloud-settings.js").then(({ closeCloudSettings }) => closeCloudSettings(repo)),
           serviceContainer.peek("blocking")?.close(),
           serviceContainer.peek("copilot")?.then((services) => services.close()),

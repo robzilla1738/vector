@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+/** Explicit backend selection; native original-turn ownership is checked separately. */
+export const ExecutionTargetSchema = z.enum(["local", "cloud"]);
+export type ExecutionTarget = z.infer<typeof ExecutionTargetSchema>;
+
 const rate = z.number().finite().nonnegative();
 /** Public account-reviewed rates; credentials are held separately in the OS credential store. */
 export const CloudResourceQuoteSchema = z

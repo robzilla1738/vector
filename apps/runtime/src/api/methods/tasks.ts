@@ -176,7 +176,11 @@ async function retired_h_tasks_archive(ctx: MethodCtx): Promise<unknown> {
 async function h_tasks_start(ctx: MethodCtx): Promise<unknown> {
   const { params, s, tasks } = ctx;
   const { taskId, expectedRevision, ...options } = params;
-  return s.runs.start({ ...options, ...tasks.prepareRun(taskId, expectedRevision, options.context) });
+  return s.runs.start({
+    ...options,
+    ...tasks.prepareRun(taskId, expectedRevision, options.context),
+    nativeTurnContext: ctx.client.nativeTurnContext,
+  });
 }
 
 export const tasksMethods: Partial<Record<MethodName, MethodHandler>> = {

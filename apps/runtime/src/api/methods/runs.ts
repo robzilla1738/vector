@@ -103,6 +103,30 @@ async function h_runs_continue_budget(ctx: MethodCtx): Promise<unknown> {
   const p = MethodSchemas["runs.continueBudget"].parse(ctx.params);
   return ctx.s.runs.continueBudget(p.runId, p.suspensionId, p.limits);
 }
+async function h_runs_use_local_execution(ctx: MethodCtx): Promise<unknown> {
+  const token = ctx.client.nativeTurnContext;
+  if (ctx.client.external || ctx.client.codeMode || !token)
+    throw new AuxError("permission_denied", "Continue locally from the original Aux window.");
+  const p = MethodSchemas["runs.useLocalExecution"].parse(ctx.params);
+  const native = ctx.s.native;
+  if (!native?.turnSourceContext)
+    throw new AuxError("capability_unsupported", "Original Aux window authority is unavailable.");
+  return ctx.s.runs.useLocalExecution(p.runId, p.suspensionId, token, async () => {
+    await native.turnSourceContext!(token);
+  });
+}
+async function h_runs_retry_cloud_setup(ctx: MethodCtx): Promise<unknown> {
+  const token = ctx.client.nativeTurnContext;
+  if (ctx.client.external || ctx.client.codeMode || !token)
+    throw new AuxError("permission_denied", "Retry Cloud setup from the original Aux window.");
+  const p = MethodSchemas["runs.retryCloudSetup"].parse(ctx.params);
+  const native = ctx.s.native;
+  if (!native?.turnSourceContext)
+    throw new AuxError("capability_unsupported", "Original Aux window authority is unavailable.");
+  return ctx.s.runs.retryCloudSetup(p.runId, p.suspensionId, token, async () => {
+    await native.turnSourceContext!(token);
+  });
+}
 async function h_runs_answer(ctx: MethodCtx): Promise<unknown> {
   const { client, params: p, s, suspensions } = ctx;
   if (client.external)
@@ -176,6 +200,8 @@ export const runsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "runs.cancel": h_runs_cancel,
   "runs.answer": h_runs_answer,
   "runs.continueBudget": h_runs_continue_budget,
+  "runs.useLocalExecution": h_runs_use_local_execution,
+  "runs.retryCloudSetup": h_runs_retry_cloud_setup,
   "runs.queue": h_runs_queue,
   "runs.steer": h_runs_steer,
   "runs.messages.list": h_runs_messages_list,

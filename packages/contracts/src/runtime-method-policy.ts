@@ -281,6 +281,8 @@ export const RuntimeMethodPolicy = {
   "runs.cancel": { feature: "core", auth: "standard" },
   "runs.answer": { feature: "core", auth: "standard" },
   "runs.continueBudget": { feature: "core", auth: "aux-webui" },
+  "runs.useLocalExecution": { feature: "core", auth: "aux-webui" },
+  "runs.retryCloudSetup": { feature: "core", auth: "aux-webui" },
   "runs.queue": { feature: "core", auth: "handler-guarded" },
   "runs.steer": { feature: "core", auth: "handler-guarded" },
   "runs.messages.list": { feature: "core", auth: "handler-guarded" },

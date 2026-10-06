@@ -1205,9 +1205,18 @@ index 532a9a0..8dd0494 100644
                     {"native.downloadRenameReceipts", "native.downloadNamingCandidate", "native.downloadPreviewText",
                      "native.renameDownload", "native.undoDownloadRename",
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-index dffd693..72b2e11 100644
+index dffd693..333f42b 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1035,7 +1035,7 @@ void WebUIBrowserUI::Request(const std::string& method,
+           },
+           std::move(callback));
+   const auto& api_method = (*list)[0].GetString();
+-  if (api_method == "runs.start" || api_method == "runs.useLocalExecution" || api_method == "tasks.start" ||
++  if (api_method == "runs.start" || api_method == "runs.useLocalExecution" || api_method == "runs.retryCloudSetup" || api_method == "tasks.start" ||
+       api_method == "runs.retry" || api_method == "agent.images.generate" ||
+       api_method == "agent.utility.intent" || api_method == "agent.tidy.propose" ||
+       api_method == "agent.tabName.suggest" || api_method == "import.preview" || api_method == "import.selectExport" || api_method == "import.extensions.review" || api_method == "import.selectWindow" || api_method == "import.exportStatus" ||
 @@ -1044,6 +1044,10 @@ void WebUIBrowserUI::Request(const std::string& method,
          api_method == "models.auth.start" ||
        api_method == "models.auth.status" || api_method == "models.auth.cancel" ||

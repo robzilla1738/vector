@@ -1,4 +1,4 @@
-import { CloudConfigureParamsSchema, CloudSettingsStatusSchema } from "./cloud-execution.js";
+import { ExecutionTargetSchema, CloudConfigureParamsSchema, CloudSettingsStatusSchema } from "./cloud-execution.js";
 import {
   CopilotAttemptParams,
   CopilotAccountParams,
@@ -14,7 +14,11 @@ import { SafetyActivityQuerySchema, SafetyActivityPageSchema } from "./safety-ac
 import { AgentModeSchema, AgentPolicyOverrideSchema } from "./agent-policy.js";
 import { AUX_FEATURES, type AuxFeature } from "./aux-features.js";
 import { DownloadNamingSettingsSchema } from "./download-naming.js";
-import { ModelConnectionChangeSchema, ImageModelSchema, LocalModelServerSchema } from "./model-connections.js";
+import {
+  ModelConnectionChangeSchema,
+  ImageModelSchema,
+  LocalModelServerSchema,
+} from "./model-connections.js";
 import { BrowserRuntimeMethodSchemas, BrowserRuntimeResultSchemas } from "./browser-runtime-api.js";
 import { MentionRefsSchema } from "./mentions.js";
 export * from "./model-connections.js";
@@ -520,6 +524,7 @@ export const RunsStartParams = z.object({
   modelId: z.string().optional(),
   reasoning: z.enum(["low", "medium", "high"]).optional(),
   privateTask: z.boolean().default(false),
+  executionTarget: ExecutionTargetSchema.default("local"),
   maxSteps: z.number().int().nonnegative().optional(),
   maxCostUsd: z.number().nonnegative().optional(),
   /** `0` = no per-run cap. */
@@ -1608,6 +1613,8 @@ export const MethodSchemas = {
   "runs.cancel": RunsControlParams,
   "runs.answer": RunsAnswerParams,
   "runs.continueBudget": RunsContinueBudgetParams,
+  "runs.useLocalExecution": z.object({ runId: id, suspensionId: id }).strict(),
+  "runs.retryCloudSetup": z.object({ runId: id, suspensionId: id }).strict(),
   "runs.queue": RunsQueueParams,
   "runs.steer": RunsSteerParams,
   "runs.messages.list": z.object({ chatId: id }),
@@ -2392,6 +2399,8 @@ export const ResultSchemas = {
   "runs.cancel": RunSchema,
   "runs.answer": RunSchema,
   "runs.continueBudget": RunSchema,
+  "runs.useLocalExecution": RunSchema,
+  "runs.retryCloudSetup": RunSchema,
   "runs.queue": RunMessageSchema,
   "runs.steer": RunMessageSchema,
   "runs.messages.list": z.array(RunMessageSchema),

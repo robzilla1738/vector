@@ -1,3 +1,4 @@
+import type { BashSeatbeltInput } from "./bash.js";
 import type { z } from "zod";
 import type { ModelMessage } from "ai";
 import type { ResultCitation, SuspensionKind } from "@aux/contracts";
@@ -118,12 +119,7 @@ export interface LoopToolDeps {
   fileWrite?: (path: string, content: string) => Promise<void>;
   /** `bash` under current permissions; `{park}` propagates an Ask-mode network request. */
   bash?: (
-    input: {
-      command: string;
-      timeoutMs?: number;
-      workdir?: string;
-      network?: boolean;
-    },
+    input: BashSeatbeltInput,
     ctx: { runId: string; threadId: string; turnId: string },
   ) => Promise<LoopToolResult>;
   /** Browser-history search (06-X history_search). */

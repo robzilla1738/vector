@@ -465,7 +465,7 @@ export function buildToolManifest(): LoopToolManifest {
           network: z.boolean().optional(),
         })
         .parse(raw);
-      return need(ctx.deps.bash, "bash")(input, {
+      return need(ctx.deps.bash, "bash")({ ...input, signal: ctx.signal }, {
         runId: ctx.runId,
         threadId: ctx.threadId,
         turnId: ctx.turnId,

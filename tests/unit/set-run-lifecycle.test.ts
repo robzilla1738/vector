@@ -2731,7 +2731,7 @@ it("switches the original cloud family to local only after cleanup ACK and live 
   }
 });
 
-async function originalCloudResourceReview() {
+async function originalCloudResourceReview(missingSetup = false) {
   const h = harness();
   const { VercelSandboxExecutor } =
     await import("../../apps/runtime/dist/services/vercel-sandbox-executor.js");
@@ -2752,24 +2752,28 @@ async function originalCloudResourceReview() {
   });
   const authorizeCreate = vi.fn(async () => {});
   const originalOwner = async () => {};
+  let configured = !missingSetup;
   const executor = new VercelSandboxExecutor({
     repo: h.repo,
     funding: h.runs.funding,
-    configuration: async () => ({
-      token: "fixture-no-account-call",
-      teamId: "team_fixture",
-      projectId: "project_fixture",
-      quote: {
-        revision: 1,
-        accountDigest: "a".repeat(64),
-        region: "iad1",
-        vcpus: 2,
-        timeoutMs: 60000,
-        rateBasis: "account-contract",
-        rateSource: "https://vercel.com/docs/sandbox/pricing",
-        rates: { cpuUsdPerCoreHour: 1, memoryUsdPerGBHour: 1, outboundUsdPerGB: 1, creationUsd: 1 },
-      },
-    }),
+    configuration: async () => {
+      if (!configured) throw new AuxError("needs_input", "Private credential-store detail");
+      return {
+        token: "fixture-no-account-call",
+        teamId: "team_fixture",
+        projectId: "project_fixture",
+        quote: {
+          revision: 1,
+          accountDigest: "a".repeat(64),
+          region: "iad1",
+          vcpus: 2,
+          timeoutMs: 60000,
+          rateBasis: "account-contract",
+          rateSource: "https://vercel.com/docs/sandbox/pricing",
+          rates: { cpuUsdPerCoreHour: 1, memoryUsdPerGBHour: 1, outboundUsdPerGB: 1, creationUsd: 1 },
+        },
+      };
+    },
     assertOwner: originalOwner,
     assertOriginal: originalOwner,
     resourceScopes: () => [{ scope: "month", limitUsd: 3 }],
@@ -2790,7 +2794,20 @@ async function originalCloudResourceReview() {
   const originalAttempt = executor
     .bash({ command: "printf not-dispatched", network: false }, { runId, threadId: runId, turnId: runId })
     .catch((error: unknown) => error);
-  return { h, runId, token, control, executor, create, authorizeCreate, originalOwner, originalAttempt };
+  return {
+    h,
+    runId,
+    token,
+    control,
+    executor,
+    create,
+    authorizeCreate,
+    originalOwner,
+    originalAttempt,
+    configure: () => {
+      configured = true;
+    },
+  };
 }
 
 it("continues locally through the actual executor's provably unsent resource-review initializer", async () => {
@@ -2886,5 +2903,48 @@ it("joins an ordinary in-flight provider dispatch before repository shutdown", a
       await h.runs.close();
       h.repo.db.close();
     }
+  }
+});
+
+it("parks missing Cloud setup durably without revealing credentials or dispatching and explicitly retries the original run", async () => {
+  const {
+    h,
+    runId,
+    token,
+    control,
+    executor,
+    create,
+    authorizeCreate,
+    originalOwner,
+    originalAttempt,
+    configure,
+  } = await originalCloudResourceReview(true);
+  try {
+    await vi.waitFor(() => expect(h.runs.coordinator.suspensions.pending(runId)).toBeDefined());
+    const pending = h.runs.coordinator.suspensions.pending(runId)!;
+    expect(h.repo.getRun(runId)?.status).toBe("needs_input");
+    expect(pending.request.cloudSetup).toMatchObject({ runId });
+    expect(JSON.stringify(pending)).not.toContain("Private credential-store detail");
+    await expect(h.runs.coordinator.answer(runId, "Configured")).rejects.toMatchObject({ code: "conflict" });
+    await expect(h.runs.resume(runId)).rejects.toMatchObject({ code: "conflict" });
+    await expect(
+      h.runs.retryCloudSetup(runId, pending.suspensionId, token, originalOwner),
+    ).rejects.toMatchObject({ code: "needs_input" });
+    expect(h.runs.coordinator.suspensions.pending(runId)?.suspensionId).toBe(pending.suspensionId);
+    await expect(
+      h.runs.retryCloudSetup(runId, pending.suspensionId, "wrong-window", originalOwner),
+    ).rejects.toMatchObject({ code: "permission_denied" });
+    configure();
+    await h.runs.retryCloudSetup(runId, pending.suspensionId, token, originalOwner);
+    expect(await originalAttempt).toMatchObject({ code: "cancelled" });
+    expect(h.repo.getRun(runId)).toMatchObject({ status: "running", config: { executionTarget: "cloud" } });
+    expect(create).not.toHaveBeenCalled();
+    expect(authorizeCreate).not.toHaveBeenCalled();
+    expect(h.repo.db.prepare("SELECT COUNT(*) AS n FROM execution_resources").get()).toMatchObject({ n: 0 });
+    await executor.closeRun(runId);
+  } finally {
+    control.abort.abort();
+    await originalAttempt;
+    h.repo.db.close();
   }
 });

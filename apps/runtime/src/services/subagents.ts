@@ -362,6 +362,7 @@ export class SubagentService {
         context: source.config?.context,
         privateTask: source.config?.privateTask,
         nativeTurnContext: source.config?.nativeTurnContext,
+        executionTarget: source.config?.executionTarget ?? "local",
         reasoning: source.config?.reasoning,
         contextSnapshot: true,
         instructions: `Subagent profile: ${input.profile}. Work within your selected pages and report findings to the parent.`,

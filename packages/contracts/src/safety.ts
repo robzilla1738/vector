@@ -377,6 +377,10 @@ export const SuspensionRequestSchema = z
     budget: BudgetSuspensionSchema.optional(),
     resourceFunding: FundingOwnerSchema.optional(),
     resourceLimits: ResourceLimitsReviewSchema.optional(),
+    cloudSetup: z
+      .object({ runId: id, originalDigest: z.string().regex(/^[a-f0-9]{64}$/) })
+      .strict()
+      .optional(),
     modelLimits: z
       .object({
         runId: id,
@@ -397,7 +401,8 @@ export const SuspensionRequestSchema = z
     (request) =>
       (request.resourceFunding === undefined &&
         request.resourceLimits === undefined &&
-        request.modelLimits === undefined) ||
+        request.modelLimits === undefined &&
+        request.cloudSetup === undefined) ||
       request.kind === "handoff",
     {
       message: "Cloud envelope review requires a handoff, never a redeemable budget request.",

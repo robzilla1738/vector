@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ExecutionTargetSchema } from "./cloud-execution.js";
 import { WaitingPhraseSchema } from "./utility.js";
 import { MentionRefsSchema } from "./mentions.js";
 import { AgentPageIsolationSchema } from "./egress.js";
@@ -153,7 +154,7 @@ export const RunSchema = z.object({
       nightShiftItemId: z.string().uuid().optional(),
       /** Signed-out isolated task tabs, captured when the task starts. Distinct from private windows. */
       privateTask: z.boolean().optional(),
-      executionTarget: z.enum(["local", "cloud"]).optional(),
+      executionTarget: ExecutionTargetSchema.optional(),
       nativeTurnContext: z.string().uuid().optional(),
       setMemberSource: z
         .object({

@@ -1,3 +1,4 @@
+import { CloudSetupUnavailable } from "../services/cloud-setup-unavailable.js";
 import { lineageRuns, runRoot } from "../services/run-lineage.js";
 import { resourceFundingAccounting } from "../services/resource-accounting.js";
 import {
@@ -48,7 +49,12 @@ export interface RunControl {
   budgetWaiter?: { suspensionId: string; resolve: () => void };
   budgetContinuation?: Promise<void>;
   resourceContinuation?: Promise<void>;
-  resourceWaiter?: { suspensionId: string; validate: () => Promise<void>; resolve: () => void };
+  resourceWaiter?: {
+    suspensionId: string;
+    validate: () => Promise<void>;
+    retryReady?: () => Promise<void>;
+    resolve: () => void;
+  };
   answerWaiter?: { resolve: (answer: string) => void };
   span?: {
     spanId: string;
@@ -412,7 +418,11 @@ export class RunCoordinator {
   }
 
   async pauseForResourceFunding(
-    error: ResourceFundingUnavailable | ResourceLimitsUnavailable | ModelFundingUnavailable,
+    error:
+      | ResourceFundingUnavailable
+      | ResourceLimitsUnavailable
+      | ModelFundingUnavailable
+      | CloudSetupUnavailable,
     current?: () => void | Promise<void>,
   ): Promise<void> {
     const validate = async () => {
@@ -465,12 +475,16 @@ export class RunCoordinator {
               ? { modelLimits: error.proof }
               : error instanceof ResourceFundingUnavailable
                 ? { resourceFunding: error.funding }
-                : { resourceLimits: error.proof }),
+                : error instanceof CloudSetupUnavailable
+                  ? { cloudSetup: error.proof }
+                  : { resourceLimits: error.proof }),
             instruction: error.message,
             guidance:
               error instanceof ModelFundingUnavailable
                 ? "Stop this run before changing model connections. An answer or budget increase cannot supply a missing provider bound."
-                : "Continue locally, stop this run, or configure a verified cloud resource envelope. An answer or budget increase cannot authorize an unenforceable envelope.",
+                : error instanceof CloudSetupUnavailable
+                  ? "Continue locally or stop this run. Configure Cloud in Settings, then use Retry Cloud setup here. An answer cannot authorize account setup."
+                  : "Continue locally, stop this run, or configure a verified cloud resource envelope. An answer or budget increase cannot authorize an unenforceable envelope.",
           },
         });
         const continued = new Promise<void>((resolve) => {
@@ -479,6 +493,7 @@ export class RunCoordinator {
           control.resourceWaiter = {
             suspensionId: suspension.suspensionId,
             validate,
+            retryReady: error instanceof CloudSetupUnavailable ? error.ready : undefined,
             resolve: () => {
               control.abort.signal.removeEventListener("abort", stopped);
               resolve();
@@ -547,10 +562,19 @@ export class RunCoordinator {
     });
   }
 
-  async useLocalExecution(
+  useLocalExecution(runId: string, suspensionId: string, originalOwner: () => Promise<void>): Promise<Run> {
+    return this.resolveCloudHandoff(runId, suspensionId, originalOwner, "local");
+  }
+
+  retryCloudSetup(runId: string, suspensionId: string, originalOwner: () => Promise<void>): Promise<Run> {
+    return this.resolveCloudHandoff(runId, suspensionId, originalOwner, "cloud");
+  }
+
+  private async resolveCloudHandoff(
     runId: string,
     suspensionId: string,
     originalOwner: () => Promise<void>,
+    target: "local" | "cloud",
   ): Promise<Run> {
     return withRunAuthorityMutation(
       this.deps.repo,
@@ -567,7 +591,10 @@ export class RunCoordinator {
           waiter.suspensionId !== suspensionId ||
           pending?.suspensionId !== suspensionId ||
           pending.kind !== "handoff" ||
-          (!pending.request.resourceFunding && !pending.request.resourceLimits) ||
+          (!pending.request.resourceFunding &&
+            !pending.request.resourceLimits &&
+            !pending.request.cloudSetup) ||
+          (target === "cloud" && (!pending.request.cloudSetup || !waiter.retryReady)) ||
           root.status !== "needs_input" ||
           root.config?.executionTarget !== "cloud"
         )
@@ -594,15 +621,19 @@ export class RunCoordinator {
         // Any ambiguous stop keeps the cloud mode, handoff and funding holds intact.
         for (const id of family) await cloud.closeRun(id);
         await validate();
+        if (target === "cloud") {
+          await waiter.retryReady!();
+          await validate();
+        }
         this.deps.repo.transaction(() => {
           for (const id of family) {
             const run = this.get(id);
             if (id !== runId && TERMINAL_STATUSES.has(run.status)) continue;
             if (!run.config) throw new AuxError("ref_stale", "Original run configuration is unavailable.");
-            run.config.executionTarget = "local";
+            run.config.executionTarget = target;
             if (id === runId) {
               run.status = "running";
-              run.statusMessage = "Continuing locally";
+              run.statusMessage = target === "local" ? "Continuing locally" : "Retrying Cloud setup";
             }
             this.deps.repo.saveRun(run);
           }
@@ -610,7 +641,11 @@ export class RunCoordinator {
         });
         this.deps.events.emit(
           EventTypes.RunStatus,
-          { runId, status: "running", message: "Continuing locally" },
+          {
+            runId,
+            status: "running",
+            message: target === "local" ? "Continuing locally" : "Retrying Cloud setup",
+          },
           runId,
         );
         this.deps.events.emit(EventTypes.RunUpdated, { run: this.get(runId) }, runId);
@@ -1017,6 +1052,7 @@ export class RunCoordinator {
         if (
           pending?.request.resourceFunding ||
           pending?.request.resourceLimits ||
+          pending?.request.cloudSetup ||
           pending?.request.modelLimits
         )
           throw new AuxError(

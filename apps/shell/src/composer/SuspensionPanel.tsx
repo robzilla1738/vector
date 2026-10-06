@@ -43,7 +43,10 @@ export function SuspensionPanel({
   const instruction =
     typed?.request.instruction ?? question ?? run.statusMessage ?? "Aux is waiting for your answer.";
   const kind = typed?.kind;
-  const canAnswer = kind === "ask-user-question" || kind === "handoff";
+  const resourceHandoff =
+    kind === "handoff" &&
+    !!(typed?.request.resourceFunding || typed?.request.resourceLimits || typed?.request.cloudSetup);
+  const canAnswer = kind === "ask-user-question" || (kind === "handoff" && !resourceHandoff);
   const text = draft?.question === instruction ? draft.text : "";
   const setText = (value: string) => useStore.getState().setRunAnswerDraft(run.runId, instruction, value);
 
@@ -93,6 +96,24 @@ export function SuspensionPanel({
     }
   }
 
+  async function useLocalExecution(retryCloud = false) {
+    if (!resourceHandoff || !typed || !hydrated || readOnly || busy || sending.current) return;
+    sending.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await call(retryCloud ? "runs.retryCloudSetup" : "runs.useLocalExecution", {
+        runId: run.runId,
+        suspensionId: typed.suspensionId,
+      });
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      sending.current = false;
+      setBusy(false);
+    }
+  }
+
   if (typed?.kind === "budget" && !readOnly)
     return <BudgetPrompt key={typed.suspensionId} run={run} suspension={typed} />;
 
@@ -118,8 +139,26 @@ export function SuspensionPanel({
       {(kind === "approval" || kind === "action-confirmation") && (
         <p {...staticHintProps}>Review the approval prompt. Aux will wait for your decision.</p>
       )}
-      {kind === "handoff" && (
+      {kind === "handoff" && !resourceHandoff && (
         <p {...staticHintProps}>Use the page, return control, then tell Aux when you’re done.</p>
+      )}
+      {typed?.request.cloudSetup && (
+        <button
+          className="btn primary sm"
+          disabled={readOnly || !hydrated || busy || answerPending}
+          onClick={() => void useLocalExecution(true)}
+        >
+          {busy ? "Checking Cloud setup…" : "Retry Cloud setup"}
+        </button>
+      )}
+      {resourceHandoff && (
+        <button
+          className="btn primary sm"
+          disabled={readOnly || !hydrated || busy || answerPending}
+          onClick={() => void useLocalExecution()}
+        >
+          {busy ? "Stopping cloud execution…" : "Continue locally"}
+        </button>
       )}
       {canAnswer && (
         <div className="ni-row">
@@ -154,7 +193,8 @@ export function SuspensionPanel({
       )}
       {error && (
         <p {...staticFieldErrorProps} {...nativeAlertRoleProps}>
-          {error} Your answer is kept.
+          {error}
+          {!resourceHandoff && " Your answer is kept."}
         </p>
       )}
     </section>
