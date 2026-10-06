@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { openDb, Repo } from "@aux/runtime";
+import { openDb } from "@aux/runtime/database";
+import { Repo } from "@aux/runtime/repository";
 import { MethodSchemas } from "@aux/contracts";
 it("imports atomically and preserves existing titles on repeated imports", () => {
   const db = openDb(":memory:");

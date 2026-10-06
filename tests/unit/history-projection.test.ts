@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { openDb, Repo } from "@aux/runtime";
+import { openDb } from "@aux/runtime/database";
+import { Repo } from "@aux/runtime/repository";
 import { HistoryProjection } from "../../apps/runtime/src/services/history-projection.js";
 
 it("atomically rebuilds the derived FTS index and applies ordered Chromium deltas", () => {

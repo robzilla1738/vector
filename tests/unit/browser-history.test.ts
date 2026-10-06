@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { MethodSchemas } from "@aux/contracts";
-import { openDb, Repo } from "@aux/runtime";
+import { openDb } from "@aux/runtime/database";
+import { Repo } from "@aux/runtime/repository";
 
 it("pages tied visit times without skipping entries and combines date and literal search filters", () => {
   const db = openDb(":memory:");

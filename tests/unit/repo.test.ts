@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { openDb, Repo } from "@aux/runtime";
+import { openDb } from "@aux/runtime/database";
+import { Repo } from "@aux/runtime/repository";
 import type { PageTarget, Run } from "@aux/contracts";
 
 const memRepo = () => new Repo(openDb(":memory:"));

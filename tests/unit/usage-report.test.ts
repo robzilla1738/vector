@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { openDb } from "@aux/runtime";
+import { openDb } from "@aux/runtime/database";
 import { usageReport } from "../../apps/runtime/src/services/usage-report";
 
 it("groups recorded, estimated, and unpriced model calls without dropping paged runs", () => {

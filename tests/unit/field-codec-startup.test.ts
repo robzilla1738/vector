@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { openDb } from "@aux/runtime";
+import { openDb } from "@aux/runtime/database";
 import { initializeFieldCodec } from "../../apps/runtime/src/store/field-codec.js";
 import { profileSecrets } from "../support/profile-secrets.js";
 

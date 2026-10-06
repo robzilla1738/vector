@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { DatabaseSync } from "node:sqlite";
-import { openDb, Repo } from "@aux/runtime";
+import { openDb } from "@aux/runtime/database";
+import { Repo } from "@aux/runtime/repository";
 
 const connections: DatabaseSync[] = [];
 function repo() {
