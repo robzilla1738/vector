@@ -1,0 +1,1463 @@
+diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
+index c76f4b73ad..de8462db3e 100644
+--- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
++++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
+@@ -52,6 +52,10 @@
+ #include "chrome/browser/breadcrumbs/breadcrumb_manager_keyed_service_factory.h"
+ #include "chrome/browser/browser_actuator/browser_actuator_service_factory.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#endif
+ #include "chrome/browser/browsing_data/browsing_data_history_observer_service.h"
+ #include "chrome/browser/browsing_data/chrome_browsing_data_lifetime_manager_factory.h"
+ #include "chrome/browser/browsing_data/chrome_browsing_data_remover_delegate_factory.h"
+@@ -854,6 +858,9 @@ void ChromeBrowserMainExtraPartsProfiles::
+   browser_sync::UserEventServiceFactory::GetInstance();
+ #if !BUILDFLAG(IS_ANDROID)
+   BrowserManagerServiceFactory::GetInstance();
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  aux::TabCatalog::EnsureFactoryBuilt();
++#endif
+ #endif
+   BrowsingDataHistoryObserverService::Factory::GetInstance();
+ #if !BUILDFLAG(IS_ANDROID)
+diff --git a/chrome/browser/profiles/profile.cc b/chrome/browser/profiles/profile.cc
+index d36fe0574b..9f25c4624d 100644
+--- a/chrome/browser/profiles/profile.cc
++++ b/chrome/browser/profiles/profile.cc
+@@ -336,6 +336,7 @@ const char Profile::kProfileKey[] = "__PROFILE__";
+ 
+ // static
+ void Profile::RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
++  registry->RegisterDictionaryPref("aux.download_renames");
+   registry->RegisterBooleanPref(
+       prefs::kSearchSuggestEnabled,
+       true,
+diff --git a/chrome/browser/ui/aux/link_router.cc b/chrome/browser/ui/aux/link_router.cc
+new file mode 100644
+index 0000000000..454a7c2eea
+--- /dev/null
++++ b/chrome/browser/ui/aux/link_router.cc
+@@ -0,0 +1,377 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/link_router.h"
++#include <algorithm>
++#include <limits>
++#include <memory>
++#include <set>
++#include "base/location.h"
++#include "ui/base/page_transition_types.h"
++#include "ui/base/window_open_disposition.h"
++#include "url/origin.h"
++#include <utility>
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/uuid.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/profile_window.h"
++#include "chrome/browser/ui/aux/link_routing.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/aux/profile_spaces.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/shell_events.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/browser_tabstrip.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
++#include "chrome/browser/ui/navigator/browser_navigator.h"
++#include "chrome/browser/ui/navigator/browser_navigator_params.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_enums.h"
++#include "components/prefs/pref_service.h"
++#include "content/public/browser/web_contents.h"
++#include "net/base/url_util.h"
++#include "ui/base/base_window.h"
++namespace aux {
++namespace {
++constexpr char kRouterKey[] = "aux.link_router";
++constexpr size_t kCapacity = 128;
++std::string Id(Profile* profile) {
++  const auto directory = profile->GetPath().BaseName().AsUTF8Unsafe();
++  return directory == "Default" ? "default" : directory;
++}
++std::string WindowId(BrowserWindowInterface* window) { return base::NumberToString(window->GetSessionID().id()); }
++bool Eligible(BrowserWindowInterface* window, Profile* profile) {
++  return window && window->GetProfile() == profile && !profile->IsOffTheRecord() &&
++      window->GetType() == BrowserWindowInterface::TYPE_NORMAL && !IsQuickAskWindow(window);
++}
++bool WebUrl(const GURL& url) { return url.is_valid() && url.SchemeIsHTTPOrHTTPS() && !url.has_username() && !url.has_password() && url.spec().size() <= 8192; }
++ProfileAttributesEntry* Entry(std::string_view id) {
++  if (!g_browser_process || !g_browser_process->profile_manager()) return nullptr;
++  const auto& entries = g_browser_process->profile_manager()->GetProfileAttributesStorage().GetAllProfilesAttributes();
++  for (auto* entry : entries) {
++    const std::string directory = entry->GetPath().BaseName().AsUTF8Unsafe();
++    if ((id == "default" ? directory == "Default" : directory == id) &&
++        !entry->IsOmitted() && !entry->IsEphemeral() &&
++        directory != "Guest Profile" && directory != "System Profile") return entry;
++  }
++  return nullptr;
++}
++bool Available(std::string_view id) {
++  auto* entry = Entry(id);
++  return entry && !entry->IsSigninRequired() &&
++      !g_browser_process->local_state()->GetDict(kArchivedProfilesPref).FindBool(id).value_or(false);
++}
++bool SpaceAvailable(std::string_view profile, std::string_view space) {
++  const auto* spaces = g_browser_process->local_state()->GetDict(kProfileSpacesIndexPref).FindList(profile);
++  return spaces && std::ranges::any_of(*spaces, [space](const base::Value& value) { return value.is_dict() && value.GetDict().FindString("id") && *value.GetDict().FindString("id") == space; });
++}
++std::string LastProfile() {
++  const auto directory = g_browser_process->local_state()->GetString("profile.last_used");
++  return directory == "Default" ? "default" : directory;
++}
++
++}
++LinkRouter* LinkRouter::ForProfile(Profile* profile) {
++  if (!profile || profile->IsOffTheRecord()) return nullptr;
++  auto* router = static_cast<LinkRouter*>(profile->GetUserData(kRouterKey));
++  if (!router) {
++    auto instance = std::make_unique<LinkRouter>(profile);
++    router = instance.get();
++    profile->SetUserData(kRouterKey, std::move(instance));
++  }
++  return router;
++}
++LinkRouter::LinkRouter(Profile* profile) : profile_(profile), browsers_(ProfileBrowserCollection::GetForProfile(profile)) {
++  if (browsers_) observation_.Observe(browsers_);
++  profile_observation_.Observe(profile);
++}
++LinkRouter::~LinkRouter() = default;
++void LinkRouter::OnProfileWillBeDestroyed(Profile*) {
++  observation_.Reset(); profile_observation_.Reset(); expiry_timer_.Stop();
++  weak_factory_.InvalidateWeakPtrs(); receipts_.clear(); prompts_.clear();
++}
++base::DictValue LinkRouter::Config() {
++  const auto& stored = g_browser_process->local_state()->GetDict(kLinkRoutingPref);
++  if (!stored.empty() && ValidLinkRoutes(stored)) return stored.Clone();
++  base::DictValue config;
++  config.Set("version", 1); config.Set("revision", 0); config.Set("enabled", stored.empty()); config.Set("inApp", "off");
++  base::DictValue destination; destination.Set("kind", "last-used");
++  config.Set("default", std::move(destination)); config.Set("rules", base::ListValue());
++  return config;
++}
++std::optional<base::DictValue> LinkRouter::SetConfig(int expected, const base::DictValue& config, std::string* error) {
++  return WriteConfig(expected, config, true, error);
++}
++void LinkRouter::RecordHit(const std::string& id) {
++  if (id.empty()) return;
++  auto config = Config();
++  for (auto& value : *config.FindList("rules")) {
++    auto& rule = value.GetDict();
++    if (*rule.FindString("id") != id) continue;
++    rule.Set("hits", std::min(std::numeric_limits<int>::max() - 1, rule.FindInt("hits").value_or(0)) + 1);
++    rule.Set("lastHitAt", static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch()));
++    std::string error;
++    WriteConfig(config.FindInt("revision").value(), config, false, &error);
++    return;
++  }
++}
++std::optional<base::DictValue> LinkRouter::WriteConfig(int expected, const base::DictValue& config, bool preserve_hits, std::string* error) {
++  auto current = Config();
++  if (!ValidLinkRoutes(config) || config.FindInt("revision") != expected) { *error = "Invalid routing rules"; return std::nullopt; }
++  if (current.FindInt("revision") != expected || expected == std::numeric_limits<int>::max()) { *error = "Routing rules changed; refresh and try again"; return std::nullopt; }
++  auto next = config.Clone();
++  // Rule editing cannot overwrite native hit accounting from the same revision.
++  if (preserve_hits) for (auto& value : *next.FindList("rules")) for (const auto& old : *current.FindList("rules")) {
++    if (*value.GetDict().FindString("id") != *old.GetDict().FindString("id")) continue;
++    value.GetDict().Set("hits", old.GetDict().FindInt("hits").value_or(0));
++    if (const auto* time = old.GetDict().Find("lastHitAt")) value.GetDict().Set("lastHitAt", time->Clone());
++  }
++  next.Set("revision", expected + 1);
++  g_browser_process->local_state()->SetDict(kLinkRoutingPref, next.Clone());
++  return next;
++}
++base::DictValue LinkRouter::Test(const GURL& url, std::string_view source, std::string_view sender) {
++  auto result = MatchLinkRoute(Config(), url, source, sender, LastProfile(), Available, SpaceAvailable);
++  base::DictValue value; value.Set("destination", std::move(result.destination)); value.Set("fallback", result.fallback);
++  if (!result.rule_id.empty()) value.Set("ruleId", result.rule_id);
++  if (!result.fallback_reason.empty()) value.Set("fallbackReason", result.fallback_reason);
++  return value;
++}
++bool LinkRouter::Deliver(BrowserWindowInterface* window, const GURL& url, const base::DictValue& destination,
++                         const std::string& rule, bool background, bool untrusted, const std::string& fallback_reason) {
++  if (!Eligible(window, profile_) || !WebUrl(url) || receipts_.size() >= kCapacity) return false;
++  std::string error;
++  auto snapshot = OrganizationStore::Snapshot(profile_, WindowId(window), &error);
++  if (!snapshot) return false;
++  auto* layout = snapshot->FindDict("layout");
++  std::string space;
++  std::string workspace;
++  std::string actual_fallback = fallback_reason;
++  if (layout) {
++    const auto* requested = destination.FindString("spaceId");
++    if (requested && !SpaceAvailable(Id(profile_), *requested)) actual_fallback = "space-unavailable";
++    space = requested && SpaceAvailable(Id(profile_), *requested) ? *requested : *layout->FindDict("window")->FindString("activeSpaceId");
++    for (const auto& item : *layout->FindDict("shared")->FindList("spaces")) if (*item.GetDict().FindString("id") == space) {
++      if (const auto* id = item.GetDict().FindString("workspaceId")) workspace = *id;
++      break;
++    }
++    // Little has its own local active Space; FocusProfileSpace intentionally excludes it.
++    layout->FindDict("window")->Set("activeSpaceId", space);
++    if (!OrganizationStore::Commit(profile_, WindowId(window), snapshot->FindInt("revision").value(), *layout, &error)) return false;
++  } else if (destination.FindString("spaceId")) return false;
++  content::WebContents* contents = nullptr;
++  {
++    NavigateParams navigation(window, url, ui::PAGE_TRANSITION_LINK);
++    navigation.original_user_gesture = false;
++    navigation.disposition = IsLittleWindow(window) ? WindowOpenDisposition::CURRENT_TAB :
++        background ? WindowOpenDisposition::NEW_BACKGROUND_TAB : WindowOpenDisposition::NEW_FOREGROUND_TAB;
++    if (untrusted) navigation.initiator_origin = url::Origin();
++    Navigate(&navigation);
++    contents = navigation.navigated_or_inserted_contents;
++  }
++  if (!contents) return false;
++  const auto id = PageIdentity::GetOrCreate(profile_, contents);
++  if (!space.empty()) TabCatalog::GetForProfile(profile_)->BindSpace(id, space, workspace);
++  base::DictValue payload;
++  payload.Set("pageId", id); payload.Set("profileId", Id(profile_));
++  if (!space.empty()) payload.Set("spaceId", space);
++  if (!rule.empty()) payload.Set("ruleId", rule);
++  if (!actual_fallback.empty()) payload.Set("fallbackReason", actual_fallback);
++  receipts_.push_back({WindowId(window), payload.Clone()});
++  EmitShellEvent(profile_, "onRoutedOpen", *base::WriteJson(payload));
++  RecordHit(rule);
++  if (!background) window->GetWindow()->Activate();
++  return true;
++}
++bool LinkRouter::Open(Profile* source_profile, const GURL& url, std::string source, std::string sender,
++                      std::optional<base::DictValue> explicit_destination, bool background,
++                      base::OnceCallback<void(bool)> done, base::RepeatingCallback<bool()> authorized,
++                      std::string fallback_reason, bool fallback_attempt) {
++  auto refuse = [&done]() { if (done) std::move(done).Run(false); return false; };
++  if (!source_profile || source_profile->IsOffTheRecord() || !WebUrl(url) ||
++      !ValidLinkRoutes(Config()) || (authorized && !authorized.Run())) return refuse();
++  auto test = Test(url, source, sender);
++  auto destination = explicit_destination ? std::move(*explicit_destination) : test.FindDict("destination")->Clone();
++  if (!explicit_destination && source != "in-app" && !test.FindString("ruleId") &&
++      g_browser_process->local_state()->GetString(kExternalLinkTargetPref) == "little" && destination.FindString("profileId")) destination.Set("window", "little");
++  const auto* kind = destination.FindString("kind");
++  if (!kind) return refuse();
++  if (*kind == "ask") {
++    auto* window = LastNormalWindow(source_profile);
++    const bool accepted = window && ForProfile(source_profile)->Ask(window, url);
++    if (done) std::move(done).Run(accepted);
++    return accepted;
++  }
++  if (fallback_reason.empty() && test.FindString("fallbackReason")) fallback_reason = *test.FindString("fallbackReason");
++  auto completion = base::BindOnce([](base::WeakPtr<Profile> source_profile, GURL url,
++      std::string source, bool background, bool fallback_attempt,
++      base::RepeatingCallback<bool()> authorized, base::OnceCallback<void(bool)> done,
++      bool ok, bool unavailable) {
++    if (!ok && unavailable && !fallback_attempt && source_profile && (!authorized || authorized.Run())) {
++      // Resolve the configured default once. Never cycle through the matching rule again.
++      auto config = Config(); config.Set("rules", base::ListValue());
++      auto fallback = MatchLinkRoute(config, url, source, "", LastProfile(), Available, SpaceAvailable);
++      Open(source_profile.get(), url, source, "", std::move(fallback.destination), background,
++          std::move(done), std::move(authorized), "profile-unavailable", true);
++      return;
++    }
++    if (done) std::move(done).Run(ok);
++  }, source_profile->GetWeakPtr(), url, source, background, fallback_attempt, authorized, std::move(done));
++  const auto* id = destination.FindString("profileId");
++  if (!id || !Available(*id)) { std::move(completion).Run(false, true); return true; }
++  auto* entry = Entry(*id);
++  std::string rule = test.FindString("ruleId") ? *test.FindString("ruleId") : "";
++  g_browser_process->profile_manager()->CreateProfileAsync(entry->GetPath(), base::BindOnce(
++    [](GURL url, base::DictValue destination, std::string rule, bool background, bool untrusted,
++       std::string fallback_reason, base::OnceCallback<void(bool, bool)> completion,
++       base::RepeatingCallback<bool()> authorized, Profile* profile) {
++      if (authorized && !authorized.Run()) { std::move(completion).Run(false, false); return; }
++      if (!profile || !Available(Id(profile))) { std::move(completion).Run(false, true); return; }
++      auto* router = ForProfile(profile);
++      if (router->receipts_.size() + router->reserved_ >= kCapacity) { std::move(completion).Run(false, false); return; }
++      ++router->reserved_;
++      auto complete = base::BindOnce([](base::WeakPtr<LinkRouter> router, GURL url,
++          base::DictValue destination, std::string rule, bool background, bool untrusted,
++          std::string fallback_reason, base::OnceCallback<void(bool, bool)> completion,
++          base::RepeatingCallback<bool()> authorized, BrowserWindowInterface* window) {
++        if (router) --router->reserved_;
++        const bool unavailable = window && !Available(Id(window->GetProfile()));
++        const bool ok = router && window && (!authorized || authorized.Run()) && !unavailable &&
++            router->Deliver(window, url, destination, rule, background, untrusted, fallback_reason);
++        if (!ok && window && IsLittleWindow(window)) CloseLittleWindow(window);
++        std::move(completion).Run(ok, unavailable);
++      }, router->weak_factory_.GetWeakPtr(), url, destination.Clone(), rule, background, untrusted,
++          fallback_reason, std::move(completion), std::move(authorized));
++      const auto* kind = destination.FindString("window");
++      if (kind && *kind == "little") {
++        std::move(complete).Run(OpenLittleWindow(profile, GURL(), untrusted, !background));
++      } else if (kind && *kind == "new-window") {
++        auto* window = CreateBrowserWindow(BrowserWindowCreateParams(profile, /*user_gesture=*/true));
++        if (window) { if (background) window->GetWindow()->ShowInactive(); else window->GetWindow()->Show(); }
++        std::move(complete).Run(window);
++      } else if (auto* window = LastNormalWindow(profile)) {
++        std::move(complete).Run(window);
++      } else {
++        profiles::OpenBrowserWindowForProfile(std::move(complete), true, false, false, profile);
++      }
++    }, url, destination.Clone(), rule, background, source != "in-app", fallback_reason,
++        std::move(completion), std::move(authorized)));
++  return true;
++}
++
++bool LinkRouter::OpenScheme(Profile* profile, const GURL& scheme) {
++  if (!scheme.SchemeIs("aux") || scheme.host() != "open" || scheme.has_username() || scheme.has_password() || scheme.has_port() || scheme.has_ref()) return false;
++  if (scheme.path() != "" && scheme.path() != "/") return false;
++  std::set<std::string> keys;
++  for (net::QueryIterator it(scheme); !it.IsAtEnd(); it.Advance()) {
++    const std::string key(it.GetKey());
++    if ((key != "url" && key != "profile" && key != "space" && key != "window" && key != "source" && key != "background") || !keys.insert(key).second) return false;
++  }
++  std::string inner, id, space, window, source, background;
++  if (!net::GetValueForKeyInQuery(scheme, "url", &inner) || !WebUrl(GURL(inner))) return false;
++  net::GetValueForKeyInQuery(scheme, "profile", &id); net::GetValueForKeyInQuery(scheme, "space", &space);
++  net::GetValueForKeyInQuery(scheme, "window", &window); net::GetValueForKeyInQuery(scheme, "source", &source);
++  net::GetValueForKeyInQuery(scheme, "background", &background);
++  if ((!background.empty() && background != "1") || (!source.empty() && source != "cli" && source != "external")) return false;
++  if (!window.empty() && window != "tab" && window != "little" && window != "new-window") return false;
++  auto destination = Test(GURL(inner), source == "cli" ? "cli" : "external").FindDict("destination")->Clone();
++  if (!id.empty() && Available(id)) { destination.Set("kind", "profile"); destination.Set("profileId", id); destination.Remove("spaceId"); }
++  if (!space.empty()) destination.Set("spaceId", space);
++  if (!window.empty()) destination.Set("window", window);
++  return Open(profile, GURL(inner), source == "cli" ? "cli" : "external", "", std::move(destination), background == "1");
++}
++bool LinkRouter::Ask(BrowserWindowInterface* window, const GURL& url) {
++  Expire();
++  if (!Eligible(window, profile_) || IsLittleWindow(window) || prompts_.size() >= kCapacity) return false;
++  const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  const auto expires_at = base::Time::Now().InMillisecondsSinceUnixEpoch() + 60'000;
++  prompts_.emplace(id, Prompt{WindowId(window), url, base::TimeTicks::Now() + base::Seconds(60), expires_at});
++  ScheduleExpiry();
++  base::DictValue payload; payload.Set("id", id); payload.Set("url", url.spec()); payload.Set("expiresAt", static_cast<double>(expires_at));
++  EmitShellEvent(profile_, "onRoutePrompt", *base::WriteJson(payload));
++  return true;
++}
++base::ListValue LinkRouter::TakeReceipts(BrowserWindowInterface* caller) {
++  base::ListValue result;
++  if (!Eligible(caller, profile_)) return result;
++  std::erase_if(receipts_, [&](Receipt& receipt) {
++    if (receipt.window != WindowId(caller)) return false;
++    result.Append(std::move(receipt.payload)); return true;
++  });
++  return result;
++}
++base::ListValue LinkRouter::Prompts(BrowserWindowInterface* caller) {
++  Expire(); base::ListValue result;
++  if (!Eligible(caller, profile_) || IsLittleWindow(caller)) return result;
++  for (const auto& [id, prompt] : prompts_) if (prompt.window == WindowId(caller)) {
++    base::DictValue payload; payload.Set("id", id); payload.Set("url", prompt.url.spec()); payload.Set("expiresAt", static_cast<double>(prompt.expires_at)); result.Append(std::move(payload));
++  }
++  return result;
++}
++void LinkRouter::Resolve(BrowserWindowInterface* caller, const std::string& id, const base::DictValue& destination,
++                         bool remember, base::OnceCallback<void(bool)> done) {
++  Expire(); auto it = prompts_.find(id);
++  const auto* profile = destination.FindString("profileId");
++  if (!Eligible(caller, profile_) || IsLittleWindow(caller) || it == prompts_.end() ||
++      it->second.window != WindowId(caller) || it->second.resolving || !profile || !Available(*profile)) { std::move(done).Run(false); return; }
++  const GURL url = it->second.url;
++  if (remember) {
++    auto config = Config();
++    if (config.FindList("rules")->size() >= 500) { std::move(done).Run(false); return; }
++    base::DictValue match; match.Set("kind", "host"); match.Set("pattern", url.host()); match.Set("subdomains", false);
++    base::DictValue rule; rule.Set("id", "remember-" + id); rule.Set("enabled", true);
++    rule.Set("order", static_cast<int>(config.FindList("rules")->size())); rule.Set("match", std::move(match)); rule.Set("destination", destination.Clone()); rule.Set("hits", 0);
++    bool existing = false;
++    for (auto& value : *config.FindList("rules")) if (*value.GetDict().FindString("id") == "remember-" + id) {
++      value.GetDict().Set("destination", destination.Clone()); existing = true; break;
++    }
++    if (!existing) config.FindList("rules")->Append(std::move(rule));
++    std::string error;
++    if (!SetConfig(config.FindInt("revision").value(), config, &error)) { std::move(done).Run(false); return; }
++  }
++  it->second.resolving = true;
++  auto finish = base::BindOnce([](base::WeakPtr<LinkRouter> router, std::string id, base::OnceCallback<void(bool)> done, bool ok) {
++    if (router) {
++      auto it = router->prompts_.find(id);
++      if (it != router->prompts_.end()) { if (ok) router->prompts_.erase(it); else it->second.resolving = false; }
++      router->ScheduleExpiry();
++    }
++    std::move(done).Run(ok);
++  }, weak_factory_.GetWeakPtr(), id, std::move(done));
++  auto authorized = base::BindRepeating([](base::WeakPtr<LinkRouter> router, std::string id) {
++    return router && router->PromptLive(id);
++  }, weak_factory_.GetWeakPtr(), id);
++  Open(profile_, url, "external", "", destination.Clone(), false, std::move(finish), std::move(authorized));
++}
++bool LinkRouter::PromptLive(const std::string& id) {
++  auto it = prompts_.find(id);
++  return it != prompts_.end() && it->second.resolving && it->second.expires > base::TimeTicks::Now();
++}
++
++void LinkRouter::Expire() {
++  const auto now = base::TimeTicks::Now();
++  std::erase_if(prompts_, [now](const auto& item) { return item.second.expires <= now; });
++  ScheduleExpiry();
++}
++void LinkRouter::ScheduleExpiry() {
++  if (prompts_.empty()) { expiry_timer_.Stop(); return; }
++  auto first = std::ranges::min_element(prompts_, {}, [](const auto& item) { return item.second.expires; });
++  expiry_timer_.Start(FROM_HERE, std::max(base::TimeDelta(), first->second.expires - base::TimeTicks::Now()),
++                       base::BindOnce(&LinkRouter::Expire, weak_factory_.GetWeakPtr()));
++}
++void LinkRouter::OnBrowserClosed(BrowserWindowInterface* browser) {
++  const auto window = WindowId(browser);
++  std::erase_if(receipts_, [&](const Receipt& value) { return value.window == window; });
++  std::erase_if(prompts_, [&](const auto& value) { return value.second.window == window; });
++  ScheduleExpiry();
++}
++}
+diff --git a/chrome/browser/ui/aux/link_router.h b/chrome/browser/ui/aux/link_router.h
+new file mode 100644
+index 0000000000..03ab3ea6c7
+--- /dev/null
++++ b/chrome/browser/ui/aux/link_router.h
+@@ -0,0 +1,72 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_LINK_ROUTER_H_
++#define CHROME_BROWSER_UI_AUX_LINK_ROUTER_H_
++#include <map>
++#include <optional>
++#include <string>
++#include <string_view>
++#include <vector>
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/scoped_observation.h"
++#include "base/supports_user_data.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "chrome/browser/profiles/profile_observer.h"
++#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
++#include "url/gurl.h"
++#include "chrome/browser/ui/webui_browser/shell_host.mojom.h"
++class BrowserWindowInterface;
++class Profile;
++class ProfileBrowserCollection;
++namespace aux {
++bool HandleLinkRoutingRequest(BrowserWindowInterface* caller, const std::string& method, const base::ListValue& args, aux::mojom::ShellHost::RequestCallback callback);
++bool IsLinkRoutingMethod(std::string_view method);
++class LinkRouter final : public base::SupportsUserData::Data, public BrowserCollectionObserver, public ProfileObserver {
++ public:
++  static LinkRouter* ForProfile(Profile* profile);
++  static base::DictValue Config();
++  static std::optional<base::DictValue> SetConfig(int expected_revision, const base::DictValue& config, std::string* error);
++  static base::DictValue Test(const GURL& url, std::string_view source, std::string_view sender = "");
++  // Trust comes from the native caller, never renderer data or inner URL parameters.
++  static bool Open(Profile* source_profile, const GURL& url, std::string source, std::string sender,
++                   std::optional<base::DictValue> explicit_destination = std::nullopt,
++                   bool background = false, base::OnceCallback<void(bool)> done = {},
++                   base::RepeatingCallback<bool()> authorized = {},
++                   std::string fallback_reason = "", bool fallback_attempt = false);
++  static void RecordHit(const std::string& id);
++  static bool OpenScheme(Profile* source_profile, const GURL& url);
++  explicit LinkRouter(Profile* profile);
++  ~LinkRouter() override;
++  base::ListValue TakeReceipts(BrowserWindowInterface* caller);
++  base::ListValue Prompts(BrowserWindowInterface* caller);
++  void Resolve(BrowserWindowInterface* caller, const std::string& id, const base::DictValue& destination,
++               bool remember, base::OnceCallback<void(bool)> done);
++  void OnProfileWillBeDestroyed(Profile* profile) override;
++  void OnBrowserClosed(BrowserWindowInterface* browser) override;
++  void OnBrowserCreated(BrowserWindowInterface*) override {}
++ private:
++  friend class LinkRouterBrowserTest;
++  struct Receipt { std::string window; base::DictValue payload; };
++  struct Prompt { std::string window; GURL url; base::TimeTicks expires; int64_t expires_at; bool resolving = false; };
++  static std::optional<base::DictValue> WriteConfig(int expected, const base::DictValue& config, bool preserve_hits, std::string* error);
++  bool PromptLive(const std::string& id);
++  size_t reserved_ = 0;
++  bool Deliver(BrowserWindowInterface* window, const GURL& url, const base::DictValue& destination,
++               const std::string& rule_id, bool background, bool untrusted, const std::string& fallback_reason);
++  bool Ask(BrowserWindowInterface* window, const GURL& url);
++  void Expire();
++  void ScheduleExpiry();
++  raw_ptr<Profile> profile_;
++  raw_ptr<ProfileBrowserCollection> browsers_;
++  base::ScopedObservation<ProfileBrowserCollection, BrowserCollectionObserver> observation_{this};
++  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
++  std::vector<Receipt> receipts_;
++  std::map<std::string, Prompt> prompts_;
++  base::OneShotTimer expiry_timer_;
++  base::WeakPtrFactory<LinkRouter> weak_factory_{this};
++};
++}
++#endif
+diff --git a/chrome/browser/ui/aux/link_routing.cc b/chrome/browser/ui/aux/link_routing.cc
+new file mode 100644
+index 0000000000..5d2ec8498d
+--- /dev/null
++++ b/chrome/browser/ui/aux/link_routing.cc
+@@ -0,0 +1,136 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/link_routing.h"
++#include <algorithm>
++#include <limits>
++#include "base/strings/pattern.h"
++#include "base/strings/string_util.h"
++#include "chrome/browser/ui/aux/generated/aux_host_methods.h"
++#include "net/base/registry_controlled_domains/registry_controlled_domain.h"
++#include "url/gurl.h"
++namespace aux {
++namespace {
++bool WebUrl(const GURL& url) {
++  return url.is_valid() && url.SchemeIsHTTPOrHTTPS() && !url.has_username() && !url.has_password();
++}
++bool Contains(const base::ListValue* values, std::string_view wanted) {
++  return values && std::ranges::any_of(*values, [wanted](const base::Value& item) {
++    return item.is_string() && item.GetString() == wanted;
++  });
++}
++int Match(const base::DictValue& rule, const GURL& url,
++          std::string_view source, std::string_view sender_app) {
++  if (!rule.FindBool("enabled").value_or(false)) return 0;
++  if (const auto* sources = rule.FindList("sources"); sources && !Contains(sources, source)) return 0;
++  if (const auto* apps = rule.FindList("fromApps"); apps && !apps->empty() && !Contains(apps, sender_app)) return 0;
++  const auto* match = rule.FindDict("match");
++  const auto* kind = match ? match->FindString("kind") : nullptr;
++  const auto* pattern = match ? match->FindString("pattern") : nullptr;
++  if (!kind || !pattern) return 0;
++  if (*kind == "prefix") {
++    const GURL prefix(*pattern);
++    return WebUrl(prefix) && base::StartsWith(url.spec(), prefix.spec()) ? 4 : 0;
++  }
++  if (*kind == "host") {
++    const GURL host("https://" + *pattern + "/");
++    if (!WebUrl(host) || host.has_port() || host.path() != "/" || host.has_query() || host.has_ref()) return 0;
++    if (url.host() == host.host()) return match->FindBool("subdomains").value_or(false) ? 2 : 3;
++    return match->FindBool("subdomains").value_or(false) &&
++        base::EndsWith(url.host(), "." + std::string(host.host())) ? 2 : 0;
++  }
++  return *kind == "glob" && base::MatchPattern(url.spec(), *pattern) ? 1 : 0;
++}
++base::DictValue DefaultDestination(const base::DictValue& config, std::string_view last,
++    const std::function<bool(std::string_view)>& available) {
++  base::DictValue destination;
++  const auto* fallback = config.FindDict("default");
++  const auto* configured = fallback ? fallback->FindString("profileId") : nullptr;
++  const std::string profile = configured && available(*configured) ? *configured :
++      available(last) ? std::string(last) : "default";
++  destination.Set("kind", "profile");
++  destination.Set("profileId", profile);
++  destination.Set("window", "tab");
++  if (configured && profile == *configured) {
++    if (const auto* space = fallback->FindString("spaceId")) destination.Set("spaceId", *space);
++  }
++  return destination;
++}
++}
++LinkRouteResult MatchLinkRoute(const base::DictValue& config, const GURL& url,
++    std::string_view source, std::string_view sender_app, std::string_view last,
++    const std::function<bool(std::string_view)>& available,
++    const std::function<bool(std::string_view, std::string_view)>& space_available) {
++  LinkRouteResult result{DefaultDestination(config, last, available)};
++  int rank = 0;
++  int order = std::numeric_limits<int>::max();
++  if (WebUrl(url) && config.FindBool("enabled").value_or(false)) {
++    if (const auto* rules = config.FindList("rules")) for (const auto& value : *rules) {
++      const auto* rule = value.GetIfDict();
++      if (!rule) continue;
++      const int candidate = Match(*rule, url, source, sender_app);
++      const int candidate_order = rule->FindInt("order").value_or(std::numeric_limits<int>::max());
++      if (candidate > rank || (candidate && candidate == rank && candidate_order < order)) {
++        if (const auto* destination = rule->FindDict("destination")) {
++          result.destination = destination->Clone();
++          const auto* id = rule->FindString("id");
++          result.rule_id = id ? *id : "";
++          rank = candidate;
++          order = candidate_order;
++        }
++      }
++    }
++  }
++  if (const auto* profile = result.destination.FindString("profileId")) {
++    if (!available(*profile)) {
++      result.destination = DefaultDestination(config, last, available);
++      result.fallback = true;
++      result.fallback_reason = "profile-unavailable";
++    }
++    const auto* actual = result.destination.FindString("profileId");
++    if (const auto* space = result.destination.FindString("spaceId"); space && !space_available(*actual, *space)) {
++      result.destination.Remove("spaceId");
++      result.fallback = true;
++      result.fallback_reason = "space-unavailable";
++    }
++  }
++  return result;
++}
++bool ValidLinkRoutes(const base::DictValue& config) {
++  const auto method = generated::LookupMethod("setLinkRoutes");
++  base::ListValue args;
++  args.Append(config.FindInt("revision").value_or(-1));
++  args.Append(config.Clone());
++  std::string error;
++  if (!method || !generated::ValidateMethodArgs(*method, base::Value(std::move(args)), &error)) return false;
++  const auto* rules = config.FindList("rules");
++  if (config.FindInt("version") != 1 || !config.FindBool("enabled") ||
++      config.FindInt("revision").value_or(-1) < 0 || !config.FindDict("default") ||
++      !rules || rules->size() > 500) return false;
++  const auto* in_app = config.FindString("inApp");
++  if (!in_app || (*in_app != "off" && *in_app != "cross-site-new-tab")) return false;
++  for (const auto& value : *rules) {
++    const auto* rule = value.GetIfDict();
++    const auto* match = rule ? rule->FindDict("match") : nullptr;
++    const auto* pattern = match ? match->FindString("pattern") : nullptr;
++    const auto* kind = match ? match->FindString("kind") : nullptr;
++    if (!pattern || pattern->empty() || pattern->size() > 2048 || !kind) return false;
++    if (*kind == "prefix" && !WebUrl(GURL(*pattern))) return false;
++    if (*kind == "host") {
++      const GURL host("https://" + *pattern + "/");
++      if (!WebUrl(host) || host.has_port() || host.path() != "/" || host.has_query() || host.has_ref()) return false;
++    } else if (*kind != "prefix" && *kind != "glob") return false;
++  }
++  return true;
++}
++bool CanRouteInApp(const base::DictValue& config, const GURL& source,
++    const GURL& destination, bool new_tab, bool user_gesture,
++    bool has_opener, bool post, bool private_window, bool protected_page) {
++  const auto* mode = config.FindString("inApp");
++  if (!mode || *mode != "cross-site-new-tab" || !config.FindBool("enabled").value_or(false) ||
++      !new_tab || !user_gesture || has_opener || post || private_window || protected_page ||
++      !WebUrl(source) || !WebUrl(destination)) return false;
++  using namespace net::registry_controlled_domains;
++  return !SameDomainOrHost(source, destination, INCLUDE_PRIVATE_REGISTRIES);
++}
++}
+diff --git a/chrome/browser/ui/aux/link_routing.h b/chrome/browser/ui/aux/link_routing.h
+new file mode 100644
+index 0000000000..9254f58987
+--- /dev/null
++++ b/chrome/browser/ui/aux/link_routing.h
+@@ -0,0 +1,29 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_LINK_ROUTING_H_
++#define CHROME_BROWSER_UI_AUX_LINK_ROUTING_H_
++#include <functional>
++#include <string>
++#include <string_view>
++#include "base/values.h"
++class GURL;
++namespace aux {
++struct LinkRouteResult {
++  base::DictValue destination;
++  std::string rule_id;
++  bool fallback = false;
++  std::string fallback_reason;
++};
++// The same pure matcher serves actual opens and Settings' test URL.
++LinkRouteResult MatchLinkRoute(const base::DictValue& config, const GURL& url,
++    std::string_view source, std::string_view sender_app,
++    std::string_view last_profile,
++    const std::function<bool(std::string_view)>& profile_available,
++    const std::function<bool(std::string_view, std::string_view)>& space_available);
++bool ValidLinkRoutes(const base::DictValue& config);
++bool CanRouteInApp(const base::DictValue& config, const GURL& source,
++    const GURL& destination, bool new_tab, bool user_gesture,
++    bool has_opener, bool post, bool private_window, bool protected_page);
++}
++#endif
+diff --git a/chrome/browser/ui/aux/methods/profile_methods.cc b/chrome/browser/ui/aux/methods/profile_methods.cc
+new file mode 100644
+index 0000000000..4b30a7dbe5
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/profile_methods.cc
+@@ -0,0 +1,466 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++
++#include <optional>
++#include <string>
++#include <utility>
++
++#include "base/containers/span.h"
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/location.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/time/time.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/delete_profile_helper.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/profiles/profile_window.h"
++#include "chrome/browser/profiles/profiles_state.h"
++#include "chrome/browser/ui/browser_tabstrip.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/aux/link_router.h"
++#include "chrome/browser/ui/aux/profile_spaces.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/browser/ui/aux/shell_events.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_enums.h"
++#include "chrome/common/pref_names.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "ui/base/base_window.h"
++#include "components/prefs/pref_service.h"
++#include "components/prefs/scoped_user_pref_update.h"
++#include "content/public/browser/web_contents.h"
++#include "unicode/uchar.h"
++#include "unicode/utf16.h"
++#include "url/gurl.h"
++
++namespace {
++
++using Reply = aux::mojom::ShellHost::RequestCallback;
++
++void Fail(Reply callback, const char* code, const char* message) {
++  std::move(callback).Run(false, "", code, message);
++}
++
++void Succeed(Reply callback, base::Value value) {
++  const auto json = base::WriteJson(value);
++  if (!json) {
++    Fail(std::move(callback), "internal", "Profile result could not be encoded");
++    return;
++  }
++  std::move(callback).Run(true, *json, "", "");
++}
++
++std::string ProfileId(const base::FilePath& path) {
++  const std::string name = path.BaseName().AsUTF8Unsafe();
++  return name == "Default" ? "default" : name;
++}
++
++bool ListedProfile(ProfileAttributesEntry* entry, Profile* current) {
++  return entry && !entry->IsOmitted() && !entry->IsEphemeral() &&
++         entry->GetPath().DirName() == current->GetPath().DirName() &&
++         entry->GetPath().BaseName() != ProfileManager::GetGuestProfilePath().BaseName() &&
++         entry->GetPath().BaseName() != ProfileManager::GetSystemProfilePath().BaseName();
++}
++
++ProfileAttributesEntry* FindProfile(ProfileManager* manager, Profile* current,
++                                    const std::string& id) {
++  for (auto* entry : manager->GetProfileAttributesStorage().GetAllProfilesAttributes()) {
++    if (ListedProfile(entry, current) && ProfileId(entry->GetPath()) == id)
++      return entry;
++  }
++  return nullptr;
++}
++
++bool Archived(const std::string& id) {
++  return g_browser_process->local_state()
++      ->GetDict(aux::kArchivedProfilesPref).FindBool(id).value_or(false);
++}
++
++base::DictValue Describe(ProfileAttributesEntry* entry, Profile* current) {
++  const std::string id = ProfileId(entry->GetPath());
++  base::DictValue item;
++  item.Set("id", id);
++  item.Set("name", id == "default" && entry->IsUsingDefaultName()
++                       ? "Personal"
++                       : base::UTF16ToUTF8(entry->GetLocalProfileName()));
++  item.Set("current", entry->GetPath() == current->GetPath());
++  item.Set("archived", Archived(id));
++  const auto* local_state = g_browser_process->local_state();
++  const auto* appearance = local_state->GetDict(aux::kProfileAppearancePref).FindDict(id);
++  item.Set("color", appearance && appearance->FindString("color") ? *appearance->FindString("color") : "blue");
++  item.Set("icon", appearance && appearance->FindString("icon") ? *appearance->FindString("icon") : "person");
++  const auto* spaces = local_state->GetDict(aux::kProfileSpacesIndexPref).FindList(id);
++  item.Set("spaces", spaces ? spaces->Clone() : base::ListValue());
++  return item;
++}
++
++base::ListValue ListProfiles(ProfileManager* manager, Profile* current) {
++  base::ListValue items;
++  for (auto* entry : manager->GetProfileAttributesStorage().GetAllProfilesAttributes()) {
++    if (ListedProfile(entry, current)) items.Append(Describe(entry, current));
++  }
++  return items;
++}
++
++std::optional<std::u16string> ProfileName(const std::string& raw) {
++  if (raw.empty() || raw.size() > 240 || !base::IsStringUTF8(raw))
++    return std::nullopt;
++  std::u16string name(base::TrimWhitespace(base::UTF8ToUTF16(raw),
++                                           base::TRIM_ALL));
++  if (name.empty() || name.size() > 60) return std::nullopt;
++  const auto code_units = base::span(name);
++  for (int32_t i = 0; i < static_cast<int32_t>(name.size());) {
++    UChar32 codepoint;
++    U16_NEXT(code_units, i, static_cast<int32_t>(name.size()), codepoint);
++    const int category = u_charType(codepoint);
++    if (category == U_CONTROL_CHAR || category == U_FORMAT_CHAR)
++      return std::nullopt;
++  }
++  return name;
++}
++
++bool ValidWebUrl(const std::string& text) {
++  const GURL url(text);
++  return text.size() <= 8192 && url.is_valid() && url.SchemeIsHTTPOrHTTPS() &&
++         !url.has_username() && !url.has_password();
++}
++
++void AwaitRemoval(base::WeakPtr<WebUIBrowserUI> ui, base::FilePath path,
++                  Reply callback, int attempts) {
++  if (!ui || !g_browser_process || !g_browser_process->profile_manager())
++    return;
++  auto* manager = g_browser_process->profile_manager();
++  auto& storage = manager->GetProfileAttributesStorage();
++  if (!storage.GetProfileAttributesWithPath(path)) {
++    ScopedDictPrefUpdate archived(g_browser_process->local_state(),
++                                  aux::kArchivedProfilesPref);
++    archived->Remove(ProfileId(path));
++    ScopedDictPrefUpdate appearance(g_browser_process->local_state(), aux::kProfileAppearancePref);
++    appearance->Remove(ProfileId(path));
++    ScopedDictPrefUpdate spaces(g_browser_process->local_state(), aux::kProfileSpacesIndexPref);
++    spaces->Remove(ProfileId(path));
++    Succeed(std::move(callback),
++            base::Value(ListProfiles(manager, ui->browser()->GetProfile())));
++    return;
++  }
++  if (attempts >= 100) {
++    Fail(std::move(callback), "conflict", "Profile deletion did not finish");
++    return;
++  }
++  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++      FROM_HERE,
++      base::BindOnce(&AwaitRemoval, ui, std::move(path), std::move(callback),
++                     attempts + 1),
++      base::Milliseconds(100));
++}
++
++bool HumanTab(Profile* profile, content::WebContents* contents) {
++  const auto* identity = aux::PageIdentity::FromWebContents(contents);
++  aux::EgressRequestContext context;
++  context.document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  context.page_id = aux::PageIdentity::GetOrCreate(profile, contents);
++  return !(identity && identity->runtime_owned()) && !aux::EgressController::ForProfile(profile)->IsProtected(context);
++}
++
++void OpenLoadedProfile(Reply callback, std::optional<GURL> url,
++                       std::optional<std::string> space_id,
++                       base::WeakPtr<content::WebContents> source,
++                       content::WeakDocumentPtr source_document,
++                       Profile* profile) {
++  if (!profile) {
++    Fail(std::move(callback), "backend_unavailable", "Profile could not be loaded");
++    return;
++  }
++  auto* entry = g_browser_process->profile_manager()->GetProfileAttributesStorage()
++      .GetProfileAttributesWithPath(profile->GetPath());
++  if (!ListedProfile(entry, profile) || Archived(ProfileId(profile->GetPath())) || entry->IsSigninRequired()) {
++    Fail(std::move(callback), "forbidden", "Destination Profile is archived or locked");
++    return;
++  }
++  auto opened = base::BindOnce(
++          [](Reply callback, std::optional<GURL> url,
++             std::optional<std::string> space_id,
++             base::WeakPtr<content::WebContents> source,
++             content::WeakDocumentPtr source_document,
++             BrowserWindowInterface* window) {
++            if (!window) {
++              Fail(std::move(callback), "backend_unavailable",
++                   "Profile window could not be opened");
++              return;
++            }
++            auto* entry = g_browser_process->profile_manager()->GetProfileAttributesStorage()
++                .GetProfileAttributesWithPath(window->GetProfile()->GetPath());
++            if (!ListedProfile(entry, window->GetProfile()) || Archived(ProfileId(window->GetProfile()->GetPath())) || entry->IsSigninRequired()) {
++              Fail(std::move(callback), "forbidden", "Destination Profile is archived or locked");
++              return;
++            }
++            if (window->GetProfile()->IsOffTheRecord() || aux::IsLittleWindow(window) || aux::IsQuickAskWindow(window)) {
++              Fail(std::move(callback), "forbidden", "A normal Profile window is required");
++              return;
++            }
++            if (space_id) {
++              std::string error;
++              if (!aux::FocusProfileSpace(window, *space_id, &error)) {
++                Fail(std::move(callback), "conflict", error.c_str());
++                return;
++              }
++            }
++            if (url && !chrome::AddAndReturnTabAt(window, *url, -1, true)) {
++              Fail(std::move(callback), "backend_unavailable",
++                   "Page could not be opened in the Profile");
++              return;
++            }
++            window->GetWindow()->Activate();
++            if (source && url && aux::SameMovedDocument(source.get(), source_document, *url)) {
++              auto* source_profile = Profile::FromBrowserContext(source->GetBrowserContext());
++              BrowserWindowInterface* owner = nullptr;
++              aux::TabCatalog::GetForProfile(source_profile)->FindPage(
++                  aux::PageIdentity::GetOrCreate(source_profile, source.get()), &owner);
++              if (owner && !source_profile->IsOffTheRecord() && owner->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++                  !aux::IsLittleWindow(owner) && !aux::IsQuickAskWindow(owner) && HumanTab(source_profile, source.get())) {
++                const int index = owner->GetTabStripModel()->GetIndexOfWebContents(source.get());
++                if (index >= 0) owner->GetTabStripModel()->CloseWebContentsAt(index, TabCloseTypes::CLOSE_USER_GESTURE);
++              }
++            }
++            Succeed(std::move(callback), base::Value(true));
++          },
++          std::move(callback), std::move(url), std::move(space_id), source, source_document);
++  if (auto* normal = aux::LastNormalWindow(profile)) {
++    std::move(opened).Run(normal);
++  } else {
++    profiles::OpenBrowserWindowForProfile(std::move(opened),
++        /*always_create=*/true, /*is_new_profile=*/false,
++        /*open_command_line_urls=*/false, profile);
++  }
++}
++
++}  // namespace
++
++void WebUIBrowserUI::HandleAuxProfilesRequest(
++    const std::string& method, const base::ListValue& args,
++    RequestCallback callback) {
++  if (aux::IsLinkRoutingMethod(method)) {
++    aux::HandleLinkRoutingRequest(browser_, method, args, std::move(callback));
++    return;
++  }
++  Profile* current = browser_ ? browser_->GetProfile() : nullptr;
++  ProfileManager* manager = g_browser_process
++                                ? g_browser_process->profile_manager()
++                                : nullptr;
++  if (!current || current->IsOffTheRecord() || !manager ||
++      !g_browser_process->local_state()) {
++    Fail(std::move(callback), "forbidden", "Profiles require a regular Aux window");
++    return;
++  }
++  if (method == "javascriptAppleEvents") {
++    if (args.size() > 1 || (!args.empty() && !args[0].is_bool())) {
++      Fail(std::move(callback), "invalid_argument", "Invalid JavaScript Apple Events preference");
++      return;
++    }
++    auto* prefs = current->GetPrefs();
++    const bool managed = prefs->IsManagedPreference(prefs::kAllowJavascriptAppleEvents);
++    if (!args.empty()) {
++      if (managed) {
++        Fail(std::move(callback), "forbidden", "JavaScript Apple Events is managed");
++        return;
++      }
++      prefs->SetBoolean(prefs::kAllowJavascriptAppleEvents, args[0].GetBool());
++    }
++    base::DictValue result;
++    result.Set("enabled", prefs->GetBoolean(prefs::kAllowJavascriptAppleEvents));
++    result.Set("managed", managed);
++    Succeed(std::move(callback), base::Value(std::move(result)));
++    return;
++  }
++  if (method == "browserProfiles") {
++    if (!args.empty()) {
++      Fail(std::move(callback), "invalid_argument", "Unexpected Profile arguments");
++      return;
++    }
++    Succeed(std::move(callback), base::Value(ListProfiles(manager, current)));
++    return;
++  }
++  if (method == "createBrowserProfile") {
++    if (args.size() != 1 || !args[0].is_string()) {
++      Fail(std::move(callback), "invalid_argument", "Invalid Profile name");
++      return;
++    }
++    const auto name = ProfileName(args[0].GetString());
++    if (!name) {
++      Fail(std::move(callback), "invalid_argument", "Profile name must be 1–60 visible characters");
++      return;
++    }
++    ProfileManager::CreateMultiProfileAsync(
++        *name, /*icon_index=*/0, /*is_hidden=*/false,
++        base::BindOnce(
++            [](base::WeakPtr<WebUIBrowserUI> ui, Reply callback,
++               Profile* created) {
++              if (!ui) return;
++              if (!created || !g_browser_process ||
++                  !g_browser_process->profile_manager()) {
++                Fail(std::move(callback), "backend_unavailable",
++                     "Profile could not be created");
++                return;
++              }
++              auto* entry = g_browser_process->profile_manager()
++                                ->GetProfileAttributesStorage()
++                                .GetProfileAttributesWithPath(created->GetPath());
++              if (!entry || !ListedProfile(entry, ui->browser()->GetProfile())) {
++                Fail(std::move(callback), "internal", "Created Profile was not registered");
++                return;
++              }
++              Succeed(std::move(callback),
++                      base::Value(Describe(entry, ui->browser()->GetProfile())));
++            },
++            GetWeakPtr(), std::move(callback)));
++    return;
++  }
++  if (args.empty() || !args[0].is_string()) {
++    Fail(std::move(callback), "invalid_argument", "Invalid Profile identity");
++    return;
++  }
++  base::WeakPtr<content::WebContents> source;
++  std::optional<GURL> moving_url;
++  content::WeakDocumentPtr source_document;
++  std::string id = args[0].GetString();
++  if (method == "moveTabToProfile") {
++    if (args.size() != 2 || !args[1].is_string()) {
++      Fail(std::move(callback), "invalid_argument", "Invalid destination Profile");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* contents = aux::TabCatalog::GetForProfile(current)->FindPage(id, &owner);
++    if (!contents || !owner || owner->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++        aux::IsLittleWindow(owner) || aux::IsQuickAskWindow(owner) || !HumanTab(current, contents)) {
++      Fail(std::move(callback), "forbidden", "Only a human tab in a normal window can change Profile");
++      return;
++    }
++    moving_url = contents->GetLastCommittedURL();
++    if (!ValidWebUrl(moving_url->spec())) {
++      Fail(std::move(callback), "invalid_argument", "Only HTTP and HTTPS tabs can change Profile");
++      return;
++    }
++    source = contents->GetWeakPtr();
++    source_document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++    id = args[1].GetString();
++    if (id == ProfileId(current->GetPath())) {
++      Fail(std::move(callback), "invalid_argument", "The tab is already in that Profile");
++      return;
++    }
++  }
++  auto* entry = FindProfile(manager, current, id);
++  if (!entry) {
++    Fail(std::move(callback), "not_found", "Profile was not found");
++    return;
++  }
++  if (method == "setBrowserProfileAppearance") {
++    const auto* appearance = args.size() == 2 ? args[1].GetIfDict() : nullptr;
++    const auto* color = appearance ? appearance->FindString("color") : nullptr;
++    const auto* icon = appearance ? appearance->FindString("icon") : nullptr;
++    if (!color || !icon || icon->empty() || icon->size() > 32 ||
++        (*color != "blue" && *color != "violet" && *color != "pink" && *color != "orange" && *color != "green" && *color != "teal" && *color != "slate")) {
++      Fail(std::move(callback), "invalid_argument", "Invalid Profile appearance");
++      return;
++    }
++    ScopedDictPrefUpdate appearances(g_browser_process->local_state(), aux::kProfileAppearancePref);
++    appearances->Set(id, appearance->Clone());
++    Succeed(std::move(callback), base::Value(true));
++    return;
++  }
++  if (method == "renameBrowserProfile") {
++    if (args.size() != 2 || !args[1].is_string()) {
++      Fail(std::move(callback), "invalid_argument", "Invalid Profile name");
++      return;
++    }
++    const auto name = ProfileName(args[1].GetString());
++    if (!name) {
++      Fail(std::move(callback), "invalid_argument", "Profile name must be 1–60 visible characters");
++      return;
++    }
++    entry->SetLocalProfileName(*name, /*is_default_name=*/false);
++    Succeed(std::move(callback), base::Value(ListProfiles(manager, current)));
++    return;
++  }
++  if (method == "archiveBrowserProfile") {
++    if (args.size() != 2 || !args[1].is_bool()) {
++      Fail(std::move(callback), "invalid_argument", "Invalid archive state");
++      return;
++    }
++    if (entry->GetPath() == current->GetPath() || id == "default") {
++      Fail(std::move(callback), "forbidden", "Current and default Profiles cannot be archived");
++      return;
++    }
++    ScopedDictPrefUpdate archived(g_browser_process->local_state(),
++                                  aux::kArchivedProfilesPref);
++    if (args[1].GetBool()) archived->Set(id, true);
++    else archived->Remove(id);
++    Succeed(std::move(callback), base::Value(ListProfiles(manager, current)));
++    return;
++  }
++  if (method == "deleteBrowserProfile") {
++    if (args.size() != 1 || entry->GetPath() == current->GetPath() ||
++        id == "default") {
++      Fail(std::move(callback), "forbidden", "Current and default Profiles cannot be deleted");
++      return;
++    }
++    Profile* loaded = manager->GetProfileByPath(entry->GetPath());
++    auto* windows = loaded ? ProfileBrowserCollection::GetForProfile(loaded)
++                           : nullptr;
++    if (windows && (windows->GetSize() || windows->GetOffTheRecordBrowserCount())) {
++      Fail(std::move(callback), "conflict", "Close the Profile’s windows before deleting it");
++      return;
++    }
++    const base::FilePath path = entry->GetPath();
++    profiles::SetLastUsedProfile(current->GetPath().BaseName());
++    manager->GetDeleteProfileHelper().MaybeScheduleProfileForDeletion(
++        path, base::BindOnce([](Profile*) {}),
++        ProfileMetrics::DELETE_PROFILE_SETTINGS);
++    AwaitRemoval(GetWeakPtr(), path, std::move(callback), 0);
++    return;
++  }
++  if (method == "openBrowserProfile" || method == "openBrowserProfileUrl" ||
++      method == "focusBrowserProfileSpace" || method == "moveTabToProfile") {
++    if (method == "focusBrowserProfileSpace" &&
++        (args.size() != 2 || (!args[1].is_none() && !args[1].is_string()))) {
++      Fail(std::move(callback), "invalid_argument", "Invalid Profile Space");
++      return;
++    }
++    if ((method == "openBrowserProfile" && args.size() != 1) ||
++        (method == "openBrowserProfileUrl" &&
++         (args.size() != 2 || !args[1].is_string() ||
++          !ValidWebUrl(args[1].GetString())))) {
++      Fail(std::move(callback), "invalid_argument", "Invalid Profile page URL");
++      return;
++    }
++    if (Archived(id) || entry->IsSigninRequired()) {
++      Fail(std::move(callback), "forbidden", "Profile is archived or locked");
++      return;
++    }
++    std::optional<GURL> url = moving_url;
++    if (method == "openBrowserProfileUrl") url = GURL(args[1].GetString());
++    std::optional<std::string> space_id;
++    if (method == "focusBrowserProfileSpace" && args[1].is_string()) space_id = args[1].GetString();
++    manager->CreateProfileAsync(
++        entry->GetPath(),
++        base::BindOnce(&OpenLoadedProfile, std::move(callback), std::move(url), std::move(space_id), source, source_document));
++    return;
++  }
++  Fail(std::move(callback), "not_found", "Unsupported Profile operation");
++}
+diff --git a/chrome/browser/ui/aux/methods/profile_routing_methods.cc b/chrome/browser/ui/aux/methods/profile_routing_methods.cc
+new file mode 100644
+index 0000000000..3e8324b9c1
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/profile_routing_methods.cc
+@@ -0,0 +1,54 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/link_router.h"
++#include "chrome/browser/ui/aux/generated/aux_host_methods.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/profiles/profile.h"
++#include "base/json/json_writer.h"
++#include "base/functional/bind.h"
++namespace aux {
++bool IsLinkRoutingMethod(std::string_view method) {
++  return method == "linkRoutes" || method == "setLinkRoutes" || method == "testLinkRoute" ||
++      method == "resolveRoutePrompt" || method == "routedOpens" || method == "routePrompts";
++}
++bool HandleLinkRoutingRequest(BrowserWindowInterface* caller, const std::string& method,
++    const base::ListValue& args, mojom::ShellHost::RequestCallback callback) {
++  auto fail = [&callback](const char* code, const std::string& message) {
++    std::move(callback).Run(false, "", code, message); return true;
++  };
++  if (!caller || caller->GetProfile()->IsOffTheRecord() || IsQuickAskWindow(caller) ||
++      caller->GetType() != BrowserWindowInterface::TYPE_NORMAL) return fail("forbidden", "Routing requires an owned regular Aux window");
++  const auto descriptor = generated::LookupMethod(method);
++  std::string error;
++  if (!descriptor || !generated::ValidateMethodArgs(*descriptor, base::Value(args.Clone()), &error))
++    return fail("invalid_argument", error);
++  auto reply = [](mojom::ShellHost::RequestCallback callback, base::Value value) {
++    const auto json = base::WriteJson(value);
++    if (!json) { std::move(callback).Run(false, "", "internal", "Routing result could not be encoded"); return; }
++    std::move(callback).Run(true, *json, "", "");
++  };
++  auto* router = LinkRouter::ForProfile(caller->GetProfile());
++  if (method == "linkRoutes") reply(std::move(callback), base::Value(LinkRouter::Config()));
++  else if (method == "setLinkRoutes") {
++    if (!args[0].is_int()) return fail("invalid_argument", "Revision exceeds the native integer range");
++    auto config = LinkRouter::SetConfig(args[0].GetInt(), args[1].GetDict(), &error);
++    if (!config) return fail("conflict", error);
++    reply(std::move(callback), base::Value(std::move(*config)));
++  } else if (method == "testLinkRoute") {
++    const GURL url(args[0].GetString());
++    if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS() || url.has_username() || url.has_password())
++      return fail("invalid_argument", "Routing tests require an HTTP or HTTPS URL without credentials");
++    reply(std::move(callback), base::Value(LinkRouter::Test(url, args[1].GetString())));
++  } else if (method == "routedOpens") reply(std::move(callback), base::Value(router->TakeReceipts(caller)));
++  else if (method == "routePrompts") reply(std::move(callback), base::Value(router->Prompts(caller)));
++  else if (method == "resolveRoutePrompt") {
++    router->Resolve(caller, args[0].GetString(), args[1].GetDict(), args[2].GetBool(),
++      base::BindOnce([](mojom::ShellHost::RequestCallback callback, bool opened) {
++        if (!opened) { std::move(callback).Run(false, "", "conflict", "The prompt expired, its owner closed, or its destination changed. Refresh and choose again."); return; }
++        std::move(callback).Run(true, "true", "", "");
++      }, std::move(callback)));
++  } else return fail("unavailable", "Unknown routing method");
++  return true;
++}
++}
+diff --git a/chrome/browser/ui/aux/profile_prefs.h b/chrome/browser/ui/aux/profile_prefs.h
+new file mode 100644
+index 0000000000..2322bce86b
+--- /dev/null
++++ b/chrome/browser/ui/aux/profile_prefs.h
+@@ -0,0 +1,19 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_PROFILE_PREFS_H_
++#define CHROME_BROWSER_UI_AUX_PROFILE_PREFS_H_
++
++namespace aux {
++inline constexpr char kProfileAppearancePref[] = "aux.profile_appearance";
++inline constexpr char kProfileSpacesIndexPref[] = "aux.profile_spaces_index";
++inline constexpr char kLinkRoutingPref[] = "aux.link_routing.v1";
++inline constexpr char kArchivedProfilesPref[] = "aux.archived_profiles";
++inline constexpr char kAutofillProfileGuidPref[] = "aux.autofill_profile_guid";
++inline constexpr char kQuickAskShortcutBindingsPref[] = "aux.quick_ask_shortcut_bindings";
++inline constexpr char kQuickAskShortcutEnabledPref[] = "aux.quick_ask_shortcut_enabled";
++inline constexpr char kKeepRuntimeInBackgroundPref[] = "aux.keep_runtime_in_background";
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_PROFILE_PREFS_H_
+diff --git a/chrome/browser/ui/aux/profile_search_engine.cc b/chrome/browser/ui/aux/profile_search_engine.cc
+new file mode 100644
+index 0000000000..5edda68ee8
+--- /dev/null
++++ b/chrome/browser/ui/aux/profile_search_engine.cc
+@@ -0,0 +1,185 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/profile_search_engine.h"
++
++#include <memory>
++#include <string>
++#include <string_view>
++
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/search_engines/template_url_service_factory.h"
++#include "chrome/common/pref_names.h"
++#include "components/prefs/pref_service.h"
++#include "components/search_engines/template_url.h"
++#include "components/search_engines/template_url_data.h"
++#include "components/search_engines/template_url_service.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++
++constexpr char kSearchToken[] = "auxuniquesearchtermplaceholder";
++
++TemplateURLService* Service(Profile* profile) {
++  return profile ? TemplateURLServiceFactory::GetForProfile(profile) : nullptr;
++}
++
++std::string ReplaceAll(std::string text,
++                       const std::string& old_text,
++                       const std::string& new_text) {
++  size_t pos = 0;
++  while ((pos = text.find(old_text, pos)) != std::string::npos) {
++    text.replace(pos, old_text.size(), new_text);
++    pos += new_text.size();
++  }
++  return text;
++}
++
++}  // namespace
++
++std::optional<std::string> ProfileSearchEngine::CurrentTemplate(
++    Profile* profile) {
++  TemplateURLService* service = Service(profile);
++  const TemplateURL* provider =
++      service ? service->GetDefaultSearchProvider() : nullptr;
++  if (!provider) {
++    return std::nullopt;
++  }
++  const GURL generated = provider->GenerateSearchURL(
++      service->search_terms_data(), base::UTF8ToUTF16(std::string_view(kSearchToken)));
++  if (!generated.is_valid() || !generated.SchemeIsHTTPOrHTTPS()) {
++    return std::nullopt;
++  }
++  const std::string url = generated.spec();
++  if (url.find(kSearchToken) == std::string::npos) {
++    return std::nullopt;
++  }
++  return ReplaceAll(url, kSearchToken, "%s");
++}
++
++std::optional<std::string> ProfileSearchEngine::Resolve(
++    Profile* profile,
++    const std::string& query) {
++  if (query.empty() || query.size() > 2048) {
++    return std::nullopt;
++  }
++  TemplateURLService* service = Service(profile);
++  const TemplateURL* provider =
++      service ? service->GetDefaultSearchProvider() : nullptr;
++  if (!provider) {
++    return std::nullopt;
++  }
++  const GURL url = provider->GenerateSearchURL(service->search_terms_data(),
++                                                base::UTF8ToUTF16(query));
++  if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS()) {
++    return std::nullopt;
++  }
++  return url.spec();
++}
++
++ProfileSearchEngine::SetResult ProfileSearchEngine::Set(
++    Profile* profile,
++    const std::string& url_template) {
++  if (!profile || profile->IsOffTheRecord() || url_template.size() > 2048 ||
++      url_template.find("%s") == std::string::npos) {
++    return SetResult::kInvalid;
++  }
++  const size_t authority_start = url_template.find("://");
++  if (authority_start == std::string::npos) {
++    return SetResult::kInvalid;
++  }
++  const size_t authority_end = url_template.find_first_of("/?#", authority_start + 3);
++  if (url_template.substr(authority_start + 3,
++                          authority_end - authority_start - 3)
++              .find("%s") != std::string::npos) {
++    return SetResult::kInvalid;
++  }
++  const GURL sample(ReplaceAll(url_template, "%s", "aux"));
++  if (!sample.is_valid() || !sample.SchemeIsHTTPOrHTTPS() ||
++      sample.has_username() || sample.has_password() ||
++      sample.host().find('%') != std::string::npos) {
++    return SetResult::kInvalid;
++  }
++  TemplateURLService* service = Service(profile);
++  if (!service || !service->loaded()) {
++    return SetResult::kUnavailable;
++  }
++  const TemplateURL* current = service->GetDefaultSearchProvider();
++  if (!service->CanDefaultSearchProviderBeModifiedByUser()) {
++    return SetResult::kManaged;
++  }
++  const std::string native_template =
++      ReplaceAll(url_template, "%s", "{searchTerms}");
++  for (TemplateURL* provider : service->GetTemplateURLs()) {
++    if (provider->url() != native_template) {
++      continue;
++    }
++    if (provider == current) {
++      return SetResult::kOk;
++    }
++    if (!service->CanMakeDefault(provider)) {
++      return SetResult::kManaged;
++    }
++    service->SetUserSelectedDefaultSearchProvider(provider);
++    return SetResult::kOk;
++  }
++  TemplateURLData data;
++  data.SetShortName(base::UTF8ToUTF16(sample.host()));
++  std::string keyword = "aux-" + std::string(sample.host());
++  for (int suffix = 2;
++       service->GetTemplateURLForKeyword(base::UTF8ToUTF16(keyword));
++       ++suffix) {
++    keyword = "aux-" + std::string(sample.host()) + "-" + base::NumberToString(suffix);
++  }
++  data.SetKeyword(base::UTF8ToUTF16(keyword));
++  data.SetURL(native_template);
++  TemplateURL* provider = service->Add(std::make_unique<TemplateURL>(data));
++  if (!provider) {
++    return SetResult::kUnavailable;
++  }
++  if (!service->CanMakeDefault(provider)) {
++    service->Remove(provider);
++    return SetResult::kManaged;
++  }
++  service->SetUserSelectedDefaultSearchProvider(provider);
++  return SetResult::kOk;
++}
++
++void ProfileSearchEngine::InitializeSuggestions(Profile* profile) {
++  if (!profile || profile->IsOffTheRecord()) {
++    return;
++  }
++  PrefService* prefs = profile->GetPrefs();
++  const PrefService::Preference* preference =
++      prefs->FindPreference(prefs::kSearchSuggestEnabled);
++  if (preference && preference->IsDefaultValue()) {
++    prefs->SetBoolean(prefs::kSearchSuggestEnabled, false);
++  }
++}
++
++bool ProfileSearchEngine::SuggestionsEnabled(Profile* profile) {
++  return profile &&
++         profile->GetPrefs()->GetBoolean(prefs::kSearchSuggestEnabled);
++}
++
++ProfileSearchEngine::SetResult ProfileSearchEngine::SetSuggestions(
++    Profile* profile,
++    bool enabled) {
++  if (!profile || profile->IsOffTheRecord()) {
++    return SetResult::kInvalid;
++  }
++  PrefService* prefs = profile->GetPrefs();
++  const PrefService::Preference* preference =
++      prefs->FindPreference(prefs::kSearchSuggestEnabled);
++  if (!preference || !preference->IsUserModifiable()) {
++    return SetResult::kManaged;
++  }
++  prefs->SetBoolean(prefs::kSearchSuggestEnabled, enabled);
++  return SetResult::kOk;
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/profile_search_engine.h b/chrome/browser/ui/aux/profile_search_engine.h
+new file mode 100644
+index 0000000000..4d5da821b2
+--- /dev/null
++++ b/chrome/browser/ui/aux/profile_search_engine.h
+@@ -0,0 +1,34 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_PROFILE_SEARCH_ENGINE_H_
++#define CHROME_BROWSER_UI_AUX_PROFILE_SEARCH_ENGINE_H_
++
++#include <optional>
++#include <string>
++
++class Profile;
++
++namespace aux {
++
++// Uses the owning Profile's TemplateURLService. Aux does not keep another
++// default-provider preference; callers should read this service on demand.
++class ProfileSearchEngine {
++ public:
++  enum class SetResult { kOk, kInvalid, kUnavailable, kManaged };
++
++  static std::optional<std::string> CurrentTemplate(Profile* profile);
++  static std::optional<std::string> Resolve(Profile* profile,
++                                            const std::string& query);
++  static SetResult Set(Profile* profile, const std::string& url_template);
++  // Aux starts with network suggestions off unless this Profile already has
++  // a user, extension, or policy decision.
++  static void InitializeSuggestions(Profile* profile);
++  static bool SuggestionsEnabled(Profile* profile);
++  static SetResult SetSuggestions(Profile* profile, bool enabled);
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_PROFILE_SEARCH_ENGINE_H_

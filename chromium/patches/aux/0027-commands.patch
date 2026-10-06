@@ -1,0 +1,434 @@
+diff --git a/chrome/browser/ui/aux/methods/shortcuts_methods.cc b/chrome/browser/ui/aux/methods/shortcuts_methods.cc
+new file mode 100644
+index 0000000000..0a94ac702f
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/shortcuts_methods.cc
+@@ -0,0 +1,34 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/methods/shortcuts_methods.h"
++#include "chrome/app/chrome_command_ids.h"
++#include "chrome/browser/ui/browser_commands.h"
++#include "ui/base/accelerators/accelerator.h"
++#include "ui/events/event_constants.h"
++#include "ui/events/keycodes/keyboard_codes.h"
++namespace aux {
++bool IsAllowedAuxShortcut(const ui::Accelerator& accelerator) {
++  const auto code = accelerator.key_code();
++  const int modifiers = accelerator.modifiers();
++  constexpr int command = ui::EF_COMMAND_DOWN;
++  constexpr int shift = ui::EF_SHIFT_DOWN;
++  constexpr int alt = ui::EF_ALT_DOWN;
++  constexpr int control = ui::EF_CONTROL_DOWN;
++  if (code <= 0 || code > 255 || (modifiers & ~(command | shift | alt | control)) != 0) return false;
++  const bool reserved =
++      (modifiers == command && (code == ui::VKEY_Q || code == ui::VKEY_H ||
++       code == ui::VKEY_M || code == ui::VKEY_TAB || code == ui::VKEY_SPACE ||
++       code == ui::VKEY_OEM_3)) ||
++      (modifiers == (command | alt) && (code == ui::VKEY_H || code == ui::VKEY_D)) ||
++      (modifiers == (command | control) && code == ui::VKEY_F) ||
++      (modifiers == (command | shift) && code >= ui::VKEY_3 && code <= ui::VKEY_5);
++  return !reserved && (modifiers != 0 || (code >= ui::VKEY_F1 && code <= ui::VKEY_F24));
++}
++bool DispatchNativeAuxCommand(BrowserWindowInterface* browser, const std::string& id) {
++  if (!browser) return false;
++  if (id == "new-window") return chrome::ExecuteCommand(browser, IDC_NEW_WINDOW);
++  if (id == "new-private-window") return chrome::ExecuteCommand(browser, IDC_NEW_INCOGNITO_WINDOW);
++  return false;
++}
++}
+diff --git a/chrome/browser/ui/aux/methods/shortcuts_methods.h b/chrome/browser/ui/aux/methods/shortcuts_methods.h
+new file mode 100644
+index 0000000000..fa1b359936
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/shortcuts_methods.h
+@@ -0,0 +1,13 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_METHODS_SHORTCUTS_METHODS_H_
++#define CHROME_BROWSER_UI_AUX_METHODS_SHORTCUTS_METHODS_H_
++#include <string>
++class BrowserWindowInterface;
++namespace ui { class Accelerator; }
++namespace aux {
++bool IsAllowedAuxShortcut(const ui::Accelerator& accelerator);
++bool DispatchNativeAuxCommand(BrowserWindowInterface* browser, const std::string& id);
++}
++#endif
+diff --git a/chrome/browser/ui/aux/quick_ask_controller.cc b/chrome/browser/ui/aux/quick_ask_controller.cc
+new file mode 100644
+index 0000000000..2c3008551e
+--- /dev/null
++++ b/chrome/browser/ui/aux/quick_ask_controller.cc
+@@ -0,0 +1,245 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
++
++#include <algorithm>
++#include <optional>
++#include "base/scoped_observation.h"
++#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
++#include "components/prefs/scoped_user_pref_update.h"
++
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/aux/methods/shortcuts_methods.h"
++#include "chrome/browser/ui/browser_window/public/browser_collection.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
++#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
++#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/browser_tabstrip.h"
++#include "components/prefs/pref_service.h"
++#include "components/sessions/core/session_id.h"
++#include "ui/base/accelerators/accelerator.h"
++#include "ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.h"
++#include "ui/base/base_window.h"
++#include "ui/display/screen.h"
++#include "ui/events/event_constants.h"
++#include "ui/events/keycodes/keyboard_codes.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++
++class QuickAskController : public ui::GlobalAcceleratorListener::Observer,
++                           public BrowserCollectionObserver {
++ public:
++  QuickAskController() {
++    if (auto* browsers = GlobalBrowserCollection::GetInstance()) observation_.Observe(browsers);
++    UpdateRegistration();
++  }
++  void OnBrowserActivated(BrowserWindowInterface* browser) override { UpdateRegistration(); }
++  void SetBindings(Profile* profile, const std::vector<ui::Accelerator>& bindings) {
++    if (!profile || profile->IsOffTheRecord() || !g_browser_process || !g_browser_process->local_state()) return;
++    base::ListValue rows;
++    for (const auto& binding : bindings) {
++      base::DictValue row;
++      row.Set("keyCode", static_cast<int>(binding.key_code()));
++      row.Set("modifiers", binding.modifiers());
++      rows.Append(std::move(row));
++    }
++    ScopedDictPrefUpdate prefs(g_browser_process->local_state(), kQuickAskShortcutBindingsPref);
++    prefs->Set(profile->GetPath().BaseName().AsUTF8Unsafe(), std::move(rows));
++    UpdateRegistration();
++  }
++  ~QuickAskController() override = default;
++
++  QuickAskShortcutStatus Status() const {
++    QuickAskShortcutStatus status;
++    PrefService* prefs = g_browser_process ? g_browser_process->local_state() : nullptr;
++    status.enabled = prefs && prefs->GetBoolean(kQuickAskShortcutEnabledPref);
++    status.registered = registered_;
++    if (status.enabled && !registered_)
++      status.error = "This shortcut is unavailable or in use by another app.";
++    return status;
++  }
++
++  QuickAskShortcutStatus SetEnabled(bool enabled) {
++    if (PrefService* prefs =
++            g_browser_process ? g_browser_process->local_state() : nullptr)
++      prefs->SetBoolean(kQuickAskShortcutEnabledPref, enabled);
++    UpdateRegistration();
++    return Status();
++  }
++
++  bool IsPopup(const BrowserWindowInterface* browser) const {
++    return browser && popup_id_.is_valid() &&
++           browser->GetSessionID() == popup_id_;
++  }
++
++  bool Open(Profile* profile) {
++    if (!profile || profile->IsOffTheRecord())
++      return false;
++    if (BrowserWindowInterface* popup = Popup()) {
++      if (popup->GetProfile() == profile) {
++        popup->GetWindow()->Show();
++        popup->GetWindow()->Activate();
++        return true;
++      }
++      popup->GetWindow()->Close();
++      popup_id_ = SessionID::InvalidValue();
++    }
++    auto* screen = display::Screen::Get();
++    if (!screen)
++      return false;
++    const gfx::Rect work_area =
++        screen->GetDisplayNearestPoint(screen->GetCursorScreenPoint()).work_area();
++    constexpr int kWidth = 520;
++    constexpr int kHeight = 640;
++    const gfx::Rect bounds(
++        work_area.CenterPoint().x() - kWidth / 2,
++        work_area.CenterPoint().y() - kHeight / 2, kWidth, kHeight);
++    // Aux's WebUI shell is installed on normal browser windows. Keep a
++    // distinct session identity for this compact, non-restored window.
++    BrowserWindowCreateParams params(
++        BrowserWindowInterface::Type::TYPE_NORMAL, profile, true);
++    params.initial_bounds = bounds;
++    params.omit_from_session_restore = true;
++    BrowserWindowInterface* popup = CreateBrowserWindow(std::move(params));
++    if (!popup)
++      return false;
++    popup_id_ = popup->GetSessionID();
++    chrome::AddTabAt(popup, GURL(), -1, true);
++    popup->GetWindow()->SetBounds(bounds);
++    popup->GetWindow()->Show();
++    popup->GetWindow()->Activate();
++    return true;
++  }
++
++  bool Dismiss(BrowserWindowInterface* browser) {
++    if (!IsPopup(browser))
++      return false;
++    popup_id_ = SessionID::InvalidValue();
++    browser->GetWindow()->Close();
++    return true;
++  }
++
++  bool Expand(BrowserWindowInterface* browser) {
++    if (!IsPopup(browser))
++      return false;
++    Profile* profile = browser->GetProfile();
++    auto* screen = display::Screen::Get();
++    if (!screen)
++      return false;
++    const gfx::Rect work_area =
++        screen->GetDisplayNearestWindow(browser->GetWindow()->GetNativeWindow())
++            .work_area();
++    const int width = std::min(1200, work_area.width());
++    const int height = std::min(850, work_area.height());
++    const gfx::Rect bounds(work_area.CenterPoint().x() - width / 2,
++                           work_area.CenterPoint().y() - height / 2,
++                           width, height);
++    BrowserWindowCreateParams params(
++        BrowserWindowInterface::Type::TYPE_NORMAL, profile, true);
++    params.initial_bounds = bounds;
++    params.should_trigger_session_restore = false;
++    BrowserWindowInterface* expanded = CreateBrowserWindow(std::move(params));
++    if (!expanded)
++      return false;
++    chrome::AddTabAt(expanded, GURL(), -1, true);
++    expanded->GetWindow()->SetBounds(bounds);
++    expanded->GetWindow()->Show();
++    expanded->GetWindow()->Activate();
++    return Dismiss(browser);
++  }
++
++  void OnKeyPressed(const ui::Accelerator& accelerator) override {
++    BrowserWindowInterface* active =
++        GlobalBrowserCollection::GetInstance()
++            ? GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser()
++            : nullptr;
++    if (active)
++      Open(active->GetProfile());
++  }
++
++  void ExecuteCommand(const std::string& accelerator_group_id,
++                      const std::string& command_id) override {}
++
++ private:
++  BrowserWindowInterface* Popup() const {
++    auto* collection = GlobalBrowserCollection::GetInstance();
++    return collection && popup_id_.is_valid()
++               ? collection->FindBrowserWithID(popup_id_)
++               : nullptr;
++  }
++
++  void UpdateRegistration() {
++    auto* listener = ui::GlobalAcceleratorListener::GetInstance();
++    if (!listener)
++      return;
++    listener->UnregisterAccelerators(this);
++    registered_ = false;
++    PrefService* prefs = g_browser_process ? g_browser_process->local_state() : nullptr;
++    if (prefs && prefs->GetBoolean(kQuickAskShortcutEnabledPref)) {
++      auto* browsers = GlobalBrowserCollection::GetInstance();
++      auto* active = browsers ? browsers->GetLastActiveBrowser() : nullptr;
++      if (!active || active->GetProfile()->IsOffTheRecord()) return;
++      const auto* bindings = prefs->GetDict(kQuickAskShortcutBindingsPref).FindList(
++          active->GetProfile()->GetPath().BaseName().AsUTF8Unsafe());
++      if (!bindings) return;
++      if (bindings->empty() || bindings->size() > 4) return;
++      std::vector<ui::Accelerator> accelerators;
++      for (const auto& value : *bindings) {
++        const auto* row = value.GetIfDict();
++        const auto code = row ? row->FindInt("keyCode") : std::nullopt;
++        const auto modifiers = row ? row->FindInt("modifiers") : std::nullopt;
++        if (!code || !modifiers) return;
++        const ui::Accelerator accelerator(static_cast<ui::KeyboardCode>(*code), *modifiers);
++        if (!IsAllowedAuxShortcut(accelerator)) return;
++        if (std::find(accelerators.begin(), accelerators.end(), accelerator) != accelerators.end()) return;
++        accelerators.push_back(accelerator);
++      }
++      for (const auto& accelerator : accelerators) {
++        if (!listener->RegisterAccelerator(accelerator, this)) {
++          listener->UnregisterAccelerators(this);
++          return;
++        }
++      }
++      registered_ = true;
++    }
++  }
++
++  base::ScopedObservation<GlobalBrowserCollection, BrowserCollectionObserver> observation_{this};
++  SessionID popup_id_ = SessionID::InvalidValue();
++  bool registered_ = false;
++};
++
++QuickAskController& Controller() {
++  static auto* controller = new QuickAskController();
++  return *controller;
++}
++
++}  // namespace
++
++void InitializeQuickAsk() { Controller(); }
++void SetQuickAskShortcutBindings(Profile* profile, const std::vector<ui::Accelerator>& bindings) { Controller().SetBindings(profile, bindings); }
++QuickAskShortcutStatus GetQuickAskShortcutStatus() {
++  return Controller().Status();
++}
++QuickAskShortcutStatus SetQuickAskShortcutEnabled(bool enabled) {
++  return Controller().SetEnabled(enabled);
++}
++bool IsQuickAskWindow(const BrowserWindowInterface* browser) {
++  return Controller().IsPopup(browser);
++}
++bool OpenQuickAsk(Profile* profile) { return Controller().Open(profile); }
++bool DismissQuickAsk(BrowserWindowInterface* browser) {
++  return Controller().Dismiss(browser);
++}
++bool ExpandQuickAsk(BrowserWindowInterface* browser) {
++  return Controller().Expand(browser);
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/quick_ask_controller.h b/chrome/browser/ui/aux/quick_ask_controller.h
+new file mode 100644
+index 0000000000..831a932192
+--- /dev/null
++++ b/chrome/browser/ui/aux/quick_ask_controller.h
+@@ -0,0 +1,35 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_QUICK_ASK_CONTROLLER_H_
++#define CHROME_BROWSER_UI_AUX_QUICK_ASK_CONTROLLER_H_
++
++#include <string>
++#include <vector>
++#include "ui/base/accelerators/accelerator.h"
++
++class BrowserWindowInterface;
++class Profile;
++
++namespace aux {
++
++struct QuickAskShortcutStatus {
++  bool enabled = false;
++  bool registered = false;
++  std::string error;
++};
++
++// Initializes the persisted shortcut after the first Aux window is created.
++void InitializeQuickAsk();
++void SetQuickAskShortcutBindings(Profile* profile, const std::vector<ui::Accelerator>& bindings);
++QuickAskShortcutStatus GetQuickAskShortcutStatus();
++QuickAskShortcutStatus SetQuickAskShortcutEnabled(bool enabled);
++bool IsQuickAskWindow(const BrowserWindowInterface* browser);
++bool OpenQuickAsk(Profile* profile);
++bool DismissQuickAsk(BrowserWindowInterface* browser);
++bool ExpandQuickAsk(BrowserWindowInterface* browser);
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_QUICK_ASK_CONTROLLER_H_
+diff --git a/chrome/browser/ui/browser_command_controller.cc b/chrome/browser/ui/browser_command_controller.cc
+index e366925102..4a127fb8e9 100644
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -3,6 +3,11 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/browser_command_controller.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++#endif
+ 
+ #include <stddef.h>
+ 
+@@ -746,6 +751,11 @@ void BrowserCommandController::HandleCommandWithDisposition(
+       CloseWindow(browser_);
+       break;
+     case IDC_NEW_TAB: {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++      if (auto* window = WebUIBrowserWindow::FromBrowser(browser_);
++          window && window->GetWebUIBrowserUI() &&
++          window->GetWebUIBrowserUI()->DispatchAuxShortcut("new-tab", true)) break;
++#endif
+       NewTab(browser_, NewTabTypes::kNewTabCommand);
+       break;
+     }
+diff --git a/chrome/browser/ui/cocoa/main_menu_builder.mm b/chrome/browser/ui/cocoa/main_menu_builder.mm
+index 4a178fc76a..64255f7408 100644
+--- a/chrome/browser/ui/cocoa/main_menu_builder.mm
++++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
+@@ -12,6 +12,7 @@
+ #include "build/branding_buildflags.h"
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/browser/browser_features.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/feedback/report_unsafe_site_dialog.h"
+ #include "chrome/browser/ui/cocoa/accelerators_cocoa.h"
+@@ -118,6 +119,42 @@ NSMenuItem* BuildAppMenu(NSApplication* nsapp,
+           .Build();
+   // clang-format on
+ 
++#if BUILDFLAG(ENABLE_AUX_SPARKLE)
++  if (!is_pwa) {
++    NSMenu* updates_menu = [[NSMenu alloc] initWithTitle:@"Updates"];
++    auto add_update_action = ^(NSString* title, SEL action) {
++      NSMenuItem* entry = [[NSMenuItem alloc] initWithTitle:title
++                                                   action:action
++                                            keyEquivalent:@""];
++      entry.target = app_delegate;
++      [updates_menu addItem:entry];
++    };
++    add_update_action(@"Check for Updates…", @selector(auxCheckForUpdates:));
++    [updates_menu addItem:[NSMenuItem separatorItem]];
++    add_update_action(@"Check Automatically",
++                      @selector(auxToggleAutomaticUpdateChecks:));
++    [updates_menu addItem:[NSMenuItem separatorItem]];
++    add_update_action(@"Stable Updates", @selector(auxSelectStableUpdates:));
++    add_update_action(@"Beta Updates", @selector(auxSelectBetaUpdates:));
++    NSMenuItem* updates_item = [[NSMenuItem alloc] initWithTitle:@"Updates"
++                                                          action:nil
++                                                   keyEquivalent:@""];
++    updates_item.submenu = updates_menu;
++    [item.submenu insertItem:updates_item atIndex:4];
++  }
++#endif
++
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (!is_pwa) {
++    NSMenuItem* crash_item =
++        [[NSMenuItem alloc] initWithTitle:@"Crash Reports…"
++                                   action:@selector(auxCrashReportPreferences:)
++                            keyEquivalent:@""];
++    crash_item.target = app_delegate;
++    [item.submenu insertItem:crash_item atIndex:4];
++  }
++#endif
++
+   NSMenuItem* services_item = [item.submenu itemWithTag:-1];
+   services_item.tag = 0;
+ 

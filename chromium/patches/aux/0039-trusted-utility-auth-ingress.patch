@@ -1,0 +1,16 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 67f2d0b..ba2a3e4 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1018,7 +1018,10 @@ void WebUIBrowserUI::Request(const std::string& method,
+           std::move(callback));
+   const auto& api_method = (*list)[0].GetString();
+   if (api_method == "runs.start" || api_method == "tasks.start" ||
+-      api_method == "runs.retry" || api_method == "agent.images.generate")
++      api_method == "runs.retry" || api_method == "agent.images.generate" ||
++      api_method == "agent.utility.intent" || api_method == "agent.tidy.propose" ||
++      api_method == "agent.tabName.suggest" || api_method == "models.auth.start" ||
++      api_method == "models.auth.status" || api_method == "models.auth.cancel")
+     host->CallApiFromWindow(browser_->GetWeakPtr(), web_ui()->GetRenderFrameHost()->GetWeakDocumentPtr(),
+         api_method, *params_json, std::move(reply));
+   else

@@ -1,0 +1,1189 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 80de623af..af32ac00b 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -9,6 +9,10 @@ assert(enable_aux_shell)
+ source_set("runtime") {
+   sources = [
+     "browser_export_decode.h",
++    "browser_firefox_import.cc",
++    "browser_firefox_import.h",
++    "browser_firefox_snapshot.cc",
++    "browser_firefox_snapshot.h",
+     "browser_export_decode.cc",
+     "browser_export_picker.h",
+     "browser_export_picker_mac.mm",
+@@ -154,8 +158,11 @@ source_set("runtime") {
+     "zap_controller.h",
+   ]
+   public_deps = [ ":semantic" ]
+   deps = [
+     "semantic:semantic_resources",
++    "//chrome/common:ini_parser",
++    "//chrome/common/importer:importer",
++    "//chrome/common/importer:aux_firefox_profile",
+     "//components/sessions",
+     "//components/os_crypt/async/browser",
+     "//components/os_crypt/async/browser:key_provider_interface",
+diff --git a/chrome/browser/ui/aux/browser_firefox_import.cc b/chrome/browser/ui/aux/browser_firefox_import.cc
+new file mode 100644
+index 000000000..aea1edbdd
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_firefox_import.cc
+@@ -0,0 +1,50 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_firefox_import.h"
++#include <algorithm>
++#include <cmath>
++#include "base/functional/bind.h"
++#include "base/strings/utf_string_conversions.h"
++#include "content/public/browser/service_process_host.h"
++namespace aux {
++BrowserFirefoxImport::BrowserFirefoxImport() = default;
++BrowserFirefoxImport::~BrowserFirefoxImport() = default;
++void BrowserFirefoxImport::Start(DecodedBrowserProfile& captured, const std::vector<std::string>& categories, Completed completed) {
++  CHECK(!completed_ && !decoder_.is_bound());
++  completed_ = std::move(completed);
++  decoder_ = content::ServiceProcessHost::Launch<chrome::mojom::AuxFirefoxProfileDecoder>(content::ServiceProcessHost::Options().WithDisplayName(u"Firefox import decoder").WithObserver(weak_factory_.GetWeakPtr()).Pass());
++  decoder_.set_disconnect_handler(base::BindOnce(&BrowserFirefoxImport::OnDisconnected, base::Unretained(this)));
++  auto selected = [&](const char* category) { return std::ranges::find(categories, category) != categories.end(); };
++  decoder_->Decode(std::move(captured.firefox_database), std::move(captured.firefox_wal), std::move(captured.firefox_journal), std::move(captured.firefox_session), selected("history"), selected("bookmarks"), selected("tabs"), base::BindOnce(&BrowserFirefoxImport::OnDecoded, base::Unretained(this)));
++}
++void BrowserFirefoxImport::OnDisconnected() {
++  decoder_.reset();
++  // Pipe closure alone cannot acknowledge that transferred FDs are closed.
++  // Retain the original job until the exact service's exit/crash notification.
++  if (process_retired_ && completed_) std::move(completed_).Run(base::unexpected("The Firefox utility decoder exited before completion. No decoded batch was accepted."));
++}
++void BrowserFirefoxImport::OnServiceProcessTerminatedNormally(const content::ServiceProcessInfo&) {
++  process_retired_ = true;
++  OnDisconnected();
++}
++void BrowserFirefoxImport::OnServiceProcessCrashed(const content::ServiceProcessInfo&) {
++  process_retired_ = true;
++  OnDisconnected();
++}
++void BrowserFirefoxImport::OnDecoded(chrome::mojom::AuxFirefoxProfileResultPtr source) {
++  decoder_.reset();
++  if (!source || source->error) {
++    std::move(completed_).Run(base::unexpected(source && source->error ? *source->error : "The Firefox utility result is unavailable.")); return;
++  }
++  FirefoxImportResult result;
++  for (const auto& row : source->history) result.history.push_back({row->url, base::UTF8ToUTF16(row->title), base::Time::FromMillisecondsSinceUnixEpoch(row->visited_at)});
++  for (const auto& row : source->bookmarks) {
++    user_data_importer::ImportedBookmarkEntry entry; entry.url = row->url; entry.title = base::UTF8ToUTF16(row->title); entry.is_folder = row->is_folder; entry.in_toolbar = false;
++    for (const auto& part : row->path) entry.path.push_back(base::UTF8ToUTF16(part));
++    result.bookmarks.push_back(std::move(entry));
++  }
++  for (const auto& row : source->tabs) result.tabs.push_back({row->url, base::UTF8ToUTF16(row->title), row->window_id, row->pinned});
++  std::move(completed_).Run(std::move(result));
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_firefox_import.h b/chrome/browser/ui/aux/browser_firefox_import.h
+new file mode 100644
+index 0000000..428a532
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_firefox_import.h
+@@ -0,0 +1,39 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_FIREFOX_IMPORT_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_FIREFOX_IMPORT_H_
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "content/public/browser/service_process_host.h"
++#include "base/types/expected.h"
++#include "chrome/browser/ui/aux/browser_profile_decode.h"
++#include "chrome/common/importer/aux_firefox_profile.mojom.h"
++#include "components/user_data_importer/common/imported_bookmark_entry.h"
++#include "mojo/public/cpp/bindings/remote.h"
++namespace aux {
++struct FirefoxImportResult {
++  std::vector<ImportedProfileHistory> history;
++  std::vector<user_data_importer::ImportedBookmarkEntry> bookmarks;
++  std::vector<ImportedProfileTab> tabs;
++};
++// Retained by the original BrowserProfileImporter job until actual kService
++// decoding finishes. Cancellation retires effects, never fabricates a join.
++class BrowserFirefoxImport final : public content::ServiceProcessHost::Observer {
++ public:
++  using Completed = base::OnceCallback<void(base::expected<FirefoxImportResult, std::string>)>;
++  BrowserFirefoxImport();
++  ~BrowserFirefoxImport() override;
++  void Start(DecodedBrowserProfile& captured, const std::vector<std::string>& categories, Completed completed);
++  void OnServiceProcessTerminatedNormally(const content::ServiceProcessInfo& info) override;
++  void OnServiceProcessCrashed(const content::ServiceProcessInfo& info) override;
++ private:
++  void OnDecoded(chrome::mojom::AuxFirefoxProfileResultPtr result);
++  void OnDisconnected();
++  mojo::Remote<chrome::mojom::AuxFirefoxProfileDecoder> decoder_;
++  Completed completed_;
++  bool process_retired_ = false;
++  base::WeakPtrFactory<BrowserFirefoxImport> weak_factory_{this};
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_firefox_snapshot.cc b/chrome/browser/ui/aux/browser_firefox_snapshot.cc
+new file mode 100644
+index 0000000..d7b36c4
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_firefox_snapshot.cc
+@@ -0,0 +1,61 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_firefox_snapshot.h"
++#include <fcntl.h>
++#include <cerrno>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <algorithm>
++#include "base/files/scoped_file.h"
++#include "base/posix/eintr_wrapper.h"
++namespace aux {
++DecodedBrowserProfile PrepareFirefoxSnapshot(const base::FilePath& source,
++    const std::vector<std::string>& categories, const base::RepeatingCallback<bool()>& cancelled) {
++  DecodedBrowserProfile result;
++  const bool places = std::ranges::find(categories, "history") != categories.end() || std::ranges::find(categories, "bookmarks") != categories.end();
++  const bool tabs = std::ranges::find(categories, "tabs") != categories.end();
++  std::vector<std::string> files;
++  if (places) files = {"places.sqlite", "places.sqlite-wal", "places.sqlite-journal"};
++  if (tabs) files.push_back("sessionstore.jsonlz4");
++  auto captured = BrowserProfileSnapshot::Capture(source, files, false, cancelled, tabs);
++  if (!captured.has_value()) { result.snapshot_error = captured.error(); return result; }
++  result.snapshot = std::move(*captured);
++  base::ScopedFD directory(HANDLE_EINTR(open(result.snapshot->path().value().c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)));
++  auto file = [&](const char* name, bool create) {
++    const int flags = O_RDWR | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC;
++    int fd = HANDLE_EINTR(openat(directory.get(), name, flags));
++    if (fd < 0 && create && errno == ENOENT) fd = HANDLE_EINTR(openat(directory.get(), name, flags | O_CREAT | O_EXCL, 0600));
++    base::File held(fd);
++    base::File::Info info;
++    if (!held.IsValid() || !held.GetInfo(&info) || info.is_directory || info.size < 0 || info.size > 1024LL * 1024 * 1024) return base::File();
++    return held;
++  };
++  if (places) {
++    result.firefox_database = file("places.sqlite", false);
++    result.firefox_wal = file("places.sqlite-wal", true);
++    result.firefox_journal = file("places.sqlite-journal", true);
++    if (!result.firefox_database.IsValid() || !result.firefox_wal.IsValid() || !result.firefox_journal.IsValid()) result.snapshot_error = "The Firefox private database handles are unavailable.";
++  }
++  if (tabs) {
++    base::File session(HANDLE_EINTR(openat(directory.get(), "sessionstore.jsonlz4", O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)));
++    if (!session.IsValid() && errno == ENOENT) {
++      base::ScopedFD recovery(HANDLE_EINTR(openat(directory.get(), "sessionstore-backups", O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)));
++      if (recovery.is_valid()) {
++        session = base::File(HANDLE_EINTR(openat(recovery.get(), "recovery.jsonlz4", O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)));
++        if (!session.IsValid() && errno == ENOENT) session = base::File(HANDLE_EINTR(openat(recovery.get(), "recovery.baklz4", O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)));
++      }
++    }
++    const int64_t length = session.IsValid() ? session.GetLength() : -1;
++    if (length < 12 || length > 32 * 1024 * 1024) result.snapshot_error = "A current Firefox session snapshot is unavailable.";
++    else {
++      mojo_base::BigBuffer bytes(static_cast<size_t>(length));
++      const auto read = session.Read(0, base::span(bytes));
++      if (!read || *read != bytes.size()) result.snapshot_error = "The Firefox session snapshot could not be read completely.";
++      else result.firefox_session = std::move(bytes);
++    }
++  }
++  if (cancelled.Run() || !result.snapshot->OriginalIsCurrent()) result.snapshot_error = "The original Firefox Profile changed or its import was retired.";
++  return result;
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_firefox_snapshot.h b/chrome/browser/ui/aux/browser_firefox_snapshot.h
+new file mode 100644
+index 000000000..c986a4bd0
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_firefox_snapshot.h
+@@ -0,0 +1,14 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_FIREFOX_SNAPSHOT_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_FIREFOX_SNAPSHOT_H_
++#include "chrome/browser/ui/aux/browser_profile_decode.h"
++namespace aux {
++// Worker-only held copy capture. No SQLite or session parser executes here;
++// only private copy descriptors/payload reach the dedicated kService decoder.
++DecodedBrowserProfile PrepareFirefoxSnapshot(
++    const base::FilePath& source, const std::vector<std::string>& categories,
++    const base::RepeatingCallback<bool()>& cancelled);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_profile_decode.h b/chrome/browser/ui/aux/browser_profile_decode.h
+index 6ada3aad6..03fe16247 100644
+--- a/chrome/browser/ui/aux/browser_profile_decode.h
++++ b/chrome/browser/ui/aux/browser_profile_decode.h
+@@ -5,9 +5,12 @@
+ #define CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_DECODE_H_
+ #include <map>
+ #include <memory>
++#include <optional>
+ #include <string>
+ #include <vector>
+ #include "base/files/file_path.h"
++#include "base/files/file.h"
++#include "mojo/public/cpp/base/big_buffer.h"
+ #include "base/functional/callback.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "chrome/browser/ui/aux/browser_profile_readers.h"
+@@ -16,6 +19,10 @@ namespace os_crypt_async { class Encryptor; }
+ namespace aux {
+ struct DecodedBrowserProfile {
+   std::unique_ptr<BrowserProfileSnapshot> snapshot;
++  base::File firefox_database;
++  base::File firefox_wal;
++  base::File firefox_journal;
++  std::optional<mojo_base::BigBuffer> firefox_session;
+   std::vector<ImportedProfileBookmark> bookmarks;
+   std::vector<ImportedProfileHistory> history;
+   std::vector<ImportedProfileTab> tabs;
+diff --git a/chrome/browser/ui/aux/browser_profile_discovery.cc b/chrome/browser/ui/aux/browser_profile_discovery.cc
+index 2073def..a2a4c21 100644
+--- a/chrome/browser/ui/aux/browser_profile_discovery.cc
++++ b/chrome/browser/ui/aux/browser_profile_discovery.cc
+@@ -9,7 +9,10 @@
+ #include "base/files/file_enumerator.h"
+ #include "base/files/file_util.h"
+ #include "base/json/json_reader.h"
++#include "chrome/common/ini_parser.h"
++#include "chrome/common/importer/firefox_importer_utils.h"
+ #include "base/strings/string_util.h"
++#include "base/strings/string_number_conversions.h"
+ #include "chrome/browser/ui/aux/browser_profile_snapshot.h"
+ #include "components/sessions/core/session_constants.h"
+ namespace aux {
+@@ -87,6 +90,38 @@ DiscoverBrowserProfiles(
+           path, std::move(*anchor), std::move(categories), std::nullopt, {}});
+     }
+   }
++  const auto firefox_ini = GetProfilesINI();
++  auto firefox_registration = BrowserProfileSnapshot::Capture(
++      firefox_ini.DirName(), {firefox_ini.BaseName().value()}, false, cancelled);
++  if (firefox_registration.has_value()) {
++    std::string ini;
++    if (base::ReadFileToStringWithMaxSize(
++        (*firefox_registration)->path().Append(firefox_ini.BaseName()), &ini, 1024 * 1024)) {
++      DictionaryValueINIParser parser;
++      parser.Parse(ini);
++      std::shared_ptr<BrowserProfileSnapshot> registration(std::move(*firefox_registration));
++      std::set<base::FilePath> visited;
++      size_t ordinal = 0;
++      for (const auto& detail : GetFirefoxDetailsFromDictionary(parser.root(), "")) {
++        const auto profile_id = "Firefox " + base::NumberToString(ordinal++) + ": " + detail.path.BaseName().value().substr(0, 48);
++        if (cancelled.Run()) return base::unexpected("Browser import was cancelled.");
++        if (found.size() >= 128) return base::unexpected("Too many registered browser Profiles are present.");
++        if (!detail.path.IsAbsolute() || detail.path.ReferencesParent() ||
++            !ProfileName(detail.path.BaseName().value()) || !visited.insert(detail.path).second) continue;
++        auto anchor = BrowserProfileSnapshot::Capture(detail.path, {}, false, cancelled);
++        if (!anchor.has_value() || !registration->OriginalIsCurrent()) continue;
++        std::vector<std::string> categories;
++        if (base::PathExists(detail.path.AppendASCII("places.sqlite"))) categories = {"bookmarks", "history"};
++        if (base::PathExists(detail.path.AppendASCII("sessionstore.jsonlz4")) ||
++            base::PathExists(detail.path.AppendASCII("sessionstore-backups").AppendASCII("recovery.jsonlz4")) ||
++            base::PathExists(detail.path.AppendASCII("sessionstore-backups").AppendASCII("recovery.baklz4"))) categories.push_back("tabs");
++        if (categories.empty()) continue;
++        found.push_back({"firefox", "Firefox", profile_id,
++            BrowserProfileBrand::kChrome, detail.path, std::move(*anchor),
++            std::move(categories), std::nullopt, {}, true, registration});
++      }
++    }
++  }
+   return found;
+ }
+ }  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_discovery.h b/chrome/browser/ui/aux/browser_profile_discovery.h
+index ebd5b442b..0338ae921 100644
+--- a/chrome/browser/ui/aux/browser_profile_discovery.h
++++ b/chrome/browser/ui/aux/browser_profile_discovery.h
+@@ -24,6 +24,8 @@ struct DiscoveredBrowserProfile {
+   std::vector<std::string> categories;
+   std::optional<BrowserExportFormat> export_format;
+   std::string export_leaf;
++  bool firefox_profile = false;
++  std::shared_ptr<BrowserProfileSnapshot> registration_anchor;
+ };
+ // No renderer or runtime filesystem path is accepted. Registered profile names
+ // come from a held native snapshot of the browser's actual Local State.
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.cc b/chrome/browser/ui/aux/browser_profile_importer.cc
+--- a/chrome/browser/ui/aux/browser_profile_importer.cc
++++ b/chrome/browser/ui/aux/browser_profile_importer.cc
+@@ -22,6 +22,8 @@
+ #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "chrome/browser/ui/aux/browser_profile_decode.h"
+ #include "chrome/browser/ui/aux/browser_export_decode.h"
++#include "chrome/browser/ui/aux/browser_firefox_import.h"
++#include "chrome/browser/ui/aux/browser_firefox_snapshot.h"
+ #include "chrome/browser/ui/aux/browser_export_picker.h"
+ #include "components/user_data_importer/utility/bookmark_parser.h"
+ #include "components/user_data_importer/mojom/bookmark_html_parser.mojom.h"
+@@ -99,6 +101,7 @@
+   DecodedBrowserProfile decoded;
+   std::unique_ptr<os_crypt_async::OSCryptAsync> source_crypt;
+   mojo::Remote<user_data_importer::mojom::BookmarkHtmlParser> bookmark_parser;
++  std::unique_ptr<BrowserFirefoxImport> firefox_import;
+   std::unique_ptr<password_manager::PasswordImporter> password_importer;
+   scoped_refptr<BrowserProfileExtensionInstaller> extension_installer;
+ };
+@@ -118,6 +121,7 @@
+   return profile_keep_alive_ && !closed_ && !job.cancelled->load() && job.source->current.Run() &&
+       job.source->window && job.source->window->GetProfile() == profile_ &&
+       job.source->discovered.anchor->OriginalIsCurrent() &&
++      (!job.source->discovered.registration_anchor || job.source->discovered.registration_anchor->OriginalIsCurrent()) &&
+       (!job.decoded.snapshot || job.decoded.snapshot->OriginalIsCurrent());
+ }
+ void BrowserProfileImporter::Discover(const std::string& owner_token,
+@@ -394,31 +398,57 @@
+         job->working = false;
+         if (!self->CurrentJob(*job)) { self->Finish(job, "The original export was retired before acceptance."); return; }
+         parsed.bookmarks.insert(parsed.bookmarks.end(), parsed.reading_list.begin(), parsed.reading_list.end());
+-        job->bookmark_rows.push_back({1, 0, base::UTF8ToUTF16("Imported from " + job->source->discovered.label), GURL()});
+-        std::map<std::vector<std::u16string>, size_t> folders;
+-        folders[{}] = 1;
+-        for (const auto& entry : parsed.bookmarks) {
+-          if (!entry.is_folder && (!entry.url.is_valid() || !entry.url.SchemeIsHTTPOrHTTPS() ||
+-              entry.url.has_username() || entry.url.has_password())) continue;
+-          if (job->decoded.bookmarks_as_tabs) {
+-            if (!entry.is_folder) job->decoded.tabs.push_back({entry.url, entry.title, 0, false});
+-            continue;
+-          }
+-          std::vector<std::u16string> path;
+-          size_t parent = 1;
+-          for (const auto& component : entry.path) {
+-            path.push_back(component);
+-            auto existing = folders.find(path);
+-            if (existing != folders.end()) { parent = existing->second; continue; }
+-            const size_t id = job->bookmark_rows.size() + 1;
+-            job->bookmark_rows.push_back({id, parent, component, GURL()});
+-            folders[path] = id;
+-            parent = id;
+-          }
+-          const size_t id = job->bookmark_rows.size() + 1;
+-          job->bookmark_rows.push_back({id, parent, entry.title, entry.is_folder ? GURL() : entry.url});
+-          if (entry.is_folder) { path.push_back(entry.title); folders[path] = id; }
++        self->ApplyCollectedBookmarks(job, parsed.bookmarks);
++        self->Dispatch(job);
++      }, weak_factory_.GetWeakPtr(), job));
++}
++void BrowserProfileImporter::ApplyCollectedBookmarks(const std::shared_ptr<Job>& job,
++    const std::vector<user_data_importer::ImportedBookmarkEntry>& entries) {
++job->bookmark_rows.push_back({1, 0, base::UTF8ToUTF16("Imported from " + job->source->discovered.label), GURL()});
++std::map<std::vector<std::u16string>, size_t> folders;
++folders[{}] = 1;
++for (const auto& entry : entries) {
++  if (!entry.is_folder && (!entry.url.is_valid() || !entry.url.SchemeIsHTTPOrHTTPS() ||
++      entry.url.has_username() || entry.url.has_password())) continue;
++  if (job->decoded.bookmarks_as_tabs) {
++    if (!entry.is_folder) job->decoded.tabs.push_back({entry.url, entry.title, 0, false});
++    continue;
++  }
++  std::vector<std::u16string> path;
++  size_t parent = 1;
++  for (const auto& component : entry.path) {
++    path.push_back(component);
++    auto existing = folders.find(path);
++    if (existing != folders.end()) { parent = existing->second; continue; }
++    const size_t id = job->bookmark_rows.size() + 1;
++    job->bookmark_rows.push_back({id, parent, component, GURL()});
++    folders[path] = id;
++    parent = id;
++  }
++  const size_t id = job->bookmark_rows.size() + 1;
++  job->bookmark_rows.push_back({id, parent, entry.title, entry.is_folder ? GURL() : entry.url});
++  if (entry.is_folder) { path.push_back(entry.title); folders[path] = id; }
++}
++}
++void BrowserProfileImporter::ParseFirefox(const std::shared_ptr<Job>& job) {
++  if (!CurrentJob(*job)) { Finish(job, "The original Firefox import was retired before utility collection."); return; }
++  job->working = true;
++  job->firefox_import = std::make_unique<BrowserFirefoxImport>();
++  job->firefox_import->Start(job->decoded, job->categories,
++      base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self, std::shared_ptr<Job> job,
++          base::expected<FirefoxImportResult, std::string> result) {
++        if (!self) return;
++        job->firefox_import.reset();
++        job->working = false;
++        if (!self->CurrentJob(*job)) {
++          job->cancelled->store(true);
++          self->Finish(job, ""); return;
+         }
++        if (!result) { self->Finish(job, result.error()); return; }
++        job->decoded.history = std::move(result->history);
++        job->decoded.tabs = std::move(result->tabs);
++        if (std::ranges::find(job->categories, "bookmarks") != job->categories.end())
++          self->ApplyCollectedBookmarks(job, result->bookmarks);
+         self->Dispatch(job);
+       }, weak_factory_.GetWeakPtr(), job));
+ }
+@@ -436,7 +466,8 @@
+   if (!profile_keep_alive_ || closed_ || !ValidOperation(operation) || source == sources_.end() ||
+       source->second->owner != owner || !source->second->current.Run() ||
+       !source->second->window || source->second->window->GetProfile() != profile_ ||
+-      !source->second->discovered.anchor->OriginalIsCurrent())
++      (!source->second->discovered.anchor->OriginalIsCurrent() ||
++       (source->second->discovered.registration_anchor && !source->second->discovered.registration_anchor->OriginalIsCurrent())))
+     return Fault("permission_denied", "Refresh the original browser import preview.");
+   std::set<std::string> unique(requested.begin(), requested.end());
+   if (requested.empty() || requested.size() > 5 || unique.size() != requested.size())
+@@ -565,7 +596,8 @@
+ }
+ void BrowserProfileImporter::Decode(const std::shared_ptr<Job>& job) {
+   job->working = true;
+-  const bool needs_key = !job->source->discovered.export_format && (std::ranges::find(job->categories, "passwords") != job->categories.end() ||
++  const bool needs_key = !job->source->discovered.export_format &&
++      !job->source->discovered.firefox_profile && (std::ranges::find(job->categories, "passwords") != job->categories.end() ||
+       (std::ranges::find(job->categories, "tabs") != job->categories.end() &&
+        base::DirectoryExists(job->source->discovered.path.Append(sessions::kEncryptedSessionsDirectory))));
+   auto decoded = base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
+@@ -582,6 +614,8 @@
+           auto cancelled = base::BindRepeating(
+               [](std::shared_ptr<std::atomic_bool> flag) { return flag->load(); }, original->cancelled);
+           const auto& source = original->source->discovered;
++          if (source.firefox_profile)
++            return PrepareFirefoxSnapshot(source.path, original->categories, cancelled);
+           if (source.export_format)
+             return DecodeBrowserExport(source.anchor->path(), source.export_leaf,
+                 *source.export_format, original->categories, cancelled);
+@@ -595,6 +629,7 @@
+           job->working = false;
+           job->source_crypt.reset();
+           if (!job->decoded.snapshot_error.empty()) self->Finish(job, job->decoded.snapshot_error);
++          else if (job->source->discovered.firefox_profile) self->ParseFirefox(job);
+           else if (!job->decoded.bookmark_html.empty()) self->ParseExportBookmarks(job);
+           else self->Dispatch(job);
+         }, self, job));
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.h b/chrome/browser/ui/aux/browser_profile_importer.h
+index 40f72fded..ec74c6b79 100644
+--- a/chrome/browser/ui/aux/browser_profile_importer.h
++++ b/chrome/browser/ui/aux/browser_profile_importer.h
+@@ -17,6 +17,7 @@
+ class Profile;
+ class BrowserWindowInterface;
+ class ScopedProfileKeepAlive;
++namespace user_data_importer { struct ImportedBookmarkEntry; }
+ namespace base { class SingleThreadTaskRunner; }
+ namespace aux {
+ class ProfileLibrary;
+@@ -62,6 +63,9 @@ class BrowserProfileImporter {
+       base::WeakPtr<BrowserWindowInterface> window, Current current,
+       std::vector<DiscoveredBrowserProfile> found);
+   void ParseExportBookmarks(const std::shared_ptr<Job>& job);
++  void ParseFirefox(const std::shared_ptr<Job>& job);
++  void ApplyCollectedBookmarks(const std::shared_ptr<Job>& job,
++      const std::vector<user_data_importer::ImportedBookmarkEntry>& entries);
+   void Decode(const std::shared_ptr<Job>& job);
+   void Dispatch(const std::shared_ptr<Job>& job);
+   void ScheduleDispatch(const std::shared_ptr<Job>& job);
+diff --git a/chrome/browser/ui/aux/browser_profile_snapshot.cc b/chrome/browser/ui/aux/browser_profile_snapshot.cc
+index 193c23bdd..9039ee907 100644
+--- a/chrome/browser/ui/aux/browser_profile_snapshot.cc
++++ b/chrome/browser/ui/aux/browser_profile_snapshot.cc
+@@ -68,7 +68,8 @@ base::expected<std::unique_ptr<BrowserProfileSnapshot>, std::string>
+ BrowserProfileSnapshot::Capture(const base::FilePath& profile,
+                                const std::vector<std::string>& files,
+                                bool include_sessions,
+-                               const base::RepeatingCallback<bool()>& cancelled) {
++                               const base::RepeatingCallback<bool()>& cancelled,
++                               bool include_firefox_sessions) {
+   if (cancelled.is_null() || cancelled.Run())
+     return base::unexpected("Browser import was cancelled.");
+   auto snapshot = std::unique_ptr<BrowserProfileSnapshot>(new BrowserProfileSnapshot);
+@@ -153,9 +154,34 @@ BrowserProfileSnapshot::Capture(const base::FilePath& profile,
+       if (errno == ENOENT) continue;
+       return base::unexpected("A browser import file is unavailable.");
+     }
+-    if (!copy(root.get(), leaf, snapshot->path().AppendASCII(leaf)))
++    if ((leaf == "sessionstore.jsonlz4" && identity.st_size > 32 * 1024 * 1024) ||
++        !copy(root.get(), leaf, snapshot->path().AppendASCII(leaf)))
+       return base::unexpected("The browser changed while it was being read. Close it and try again.");
+   }
++  if (include_firefox_sessions) {
++    // Only the current recovery pair documented by Mozilla SessionFile. Do not
++    // scan backups/upgrade snapshots or import closed/private window history.
++    constexpr char name[] = "sessionstore-backups";
++    base::ScopedFD directory(HANDLE_EINTR(openat(root.get(), name,
++        O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)));
++    if (!directory.is_valid() && errno != ENOENT)
++      return base::unexpected("The Firefox recovery session is unavailable.");
++    if (directory.is_valid()) {
++      if (!retain_directory(directory.get(), root.get(), name) ||
++          !base::CreateDirectory(snapshot->path().AppendASCII(name)))
++        return base::unexpected("The Firefox session could not be copied safely.");
++      for (const char* leaf : {"recovery.jsonlz4", "recovery.baklz4"}) {
++        struct stat identity;
++        if (fstatat(directory.get(), leaf, &identity, AT_SYMLINK_NOFOLLOW) != 0) {
++          if (errno == ENOENT) continue;
++          return base::unexpected("The Firefox recovery session is unavailable.");
++        }
++        if (identity.st_size > 32 * 1024 * 1024 ||
++            !copy(directory.get(), leaf, snapshot->path().AppendASCII(name).AppendASCII(leaf)))
++          return base::unexpected("The Firefox session changed while it was being copied.");
++      }
++    }
++  }
+   if (include_sessions) {
+     for (const char* name : {sessions::kSessionsDirectory.data(),
+                              sessions::kEncryptedSessionsDirectory.data()}) {
+diff --git a/chrome/browser/ui/aux/browser_profile_snapshot.h b/chrome/browser/ui/aux/browser_profile_snapshot.h
+index 9b59b081d..ad2482ed6 100644
+--- a/chrome/browser/ui/aux/browser_profile_snapshot.h
++++ b/chrome/browser/ui/aux/browser_profile_snapshot.h
+@@ -21,7 +21,8 @@ class BrowserProfileSnapshot {
+  public:
+   static base::expected<std::unique_ptr<BrowserProfileSnapshot>, std::string>
+   Capture(const base::FilePath& profile, const std::vector<std::string>& files,
+-          bool include_sessions, const base::RepeatingCallback<bool()>& cancelled);
++          bool include_sessions, const base::RepeatingCallback<bool()>& cancelled,
++          bool include_firefox_sessions = false);
+   ~BrowserProfileSnapshot();
+   BrowserProfileSnapshot(const BrowserProfileSnapshot&) = delete;
+   BrowserProfileSnapshot& operator=(const BrowserProfileSnapshot&) = delete;
+diff --git a/chrome/common/importer/BUILD.gn b/chrome/common/importer/BUILD.gn
+index bc73d6fe7..d395ee164 100644
+--- a/chrome/common/importer/BUILD.gn
++++ b/chrome/common/importer/BUILD.gn
+@@ -136,3 +136,13 @@ if (!is_android) {
+     ]
+   }
+ }
++
++# Aux's held-copy Firefox decoder has no arbitrary filesystem access.
++mojom("aux_firefox_profile") {
++  sources = [ "aux_firefox_profile.mojom" ]
++  public_deps = [
++    "//mojo/public/mojom/base",
++    "//sandbox/policy/mojom",
++    "//url/mojom:url_mojom_gurl",
++  ]
++}
+diff --git a/chrome/common/importer/aux_firefox_profile.mojom b/chrome/common/importer/aux_firefox_profile.mojom
+new file mode 100644
+index 000000000..85e38a784
+--- /dev/null
++++ b/chrome/common/importer/aux_firefox_profile.mojom
+@@ -0,0 +1,26 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++module chrome.mojom;
++import "mojo/public/mojom/base/file.mojom";
++import "mojo/public/mojom/base/big_buffer.mojom";
++import "sandbox/policy/mojom/sandbox.mojom";
++import "url/mojom/url.mojom";
++struct AuxFirefoxHistory { url.mojom.Url url; string title; double visited_at; };
++struct AuxFirefoxBookmark { url.mojom.Url url; string title; array<string> path; bool is_folder; };
++struct AuxFirefoxTab { url.mojom.Url url; string title; int32 window_id; bool pinned; };
++struct AuxFirefoxProfileResult {
++  array<AuxFirefoxHistory> history;
++  array<AuxFirefoxBookmark> bookmarks;
++  array<AuxFirefoxTab> tabs;
++  string? error;
++};
++// Handles refer exclusively to copies already captured by the trusted native
++// importer. No arbitrary path, original Profile descriptor or credential is
++// accepted. SQLite/WAL and Mozilla session parsing execute in kService.
++[ServiceSandbox=sandbox.mojom.Sandbox.kService]
++interface AuxFirefoxProfileDecoder {
++  Decode(mojo_base.mojom.File? database, mojo_base.mojom.File? wal,
++         mojo_base.mojom.File? journal, mojo_base.mojom.BigBuffer? session,
++         bool history, bool bookmarks, bool tabs) => (AuxFirefoxProfileResult result);
++};
+diff --git a/chrome/utility/BUILD.gn b/chrome/utility/BUILD.gn
+index 500cbc7ed..3bdc809e8 100644
+--- a/chrome/utility/BUILD.gn
++++ b/chrome/utility/BUILD.gn
+@@ -77,6 +77,20 @@ static_library("utility") {
+     "//ui/base:buildflags",
+   ]
+ 
++  if (is_mac) {
++    sources += [
++      "aux/firefox_private_vfs.cc",
++      "aux/firefox_private_vfs.h",
++      "aux/firefox_profile_decoder.cc",
++      "aux/firefox_profile_decoder.h",
++    ]
++    deps += [
++      "//chrome/common/importer:aux_firefox_profile",
++      "//components/services/storage",
++    ]
++    frameworks = [ "Compression.framework" ]
++  }
++
+   if (is_win) {
+     deps += [
+       "//components/services/quarantine",
+diff --git a/chrome/utility/aux/firefox_private_vfs.cc b/chrome/utility/aux/firefox_private_vfs.cc
+new file mode 100644
+index 0000000..e58c87a
+--- /dev/null
++++ b/chrome/utility/aux/firefox_private_vfs.cc
+@@ -0,0 +1,83 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/utility/aux/firefox_private_vfs.h"
++#include <map>
++#include <memory>
++#include "base/thread_annotations.h"
++#include "base/synchronization/lock.h"
++#include "base/uuid.h"
++#include "components/services/storage/sandboxed_vfs_file_impl.h"
++#include "sql/sandboxed_vfs.h"
++namespace aux {
++namespace {
++constexpr char kVfsName[] = "aux-firefox-private-copy";
++class PrivateFile final : public storage::SandboxedVfsFileImpl {
++ public:
++  using SandboxedVfsFileImpl::SandboxedVfsFileImpl;
++  int Fetch(sqlite3_int64, int, void** result) override { *result = nullptr; return SQLITE_OK; }
++  int Unfetch(sqlite3_int64, void*) override { return SQLITE_OK; }
++};
++class PrivateDelegate final : public sql::SandboxedVfs::Delegate {
++ public:
++  bool Add(const base::FilePath& path, base::File file, bool exists) {
++    const int64_t length = file.IsValid() ? file.GetLength() : -1;
++    if (length < 0 || length > 1024LL * 1024 * 1024) return false;
++    base::AutoLock lock(lock_);
++    return files_.emplace(path, Entry{std::move(file), exists}).second;
++  }
++  void Remove(const base::FilePath& path) { base::AutoLock lock(lock_); files_.erase(path); }
++  sql::SandboxedVfsFile* RetrieveSandboxedVfsFile(base::File file,
++      base::FilePath path, sql::SandboxedVfsFileType type, sql::SandboxedVfs* vfs) override {
++    return new PrivateFile(std::move(file), std::move(path), type, vfs);
++  }
++  base::File OpenFile(const base::FilePath& path, int flags) override {
++    base::AutoLock lock(lock_);
++    auto found = files_.find(path);
++    if (found == files_.end() || (!found->second.exists && !(flags & SQLITE_OPEN_CREATE))) return {};
++    found->second.exists = true;
++    return found->second.file.Duplicate();
++  }
++  int DeleteFile(const base::FilePath& path, bool) override {
++    base::AutoLock lock(lock_);
++    auto found = files_.find(path);
++    if (found == files_.end() || !found->second.file.SetLength(0)) return SQLITE_IOERR_DELETE;
++    found->second.exists = false;
++    return SQLITE_OK;
++  }
++  std::optional<sql::SandboxedVfs::PathAccessInfo> GetPathAccess(const base::FilePath& path) override {
++    base::AutoLock lock(lock_);
++    auto found = files_.find(path);
++    if (found == files_.end() || !found->second.exists) return std::nullopt;
++    return sql::SandboxedVfs::PathAccessInfo{true, true};
++  }
++ private:
++  struct Entry { base::File file; bool exists; };
++  base::Lock lock_;
++  std::map<base::FilePath, Entry> files_ GUARDED_BY(lock_);
++};
++PrivateDelegate& Delegate() {
++  static PrivateDelegate* const delegate = [] {
++    auto owned = std::make_unique<PrivateDelegate>();
++    auto* pointer = owned.get();
++    sql::SandboxedVfs::Register(kVfsName, std::move(owned), false);
++    return pointer;
++  }();
++  return *delegate;
++}
++}  // namespace
++const char* FirefoxPrivateVfsScope::name() { return kVfsName; }
++FirefoxPrivateVfsScope::FirefoxPrivateVfsScope(base::File database, base::File wal, base::File journal)
++    : path_(base::FilePath("/aux-firefox-private").AppendASCII(base::Uuid::GenerateRandomV4().AsLowercaseString()).AppendASCII("places.sqlite")) {
++  const bool journal_exists = journal.GetLength() > 0;
++  valid_ = database.GetLength() >= 100 &&
++      Delegate().Add(path_, std::move(database), true) &&
++      Delegate().Add(base::FilePath(path_.value() + "-wal"), std::move(wal), true) &&
++      Delegate().Add(base::FilePath(path_.value() + "-journal"), std::move(journal), journal_exists);
++}
++FirefoxPrivateVfsScope::~FirefoxPrivateVfsScope() {
++  Delegate().Remove(path_);
++  Delegate().Remove(base::FilePath(path_.value() + "-wal"));
++  Delegate().Remove(base::FilePath(path_.value() + "-journal"));
++}
++}  // namespace aux
+diff --git a/chrome/utility/aux/firefox_private_vfs.h b/chrome/utility/aux/firefox_private_vfs.h
+new file mode 100644
+index 000000000..26dde59d0
+--- /dev/null
++++ b/chrome/utility/aux/firefox_private_vfs.h
+@@ -0,0 +1,24 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_UTILITY_AUX_FIREFOX_PRIVATE_VFS_H_
++#define CHROME_UTILITY_AUX_FIREFOX_PRIVATE_VFS_H_
++#include "base/files/file.h"
++#include "base/files/file_path.h"
++namespace aux {
++// Registers the maintained SQLite sandbox VFS against exact transferred copy
++// handles. It never opens a path. The scope closes all duplicate handles after
++// the synchronous utility decoder and its real database close have completed.
++class FirefoxPrivateVfsScope {
++ public:
++  FirefoxPrivateVfsScope(base::File database, base::File wal, base::File journal);
++  ~FirefoxPrivateVfsScope();
++  bool valid() const { return valid_; }
++  const base::FilePath& path() const { return path_; }
++  static const char* name();
++ private:
++  base::FilePath path_;
++  bool valid_ = false;
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/utility/aux/firefox_profile_decoder.cc b/chrome/utility/aux/firefox_profile_decoder.cc
+new file mode 100644
+index 0000000..ee333d5
+--- /dev/null
++++ b/chrome/utility/aux/firefox_profile_decoder.cc
+@@ -0,0 +1,161 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/utility/aux/firefox_profile_decoder.h"
++
++#include <compression.h>
++
++#include <cmath>
++
++#include "base/containers/span.h"
++#include "base/json/json_reader.h"
++#include "base/memory/raw_ptr.h"
++#include "base/numerics/byte_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/common/importer/importer_bridge.h"
++#include "chrome/utility/aux/firefox_private_vfs.h"
++#include "chrome/utility/importer/firefox_importer.h"
++#include "components/user_data_importer/common/imported_bookmark_entry.h"
++#include "components/user_data_importer/common/importer_data_types.h"
++#include "sql/database.h"
++namespace aux {
++namespace {
++constexpr size_t kMaximumEntries = 200000;
++constexpr size_t kMaximumSession = 64 * 1024 * 1024;
++bool AllowedUrl(const GURL& url) {
++  return url.is_valid() && url.SchemeIsHTTPOrHTTPS() && !url.has_username() && !url.has_password() && url.spec().size() <= 8192;
++}
++class Collection final : public ImporterBridge {
++ public:
++  explicit Collection(chrome::mojom::AuxFirefoxProfileResult* result) : result_(result) {}
++  bool Complete(uint16_t items) const { return started_ && ended_ && ended_items_ == items && !failed_; }
++  void AddBookmarks(const std::vector<user_data_importer::ImportedBookmarkEntry>& entries, const std::u16string&) override {
++    if (entries.size() > kMaximumEntries) { failed_ = true; return; }
++    for (const auto& entry : entries) {
++      if (entry.path.size() > 128 || entry.title.size() > 4096) { failed_ = true; return; }
++      if (!entry.is_folder && !AllowedUrl(entry.url)) continue;
++      auto value = chrome::mojom::AuxFirefoxBookmark::New();
++      value->url = entry.url; value->title = base::UTF16ToUTF8(entry.title); value->is_folder = entry.is_folder;
++      for (const auto& part : entry.path) {
++        if (part.size() > 4096) { failed_ = true; return; }
++        value->path.push_back(base::UTF16ToUTF8(part));
++      }
++      result_->bookmarks.push_back(std::move(value));
++    }
++  }
++  void SetHistoryItems(const std::vector<user_data_importer::ImporterURLRow>& rows, user_data_importer::VisitSource) override {
++    if (rows.size() > kMaximumEntries) { failed_ = true; return; }
++    for (const auto& row : rows) {
++      if (!AllowedUrl(row.url)) continue;
++      if (row.title.size() > 4096 || row.last_visit.is_null()) { failed_ = true; return; }
++      auto value = chrome::mojom::AuxFirefoxHistory::New(); value->url = row.url;
++      value->title = base::UTF16ToUTF8(row.title); value->visited_at = row.last_visit.InMillisecondsFSinceUnixEpochIgnoringNull();
++      if (!std::isfinite(value->visited_at) || value->visited_at < 0) { failed_ = true; return; }
++      result_->history.push_back(std::move(value));
++    }
++  }
++  void AddHomePage(const GURL&) override { failed_ = true; }
++  void SetFavicons(const favicon_base::FaviconUsageDataList&) override {}
++  void SetKeywords(const std::vector<user_data_importer::SearchEngineInfo>&, bool) override {}
++  void SetPasswordForm(const user_data_importer::ImportedPasswordForm&) override { failed_ = true; }
++  void SetAutofillFormData(const std::vector<ImporterAutofillFormDataEntry>&) override { failed_ = true; }
++  void NotifyStarted() override { if (started_) failed_ = true; started_ = true; }
++  void NotifyItemStarted(user_data_importer::ImportItem item) override { if (started_items_ & item) failed_ = true; started_items_ |= item; }
++  void NotifyItemEnded(user_data_importer::ImportItem item) override { if (!(started_items_ & item) || (ended_items_ & item)) failed_ = true; ended_items_ |= item; }
++  void NotifyEnded() override { if (ended_) failed_ = true; ended_ = true; }
++  std::u16string GetLocalizedString(int) override { return u"Firefox"; }
++ private:
++  ~Collection() override = default;
++  raw_ptr<chrome::mojom::AuxFirefoxProfileResult> result_;
++  uint16_t started_items_ = 0, ended_items_ = 0;
++  bool started_ = false, ended_ = false, failed_ = false;
++};
++bool DecodeTabs(const mojo_base::BigBuffer& buffer, chrome::mojom::AuxFirefoxProfileResult& result) {
++  // Mozilla ReadFileLZ4: eight-byte mozLz40\0 magic, LE32 expanded size,
++  // followed by a raw LZ4 block. The maintained system decoder runs in kService.
++  constexpr char magic[] = "mozLz40";
++  const auto data = base::span(buffer);
++  if (data.size() < 12 || data.size() > 32 * 1024 * 1024 ||
++      data.first<sizeof(magic)>() != base::as_byte_span(magic)) {
++    return false;
++  }
++  const uint32_t length = base::U32FromLittleEndian(data.subspan<8, 4>());
++  if (!length || length > kMaximumSession) return false;
++  std::string json(length, '\0');
++  const auto compressed = data.subspan<12>();
++  const auto output = base::as_writable_byte_span(json);
++  if (compression_decode_buffer(output.data(), output.size(), compressed.data(),
++                                compressed.size(), nullptr,
++                                COMPRESSION_LZ4_RAW) != length) {
++    return false;
++  }
++  auto state = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
++  if (!state) return false;
++  const auto* version = state->FindList("version"); const auto* windows = state->FindList("windows");
++  if (!version || version->size() != 2 || !(*version)[0].is_string() || (*version)[0].GetString() != "sessionrestore" || !(*version)[1].is_int() || (*version)[1].GetInt() != 1 || !windows || windows->size() > 1024) return false;
++  size_t count = 0;
++  size_t decoded_bytes = 0;
++  for (size_t window_index = 0; window_index < windows->size(); ++window_index) {
++    const auto* window = (*windows)[window_index].GetIfDict(); if (!window) return false;
++    const auto* private_value = window->Find("isPrivate");
++    if (private_value && !private_value->is_bool()) return false;
++    if (private_value && private_value->GetBool()) continue;
++    const auto* tabs = window->FindList("tabs"); if (!tabs) return false;
++    for (const auto& raw_tab : *tabs) {
++      if (++count > 10000) return false;
++      const auto* tab = raw_tab.GetIfDict(); if (!tab) return false;
++      private_value = tab->Find("isPrivate");
++      if (private_value && !private_value->is_bool()) return false;
++      if (private_value && private_value->GetBool()) continue;
++      const auto* entries = tab->FindList("entries"); const auto index = tab->FindInt("index");
++      if (!entries || !index || *index < 1 || size_t(*index) > entries->size()) { if (entries && entries->empty()) continue; return false; }
++      const auto* entry = (*entries)[*index - 1].GetIfDict(); if (!entry) return false;
++      const auto* url = entry->FindString("url"); if (!url) return false;
++      GURL target(*url); if (!AllowedUrl(target)) continue;
++      const auto* title = entry->Find("title"); const auto* pinned = tab->Find("pinned");
++      if ((title && (!title->is_string() || title->GetString().size() > 4096)) || (pinned && !pinned->is_bool())) return false;
++      const size_t bytes = target.spec().size() + (title ? title->GetString().size() : 0);
++      if (bytes > 64 * 1024 * 1024 - decoded_bytes) return false;
++      decoded_bytes += bytes;
++      auto value = chrome::mojom::AuxFirefoxTab::New(); value->url = std::move(target);
++      value->title = title ? title->GetString() : ""; value->pinned = pinned && pinned->GetBool();
++      // Captured session window grouping, never a foreign live window handle.
++      value->window_id = static_cast<int32_t>(window_index);
++      result.tabs.push_back(std::move(value));
++    }
++  }
++  return true;
++}
++}  // namespace
++FirefoxProfileDecoder::FirefoxProfileDecoder(mojo::PendingReceiver<chrome::mojom::AuxFirefoxProfileDecoder> receiver) : receiver_(this, std::move(receiver)) {}
++FirefoxProfileDecoder::~FirefoxProfileDecoder() = default;
++void FirefoxProfileDecoder::Decode(base::File database, base::File wal, base::File journal, std::optional<mojo_base::BigBuffer> session, bool history, bool bookmarks, bool tabs, DecodeCallback callback) {
++  auto result = chrome::mojom::AuxFirefoxProfileResult::New();
++  bool valid = history || bookmarks || tabs;
++  if (valid && (history || bookmarks)) {
++    valid = database.IsValid() && wal.IsValid() && journal.IsValid();
++    if (valid) {
++      FirefoxPrivateVfsScope files(std::move(database), std::move(wal), std::move(journal));
++      valid = files.valid();
++      if (valid) {
++        sql::Database db(sql::DatabaseOptions().set_exclusive_locking(true).set_vfs_name_discouraged(files.name()).set_wal_mode(true).set_mmap_enabled(false), sql::Database::Tag{"FirefoxImporter"});
++        valid = db.Open(files.path()) && db.Execute("PRAGMA temp_store=MEMORY") && db.DoesTableExist("moz_places") && (!history || db.DoesTableExist("moz_historyvisits")) && (!bookmarks || db.DoesTableExist("moz_bookmarks")) && db.CheckpointDatabase(true);
++        db.Close();
++      }
++      if (valid) {
++        auto importer = base::MakeRefCounted<FirefoxImporter>(); auto bridge = base::MakeRefCounted<Collection>(result.get());
++        importer->SetAuxSnapshot(files.path(), files.name());
++        user_data_importer::SourceProfile source; source.source_path = files.path().DirName(); source.importer_type = user_data_importer::TYPE_FIREFOX;
++        const uint16_t items = (history ? user_data_importer::HISTORY : 0) | (bookmarks ? user_data_importer::FAVORITES : 0);
++        importer->StartImport(source, items, bridge.get());
++        valid = bridge->Complete(items) && !importer->AuxSnapshotFailed();
++        // Both decoders and their SQLite handles close before the VFS scope and
++        // before the completion receipt. No stock Cancel() can fake this join.
++      }
++    }
++  }
++  if (valid && tabs) valid = session && DecodeTabs(*session, *result);
++  if (!valid) { result->history.clear(); result->bookmarks.clear(); result->tabs.clear(); result->error = "Firefox source data could not be safely decoded"; }
++  std::move(callback).Run(std::move(result));
++}
++}  // namespace aux
+diff --git a/chrome/utility/aux/firefox_profile_decoder.h b/chrome/utility/aux/firefox_profile_decoder.h
+new file mode 100644
+index 000000000..29185d40d
+--- /dev/null
++++ b/chrome/utility/aux/firefox_profile_decoder.h
+@@ -0,0 +1,23 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_UTILITY_AUX_FIREFOX_PROFILE_DECODER_H_
++#define CHROME_UTILITY_AUX_FIREFOX_PROFILE_DECODER_H_
++#include <optional>
++#include "base/files/file.h"
++#include "mojo/public/cpp/base/big_buffer.h"
++#include "chrome/common/importer/aux_firefox_profile.mojom.h"
++#include "mojo/public/cpp/bindings/receiver.h"
++namespace aux {
++class FirefoxProfileDecoder final : public chrome::mojom::AuxFirefoxProfileDecoder {
++ public:
++  explicit FirefoxProfileDecoder(mojo::PendingReceiver<chrome::mojom::AuxFirefoxProfileDecoder> receiver);
++  ~FirefoxProfileDecoder() override;
++  void Decode(base::File database, base::File wal,
++      base::File journal, std::optional<mojo_base::BigBuffer> session,
++      bool history, bool bookmarks, bool tabs, DecodeCallback callback) override;
++ private:
++  mojo::Receiver<chrome::mojom::AuxFirefoxProfileDecoder> receiver_;
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/utility/importer/firefox_importer.cc b/chrome/utility/importer/firefox_importer.cc
+index e2bf3edc0..b6bd9a193 100644
+--- a/chrome/utility/importer/firefox_importer.cc
++++ b/chrome/utility/importer/firefox_importer.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/utility/importer/firefox_importer.h"
++#include "base/auto_reset.h"
+ 
+ #include <memory>
+ #include <set>
+@@ -110,10 +111,17 @@ FirefoxImporter::FirefoxImporter() = default;
+ 
+ FirefoxImporter::~FirefoxImporter() = default;
+ 
++void FirefoxImporter::SetAuxSnapshot(const base::FilePath& database, std::string vfs_name) {
++  CHECK(!database.empty() && !vfs_name.empty() && aux_database_.empty());
++  aux_database_ = database;
++  aux_vfs_name_ = std::move(vfs_name);
++}
++
+ void FirefoxImporter::StartImport(
+     const user_data_importer::SourceProfile& source_profile,
+     uint16_t items,
+     ImporterBridge* bridge) {
++  if (!aux_database_.empty()) CHECK(!(items & ~(user_data_importer::HISTORY | user_data_importer::FAVORITES)));
+   bridge_ = bridge;
+   source_path_ = source_profile.source_path;
+   app_path_ = source_profile.app_path;
+@@ -125,7 +133,7 @@ void FirefoxImporter::StartImport(
+ 
+   // The order here is important!
+   bridge_->NotifyStarted();
+-  if (!source_path_copy_.CreateUniqueTempDir()) {
++  if (aux_database_.empty() && !source_path_copy_.CreateUniqueTempDir()) {
+     bridge->NotifyEnded();
+     return;
+   }
+@@ -172,12 +180,18 @@ void FirefoxImporter::ImportRemainingItems() {
+ 
+ void FirefoxImporter::ImportHistory() {
+   base::FilePath file = GetCopiedSourcePath("places.sqlite");
+-  if (!base::PathExists(file))
++  if (file.empty() || (aux_database_.empty() && !base::PathExists(file)))
+     return;
+ 
+-  sql::Database db(kDatabaseTag);
+-  if (!db.Open(file))
++  sql::Database db(aux_database_.empty() ? sql::DatabaseOptions() :
++      sql::DatabaseOptions().set_exclusive_locking(true).set_vfs_name_discouraged(aux_vfs_name_.c_str()).set_mmap_enabled(false), kDatabaseTag);
++  if (!aux_database_.empty())
++    db.set_error_callback(base::BindRepeating([](bool* failed, int, sql::Statement*) { *failed = true; }, &aux_failed_));
++  if (!db.Open(file)) {
++    if (!aux_database_.empty()) aux_failed_ = true;
+     return;
++  }
++  if (!aux_database_.empty() && !db.Execute("PRAGMA temp_store=MEMORY")) return;
+ 
+   // |visit_type| represent the transition type of URLs (typed, click,
+   // redirect, bookmark, etc.) We eliminate some URLs like sub-frames and
+@@ -198,6 +212,12 @@ void FirefoxImporter::ImportHistory() {
+ 
+   std::vector<user_data_importer::ImporterURLRow> rows;
+   while (s.Step() && !cancelled()) {
++    if (!aux_database_.empty()) {
++      const size_t bytes = s.ColumnStringView(0).size() + s.ColumnStringView(1).size();
++      if (s.ColumnStringView(0).size() > 8192 || s.ColumnStringView(1).size() > 16384 ||
++          bytes > 64 * 1024 * 1024 - aux_decoded_bytes_) { aux_failed_ = true; return; }
++      aux_decoded_bytes_ += bytes;
++    }
+     GURL url(s.ColumnStringView(0));
+ 
+     // Filter out unwanted URLs.
+@@ -212,6 +232,7 @@ void FirefoxImporter::ImportHistory() {
+     row.typed_count = s.ColumnInt(4);
+     row.last_visit = base::Time::FromTimeT(s.ColumnInt64(5)/1000000);
+ 
++    if (!aux_database_.empty() && rows.size() >= 200000) { aux_failed_ = true; return; }
+     rows.push_back(row);
+   }
+ 
+@@ -227,14 +248,24 @@ void FirefoxImporter::SetBookmarkHtmlParser(
+ 
+ void FirefoxImporter::ImportBookmarks() {
+   base::FilePath sqlite_file = GetCopiedSourcePath("places.sqlite");
+-  if (!base::PathExists(sqlite_file)) {
++  if (sqlite_file.empty() || (aux_database_.empty() && !base::PathExists(sqlite_file))) {
+     bridge_->NotifyItemEnded(user_data_importer::FAVORITES);
+     ImportRemainingItems();
+     return;
+   }
+ 
+-  auto db = std::make_unique<sql::Database>(kDatabaseTag);
++  auto db = std::make_unique<sql::Database>(aux_database_.empty() ? sql::DatabaseOptions() :
++      sql::DatabaseOptions().set_exclusive_locking(true).set_vfs_name_discouraged(aux_vfs_name_.c_str()).set_mmap_enabled(false), kDatabaseTag);
++  if (!aux_database_.empty())
++    db->set_error_callback(base::BindRepeating([](bool* failed, int, sql::Statement*) { *failed = true; }, &aux_failed_));
+   if (!db->Open(sqlite_file)) {
++    if (!aux_database_.empty()) aux_failed_ = true;
++    bridge_->NotifyItemEnded(user_data_importer::FAVORITES);
++    ImportRemainingItems();
++    return;
++  }
++
++  if (!aux_database_.empty() && !db->Execute("PRAGMA temp_store=MEMORY")) {
+     bridge_->NotifyItemEnded(user_data_importer::FAVORITES);
+     ImportRemainingItems();
+     return;
+@@ -243,7 +274,7 @@ void FirefoxImporter::ImportBookmarks() {
+   // |moz_favicons| table has been introduced in Firefox 55 and is not available
+   // in older Firefox profiles.
+   FaviconsLocation favicons_location =
+-      db->IsSQLValid("SELECT count(*) FROM moz_favicons")
++      db->DoesTableExist("moz_favicons")
+           ? FaviconsLocation::kPlacesDatabase
+           : FaviconsLocation::kFaviconsDatabase;
+ 
+@@ -256,6 +287,14 @@ void FirefoxImporter::ImportBookmarks() {
+   auto livemark_id = std::make_unique<std::set<int>>();
+   LoadLivemarkIDs(db.get(), livemark_id.get());
+ 
++  if (!aux_database_.empty()) {
++    // This route admits only the saved places database, not a Firefox install
++    // directory/default HTML/favicons. Reuse the maintained Places decoder.
++    OnDefaultBookmarksParsed(std::move(db), toolbar_folder_id, menu_folder_id,
++        unsorted_folder_id, std::move(livemark_id), favicons_location, nullptr, {});
++    return;
++  }
++
+   // Load the default bookmarks.
+   base::FilePath bookmarks_file = app_path_.AppendASCII("defaults")
+                                       .AppendASCII("profile")
+@@ -359,6 +398,11 @@ void FirefoxImporter::OnDefaultBookmarksParsed(
+         if (parent->id != menu_folder_id) {
+           // To avoid excessive nesting, omit the name for the bookmarks menu
+           // folder.
++          if (!aux_database_.empty()) {
++            const size_t bytes = parent->title.size() * sizeof(char16_t);
++            if (path.size() >= 128 || bytes > 64 * 1024 * 1024 - aux_decoded_bytes_) { aux_failed_ = true; return; }
++            aux_decoded_bytes_ += bytes;
++          }
+           path.insert(path.begin(), parent->title);
+         }
+ 
+@@ -590,6 +634,11 @@ void FirefoxImporter::GetWholeBookmarkFolder(sql::Database* db,
+                                              size_t position,
+                                              FaviconsLocation favicons_location,
+                                              bool* empty_folder) {
++  if (!aux_database_.empty()) {
++    if (aux_failed_ || position >= list->size() || aux_folder_depth_ >= 128 ||
++        !aux_visited_folders_.insert((*list)[position]->id).second) { aux_failed_ = true; return; }
++  }
++  base::AutoReset<size_t> depth(&aux_folder_depth_, aux_folder_depth_ + 1);
+   if (position >= list->size()) {
+     NOTREACHED();
+   }
+@@ -614,6 +663,12 @@ void FirefoxImporter::GetWholeBookmarkFolder(sql::Database* db,
+ 
+   BookmarkList temp_list;
+   while (s.Step()) {
++    if (!aux_database_.empty()) {
++      const size_t bytes = s.ColumnStringView(1).size() + s.ColumnStringView(2).size() + s.ColumnStringView(4).size();
++      if (s.ColumnStringView(1).size() > 8192 || s.ColumnStringView(2).size() > 16384 ||
++          s.ColumnStringView(4).size() > 16384 || bytes > 64 * 1024 * 1024 - aux_decoded_bytes_) { aux_failed_ = true; return; }
++      aux_decoded_bytes_ += bytes;
++    }
+     std::unique_ptr<BookmarkItem> item = std::make_unique<BookmarkItem>();
+     item->parent = static_cast<int>(position);
+     item->id = s.ColumnInt(0);
+@@ -627,6 +682,7 @@ void FirefoxImporter::GetWholeBookmarkFolder(sql::Database* db,
+                         : 0;
+     item->empty_folder = true;
+ 
++    if (!aux_database_.empty() && list->size() + temp_list.size() >= 200000) { aux_failed_ = true; return; }
+     temp_list.push_back(std::move(item));
+     if (empty_folder)
+       *empty_folder = false;
+@@ -725,6 +781,8 @@ void FirefoxImporter::LoadFavicons(
+ 
+ base::FilePath FirefoxImporter::GetCopiedSourcePath(
+     std::string_view base_file_name) {
++  if (!aux_database_.empty())
++    return base_file_name == "places.sqlite" ? aux_database_ : base::FilePath();
+   const base::FilePath file = source_path_.AppendASCII(base_file_name);
+   if (!base::PathExists(file))
+     return {};
+diff --git a/chrome/utility/importer/firefox_importer.h b/chrome/utility/importer/firefox_importer.h
+index fea3060ce..642ba7231 100644
+--- a/chrome/utility/importer/firefox_importer.h
++++ b/chrome/utility/importer/firefox_importer.h
+@@ -52,6 +52,11 @@ class FirefoxImporter : public Importer {
+                    uint16_t items,
+                    ImporterBridge* bridge) override;
+ 
++  // Utility-only FD-backed snapshot route. No original filesystem path is
++  // accepted; the dedicated kService decoder supplies a registered VFS.
++  void SetAuxSnapshot(const base::FilePath& database, std::string vfs_name);
++  bool AuxSnapshotFailed() const { return aux_failed_; }
++
+   void SetBookmarkHtmlParser(
+       mojo::PendingRemote<user_data_importer::mojom::BookmarkHtmlParser> parser)
+       override;
+@@ -67,6 +72,13 @@ class FirefoxImporter : public Importer {
+     kFaviconsDatabase,
+   };
+ 
++  base::FilePath aux_database_;
++  std::string aux_vfs_name_;
++  bool aux_failed_ = false;
++  std::set<int> aux_visited_folders_;
++  size_t aux_folder_depth_ = 0;
++  size_t aux_decoded_bytes_ = 0;
++
+   using FaviconMap = std::map<int64_t, std::set<GURL>>;
+ 
+   ~FirefoxImporter() override;
+diff --git a/chrome/utility/services.cc b/chrome/utility/services.cc
+index 22b15ea3a..b47e56cd0 100644
+--- a/chrome/utility/services.cc
++++ b/chrome/utility/services.cc
+@@ -149,6 +149,10 @@ static_assert(BUILDFLAG(ENABLE_PRINTING), "ChromeOS Ash must enable Printing");
+ #include "components/on_device_translation/service/on_device_translation_service.h"
+ #endif  // BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
+ 
++#if BUILDFLAG(IS_MAC)
++#include "chrome/utility/aux/firefox_profile_decoder.h"
++#endif
++
+ namespace {
+ 
+ auto RunFilePatcher(mojo::PendingReceiver<patch::mojom::FilePatcher> receiver) {
+@@ -469,6 +473,13 @@ RunReadAloudPlaybackControllerFactory(
+ }
+ #endif  // BUILDFLAG(IS_ANDROID)
+ 
++#if BUILDFLAG(IS_MAC)
++auto RunAuxFirefoxProfileDecoder(
++    mojo::PendingReceiver<chrome::mojom::AuxFirefoxProfileDecoder> receiver) {
++  return std::make_unique<aux::FirefoxProfileDecoder>(std::move(receiver));
++}
++#endif
++
+ }  // namespace
+ 
+ void RegisterElevatedMainThreadServices(mojo::ServiceFactory& services) {
+@@ -481,6 +492,9 @@ void RegisterElevatedMainThreadServices(mojo::ServiceFactory& services) {
+ }
+ 
+ void RegisterMainThreadServices(mojo::ServiceFactory& services) {
++#if BUILDFLAG(IS_MAC)
++  services.Add(RunAuxFirefoxProfileDecoder);
++#endif
+   services.Add(RunFilePatcher);
+   services.Add(RunUnzipper);
+   services.Add(RunCSVPasswordParser);

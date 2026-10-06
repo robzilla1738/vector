@@ -1,0 +1,865 @@
+diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
+index ce7ebbe4f6..3a18653625 100644
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -72,6 +72,11 @@ declare_args() {
+   # signing identity. If `include_branded_entitlements` is set to false, these
+   # entitlements will be skipped.
+   include_branded_entitlements = true
++
++  # Entitlements granted only to Aux's approved Team ID and provisioning
++  # profile. Keep ordinary and ad-hoc builds on the unbranded template.
++  enable_aux_passkey_entitlements = false
++  aux_passkey_team_id = ""
+ }
+ 
+ assert(!is_ios, "Chromium/iOS shouldn't use anything in //chrome")
+@@ -509,7 +514,30 @@ if (is_win) {
+   }
+ 
+   tweak_info_plist("chrome_app_plist") {
+-    info_plist = "app/app-Info.plist"
++    if (enable_aux_shell || enable_aux_sparkle) {
++      info_plists = [ "app/app-Info.plist" ]
++      deps = []
++      if (enable_aux_shell) {
++        info_plists += [ "app/aux-product-Info.plist" ]
++        info_plists += [ "$target_gen_dir/aux-crash-Info.plist" ]
++        info_plists += [ "$target_gen_dir/aux-dictation-Info.plist" ]
++        deps += [
++          ":aux_crash_info_plist",
++          ":aux_dictation_info_plist",
++        ]
++      }
++    }
++    if (enable_aux_sparkle) {
++      assert(enable_aux_shell && chrome_mac_bundle_id == "dev.aux.browser",
++             "Sparkle requires the Aux shell and bundle ID")
++      assert(aux_sparkle_feed_url != "" && aux_sparkle_public_ed_key != "",
++             "Sparkle requires a feed URL and EdDSA public key")
++      info_plists += [ "$target_gen_dir/aux-sparkle-Info.plist" ]
++      deps += [ ":aux_sparkle_info_plist" ]
++    }
++    if (!enable_aux_shell && !enable_aux_sparkle) {
++      info_plist = "app/app-Info.plist"
++    }
+     args = [
+       "--breakpad=0",
+       "--scm=1",
+@@ -530,6 +558,45 @@ if (is_win) {
+     }
+   }
+ 
++  if (enable_aux_shell) {
++    assert(chrome_mac_bundle_id == "dev.aux.browser",
++           "Aux crash reporting metadata requires the Aux bundle ID")
++    compile_plist("aux_crash_info_plist") {
++      plist_templates = [ "app/aux-crash-Info.plist" ]
++      format = "xml1"
++      substitutions = [ "AUX_CRASH_UPLOAD_URL=$aux_crash_upload_url" ]
++      output_name = "$target_gen_dir/aux-crash-Info.plist"
++    }
++    compile_plist("aux_dictation_info_plist") {
++      plist_templates = [ "app/aux-dictation-Info.plist" ]
++      format = "xml1"
++      substitutions = []
++      output_name = "$target_gen_dir/aux-dictation-Info.plist"
++    }
++  }
++
++  if (enable_aux_sparkle) {
++    compile_plist("aux_sparkle_info_plist") {
++      plist_templates = [ "app/aux-sparkle-Info.plist" ]
++      format = "xml1"
++      substitutions = [
++        "AUX_SPARKLE_FEED_URL=$aux_sparkle_feed_url",
++        "AUX_SPARKLE_PUBLIC_ED_KEY=$aux_sparkle_public_ed_key",
++      ]
++      output_name = "$target_gen_dir/aux-sparkle-Info.plist"
++    }
++
++    bundle_data("aux_sparkle_framework") {
++      sources = [ "//third_party/aux_sparkle/Sparkle.framework" ]
++      outputs = [ "{{bundle_contents_dir}}/Frameworks/{{source_file_part}}" ]
++    }
++
++    bundle_data("aux_sparkle_license") {
++      sources = [ "//third_party/aux_sparkle/LICENSE" ]
++      outputs = [ "{{bundle_resources_dir}}/Sparkle-LICENSE.txt" ]
++    }
++  }
++
+   mac_app_bundle("chrome_app") {
+     output_name = chrome_product_full_name
+ 
+@@ -563,6 +630,12 @@ if (is_win) {
+     if (enable_updater) {
+       deps += [ ":chromium_updater_privileged_helper" ]
+     }
++    if (enable_aux_sparkle) {
++      deps += [
++        ":aux_sparkle_framework",
++        ":aux_sparkle_license",
++      ]
++    }
+ 
+     if (enable_stripping) {
+       # At link time, preserve the global symbols specified in the .exports
+@@ -755,10 +828,18 @@ if (is_win) {
+       # certificate and will not necessarily work in any other build.
+       entitlements_templates += [ "app/app-entitlements-chrome.plist" ]
+     }
++    if (enable_aux_passkey_entitlements) {
++      assert(enable_aux_shell && chrome_mac_bundle_id == "dev.aux.browser",
++             "Aux passkey entitlements require the Aux shell and bundle ID")
++      assert(aux_passkey_team_id != "",
++             "Aux passkey entitlements require an approved Team ID")
++      entitlements_templates += [ "app/app-entitlements-aux-passkey.plist" ]
++    }
+     output_name = "$target_gen_dir/app-entitlements.plist"
+     substitutions = [
+       "CHROMIUM_BUNDLE_ID=$chrome_mac_bundle_id",
+       "CHROMIUM_TEAM_ID=$chrome_mac_team_id",
++      "AUX_PASSKEY_TEAM_ID=$aux_passkey_team_id",
+     ]
+     visibility = [ "//chrome/installer/mac:copies" ]
+   }
+@@ -1297,6 +1378,7 @@ if (is_win) {
+     ]
+ 
+     sources = [
++      "app/aux_crash_reporting_mac.h",
+       "app/chrome_crash_reporter_client.cc",
+       "app/chrome_crash_reporter_client.h",
+       "app/chrome_crash_reporter_client_mac.mm",
+@@ -2046,6 +2128,7 @@ if (enable_separate_renderer_binary) {
+     "//base",
+     "//base:i18n",
+     "//build/config/compiler:compiler_buildflags",
++    "//chrome/browser:buildflags",
+     "//chrome/common",
+     "//chrome/common:version_header",
+     "//chrome/renderer",
+diff --git a/chrome/app/BUILD.gn b/chrome/app/BUILD.gn
+index e0bc13decc..5412cf151c 100644
+--- a/chrome/app/BUILD.gn
++++ b/chrome/app/BUILD.gn
+@@ -23,7 +23,10 @@ if (is_posix) {
+   # without depending on the target that compiles it (//chrome/browser:browser
+   # on non-Mac, //chrome:chrome_dll on Mac).
+   source_set("chrome_crash_reporter_client") {
+-    public = [ "chrome_crash_reporter_client.h" ]
++    public = [
++      "aux_crash_reporting_mac.h",
++      "chrome_crash_reporter_client.h",
++    ]
+     public_deps = [
+       "//base",
+       "//build:buildflag_header_h",
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index f261c72029..84a6304623 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -92,6 +92,9 @@ if (is_win) {
+ buildflag_header("buildflags") {
+   header = "buildflags.h"
+   flags = [
++    "ENABLE_AUX_SHELL=$enable_aux_shell",
++    "ENABLE_AUX_SPARKLE=$enable_aux_sparkle",
++    "AUX_TEST_HOOKS=$aux_test_hooks",
+     "ENABLE_UPDATER=$enable_updater",
+     "ENABLE_UPDATE_NOTIFICATIONS=$enable_update_notifications",
+     "USE_MINIKIN_HYPHENATION=$use_minikin_hyphenation",
+@@ -1523,6 +1526,21 @@ source_set("core") {
+       "shutdown_watchdog_mac.cc",
+       "shutdown_watchdog_mac.h",
+     ]
++    if (enable_aux_sparkle) {
++      assert(enable_aux_shell, "Sparkle is only available in Aux")
++      sources += [
++        "aux_sparkle_updater.h",
++        "aux_sparkle_updater.mm",
++      ]
++      cflags_objcc = [
++        "-F" + rebase_path("//third_party/aux_sparkle", root_build_dir),
++        "-DBUILDING_SPARKLE_SOURCES_EXTERNALLY",
++      ]
++    }
++
++    if (enable_aux_shell) {
++      deps += [ "//chrome/app:chrome_crash_reporter_client" ]
++    }
+ 
+     deps += [
+       ":app_controller_mac",
+@@ -1976,6 +1994,10 @@ source_set("core") {
+     deps += [ ":chrome_browser_main_mac" ]
+   }
+ 
++  if (enable_aux_shell) {
++    deps += [ "//chrome/browser/ui/aux:runtime" ]
++  }
++
+   if (is_chrome_for_testing) {
+     deps += [ "//chrome/browser/chrome_for_testing:browser" ]
+   }
+diff --git a/chrome/browser/buildflags.gni b/chrome/browser/buildflags.gni
+index bc2754dc1f..1f62ca5996 100644
+--- a/chrome/browser/buildflags.gni
++++ b/chrome/browser/buildflags.gni
+@@ -9,6 +9,20 @@ import("//build/config/chrome_build.gni")
+ # docs/chrome_browser_design_principles.md.
+ 
+ declare_args() {
++  # Aux shell is built only for the Aux distribution.
++  enable_aux_shell = false
++
++  # Sparkle is packaged only in explicitly configured Aux distributions.
++  enable_aux_sparkle = false
++  aux_sparkle_feed_url = ""
++  aux_sparkle_public_ed_key = ""
++
++  # Empty by default: Aux records local crashes but cannot upload them.
++  aux_crash_upload_url = ""
++
++  # Optional local smoke hooks are omitted from ordinary development builds.
++  aux_test_hooks = false
++
+   # By default, only branded builds allow for platform experience.
+   enable_platform_experience = is_chrome_branded
+ 
+diff --git a/chrome/browser/picture_in_picture/BUILD.gn b/chrome/browser/picture_in_picture/BUILD.gn
+index 98f3c45098..d9f00dccaa 100644
+--- a/chrome/browser/picture_in_picture/BUILD.gn
++++ b/chrome/browser/picture_in_picture/BUILD.gn
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//chrome/common/features.gni")
++import("//chrome/browser/buildflags.gni")
+ 
+ assert(is_win || is_mac || is_linux || is_chromeos || is_android)
+ 
+@@ -119,6 +120,10 @@ source_set("impl") {
+     "//ui/gfx/geometry",
+   ]
+ 
++  if (enable_aux_shell) {
++    deps += [ "//chrome/browser/ui/aux:surface_headers" ]
++  }
++
+   if (enable_extensions_core) {
+     deps += [ "//extensions/common:common_constants" ]
+   }
+diff --git a/chrome/browser/resources/BUILD.gn b/chrome/browser/resources/BUILD.gn
+index eb9d625d1c..ec5da16192 100644
+--- a/chrome/browser/resources/BUILD.gn
++++ b/chrome/browser/resources/BUILD.gn
+@@ -28,6 +28,13 @@ group("resources") {
+     "//components/enterprise/connectors/resources",
+   ]
+ 
++  if (enable_aux_shell) {
++    public_deps += [
++      "aux:resources",
++      "aux_host:resources",
++    ]
++  }
++
+   if (enable_webui_ntp) {
+     public_deps += [
+       "new_tab_page:resources",
+diff --git a/chrome/browser/resources/aux/BUILD.gn b/chrome/browser/resources/aux/BUILD.gn
+new file mode 100644
+index 0000000000..0f16d0ac61
+--- /dev/null
++++ b/chrome/browser/resources/aux/BUILD.gn
+@@ -0,0 +1,41 @@
++# Copyright 2026 The Aux Authors
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++
++import("//chrome/browser/buildflags.gni")
++import("//chrome/common/features.gni")
++import("//tools/grit/grit_rule.gni")
++import("//ui/webui/resources/tools/generate_grd.gni")
++
++assert(enable_aux_shell)
++
++# stage-shell verifies every file against the checked-in SHA-256 manifest.
++shell_manifest = read_file("assets/manifest.json", "json")
++shell_files = []
++shell_inputs = []
++foreach(asset, shell_manifest.files) {
++  shell_files += [ asset.path ]
++  shell_inputs += [ "assets/${asset.path}" ]
++}
++
++grit("resources") {
++  defines = chrome_grit_defines
++  enable_input_discovery_for_gn_analyze = false
++  source = "$target_gen_dir/resources.grd"
++  inputs = shell_inputs
++  deps = [ ":build_grd" ]
++  outputs = [
++    "grit/aux_resources.h",
++    "grit/aux_resources_map.h",
++    "grit/aux_resources_map.cc",
++    "aux_resources.pak",
++  ]
++  output_dir = "$root_gen_dir/chrome"
++}
++
++generate_grd("build_grd") {
++  grd_prefix = "aux"
++  out_grd = "$target_gen_dir/resources.grd"
++  input_files = shell_files
++  input_files_base_dir = rebase_path("assets", "//")
++}
+diff --git a/chrome/browser/resources/aux_host/BUILD.gn b/chrome/browser/resources/aux_host/BUILD.gn
+new file mode 100644
+index 0000000000..85fd9eb025
+--- /dev/null
++++ b/chrome/browser/resources/aux_host/BUILD.gn
+@@ -0,0 +1,16 @@
++# Copyright 2026 The Aux Authors
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++
++import("//chrome/browser/buildflags.gni")
++import("//ui/webui/resources/tools/build_webui.gni")
++
++assert(enable_aux_shell)
++
++build_webui("build") {
++  grd_prefix = "aux_host"
++  ts_files = [ "aux_host_bootstrap.ts", "aux_feature_stages.ts" ]
++  mojo_files = [ "$root_gen_dir/chrome/browser/ui/webui_browser/shell_host.mojom-webui.ts" ]
++  mojo_files_deps = [ "//chrome/browser/ui/webui_browser:shell_host_mojo_bindings_ts__generator" ]
++  ts_deps = [ "//ui/webui/resources/mojo:build_ts" ]
++}
+diff --git a/chrome/browser/ui/BUILD.gn b/chrome/browser/ui/BUILD.gn
+index 0ab25c63c9..acd9c0b834 100644
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -1309,6 +1309,9 @@ static_library("ui") {
+     ]
+   } else {
+     # !is_android
++    if (enable_aux_shell) {
++      deps += [ "//chrome/browser/ui/aux:runtime" ]
++    }
+     sources += [
+       # This file physically lives in //chrome/browser but is compiled here so
+       # that //chrome/browser:browser has no remaining sources. It registers
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+new file mode 100644
+index 0000000000..fa57c703b6
+--- /dev/null
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -0,0 +1,183 @@
++# Copyright 2026 The Aux Authors
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++
++import("//chrome/browser/buildflags.gni")
++
++assert(enable_aux_shell)
++
++source_set("runtime") {
++  sources = [
++    "native_cdp_input_mac.h",
++    "native_cdp_input_mac.mm",
++    "cdp_broker.cc",
++    "cdp_broker.h",
++    "content_blocking_controller.cc",
++    "content_blocking_controller.h",
++    "content_blocking_policy.cc",
++    "content_blocking_policy.h",
++    "cosmetic_controller.cc",
++    "cosmetic_controller.h",
++    "cookie_import.cc",
++    "cookie_import.h",
++    "credential_fill.cc",
++    "credential_fill.h",
++    "credential_fill_prompt_mac.mm",
++    "egress_controller.cc",
++    "egress_controller.h",
++    "owner_mutation_fence.h",
++    "owner_mutation_fence.cc",
++    "permission_effect_receipt.cc",
++    "permission_effect_receipt.h",
++    "permission_broker.cc",
++    "permission_broker.h",
++    "egress_projection.cc",
++    "egress_projection.h",
++    "egress_url_loader.cc",
++    "health_recorder.cc",
++    "health_recorder.h",
++    "method_registry.cc",
++    "method_registry.h",
++    "methods/downloads_ai_methods.cc",
++    "download_naming.cc",
++    "download_naming.h",
++    "download_naming_mac.mm",
++    "methods/extensions_ui_methods.cc",
++    "methods/layout_methods.cc",
++    "methods/power_methods.cc",
++    "power_activity_mac.h",
++    "power_activity_mac.mm",
++    "methods/profile_routing_methods.cc",
++    "methods/shortcuts_methods.cc",
++    "methods/surfaces_methods.cc",
++    "methods/window_sync_methods.cc",
++    "methods/native_blocking_methods.cc",
++    "methods/native_cdp_methods.cc",
++    "methods/native_content_methods.cc",
++    "methods/health_methods.cc",
++    "methods/native_credentials_methods.cc",
++    "methods/native_library_methods.cc",
++    "methods/native_page_controls_methods.cc",
++    "methods/native_tabs_methods.cc",
++    "dictation_mac.h",
++    "dictation_mac.mm",
++    "dictation_session.cc",
++    "dictation_session.h",
++    "native_find.cc",
++    "native_find.h",
++    "organization_store.cc",
++    "organization_store.h",
++    "page_identity.cc",
++    "page_identity.h",
++    "profile_library.cc",
++    "profile_library.h",
++    "profile_spaces.cc",
++    "profile_spaces.h",
++    "link_routing.cc",
++    "link_routing.h",
++    "link_router.cc",
++    "link_router.h",
++    "profile_search_engine.cc",
++    "profile_search_engine.h",
++    "little_window_controller.mm",
++    "little_window_controller.h",
++    "quick_ask_controller.cc",
++    "quick_ask_controller.h",
++    "readable_capture.cc",
++    "readable_capture.h",
++    "result_preview.cc",
++    "result_preview.h",
++    "native_creator_close_receipt.cc",
++    "native_creator_close_receipt.h",
++    "native_person_capture_controller.cc",
++    "native_person_capture_controller.h",
++    "native_person_observer_controller.cc",
++    "native_person_observer_controller.h",
++    "native_recorder_controller.cc",
++    "native_recorder_controller.h",
++    "native_recorder_script.h",
++    "runtime_host.cc",
++    "runtime_host.h",
++    "shell_events.cc",
++    "shell_events.h",
++    "surface_visibility.cc",
++    "secret_store_mac.h",
++    "secret_store_mac.mm",
++    "tab_catalog.cc",
++    "tab_catalog.h",
++    "webmcp.cc",
++    "webmcp.h",
++    "zap_controller.cc",
++    "zap_controller.h",
++  ]
++  deps = [
++    "//components/download/public/common:public",
++    "//base",
++    "//chrome/browser:buildflags",
++    "//third_party/icu",
++    "//chrome/browser/content_settings:content_settings_factory",
++    "//chrome/browser/notifications:notifications",
++    "//chrome/browser/device_reauth:device_reauth",
++    "//chrome/browser/device_reauth:impl",
++    "//chrome/browser/password_manager/factories",
++    "//chrome/browser/profiles",
++    "//chrome/browser/picture_in_picture",
++    ":surface_headers",
++    "//chrome/browser/ui/aux/generated:methods",
++    "//chrome/browser/ui/browser_window",
++    "//chrome/browser/ui/login:login",
++    "//chrome/browser/ui/tabs:tabs_public",
++    "//chrome/common:mojo_bindings",
++    "//components/device_reauth",
++    "//components/content_settings/core/browser",
++    "//components/content_settings/core/common",
++    "//components/find_in_page",
++    "//components/keyed_service/content",
++    "//components/password_manager/content/browser",
++    "//components/password_manager/core/browser",
++    "//components/prefs",
++    "//components/sessions:session_id",
++    "//components/split_tabs",
++    "//components/tabs:public",
++    "//services/media_session/public/mojom",
++    "//components/version_info",
++    "//components/zoom",
++    "//components/permissions",
++    "//content/public/browser",
++    "//content/public/common",
++    "//crypto",
++    "//mojo/public/cpp/bindings",
++    "//mojo/public/cpp/system",
++    "//net",
++    "//services/network/public/cpp",
++    "//services/network/public/mojom",
++    "//ui/message_center/public/cpp",
++    "//chrome/browser/bookmarks",
++    "//chrome/browser/history",
++    "//chrome/browser/search_engines",
++    "//components/bookmarks/browser",
++    "//components/bookmarks/common",
++    "//components/history/core/browser",
++    "//components/keyed_service/core",
++    "//components/search_engines",
++    "//services/network/public/cpp:cpp",
++    "//third_party/blink/public/common:common",
++    "//url",
++  ]
++  frameworks = [
++    "PDFKit.framework",
++    "AVFoundation.framework",
++    "Cocoa.framework",
++    "IOKit.framework",
++    "ServiceManagement.framework",
++    "Security.framework",
++    "Speech.framework",
++  ]
++}
++
++source_set("surface_headers") {
++  sources = [
++    "surface_visibility.h",
++    "auto_pip_site_policy.h",
++  ]
++}
+diff --git a/chrome/browser/ui/cocoa/BUILD.gn b/chrome/browser/ui/cocoa/BUILD.gn
+index a4d59b3ddd..62a9a2a2c1 100644
+--- a/chrome/browser/ui/cocoa/BUILD.gn
++++ b/chrome/browser/ui/cocoa/BUILD.gn
+@@ -66,6 +66,8 @@ source_set("cocoa") {
+     "applescript/element_applescript.mm",
+     "applescript/error_applescript.mm",
+     "applescript/tab_applescript.mm",
++    "applescript/space_applescript.h",
++    "applescript/space_applescript.mm",
+     "applescript/window_applescript.mm",
+     "apps/quit_with_apps_controller_mac.cc",
+     "apps/titlebar_background_view.mm",
+diff --git a/chrome/browser/ui/webui_browser/BUILD.gn b/chrome/browser/ui/webui_browser/BUILD.gn
+index fa8206b5ba..8bd4c94e5f 100644
+--- a/chrome/browser/ui/webui_browser/BUILD.gn
++++ b/chrome/browser/ui/webui_browser/BUILD.gn
+@@ -3,6 +3,8 @@
+ # found in the LICENSE file.
+ 
+ import("//mojo/public/tools/bindings/mojom.gni")
++import("//chrome/browser/buildflags.gni")
++import("//components/spellcheck/spellcheck_build_features.gni")
+ 
+ assert(!is_android)
+ 
+@@ -51,6 +53,9 @@ source_set("webui_browser") {
+     "//ui/views",
+     "//ui/webui",
+   ]
++  if (enable_aux_shell) {
++    public_deps += [ ":shell_host_mojo_bindings" ]
++  }
+ }
+ 
+ source_set("impl") {
+@@ -85,6 +90,7 @@ source_set("impl") {
+     ":webui_browser",
+     "//base",
+     "//chrome/browser:browser_public_dependencies",
++    "//chrome/browser:buildflags",
+     "//chrome/browser/app_mode",
+     "//chrome/browser/bookmarks",
+     "//chrome/browser/contextual_search",
+@@ -139,11 +145,57 @@ source_set("impl") {
+     "//services/network/public/mojom",
+     "//ui/base",
+     "//ui/content_accelerators",
++    "//ui/display",
++    "//ui/events",
+     "//ui/views",
+     "//ui/views/controls/webview",
+     "//ui/webui/tracked_element",
+   ]
+ 
++  if (enable_aux_shell) {
++    sources += [
++      "../aux/methods/blocking_methods.cc",
++      "../aux/methods/content_methods.cc",
++      "../aux/methods/credentials_methods.cc",
++      "../aux/methods/dictation_methods.cc",
++      "../aux/methods/extensions_methods.cc",
++      "../aux/methods/library_methods.cc",
++      "../aux/methods/recovery_methods.cc",
++      "../aux/methods/page_controls_methods.cc",
++      "../aux/methods/profile_methods.cc",
++      "../aux/methods/tabs_methods.cc",
++      "../aux/methods/window_methods.cc",
++      "../aux/extension_bridge.cc",
++      "../aux/extension_bridge.h",
++    ]
++    deps += [
++      ":shell_host_mojo_bindings",
++      "//chrome/browser/dom_distiller",
++      "//chrome/browser/device_reauth:device_reauth",
++      "//chrome/browser/device_reauth:impl",
++      "//chrome/browser/extensions:extensions",
++      "//chrome/browser/ui/aux:runtime",
++      "//components/prefs",
++      "//components/language/core/browser",
++      "//components/content_settings/core/browser",
++      "//chrome/browser/background/extensions",
++      "//chrome/browser/ui/zoom:zoom",
++      "//components/spellcheck:buildflags",
++      "//components/dom_distiller/content/browser",
++      "//components/dom_distiller/core",
++      "//components/device_reauth",
++      "//components/password_manager/core/browser",
++      "//crypto",
++      "//extensions/browser",
++      "//extensions/common",
++      "//chrome/browser/resources/aux_host:resources",
++      "//chrome/browser/resources/aux:resources",
++    ]
++    if (enable_spellcheck) {
++      deps += [ "//components/spellcheck/browser" ]
++    }
++  }
++
+   if (is_chromeos) {
+     deps += [ "//chrome/browser/ui/ash/system_web_apps" ]
+   }
+@@ -177,6 +229,13 @@ mojom("browser_mojo_bindings") {
+   webui_module_path = "/"
+ }
+ 
++if (enable_aux_shell) {
++  mojom("shell_host_mojo_bindings") {
++    sources = [ "shell_host.mojom" ]
++    webui_module_path = "/"
++  }
++}
++
+ source_set("browser_tests") {
+   testonly = true
+   defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+@@ -187,6 +246,12 @@ source_set("browser_tests") {
+   if (!is_chromeos) {
+     sources += [ "webui_browser_browsertest.cc" ]
+   }
++  if (enable_aux_shell) {
++    sources += [
++      "../aux/extension_bridge_browsertest.cc",
++      "../aux/result_preview_browsertest.cc",
++    ]
++  }
+ 
+   deps = [
+     ":impl",
+diff --git a/chrome/chrome_paks.gni b/chrome/chrome_paks.gni
+index 6008e03a89..8debaf7ee6 100644
+--- a/chrome/chrome_paks.gni
++++ b/chrome/chrome_paks.gni
+@@ -182,6 +182,16 @@ template("chrome_extra_paks") {
+       "//ui/resources:ui_lottie_resources_grd",
+       "//ui/webui/resources",
+     ]
++    if (enable_aux_shell) {
++      sources += [
++        "$root_gen_dir/chrome/aux_resources.pak",
++        "$root_gen_dir/chrome/aux_host_resources.pak",
++      ]
++      deps += [
++        "//chrome/browser/resources/aux:resources",
++        "//chrome/browser/resources/aux_host:resources",
++      ]
++    }
+     if (defined(invoker.deps)) {
+       deps += invoker.deps
+     }
+diff --git a/chrome/common/BUILD.gn b/chrome/common/BUILD.gn
+index 8f287e2353..7bf2e95ed0 100644
+--- a/chrome/common/BUILD.gn
++++ b/chrome/common/BUILD.gn
+@@ -6,6 +6,7 @@ import("//build/buildflag_header.gni")
+ import("//build/config/chrome_build.gni")
+ import("//build/util/process_version.gni")
+ import("//chrome/browser/downgrade/buildflags.gni")
++import("//chrome/browser/buildflags.gni")
+ import("//chrome/common/features.gni")
+ import("//components/cdm/common/playready.gni")
+ import("//components/offline_pages/buildflags/features.gni")
+@@ -53,6 +54,8 @@ grit("resources") {
+ buildflag_header("buildflags") {
+   header = "buildflags.h"
+   flags = [
++    "ENABLE_AUX_RESULT_SCHEME=$enable_aux_shell",
++    "ENABLE_AUX_ISOLATED_WORLDS=$enable_aux_shell",
+     "CHROME_ENABLE_LOGGING_BY_DEFAULT=$chrome_enable_logging_by_default",
+     "CHROME_ROOT_STORE_CERT_MANAGEMENT_UI=$chrome_root_store_cert_management_ui",
+     "SKIP_ANDROID_UNMIGRATED_ACTOR_FILES=$skip_android_unmigrated_actor_files",
+@@ -686,6 +689,8 @@ mojom("mojo_bindings") {
+ 
+   sources = [
+     "actor.mojom",
++    "aux_recorder.mojom",
++    "aux_person_observer.mojom",
+     "chrome_render_frame.mojom",
+     "google_accounts_private_api_extension.mojom",
+     "media/webrtc_logging.mojom",
+diff --git a/chrome/installer/mac/BUILD.gn b/chrome/installer/mac/BUILD.gn
+index 608e017bb0..753ca38982 100644
+--- a/chrome/installer/mac/BUILD.gn
++++ b/chrome/installer/mac/BUILD.gn
+@@ -140,6 +140,7 @@ copy("copies") {
+     "$root_out_dir/hfs_tool",
+     "//chrome/app/helper-gpu-entitlements.plist",
+     "//chrome/app/helper-renderer-entitlements.plist",
++    "aux-runtime-entitlements.plist",
+     "pkg-dmg",
+     "pkg_postinstall.in",
+     "pkg_preinstall.in",
+diff --git a/chrome/renderer/BUILD.gn b/chrome/renderer/BUILD.gn
+index 94d46c0511..95a833127a 100644
+--- a/chrome/renderer/BUILD.gn
++++ b/chrome/renderer/BUILD.gn
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//build/config/buildflags_paint_preview.gni")
++import("//chrome/browser/buildflags.gni")
+ import("//chrome/common/features.gni")
+ import("//chrome/common/request_header_integrity/buildflags.gni")
+ import("//components/guest_view/buildflags/buildflags.gni")
+@@ -63,6 +64,8 @@ static_library("renderer") {
+   configs = []
+   configs = [ "//third_party/tflite:tflite_shim_config" ] + _configs
+   sources = [
++    "aux_zap_stylesheet_registry.cc",
++    "aux_zap_stylesheet_registry.h",
+     "benchmarking_bindings.cc",
+     "benchmarking_bindings.h",
+     "browser_exposed_renderer_interfaces.cc",
+@@ -117,6 +120,11 @@ static_library("renderer") {
+   ]
+ 
+   defines = []
++  if (enable_aux_shell) {
++    sources += [ "aux_recorder_agent.cc", "aux_recorder_agent.h",
++                 "aux_person_observer_agent.cc", "aux_person_observer_agent.h" ]
++    defines += [ "AUX_SHELL_ENABLED" ]
++  }
+ 
+   public_deps = [
+     "//components/signin/public/base:signin_buildflags",
+diff --git a/components/surface_embed/common/BUILD.gn b/components/surface_embed/common/BUILD.gn
+index ae354415df..59c8a08446 100644
+--- a/components/surface_embed/common/BUILD.gn
++++ b/components/surface_embed/common/BUILD.gn
+@@ -2,8 +2,15 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("//build/buildflag_header.gni")
++import("//chrome/browser/buildflags.gni")
+ import("//mojo/public/tools/bindings/mojom.gni")
+ 
++buildflag_header("aux_buildflags") {
++  header = "aux_buildflags.h"
++  flags = [ "ENABLE_AUX_SHELL=$enable_aux_shell" ]
++}
++
+ component("common") {
+   defines = [ "IS_SURFACE_EMBED_COMMON_IMPL" ]
+ 
+@@ -13,7 +20,10 @@ component("common") {
+     "features.h",
+   ]
+ 
+-  deps = [ "//base" ]
++  deps = [
++    ":aux_buildflags",
++    "//base",
++  ]
+ }
+ 
+ mojom("mojom") {
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+index 4e9e524699..27ea28b3a1 100644
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -2179,6 +2179,7 @@ source_set("browser") {
+     "web_contents/slow_web_preference_cache.h",
+     "web_contents/web_contents_impl.cc",
+     "web_contents/web_contents_impl.h",
++    "web_contents/web_contents_view.cc",
+     "web_contents/web_contents_view.h",
+     "web_contents/web_contents_view_aura.cc",
+     "web_contents/web_contents_view_aura.h",
+diff --git a/content/public/browser/BUILD.gn b/content/public/browser/BUILD.gn
+index 86a0536722..620ec79a87 100644
+--- a/content/public/browser/BUILD.gn
++++ b/content/public/browser/BUILD.gn
+@@ -162,6 +162,7 @@ source_set("browser_sources") {
+     "document_picture_in_picture_window_controller.h",
+     "document_ref.cc",
+     "document_ref.h",
++    "document_script_tools.h",
+     "document_service.h",
+     "document_service_internal.cc",
+     "document_service_internal.h",
+@@ -380,6 +381,8 @@ source_set("browser_sources") {
+     "render_widget_host_iterator.h",
+     "render_widget_host_observer.cc",
+     "render_widget_host_observer.h",
++    "native_platform_input_admission.cc",
++    "native_platform_input_admission.h",
+     "render_widget_host_view.h",
+     "render_widget_host_view_mac_delegate.h",
+     "renderer_preferences_util.cc",
+diff --git a/third_party/blink/renderer/platform/BUILD.gn b/third_party/blink/renderer/platform/BUILD.gn
+index 233618cf12..1f6efb6979 100644
+--- a/third_party/blink/renderer/platform/BUILD.gn
++++ b/third_party/blink/renderer/platform/BUILD.gn
+@@ -1636,6 +1636,8 @@ component("platform") {
+     "widget/compositing/layer_tree_view.cc",
+     "widget/compositing/layer_tree_view.h",
+     "widget/compositing/layer_tree_view_delegate.h",
++    "widget/compositing/aux_person_capture_swap_promise.cc",
++    "widget/compositing/aux_person_capture_swap_promise.h",
+     "widget/compositing/queue_report_time_swap_promise.cc",
+     "widget/compositing/queue_report_time_swap_promise.h",
+     "widget/compositing/render_frame_metadata_observer_impl.cc",
+diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
+index d55db4f82a..2974bb1914 100644
+--- a/tools/gritsettings/resource_ids.spec
++++ b/tools/gritsettings/resource_ids.spec
+@@ -244,6 +244,14 @@
+     "META": {"sizes": {"includes": [1000],}},
+     "includes": [2860],
+   },
++  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux/resources.grd": {
++    "META": {"sizes": {"includes": [1000]}},
++    "includes": [2870],
++  },
++  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux_host/resources.grd": {
++    "META": {"sizes": {"includes": [20]}},
++    "includes": [2875],
++  },
+   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/bluetooth_internals/resources.grd": {
+     "META": {"sizes": {"includes": [50],}},
+     "includes": [2880],

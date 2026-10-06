@@ -1,0 +1,613 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -8,6 +8,10 @@
+ 
+ source_set("runtime") {
+   sources = [
++    "native_project.cc",
++    "native_project.h",
++    "native_project_files.cc",
++    "native_project_files.h",
+     "native_terminal.cc",
+     "native_terminal.h",
+     "shell_warmup_manager.cc",
+diff --git a/chrome/browser/ui/aux/native_terminal.cc b/chrome/browser/ui/aux/native_terminal.cc
+--- a/chrome/browser/ui/aux/native_terminal.cc
++++ b/chrome/browser/ui/aux/native_terminal.cc
+@@ -55,6 +55,11 @@
+ bool NativeTerminal::Current() const { return document_.AsRenderFrameHostIfValid() && web_contents(); }
+ base::DictValue NativeTerminal::Session() const { return session_.Clone(); }
+ bool NativeTerminal::Start(const std::string& executable, const std::string& cwd, const std::string& device, const std::string& inode, std::string* error) {
++  return StartCommand(executable, {}, {}, cwd, device, inode, error);
++}
++bool NativeTerminal::StartCommand(const std::string& executable, const std::vector<std::string>& args,
++    const std::vector<std::string>& overrides, const std::string& cwd,
++    const std::string& device, const std::string& inode, std::string* error) {
+   if (!Current() || executable.empty() || executable.front() != '/' || cwd.empty() || cwd.front() != '/') { *error = "Original terminal launch is unavailable"; return false; }
+   const int directory = open(cwd.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+   struct stat identity{};
+@@ -72,10 +77,19 @@
+     if (value) values.push_back(std::string(name.c_str()) + "=" + *value);
+   }
+   values.push_back("TERM=xterm-256color"); values.push_back("COLORTERM=truecolor");
++  for (const auto& value : overrides) {
++    const auto separator = value.find('=');
++    const auto prefix = value.substr(0, separator + 1);
++    std::erase_if(values, [&](const auto& existing) { return existing.starts_with(prefix); });
++    values.push_back(value);
++  }
+   std::vector<char*> environment;
+   for (auto& value : values) environment.push_back(value.data());
+   environment.push_back(nullptr);
+-  char* arguments[] = {const_cast<char*>(executable.c_str()), nullptr};
++  std::vector<char*> arguments;
++  arguments.push_back(const_cast<char*>(executable.c_str()));
++  for (const auto& arg : args) arguments.push_back(const_cast<char*>(arg.c_str()));
++  arguments.push_back(nullptr);
+   winsize size{}; size.ws_col = *session_.FindInt("cols"); size.ws_row = *session_.FindInt("rows");
+   const int descriptor_limit = getdtablesize();
+   master_ = posix_openpt(O_RDWR | O_NOCTTY | O_CLOEXEC);
+@@ -103,7 +117,7 @@
+       if (fcntl(fd, F_SETFD, 0) != 0) _exit(126);
+     for (int fd = 3; fd < descriptor_limit; ++fd) close(fd);
+     sigset_t empty; sigemptyset(&empty); sigprocmask(SIG_SETMASK, &empty, nullptr);
+-    execve(executable.c_str(), arguments, environment.data());
++    execve(executable.c_str(), arguments.data(), environment.data());
+     _exit(127);
+   }
+   close(slave);
+diff --git a/chrome/browser/ui/aux/native_terminal.h b/chrome/browser/ui/aux/native_terminal.h
+--- a/chrome/browser/ui/aux/native_terminal.h
++++ b/chrome/browser/ui/aux/native_terminal.h
+@@ -19,6 +19,9 @@
+                  std::string token, base::DictValue session);
+   ~NativeTerminal() override;
+   bool Start(const std::string& executable, const std::string& cwd, const std::string& device, const std::string& inode, std::string* error);
++  bool StartCommand(const std::string& executable, const std::vector<std::string>& args,
++                    const std::vector<std::string>& environment, const std::string& cwd,
++                    const std::string& device, const std::string& inode, std::string* error);
+   const std::string& token() const { return token_; }
+   bool Current() const;
+   base::DictValue Session() const;
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -1,3 +1,4 @@
++#include "chrome/browser/ui/aux/native_project.h"
+ // Copyright 2026 The Aux Authors
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+@@ -482,6 +483,55 @@
+   admitted_native_generation_ = generation;
+   native_person_connection_id_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+ }
++void AuxRuntimeHost::HandleNativeProjectCall(const std::string& method, const base::DictValue& params,
++    uint64_t generation, base::OnceCallback<void(base::DictValue)> callback) {
++  const auto fail = [&](const char* message) { std::move(callback).Run(NativeFault("permission_denied", message)); };
++  const auto* token = params.FindString("token");
++  const auto* id = params.FindString("operationId");
++  if (!token || !id || !base::Uuid::ParseLowercase(*id).is_valid() ||
++      generation != admitted_native_generation_ || generation <= retired_native_generation_) {
++    fail("Original Project connection retired"); return;
++  }
++  auto operation = native_projects_.find(*id);
++  if (method == "native.projectCancel") {
++    if (params.size() != 2) { fail("Exact original Project cancellation is required"); return; }
++    if (operation == native_projects_.end()) {
++      auto original = turn_contexts_.find(*token);
++      if (original == turn_contexts_.end() || original->second.generation != generation) {
++        fail("Original Project cancellation generation is unavailable"); return;
++      }
++      std::move(callback).Run(base::DictValue().Set("result", base::DictValue().Set("closed", true))); return;
++    }
++    if (operation->second->token() != *token) { fail("Original Project cancellation owner changed"); return; }
++    operation->second->Close(std::move(callback)); return;
++  }
++  if (method != "native.projectFiles" && method != "native.projectFile" && method != "native.projectChanges") {
++    fail("Unknown Project operation"); return;
++  }
++  auto owner = turn_contexts_.find(*token);
++  if (owner == turn_contexts_.end() || owner->second.generation != generation || !TurnContextCurrent(owner->second)) {
++    fail("Original Project document retired"); return;
++  }
++  const auto* cwd = params.FindString("cwd");
++  const auto* device = params.FindString("rootDevice");
++  const auto* inode = params.FindString("rootInode");
++  const auto* workspace = params.FindString("workspaceId");
++  const auto* folder = params.FindString("folderId");
++  if (params.size() != 9 || operation != native_projects_.end() || !cwd || cwd->empty() || cwd->front() != '/' ||
++      !device || !inode || !workspace || workspace->empty() || !folder || !base::Uuid::ParseLowercase(*folder).is_valid() ||
++      !params.FindList("deniedRoots") ||
++      (method == "native.projectChanges" ? !params.FindString("sandboxProfile") : !params.FindString("path"))) {
++    fail("Exact original Project scope is required"); return;
++  }
++  std::erase_if(native_projects_, [](const auto& entry) { return entry.second->Finished(); });
++  if (native_projects_.size() >= 64) { fail("Too many original Project operations"); return; }
++  auto* frame = owner->second.document.AsRenderFrameHostIfValid();
++  auto project = std::make_unique<aux::NativeProject>(content::WebContents::FromRenderFrameHost(frame), owner->second.document, *token, params.Clone());
++  auto* controller = project.get();
++  native_projects_.emplace(*id, std::move(project));
++  controller->Start(method, std::move(callback));
++}
++
+ void AuxRuntimeHost::HandleNativeTerminalCall(const std::string& method, const base::DictValue& params,
+     uint64_t generation, base::OnceCallback<void(base::DictValue)> callback) {
+   const auto fail = [&](const std::string& message) { std::move(callback).Run(NativeFault("permission_denied", message)); };
+@@ -593,6 +643,7 @@
+   // Detach every original host slot before Disconnect notifies observers.
+   // A retirement callback may synchronously publish a replacement connection.
+   native_person_connection_id_.clear();
++  native_projects_.clear();
+   native_terminals_.clear();
+   turn_contexts_.clear();
+   ++native_recorder_session_generation_;
+@@ -1412,6 +1463,13 @@
+                         base::DictValue params,
+                         uint64_t connection_generation,
+                         std::shared_ptr<NativeReplyState> state) {
++                       if (owner && method.starts_with("native.project")) {
++                         owner->HandleNativeProjectCall(method, params, connection_generation,
++                             base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
++                               state->reply = std::move(reply); state->ready.Signal();
++                             }, state));
++                         return;
++                       }
+                        if (owner && method.starts_with("native.terminal")) {
+                          owner->HandleNativeTerminalCall(method, params, connection_generation,
+                              base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -52,6 +52,7 @@
+ class NativePersonCaptureController;
+ class CredentialFill;
+ class NativeTerminal;
++class NativeProject;
+ }  // namespace aux
+ 
+ // One authenticated runtime connection per regular Chromium Profile. The
+@@ -287,6 +288,9 @@
+   std::map<std::string, base::WeakPtr<aux::NativePersonObserverController>>
+       native_person_reads_;
+   std::map<std::string, base::WeakPtr<aux::NativePersonCaptureController>> native_person_captures_;
++  void HandleNativeProjectCall(const std::string& method, const base::DictValue& params,
++      uint64_t connection_generation, base::OnceCallback<void(base::DictValue)> callback);
++  std::map<std::string, std::unique_ptr<aux::NativeProject>> native_projects_;
+   void HandleNativeTerminalCall(const std::string& method, const base::DictValue& params,
+       uint64_t connection_generation, base::OnceCallback<void(base::DictValue)> callback);
+   std::map<std::string, std::unique_ptr<aux::NativeTerminal>> native_terminals_;
+diff --git a/chrome/browser/ui/aux/native_project.cc b/chrome/browser/ui/aux/native_project.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project.cc
+@@ -0,0 +1,211 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_project.h"
++#include <Security/Security.h>
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <optional>
++#include "base/apple/scoped_cftyperef.h"
++#include "base/base64.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_file.h"
++#include "base/process/launch.h"
++#include "base/functional/bind.h"
++#include "base/task/thread_pool.h"
++#include "base/strings/string_util.h"
++#include "chrome/browser/ui/aux/native_project_files.h"
++#include "chrome/browser/ui/aux/native_terminal.h"
++#include "content/public/browser/page.h"
++#include "content/public/browser/web_contents.h"
++
++namespace aux {
++namespace {
++constexpr size_t kOutputBytes = 1024 * 1024;
++struct GitExecutable {
++  std::string path;
++  uint64_t device;
++  uint64_t inode;
++  int64_t size;
++  int64_t modified_seconds;
++  int64_t modified_nanoseconds;
++};
++std::optional<GitExecutable> InspectGitExecutable(const std::string& path) {
++  base::ScopedFD descriptor(open(path.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
++  struct stat identity{};
++  if (!descriptor.is_valid() || fstat(descriptor.get(), &identity) != 0 ||
++      !S_ISREG(identity.st_mode) || identity.st_uid != 0 ||
++      (identity.st_mode & (S_IWGRP | S_IWOTH)) || !(identity.st_mode & S_IXUSR)) return std::nullopt;
++  return GitExecutable{path, static_cast<uint64_t>(identity.st_dev), static_cast<uint64_t>(identity.st_ino),
++      identity.st_size, identity.st_mtimespec.tv_sec, identity.st_mtimespec.tv_nsec};
++}
++std::optional<GitExecutable> FindInstalledGit() {
++  // Resolve Apple's selected toolchain before applying the read-only Project
++  // policy: /usr/bin/git is an xcrun shim which can write its system cache.
++  // Do not let an ambient DEVELOPER_DIR or PATH select another executable.
++  std::string output;
++  if (!base::GetAppOutput(std::vector<std::string>{"/usr/bin/env", "-i", "PATH=/usr/bin:/bin",
++      "/usr/bin/xcrun", "--find", "git"}, &output) || output.size() > 4096) return std::nullopt;
++  const std::string selected(base::TrimWhitespaceASCII(output, base::TRIM_ALL));
++  base::FilePath resolved;
++  if (selected.empty() || selected.front() != '/' || selected.find('\n') != std::string::npos ||
++      !base::NormalizeFilePath(base::FilePath(selected), &resolved) ||
++      resolved.BaseName().value() != "git" || resolved.value() == "/usr/bin/git") return std::nullopt;
++  auto executable = InspectGitExecutable(resolved.value());
++  if (!executable) return std::nullopt;
++  base::apple::ScopedCFTypeRef<CFURLRef> url(CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,
++      reinterpret_cast<const UInt8*>(executable->path.data()), executable->path.size(), false));
++  base::apple::ScopedCFTypeRef<SecStaticCodeRef> code;
++  base::apple::ScopedCFTypeRef<SecRequirementRef> requirement;
++  if (!url || SecStaticCodeCreateWithPath(url.get(), kSecCSDefaultFlags, code.InitializeInto()) != errSecSuccess ||
++      SecRequirementCreateWithString(CFSTR("anchor apple"), kSecCSDefaultFlags, requirement.InitializeInto()) != errSecSuccess ||
++      SecStaticCodeCheckValidity(code.get(), kSecCSCheckAllArchitectures, requirement.get()) != errSecSuccess)
++    return std::nullopt;
++  return executable;
++}
++base::DictValue Fault(const char* message) {
++  return base::DictValue().Set("error", base::DictValue().Set("code", "permission_denied").Set("message", message));
++}
++base::DictValue Closed() { return base::DictValue().Set("result", base::DictValue().Set("closed", true)); }
++}
++struct NativeProject::Work {
++  bool retired = false;
++  bool finished = false;
++  base::OnceCallback<void(base::DictValue)> reply;
++  std::vector<base::OnceCallback<void(base::DictValue)>> closed;
++};
++NativeProject::NativeProject(content::WebContents* owner, content::WeakDocumentPtr document,
++    std::string token, base::DictValue params)
++    : content::WebContentsObserver(owner), document_(document), token_(std::move(token)),
++      params_(std::move(params)), work_(std::make_shared<Work>()) {}
++NativeProject::~NativeProject() { Retire(); }
++bool NativeProject::Current() const { return !work_->retired && document_.AsRenderFrameHostIfValid() && web_contents(); }
++void NativeProject::Start(const std::string& method, base::OnceCallback<void(base::DictValue)> callback) {
++  work_->reply = std::move(callback);
++  if (!Current()) { Finish(Fault("Original Project window retired")); return; }
++  if (method == "native.projectChanges") {
++    output_.resize(3); started_ = base::TimeTicks::Now();
++    base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE,
++        {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN}, base::BindOnce(&FindInstalledGit),
++        base::BindOnce([](base::WeakPtr<NativeProject> owner, std::shared_ptr<Work> work,
++                         std::optional<GitExecutable> executable) {
++          if (owner) {
++            if (!owner->Current()) { owner->Finish(Fault("Original Project window retired")); return; }
++            if (!executable) { owner->Finish(Fault("Apple's installed Git is unavailable or its identity could not be verified")); return; }
++            owner->git_path_ = executable->path; owner->git_device_ = executable->device;
++            owner->git_inode_ = executable->inode; owner->git_size_ = executable->size;
++            owner->git_modified_seconds_ = executable->modified_seconds;
++            owner->git_modified_nanoseconds_ = executable->modified_nanoseconds;
++            owner->BeginGit(); return;
++          }
++          work->finished = true;
++          if (work->reply) std::move(work->reply).Run(Fault("Original Project window retired"));
++          auto callbacks = std::move(work->closed);
++          for (auto& callback : callbacks) std::move(callback).Run(Closed());
++        }, weak_factory_.GetWeakPtr(), work_));
++    return;
++  }
++  const bool listing = method == "native.projectFiles";
++  base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE,
++      {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
++      base::BindOnce(&ReadProjectFiles, params_.Clone(), listing),
++      base::BindOnce([](base::WeakPtr<NativeProject> owner, std::shared_ptr<Work> work, base::DictValue result) {
++        if (owner) { owner->Finish(std::move(result)); return; }
++        work->finished = true;
++        if (work->reply) std::move(work->reply).Run(Fault("Original Project window retired"));
++        auto callbacks = std::move(work->closed);
++        for (auto& callback : callbacks) std::move(callback).Run(Closed());
++      }, weak_factory_.GetWeakPtr(), work_));
++}
++void NativeProject::BeginGit() {
++  if (!Current()) { Finish(Fault("Original Project window retired")); return; }
++  const auto* profile = params_.FindString("sandboxProfile");
++  if (!profile || profile->empty()) { Finish(Fault("Original Project file policy is unavailable")); return; }
++  const auto executable = InspectGitExecutable(git_path_);
++  if (!executable || executable->device != git_device_ || executable->inode != git_inode_ ||
++      executable->size != git_size_ || executable->modified_seconds != git_modified_seconds_ ||
++      executable->modified_nanoseconds != git_modified_nanoseconds_) {
++    Finish(Fault("Original installed Git changed before its Project query")); return;
++  }
++  std::vector<std::string> args = {"-p", *profile, git_path_, "--no-pager", "--no-optional-locks", "--literal-pathspecs",
++      "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "color.ui=false", "-c", "core.pager=cat"};
++  if (phase_ == 0) args.insert(args.end(), {"status", "--short", "--untracked-files=normal"});
++  else {
++    args.insert(args.end(), {"diff", "--no-ext-diff", "--no-textconv", "--ignore-submodules=all"});
++    if (phase_ == 1) args.push_back("--cached");
++  }
++  process_ = std::make_unique<NativeTerminal>(web_contents(), document_, token_,
++      base::DictValue().Set("terminalId", *params_.FindString("operationId")).Set("state", "running").Set("cols", 120).Set("rows", 40));
++  std::string error;
++  if (!process_->StartCommand("/usr/bin/sandbox-exec", args,
++      {"PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0"},
++      *params_.FindString("cwd"), *params_.FindString("rootDevice"), *params_.FindString("rootInode"), &error)) {
++    Finish(Fault("The reviewed Project could not start its Git query")); return;
++  }
++  offset_ = 0;
++  timer_.Start(FROM_HERE, base::Milliseconds(15), this, &NativeProject::Poll);
++}
++void NativeProject::Poll() {
++  if (!Current()) { Finish(Fault("Original Project window retired")); return; }
++  if (base::TimeTicks::Now() - started_ > base::Seconds(30)) { Finish(Fault("Git inspection timed out; its original process is being stopped")); return; }
++  auto read = process_->Read(offset_);
++  const auto* result = read.FindDict("result");
++  if (!result) { Finish(std::move(read)); return; }
++  const auto* encoded = result->FindString("data");
++  const auto next = result->FindDouble("nextOffset");
++  const auto* state = result->FindString("state");
++  std::string data;
++  if (!encoded || !next || !state || !base::Base64Decode(*encoded, &data)) { Finish(Fault("Git output acknowledgement changed")); return; }
++  offset_ = static_cast<uint64_t>(*next);
++  const auto remaining = phase_ == 0 ? kOutputBytes - output_[0].size() :
++      kOutputBytes - 64 - output_[1].size() - output_[2].size();
++  const bool limited = data.size() > remaining;
++  if (limited) { output_[phase_].append(data.data(), remaining); truncated_ = true; }
++  else output_[phase_] += data;
++  if (*state != "closed" && !limited) return;
++  if (limited) for (int count = 0; count < 3 && !output_[phase_].empty() && !base::IsStringUTF8(output_[phase_]); ++count) output_[phase_].pop_back();
++  if (!base::IsStringUTF8(output_[phase_])) { Finish(Fault("Git returned non-text output")); return; }
++  timer_.Stop();
++  const auto exit_code = result->FindInt("exitCode");
++  if (*state == "closed" && (!exit_code || *exit_code != 0)) { Finish(Fault("Git could not inspect this reviewed Project")); return; }
++  process_->Close(base::BindOnce([](base::WeakPtr<NativeProject> owner, base::DictValue closed) {
++    if (!owner) return;
++    if (closed.FindDict("error")) { owner->Finish(std::move(closed)); return; }
++    owner->process_.reset();
++    owner->phase_++;
++    if (owner->phase_ < owner->output_.size()) { owner->BeginGit(); return; }
++    auto result = base::DictValue().Set("status", owner->output_[0])
++        .Set("diff", "Staged changes\n" + owner->output_[1] + "\nWorking changes\n" + owner->output_[2]).Set("truncated", owner->truncated_);
++    owner->Finish(base::DictValue().Set("result", std::move(result)));
++  }, weak_factory_.GetWeakPtr()));
++}
++void NativeProject::Finish(base::DictValue result) {
++  timer_.Stop();
++  if (work_->finished) return;
++  if (!Current()) result = Fault("Original Project window retired");
++  auto complete = base::BindOnce([](std::shared_ptr<Work> work, base::DictValue result, base::DictValue closed) {
++    const bool acknowledged = !closed.FindDict("error");
++    work->finished = acknowledged;
++    if (!acknowledged) result = closed.Clone();
++    else if (work->retired) result = Fault("Original Project window retired");
++    if (work->reply) std::move(work->reply).Run(std::move(result));
++    auto callbacks = std::move(work->closed);
++    for (auto& callback : callbacks) std::move(callback).Run(acknowledged ? Closed() : closed.Clone());
++  }, work_, std::move(result));
++  if (process_) process_->Close(std::move(complete));
++  else std::move(complete).Run(Closed());
++}
++bool NativeProject::Finished() const { return work_->finished; }
++void NativeProject::Close(base::OnceCallback<void(base::DictValue)> callback) {
++  work_->retired = true;
++  if (work_->finished) { std::move(callback).Run(Closed()); return; }
++  work_->closed.push_back(std::move(callback));
++  if (process_) Finish(Fault("Original Project query was cancelled"));
++  // File reads acknowledge only after their original descriptor task joins.
++}
++void NativeProject::Retire() {
++  work_->retired = true;
++  if (process_) Finish(Fault("Original Project window retired"));
++}
++void NativeProject::PrimaryPageChanged(content::Page&) { Retire(); }
++void NativeProject::WebContentsDestroyed() { Retire(); }
++}
+diff --git a/chrome/browser/ui/aux/native_project.h b/chrome/browser/ui/aux/native_project.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project.h
+@@ -0,0 +1,55 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_H_
++#include <cstdint>
++#include <memory>
++#include <string>
++#include <vector>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "base/time/time.h"
++#include "base/values.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/weak_document_ptr.h"
++namespace aux {
++class NativeTerminal;
++class NativeProject final : public content::WebContentsObserver {
++ public:
++  NativeProject(content::WebContents* owner, content::WeakDocumentPtr document,
++                std::string token, base::DictValue params);
++  ~NativeProject() override;
++  const std::string& token() const { return token_; }
++  void Start(const std::string& method, base::OnceCallback<void(base::DictValue)> callback);
++  bool Finished() const;
++  void Close(base::OnceCallback<void(base::DictValue)> callback);
++  void PrimaryPageChanged(content::Page& page) override;
++  void WebContentsDestroyed() override;
++ private:
++  struct Work;
++  bool Current() const;
++  void BeginGit();
++  void Poll();
++  void Finish(base::DictValue result);
++  void Retire();
++  content::WeakDocumentPtr document_;
++  const std::string token_;
++  base::DictValue params_;
++  std::shared_ptr<Work> work_;
++  std::unique_ptr<NativeTerminal> process_;
++  base::RepeatingTimer timer_;
++  std::vector<std::string> output_;
++  std::string git_path_;
++  uint64_t git_device_ = 0;
++  uint64_t git_inode_ = 0;
++  int64_t git_size_ = 0;
++  int64_t git_modified_seconds_ = 0;
++  int64_t git_modified_nanoseconds_ = 0;
++  size_t phase_ = 0;
++  uint64_t offset_ = 0;
++  bool truncated_ = false;
++  base::TimeTicks started_;
++  base::WeakPtrFactory<NativeProject> weak_factory_{this};
++};
++}
++#endif
+diff --git a/chrome/browser/ui/aux/native_project_files.cc b/chrome/browser/ui/aux/native_project_files.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_files.cc
+@@ -0,0 +1,127 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_project_files.h"
++#include <cerrno>
++#include <cstdint>
++#include <utility>
++#include <dirent.h>
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <algorithm>
++#include <array>
++#include <string>
++#include <vector>
++#include "base/files/scoped_file.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++
++namespace aux {
++namespace {
++constexpr size_t kTextBytes = 1024 * 1024;
++constexpr size_t kEntries = 1000;
++base::DictValue Fail(const char* message) {
++  return base::DictValue().Set("error", base::DictValue()
++      .Set("code", "permission_denied").Set("message", message));
++}
++bool Inside(const std::string& path, const std::string& root) {
++  return path == root || path.starts_with(root.ends_with('/') ? root : root + "/");
++}
++bool Permitted(const std::string& path, const base::ListValue& denied) {
++  for (const auto& value : denied) {
++    if (!value.is_string() || Inside(path, value.GetString())) return false;
++  }
++  return true;
++}
++std::vector<std::string> Components(const std::string& path) {
++  std::vector<std::string> parts;
++  size_t offset = 0;
++  while (offset < path.size()) {
++    const auto end = path.find('/', offset);
++    auto part = path.substr(offset, end == std::string::npos ? end : end - offset);
++    if (part.empty() || part == "." || part == "..") return {};
++    parts.push_back(std::move(part));
++    if (end == std::string::npos) break;
++    offset = end + 1;
++    if (offset == path.size()) return {};
++  }
++  return parts;
++}
++}
++
++base::DictValue ReadProjectFiles(const base::DictValue& params, bool listing) {
++  const auto* root = params.FindString("cwd");
++  const auto* path = params.FindString("path");
++  const auto* device = params.FindString("rootDevice");
++  const auto* inode = params.FindString("rootInode");
++  const auto* denied = params.FindList("deniedRoots");
++  if (!root || !path || !device || !inode || !denied || root->empty() ||
++      root->front() != '/' || root->find('\0') != std::string::npos ||
++      path->find('\0') != std::string::npos || path->size() > 4096 ||
++      (!path->empty() && path->front() == '/') || denied->size() > 512)
++    return Fail("Exact reviewed Project access is required");
++  auto parts = Components(*path);
++  if ((!path->empty() && parts.empty()) || (!listing && parts.empty()))
++    return Fail("Choose a relative Project path");
++  base::ScopedFD fd(open(root->c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
++  struct stat identity{};
++  if (!fd.is_valid() || fstat(fd.get(), &identity) != 0 ||
++      base::NumberToString(static_cast<uint64_t>(identity.st_dev)) != *device ||
++      base::NumberToString(static_cast<uint64_t>(identity.st_ino)) != *inode)
++    return Fail("The original reviewed Project directory changed");
++  std::string current = *root;
++  if (!Permitted(current, *denied)) return Fail("Project access is excluded by current file permissions");
++  for (size_t i = 0; i < parts.size(); ++i) {
++    current += "/" + parts[i];
++    if (!Permitted(current, *denied)) return Fail("This Project path is excluded by current file permissions");
++    const bool directory = listing || i + 1 < parts.size();
++    base::ScopedFD next(openat(fd.get(), parts[i].c_str(), O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC | (directory ? O_DIRECTORY : 0)));
++    if (!next.is_valid()) return Fail("Project paths cannot follow replaced directories or symbolic links");
++    fd = std::move(next);
++  }
++  if (listing) {
++    const int copy = dup(fd.get());
++    DIR* directory = copy < 0 ? nullptr : fdopendir(copy);
++    if (!directory) { if (copy >= 0) close(copy); return Fail("The Project directory cannot be listed"); }
++    std::vector<base::DictValue> entries;
++    bool truncated = false;
++    int listing_error = 0;
++    for (;;) {
++      errno = 0;
++      auto* item = readdir(directory);
++      if (!item) { listing_error = errno; break; }
++      std::string name(item->d_name);
++      if (name == "." || name == ".." || !base::IsStringUTF8(name) || !Permitted(current + "/" + name, *denied)) continue;
++      if (entries.size() == kEntries) { truncated = true; break; }
++      struct stat info{};
++      if (fstatat(fd.get(), name.c_str(), &info, AT_SYMLINK_NOFOLLOW) != 0) continue;
++      const char* type = S_ISDIR(info.st_mode) ? "directory" : S_ISREG(info.st_mode) ? "file" : S_ISLNK(info.st_mode) ? "symlink" : "other";
++      entries.push_back(base::DictValue().Set("name", name).Set("path", path->empty() ? name : *path + "/" + name)
++          .Set("type", type).Set("size", static_cast<double>(std::max<off_t>(0, info.st_size))));
++    }
++    closedir(directory);
++    if (listing_error) return Fail("The original Project directory could not be completely listed");
++    std::ranges::sort(entries, {}, [](const auto& entry) { return *entry.FindString("name"); });
++    base::ListValue result;
++    for (auto& entry : entries) result.Append(std::move(entry));
++    return base::DictValue().Set("result", base::DictValue().Set("path", *path).Set("entries", std::move(result)).Set("truncated", truncated));
++  }
++  struct stat before{};
++  if (fstat(fd.get(), &before) != 0 || !S_ISREG(before.st_mode)) return Fail("Choose a regular Project file");
++  std::string text;
++  std::array<char, 16384> buffer;
++  while (text.size() < kTextBytes) {
++    const auto count = read(fd.get(), buffer.data(), std::min(buffer.size(), kTextBytes - text.size()));
++    if (count < 0) { if (errno == EINTR) continue; return Fail("Project file read failed"); }
++    if (count == 0) break;
++    text.append(buffer.data(), count);
++  }
++  struct stat after{};
++  if (fstat(fd.get(), &after) != 0 || before.st_size != after.st_size ||
++      before.st_mtimespec.tv_sec != after.st_mtimespec.tv_sec || before.st_mtimespec.tv_nsec != after.st_mtimespec.tv_nsec)
++    return Fail("The Project file changed while it was read");
++  const bool truncated = before.st_size > static_cast<off_t>(text.size());
++  if (truncated) for (int count = 0; count < 3 && !text.empty() && !base::IsStringUTF8(text); ++count) text.pop_back();
++  if (text.find('\0') != std::string::npos || !base::IsStringUTF8(text)) return Fail("This file is binary; choose a text file");
++  return base::DictValue().Set("result", base::DictValue().Set("path", *path).Set("text", std::move(text)).Set("truncated", truncated));
++}
++}
+diff --git a/chrome/browser/ui/aux/native_project_files.h b/chrome/browser/ui/aux/native_project_files.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_files.h
+@@ -0,0 +1,10 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_FILES_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_FILES_H_
++#include "base/values.h"
++namespace aux {
++// Caller admits the original WebUI document before dispatch and before reply.
++// All filesystem access is relative to the exact reviewed root descriptor.
++base::DictValue ReadProjectFiles(const base::DictValue& params, bool listing);
++}
++#endif
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1022,6 +1022,7 @@
+       api_method == "agent.utility.intent" || api_method == "agent.tidy.propose" ||
+       api_method == "agent.tabName.suggest" || api_method == "models.auth.start" ||
+       api_method == "models.auth.status" || api_method == "models.auth.cancel" ||
++      api_method == "projects.files" || api_method == "projects.file" || api_method == "projects.changes" ||
+       api_method == "settings.cloud.status" || api_method == "settings.cloud.configure" ||
+       api_method == "settings.cloud.clear" || api_method == "agentConnections.install" || api_method == "developer.cli.install" || api_method == "terminal.start" ||
+       api_method == "terminal.read" || api_method == "terminal.input" ||

@@ -147,7 +147,7 @@ diff --git a/chrome/browser/ui/webui_browser/aux_device_confirmation.cc b/chrome
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/webui_browser/aux_device_confirmation.cc
-@@ -0,0 +1,166 @@
+@@ -0,0 +1,182 @@
 +// Copyright 2026 The Aux Authors
 +#include "chrome/browser/ui/webui_browser/aux_device_confirmation.h"
 +#include <algorithm>
@@ -159,12 +159,28 @@ new file mode 100644
 +#include "base/strings/string_number_conversions.h"
 +#include "base/strings/utf_string_conversions.h"
 +#include "base/time/time.h"
++#include "base/unguessable_token.h"
 +#include "chrome/browser/device_reauth/chrome_device_authenticator_factory.h"
 +#include "chrome/browser/profiles/profile.h"
 +#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 +#include "components/device_reauth/device_authenticator.h"
++#include "components/sessions/core/session_id.h"
++#include "content/public/browser/document_user_data.h"
 +#include "content/public/browser/render_frame_host.h"
 +#include "content/public/browser/web_contents.h"
++
++namespace {
++// An opaque native identity with the public Chromium document lifetime.
++class ConfirmationDocument final : public content::DocumentUserData<ConfirmationDocument> {
++ public:
++  const base::UnguessableToken token = base::UnguessableToken::Create();
++ private:
++  explicit ConfirmationDocument(content::RenderFrameHost* frame) : DocumentUserData(frame) {}
++  friend class content::DocumentUserData<ConfirmationDocument>;
++  DOCUMENT_USER_DATA_KEY_DECL();
++};
++DOCUMENT_USER_DATA_KEY_IMPL(ConfirmationDocument);
++}  // namespace
 +
 +AuxDeviceConfirmation::AuxDeviceConfirmation(Profile* profile,
 +    BrowserWindowInterface* window, content::WebContents* shell,
@@ -182,7 +198,7 @@ new file mode 100644
 +  if (!authorized_.Run() || !weak) return false;
 +  auto* frame = document_.AsRenderFrameHostIfValid();
 +  return window_ && window_->IsActive() && window_->GetProfile() == profile_ &&
-+      shell_ && frame && shell_->GetPrimaryMainFrame() == frame &&
++      shell_ && frame && frame->IsRenderFrameLive() && shell_->GetPrimaryMainFrame() == frame &&
 +      runtime_ && runtime_->DeviceConfirmationConnectionCurrent(generation_);
 +}
 +
@@ -208,7 +224,7 @@ new file mode 100644
 +  }
 +  base::DictValue context;
 +  context.Set("windowId", base::NumberToString(window_->GetSessionID().id()));
-+  context.Set("documentToken", shell_->GetPrimaryMainFrame()->GetDocumentToken().ToString());
++  context.Set("documentToken", ConfirmationDocument::GetOrCreateForCurrentDocument(shell_->GetPrimaryMainFrame())->token.ToString());
 +  context.Set("ownerIncarnation", runtime->DeviceConfirmationOwnerIncarnation());
 +  context.Set("connectionGeneration", base::NumberToString(generation_));
 +  request_.Set("approvalId", *params.FindString("approvalId"));

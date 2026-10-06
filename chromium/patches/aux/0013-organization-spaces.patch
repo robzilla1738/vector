@@ -1,0 +1,667 @@
+diff --git a/chrome/browser/ui/aux/appearance_prefs.h b/chrome/browser/ui/aux/appearance_prefs.h
+new file mode 100644
+index 0000000000..68be347db2
+--- /dev/null
++++ b/chrome/browser/ui/aux/appearance_prefs.h
+@@ -0,0 +1,16 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_APPEARANCE_PREFS_H_
++#define CHROME_BROWSER_UI_AUX_APPEARANCE_PREFS_H_
++
++namespace aux {
++
++inline constexpr char kAppearanceThemePref[] = "aux.appearance.theme";
++inline constexpr char kAppearanceGlassPref[] = "aux.appearance.glass";
++inline constexpr char kAppearanceMaterialPref[] = "aux.appearance.material";
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_APPEARANCE_PREFS_H_
+diff --git a/chrome/browser/ui/aux/organization_store.cc b/chrome/browser/ui/aux/organization_store.cc
+new file mode 100644
+index 0000000000..fa931c32aa
+--- /dev/null
++++ b/chrome/browser/ui/aux/organization_store.cc
+@@ -0,0 +1,521 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/organization_store.h"
++
++#include <cmath>
++#include <initializer_list>
++#include <limits>
++#include <set>
++#include <string>
++#include <string_view>
++#include <vector>
++
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "components/prefs/scoped_user_pref_update.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "components/prefs/pref_service.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++
++constexpr size_t kMaxLayoutBytes = 1024 * 1024;
++constexpr size_t kMaxWindows = 64;
++
++bool Text(const base::Value* value, size_t max_units, bool nonempty = true) {
++  const std::string* text = value ? value->GetIfString() : nullptr;
++  return text && base::UTF8ToUTF16(*text).size() <= max_units &&
++         (!nonempty || !text->empty());
++}
++
++bool Id(const base::Value* value) {
++  return Text(value, 200);
++}
++
++bool HasOnly(const base::DictValue& dict,
++             std::initializer_list<std::string_view> names) {
++  for (auto it = dict.begin(); it != dict.end(); ++it) {
++    bool permitted = false;
++    for (std::string_view name : names) {
++      if (it->first == name) {
++        permitted = true;
++        break;
++      }
++    }
++    if (!permitted) {
++      return false;
++    }
++  }
++  return true;
++}
++
++bool Color(const base::Value* value) {
++  const std::string* color = value ? value->GetIfString() : nullptr;
++  return color && (*color == "blue" || *color == "violet" ||
++                   *color == "pink" || *color == "orange" ||
++                   *color == "green" || *color == "teal" ||
++                   *color == "slate");
++}
++
++bool Theme(const base::Value* value) {
++  const base::DictValue* theme = value ? value->GetIfDict() : nullptr;
++  if (!theme || !HasOnly(*theme, {"hue", "lightness", "intensity", "inverted"})) {
++    return false;
++  }
++  const std::optional<int> hue = theme->FindInt("hue");
++  const std::optional<int> lightness = theme->FindInt("lightness");
++  const std::optional<int> intensity = theme->FindInt("intensity");
++  return hue && *hue >= 0 && *hue <= 359 &&
++         lightness && *lightness >= 20 && *lightness <= 80 &&
++         intensity && *intensity >= 0 && *intensity <= 100 &&
++         theme->FindBool("inverted").has_value();
++}
++
++bool Space(const base::Value& value) {
++  const base::DictValue* space = value.GetIfDict();
++  if (!space || !HasOnly(*space, {"id", "name", "color", "grain",
++                                 "theme", "workspaceId", "archived"}) ||
++      !Id(space->Find("id")) || !Text(space->Find("name"), 100) ||
++      !Color(space->Find("color"))) {
++    return false;
++  }
++  const std::optional<int> grain = space->FindInt("grain");
++  if (!grain || *grain < 0 || *grain > 100) {
++    return false;
++  }
++  const base::Value* workspace = space->Find("workspaceId");
++  const base::Value* archived = space->Find("archived");
++  const base::Value* theme = space->Find("theme");
++  return (!workspace || Id(workspace)) &&
++         (!archived || archived->is_bool()) && (!theme || Theme(theme));
++}
++
++bool HttpUrl(const base::Value* value) {
++  if (!Text(value, 8192)) return false;
++  const std::string& text = value->GetString();
++  const GURL url(text);
++  return (text.starts_with("https://") || text.starts_with("http://")) &&
++         url.is_valid() && url.SchemeIsHTTPOrHTTPS();
++}
++
++bool LiveFolder(const base::Value* value) {
++  const base::DictValue* live = value ? value->GetIfDict() : nullptr;
++  if (!live || !HasOnly(*live, {"kind", "config", "refreshMinutes"})) return false;
++  const std::string* kind = live->FindString("kind");
++  const base::DictValue* config = live->FindDict("config");
++  const std::optional<double> refresh = live->FindDouble("refreshMinutes");
++  if (!kind || !config || !refresh || !std::isfinite(*refresh) ||
++      std::floor(*refresh) != *refresh || *refresh < 1 || *refresh > 1440) return false;
++  if (*kind == "github") {
++    if (!HasOnly(*config, {"connectionId", "source", "query"}) ||
++        !Id(config->Find("connectionId"))) return false;
++    const std::string* source = config->FindString("source");
++    const base::Value* query = config->Find("query");
++    return source && (*source == "awaiting-review" || *source == "open-prs" ||
++                      *source == "assigned-issues" || *source == "query") &&
++           (!query || Text(query, 1000)) && (*source != "query" || query);
++  }
++  if (*kind == "calendar") {
++    return HasOnly(*config, {"connectionId"}) && Id(config->Find("connectionId"));
++  }
++  if (*kind == "rss") {
++    return HasOnly(*config, {"url"}) && HttpUrl(config->Find("url"));
++  }
++  if (*kind == "routine") {
++    return HasOnly(*config, {"routineId"}) && Id(config->Find("routineId"));
++  }
++  return false;
++}
++
++bool Folder(const base::Value& value) {
++  const base::DictValue* folder = value.GetIfDict();
++  if (!folder ||
++      !HasOnly(*folder, {"id", "name", "spaceId", "collapsed", "color",
++                         "emoji", "live"}) ||
++      !Id(folder->Find("id")) || !Text(folder->Find("name"), 200) ||
++      !Id(folder->Find("spaceId")) || !folder->FindBool("collapsed")) {
++    return false;
++  }
++  const base::Value* color = folder->Find("color");
++  const base::Value* emoji = folder->Find("emoji");
++  const base::Value* live = folder->Find("live");
++  return (!color || Color(color)) && (!emoji || Text(emoji, 16, false)) &&
++         (!live || LiveFolder(live));
++}
++
++bool IdRecord(const base::DictValue* record) {
++  if (!record) {
++    return false;
++  }
++  for (auto it = record->begin(); it != record->end(); ++it) {
++    if (it->first.empty() || base::UTF8ToUTF16(it->first).size() > 200 || !Id(&it->second)) {
++      return false;
++    }
++  }
++  return true;
++}
++
++bool TabNames(const base::DictValue* names) {
++  if (!names) return false;
++  for (auto it = names->begin(); it != names->end(); ++it) {
++    const base::DictValue* entry = it->second.GetIfDict();
++    if (it->first.empty() || base::UTF8ToUTF16(it->first).size() > 200 || !entry ||
++        !HasOnly(*entry, {"title", "url"}) ||
++        !Text(entry->Find("title"), 60) ||
++        base::UTF8ToUTF16(*entry->FindString("title")).size() < 2 ||
++        !Text(entry->Find("url"), 8192)) return false;
++  }
++  return true;
++}
++
++bool TidyUndo(const base::DictValue* receipt) {
++  if (!receipt || !HasOnly(*receipt, {"created", "moved"})) return false;
++  const base::ListValue* created = receipt->FindList("created");
++  const base::ListValue* moved = receipt->FindList("moved");
++  if (!created || created->empty() || created->size() > 6 ||
++      !moved || moved->size() < 2 || moved->size() > 30) return false;
++  for (const base::Value& folder : *created) if (!Folder(folder)) return false;
++  for (const base::Value& value : *moved) {
++    const base::DictValue* item = value.GetIfDict();
++    if (!item || !HasOnly(*item, {"pageId", "toFolderId", "fromFolderId"}) ||
++        !Id(item->Find("pageId")) || !Id(item->Find("toFolderId"))) return false;
++    if (const base::Value* from = item->Find("fromFolderId"); from && !Id(from)) return false;
++  }
++  return true;
++}
++
++bool ArchiveEntry(const base::Value& value) {
++  const base::DictValue* item = value.GetIfDict();
++  if (!item || !HasOnly(*item, {"archiveId", "pageId", "url", "title",
++                               "spaceId", "folderId", "index", "archivedAt", "state",
++                               "reason", "batchId"}) ||
++      !Id(item->Find("archiveId")) || !Id(item->Find("pageId")) ||
++      !Id(item->Find("spaceId")) || !Text(item->Find("title"), 500, false) ||
++      !Id(item->Find("batchId")) || !HttpUrl(item->Find("url"))) return false;
++  if (const base::Value* folder = item->Find("folderId"); folder && !Id(folder)) return false;
++  const std::optional<int> index = item->FindInt("index");
++  const std::optional<double> when = item->FindDouble("archivedAt");
++  const std::string* state = item->FindString("state");
++  const std::string* reason = item->FindString("reason");
++  return reason && (*reason == "manual" || *reason == "auto") && index && *index >= 0 && *index <= 5000 && when &&
++         std::isfinite(*when) && *when >= 0 && std::floor(*when) == *when &&
++         state && (*state == "pending" || *state == "archived");
++}
++
++bool SplitGroup(const base::Value& value) {
++  const base::DictValue* group = value.GetIfDict();
++  if (!group || !HasOnly(*group, {"id", "panes", "layout", "ratios", "focused"}) ||
++      !Id(group->Find("id")) || !Id(group->Find("focused"))) return false;
++  const base::ListValue* panes = group->FindList("panes");
++  const base::ListValue* ratios = group->FindList("ratios");
++  const std::string* layout = group->FindString("layout");
++  if (!panes || panes->size() < 2 || panes->size() > 4 || !ratios ||
++      ratios->empty() || ratios->size() > 3 || !layout) return false;
++  const size_t count = *layout == "grid" ? 4 :
++      (*layout == "columns" || *layout == "one-plus-two") ? 3 :
++      (*layout == "row" || *layout == "column") ? 2 : 0;
++  if (panes->size() != count || ratios->size() != count - 1) return false;
++  std::set<std::string> seen;
++  for (const base::Value& pane : *panes) {
++    if (!Id(&pane) || !seen.insert(pane.GetString()).second) return false;
++  }
++  if (!seen.contains(*group->FindString("focused"))) return false;
++  for (const base::Value& ratio : *ratios) {
++    const std::optional<double> number = ratio.GetIfDouble();
++    if (!number || !std::isfinite(*number) || *number < 0.1 || *number > 0.9) return false;
++  }
++  return true;
++}
++
++bool Shared(const base::DictValue* shared) {
++  if (!shared ||
++      !HasOnly(*shared, {"spaces", "archivedSpaces", "pins", "folders",
++                         "tidyUndo", "archivedTabs", "tabSpace", "order",
++                         "tabFolder", "tabNames", "splitGroups"}) ||
++      !IdRecord(shared->FindDict("tabSpace")) ||
++      !IdRecord(shared->FindDict("tabFolder")) ||
++      !TabNames(shared->FindDict("tabNames"))) {
++    return false;
++  }
++  const base::ListValue* order = shared->FindList("order");
++  const base::ListValue* groups = shared->FindList("splitGroups");
++  if (!order || order->size() > 5000 || !groups || groups->size() > 2500) return false;
++  for (const base::Value& page : *order) if (!Id(&page)) return false;
++  for (const base::Value& group : *groups) if (!SplitGroup(group)) return false;
++  if (const base::Value* receipt = shared->Find("tidyUndo");
++      receipt && !TidyUndo(receipt->GetIfDict())) return false;
++  if (const base::Value* archive = shared->Find("archivedTabs")) {
++    const base::ListValue* entries = archive->GetIfList();
++    if (!entries || entries->size() > 320) return false;
++    size_t pending = 0;
++    size_t finished = 0;
++    std::set<std::string> pages;
++    std::set<std::string> receipts;
++    for (const base::Value& entry : *entries) {
++      if (!ArchiveEntry(entry)) return false;
++      const auto& record = entry.GetDict();
++      if (!pages.insert(*record.FindString("pageId")).second ||
++          !receipts.insert(*record.FindString("archiveId")).second) return false;
++      if (*record.FindString("state") == "pending") ++pending;
++      else ++finished;
++    }
++    if (pending > 20 || finished > 300) return false;
++  }
++  const base::ListValue* spaces = shared->FindList("spaces");
++  const base::ListValue* archived = shared->FindList("archivedSpaces");
++  const base::ListValue* folders = shared->FindList("folders");
++  const base::DictValue* pins = shared->FindDict("pins");
++  if (!spaces || spaces->empty() || spaces->size() > 200 || !archived ||
++      archived->size() > 200 || !folders || folders->size() > 1000 ||
++      !pins) {
++    return false;
++  }
++  for (const base::Value& space : *spaces) {
++    if (!Space(space)) {
++      return false;
++    }
++  }
++  for (const base::Value& space : *archived) {
++    if (!Space(space)) {
++      return false;
++    }
++  }
++  for (const base::Value& folder : *folders) {
++    if (!Folder(folder)) {
++      return false;
++    }
++  }
++  for (auto it = pins->begin(); it != pins->end(); ++it) {
++    if (it->first.empty() || base::UTF8ToUTF16(it->first).size() > 200 || !it->second.is_list() ||
++        it->second.GetList().size() > 500) {
++      return false;
++    }
++    for (const base::Value& value : it->second.GetList()) {
++      const base::DictValue* pin = value.GetIfDict();
++      if (!pin || !HasOnly(*pin, {"url", "title", "pageId", "keepAwake"}) ||
++          !Text(pin->Find("url"), 2048) ||
++          !Text(pin->Find("title"), 500, false)) {
++        return false;
++      }
++      if (const base::Value* page = pin->Find("pageId"); page && !Id(page)) return false;
++      if (const base::Value* awake = pin->Find("keepAwake"); awake && !awake->is_bool()) return false;
++    }
++  }
++  return true;
++}
++
++bool Window(const base::DictValue* window) {
++  if (!window || !HasOnly(*window, {"activeSpaceId", "activeTabs", "splitRatio"}) ||
++      !Id(window->Find("activeSpaceId")) || !IdRecord(window->FindDict("activeTabs"))) return false;
++  const std::optional<double> ratio = window->FindDouble("splitRatio");
++  return ratio && std::isfinite(*ratio) && *ratio >= 0.1 && *ratio <= 0.9;
++}
++
++bool ValidLayout(const base::DictValue& layout) {
++  if (!HasOnly(layout, {"shared", "window"}) ||
++      !Shared(layout.FindDict("shared")) ||
++      !Window(layout.FindDict("window"))) {
++    return false;
++  }
++  const auto json = base::WriteJson(layout);
++  return json && json->size() <= kMaxLayoutBytes;
++}
++
++base::DictValue DefaultWindow(const base::DictValue& shared) {
++  const base::ListValue& spaces = *shared.FindList("spaces");
++  base::DictValue window;
++  window.Set("activeSpaceId", *spaces[0].GetDict().FindString("id"));
++  window.Set("activeTabs", base::DictValue());
++  window.Set("splitRatio", 0.5);
++  return window;
++}
++
++bool ValidDocument(const base::DictValue& document) {
++  if (document.empty()) {
++    return true;
++  }
++  if (!HasOnly(document, {"revision", "shared", "windows", "windowOrder"})) {
++    return false;
++  }
++  const std::optional<int> revision = document.FindInt("revision");
++  const base::DictValue* shared = document.FindDict("shared");
++  const base::DictValue* windows = document.FindDict("windows");
++  const base::ListValue* window_order = document.FindList("windowOrder");
++  if (!revision || *revision < 1 || !Shared(shared) || !windows ||
++      windows->size() > kMaxWindows || !window_order ||
++      window_order->size() != windows->size()) {
++    return false;
++  }
++  std::set<std::string> seen;
++  for (const base::Value& id : *window_order) {
++    if (!Id(&id) || !windows->Find(id.GetString()) ||
++        !seen.insert(id.GetString()).second) {
++      return false;
++    }
++  }
++  for (auto it = windows->begin(); it != windows->end(); ++it) {
++    if (it->first.empty() || it->first.size() > 200 ||
++        !Window(it->second.GetIfDict())) {
++      return false;
++    }
++    base::DictValue layout;
++    layout.Set("shared", shared->Clone());
++    layout.Set("window", it->second.Clone());
++    if (!ValidLayout(layout)) {
++      return false;
++    }
++  }
++  return true;
++}
++
++base::DictValue MakeSnapshot(const base::DictValue& document,
++                               std::string_view window_id) {
++  base::DictValue snapshot;
++  if (document.empty()) {
++    snapshot.Set("revision", 0);
++    snapshot.Set("layout", base::Value());
++    return snapshot;
++  }
++  const base::DictValue& shared = *document.FindDict("shared");
++  const base::DictValue& windows = *document.FindDict("windows");
++  base::DictValue layout;
++  layout.Set("shared", shared.Clone());
++  const base::DictValue* window = windows.FindDict(window_id);
++  layout.Set("window", window ? window->Clone() : DefaultWindow(shared));
++  snapshot.Set("revision", document.FindInt("revision").value());
++  snapshot.Set("layout", std::move(layout));
++  return snapshot;
++}
++
++}  // namespace
++
++std::optional<base::DictValue> OrganizationStore::ProfileSnapshot(
++    Profile* profile, std::string* error) {
++  if (!profile || profile->IsOffTheRecord()) {
++    *error = "Organization is unavailable for this Profile";
++    return std::nullopt;
++  }
++  const base::DictValue& document = profile->GetPrefs()->GetDict(kOrganizationPref);
++  if (!ValidDocument(document)) {
++    *error = "The Profile organization preference is invalid";
++    return std::nullopt;
++  }
++  base::DictValue snapshot;
++  snapshot.Set("revision", document.FindInt("revision").value_or(0));
++  if (document.empty()) snapshot.Set("shared", base::Value());
++  else snapshot.Set("shared", document.FindDict("shared")->Clone());
++  return snapshot;
++}
++
++std::optional<base::DictValue> OrganizationStore::Snapshot(
++    Profile* profile,
++    std::string_view window_id,
++    std::string* error) {
++  if (!profile || profile->IsOffTheRecord() || window_id.empty() ||
++      window_id.size() > 200) {
++    *error = "Organization is unavailable for this browser window";
++    return std::nullopt;
++  }
++  const base::DictValue& document =
++      profile->GetPrefs()->GetDict(kOrganizationPref);
++  if (!ValidDocument(document)) {
++    *error = "The Profile organization preference is invalid";
++    return std::nullopt;
++  }
++  return MakeSnapshot(document, window_id);
++}
++
++std::optional<base::DictValue> OrganizationStore::Commit(
++    Profile* profile,
++    std::string_view window_id,
++    int expected_revision,
++    const base::DictValue& layout,
++    std::string* error) {
++  if (!ValidLayout(layout) || expected_revision < 0) {
++    *error = "Invalid Profile organization layout";
++    return std::nullopt;
++  }
++  if (!Snapshot(profile, window_id, error)) {
++    return std::nullopt;
++  }
++  const base::DictValue& current =
++      profile->GetPrefs()->GetDict(kOrganizationPref);
++  const int revision = current.FindInt("revision").value_or(0);
++  if (expected_revision != revision) {
++    *error = "Organization revision conflict";
++    return std::nullopt;
++  }
++  if (revision == std::numeric_limits<int>::max()) {
++    *error = "Organization revision exhausted";
++    return std::nullopt;
++  }
++  base::DictValue windows = current.empty()
++                                  ? base::DictValue()
++                                  : current.FindDict("windows")->Clone();
++  windows.Remove(window_id);
++  windows.Set(window_id, layout.FindDict("window")->Clone());
++  std::vector<std::string> ids;
++  if (!current.empty()) {
++    for (const base::Value& id : *current.FindList("windowOrder")) {
++      if (id.GetString() != window_id) {
++        ids.push_back(id.GetString());
++      }
++    }
++  }
++  ids.emplace_back(window_id);
++  std::set<std::string> active_windows;
++  if (auto* browsers = ProfileBrowserCollection::GetForProfile(profile)) {
++    browsers->ForEach([&active_windows](BrowserWindowInterface* browser) {
++      active_windows.insert(base::NumberToString(browser->GetSessionID().id()));
++      return true;
++    });
++  }
++  while (ids.size() > kMaxWindows) {
++    auto oldest_inactive = ids.begin();
++    while (oldest_inactive != ids.end() &&
++           active_windows.contains(*oldest_inactive)) {
++      ++oldest_inactive;
++    }
++    if (oldest_inactive == ids.end()) {
++      *error = "Too many active browser windows for organization storage";
++      return std::nullopt;
++    }
++    windows.Remove(*oldest_inactive);
++    ids.erase(oldest_inactive);
++  }
++  base::ListValue window_order;
++  for (const std::string& id : ids) {
++    window_order.Append(id);
++  }
++  base::DictValue next;
++  next.Set("revision", revision + 1);
++  next.Set("shared", layout.FindDict("shared")->Clone());
++  next.Set("windows", std::move(windows));
++  next.Set("windowOrder", std::move(window_order));
++  profile->GetPrefs()->SetDict(kOrganizationPref, next.Clone());
++  if (g_browser_process && g_browser_process->local_state()) {
++    base::ListValue spaces;
++    for (const auto& value : *layout.FindDict("shared")->FindList("spaces")) {
++      const auto& space = value.GetDict();
++      base::DictValue item;
++      item.Set("id", *space.FindString("id"));
++      item.Set("name", *space.FindString("name"));
++      item.Set("color", *space.FindString("color"));
++      spaces.Append(std::move(item));
++    }
++    const std::string directory = profile->GetPath().BaseName().AsUTF8Unsafe();
++    ScopedDictPrefUpdate index(g_browser_process->local_state(), kProfileSpacesIndexPref);
++    index->Set(directory == "Default" ? "default" : directory, std::move(spaces));
++  }
++  return MakeSnapshot(next, window_id);
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/organization_store.h b/chrome/browser/ui/aux/organization_store.h
+new file mode 100644
+index 0000000000..d5fd1793bb
+--- /dev/null
++++ b/chrome/browser/ui/aux/organization_store.h
+@@ -0,0 +1,40 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_ORGANIZATION_STORE_H_
++#define CHROME_BROWSER_UI_AUX_ORGANIZATION_STORE_H_
++
++#include <optional>
++#include <string>
++#include <string_view>
++
++#include "base/values.h"
++
++class Profile;
++
++namespace aux {
++
++inline constexpr char kOrganizationPref[] = "aux.organization.v2";
++
++// Profile-owned browser organization. The caller supplies only the window ID
++// derived from its authorized WebUI; no renderer-provided Profile or window ID
++// is ever read. Every commit compares the current revision before writing.
++class OrganizationStore {
++ public:
++  static std::optional<base::DictValue> ProfileSnapshot(Profile* profile,
++                                                          std::string* error);
++  static std::optional<base::DictValue> Snapshot(Profile* profile,
++                                                   std::string_view window_id,
++                                                   std::string* error);
++  static std::optional<base::DictValue> Commit(
++      Profile* profile,
++      std::string_view window_id,
++      int expected_revision,
++      const base::DictValue& layout,
++      std::string* error);
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_ORGANIZATION_STORE_H_
+diff --git a/chrome/browser/ui/aux/profile_spaces.cc b/chrome/browser/ui/aux/profile_spaces.cc
+new file mode 100644
+index 0000000000..726e2df298
+--- /dev/null
++++ b/chrome/browser/ui/aux/profile_spaces.cc
+@@ -0,0 +1,47 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/profile_spaces.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/aux/shell_events.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "components/sessions/core/session_id.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "url/gurl.h"
++namespace aux {
++bool SameMovedDocument(content::WebContents* contents, const content::WeakDocumentPtr& document, const GURL& url) {
++  auto* frame = document.AsRenderFrameHostIfValid();
++  return contents && frame && contents->GetLastCommittedURL() == url &&
++      frame == contents->GetPrimaryMainFrame();
++}
++bool FocusProfileSpace(BrowserWindowInterface* window, std::string_view space_id, std::string* error) {
++  if (!window || window->GetProfile()->IsOffTheRecord() || window->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      IsLittleWindow(window) || IsQuickAskWindow(window)) {
++    *error = "A normal Profile window is required";
++    return false;
++  }
++  const std::string window_id = base::NumberToString(window->GetSessionID().id());
++  auto snapshot = OrganizationStore::Snapshot(window->GetProfile(), window_id, error);
++  auto* layout = snapshot ? snapshot->FindDict("layout") : nullptr;
++  bool found = false;
++  if (layout) for (const auto& value : *layout->FindDict("shared")->FindList("spaces"))
++    found |= *value.GetDict().FindString("id") == space_id;
++  if (!found) {
++    *error = "Space was not found in this Profile";
++    return false;
++  }
++  layout->FindDict("window")->Set("activeSpaceId", std::string(space_id));
++  if (!OrganizationStore::Commit(window->GetProfile(), window_id,
++        snapshot->FindInt("revision").value_or(0), *layout, error)) return false;
++  base::DictValue focus;
++  focus.Set("spaceId", std::string(space_id));
++  focus.Set("windowId", window_id);
++  EmitShellEvent(window->GetProfile(), "onFocusSpace", *base::WriteJson(focus));
++  return true;
++}
++}
+diff --git a/chrome/browser/ui/aux/profile_spaces.h b/chrome/browser/ui/aux/profile_spaces.h
+new file mode 100644
+index 0000000000..7d6ce6d431
+--- /dev/null
++++ b/chrome/browser/ui/aux/profile_spaces.h
+@@ -0,0 +1,13 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_PROFILE_SPACES_H_
++#define CHROME_BROWSER_UI_AUX_PROFILE_SPACES_H_
++#include <string>
++#include <string_view>
++class BrowserWindowInterface;
++class GURL;
++namespace content { class WebContents; class WeakDocumentPtr; }
++namespace aux {
++bool SameMovedDocument(content::WebContents* contents, const content::WeakDocumentPtr& document, const GURL& url);
++bool FocusProfileSpace(BrowserWindowInterface* window, std::string_view space_id, std::string* error);
++}
++#endif

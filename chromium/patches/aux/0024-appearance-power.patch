@@ -1,0 +1,231 @@
+diff --git a/chrome/browser/chrome_browser_field_trials.cc b/chrome/browser/chrome_browser_field_trials.cc
+index 63e5aff133..e62acca80c 100644
+--- a/chrome/browser/chrome_browser_field_trials.cc
++++ b/chrome/browser/chrome_browser_field_trials.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/chrome_browser_field_trials.h"
++#include "chrome/browser/buildflags.h"
+ 
+ #include <optional>
+ #include <string>
+@@ -126,6 +127,10 @@ void ChromeBrowserFieldTrials::RegisterSyntheticTrials() {
+ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
+     base::FeatureList* feature_list) {
+   variations::FeatureOverrides feature_overrides(*feature_list);
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  feature_overrides.EnableFeature(
++      blink::features::kBrowserInitiatedAutomaticPictureInPicture);
++#endif
+ 
+   // TODO(crbug.com/552456654): Remove when rollout is complete to stable.
+   if (chrome::GetChannel() != version_info::Channel::STABLE) {
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index 085b77cb11..452324e230 100644
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -19,6 +19,15 @@
+ #include "build/branding_buildflags.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/about_flags.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/appearance_prefs.h"
++#include "chrome/browser/ui/aux/health_recorder.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/aux/site_prefs.h"
++#endif
+ #include "chrome/browser/accessibility/accessibility_labels_service.h"
+ #include "chrome/browser/accessibility/invert_bubble_prefs.h"
+ #include "chrome/browser/accessibility/page_colors_controller.h"
+@@ -1463,6 +1472,15 @@ std::string GetCountry() {
+ }
+ 
+ void RegisterLocalState(PrefRegistrySimple* registry) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  registry->RegisterDictionaryPref(aux::kArchivedProfilesPref);
++  registry->RegisterDictionaryPref(aux::kProfileAppearancePref);
++  registry->RegisterDictionaryPref(aux::kProfileSpacesIndexPref);
++  registry->RegisterDictionaryPref(aux::kLinkRoutingPref);
++  registry->RegisterBooleanPref(aux::kQuickAskShortcutEnabledPref, false);
++  registry->RegisterDictionaryPref(aux::kQuickAskShortcutBindingsPref);
++  registry->RegisterStringPref(aux::kExternalLinkTargetPref, "little");
++#endif
+   // Call outs to individual subsystems that register Local State (browser-wide)
+   // prefs en masse. See RegisterProfilePrefs for per-profile prefs. Please
+   // keep this list alphabetized.
+@@ -1793,6 +1811,19 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
+ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
+                           const std::string& locale) {
+   TRACE_EVENT0("browser", "chrome::RegisterProfilePrefs");
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  registry->RegisterStringPref(aux::kAppearanceThemePref, "system");
++  registry->RegisterBooleanPref(aux::kAppearanceGlassPref, true);
++  registry->RegisterStringPref(aux::kAppearanceMaterialPref, "liquid-glass");
++  registry->RegisterDictionaryPref(aux::kOrganizationPref);
++  registry->RegisterBooleanPref(aux::kHttpsUpgradesEnabled, true);
++  registry->RegisterBooleanPref(aux::kKeepRuntimeInBackgroundPref, false);
++  registry->RegisterListPref(aux::kHealthSamplesPref);
++  registry->RegisterIntegerPref(aux::kHealthSessionsPref, 0);
++  registry->RegisterIntegerPref(aux::kHealthCrashesPref, 0);
++  registry->RegisterIntegerPref(aux::kHealthHangsPref, 0);
++  registry->RegisterStringPref(aux::kAutofillProfileGuidPref, "");
++#endif
+   // User prefs. Please keep this list alphabetized.
+   AccessibilityLabelsService::RegisterProfilePrefs(registry);
+   registry->RegisterBooleanPref(prefs::kRendererAccessibilityEnabled, true);
+diff --git a/chrome/browser/ui/aux/methods/power_methods.cc b/chrome/browser/ui/aux/methods/power_methods.cc
+new file mode 100644
+index 0000000000..77ed82b94b
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/power_methods.cc
+@@ -0,0 +1,24 @@
++#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/power_activity_mac.h"
++#include "chrome/browser/profiles/profile.h"
++base::DictValue AuxRuntimeHost::HandleNativePowerCall(const std::string& method, const base::DictValue& params) {
++  auto fault = [](const char* message) {
++    base::DictValue error; error.Set("code", "invalid_argument"); error.Set("message", message);
++    base::DictValue reply; reply.Set("error", std::move(error)); return reply;
++  };
++  if (!power_activity_) power_activity_ = std::make_unique<aux::PowerActivityMac>(profile_);
++  base::DictValue value;
++  if (method == "native.powerRelease") {
++    if (!params.empty()) return fault("Power release takes no arguments.");
++    power_activity_->End(); value.Set("active", false);
++  } else if (method == "native.powerStatus") {
++    if (!params.empty()) return fault("Power status takes no arguments.");
++    value = power_activity_->Status();
++  } else if (method == "native.powerActivity") {
++    const auto* reason = params.FindString("reason"); const auto duration = params.FindInt("durationSec");
++    if (params.size() != 2 || !reason || reason->empty() || reason->size() > 200 || !duration || *duration < 1 || *duration > 3600)
++      return fault("Power activity requires a bounded reason and one to 3600 seconds.");
++    value = power_activity_->Begin(*reason, *duration);
++  } else return fault("Unknown power method.");
++  base::DictValue reply; reply.Set("result", std::move(value)); return reply;
++}
+diff --git a/chrome/browser/ui/aux/power_activity_mac.h b/chrome/browser/ui/aux/power_activity_mac.h
+new file mode 100644
+index 0000000000..863b69f81f
+--- /dev/null
++++ b/chrome/browser/ui/aux/power_activity_mac.h
+@@ -0,0 +1,21 @@
++#ifndef CHROME_BROWSER_UI_AUX_POWER_ACTIVITY_MAC_H_
++#define CHROME_BROWSER_UI_AUX_POWER_ACTIVITY_MAC_H_
++#include <memory>
++#include <string>
++#include "base/values.h"
++class Profile;
++namespace aux {
++class PowerActivityMac {
++ public:
++  explicit PowerActivityMac(Profile* profile);
++  ~PowerActivityMac();
++  void End();
++  static bool AllowsBackgroundEffect(Profile* profile, bool require_ac);
++  base::DictValue Status() const;
++  base::DictValue Begin(const std::string& reason, int duration_sec);
++ private:
++  struct Impl;
++  std::unique_ptr<Impl> impl_;
++};
++}
++#endif
+diff --git a/chrome/browser/ui/aux/power_activity_mac.mm b/chrome/browser/ui/aux/power_activity_mac.mm
+new file mode 100644
+index 0000000000..4fcbf49010
+--- /dev/null
++++ b/chrome/browser/ui/aux/power_activity_mac.mm
+@@ -0,0 +1,89 @@
++#include "chrome/browser/ui/aux/power_activity_mac.h"
++#import <Foundation/Foundation.h>
++#import <ServiceManagement/ServiceManagement.h>
++#include <IOKit/ps/IOPowerSources.h>
++#include <IOKit/ps/IOPSKeys.h>
++#include "base/apple/scoped_cftyperef.h"
++#include "base/functional/bind.h"
++#include "base/memory/raw_ptr.h"
++#include "base/strings/sys_string_conversions.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "components/prefs/pref_service.h"
++#include "components/prefs/pref_change_registrar.h"
++namespace aux {
++namespace {
++bool OnAC() {
++  base::apple::ScopedCFTypeRef<CFTypeRef> info(IOPSCopyPowerSourcesInfo());
++  if (!info) return false;
++  CFStringRef source = IOPSGetProvidingPowerSourceType(info.get());
++  return source && CFEqual(source, CFSTR(kIOPSACPowerValue));
++}
++}
++struct PowerActivityMac::Impl {
++  explicit Impl(Profile* value) : profile(value) {
++    preferences.Init(profile->GetPrefs());
++    preferences.Add(kKeepRuntimeInBackgroundPref, base::BindRepeating(&Impl::Check, base::Unretained(this)));
++    power_source.reset(IOPSNotificationCreateRunLoopSource([](void* context) {
++      static_cast<Impl*>(context)->Check();
++    }, this));
++    if (power_source) CFRunLoopAddSource(CFRunLoopGetMain(), power_source.get(), kCFRunLoopCommonModes);
++  }
++  ~Impl() {
++    if (power_source) CFRunLoopRemoveSource(CFRunLoopGetMain(), power_source.get(), kCFRunLoopCommonModes);
++    preferences.RemoveAll(); End();
++  }
++  void Check() {
++    if (!OnAC() || profile->IsOffTheRecord() || !profile->GetPrefs()->GetBoolean(kKeepRuntimeInBackgroundPref)) End();
++  }
++  void End() {
++    timer.Stop();
++    if (activity) [[NSProcessInfo processInfo] endActivity:activity];
++    activity = nil;
++  }
++  raw_ptr<Profile> profile;
++  id<NSObject> __strong activity = nil;
++  base::OneShotTimer timer;
++  PrefChangeRegistrar preferences;
++  base::apple::ScopedCFTypeRef<CFRunLoopSourceRef> power_source;
++};
++PowerActivityMac::PowerActivityMac(Profile* profile) : impl_(std::make_unique<Impl>(profile)) {}
++PowerActivityMac::~PowerActivityMac() = default;
++void PowerActivityMac::End() { impl_->End(); }
++bool PowerActivityMac::AllowsBackgroundEffect(Profile* profile, bool require_ac) {
++  return profile && !profile->IsOffTheRecord() &&
++      profile->GetPrefs()->GetBoolean(kKeepRuntimeInBackgroundPref) &&
++      (!require_ac || OnAC());
++}
++base::DictValue PowerActivityMac::Status() const {
++  impl_->Check();
++  base::DictValue result;
++  result.Set("onAC", OnAC());
++  result.Set("backgroundEnabled", !impl_->profile->IsOffTheRecord() && impl_->profile->GetPrefs()->GetBoolean(kKeepRuntimeInBackgroundPref));
++  result.Set("active", impl_->activity != nil);
++  std::string login_status = "unavailable";
++  if (@available(macOS 13.0, *)) {
++    switch ([SMAppService mainAppService].status) {
++      case SMAppServiceStatusNotRegistered: login_status = "not_registered"; break;
++      case SMAppServiceStatusEnabled: login_status = "enabled"; break;
++      case SMAppServiceStatusRequiresApproval: login_status = "requires_approval"; break;
++      case SMAppServiceStatusNotFound: login_status = "not_found"; break;
++    }
++  }
++  result.Set("loginItem", login_status);
++  return result;
++}
++base::DictValue PowerActivityMac::Begin(const std::string& reason, int duration_sec) {
++  base::DictValue result;
++  if (impl_->profile->IsOffTheRecord() || !impl_->profile->GetPrefs()->GetBoolean(kKeepRuntimeInBackgroundPref) || !OnAC()) {
++    impl_->End(); result.Set("active", false); result.Set("reason", "Night shift requires AC power and this Profile's background mode."); return result;
++  }
++  impl_->End();
++  impl_->activity = [[NSProcessInfo processInfo] beginActivityWithOptions:NSActivityIdleSystemSleepDisabled reason:base::SysUTF8ToNSString(reason)];
++  if (impl_->activity) impl_->timer.Start(FROM_HERE, base::Seconds(duration_sec), base::BindOnce(&Impl::End, base::Unretained(impl_.get())));
++  result.Set("active", impl_->activity != nil);
++  return result;
++}
++}

@@ -1,0 +1,1043 @@
+diff --git a/chrome/browser/ui/aux/native_person_capture_controller.cc b/chrome/browser/ui/aux/native_person_capture_controller.cc
+new file mode 100644
+index 0000000000..4c0caea197
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_person_capture_controller.cc
+@@ -0,0 +1,305 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_person_capture_controller.h"
++#include <utility>
++#include <algorithm>
++#include <ranges>
++#include "base/base64.h"
++#include "base/functional/bind.h"
++#include "base/task/bind_post_task.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/uuid.h"
++#include "chrome/common/aux_person_capture_mask.h"
++#include "chrome/common/chrome_isolated_world_ids.h"
++#include "components/viz/common/frame_sinks/copy_output_result.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/browser/renderer_host/render_widget_host_view_base.h"
++#include "content/public/browser/web_contents.h"
++#include "ui/gfx/codec/png_codec.h"
++namespace aux {
++namespace {
++gfx::Size OriginalWidgetViewport(content::RenderWidgetHostViewBase* view) {
++  // Ordinary OOPIF child views have no owner_delegate and their visible-viewport
++  // methods are only valid for nested WebContents. Keep their actual local size.
++  return view->IsRenderWidgetHostViewChildFrame()
++      ? view->GetViewBounds().size() : view->GetVisibleViewportSize();
++}
++gfx::Size OriginalWidgetPixelViewport(content::RenderWidgetHostViewBase* view) {
++  return view->IsRenderWidgetHostViewChildFrame()
++      ? view->GetCompositorViewportPixelSize() : view->GetVisibleViewportSizeDevicePx();
++}
++base::DictValue Fault(bool debt) {
++  return base::DictValue().Set("error", base::DictValue()
++      .Set("code", "target_detached").Set("message", debt ?
++        "Original page capture failed; original mask cleanup remains unresolved." :
++        "The original page could not be captured. Try again."));
++}
++}
++WEB_CONTENTS_USER_DATA_KEY_IMPL(NativePersonCaptureController);
++NativePersonCaptureController::NativePersonCaptureController(content::WebContents* contents)
++    : content::WebContentsObserver(contents), content::WebContentsUserData<NativePersonCaptureController>(*contents) {}
++NativePersonCaptureController::~NativePersonCaptureController() {
++  weak_factory_.InvalidateWeakPtrs();
++  if (reply_) std::move(reply_).Run(Fault(!capture_id_.empty()));
++}
++bool NativePersonCaptureController::Current() {
++  const auto weak = weak_factory_.GetWeakPtr();
++  const auto guard = current_;
++  if (capture_id_.empty() || !guard || !guard.Run() || !weak || !web_contents() || frames_.empty()) return false;
++  if (frames_[0].AsRenderFrameHostIfValid() != web_contents()->GetPrimaryMainFrame()) return false;
++  size_t index = 0; bool same = true;
++  web_contents()->GetPrimaryMainFrame()->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
++    if (!frame->IsActive() || !frame->IsRenderFrameLive() || frame->GetLastCommittedURL().is_empty() || frame->IsErrorDocument() || index >= frames_.size() || frames_[index++].AsRenderFrameHostIfValid() != frame) same = false;
++  });
++  if (!same || index != frames_.size()) return false;
++  if (!widgets_.empty()) {
++    if (widgets_.size() != frames_.size() || widget_viewports_.size() != frames_.size() || widget_pixel_viewports_.size() != frames_.size()) return false;
++    for (size_t i = 0; i < frames_.size(); ++i) {
++      auto* frame = frames_[i].AsRenderFrameHostIfValid();
++      if (!frame || !widgets_[i] || frame->GetRenderWidgetHost() != widgets_[i].get()) return false;
++      auto* view = widgets_[i]->GetView();
++      if (!view || OriginalWidgetViewport(view) != widget_viewports_[i] ||
++          OriginalWidgetPixelViewport(view) != widget_pixel_viewports_[i] ||
++          (surfaces_[i].is_valid() && view->GetAuxPersonCaptureSurfaceId() != surfaces_[i])) return false;
++    }
++  }
++  return true;
++}
++void NativePersonCaptureController::Capture(base::DictValue identity,
++    base::RepeatingCallback<bool()> current, Reply reply) {
++  if (!capture_id_.empty()) { std::move(reply).Run(Fault(true)); return; }
++  // Reserve synchronously before the original guard can reenter this owner.
++  identity_ = std::move(identity); current_ = std::move(current); reply_ = std::move(reply);
++  capture_id_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  const auto weak = weak_factory_.GetWeakPtr();
++  const auto guard = current_;
++  const bool admitted_guard = guard && guard.Run();
++  if (!weak) return;
++  if (!admitted_guard || !web_contents()) { failed_ = true; Finish(); return; }
++  web_contents()->GetPrimaryMainFrame()->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
++    frames_.push_back(frame->GetWeakDocumentPtr());
++  });
++  const bool admitted = !frames_.empty() && frames_.size() <= 64 && Current();
++  if (!weak) return;
++  if (!admitted) { failed_ = true; Finish(); return; }
++  deadline_.Start(FROM_HERE, base::Seconds(5), base::BindOnce(&NativePersonCaptureController::Deadline, weak_factory_.GetWeakPtr()));
++  Dispatch("begin");
++}
++void NativePersonCaptureController::Dispatch(const std::string& phase) {
++  pending_ = frames_.size();
++  const std::u16string script = std::u16string(person_capture_mask::kProgram) + u"(\"" +
++      base::UTF8ToUTF16(phase) + u"\",\"" + base::UTF8ToUTF16(capture_id_) + u"\")";
++  const auto documents = frames_;
++  const auto weak = weak_factory_.GetWeakPtr();
++  for (size_t i = 0; i < documents.size(); ++i) {
++    if (!weak) return;
++    auto* frame = documents[i].AsRenderFrameHostIfValid();
++    if (!frame) { ScriptDone(phase, i, phase == "restore"); continue; }
++    if (!frame->IsActive() || !frame->IsRenderFrameLive() || frame->GetLastCommittedURL().is_empty() || frame->IsErrorDocument()) {
++      if (phase == "restore") { cleanup_debt_ = true; ScriptDone("restored", i, true); }
++      else ScriptDone(phase, i, false);
++      continue;
++    }
++    frame->ExecuteJavaScriptInIsolatedWorld(script, base::BindOnce(
++        [](base::WeakPtr<NativePersonCaptureController> owner, std::string phase, size_t index, base::Value result) {
++          if (owner) owner->ScriptDone(std::move(phase), index, result.is_bool() && result.GetBool());
++        }, weak_factory_.GetWeakPtr(), phase, i), ISOLATED_WORLD_ID_AUX_OBSERVER);
++  }
++}
++void NativePersonCaptureController::ScriptDone(std::string phase, size_t index, bool accepted) {
++  if (!accepted) {
++    if (phase == "restore") {
++      auto* frame = frames_[index].AsRenderFrameHostIfValid();
++      if (frame && (!frame->IsActive() || !frame->IsRenderFrameLive() || frame->GetLastCommittedURL().is_empty() || frame->IsErrorDocument())) {
++        cleanup_debt_ = true; ScriptDone("restored", index, true); return;
++      }
++      if (frame) {
++        const std::u16string script = std::u16string(person_capture_mask::kProgram) + u"(\"absent\",\"" + base::UTF8ToUTF16(capture_id_) + u"\")";
++        frame->ExecuteJavaScriptInIsolatedWorld(script, base::BindOnce(
++            [](base::WeakPtr<NativePersonCaptureController> owner, size_t index, base::Value result) {
++              if (!owner) return;
++              if (!result.is_bool() || !result.GetBool()) owner->cleanup_debt_ = true;
++              owner->ScriptDone("restored", index, true);
++            }, weak_factory_.GetWeakPtr(), index), ISOLATED_WORLD_ID_AUX_OBSERVER);
++        return;
++      }
++    } else failed_ = true;
++  }
++  if (--pending_ != 0) return;
++  if (phase == "restore" || phase == "restored") { Finish(); return; }
++  const auto weak = weak_factory_.GetWeakPtr();
++  const bool admitted = !failed_ && Current();
++  if (!weak) return;
++  if (!admitted) { failed_ = true; Cleanup(); return; }
++  if (phase == "begin") Paint();
++  else if (phase == "current") {
++    if (png_.empty()) Copy(); else Cleanup();
++  }
++}
++void NativePersonCaptureController::Paint() {
++  surfaces_.resize(frames_.size()); submission_tokens_.resize(frames_.size()); widgets_.resize(frames_.size());
++  widget_viewports_.resize(frames_.size()); widget_pixel_viewports_.resize(frames_.size());
++  std::vector<size_t> children;
++  for (size_t i = 0; i < frames_.size(); ++i) {
++    auto* frame = frames_[i].AsRenderFrameHostIfValid();
++    auto* widget = frame ? content::RenderWidgetHostImpl::From(frame->GetRenderWidgetHost()) : nullptr;
++    auto* view = widget ? widget->GetView() : nullptr;
++    if (!widget || !view) { failed_ = true; Cleanup(); return; }
++    widgets_[i] = widget->GetWeakPtr();
++    widget_viewports_[i] = OriginalWidgetViewport(view);
++    widget_pixel_viewports_[i] = OriginalWidgetPixelViewport(view);
++    // Same-process frames share a widget and one submitted frame token. Never
++    // enqueue duplicate callbacks for that token in the original frame queue.
++    if (i && widget != widgets_[0].get() && std::ranges::none_of(children, [&](size_t prior) { return widgets_[prior].get() == widget; })) children.push_back(i);
++  }
++  if (children.empty()) { PaintRoot(); return; }
++  pending_ = children.size();
++  const auto weak = weak_factory_.GetWeakPtr();
++  for (size_t i : children) {
++    if (!weak) return;
++    if (!widgets_[i]) { Painted(false); continue; }
++    widgets_[i]->RequestAuxPersonCaptureFrame(base::BindOnce(&NativePersonCaptureController::Submitted,
++        weak_factory_.GetWeakPtr(), i, widgets_[i]));
++  }
++}
++void NativePersonCaptureController::PaintRoot() {
++  const auto weak = weak_factory_.GetWeakPtr();
++  const bool admitted = Current();
++  if (!weak) return;
++  if (!admitted || widgets_.empty() || !widgets_[0]) { failed_ = true; Cleanup(); return; }
++  // Child masked frames have activated before the final original root redraw.
++  root_submission_ = true; pending_ = 1;
++  widgets_[0]->RequestAuxPersonCaptureFrame(base::BindOnce(&NativePersonCaptureController::Submitted,
++      weak_factory_.GetWeakPtr(), size_t{0}, widgets_[0]));
++}
++void NativePersonCaptureController::Submitted(size_t index,
++    base::WeakPtr<content::RenderWidgetHostImpl> widget, uint32_t token) {
++  auto* frame = frames_[index].AsRenderFrameHostIfValid();
++  const auto weak = weak_factory_.GetWeakPtr();
++  const bool admitted = token && widget && frame && frame->GetRenderWidgetHost() == widget.get() && Current();
++  if (!weak) return;
++  if (!admitted) { Painted(false); return; }
++  frame = frames_[index].AsRenderFrameHostIfValid();
++  if (!frame || !widget || frame->GetRenderWidgetHost() != widget.get()) { Painted(false); return; }
++  widget->render_frame_metadata_provider()->WaitForAuxPersonCaptureActivation(token,
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(&NativePersonCaptureController::Activated,
++          weak_factory_.GetWeakPtr(), index, widget, token), base::TimeTicks()));
++}
++void NativePersonCaptureController::Activated(size_t index,
++    base::WeakPtr<content::RenderWidgetHostImpl> widget, uint32_t token, base::TimeTicks time) {
++  auto* frame = frames_[index].AsRenderFrameHostIfValid();
++  const auto weak = weak_factory_.GetWeakPtr();
++  const bool admitted = token && !time.is_null() && widget && frame && frame->GetRenderWidgetHost() == widget.get() && Current();
++  if (!weak) return;
++  if (!admitted) { Painted(false); return; }
++  frame = frames_[index].AsRenderFrameHostIfValid();
++  if (!frame || !widget || frame->GetRenderWidgetHost() != widget.get()) { Painted(false); return; }
++  auto* view = widget->GetView();
++  const auto& metadata = widget->render_frame_metadata_provider()->LastRenderFrameMetadata();
++  const auto surface = view ? view->GetAuxPersonCaptureSurfaceId() : viz::SurfaceId();
++  if (!surface.is_valid() || !metadata.local_surface_id || surface.local_surface_id() != *metadata.local_surface_id) { Painted(false); return; }
++  for (size_t i = 0; i < widgets_.size(); ++i) if (widgets_[i].get() == widget.get()) { surfaces_[i] = surface; submission_tokens_[i] = token; }
++  Painted(true);
++}
++void NativePersonCaptureController::Painted(bool accepted) {
++  if (!accepted) failed_ = true;
++  if (--pending_) return;
++  const auto weak = weak_factory_.GetWeakPtr();
++  const bool admitted = !failed_ && Current();
++  if (!weak) return;
++  if (!admitted) { failed_ = true; Cleanup(); }
++  else if (!root_submission_) PaintRoot();
++  else Dispatch("current");
++}
++void NativePersonCaptureController::Copy() {
++  const auto weak = weak_factory_.GetWeakPtr();
++  const bool admitted = Current();
++  if (!weak) return;
++  if (!admitted) { failed_ = true; Cleanup(); return; }
++  auto* view = web_contents()->GetRenderWidgetHostView();
++  if (!view || !view->IsShowing()) { failed_ = true; Cleanup(); return; }
++  scale_ = view->GetDeviceScaleFactor();
++  viewport_width_ = view->GetVisibleViewportSize().width();
++  viewport_height_ = view->GetVisibleViewportSize().height();
++  viewport_pixels_ = view->GetVisibleViewportSizeDevicePx();
++  if (viewport_width_ <= 0 || viewport_height_ <= 0 || viewport_pixels_.IsEmpty()) { failed_ = true; Cleanup(); return; }
++  pending_ = 1;
++  if (surfaces_.empty() || view->GetAuxPersonCaptureSurfaceId() != surfaces_[0]) { pending_ = 0; failed_ = true; Cleanup(); return; }
++  std::vector<viz::SurfaceId> required_surfaces;
++  std::vector<uint32_t> required_tokens;
++  for (size_t i = 0; i < surfaces_.size(); ++i) {
++    if (std::ranges::find(required_surfaces, surfaces_[i]) != required_surfaces.end()) continue;
++    required_surfaces.push_back(surfaces_[i]); required_tokens.push_back(submission_tokens_[i]);
++  }
++  view->CopyAuxPersonCaptureSurface(surfaces_[0], required_surfaces, required_tokens, base::Seconds(3),
++      base::BindPostTaskToCurrentDefault(base::BindOnce(&NativePersonCaptureController::Copied, weak_factory_.GetWeakPtr())));
++}
++void NativePersonCaptureController::Copied(const content::CopyFromSurfaceResult& result) {
++  pending_ = 0;
++  const bool same_surfaces = widgets_.size() == surfaces_.size() && std::ranges::all_of(std::views::iota(size_t{0}, widgets_.size()), [&](size_t i) {
++    return widgets_[i] && widgets_[i]->GetView() && widgets_[i]->GetView()->GetAuxPersonCaptureSurfaceId() == surfaces_[i];
++  });
++  const auto weak = weak_factory_.GetWeakPtr();
++  const bool admitted = !failed_ && Current();
++  if (!weak) return;
++  if (!admitted || !same_surfaces || !result.has_value()) { failed_ = true; Cleanup(); return; }
++  auto* view = web_contents()->GetRenderWidgetHostView();
++  if (!view || view->GetVisibleViewportSizeDevicePx() != viewport_pixels_ ||
++      view->GetVisibleViewportSize() != gfx::Size(viewport_width_, viewport_height_)) { failed_ = true; Cleanup(); return; }
++  const auto& bitmap = result->bitmap;
++  width_ = bitmap.width(); height_ = bitmap.height();
++  if (bitmap.width() != viewport_pixels_.width() || bitmap.height() != viewport_pixels_.height() || bitmap.drawsNothing() || width_ <= 0 || height_ <= 0 || width_ > 16384 || height_ > 16384 ||
++      static_cast<int64_t>(width_) * height_ > 50000000 || scale_ <= 0 || scale_ > 8) { failed_ = true; Cleanup(); return; }
++  auto encoded = gfx::PNGCodec::EncodeBGRASkBitmap(bitmap, false);
++  if (!encoded || encoded->empty() || encoded->size() > 6291456) { failed_ = true; Cleanup(); return; }
++  png_ = base::Base64Encode(*encoded);
++  Dispatch("current");
++}
++void NativePersonCaptureController::Cleanup() {
++  if (restoring_) return;
++  restoring_ = true;
++  Dispatch("restore");
++}
++void NativePersonCaptureController::Deadline() {
++  failed_ = true;
++  // Never clear the original busy/mask owner on a timeout. Late callbacks must
++  // still restore the exact original documents; new captures stay refused.
++  const auto weak = weak_factory_.GetWeakPtr();
++  if (reply_) std::move(reply_).Run(Fault(true));
++  if (weak && !pending_) Cleanup();
++}
++void NativePersonCaptureController::Finish() {
++  deadline_.Stop();
++  const auto weak = weak_factory_.GetWeakPtr();
++  const bool accepted = !failed_ && !cleanup_debt_ && Current() && !png_.empty();
++  if (!weak) return;
++  const bool debt = cleanup_debt_;
++  auto callback = std::move(reply_);
++  auto result = Fault(debt);
++  if (accepted) {
++    identity_.Set("captureId", capture_id_);
++    identity_.Set("masking", "editable-all-frames");
++    identity_.Set("pngBase64", png_);
++    identity_.Set("width", viewport_width_);
++    identity_.Set("height", viewport_height_);
++    identity_.Set("pixelWidth", width_);
++    identity_.Set("pixelHeight", height_);
++    identity_.Set("scale", scale_);
++    result = base::DictValue().Set("result", std::move(identity_));
++  }
++  // Unknown style/restoration debt permanently blocks this original controller.
++  // Clear known-clean state before a callback may synchronously destroy/reenter.
++  if (!debt) {
++    frames_.clear(); widgets_.clear(); surfaces_.clear(); submission_tokens_.clear(); widget_viewports_.clear(); widget_pixel_viewports_.clear(); capture_id_.clear(); identity_.clear(); current_.Reset(); png_.clear();
++    pending_ = 0; failed_ = false; restoring_ = false; root_submission_ = false;
++  }
++  if (callback) std::move(callback).Run(std::move(result));
++}
++void NativePersonCaptureController::Retire() { if (!capture_id_.empty()) Deadline(); }
++void NativePersonCaptureController::WebContentsDestroyed() {
++  weak_factory_.InvalidateWeakPtrs();
++  failed_ = true;
++  if (reply_) std::move(reply_).Run(Fault(false));
++}
++}
+diff --git a/chrome/browser/ui/aux/native_person_capture_controller.h b/chrome/browser/ui/aux/native_person_capture_controller.h
+new file mode 100644
+index 0000000000..c614193bc6
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_person_capture_controller.h
+@@ -0,0 +1,69 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PERSON_CAPTURE_CONTROLLER_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PERSON_CAPTURE_CONTROLLER_H_
++#include <string>
++#include <vector>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/web_contents_user_data.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "content/public/browser/render_widget_host_view.h"
++#include "content/browser/renderer_host/render_widget_host_impl.h"
++namespace aux {
++// Only the authenticated runtime host may supply this original native guard.
++// One outstanding operation owns all masks until their same-document cleanup.
++class NativePersonCaptureController final : public content::WebContentsObserver,
++    public content::WebContentsUserData<NativePersonCaptureController> {
++ public:
++  using Reply = base::OnceCallback<void(base::DictValue)>;
++  ~NativePersonCaptureController() override;
++  void Capture(base::DictValue identity, base::RepeatingCallback<bool()> current, Reply reply);
++  void Retire();
++  base::WeakPtr<NativePersonCaptureController> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
++ private:
++  friend class NativePersonCaptureControllerTestPeer;
++  friend class content::WebContentsUserData<NativePersonCaptureController>;
++  explicit NativePersonCaptureController(content::WebContents* contents);
++  bool Current();
++  void Dispatch(const std::string& phase);
++  void ScriptDone(std::string phase, size_t index, bool accepted);
++  void Paint();
++  void PaintRoot();
++  void Submitted(size_t index, base::WeakPtr<content::RenderWidgetHostImpl> widget, uint32_t token);
++  void Activated(size_t index, base::WeakPtr<content::RenderWidgetHostImpl> widget, uint32_t token, base::TimeTicks time);
++  void Painted(bool accepted);
++  void Copy();
++  void Copied(const content::CopyFromSurfaceResult& result);
++  void Cleanup();
++  void Deadline();
++  void Finish();
++  void WebContentsDestroyed() override;
++  std::vector<content::WeakDocumentPtr> frames_;
++  std::vector<viz::SurfaceId> surfaces_;
++  std::vector<uint32_t> submission_tokens_;
++  std::vector<gfx::Size> widget_viewports_;
++  std::vector<gfx::Size> widget_pixel_viewports_;
++  std::vector<base::WeakPtr<content::RenderWidgetHostImpl>> widgets_;
++  std::string capture_id_;
++  base::DictValue identity_;
++  base::RepeatingCallback<bool()> current_;
++  Reply reply_;
++  size_t pending_ = 0;
++  bool failed_ = false;
++  bool cleanup_debt_ = false;
++  bool restoring_ = false;
++  bool root_submission_ = false;
++  std::string png_;
++  int width_ = 0, height_ = 0;
++  int viewport_width_ = 0, viewport_height_ = 0;
++  gfx::Size viewport_pixels_;
++  double scale_ = 0;
++  base::OneShotTimer deadline_;
++  base::WeakPtrFactory<NativePersonCaptureController> weak_factory_{this};
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++}
++#endif
+diff --git a/chrome/common/aux_person_capture_mask.h b/chrome/common/aux_person_capture_mask.h
+new file mode 100644
+index 0000000000..2f893ea57a
+--- /dev/null
++++ b/chrome/common/aux_person_capture_mask.h
+@@ -0,0 +1,102 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_COMMON_AUX_PERSON_CAPTURE_MASK_H_
++#define CHROME_COMMON_AUX_PERSON_CAPTURE_MASK_H_
++namespace aux::person_capture_mask {
++inline constexpr char16_t kProgram[] = uR"AUXMASK(// Fixed browser-owned isolated-world program; no caller script or selector.
++// Browser must retain each original frame WeakDocument, wait for its paint ACK,
++// and restore these same documents before exporting any captured pixels.
++(function(operation, captureId) {
++  'use strict';
++  const key = '__auxPersonCaptureOriginalMask';
++  if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(captureId)) return false;
++  if (operation === 'begin') {
++    if (globalThis[key]) return false;
++    if (!document.documentElement || document.designMode.toLowerCase() !== 'off') return false;
++    const elements = [], roots = [document], allRoots = [];
++    let examined = 0;
++    while (roots.length) {
++      const root = roots.pop(); allRoots.push(root);
++      for (const node of root.querySelectorAll('*')) {
++        if (++examined > 10000 || elements.length >= 2000 || allRoots.length > 64) return false;
++        if (node.shadowRoot) roots.push(node.shadowRoot);
++        // Custom elements may contain closed shadow roots. Mask the entire
++        // host conservatively; its descendants cannot override group opacity.
++        if (node.matches('input,textarea,select,[contenteditable]') || node.localName.includes('-')) {
++          if (getComputedStyle(node).display === 'contents') return false;
++          elements.push(node);
++        }
++      }
++    }
++    const originals = elements.map(node => ({node, style:node.getAttribute('style'), maskedStyle:node.getAttribute('style'), foreignStyle:false}));
++    const state = {captureId, originals, dirty:false, observer:null};
++    const foreign = records => {
++      if (records.length) state.dirty = true;
++      for (const record of records) if (record.type === 'attributes' && record.attributeName === 'style') {
++        const item = originals.find(item => item.node === record.target);
++        if (item) item.foreignStyle = true;
++      }
++    };
++    state.foreign = foreign;
++    globalThis[key] = state;
++    try {
++      // Start before a style write may synchronously invoke author custom
++      // element callbacks. Only the exact single original style mutation is
++      // our write; every other begin-time mutation refuses pixel export.
++      state.observer = new MutationObserver(foreign);
++      for (const root of allRoots) state.observer.observe(root,{subtree:true,childList:true,attributes:true,attributeOldValue:true,characterData:true});
++      for (const item of originals) {
++        const before = item.node.getAttribute('style');
++        const maskStyle = document.createElement('span').style;
++        maskStyle.cssText = before || '';
++        for (const [property,value] of [['transition','none'],['animation','none'],['opacity','0']]) maskStyle.setProperty(property,value,'important');
++        // A real attribute write invokes the original custom-element reactions.
++        // Build all three masking declarations off-node so no intermediate
++        // transition or animation can escape before the original write.
++        item.node.setAttribute('style',maskStyle.cssText);
++        const records = state.observer.takeRecords();
++        const ownIndex = records.findIndex(record => record.type === 'attributes' && record.attributeName === 'style' && record.target === item.node && record.oldValue === before);
++        foreign(records.filter((record,index) => index !== ownIndex));
++        item.maskedStyle = item.node.getAttribute('style');
++        for (const property of ['transition','animation','opacity']) if (item.node.style.getPropertyPriority(property) !== 'important') { state.dirty = true; item.foreignStyle = true; }
++      }
++      return !state.dirty && originals.every(item => getComputedStyle(item.node).opacity === '0');
++    } catch {
++      state.dirty = true;
++      return false;
++    }
++  }
++  const state = globalThis[key];
++  if (operation === 'absent') return state === undefined;
++  if (!state || state.captureId !== captureId) return false;
++  if (operation === 'current') {
++    state.foreign(state.observer?.takeRecords() || []);
++    return !state.dirty && state.originals.every(item => item.node.isConnected && item.node.getAttribute('style') === item.maskedStyle && getComputedStyle(item.node).opacity === '0');
++  }
++  if (operation !== 'restore') return false;
++  // Drain style ABA and other queued author mutations before deciding that
++  // any original mask is still ours. Keep observing through author reactions.
++  state.foreign(state.observer?.takeRecords() || []);
++  let restorationMutation = false;
++  for (const item of state.originals) {
++    if (item.foreignStyle || !item.node.isConnected || item.node.getAttribute('style') !== item.maskedStyle) return false;
++    const before = item.node.getAttribute('style');
++    if (item.style === null) item.node.removeAttribute('style');
++    else item.node.setAttribute('style',item.style);
++    const records = state.observer?.takeRecords() || [];
++    const ownIndex = records.findIndex(record => record.type === 'attributes' && record.attributeName === 'style' && record.target === item.node && record.oldValue === before);
++    const others = records.filter((record,index) => index !== ownIndex);
++    if (others.length) restorationMutation = true;
++    state.foreign(others);
++    if (item.foreignStyle || !item.node.isConnected || item.node.getAttribute('style') !== item.style) return false;
++  }
++  const remaining = state.observer?.takeRecords() || [];
++  if (remaining.length) restorationMutation = true;
++  state.foreign(remaining);
++  if (restorationMutation || !state.originals.every(item => !item.foreignStyle && item.node.isConnected && item.node.getAttribute('style') === item.style)) return false;
++  state.observer?.disconnect();
++  delete globalThis[key];
++  return true;
++})
++)AUXMASK";
++}
++#endif
+diff --git a/chrome/common/aux_person_capture_mask.js b/chrome/common/aux_person_capture_mask.js
+new file mode 100644
+index 0000000000..6b18770f93
+--- /dev/null
++++ b/chrome/common/aux_person_capture_mask.js
+@@ -0,0 +1,95 @@
++// Fixed browser-owned isolated-world program; no caller script or selector.
++// Browser must retain each original frame WeakDocument, wait for its paint ACK,
++// and restore these same documents before exporting any captured pixels.
++(function(operation, captureId) {
++  'use strict';
++  const key = '__auxPersonCaptureOriginalMask';
++  if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(captureId)) return false;
++  if (operation === 'begin') {
++    if (globalThis[key]) return false;
++    if (!document.documentElement || document.designMode.toLowerCase() !== 'off') return false;
++    const elements = [], roots = [document], allRoots = [];
++    let examined = 0;
++    while (roots.length) {
++      const root = roots.pop(); allRoots.push(root);
++      for (const node of root.querySelectorAll('*')) {
++        if (++examined > 10000 || elements.length >= 2000 || allRoots.length > 64) return false;
++        if (node.shadowRoot) roots.push(node.shadowRoot);
++        // Custom elements may contain closed shadow roots. Mask the entire
++        // host conservatively; its descendants cannot override group opacity.
++        if (node.matches('input,textarea,select,[contenteditable]') || node.localName.includes('-')) {
++          if (getComputedStyle(node).display === 'contents') return false;
++          elements.push(node);
++        }
++      }
++    }
++    const originals = elements.map(node => ({node, style:node.getAttribute('style'), maskedStyle:node.getAttribute('style'), foreignStyle:false}));
++    const state = {captureId, originals, dirty:false, observer:null};
++    const foreign = records => {
++      if (records.length) state.dirty = true;
++      for (const record of records) if (record.type === 'attributes' && record.attributeName === 'style') {
++        const item = originals.find(item => item.node === record.target);
++        if (item) item.foreignStyle = true;
++      }
++    };
++    state.foreign = foreign;
++    globalThis[key] = state;
++    try {
++      // Start before a style write may synchronously invoke author custom
++      // element callbacks. Only the exact single original style mutation is
++      // our write; every other begin-time mutation refuses pixel export.
++      state.observer = new MutationObserver(foreign);
++      for (const root of allRoots) state.observer.observe(root,{subtree:true,childList:true,attributes:true,attributeOldValue:true,characterData:true});
++      for (const item of originals) {
++        const before = item.node.getAttribute('style');
++        const maskStyle = document.createElement('span').style;
++        maskStyle.cssText = before || '';
++        for (const [property,value] of [['transition','none'],['animation','none'],['opacity','0']]) maskStyle.setProperty(property,value,'important');
++        // A real attribute write invokes the original custom-element reactions.
++        // Build all three masking declarations off-node so no intermediate
++        // transition or animation can escape before the original write.
++        item.node.setAttribute('style',maskStyle.cssText);
++        const records = state.observer.takeRecords();
++        const ownIndex = records.findIndex(record => record.type === 'attributes' && record.attributeName === 'style' && record.target === item.node && record.oldValue === before);
++        foreign(records.filter((record,index) => index !== ownIndex));
++        item.maskedStyle = item.node.getAttribute('style');
++        for (const property of ['transition','animation','opacity']) if (item.node.style.getPropertyPriority(property) !== 'important') { state.dirty = true; item.foreignStyle = true; }
++      }
++      return !state.dirty && originals.every(item => getComputedStyle(item.node).opacity === '0');
++    } catch {
++      state.dirty = true;
++      return false;
++    }
++  }
++  const state = globalThis[key];
++  if (operation === 'absent') return state === undefined;
++  if (!state || state.captureId !== captureId) return false;
++  if (operation === 'current') {
++    state.foreign(state.observer?.takeRecords() || []);
++    return !state.dirty && state.originals.every(item => item.node.isConnected && item.node.getAttribute('style') === item.maskedStyle && getComputedStyle(item.node).opacity === '0');
++  }
++  if (operation !== 'restore') return false;
++  // Drain style ABA and other queued author mutations before deciding that
++  // any original mask is still ours. Keep observing through author reactions.
++  state.foreign(state.observer?.takeRecords() || []);
++  let restorationMutation = false;
++  for (const item of state.originals) {
++    if (item.foreignStyle || !item.node.isConnected || item.node.getAttribute('style') !== item.maskedStyle) return false;
++    const before = item.node.getAttribute('style');
++    if (item.style === null) item.node.removeAttribute('style');
++    else item.node.setAttribute('style',item.style);
++    const records = state.observer?.takeRecords() || [];
++    const ownIndex = records.findIndex(record => record.type === 'attributes' && record.attributeName === 'style' && record.target === item.node && record.oldValue === before);
++    const others = records.filter((record,index) => index !== ownIndex);
++    if (others.length) restorationMutation = true;
++    state.foreign(others);
++    if (item.foreignStyle || !item.node.isConnected || item.node.getAttribute('style') !== item.style) return false;
++  }
++  const remaining = state.observer?.takeRecords() || [];
++  if (remaining.length) restorationMutation = true;
++  state.foreign(remaining);
++  if (restorationMutation || !state.originals.every(item => !item.foreignStyle && item.node.isConnected && item.node.getAttribute('style') === item.style)) return false;
++  state.observer?.disconnect();
++  delete globalThis[key];
++  return true;
++})
+diff --git a/components/viz/common/frame_sinks/copy_output_request.cc b/components/viz/common/frame_sinks/copy_output_request.cc
+index c3507cf3ab..49222847d7 100644
+--- a/components/viz/common/frame_sinks/copy_output_request.cc
++++ b/components/viz/common/frame_sinks/copy_output_request.cc
+@@ -64,6 +64,17 @@ CopyOutputRequest::CopyOutputRequest(ResultFormat result_format,
+                     perfetto::Track::FromPointer(this));
+ }
+ 
++bool CopyOutputRequest::SetAuxPersonCaptureFrames(std::vector<SurfaceId> surfaces, std::vector<uint32_t> tokens) {
++  if (surfaces.size() > 64 || surfaces.size() != tokens.size()) return false;
++  for (size_t i = 0; i < surfaces.size(); ++i) {
++    if (!surfaces[i].is_valid() || !tokens[i]) return false;
++    for (size_t j = 0; j < i; ++j) if (surfaces[i].frame_sink_id() == surfaces[j].frame_sink_id()) return false;
++  }
++  aux_person_capture_surfaces_ = std::move(surfaces);
++  aux_person_capture_tokens_ = std::move(tokens);
++  return true;
++}
++
+ CopyOutputRequest::~CopyOutputRequest() {
+   if (!result_callback_.is_null()) {
+     // Send an empty result to indicate the request was never satisfied.
+diff --git a/components/viz/common/frame_sinks/copy_output_request.h b/components/viz/common/frame_sinks/copy_output_request.h
+index 971ecf76e4..68633230f7 100644
+--- a/components/viz/common/frame_sinks/copy_output_request.h
++++ b/components/viz/common/frame_sinks/copy_output_request.h
+@@ -9,6 +9,8 @@
+ #include <optional>
+ #include <string>
+ #include <utility>
++#include <vector>
++#include "components/viz/common/surfaces/surface_id.h"
+ 
+ #include "base/functional/callback.h"
+ #include "base/task/sequenced_task_runner.h"
+@@ -66,6 +68,12 @@ class VIZ_COMMON_EXPORT CopyOutputRequest {
+ 
+   virtual ~CopyOutputRequest();
+ 
++  // Optional original masked-frame constraints. Empty preserves ordinary copy.
++  // The parallel arrays are closed together and bounded before IPC allocation.
++  bool SetAuxPersonCaptureFrames(std::vector<SurfaceId> surfaces, std::vector<uint32_t> tokens);
++  const std::vector<SurfaceId>& aux_person_capture_surfaces() const { return aux_person_capture_surfaces_; }
++  const std::vector<uint32_t>& aux_person_capture_tokens() const { return aux_person_capture_tokens_; }
++
+   // Returns the requested result format.
+   ResultFormat result_format() const { return result_format_; }
+   // Returns the requested result destination.
+@@ -180,6 +188,8 @@ class VIZ_COMMON_EXPORT CopyOutputRequest {
+   std::optional<gfx::Rect> result_selection_;
+ 
+   std::optional<BlitRequest> blit_request_;
++  std::vector<SurfaceId> aux_person_capture_surfaces_;
++  std::vector<uint32_t> aux_person_capture_tokens_;
+ };
+ 
+ }  // namespace viz
+diff --git a/components/viz/service/display/surface_aggregator.cc b/components/viz/service/display/surface_aggregator.cc
+index 5630e9f610..2c0b76f401 100644
+--- a/components/viz/service/display/surface_aggregator.cc
++++ b/components/viz/service/display/surface_aggregator.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "components/viz/service/display/surface_aggregator.h"
++#include <functional>
++#include <map>
++#include <set>
+ 
+ #include <stddef.h>
+ 
+@@ -887,6 +890,10 @@ void SurfaceAggregator::EmitSurfaceContent(
+     surface->TakeCopyOutputRequests(&copy_requests);
+   }
+ 
++  std::erase_if(copy_requests, [&](const auto& entry) {
++    return !MeetsAuxPersonCaptureFrames(resolved_frame, *entry.second);
++  });
++
+   if (!resolved_frame.is_valid()) {
+     // As |copy_requests| goes out-of-scope, all copy requests in that container
+     // will auto-send an empty result upon destruction.
+@@ -1488,6 +1495,60 @@ void SurfaceAggregator::CopyQuadsToPass(
+   }
+ }
+ 
++bool SurfaceAggregator::MeetsAuxPersonCaptureFrames(ResolvedFrameData& source, const CopyOutputRequest& request) {
++  const auto& required = request.aux_person_capture_surfaces();
++  const auto& tokens = request.aux_person_capture_tokens();
++  if (required.empty()) return tokens.empty();
++  if (required.size() > 64 || required.size() != tokens.size()) return false;
++  std::map<SurfaceId,uint32_t> selected;
++  std::set<SurfaceId> ancestors;
++  size_t examined = 0;
++  std::function<bool(ResolvedFrameData&,size_t)> visit = [&](ResolvedFrameData& frame, size_t depth) {
++    if (!frame.is_valid() || depth > 64 || ancestors.contains(frame.surface_id())) return false;
++    if (selected.contains(frame.surface_id())) return true;
++    if (selected.size() >= 64) return false;
++    selected.emplace(frame.surface_id(), frame.GetMetadata().frame_token);
++    ancestors.insert(frame.surface_id());
++    // Only passes reachable from the original root contribute pixels. An
++    // unused pass containing a foreign SurfaceDrawQuad cannot satisfy a claim.
++    std::set<CompositorRenderPassId> active_passes, visited_passes;
++    std::function<bool(const ResolvedPassData&,size_t)> visit_pass = [&](const ResolvedPassData& pass, size_t pass_depth) {
++      const auto id = pass.render_pass().id;
++      if (pass_depth > 64 || active_passes.contains(id)) return false;
++      if (visited_passes.contains(id)) return true;
++      if (visited_passes.size() >= 64) return false;
++      active_passes.insert(id);
++      for (const auto* quad : pass.render_pass().quad_list) {
++        if (++examined > 10000) return false;
++        if (const auto* pass_quad = quad->DynamicCast<CompositorRenderPassDrawQuad>()) {
++          const ResolvedPassData* referenced = nullptr;
++          for (const auto& candidate : frame.GetResolvedPasses())
++            if (candidate.render_pass().id == pass_quad->render_pass_id) referenced = &candidate;
++          if (!referenced || !visit_pass(*referenced,pass_depth+1)) return false;
++        } else if (quad->material == DrawQuad::Material::kSurfaceContent) {
++          const auto* surface_quad = SurfaceDrawQuad::MaterialCast(quad);
++          // The same cached range resolution is used by EmitSurfaceContent.
++          auto* child = GetResolvedFrame(surface_quad->surface_range);
++          if (!child || !visit(*child,depth+1)) return false;
++        }
++      }
++      active_passes.erase(id); visited_passes.insert(id); return true;
++    };
++    if (!visit_pass(frame.GetRootRenderPassData(),0)) return false;
++    ancestors.erase(frame.surface_id()); return true;
++  };
++  if (!visit(source,0)) return false;
++  for (size_t i = 0; i < required.size(); ++i) {
++    if (!required[i].is_valid() || !tokens[i]) return false;
++    for (size_t j = 0; j < i; ++j) if (required[i].frame_sink_id() == required[j].frame_sink_id()) return false;
++    auto actual = selected.find(required[i]);
++    // Serial-number comparison refuses older and ambiguous half-range tokens,
++    // including wraparound; never accept zero as an activated masked frame.
++    if (actual == selected.end() || !actual->second || static_cast<uint32_t>(actual->second-tokens[i]) >= 0x80000000u) return false;
++  }
++  return true;
++}
++
+ void SurfaceAggregator::CopyPasses(ResolvedFrameData& resolved_frame) {
+   Surface* surface = resolved_frame.surface();
+ 
+@@ -1498,6 +1559,10 @@ void SurfaceAggregator::CopyPasses(ResolvedFrameData& resolved_frame) {
+   if (take_copy_requests_)
+     surface->TakeCopyOutputRequests(&copy_requests);
+ 
++  std::erase_if(copy_requests, [&](const auto& entry) {
++    return !MeetsAuxPersonCaptureFrames(resolved_frame, *entry.second);
++  });
++
+   if (!resolved_frame.is_valid()) {
+     return;
+   }
+diff --git a/components/viz/service/display/surface_aggregator.h b/components/viz/service/display/surface_aggregator.h
+index aef13e755f..f5a6dcdc45 100644
+--- a/components/viz/service/display/surface_aggregator.h
++++ b/components/viz/service/display/surface_aggregator.h
+@@ -249,6 +249,7 @@ class VIZ_SERVICE_EXPORT SurfaceAggregator : public SurfaceObserver {
+ 
+   void CopyUndrawnSurfaces(PrewalkResult* prewalk);
+   void CopyPasses(ResolvedFrameData& resolved_frame);
++  bool MeetsAuxPersonCaptureFrames(ResolvedFrameData& source, const CopyOutputRequest& request);
+   void AddRootReadbackPass();
+   void AddDisplayTransformPass();
+   void AddRenderPassHelper(AggregatedRenderPassId render_pass_id,
+diff --git a/content/browser/renderer_host/delegated_frame_host.cc b/content/browser/renderer_host/delegated_frame_host.cc
+index 09a518dcb7..4651d9a60e 100644
+--- a/content/browser/renderer_host/delegated_frame_host.cc
++++ b/content/browser/renderer_host/delegated_frame_host.cc
+@@ -180,6 +180,24 @@ void DelegatedFrameHost::CopyFromCompositingSurface(
+           std::move(callback), std::move(keep_surface_alive)));
+ }
+ 
++void DelegatedFrameHost::CopyAuxPersonCaptureSurface(const viz::SurfaceId& surface,
++      const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens,
++    base::TimeDelta timeout, base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
++  if (!surface.is_valid() || required_surfaces.empty() || required_surfaces.front() != surface || surface != GetCurrentSurfaceId() || !CanCopyFromCompositingSurface()) {
++    std::move(callback).Run(base::unexpected(CopyFromSurfaceError::kUnknownVizError)); return;
++  }
++  ui::Compositor::ScopedKeepSurfaceAliveCallback keep_alive;
++  if (compositor_) keep_alive = compositor_->TakeScopedKeepSurfaceAliveCallback(surface);
++  CopyFromCompositingSurfaceInternal(gfx::Rect(), gfx::Size(), surface,
++      viz::CopyOutputRequest::ResultFormat::RGBA, viz::CopyOutputRequest::ResultDestination::kSystemMemory,
++      timeout, base::BindOnce([](base::OnceCallback<void(const content::CopyFromSurfaceResult&)> done,
++          ui::Compositor::ScopedKeepSurfaceAliveCallback keep_alive,
++          std::unique_ptr<viz::CopyOutputResult> result) {
++        if (keep_alive) std::move(keep_alive).RunAndReset();
++        std::move(done).Run(ToCopyFromSurfaceResult(result->ScopedAccessSkBitmap().GetOutScopedBitmapAndMetadata()));
++      }, std::move(callback), std::move(keep_alive)), true, required_surfaces, required_tokens);
++}
++
+ void DelegatedFrameHost::CopyFromCompositingSurfaceAsTexture(
+     const gfx::Rect& src_subrect,
+     const gfx::Size& output_size,
+@@ -199,9 +217,13 @@ void DelegatedFrameHost::CopyFromCompositingSurfaceInternal(
+     viz::CopyOutputRequest::ResultFormat format,
+     viz::CopyOutputRequest::ResultDestination destination,
+     base::TimeDelta timeout,
+-    viz::CopyOutputRequest::CopyOutputRequestCallback callback) {
++    viz::CopyOutputRequest::CopyOutputRequestCallback callback, bool exact_surface,
++    const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens) {
+   auto request = std::make_unique<viz::CopyOutputRequest>(format, destination,
+                                                           std::move(callback));
++  if (!request->SetAuxPersonCaptureFrames(required_surfaces, required_tokens)) {
++    request->SendError(viz::CopyOutputResult::Error::kUnknown); return;
++  }
+   // Run result callback on the current thread in case `callback` needs to run
+   // on the current thread. See http://crbug.com/1431363. When we bound a
+   // `ui::Compositor::ScopedKeepSurfaceAliveCallback` it must also be ran on the
+@@ -241,7 +263,7 @@ void DelegatedFrameHost::CopyFromCompositingSurfaceInternal(
+   }
+   CHECK(host_frame_sink_manager_);
+   host_frame_sink_manager_->RequestCopyOfOutput(
+-      surface_id, std::move(request), /*capture_exact_surface_id=*/false,
++      surface_id, std::move(request), /*capture_exact_surface_id=*/exact_surface,
+       timeout);
+ }
+ 
+diff --git a/content/browser/renderer_host/delegated_frame_host.h b/content/browser/renderer_host/delegated_frame_host.h
+index aa6766c26a..591c5b31b5 100644
+--- a/content/browser/renderer_host/delegated_frame_host.h
++++ b/content/browser/renderer_host/delegated_frame_host.h
+@@ -152,6 +152,9 @@ class CONTENT_EXPORT DelegatedFrameHost
+       const gfx::Size& output_size,
+       base::TimeDelta timeout,
+       base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback);
++  void CopyAuxPersonCaptureSurface(const viz::SurfaceId& surface,
++      const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens, base::TimeDelta timeout,
++      base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback);
+   void CopyFromCompositingSurfaceAsTexture(
+       const gfx::Rect& src_subrect,
+       const gfx::Size& output_size,
+@@ -261,7 +264,8 @@ class CONTENT_EXPORT DelegatedFrameHost
+       viz::CopyOutputRequest::ResultFormat format,
+       viz::CopyOutputRequest::ResultDestination destination,
+       base::TimeDelta timeout,
+-      viz::CopyOutputRequest::CopyOutputRequestCallback callback);
++      viz::CopyOutputRequest::CopyOutputRequestCallback callback, bool exact_surface = false,
++      const std::vector<viz::SurfaceId>& required_surfaces = {}, const std::vector<uint32_t>& required_tokens = {});
+ 
+   void SetFrameEvictionStateAndNotifyObservers(
+       FrameEvictionState frame_eviction_state);
+diff --git a/content/browser/renderer_host/render_frame_metadata_provider_impl.h b/content/browser/renderer_host/render_frame_metadata_provider_impl.h
+index f49c209bd4..a7b21f702e 100644
+--- a/content/browser/renderer_host/render_frame_metadata_provider_impl.h
++++ b/content/browser/renderer_host/render_frame_metadata_provider_impl.h
+@@ -73,6 +73,10 @@ class CONTENT_EXPORT RenderFrameMetadataProviderImpl
+ 
+   void DidProcessFrame(uint32_t frame_token, base::TimeTicks activation_time);
+   void ResetFrameTokenMessageQueue();
++  void WaitForAuxPersonCaptureActivation(uint32_t token, base::OnceCallback<void(base::TimeTicks)> callback) {
++    if (!token) { std::move(callback).Run(base::TimeTicks()); return; }
++    frame_token_message_queue_.EnqueueOrRunFrameTokenCallback(token, std::move(callback));
++  }
+ 
+   base::WeakPtr<RenderFrameMetadataProviderImpl> GetWeakPtr();
+ 
+diff --git a/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.cc b/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.cc
+index 7513ac42e6..195b2885d9 100644
+--- a/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.cc
++++ b/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.cc
+@@ -160,6 +160,16 @@ StructTraits<viz::mojom::CopyOutputRequestDataView,
+     return base::unexpected(DeserializationError());
+   }
+ 
++  // Inspect encoded cardinality before reading/allocating untrusted arrays.
++  mojo::ArrayDataView<viz::mojom::SurfaceIdDataView> surfaces_view;
++  mojo::ArrayDataView<uint32_t> tokens_view;
++  data.GetAuxPersonCaptureSurfacesDataView(&surfaces_view);
++  data.GetAuxPersonCaptureTokensDataView(&tokens_view);
++  if (surfaces_view.size() > 64 || surfaces_view.size() != tokens_view.size()) return base::unexpected(DeserializationError());
++  std::vector<viz::SurfaceId> surfaces; std::vector<uint32_t> tokens;
++  if (!data.ReadAuxPersonCaptureSurfaces(&surfaces) || !data.ReadAuxPersonCaptureTokens(&tokens) ||
++      !request->SetAuxPersonCaptureFrames(std::move(surfaces), std::move(tokens))) return base::unexpected(DeserializationError());
++
+   *out_p = std::move(request);
+ 
+   return base::ok();
+diff --git a/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.h b/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.h
+index 8c5fade9fb..1d40ec9a04 100644
+--- a/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.h
++++ b/services/viz/public/cpp/compositing/copy_output_request_mojom_traits.h
+@@ -14,6 +14,7 @@
+ #include "mojo/public/cpp/bindings/deserialization_error.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+ #include "services/viz/public/cpp/compositing/copy_output_result_mojom_traits.h"
++#include "services/viz/public/cpp/compositing/surface_id_mojom_traits.h"
+ #include "services/viz/public/mojom/compositing/copy_output_request.mojom.h"
+ #include "ui/gfx/geometry/mojom/geometry_mojom_traits.h"
+ 
+@@ -62,6 +63,9 @@ struct StructTraits<viz::mojom::CopyOutputRequestDataView,
+     return request->blit_request_;
+   }
+ 
++  static const std::vector<viz::SurfaceId>& aux_person_capture_surfaces(const std::unique_ptr<viz::CopyOutputRequest>& request) { return request->aux_person_capture_surfaces(); }
++  static const std::vector<uint32_t>& aux_person_capture_tokens(const std::unique_ptr<viz::CopyOutputRequest>& request) { return request->aux_person_capture_tokens(); }
++
+   static mojo::PendingRemote<viz::mojom::CopyOutputResultSender> result_sender(
+       const std::unique_ptr<viz::CopyOutputRequest>& request);
+ 
+diff --git a/services/viz/public/mojom/compositing/copy_output_request.mojom b/services/viz/public/mojom/compositing/copy_output_request.mojom
+index 1dd59265de..7233fb9ff5 100644
+--- a/services/viz/public/mojom/compositing/copy_output_request.mojom
++++ b/services/viz/public/mojom/compositing/copy_output_request.mojom
+@@ -4,6 +4,8 @@
+ 
+ module viz.mojom;
+ 
++import "services/viz/public/mojom/compositing/surface_id.mojom";
++
+ import "services/viz/public/mojom/compositing/blit_request.mojom";
+ import "services/viz/public/mojom/compositing/copy_output_result.mojom";
+ import "mojo/public/mojom/base/unguessable_token.mojom";
+@@ -24,6 +26,10 @@ struct CopyOutputRequest {
+ 
+   BlitRequest? blit_request;
+ 
++  // Bounded matching original masked widget surfaces/submission tokens.
++  array<SurfaceId> aux_person_capture_surfaces;
++  array<uint32> aux_person_capture_tokens;
++
+   pending_remote<CopyOutputResultSender> result_sender;
+ };
+ 
+diff --git a/third_party/blink/public/mojom/widget/platform_widget.mojom b/third_party/blink/public/mojom/widget/platform_widget.mojom
+index 6c682e0ec9..dd6ba9e270 100644
+--- a/third_party/blink/public/mojom/widget/platform_widget.mojom
++++ b/third_party/blink/public/mojom/widget/platform_widget.mojom
+@@ -30,6 +30,7 @@ interface WidgetCompositor {
+   // Requests that the RenderWidget sends back a response after the next main
+   // frame is generated and presented in the display compositor.
+   VisualStateRequest() => ();
++  AuxPersonCaptureVisualStateRequest() => (uint32 frame_token);
+ };
+ 
+ // Implemented in Browser, this interface defines widget-specific methods that
+diff --git a/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.cc b/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.cc
+new file mode 100644
+index 0000000000..efcfe41ca8
+--- /dev/null
++++ b/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.cc
+@@ -0,0 +1,17 @@
++// Copyright 2026 The Aux Authors
++#include <utility>
++#include "third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.h"
++#include "components/viz/common/quads/compositor_frame_metadata.h"
++namespace blink {
++AuxPersonCaptureSwapPromise::AuxPersonCaptureSwapPromise(base::OnceCallback<void(uint32_t)> reply) : reply_(std::move(reply)) {}
++int64_t AuxPersonCaptureSwapPromise::GetTraceId() const { return 0; }
++AuxPersonCaptureSwapPromise::~AuxPersonCaptureSwapPromise() { if (reply_) std::move(reply_).Run(0); }
++void AuxPersonCaptureSwapPromise::WillSwap(viz::CompositorFrameMetadata* metadata) {
++  token_ = metadata ? metadata->frame_token : 0;
++}
++void AuxPersonCaptureSwapPromise::DidSwap() { if (reply_) std::move(reply_).Run(token_); }
++cc::SwapPromise::DidNotSwapAction AuxPersonCaptureSwapPromise::DidNotSwap(DidNotSwapReason reason, base::TimeTicks now) {
++  if (reply_) std::move(reply_).Run(0);
++  return DidNotSwapAction::BREAK_PROMISE;
++}
++}
+diff --git a/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.h b/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.h
+new file mode 100644
+index 0000000000..0e0724c712
+--- /dev/null
++++ b/third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.h
+@@ -0,0 +1,22 @@
++// Copyright 2026 The Aux Authors
++#ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_WIDGET_COMPOSITING_AUX_PERSON_CAPTURE_SWAP_PROMISE_H_
++#define THIRD_PARTY_BLINK_RENDERER_PLATFORM_WIDGET_COMPOSITING_AUX_PERSON_CAPTURE_SWAP_PROMISE_H_
++#include "base/functional/callback.h"
++#include "cc/trees/swap_promise.h"
++#include "third_party/blink/renderer/platform/platform_export.h"
++namespace blink {
++class PLATFORM_EXPORT AuxPersonCaptureSwapPromise final : public cc::SwapPromise {
++ public:
++  explicit AuxPersonCaptureSwapPromise(base::OnceCallback<void(uint32_t)> reply);
++  ~AuxPersonCaptureSwapPromise() override;
++  void WillSwap(viz::CompositorFrameMetadata* metadata) override;
++  void DidSwap() override;
++  DidNotSwapAction DidNotSwap(DidNotSwapReason reason, base::TimeTicks now) override;
++  void DidActivate() override {}
++  int64_t GetTraceId() const override;
++ private:
++  uint32_t token_ = 0;
++  base::OnceCallback<void(uint32_t)> reply_;
++};
++}
++#endif
+diff --git a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
+index 55e6d307cd..10a271e7a2 100644
+--- a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
++++ b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/platform/widget/compositing/widget_compositor.h"
++#include "base/task/bind_post_task.h"
+ 
+ #include <utility>
+ 
+@@ -11,6 +12,7 @@
+ #include "base/types/pass_key.h"
+ #include "cc/trees/layer_tree_host.h"
+ #include "third_party/blink/renderer/platform/widget/compositing/queue_report_time_swap_promise.h"
++#include "third_party/blink/renderer/platform/widget/compositing/aux_person_capture_swap_promise.h"
+ #include "third_party/blink/renderer/platform/widget/widget_base.h"
+ #include "third_party/blink/renderer/platform/widget/widget_base_client.h"
+ 
+@@ -66,6 +68,19 @@ void WidgetCompositor::ResetOnThread() {
+   receiver_.reset();
+ }
+ 
++void WidgetCompositor::AuxPersonCaptureVisualStateRequest(AuxPersonCaptureVisualStateRequestCallback callback) {
++  DCHECK(CalledOnValidCompositorThread());
++  auto reply = base::BindPostTask(compositor_task_runner_ ? compositor_task_runner_ : main_task_runner_, std::move(callback));
++  if (main_task_runner_->BelongsToCurrentThread()) CreateAuxPersonCaptureSwap(std::move(reply));
++  else main_task_runner_->PostTask(FROM_HERE, base::BindOnce(&WidgetCompositor::CreateAuxPersonCaptureSwap, base::RetainedRef(this), std::move(reply)));
++}
++void WidgetCompositor::CreateAuxPersonCaptureSwap(AuxPersonCaptureVisualStateRequestCallback callback) {
++  DCHECK(main_task_runner_->BelongsToCurrentThread());
++  if (!widget_base_ || widget_base_->WillBeDestroyed()) { std::move(callback).Run(0); return; }
++  LayerTreeHost()->QueueSwapPromise(std::make_unique<AuxPersonCaptureSwapPromise>(std::move(callback)));
++  LayerTreeHost()->SetNeedsCommitWithForcedRedraw();
++}
++
+ void WidgetCompositor::VisualStateRequest(VisualStateRequestCallback callback) {
+   DCHECK(CalledOnValidCompositorThread());
+ 
+diff --git a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h
+index acad84b050..aadf94788e 100644
+--- a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h
++++ b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h
+@@ -54,6 +54,7 @@ class PLATFORM_EXPORT WidgetCompositor
+ 
+   // mojom::WidgetCompositor:
+   void VisualStateRequest(VisualStateRequestCallback callback) override;
++  void AuxPersonCaptureVisualStateRequest(AuxPersonCaptureVisualStateRequestCallback callback) override;
+ 
+   virtual cc::LayerTreeHost* LayerTreeHost() const;
+ 
+@@ -66,6 +67,7 @@ class PLATFORM_EXPORT WidgetCompositor
+ 
+  private:
+   void ResetOnThread();
++  void CreateAuxPersonCaptureSwap(AuxPersonCaptureVisualStateRequestCallback callback);
+   void CreateQueueSwapPromise(base::OnceCallback<void(int)> drain_callback,
+                               base::OnceClosure swap_callback,
+                               VisualStateRequestCallback callback);

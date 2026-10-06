@@ -1,0 +1,351 @@
+diff --git a/chrome/browser/ui/aux/egress_controller.h b/chrome/browser/ui/aux/egress_controller.h
+--- a/chrome/browser/ui/aux/egress_controller.h
++++ b/chrome/browser/ui/aux/egress_controller.h
+@@ -95,14 +95,18 @@
+   std::pair<std::string, content::StoragePartitionConfig> ReserveIsolation(
+       const std::string& run_id,
+       const std::string& task_id,
+-      int task_revision);
++      int task_revision,
++      bool session);
+   bool RegisterIsolation(content::WebContents* page,
+                          const std::string& isolation_id,
+                          const std::string& run_id,
+                          const std::string& task_id,
+                          int task_revision,
+                          const std::vector<std::string>& ancestry,
+-                         uint64_t connection_generation);
++                         uint64_t connection_generation,
++                         bool session);
++  bool AllowsProfileCookies(const EgressRequestContext& context) const;
++  bool GroupAgentPage(content::WebContents* page, BrowserWindowInterface* owner);
+   // Local owner ingress only; descendants are resolved from the immutable
+   // authenticated isolation ancestry, never a caller-supplied page/child list.
+   bool RetireRegisteredRun(const std::string& run_id, uint64_t generation);
+diff --git a/chrome/browser/ui/aux/egress_controller.cc b/chrome/browser/ui/aux/egress_controller.cc
+--- a/chrome/browser/ui/aux/egress_controller.cc
++++ b/chrome/browser/ui/aux/egress_controller.cc
+@@ -22,6 +22,10 @@
+ #include "chrome/browser/ui/aux/native_creator_close_receipt.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_group_model.h"
++#include "components/tabs/public/tab_group.h"
++#include "components/tab_groups/tab_group_color.h"
++#include "components/tab_groups/tab_group_visual_data.h"
+ #include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "content/public/browser/navigation_handle.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
+@@ -178,6 +182,8 @@
+   std::string task_id;
+   int task_revision;
+   content::StoragePartitionConfig config;
++  bool session = false;
++  std::map<int, tab_groups::TabGroupId> groups;
+   std::vector<std::string> ancestry;
+   std::set<std::string> terminal_ancestors;
+   std::vector<base::WeakPtr<content::WebContents>> registered_pages;
+@@ -278,12 +284,13 @@
+ std::pair<std::string, content::StoragePartitionConfig>
+ EgressController::ReserveIsolation(const std::string& run_id,
+                                    const std::string& task_id,
+-                                   int task_revision) {
++                                   int task_revision,
++                                   bool session) {
+   auto it = isolations_by_run_.find(run_id);
+   if (it != isolations_by_run_.end()) {
+     const auto& isolation = *it->second;
+     if (isolation.task_id != task_id ||
+-        isolation.task_revision != task_revision) {
++        isolation.task_revision != task_revision || isolation.session != session) {
+       return {};
+     }
+     return {isolation.id, isolation.config};
+@@ -292,8 +299,8 @@
+     return {};
+   }
+   const std::string id = base::UnguessableToken::Create().ToString();
+-  return {id, content::StoragePartitionConfig::Create(profile_, "aux", id,
+-                                                       true)};
++  return {id, session ? content::StoragePartitionConfig::CreateDefault(profile_)
++                      : content::StoragePartitionConfig::Create(profile_, "aux", id, true)};
+ }
+ bool EgressController::RegisterIsolation(content::WebContents* page,
+                                          const std::string& isolation_id,
+@@ -301,7 +308,8 @@
+                                          const std::string& task_id,
+                                          int task_revision,
+                                          const std::vector<std::string>& ancestry,
+-                                         uint64_t connection_generation) {
++                                         uint64_t connection_generation,
++                                         bool session) {
+   if (!connection_generation || connection_generation != admitted_runtime_generation_ || ancestry.empty() || ancestry.size() > 32 ||
+       ancestry.front() != run_id ||
+       std::set<std::string>(ancestry.begin(), ancestry.end()).size() != ancestry.size() ||
+@@ -312,8 +320,9 @@
+     LOG(ERROR) << "AUX_ISOLATION_DIAG reason=missing_frame_or_scope";
+     return false;
+   }
+-  const auto expected = content::StoragePartitionConfig::Create(
+-      profile_, "aux", isolation_id, true);
++  const auto expected = session
++      ? content::StoragePartitionConfig::CreateDefault(profile_)
++      : content::StoragePartitionConfig::Create(profile_, "aux", isolation_id, true);
+   if (!frame->GetSiteInstance()) {
+     LOG(ERROR) << "AUX_ISOLATION_DIAG reason=no_site_instance";
+     return false;
+@@ -341,12 +350,14 @@
+     isolation->task_id = task_id;
+     isolation->task_revision = task_revision;
+     isolation->config = expected;
++    isolation->session = session;
+     isolation->ancestry = ancestry;
+     isolation->connection_generation = connection_generation;
+     isolation->runtime_owner_incarnation = runtime_owner_incarnation_;
+     if (!RunIntentCurrent(*isolation)) return false;
+     it = isolations_by_run_.emplace(run_id, std::move(isolation)).first;
+-  } else if (it->second->id != isolation_id ||
++  } else if (it->second->session != session ||
++             it->second->config != expected || it->second->id != isolation_id ||
+              it->second->task_id != task_id ||
+              it->second->task_revision != task_revision ||
+              it->second->ancestry != ancestry ||
+@@ -908,6 +919,12 @@
+       base::BindOnce(&EgressController::PruneTerminalRegistrations, weak));
+   authority_observers_.Notify();
+   if (!weak) return;
++  // A session run owns its tabs and authority, never the Profile storage.
++  if (config.is_default()) {
++    IsolationReceipt("released", run_id, page_id, isolation_id, nullptr,
++                     "profile_storage_retained");
++    return;
++  }
+   auto* partition = profile_->GetStoragePartition(config, false);
+   if (!partition) {
+     IsolationReceipt("released", run_id, page_id, isolation_id, nullptr,
+@@ -924,6 +941,70 @@
+                            GetWeakPtr(), "released", run_id, page_id,
+                            isolation_id, nullptr, "clear_completed"));
+ }
++bool EgressController::GroupAgentPage(content::WebContents* page,
++                                      BrowserWindowInterface* owner) {
++  if (!page || !owner || owner->GetProfile() != profile_) return false;
++  const auto* identity = PageIdentity::FromWebContents(page);
++  const auto* isolation = identity
++      ? IsolationForPage(identity->id(), page->GetPrimaryMainFrame()) : nullptr;
++  auto* model = owner->GetTabStripModel();
++  if (!identity || !identity->runtime_owned() || !isolation ||
++      !RunIntentCurrent(*isolation) || !model || !model->SupportsTabGroups())
++    return false;
++  const int index = model->GetIndexOfWebContents(page);
++  if (index == TabStripModel::kNoTab) return false;
++  const auto run_id = isolation->run_id;
++  const auto isolation_id = isolation->id;
++  const int owner_id = owner->GetSessionID().id();
++  auto original = GetWeakPtr();
++  auto original_page = page->GetWeakPtr();
++  const auto original_document = page->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  auto original_owner = owner->GetWeakPtr();
++  const auto existing = isolation->groups.find(owner_id);
++  const bool reuse = existing != isolation->groups.end() &&
++      model->group_model()->ContainsTabGroup(existing->second);
++  const auto group = reuse ? existing->second : model->AddToNewGroup({index});
++  if (reuse) model->AddToExistingGroup({index}, group, true);
++  // Group notifications may synchronously close or move the original tab.
++  if (!original || !original_page || !original_owner) return false;
++  auto current = isolations_by_run_.find(run_id);
++  auto* current_model = original_owner->GetTabStripModel();
++  const auto* current_identity = PageIdentity::FromWebContents(original_page.get());
++  const int current_index = current_model
++      ? current_model->GetIndexOfWebContents(original_page.get()) : TabStripModel::kNoTab;
++  if (current == isolations_by_run_.end() || current->second->id != isolation_id ||
++      !RunIntentCurrent(*current->second) || !current_identity ||
++      !current_identity->runtime_owned() || current_index == TabStripModel::kNoTab ||
++      !current_model->SupportsTabGroups() ||
++      current_model->GetTabGroupForTab(current_index) != group ||
++      IsolationForPage(current_identity->id(), original_page->GetPrimaryMainFrame()) != current->second.get())
++    return false;
++  const std::string current_page_id = current_identity->id();
++  current->second->groups.insert_or_assign(owner_id, group);
++  if (!reuse) {
++    current_model->group_model()->GetTabGroup(group)->SetVisualData(
++        tab_groups::TabGroupVisualData(u"Agent", tab_groups::TabGroupColorId::kBlue));
++  }
++  if (!original || !original_page || !original_owner ||
++      original_document.AsRenderFrameHostIfValid() != original_page->GetPrimaryMainFrame())
++    return false;
++  auto final = original->isolations_by_run_.find(run_id);
++  auto* final_model = original_owner->GetTabStripModel();
++  const int final_index = final_model ? final_model->GetIndexOfWebContents(original_page.get()) : TabStripModel::kNoTab;
++  return final != original->isolations_by_run_.end() &&
++      final->second->id == isolation_id && original->RunIntentCurrent(*final->second) &&
++      final_index != TabStripModel::kNoTab && final_model->SupportsTabGroups() &&
++      final_model->GetTabGroupForTab(final_index) == group &&
++      original->IsolationForPage(current_page_id, original_document.AsRenderFrameHostIfValid()) == final->second.get();
++}
++bool EgressController::AllowsProfileCookies(const EgressRequestContext& context) const {
++  auto owner = pages_.find(context.page_id);
++  auto* frame = context.document.AsRenderFrameHostIfValid();
++  const auto* isolation = frame ? IsolationForPage(context.page_id, frame) : nullptr;
++  return owner != pages_.end() && isolation && isolation->session &&
++      isolation->config.is_default() && RunIntentCurrent(*isolation) &&
++      Current(context, owner->second->lease);
++}
+ bool EgressController::IsIsolatedPage(content::WebContents* page) const {
+   const auto* identity = page ? PageIdentity::FromWebContents(page) : nullptr;
+   return identity && isolation_run_by_page_.contains(identity->id());
+@@ -1047,8 +1128,9 @@
+       scope.Set("taskId", isolation->task_id);
+     }
+     scope.Set("taskRevision", isolation->task_revision);
+-    scope.Set("inMemory", true);
+-    scope.Set("cookies", "empty");
++    scope.Set("mode", isolation->session ? "session" : "private");
++    scope.Set("inMemory", !isolation->session);
++    scope.Set("cookies", isolation->session ? "profile" : "empty");
+     context.Set("isolation", std::move(scope));
+   }
+   if (isolation && !state->acknowledged_context.empty() &&
+@@ -1861,7 +1943,8 @@
+     std::move(callback).Run(false);
+     return;
+   }
+-  if (final_headers && headers.HasHeader("Cookie")) {
++  if (final_headers && headers.HasHeader("Cookie") &&
++      !AllowsProfileCookies(context)) {
+     Receipt(request_id, context.kind, phase, "uninspectable_cookie", false);
+     std::move(callback).Run(false);
+     return;
+diff --git a/chrome/browser/ui/aux/egress_url_loader.cc b/chrome/browser/ui/aux/egress_url_loader.cc
+--- a/chrome/browser/ui/aux/egress_url_loader.cc
++++ b/chrome/browser/ui/aux/egress_url_loader.cc
+@@ -138,6 +138,15 @@
+     // Snapshot is immutable while consent waits. No other handler sees a chance
+     // to mutate after this final wrapper returns it to the network service.
+     auto final = modified.value_or(original);
++    // Only the CookieStore-selected header from Network Service is ambient
++    // Profile authority. A downstream header client cannot add or replace it.
++    if (state_ && state_->controller &&
++        state_->controller->AllowsProfileCookies(state_->context) &&
++        final.GetHeader("Cookie") != original.GetHeader("Cookie")) {
++      std::move(callback).Run(net::ERR_BLOCKED_BY_CLIENT, std::nullopt,
++                              std::nullopt);
++      return;
++    }
+     Check(state_, final, true,
+           base::BindOnce(
+               [](net::HttpRequestHeaders final,
+@@ -194,8 +203,8 @@
+     state->context = state_->context;
+     state->request = request;
+     if (state->controller && state->controller->IsProtected(state->context)) {
+-      // Network Service can append ambient cookies after the trusted header
+-      // callback. Agent requests cannot rely on that callback to inspect them.
++      // Caller-supplied and browser-bonus cookies never acquire session
++      // authority. Network Service selects ambient cookies from CookieStore.
+       state->request.headers.RemoveHeader("Cookie");
+       state->request.cors_exempt_headers.RemoveHeader("Cookie");
+       if (state->request.trusted_params) {
+@@ -251,6 +260,11 @@
+       return;
+     }
+     following_ = true;
++    if (state_->controller && state_->controller->IsProtected(state_->context)) {
++      updates.modified_headers.RemoveHeader("Cookie");
++      updates.modified_cors_exempt_headers.RemoveHeader("Cookie");
++      updates.removed_headers.push_back("Cookie");
++    }
+     auto next = *redirect_;
+     if (new_url) {
+       next.new_url = *new_url;
+@@ -393,6 +407,12 @@
+     state->context = state_->context;
+     state->request = request;
+     state->original_id = id;
++    if (state->controller && state->controller->IsProtected(state->context)) {
++      state->request.headers.RemoveHeader("Cookie");
++      state->request.cors_exempt_headers.RemoveHeader("Cookie");
++      if (state->request.trusted_params)
++        state->request.trusted_params->allow_cookies_from_browser = false;
++    }
+     if (request.request_body && state->controller &&
+         std::ranges::any_of(*request.request_body->elements(),
+                             [](const auto& element) {
+@@ -447,7 +467,10 @@
+       return;
+     }
+     if (state_->controller && state_->controller->IsProtected(state_->context)) {
+-      options |= network::mojom::kURLLoadOptionBlockAllCookies;
++      // Session pages use only the original Profile's ambient CookieStore;
++      // private and other protected pages retain the empty-cookie transport.
++      if (!state_->controller->AllowsProfileCookies(state_->context))
++        options |= network::mojom::kURLLoadOptionBlockAllCookies;
+       request.headers.RemoveHeader("Cookie");
+       request.cors_exempt_headers.RemoveHeader("Cookie");
+       if (request.trusted_params) {
+diff --git a/chrome/browser/ui/aux/methods/native_tabs_methods.cc b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+--- a/chrome/browser/ui/aux/methods/native_tabs_methods.cc
++++ b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+@@ -150,6 +150,10 @@
+     const std::string* profile_id = params.FindString("profileId");
+     const std::string* run_id = params.FindString("runId");
+     const std::string* window_id = params.FindString("windowId");
++    const std::string* mode = params.FindString("mode");
++    if (!mode || (*mode != "session" && *mode != "private"))
++      return NativeFault("permission_denied", "Invalid Agent storage mode");
++    const bool session = *mode == "session";
+     const int revision = params.FindInt("taskRevision").value_or(-1);
+     const std::string task_id = params.FindString("taskId")
+                                     ? *params.FindString("taskId") : "";
+@@ -201,12 +205,13 @@
+       }
+     }
+     auto [isolation_id, partition] = egress->ReserveIsolation(
+-        *run_id, task_id, revision);
++        *run_id, task_id, revision, session);
+     if (isolation_id.empty()) {
+       return NativeFault("permission_denied", "Task isolation is unavailable");
+     }
+-    auto site = content::SiteInstance::CreateForFixedStoragePartition(
+-        profile_, GURL("https://aux.invalid/"), partition);
++    auto site = session ? content::SiteInstance::Create(profile_)
++        : content::SiteInstance::CreateForFixedStoragePartition(
++              profile_, GURL("https://aux.invalid/"), partition);
+     if (!site) {
+       return NativeFault("backend_unavailable", "Task partition could not be created");
+     }
+@@ -222,9 +227,9 @@
+     auto original_page = contents->GetWeakPtr();
+     auto* raw = contents.get();
+     const std::string page_id = aux::PageIdentity::GetOrCreate(profile_, raw);
+-    // Validate the private partition while the original construction still
++    // Validate the exact selected partition while the original construction still
+     // owns the unpublished contents. Failure destroys only that construction.
+-    if (!egress->RegisterIsolation(raw, isolation_id, *run_id, task_id, revision, ancestry, connection_generation))
++    if (!egress->RegisterIsolation(raw, isolation_id, *run_id, task_id, revision, ancestry, connection_generation, session))
+       return NativeFault("permission_denied", "Task tab partition identity failed");
+     if (!original_host || !original_owner || !original_controller || !original_page)
+       return NativeFault("ref_stale", "Original task construction was retired");
+@@ -240,6 +245,10 @@
+         params.FindBool("background").value_or(false) ? ADD_NONE : ADD_ACTIVE);
+     if (!original_host || !original_owner || !original_controller || !original_page)
+       return NativeFault("ref_stale", "Original task tab was retired during publication");
++    if (!original_controller->GroupAgentPage(original_page.get(), original_owner.get()))
++      return NativeFault("ref_stale", "Original Agent tab group changed during publication");
++    if (!original_host || !original_owner || !original_controller || !original_page)
++      return NativeFault("ref_stale", "Original Agent group owner was retired");
+     content::NavigationController::LoadURLParams blank(GURL("about:blank"));
+     blank.source_site_instance = site;
+     blank.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
+@@ -296,8 +305,9 @@
+     scope.Set("runId", *run_id);
+     if (!task_id.empty()) scope.Set("taskId", task_id);
+     scope.Set("taskRevision", revision);
+-    scope.Set("inMemory", true);
+-    scope.Set("cookies", "empty");
++    scope.Set("mode", *mode);
++    scope.Set("inMemory", !session);
++    scope.Set("cookies", session ? "profile" : "empty");
+     base::DictValue result;
+     result.Set("pageId", page_id);
+     result.Set("creationId", creation_id);

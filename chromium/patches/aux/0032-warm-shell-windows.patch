@@ -1,0 +1,373 @@
+diff --git a/chrome/browser/browser_process_impl.cc b/chrome/browser/browser_process_impl.cc
+--- a/chrome/browser/browser_process_impl.cc
++++ b/chrome/browser/browser_process_impl.cc
+@@ -140,6 +140,9 @@
+ #include "components/update_client/update_query_params.h"
+ #include "components/variations/service/variations_service.h"
+ #include "components/web_resource/web_resource_pref_names.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/shell_warmup_manager.h"
++#endif
+ #include "content/public/browser/browser_task_traits.h"
+ #include "content/public/browser/browser_thread.h"
+ #include "content/public/browser/child_process_security_policy.h"
+@@ -335,6 +338,9 @@
+   g_browser_process = this;
+ 
+   features_->Init();
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  aux_shell_warmup_manager_ = std::make_unique<aux::ShellWarmupManager>();
++#endif
+ 
+   DCHECK(browser_policy_connector_);
+   DCHECK(local_state_);
+@@ -608,6 +614,9 @@
+   DCHECK(IsShuttingDown());
+ 
+   features_->PostMainMessageLoopRun();
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  aux_shell_warmup_manager_.reset();
++#endif
+   metrics_services_manager_client_ = nullptr;
+   metrics_services_manager_.reset();
+   intranet_redirect_detector_.reset();
+diff --git a/chrome/browser/browser_process_impl.h b/chrome/browser/browser_process_impl.h
+--- a/chrome/browser/browser_process_impl.h
++++ b/chrome/browser/browser_process_impl.h
+@@ -25,6 +25,7 @@
+ #include "build/build_config.h"
+ #include "chrome/browser/accessibility/accessibility_prefs/android/accessibility_prefs_controller.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/common/buildflags.h"
+ #include "components/activity_reporter/activity_reporter.h"
+ #include "components/keep_alive_registry/keep_alive_state_observer.h"
+@@ -45,6 +46,10 @@
+ #if BUILDFLAG(IS_ANDROID)
+ #include "base/android/application_status_listener.h"
+ #endif  // BUILDFLAG(IS_ANDROID)
++
++namespace aux {
++class ShellWarmupManager;
++}
+ 
+ class BatteryMetrics;
+ class ChromeMetricsServicesManagerClient;
+@@ -515,6 +520,9 @@
+ 
+   // This must be destroyed before UnownedUserDataHost.
+   std::unique_ptr<GlobalFeatures> features_;
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  std::unique_ptr<aux::ShellWarmupManager> aux_shell_warmup_manager_;
++#endif
+ 
+   // Observes application-wide events and logs them to breadcrumbs. Null if
+   // breadcrumbs logging is disabled.
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -8,6 +8,8 @@
+ 
+ source_set("runtime") {
+   sources = [
++    "shell_warmup_manager.cc",
++    "shell_warmup_manager.h",
+     "native_cdp_input_mac.h",
+     "native_cdp_input_mac.mm",
+     "cdp_broker.cc",
+@@ -121,6 +123,10 @@
+     "//chrome/browser/device_reauth:impl",
+     "//chrome/browser/password_manager/factories",
+     "//chrome/browser/profiles",
++    "//chrome/browser/profiles:profile_util",
++    "//chrome/browser/profiles/keep_alive",
++    "//chrome/browser:browser_process",
++    "//chrome/browser/lifetime",
+     "//chrome/browser/picture_in_picture",
+     ":surface_headers",
+     "//chrome/browser/ui/aux/generated:methods",
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+@@ -20,6 +20,9 @@
+ #include "base/strings/utf_string_conversions.h"
+ #include "chrome/browser/app_mode/app_mode_utils.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/shell_warmup_manager.h"
++#endif
+ #if BUILDFLAG(IS_MAC)
+ #include "chrome/browser/global_keyboard_shortcuts_mac.h"
+ #endif
+@@ -251,6 +254,9 @@
+   auto* ui_web_contents = web_view->GetWebContents();
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   ui_web_contents->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
++  if (auto* warmup = aux::ShellWarmupManager::Get()) {
++    warmup->UseProfile(browser_->GetProfile());
++  }
+ #endif
+   web_contents_delegate_->SetUIWebContents(ui_web_contents);
+   ui_web_contents->SetDelegate(web_contents_delegate_.get());
+diff --git a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
+--- a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
++++ b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
+@@ -190,7 +190,10 @@
+   // alive.
+   kOmniboxEverywhere = 46,
+ 
+-  kMaxValue = kOmniboxEverywhere,
++  // Last-used Aux Profile retained for window reopening and spare renderer.
++  kAuxShellWarmup = 47,
++
++  kMaxValue = kAuxShellWarmup,
+ };
+ // LINT.ThenChange(/tools/metrics/histograms/metadata/profile/enums.xml)
+ 
+diff --git a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
+--- a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
++++ b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
+@@ -93,6 +93,8 @@
+       return out << "kFetchKeepAlive";
+     case ProfileKeepAliveOrigin::kOmniboxEverywhere:
+       return out << "kOmniboxEverywhere";
++    case ProfileKeepAliveOrigin::kAuxShellWarmup:
++      return out << "kAuxShellWarmup";
+   }
+   NOTREACHED();
+ }
+diff --git a/tools/metrics/histograms/metadata/profile/enums.xml b/tools/metrics/histograms/metadata/profile/enums.xml
+--- a/tools/metrics/histograms/metadata/profile/enums.xml
++++ b/tools/metrics/histograms/metadata/profile/enums.xml
+@@ -430,6 +430,7 @@
+   <int value="44" label="kWebAppDatabaseCorruptionRecovery"/>
+   <int value="45" label="kFetchKeepAlive"/>
+   <int value="46" label="kOmniboxEverywhere"/>
++  <int value="47" label="kAuxShellWarmup"/>
+ </enum>
+ 
+ <!-- LINT.IfChange(ProfileLockStatus) -->
+diff --git a/chrome/browser/ui/aux/shell_warmup_manager.h b/chrome/browser/ui/aux/shell_warmup_manager.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/shell_warmup_manager.h
+@@ -0,0 +1,62 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_SHELL_WARMUP_MANAGER_H_
++#define CHROME_BROWSER_UI_AUX_SHELL_WARMUP_MANAGER_H_
++
++#include <memory>
++
++#include "base/memory/weak_ptr.h"
++#include "base/memory_coordinator/memory_consumer.h"
++#include "base/scoped_observation.h"
++#include "base/time/time.h"
++#include "chrome/browser/profiles/profile_manager_observer.h"
++#include "chrome/browser/profiles/profile_observer.h"
++#include "content/public/browser/spare_render_process_host_manager.h"
++
++class Profile;
++class ProfileManager;
++class ScopedProfileKeepAlive;
++
++namespace aux {
++
++// BrowserProcessImpl owns this service and destroys it before ProfileManager.
++// The upstream spare remains an unprivileged, unused renderer; every normal
++// process suitability and WebUI admission check still runs when it is taken.
++class ShellWarmupManager final
++    : public ProfileObserver,
++      public ProfileManagerObserver,
++      public content::SpareRenderProcessHostManager::Observer,
++      public base::PassiveMemoryConsumer {
++ public:
++  ShellWarmupManager();
++  ~ShellWarmupManager() override;
++  ShellWarmupManager(const ShellWarmupManager&) = delete;
++  ShellWarmupManager& operator=(const ShellWarmupManager&) = delete;
++
++  static ShellWarmupManager* Get();
++  void UseProfile(Profile* profile);
++
++ private:
++  void ScheduleRefill();
++  void Refill();
++  void ReleaseProfile();
++  bool CanWarm() const;
++  void OnUpdateMemoryLimit() override;
++  void OnProfileWillBeDestroyed(Profile* profile) override;
++  void OnProfileMarkedForPermanentDeletion(Profile* profile) override;
++  void OnProfileManagerDestroying() override;
++  void OnSpareRenderProcessHostRemoved(content::RenderProcessHost* host) override;
++
++  std::unique_ptr<ScopedProfileKeepAlive> profile_keep_alive_;
++  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
++  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
++      manager_observation_{this};
++  base::MemoryConsumerRegistration memory_registration_;
++  bool refill_pending_ = false;
++  base::WeakPtrFactory<ShellWarmupManager> weak_factory_{this};
++};
++
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_AUX_SHELL_WARMUP_MANAGER_H_
+diff --git a/chrome/browser/ui/aux/shell_warmup_manager.cc b/chrome/browser/ui/aux/shell_warmup_manager.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/shell_warmup_manager.cc
+@@ -0,0 +1,152 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/shell_warmup_manager.h"
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/location.h"
++#include "base/time/time.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/lifetime/browser_shutdown.h"
++#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
++#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "content/public/browser/browser_task_traits.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/render_process_host.h"
++
++namespace aux {
++namespace {
++ShellWarmupManager* g_manager = nullptr;
++constexpr base::MemoryConsumerTraits kTraits(
++    base::MemoryConsumerTraits::ConsumerType::kPassive,
++    base::MemoryConsumerTraits::InProcess::kNo);
++}  // namespace
++
++ShellWarmupManager::ShellWarmupManager()
++    : memory_registration_("AuxShellWarmupManager", kTraits, this) {
++  CHECK(!g_manager);
++  g_manager = this;
++  content::SpareRenderProcessHostManager::Get().AddObserver(this);
++}
++
++ShellWarmupManager::~ShellWarmupManager() {
++  g_manager = nullptr;
++  content::SpareRenderProcessHostManager::Get().RemoveObserver(this);
++  manager_observation_.Reset();
++  ReleaseProfile();
++}
++
++ShellWarmupManager* ShellWarmupManager::Get() {
++  return g_manager;
++}
++
++void ShellWarmupManager::UseProfile(Profile* profile) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!profile || !profile->IsRegularProfile() || profile->ShutdownStarted() ||
++      browser_shutdown::IsTryingToQuit() ||
++      browser_shutdown::HasShutdownStarted()) {
++    return;
++  }
++  auto* manager = g_browser_process->profile_manager();
++  auto* entry = manager->GetProfileAttributesStorage()
++                    .GetProfileAttributesWithPath(profile->GetPath());
++  // Do not change the existing lifetime of ephemeral profiles.
++  if (!entry || entry->IsEphemeral()) {
++    return;
++  }
++  if (profile_keep_alive_ && profile_keep_alive_->profile() == profile) {
++    ScheduleRefill();
++    return;
++  }
++  auto keep_alive = ScopedProfileKeepAlive::TryAcquire(
++      profile, ProfileKeepAliveOrigin::kAuxShellWarmup);
++  if (!keep_alive) {
++    return;
++  }
++  ReleaseProfile();
++  profile_keep_alive_ = std::move(keep_alive);
++  profile_observation_.Observe(profile);
++  if (!manager_observation_.IsObserving()) {
++    manager_observation_.Observe(manager);
++  }
++  ScheduleRefill();
++}
++
++bool ShellWarmupManager::CanWarm() const {
++  return profile_keep_alive_ && profile_keep_alive_->profile() &&
++         !profile_keep_alive_->profile()->ShutdownStarted() &&
++         !browser_shutdown::IsTryingToQuit() &&
++         !browser_shutdown::HasShutdownStarted() &&
++         memory_limit() > base::MemoryLimit::ModeratePressureThreshold() &&
++         !content::RenderProcessHost::IsProcessLimitReached();
++}
++
++void ShellWarmupManager::ScheduleRefill() {
++  if (refill_pending_ || !CanWarm()) {
++    return;
++  }
++  refill_pending_ = true;
++  // Avoid the first frame and yield to interactive browser work. The browser
++  // scheduler owns BEST_EFFORT execution; no polling timer or hidden shell runs.
++  content::GetUIThreadTaskRunner({base::TaskPriority::BEST_EFFORT})
++      ->PostDelayedTask(FROM_HERE,
++                        base::BindOnce(&ShellWarmupManager::Refill,
++                                       weak_factory_.GetWeakPtr()),
++                        base::Seconds(5));
++}
++
++void ShellWarmupManager::OnUpdateMemoryLimit() {
++  ScheduleRefill();
++}
++
++void ShellWarmupManager::Refill() {
++  refill_pending_ = false;
++  if (!CanWarm()) {
++    return;
++  }
++  auto& spare_manager = content::SpareRenderProcessHostManager::Get();
++  // Do not evict another Profile's spare or turn competing warmup clients
++  // into a refill loop. Existing matching spares are already sufficient.
++  if (!spare_manager.GetSpares().empty()) {
++    return;
++  }
++  spare_manager.WarmupSpare(profile_keep_alive_->profile());
++}
++
++void ShellWarmupManager::ReleaseProfile() {
++  weak_factory_.InvalidateWeakPtrs();
++  refill_pending_ = false;
++  profile_observation_.Reset();
++  profile_keep_alive_.reset();
++}
++
++void ShellWarmupManager::OnProfileWillBeDestroyed(Profile* profile) {
++  ReleaseProfile();
++}
++
++void ShellWarmupManager::OnProfileMarkedForPermanentDeletion(Profile* profile) {
++  if (profile_keep_alive_ && profile_keep_alive_->profile() == profile) {
++    ReleaseProfile();
++  }
++}
++
++void ShellWarmupManager::OnProfileManagerDestroying() {
++  manager_observation_.Reset();
++  ReleaseProfile();
++}
++
++void ShellWarmupManager::OnSpareRenderProcessHostRemoved(
++    content::RenderProcessHost* host) {
++  if (profile_keep_alive_ &&
++      host->GetBrowserContext() == profile_keep_alive_->profile()) {
++    ScheduleRefill();
++  }
++}
++
++}  // namespace aux

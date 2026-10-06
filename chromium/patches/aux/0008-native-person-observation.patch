@@ -1,0 +1,1619 @@
+diff --git a/chrome/browser/ui/aux/native_person_observer_controller.cc b/chrome/browser/ui/aux/native_person_observer_controller.cc
+new file mode 100644
+index 0000000000..a38505334e
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_person_observer_controller.cc
+@@ -0,0 +1,221 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_person_observer_controller.h"
++
++#include <set>
++#include <string_view>
++#include <utility>
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_util.h"
++#include "base/uuid.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/common/native_person_observer_script.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/document_user_data.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
++
++namespace aux {
++namespace {
++class PersonReadDocument : public content::DocumentUserData<PersonReadDocument> {
++ public:
++  const std::string id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  std::string connection_id;
++  std::string session_id;
++  std::string control_generation;
++  std::string retirement_generation;
++  ~PersonReadDocument() override = default;
++ private:
++  explicit PersonReadDocument(content::RenderFrameHost* frame)
++      : DocumentUserData(frame) {}
++  friend class content::DocumentUserData<PersonReadDocument>;
++  DOCUMENT_USER_DATA_KEY_DECL();
++};
++DOCUMENT_USER_DATA_KEY_IMPL(PersonReadDocument);
++base::DictValue Fault(const char* code) {
++  return base::DictValue().Set("error", base::DictValue()
++      .Set("code", code).Set("message", "This page could not be read. Try again."));
++}
++bool OnlyKeys(const base::DictValue& value,
++              const std::set<std::string_view>& allowed) {
++  for (const auto [key, field] : value) {
++    if (!allowed.contains(key)) return false;
++  }
++  return true;
++}
++bool ValidRequest(const base::DictValue& request) {
++  const auto* operation = request.FindString("operation");
++  if (!operation) return false;
++  if (*operation == "observe") {
++    const auto elements = request.FindInt("maxElements");
++    const auto text = request.FindInt("maxTextChars");
++    const auto* filter = request.FindString("filter");
++    const auto* subtree = request.FindString("subtreeRef");
++    return OnlyKeys(request, {"operation", "maxElements", "maxTextChars", "filter", "subtreeRef"}) &&
++           (!request.contains("filter") ||
++            (filter && (*filter == "interactive" || *filter == "all" || *filter == "viewport"))) &&
++           (!request.contains("subtreeRef") || (subtree && !subtree->empty() && subtree->size() <= 512)) &&
++           elements && *elements >= 1 && *elements <= 200 &&
++           text && *text >= 1 && *text <= 16000;
++  }
++  if (*operation != "extract" || !OnlyKeys(request, {"operation", "fields"}))
++    return false;
++  const auto* fields = request.FindList("fields");
++  if (!fields || fields->empty() || fields->size() > 20) return false;
++  std::set<std::string> names;
++  const std::set<std::string_view> attributes = {
++      "href", "title", "alt", "aria-label", "name", "id", "role"};
++  for (const auto& entry : *fields) {
++    const auto* field = entry.GetIfDict();
++    if (!field || !OnlyKeys(*field, {"name", "selector", "attribute", "all"}))
++      return false;
++    const auto* name = field->FindString("name");
++    if (!name || name->empty() || name->size() > 64 ||
++        !base::IsAsciiAlpha((*name)[0]) || !names.insert(*name).second)
++      return false;
++    for (const char c : *name) {
++      if (!base::IsAsciiAlphaNumeric(c) && c != '_' && c != '-') return false;
++    }
++    const auto* selector = field->FindString("selector");
++    if (field->contains("selector") &&
++        (!selector || selector->empty() || selector->size() > 512)) return false;
++    const auto* attribute = field->FindString("attribute");
++    if (field->contains("attribute") &&
++        (!selector || !attribute || !attributes.contains(*attribute))) return false;
++    if (field->contains("all") && (!selector || !field->FindBool("all")))
++      return false;
++  }
++  return true;
++}
++}  // namespace
++WEB_CONTENTS_USER_DATA_KEY_IMPL(NativePersonObserverController);
++base::DictValue NativePersonObserverController::Describe(
++    const NativePersonReadReceipt& receipt, const std::string& connection_id) {
++  auto* frame = receipt.document().AsRenderFrameHostIfValid();
++  if (!frame || !base::Uuid::ParseLowercase(connection_id).is_valid())
++    return Fault("target_detached");
++  auto* profile = Profile::FromBrowserContext(frame->GetBrowserContext());
++  if (!profile || !EgressController::ForProfile(profile)->MayReadPerson(receipt))
++    return Fault("target_detached");
++  auto* document = PersonReadDocument::GetOrCreateForCurrentDocument(frame);
++  if (document->connection_id != connection_id ||
++      document->control_generation != receipt.control_generation_ ||
++      document->retirement_generation != receipt.retirement_generation_) {
++    document->connection_id = connection_id;
++    document->control_generation = receipt.control_generation_;
++    document->retirement_generation = receipt.retirement_generation_;
++    document->session_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  }
++  return base::DictValue().Set("result", base::DictValue()
++      .Set("pageId", receipt.page_id()).Set("documentId", document->id)
++      .Set("url", frame->GetLastCommittedURL().spec())
++      .Set("sessionId", document->session_id)
++      .Set("producerSha256", person_observer_script::kProducerSha256));
++}
++NativePersonObserverController::NativePersonObserverController(
++    content::WebContents* contents)
++    : content::WebContentsObserver(contents),
++      content::WebContentsUserData<NativePersonObserverController>(*contents) {}
++NativePersonObserverController::~NativePersonObserverController() {
++  closing_ = true;
++  Refuse();
++}
++bool NativePersonObserverController::Current() const {
++  return reply_ && authority_ && receipt_ &&
++         authority_->MayReadPerson(*receipt_) &&
++         receipt_->document().AsRenderFrameHostIfValid() ==
++             web_contents()->GetPrimaryMainFrame();
++}
++void NativePersonObserverController::Read(uint64_t connection_generation,
++                                         base::DictValue request, Reply reply) {
++  if (reply_) {
++    std::move(reply).Run(Fault("conflict"));
++    return;
++  }
++  if (closing_) {
++    std::move(reply).Run(Fault("not_found"));
++    return;
++  }
++  auto raw = ValidRequest(request) ? base::WriteJson(request) : std::nullopt;
++  if (!connection_generation || !raw || raw->size() > 16384) {
++    std::move(reply).Run(Fault("invalid_params"));
++    return;
++  }
++  auto* profile = Profile::FromBrowserContext(web_contents()->GetBrowserContext());
++  auto* authority = EgressController::ForProfile(profile);
++  auto receipt = authority ? authority->CapturePersonRead(web_contents()) : std::nullopt;
++  if (!receipt) {
++    std::move(reply).Run(Fault("permission_denied"));
++    return;
++  }
++  connection_generation_ = connection_generation;
++  read_id_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  receipt_ = std::move(receipt);
++  authority_ = authority->GetWeakPtr();
++  reply_ = std::move(reply);
++  authority_subscription_ = authority->ObserveAuthority(base::BindRepeating(
++      &NativePersonObserverController::AuthorityChanged, weak_factory_.GetWeakPtr()));
++  deadline_.Start(FROM_HERE, base::Seconds(8), base::BindOnce(
++      &NativePersonObserverController::Refuse, weak_factory_.GetWeakPtr()));
++  auto* frame = receipt_->document().AsRenderFrameHostIfValid();
++  document_id_ = PersonReadDocument::GetOrCreateForCurrentDocument(frame)->id;
++  frame->GetRemoteAssociatedInterfaces()->GetInterface(
++      remote_.BindNewEndpointAndPassReceiver());
++  remote_.set_disconnect_handler(base::BindOnce(
++      &NativePersonObserverController::Refuse, weak_factory_.GetWeakPtr()));
++  if (!Current()) { Refuse(); return; }
++  remote_->Prepare(read_id_, base::BindOnce(
++      &NativePersonObserverController::Prepared, weak_factory_.GetWeakPtr(),
++      std::move(*raw)));
++}
++void NativePersonObserverController::Prepared(std::string request_json,
++                                             bool ready) {
++  if (!ready || !Current()) { Refuse(); return; }
++  remote_->Read(read_id_, request_json, base::BindOnce(
++      &NativePersonObserverController::Received, weak_factory_.GetWeakPtr()));
++}
++void NativePersonObserverController::Received(bool accepted,
++                                             const std::string& result_json) {
++  if (!accepted || !Current() || result_json.size() > 131072) { Refuse(); return; }
++  auto result = base::JSONReader::ReadDict(result_json, base::JSON_PARSE_RFC);
++  if (!result || !Current()) { Refuse(); return; }
++  auto value = base::DictValue().Set("readId", read_id_)
++      .Set("documentId", document_id_)
++      .Set("pageId", receipt_->page_id())
++      .Set("producerSha256", person_observer_script::kProducerSha256)
++      .Set("value", std::move(*result));
++  Finish(base::DictValue().Set("result", std::move(value)));
++}
++void NativePersonObserverController::AuthorityChanged() {
++  if (reply_ && !Current()) Refuse();
++}
++void NativePersonObserverController::Disconnect(uint64_t connection_generation) {
++  if (reply_ && connection_generation_ == connection_generation) Refuse();
++}
++void NativePersonObserverController::Refuse() {
++  if (reply_) Finish(Fault("permission_denied"));
++}
++void NativePersonObserverController::Finish(base::DictValue result) {
++  auto reply = std::move(reply_);
++  deadline_.Stop();
++  authority_subscription_ = {};
++  remote_.reset();
++  receipt_.reset();
++  authority_.reset();
++  read_id_.clear();
++  document_id_.clear();
++  connection_generation_ = 0;
++  weak_factory_.InvalidateWeakPtrs();
++  std::move(reply).Run(std::move(result));
++}
++void NativePersonObserverController::DidStartNavigation(
++    content::NavigationHandle* navigation) {
++  if (navigation->IsInPrimaryMainFrame() && !navigation->IsSameDocument()) Refuse();
++}
++void NativePersonObserverController::WebContentsDestroyed() {
++  closing_ = true;
++  Refuse();
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/native_person_observer_controller.h b/chrome/browser/ui/aux/native_person_observer_controller.h
+new file mode 100644
+index 0000000000..a358ec1803
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_person_observer_controller.h
+@@ -0,0 +1,58 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PERSON_OBSERVER_CONTROLLER_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PERSON_OBSERVER_CONTROLLER_H_
++
++#include <cstdint>
++#include <optional>
++#include <string>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/common/aux_person_observer.mojom.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/web_contents_user_data.h"
++#include "mojo/public/cpp/bindings/associated_remote.h"
++
++namespace aux {
++class NativePersonObserverController final
++    : public content::WebContentsObserver,
++      public content::WebContentsUserData<NativePersonObserverController> {
++ public:
++  using Reply = base::OnceCallback<void(base::DictValue)>;
++  static base::DictValue Describe(const NativePersonReadReceipt& receipt,
++                                  const std::string& connection_id);
++  ~NativePersonObserverController() override;
++  base::WeakPtr<NativePersonObserverController> GetWeakPtr() {
++    return weak_factory_.GetWeakPtr();
++  }
++  void Read(uint64_t connection_generation, base::DictValue request, Reply reply);
++  void Disconnect(uint64_t connection_generation);
++
++ private:
++  friend class content::WebContentsUserData<NativePersonObserverController>;
++  explicit NativePersonObserverController(content::WebContents* contents);
++  bool Current() const;
++  void Prepared(std::string request_json, bool ready);
++  void Received(bool accepted, const std::string& result_json);
++  void AuthorityChanged();
++  void Refuse();
++  void Finish(base::DictValue result);
++  void DidStartNavigation(content::NavigationHandle* navigation) override;
++  void WebContentsDestroyed() override;
++  uint64_t connection_generation_ = 0;
++  bool closing_ = false;
++  std::string read_id_;
++  std::string document_id_;
++  std::optional<NativePersonReadReceipt> receipt_;
++  base::WeakPtr<EgressController> authority_;
++  base::CallbackListSubscription authority_subscription_;
++  mojo::AssociatedRemote<chrome::mojom::AuxPersonObserver> remote_;
++  base::OneShotTimer deadline_;
++  Reply reply_;
++  base::WeakPtrFactory<NativePersonObserverController> weak_factory_{this};
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_recorder_controller.cc b/chrome/browser/ui/aux/native_recorder_controller.cc
+new file mode 100644
+index 0000000000..3f8790c85f
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_recorder_controller.cc
+@@ -0,0 +1,454 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_recorder_controller.h"
++
++#include <limits>
++#include <optional>
++#include <string_view>
++#include <utility>
++
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "base/json/json_writer.h"
++#include "base/json/json_reader.h"
++#include "base/strings/escape.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/uuid.h"
++#include "base/timer/timer.h"
++#include "base/time/time.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/browser/ui/aux/native_recorder_script.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/common/chrome_isolated_world_ids.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "mojo/public/cpp/bindings/associated_receiver.h"
++#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
++#include "net/base/url_util.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++base::DictValue Fault(const char* code, const char* message) {
++  base::DictValue error;
++  error.Set("code", code);
++  error.Set("message", message);
++  base::DictValue result;
++  result.Set("error", std::move(error));
++  return result;
++}
++base::DictValue Result(base::DictValue result) {
++  base::DictValue reply;
++  reply.Set("result", std::move(result));
++  return reply;
++}
++bool SecretKey(const std::string& key) {
++  for (const char* part : {"password", "passwd", "token", "secret",
++                           "credential", "authorization", "session", "otp",
++                           "code", "api_key", "apikey", "api-key"}) {
++    if (key.find(part) != std::string::npos)
++      return true;
++  }
++  return false;
++}
++bool SafeUrl(const GURL& url) {
++  if (!url.SchemeIsHTTPOrHTTPS() || url.has_username() || url.has_password() ||
++      url.spec().size() > 8192)
++    return false;
++  for (net::QueryIterator query(url); !query.IsAtEnd(); query.Advance()) {
++    // Classify keys only, never read credential query values.
++    if (SecretKey(base::ToLowerASCII(base::UnescapeURLComponent(
++            query.GetKey(), base::UnescapeRule::NORMAL))))
++      return false;
++  }
++  const auto fragment = base::ToLowerASCII(url.ref());
++  return fragment.find('=') == std::string::npos || !SecretKey(fragment);
++}
++}  // namespace
++
++class NativeRecorderController::DocumentSink final : public chrome::mojom::AuxRecorderSink {
++ public:
++  DocumentSink(base::WeakPtr<NativeRecorderController> owner,
++               uint64_t connection, std::string id, uint64_t generation,
++               content::WeakDocumentPtr document)
++      : owner_(owner), connection_(connection), id_(std::move(id)),
++        generation_(generation), document_(document) {}
++  mojo::PendingAssociatedRemote<chrome::mojom::AuxRecorderSink> Bind() {
++    return receiver_.BindNewEndpointAndPassRemote();
++  }
++ private:
++  bool Current() const {
++    return owner_ && owner_->Current(connection_, id_, generation_, document_);
++  }
++  void Event(uint64_t sequence, const std::string& raw,
++             EventCallback callback) override {
++    if (!Current()) { std::move(callback).Run(false); return; }
++    // Bound the renderer payload before allocating or parsing its JSON.
++    if (sequence_ == std::numeric_limits<uint64_t>::max() ||
++        sequence != sequence_ + 1 || raw.size() > 16000 ||
++        owner_->events_.size() >= 50 ||
++        owner_->event_bytes_ + raw.size() > 65536) {
++      auto owner = owner_;
++      std::move(callback).Run(false);
++      if (owner) owner->Retire();
++      return;
++    }
++    auto parsed = base::JSONReader::Read(raw, base::JSON_PARSE_RFC);
++    if (!parsed || !parsed->is_dict()) {
++      auto owner = owner_;
++      std::move(callback).Run(false);
++      if (owner) owner->Retire();
++      return;
++    }
++    sequence_ = sequence;
++    owner_->event_bytes_ += raw.size();
++    owner_->events_.Append(std::move(*parsed));
++    std::move(callback).Run(true);
++  }
++  void Overflow() override { if (Current()) owner_->Retire(); }
++  void DocumentEnded() override {
++    if (Current()) owner_->ready_ = false;
++  }
++  base::WeakPtr<NativeRecorderController> owner_;
++  const uint64_t connection_;
++  const std::string id_;
++  const uint64_t generation_;
++  const content::WeakDocumentPtr document_;
++  uint64_t sequence_ = 0;
++  mojo::AssociatedReceiver<chrome::mojom::AuxRecorderSink> receiver_{this};
++};
++
++struct NativeRecorderController::PendingReply {
++  explicit PendingReply(Reply callback) : callback(std::move(callback)) {}
++  void Finish(base::DictValue value) {
++    if (!callback)
++      return;
++    timer.Stop();
++    auto done = std::move(callback);
++    std::move(done).Run(std::move(value));
++  }
++  Reply callback;
++  base::OneShotTimer timer;
++};
++std::shared_ptr<NativeRecorderController::PendingReply>
++NativeRecorderController::ArmReply(Reply reply) {
++  auto request = std::make_shared<PendingReply>(std::move(reply));
++  reply_ = request;
++  request->timer.Start(
++      FROM_HERE, base::Seconds(8),
++      base::BindOnce(
++          [](base::WeakPtr<NativeRecorderController> self,
++             std::shared_ptr<PendingReply> request, uint64_t operation) {
++            if (self && self->reply_ == request &&
++                self->operation_generation_ == operation)
++              self->Retire();
++            request->Finish(Fault("timeout", "Recording callback timed out"));
++          },
++          weak_factory_.GetWeakPtr(), request, operation_generation_));
++  return request;
++}
++WEB_CONTENTS_USER_DATA_KEY_IMPL(NativeRecorderController);
++NativeRecorderController::NativeRecorderController(content::WebContents* contents)
++    : content::WebContentsObserver(contents),
++      content::WebContentsUserData<NativeRecorderController>(*contents) {}
++NativeRecorderController::~NativeRecorderController() {
++  weak_factory_.InvalidateWeakPtrs();
++  auto request = std::move(reply_);
++  auto retired = std::move(retired_callback_);
++  navigation_gap_timer_.Stop();
++  active_ = false;
++  person_read_subscription_ = {};
++  person_read_.reset();
++  person_authority_.reset();
++  recorder_remote_.reset();
++  sink_.reset();
++  if (request)
++    request->Finish(Fault("target_detached", "Recording tab closed"));
++  if (retired)
++    std::move(retired).Run();
++}
++
++bool NativeRecorderController::PersonPage() const {
++  auto* contents = web_contents();
++  auto* profile = contents
++                      ? Profile::FromBrowserContext(contents->GetBrowserContext())
++                      : nullptr;
++  auto* identity = contents ? PageIdentity::FromWebContents(contents) : nullptr;
++  auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++  return profile && !profile->IsOffTheRecord() && identity &&
++         !identity->runtime_owned() && frame && frame->IsRenderFrameLive() &&
++         TabCatalog::GetForProfile(profile)->FindPage(identity->id()) == contents &&
++         SafeUrl(contents->GetLastCommittedURL());
++}
++bool NativeRecorderController::PersonReadCurrent() const {
++  return person_authority_ && person_read_ &&
++         person_authority_->MayReadPerson(*person_read_);
++}
++void NativeRecorderController::OnPersonReadAuthorityChanged() {
++  if (!active_ || PersonReadCurrent()) return;
++  auto request = std::move(reply_);
++  Retire();
++  if (request)
++    request->Finish(Fault("permission_denied", "Recording person authority retired"));
++}
++bool NativeRecorderController::Current(
++    uint64_t connection_generation, const std::string& recorder_id,
++    uint64_t document_generation,
++    const content::WeakDocumentPtr& document) const {
++  auto* frame = document.AsRenderFrameHostIfValid();
++  return active_ && connection_generation_ == connection_generation &&
++         recorder_id_ == recorder_id &&
++         document_generation_ == document_generation && PersonReadCurrent() && frame &&
++         document_.AsRenderFrameHostIfValid() == frame &&
++         web_contents()->GetPrimaryMainFrame() == frame;
++}
++void NativeRecorderController::Start(uint64_t connection_generation,
++                                     Reply reply) {
++  if (!connection_generation || !PersonPage()) {
++    std::move(reply).Run(Fault("permission_denied",
++                              "Recording needs a current person-owned tab"));
++    return;
++  }
++  if (active_ || pending_) {
++    std::move(reply).Run(Fault("conflict", "Recording is already active"));
++    return;
++  }
++  auto* authority = EgressController::ForProfile(
++      Profile::FromBrowserContext(web_contents()->GetBrowserContext()));
++  auto receipt = authority->CapturePersonRead(web_contents());
++  if (!receipt || document_generation_ == std::numeric_limits<uint64_t>::max()) {
++    std::move(reply).Run(Fault("permission_denied", "Recording person authority unavailable"));
++    return;
++  }
++  person_authority_ = authority->GetWeakPtr();
++  person_read_ = std::move(receipt);
++  person_read_subscription_ = authority->ObserveAuthority(base::BindRepeating(
++      &NativeRecorderController::OnPersonReadAuthorityChanged,
++      weak_factory_.GetWeakPtr()));
++  recorder_id_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  connection_generation_ = connection_generation;
++  active_ = true;
++  established_ = false;
++  ++document_generation_;
++  document_ = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  Install(std::move(reply));
++}
++void NativeRecorderController::Install(Reply reply) {
++  ready_ = false;
++  pending_ = true;
++  const uint64_t operation = ++operation_generation_;
++  auto* frame = document_.AsRenderFrameHostIfValid();
++  if (!frame || !PersonReadCurrent()) {
++    Retire();
++    std::move(reply).Run(Fault("target_detached", "Recording document changed"));
++    return;
++  }
++  recorder_remote_.reset();
++  frame->GetRemoteAssociatedInterfaces()->GetInterface(&recorder_remote_);
++  sink_ = std::make_unique<DocumentSink>(weak_factory_.GetWeakPtr(),
++      connection_generation_, recorder_id_, document_generation_, document_);
++  auto request = ArmReply(std::move(reply));
++  recorder_remote_.set_disconnect_handler(base::BindOnce(
++      [](base::WeakPtr<NativeRecorderController> self, uint64_t operation,
++         std::shared_ptr<PendingReply> request) {
++        if (!self || self->operation_generation_ != operation) return;
++        if (self->established_ && self->navigation_id_) {
++          self->ready_ = false;
++          self->navigation_gap_timer_.Start(FROM_HERE, base::Seconds(8),
++              base::BindOnce(
++                  [](base::WeakPtr<NativeRecorderController> self, uint64_t operation) {
++                    if (self && self->operation_generation_ == operation) self->Retire();
++                  }, self, operation));
++          return;
++        }
++        self->Retire();
++        request->Finish(Fault("target_detached", "Recording renderer detached"));
++      }, weak_factory_.GetWeakPtr(), operation, request));
++  recorder_remote_->Prepare(base::BindOnce(
++      [](base::WeakPtr<NativeRecorderController> self, uint64_t connection,
++         std::string id, uint64_t generation, uint64_t operation,
++         content::WeakDocumentPtr document, std::shared_ptr<PendingReply> request,
++         bool prepared) {
++        if (!self || !self->Current(connection, id, generation, document) ||
++            self->operation_generation_ != operation) {
++          request->Finish(Fault("target_detached", "Recording document changed before preparation"));
++          return;
++        }
++        if (!prepared) {
++          self->Retire();
++          request->Finish(Fault("backend_unavailable", "Recording preparation refused"));
++          return;
++        }
++        self->recorder_remote_->Start(id, generation, self->sink_->Bind(),
++            base::BindOnce(
++                [](base::WeakPtr<NativeRecorderController> self, uint64_t connection,
++                   std::string id, uint64_t generation, uint64_t operation,
++                   content::WeakDocumentPtr document, std::shared_ptr<PendingReply> request,
++                   bool accepted) {
++                  if (!self || !self->Current(connection, id, generation, document) ||
++                      self->operation_generation_ != operation) {
++                    request->Finish(Fault("target_detached", "Recording document changed"));
++                    return;
++                  }
++                  self->pending_ = false;
++                  if (!accepted) {
++                    self->Retire();
++                    request->Finish(Fault("backend_unavailable", "Recording could not start"));
++                    return;
++                  }
++                  self->ready_ = true;
++                  self->established_ = true;
++                  base::DictValue result;
++                  result.Set("recorderId", id);
++                  result.Set("documentGeneration", std::to_string(generation));
++                  result.Set("producerSha256", recorder_script::kProducerSha256);
++                  request->Finish(Result(std::move(result)));
++                }, self, connection, id, generation, operation, document, request));
++      }, weak_factory_.GetWeakPtr(), connection_generation_, recorder_id_,
++      document_generation_, operation, document_, request));
++}
++void NativeRecorderController::Drain(uint64_t connection,
++                                     const std::string& id, Reply reply) {
++  const bool current = Current(connection, id, document_generation_, document_);
++  const bool transition = active_ && established_ && navigation_id_ &&
++      connection_generation_ == connection && recorder_id_ == id && PersonPage();
++  if (!current && !transition) {
++    std::move(reply).Run(Fault("target_detached", "Recording authority changed"));
++    return;
++  }
++  base::DictValue result;
++  result.Set("recorderId", recorder_id_);
++  result.Set("documentGeneration", std::to_string(document_generation_));
++  if (!current || !ready_ || pending_) {
++    result.Set("pending", true);
++  } else {
++    result.Set("events", std::move(events_));
++    events_ = base::ListValue();
++    event_bytes_ = 0;
++  }
++  std::move(reply).Run(Result(std::move(result)));
++}
++void NativeRecorderController::Retire() {
++  active_ = false; ready_ = false; pending_ = false; established_ = false;
++  navigation_gap_timer_.Stop(); navigation_id_.reset();
++  ++operation_generation_;
++  recorder_id_.clear(); connection_generation_ = 0;
++  document_ = content::WeakDocumentPtr();
++  events_.clear(); event_bytes_ = 0;
++  person_read_subscription_ = {}; person_read_.reset(); person_authority_.reset();
++  recorder_remote_.reset(); sink_.reset(); reply_.reset();
++  auto retired = std::move(retired_callback_);
++  if (retired) std::move(retired).Run();
++}
++void NativeRecorderController::Stop(uint64_t connection,
++                                    const std::string& id, Reply reply) {
++  if (connection_generation_ != connection || recorder_id_ != id || !active_) {
++    std::move(reply).Run(Fault("permission_denied", "Recording receipt changed"));
++    return;
++  }
++  auto endpoint = std::make_shared<mojo::AssociatedRemote<chrome::mojom::AuxRecorder>>(std::move(recorder_remote_));
++  const auto generation = document_generation_;
++  auto prior = std::move(reply_);
++  Retire();
++  if (prior) prior->Finish(Fault("target_detached", "Recording stopped"));
++  if (!endpoint->is_bound()) {
++    base::DictValue result; result.Set("stopped", true);
++    std::move(reply).Run(Result(std::move(result)));
++    return;
++  }
++  auto request = std::make_shared<PendingReply>(std::move(reply));
++  request->timer.Start(FROM_HERE, base::Seconds(8), base::BindOnce(
++      [](std::shared_ptr<PendingReply> request) {
++        request->Finish(Fault("timeout", "Recording cleanup timed out"));
++      }, request));
++  (*endpoint)->Stop(id, generation, base::BindOnce(
++      [](std::shared_ptr<mojo::AssociatedRemote<chrome::mojom::AuxRecorder>> endpoint,
++         std::shared_ptr<PendingReply> request, bool stopped) {
++        if (!stopped) { request->Finish(Fault("backend_unavailable", "Recording cleanup refused")); return; }
++        base::DictValue result; result.Set("stopped", true);
++        request->Finish(Result(std::move(result)));
++      }, endpoint, request));
++}
++void NativeRecorderController::Disconnect(uint64_t connection) {
++  if (connection_generation_ != connection) return;
++  auto prior = std::move(reply_);
++  Retire();
++  if (prior) prior->Finish(Fault("target_detached", "Recording connection closed"));
++}
++void NativeRecorderController::DidStartNavigation(content::NavigationHandle* navigation) {
++  if (!active_ || !navigation->IsInPrimaryMainFrame() || navigation->IsSameDocument()) return;
++  if (!PersonReadCurrent() || !SafeUrl(navigation->GetURL())) {
++    auto prior = std::move(reply_); Retire();
++    if (prior) prior->Finish(Fault("permission_denied", "Recording navigation became unavailable"));
++    return;
++  }
++  navigation_id_ = navigation->GetNavigationId();
++}
++void NativeRecorderController::DidFinishNavigation(
++    content::NavigationHandle* navigation) {
++  if (!active_ || !navigation->IsInPrimaryMainFrame() || navigation->IsSameDocument()) return;
++  if (!navigation->HasCommitted()) {
++    if (navigation_id_ == navigation->GetNavigationId()) {
++      navigation_id_.reset(); navigation_gap_timer_.Stop();
++      if (!ready_) Retire();
++    }
++    return;
++  }
++  if (navigation_id_ != navigation->GetNavigationId()) {
++    auto prior = std::move(reply_); Retire();
++    if (prior) prior->Finish(Fault("ref_stale", "Recording navigation identity changed"));
++    return;
++  }
++  navigation_id_.reset(); navigation_gap_timer_.Stop();
++  if (!PersonPage() || events_.size() >= 49 ||
++      document_generation_ == std::numeric_limits<uint64_t>::max()) {
++    auto prior = std::move(reply_);
++    Retire();
++    if (prior)
++      prior->Finish(Fault("target_detached", "Recording document became unavailable"));
++    return;
++  }
++  auto authority = person_authority_;
++  auto next_receipt = authority ? authority->CapturePersonRead(web_contents()) : std::nullopt;
++  if (!next_receipt) {
++    auto prior = std::move(reply_); Retire();
++    if (prior) prior->Finish(Fault("permission_denied", "Recording navigation lost person authority"));
++    return;
++  }
++  person_read_ = std::move(next_receipt);
++  auto prior = std::move(reply_);
++  ready_ = false;
++  pending_ = false;
++  ++operation_generation_;
++  ++document_generation_;
++  document_ = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  base::DictValue event;
++  event.Set("kind", "navigate");
++  event.Set("url", navigation->GetURL().spec());
++  const auto encoded = base::WriteJson(event);
++  if (!encoded || event_bytes_ + encoded->size() > 65536) {
++    Retire();
++    if (prior) prior->Finish(Fault("invalid_params", "Recording exceeds safe bounds"));
++    return;
++  }
++  event_bytes_ += encoded->size();
++  events_.Append(std::move(event));
++  const auto generation = document_generation_;
++  auto weak = weak_factory_.GetWeakPtr();
++  if (prior)
++    prior->Finish(Fault("target_detached", "Recording document changed"));
++  if (!weak || !active_ || document_generation_ != generation)
++    return;
++  Install(base::BindOnce([](base::DictValue) {}));
++}
++void NativeRecorderController::WebContentsDestroyed() {
++  auto prior = std::move(reply_);
++  Retire();
++  if (prior)
++    prior->Finish(Fault("target_detached", "Recording tab closed"));
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/native_recorder_controller.h b/chrome/browser/ui/aux/native_recorder_controller.h
+new file mode 100644
+index 0000000000..5da34e6880
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_recorder_controller.h
+@@ -0,0 +1,85 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_RECORDER_CONTROLLER_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_RECORDER_CONTROLLER_H_
++
++#include <cstdint>
++#include <memory>
++#include <optional>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/values.h"
++#include "base/timer/timer.h"
++#include "chrome/common/aux_recorder.mojom.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "mojo/public/cpp/bindings/associated_remote.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/web_contents_user_data.h"
++
++class AuxRuntimeHost;
++
++namespace aux {
++// Closed person-capture producer. No caller method, source, frame or world.
++class NativeRecorderController final
++    : public content::WebContentsObserver,
++      public content::WebContentsUserData<NativeRecorderController> {
++ public:
++  using Reply = base::OnceCallback<void(base::DictValue)>;
++  ~NativeRecorderController() override;
++  base::WeakPtr<NativeRecorderController> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
++  void Start(uint64_t connection_generation, Reply reply);
++  void Drain(uint64_t connection_generation, const std::string& recorder_id,
++             Reply reply);
++  void Stop(uint64_t connection_generation, const std::string& recorder_id,
++            Reply reply);
++  void Disconnect(uint64_t connection_generation);
++
++ private:
++  friend class content::WebContentsUserData<NativeRecorderController>;
++  friend class ::AuxRuntimeHost;
++  bool BoundToConnection(uint64_t generation) const {
++    return active_ && connection_generation_ == generation;
++  }
++  explicit NativeRecorderController(content::WebContents* contents);
++  bool PersonPage() const;
++  bool PersonReadCurrent() const;
++  void OnPersonReadAuthorityChanged();
++  bool Current(uint64_t connection_generation, const std::string& recorder_id,
++               uint64_t document_generation,
++               const content::WeakDocumentPtr& document) const;
++  class DocumentSink;
++  struct PendingReply;
++  std::shared_ptr<PendingReply> ArmReply(Reply reply);
++  void Install(Reply reply);
++  void Retire();
++  void DidStartNavigation(content::NavigationHandle* navigation) override;
++  void DidFinishNavigation(content::NavigationHandle* navigation) override;
++  void WebContentsDestroyed() override;
++
++  std::string recorder_id_;
++  uint64_t connection_generation_ = 0;
++  uint64_t document_generation_ = 0;
++  uint64_t operation_generation_ = 0;
++  content::WeakDocumentPtr document_;
++  std::optional<NativePersonReadReceipt> person_read_;
++  base::WeakPtr<EgressController> person_authority_;
++  base::CallbackListSubscription person_read_subscription_;
++  bool active_ = false;
++  bool ready_ = false;
++  bool pending_ = false;
++  bool established_ = false;
++  base::OneShotTimer navigation_gap_timer_;
++  std::optional<int64_t> navigation_id_;
++  base::ListValue events_;
++  size_t event_bytes_ = 0;
++  mojo::AssociatedRemote<chrome::mojom::AuxRecorder> recorder_remote_;
++  std::unique_ptr<DocumentSink> sink_;
++  base::OnceClosure retired_callback_;
++  std::shared_ptr<PendingReply> reply_;
++  base::WeakPtrFactory<NativeRecorderController> weak_factory_{this};
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_recorder_script.h b/chrome/browser/ui/aux/native_recorder_script.h
+new file mode 100644
+index 0000000000..8a51356024
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_recorder_script.h
+@@ -0,0 +1,5 @@
++// Fixed recorder producer lives in the shared common header.
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_RECORDER_SCRIPT_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_RECORDER_SCRIPT_H_
++#include "chrome/common/native_recorder_script.h"
++#endif
+diff --git a/chrome/common/aux_person_observer.mojom b/chrome/common/aux_person_observer.mojom
+new file mode 100644
+index 0000000000..34272e706e
+--- /dev/null
++++ b/chrome/common/aux_person_observer.mojom
+@@ -0,0 +1,9 @@
++// Copyright 2026 The Aux Authors
++module chrome.mojom;
++
++// Browser-only, fixed primary-document reader in AUX_OBSERVER. Prepare's ACK
++// joins the document-scoped renderer receiver to the retained browser WeakDoc.
++interface AuxPersonObserver {
++  Prepare(string read_id) => (bool ready);
++  Read(string read_id, string request_json) => (bool accepted, string result_json);
++};
+diff --git a/chrome/common/aux_recorder.mojom b/chrome/common/aux_recorder.mojom
+new file mode 100644
+index 0000000000..ae00c3e414
+--- /dev/null
++++ b/chrome/common/aux_recorder.mojom
+@@ -0,0 +1,18 @@
++// Copyright 2026 The Aux Authors
++module chrome.mojom;
++
++// This associated endpoint shares the RenderFrame's ordered interface group.
++// Browser-created receipt and sink bind one exact primary document; page script
++// cannot select a source, world, frame, method or sink.
++interface AuxRecorderSink {
++  Event(uint64 sequence, string step_json) => (bool accepted);
++  Overflow();
++  DocumentEnded();
++};
++interface AuxRecorder {
++  // No script runs. This receiver is invalidated on document replacement.
++  Prepare() => (bool ready);
++  Start(string recorder_id, uint64 document_generation,
++        pending_associated_remote<AuxRecorderSink> sink) => (bool accepted);
++  Stop(string recorder_id, uint64 document_generation) => (bool stopped);
++};
+diff --git a/chrome/common/native_person_observer_script.h b/chrome/common/native_person_observer_script.h
+new file mode 100644
+index 0000000000..99d942887d
+--- /dev/null
++++ b/chrome/common/native_person_observer_script.h
+@@ -0,0 +1,202 @@
++// Generated from the fixed person observer; run gen-native-person-observer.mjs.
++#ifndef CHROME_COMMON_NATIVE_PERSON_OBSERVER_SCRIPT_H_
++#define CHROME_COMMON_NATIVE_PERSON_OBSERVER_SCRIPT_H_
++namespace aux::person_observer_script {
++inline constexpr char kProducerSha256[] = "650d19e9c07e9e465bcc9d61f35d7d5f1738ef060a44b49937f2dcc4ad4763c4";
++inline constexpr char16_t kRead[] = uR"AUX_READ(((request) => JSON.stringify((function readPersonDocument(request) {
++    const fail = () => { throw new Error("This page cannot be read safely."); };
++    const secretIdentity = /password|passphrase|secret|api[-_ ]?key|(?:access|refresh|id|auth|authorization|session|bearer)[-_ ]?token|card[-_ ]?number|credit[-_ ]?card|security[-_ ]?code|\bcvv\b|\bcvc\b|\bcsc\b/i;
++    const secretAutocomplete = /^(current-password|new-password|one-time-code|cc-number|cc-csc|cc-exp|cc-exp-month|cc-exp-year)$/;
++    if (!request || !["observe", "extract"].includes(request.operation))
++        fail();
++    if (request.operation === "observe" &&
++        (!Number.isInteger(request.maxElements) || request.maxElements < 1 || request.maxElements > 200 ||
++            !Number.isInteger(request.maxTextChars) || request.maxTextChars < 1 || request.maxTextChars > 16000))
++        fail();
++    if (request.operation === "observe" &&
++        ((request.filter !== undefined && !["interactive", "all", "viewport"].includes(request.filter)) ||
++            (request.subtreeRef !== undefined && (typeof request.subtreeRef !== "string" || !request.subtreeRef.length || request.subtreeRef.length > 512))))
++        fail();
++    if (request.operation === "extract" && (!Array.isArray(request.fields) || request.fields.length < 1 || request.fields.length > 20))
++        fail();
++    const roots = [document];
++    const elements = [];
++    // Finish metadata admission before touching text, title or field properties.
++    // Refuse protected forms as a whole, including echoes elsewhere in the DOM,
++    // rather than reading a secret in order to redact it afterwards.
++    for (let index = 0; index < roots.length; index++) {
++        if (roots.length > 64)
++            fail();
++        const walker = document.createTreeWalker(roots[index], 1);
++        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
++            if (elements.length >= 10000)
++                fail();
++            const element = node;
++            const type = (element.getAttribute("type") ?? "").toLowerCase();
++            const identity = ["name", "id", "aria-label", "placeholder"].map(key => element.getAttribute(key) ?? "").join(" ");
++            const autocomplete = (element.getAttribute("autocomplete") ?? "").toLowerCase().split(/\s+/);
++            if (type === "password" || autocomplete.some(token => secretAutocomplete.test(token)) ||
++                secretIdentity.test(identity) || element.hasAttribute("contenteditable"))
++                fail();
++            elements.push(element);
++            if (element.shadowRoot)
++                roots.push(element.shadowRoot);
++        }
++    }
++    const safeUrl = (raw) => {
++        const url = new URL(raw, location.href);
++        if (!["https:", "http:"].includes(url.protocol) || url.username || url.password ||
++            [...url.searchParams.keys()].some(key => secretIdentity.test(key) || /^(?:code|token|key|session|cookie|authorization|credential|client_secret)$/i.test(key)) ||
++            secretIdentity.test(decodeURIComponent(url.hash)))
++            fail();
++        return url.href;
++    };
++    const pageUrl = safeUrl(location.href);
++    const ignored = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "INPUT", "TEXTAREA", "SELECT"]);
++    const textOf = (root, limit) => {
++        let text = "";
++        let visited = 0;
++        const walk = (node, depth) => {
++            if (++visited > 10000 || depth > 128)
++                fail();
++            if (text.length >= limit)
++                return;
++            if (node.nodeType === 3) {
++                text += (node.nodeValue ?? "").slice(0, limit - text.length);
++                return;
++            }
++            if (node.nodeType === 1) {
++                const element = node;
++                if (ignored.has(element.tagName) || element.hidden || element.getAttribute("aria-hidden") === "true")
++                    return;
++                const style = getComputedStyle(element);
++                if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse")
++                    return;
++            }
++            for (let child = node.firstChild; child && text.length < limit; child = child.nextSibling) {
++                if (child.nodeType === 1 && text.length)
++                    text += " ";
++                walk(child, depth + 1);
++            }
++            if (node.nodeType === 1 && node.shadowRoot && text.length < limit)
++                walk(node.shadowRoot, depth + 1);
++        };
++        walk(root, 0);
++        return text.replace(/\s+/g, " ").trim().slice(0, limit);
++    };
++    if (request.operation === "extract") {
++        const output = Object.create(null);
++        let outputChars = 0;
++        const bounded = (value) => {
++            outputChars += value.length;
++            if (outputChars > 65536)
++                fail();
++            return value;
++        };
++        const attributes = new Set(["href", "title", "alt", "aria-label", "name", "id", "role"]);
++        for (const field of request.fields) {
++            if (!field || typeof field.name !== "string" || !/^[A-Za-z][\w-]{0,63}$/.test(field.name) ||
++                Object.hasOwn(output, field.name) || (field.all !== undefined && typeof field.all !== "boolean") ||
++                (field.attribute !== undefined && !attributes.has(field.attribute)))
++                fail();
++            if (field.selector === undefined) {
++                if (field.attribute !== undefined || field.all !== undefined)
++                    fail();
++                output[field.name] = bounded(field.name === "url" ? pageUrl : field.name === "title" ? document.title.slice(0, 512) : textOf(document.body, 4000));
++                continue;
++            }
++            if (typeof field.selector !== "string" || !field.selector.length || field.selector.length > 512)
++                fail();
++            const selected = [];
++            for (const root of roots) {
++                for (const element of root.querySelectorAll(field.selector)) {
++                    if (selected.length >= 200)
++                        fail();
++                    selected.push(element);
++                    if (!field.all)
++                        break;
++                }
++                if (!field.all && selected.length)
++                    break;
++            }
++            const values = selected.map(element => bounded(field.attribute
++                ? field.attribute === "href" ? safeUrl(element.getAttribute("href") ?? "") : (element.getAttribute(field.attribute) ?? "").slice(0, 4000)
++                : textOf(element, 4000)));
++            output[field.name] = field.all ? values : values[0] ?? null;
++        }
++        return output;
++    }
++    const state = globalThis;
++    const refs = state.__auxPersonRefs ??= { ids: new WeakMap(), next: 1 };
++    let scope = document.body;
++    if (request.subtreeRef !== undefined) {
++        const ref = /^r([1-9][0-9]*)$/.exec(request.subtreeRef);
++        const matches = ref ? elements.filter(element => refs.ids.get(element) === Number(ref[1])) :
++            roots.flatMap(root => [...root.querySelectorAll(request.subtreeRef)]);
++        if (matches.length !== 1 || !matches[0].isConnected)
++            fail();
++        scope = matches[0];
++    }
++    const inside = (element) => {
++        for (let node = element; node; node = node.parentNode ?? (node instanceof ShadowRoot ? node.host : null))
++            if (node === scope)
++                return true;
++        return false;
++    };
++    const scoped = elements.filter(inside);
++    const interactive = "a[href],button,input:not([type=hidden]),select,textarea,summary,[role],[tabindex]";
++    const candidates = request.filter === "all" ? scoped : scoped.filter(element => element.matches(interactive));
++    const entries = [];
++    for (const element of candidates) {
++        if (entries.length >= request.maxElements)
++            break;
++        const rect = element.getBoundingClientRect();
++        const style = getComputedStyle(element);
++        if (!rect.width || !rect.height || style.display === "none" || style.visibility !== "visible")
++            continue;
++        if (request.filter === "viewport" &&
++            (rect.bottom <= 0 || rect.right <= 0 || rect.top >= innerHeight || rect.left >= innerWidth))
++            continue;
++        let id = refs.ids.get(element);
++        if (id === undefined) {
++            id = refs.next++;
++            refs.ids.set(element, id);
++        }
++        if (!Number.isSafeInteger(refs.next))
++            fail();
++        const tag = element.tagName.toLowerCase();
++        const label = element.getAttribute("id") ? elements.find(candidate => candidate.tagName === "LABEL" && candidate.getAttribute("for") === element.id) : undefined;
++        const name = (element.getAttribute("aria-label") || (label ? textOf(label, 120) : "") ||
++            element.getAttribute("placeholder") || textOf(element, 120) || element.getAttribute("name") || "").slice(0, 120);
++        entries.push({ ref: `r${id}`, frame: "main", tag, name,
++            role: element.getAttribute("role") ?? (tag === "button" ? "button" : tag === "a" ? "link" : undefined),
++            rect: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
++            selector: {},
++            ...(tag === "input" ? { type: element.getAttribute("type") ?? "text" } : {}),
++            ...(tag === "a" ? { href: safeUrl(element.getAttribute("href") ?? "") } : {}),
++        });
++    }
++    const formFields = entries.filter(entry => ["input", "select", "textarea"].includes(entry.tag))
++        .map(entry => ({ ref: entry.ref, label: entry.name, type: entry.type ?? entry.tag }));
++    const tables = scoped.filter(element => element.tagName === "TABLE").slice(0, 6).map((table, index) => {
++        const rows = [...table.querySelectorAll("tr")];
++        const header = rows.find(row => row.querySelector("th"));
++        const body = rows.filter(row => row !== header);
++        const cells = (row) => [...row.querySelectorAll("th,td")].slice(0, 20).map(cell => textOf(cell, 120));
++        return { ref: `t${index + 1}`, caption: table.querySelector("caption") ? textOf(table.querySelector("caption"), 80) : undefined,
++            columns: header ? cells(header) : [], rows: body.slice(0, 12).map(cells), totalRows: body.length, truncated: body.length > 12 };
++    });
++    const dialogs = scoped.filter(element => element.matches('dialog[open],[role="dialog"],[role="alertdialog"]'))
++        .slice(0, 8).map(element => ({ type: element.getAttribute("role") ?? "dialog", message: textOf(element, 512) }));
++    const text = textOf(scope, request.maxTextChars + 1);
++    return { url: pageUrl, title: document.title.slice(0, 512),
++        viewport: { width: innerWidth, height: innerHeight, scale: devicePixelRatio || 1 },
++        scroll: { x: Math.round(scrollX), y: Math.round(scrollY), maxY: Math.max(0, document.documentElement.scrollHeight - innerHeight) },
++        text: text.slice(0, request.maxTextChars),
++        headings: scoped.filter(element => /^H[1-3]$/.test(element.tagName)).slice(0, 12).map(element => textOf(element, 140)),
++        elements: entries, formFields, tables, links: entries.filter(element => element.href).map(element => ({ ref: element.ref, text: element.name, href: element.href })),
++        dialogs, truncated: candidates.length > entries.length || text.length > request.maxTextChars,
++        elementsTotal: candidates.length, nextRef: refs.next };
++})(request))))AUX_READ";
++}  // namespace aux::person_observer_script
++#endif
+diff --git a/chrome/common/native_recorder_script.h b/chrome/common/native_recorder_script.h
+new file mode 100644
+index 0000000000..1ec92585db
+--- /dev/null
++++ b/chrome/common/native_recorder_script.h
+@@ -0,0 +1,120 @@
++// Generated from the single fixed RECORDER_SOURCE; run gen-native-recorder.mjs.
++#ifndef CHROME_COMMON_NATIVE_RECORDER_SCRIPT_H_
++#define CHROME_COMMON_NATIVE_RECORDER_SCRIPT_H_
++namespace aux::recorder_script {
++inline constexpr char kProducerSha256[] = "2ad2df4ccb0b1162120b2e049d9a67964bcb02e7eac686b83216023f57163978";
++inline constexpr char16_t kBegin[] = uR"AUX_REC(((token) => {
++  globalThis.__auxRecorderStop?.();
++  const state = { token, events: [], bytes: 0, overflow: false };
++  globalThis.__auxNativeRecorder = state;
++  globalThis.__auxRec = raw => {
++    if (state.overflow || typeof raw !== 'string') return;
++    if (raw.length > 16000 || state.events.length >= 50 || state.bytes + raw.length > 65536) {
++      state.overflow = true; state.events.length = 0; state.bytes = 0;
++      globalThis.__auxRecorderStop?.(); return;
++    }
++    state.events.push(JSON.parse(raw)); state.bytes += raw.length;
++  };
++  (() => {
++  if (globalThis.__auxRecorderInstalled) return;
++  globalThis.__auxRecorderInstalled = true;
++  const sensitive = el => {
++    const tokens=(el.autocomplete || '').toLowerCase().split(/\s+/);
++    if(tokens.includes('new-password')) return 'sensitive';
++    if(el.type === 'password') return 'password';
++    if(tokens.some(token=>token.startsWith('cc-'))) return 'payment';
++    if(tokens.includes('one-time-code')) return 'otp';
++    return /password|passphrase|secret|token|cvv|cvc|ssn/i.test([el.name,el.id,el.getAttribute('aria-label')].join(' ')) ? 'sensitive' : null;
++  };
++  const label = el => (el.labels?.[0]?.textContent || el.getAttribute('aria-label') || el.name || el.id || '').trim().slice(0,200);
++  const target = el => {
++    const candidates = [];
++    const add = (selector,count) => { if (selector && selector.length <= 2000) candidates.push({selector,matches:count}); };
++    if (el.id) add('css:#'+CSS.escape(el.id), document.querySelectorAll('#'+CSS.escape(el.id)).length);
++    const testid = el.getAttribute('data-testid');
++    if (testid) add('testid:'+testid, [...document.querySelectorAll('[data-testid]')].filter(x=>x.getAttribute('data-testid')===testid).length);
++    if (el.name) add('name:'+el.name,[...document.querySelectorAll('[name]')].filter(x=>x.name===el.name).length);
++    const name = (el.labels?.[0]?.textContent || el.getAttribute('aria-label') || '').trim().slice(0,200);
++    if (name) add('label:'+name,[...document.querySelectorAll('input,textarea,select,button')].filter(x=>label(x)===name).length);
++    const role = el.getAttribute('role') || ({BUTTON:'button',A:'link',INPUT:'textbox',TEXTAREA:'textbox'})[el.tagName];
++    const text = (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0,200);
++    if (text) add('text:'+text,[...document.querySelectorAll(el.tagName)].filter(x=>(x.textContent||'').trim()===text).length);
++    if (role && text) add('role:'+role+'|'+text,[...document.querySelectorAll(el.tagName)].filter(x=>(x.getAttribute('aria-label')||x.textContent||'').trim()===text).length);
++    return candidates.length ? {candidates:candidates.slice(0,12)} : null;
++  };
++  const listeners = [];
++  globalThis.__auxRecorderStop = () => { for (const [event, listener] of listeners) document.removeEventListener(event, listener, true); globalThis.__auxRecorderInstalled = false; };
++  let entered;
++  for (const event of ['click','input','change','keydown']) { const listener=e=>{
++    if (!e.isTrusted || !(e.target instanceof Element)) return;
++    const el=e.target.closest('input,textarea,select,button,a,[role]') || e.target;
++    if(event==='click' && e.detail===0 && entered && Date.now()-entered.at<300 && (entered.el===el || entered.form && entered.form===el.form)) return;
++    const t=target(el); if (!t) return;
++    let step;
++    if (event==='input'||event==='change') { if(['checkbox','radio'].includes(el.type)) return; const secretType=sensitive(el); step=secretType?{kind:'credentialFill',secretType,target:t}:{kind:'input',control:el.tagName==='SELECT'?'select':'text',target:t,value:String(el.value||'').slice(0,4000),label:label(el)}; }
++    else if(event==='keydown') { if(!['Enter','Tab','Escape'].includes(e.key))return; if(e.key==='Enter')entered={at:Date.now(),el,form:el.form}; step={kind:'key',target:t,key:e.key}; }
++    else step={kind:event,target:t};
++    globalThis.__auxRec(JSON.stringify(step));
++  }; listeners.push([event,listener]); document.addEventListener(event,listener,true); }
++})();
++  return true;
++}))AUX_REC";
++inline constexpr char16_t kDrain[] = uR"AUX_REC(((token) => {
++  const state = globalThis.__auxNativeRecorder;
++  if (!state || state.token !== token) return null;
++  const result = { events: state.events, overflow: state.overflow };
++  state.events = []; state.bytes = 0;
++  return result;
++}))AUX_REC";
++inline constexpr char16_t kStop[] = uR"AUX_REC(((token) => {
++  if (globalThis.__auxNativeRecorder?.token !== token) return false;
++  globalThis.__auxRecorderStop?.();
++  delete globalThis.__auxNativeRecorder;
++  delete globalThis.__auxRec;
++  return true;
++}))AUX_REC";
++inline constexpr char16_t kStreamingBegin[] = uR"AUX_REC(globalThis.__auxRecorderStop?.();(() => {
++  if (globalThis.__auxRecorderInstalled) return;
++  globalThis.__auxRecorderInstalled = true;
++  const sensitive = el => {
++    const tokens=(el.autocomplete || '').toLowerCase().split(/\s+/);
++    if(tokens.includes('new-password')) return 'sensitive';
++    if(el.type === 'password') return 'password';
++    if(tokens.some(token=>token.startsWith('cc-'))) return 'payment';
++    if(tokens.includes('one-time-code')) return 'otp';
++    return /password|passphrase|secret|token|cvv|cvc|ssn/i.test([el.name,el.id,el.getAttribute('aria-label')].join(' ')) ? 'sensitive' : null;
++  };
++  const label = el => (el.labels?.[0]?.textContent || el.getAttribute('aria-label') || el.name || el.id || '').trim().slice(0,200);
++  const target = el => {
++    const candidates = [];
++    const add = (selector,count) => { if (selector && selector.length <= 2000) candidates.push({selector,matches:count}); };
++    if (el.id) add('css:#'+CSS.escape(el.id), document.querySelectorAll('#'+CSS.escape(el.id)).length);
++    const testid = el.getAttribute('data-testid');
++    if (testid) add('testid:'+testid, [...document.querySelectorAll('[data-testid]')].filter(x=>x.getAttribute('data-testid')===testid).length);
++    if (el.name) add('name:'+el.name,[...document.querySelectorAll('[name]')].filter(x=>x.name===el.name).length);
++    const name = (el.labels?.[0]?.textContent || el.getAttribute('aria-label') || '').trim().slice(0,200);
++    if (name) add('label:'+name,[...document.querySelectorAll('input,textarea,select,button')].filter(x=>label(x)===name).length);
++    const role = el.getAttribute('role') || ({BUTTON:'button',A:'link',INPUT:'textbox',TEXTAREA:'textbox'})[el.tagName];
++    const text = (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0,200);
++    if (text) add('text:'+text,[...document.querySelectorAll(el.tagName)].filter(x=>(x.textContent||'').trim()===text).length);
++    if (role && text) add('role:'+role+'|'+text,[...document.querySelectorAll(el.tagName)].filter(x=>(x.getAttribute('aria-label')||x.textContent||'').trim()===text).length);
++    return candidates.length ? {candidates:candidates.slice(0,12)} : null;
++  };
++  const listeners = [];
++  globalThis.__auxRecorderStop = () => { for (const [event, listener] of listeners) document.removeEventListener(event, listener, true); globalThis.__auxRecorderInstalled = false; };
++  let entered;
++  for (const event of ['click','input','change','keydown']) { const listener=e=>{
++    if (!e.isTrusted || !(e.target instanceof Element)) return;
++    const el=e.target.closest('input,textarea,select,button,a,[role]') || e.target;
++    if(event==='click' && e.detail===0 && entered && Date.now()-entered.at<300 && (entered.el===el || entered.form && entered.form===el.form)) return;
++    const t=target(el); if (!t) return;
++    let step;
++    if (event==='input'||event==='change') { if(['checkbox','radio'].includes(el.type)) return; const secretType=sensitive(el); step=secretType?{kind:'credentialFill',secretType,target:t}:{kind:'input',control:el.tagName==='SELECT'?'select':'text',target:t,value:String(el.value||'').slice(0,4000),label:label(el)}; }
++    else if(event==='keydown') { if(!['Enter','Tab','Escape'].includes(e.key))return; if(e.key==='Enter')entered={at:Date.now(),el,form:el.form}; step={kind:'key',target:t,key:e.key}; }
++    else step={kind:event,target:t};
++    globalThis.__auxRec(JSON.stringify(step));
++  }; listeners.push([event,listener]); document.addEventListener(event,listener,true); }
++})();true)AUX_REC";
++inline constexpr char16_t kStreamingStop[] = uR"AUX_REC(globalThis.__auxRecorderStop?.();delete globalThis.__auxRec;true)AUX_REC";
++}  // namespace aux::recorder_script
++#endif
+diff --git a/chrome/renderer/aux_person_observer_agent.cc b/chrome/renderer/aux_person_observer_agent.cc
+new file mode 100644
+index 0000000000..7d72a5eb0a
+--- /dev/null
++++ b/chrome/renderer/aux_person_observer_agent.cc
+@@ -0,0 +1,97 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/renderer/aux_person_observer_agent.h"
++
++#include <optional>
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/uuid.h"
++#include "chrome/common/chrome_isolated_world_ids.h"
++#include "chrome/common/native_person_observer_script.h"
++#include "content/public/renderer/render_frame.h"
++#include "gin/converter.h"
++#include "third_party/blink/public/common/associated_interfaces/associated_interface_registry.h"
++#include "third_party/blink/public/platform/scheduler/web_agent_group_scheduler.h"
++#include "third_party/blink/public/web/web_document.h"
++#include "third_party/blink/public/web/web_local_frame.h"
++#include "third_party/blink/public/web/web_script_source.h"
++#include "v8/include/v8-primitive.h"
++
++namespace chrome {
++AuxPersonObserverAgent::AuxPersonObserverAgent(content::RenderFrame* frame)
++    : content::RenderFrameObserver(frame) {
++  frame->GetAssociatedInterfaceRegistry()->AddInterface<mojom::AuxPersonObserver>(
++      base::BindRepeating(&AuxPersonObserverAgent::Bind,
++                         weak_factory_.GetWeakPtr()));
++}
++AuxPersonObserverAgent::~AuxPersonObserverAgent() = default;
++bool AuxPersonObserverAgent::Current(const blink::DocumentToken& document) const {
++  auto* frame = render_frame()->GetWebFrame();
++  return frame && render_frame()->IsMainFrame() &&
++         frame->GetDocument().Token() == document;
++}
++void AuxPersonObserverAgent::Bind(
++    mojo::PendingAssociatedReceiver<mojom::AuxPersonObserver> receiver) {
++  auto* frame = render_frame()->GetWebFrame();
++  if (!frame || !render_frame()->IsMainFrame() || receivers_.size() >= 4)
++    return;
++  receivers_.Add(this, std::move(receiver),
++                 std::make_shared<Scope>(frame->GetDocument().Token()));
++}
++void AuxPersonObserverAgent::Prepare(const std::string& read_id,
++                                    PrepareCallback callback) {
++  const auto scope = receivers_.current_context();
++  const bool ready = Current(scope->document) && scope->prepared_id.empty() &&
++                    base::Uuid::ParseLowercase(read_id).is_valid();
++  if (ready)
++    scope->prepared_id = read_id;
++  std::move(callback).Run(ready);
++}
++void AuxPersonObserverAgent::Read(const std::string& read_id,
++                                 const std::string& request_json,
++                                 ReadCallback callback) {
++  const auto scope = receivers_.current_context();
++  const bool admitted = Current(scope->document) &&
++                        !read_id.empty() && scope->prepared_id == read_id;
++  scope->prepared_id.clear();
++  if (!admitted || request_json.size() > 16384) {
++    std::move(callback).Run(false, "");
++    return;
++  }
++  auto request = base::JSONReader::ReadDict(request_json, base::JSON_PARSE_RFC);
++  auto canonical = request ? base::WriteJson(*request) : std::nullopt;
++  if (!canonical) {
++    std::move(callback).Run(false, "");
++    return;
++  }
++  const auto document = scope->document;
++  const auto weak = weak_factory_.GetWeakPtr();
++  auto* frame = render_frame()->GetWebFrame();
++  auto* isolate = frame->GetAgentGroupScheduler()->Isolate();
++  v8::HandleScope handle_scope(isolate);
++  if (!Current(document)) {
++    std::move(callback).Run(false, "");
++    return;
++  }
++  const std::u16string script =
++      std::u16string(aux::person_observer_script::kRead) + u"(" +
++      base::UTF8ToUTF16(*canonical) + u")";
++  auto result = frame->ExecuteScriptInIsolatedWorldAndReturnValue(
++      ISOLATED_WORLD_ID_AUX_OBSERVER,
++      blink::WebScriptSource(blink::WebString(script)),
++      blink::BackForwardCacheAware::kAllow);
++  if (!weak || !Current(document) || result.IsEmpty() || !result->IsString() ||
++      result.As<v8::String>()->Length() > 131072) {
++    std::move(callback).Run(false, "");
++    return;
++  }
++  std::string raw;
++  const bool accepted = gin::ConvertFromV8(isolate, result, &raw) &&
++                        raw.size() <= 131072 && Current(document);
++  std::move(callback).Run(accepted, accepted ? raw : "");
++}
++void AuxPersonObserverAgent::DidCreateNewDocument() { receivers_.Clear(); }
++void AuxPersonObserverAgent::WillDetach(blink::DetachReason) { receivers_.Clear(); }
++void AuxPersonObserverAgent::OnDestruct() { delete this; }
++}  // namespace chrome
+diff --git a/chrome/renderer/aux_person_observer_agent.h b/chrome/renderer/aux_person_observer_agent.h
+new file mode 100644
+index 0000000000..2a00f18511
+--- /dev/null
++++ b/chrome/renderer/aux_person_observer_agent.h
+@@ -0,0 +1,37 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_RENDERER_AUX_PERSON_OBSERVER_AGENT_H_
++#define CHROME_RENDERER_AUX_PERSON_OBSERVER_AGENT_H_
++
++#include <memory>
++#include <string>
++#include "base/memory/weak_ptr.h"
++#include "chrome/common/aux_person_observer.mojom.h"
++#include "content/public/renderer/render_frame_observer.h"
++#include "mojo/public/cpp/bindings/associated_receiver_set.h"
++#include "third_party/blink/public/common/tokens/tokens.h"
++
++namespace chrome {
++class AuxPersonObserverAgent final : public content::RenderFrameObserver,
++                                     public mojom::AuxPersonObserver {
++ public:
++  explicit AuxPersonObserverAgent(content::RenderFrame* frame);
++  ~AuxPersonObserverAgent() override;
++ private:
++  struct Scope {
++    explicit Scope(blink::DocumentToken token) : document(token) {}
++    const blink::DocumentToken document;
++    std::string prepared_id;
++  };
++  void Bind(mojo::PendingAssociatedReceiver<mojom::AuxPersonObserver> receiver);
++  bool Current(const blink::DocumentToken& document) const;
++  void Prepare(const std::string& read_id, PrepareCallback callback) override;
++  void Read(const std::string& read_id, const std::string& request_json,
++            ReadCallback callback) override;
++  void DidCreateNewDocument() override;
++  void WillDetach(blink::DetachReason reason) override;
++  void OnDestruct() override;
++  mojo::AssociatedReceiverSet<mojom::AuxPersonObserver, std::shared_ptr<Scope>> receivers_;
++  base::WeakPtrFactory<AuxPersonObserverAgent> weak_factory_{this};
++};
++}  // namespace chrome
++#endif
+diff --git a/chrome/renderer/aux_recorder_agent.cc b/chrome/renderer/aux_recorder_agent.cc
+new file mode 100644
+index 0000000000..2828325191
+--- /dev/null
++++ b/chrome/renderer/aux_recorder_agent.cc
+@@ -0,0 +1,179 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/renderer/aux_recorder_agent.h"
++
++#include <limits>
++#include "base/functional/bind.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/uuid.h"
++#include "chrome/common/chrome_isolated_world_ids.h"
++#include "chrome/common/native_recorder_script.h"
++#include "content/public/renderer/render_frame.h"
++#include "gin/arguments.h"
++#include "gin/converter.h"
++#include "gin/function_template.h"
++#include "third_party/blink/public/common/associated_interfaces/associated_interface_registry.h"
++#include "third_party/blink/public/platform/scheduler/web_agent_group_scheduler.h"
++#include "third_party/blink/public/web/web_document.h"
++#include "third_party/blink/public/web/web_local_frame.h"
++#include "third_party/blink/public/web/web_script_source.h"
++#include "v8/include/v8-context.h"
++#include "v8/include/v8-function.h"
++#include "v8/include/v8-microtask-queue.h"
++#include "v8/include/v8-object.h"
++
++namespace chrome {
++AuxRecorderAgent::AuxRecorderAgent(content::RenderFrame* frame)
++    : content::RenderFrameObserver(frame) {
++  frame->GetAssociatedInterfaceRegistry()->AddInterface<mojom::AuxRecorder>(
++      base::BindRepeating(&AuxRecorderAgent::Bind, weak_factory_.GetWeakPtr()));
++}
++AuxRecorderAgent::~AuxRecorderAgent() = default;
++void AuxRecorderAgent::Bind(
++    mojo::PendingAssociatedReceiver<mojom::AuxRecorder> receiver) {
++  auto* frame = render_frame()->GetWebFrame();
++  if (!frame || !render_frame()->IsMainFrame() || receivers_.size() >= 2) return;
++  receivers_.Add(this, std::move(receiver), std::make_shared<ReceiverScope>(frame->GetDocument().Token()));
++}
++bool AuxRecorderAgent::Current(const std::string& id, uint64_t generation,
++                              const blink::DocumentToken& document) const {
++  auto* frame = render_frame()->GetWebFrame();
++  return sink_.is_bound() && id_ == id && generation_ == generation &&
++         document_ == document && frame && render_frame()->IsMainFrame() &&
++         frame->GetDocument().Token() == document;
++}
++void AuxRecorderAgent::Prepare(PrepareCallback callback) {
++  auto* frame = render_frame()->GetWebFrame();
++  const auto scope = receivers_.current_context();
++  const bool ready = frame && render_frame()->IsMainFrame() &&
++                     frame->GetDocument().Token() == scope->document &&
++                     !sink_.is_bound();
++  scope->prepared = ready;
++  std::move(callback).Run(ready);
++}
++void AuxRecorderAgent::Start(
++    const std::string& id, uint64_t generation,
++    mojo::PendingAssociatedRemote<mojom::AuxRecorderSink> sink,
++    StartCallback callback) {
++  auto* frame = render_frame()->GetWebFrame();
++  const auto receiver_scope = receivers_.current_context();
++  if (!frame || !receiver_scope->prepared || frame->GetDocument().Token() != receiver_scope->document ||
++      !render_frame()->IsMainFrame() || sink_.is_bound() ||
++      !generation || !base::Uuid::ParseLowercase(id).is_valid() || !sink.is_valid()) {
++    std::move(callback).Run(false);
++    return;
++  }
++  receiver_scope->prepared = false;
++  id_ = id;
++  generation_ = generation;
++  document_ = frame->GetDocument().Token();
++  sequence_ = 0;
++  bytes_ = 0;
++  pending_events_ = 0;
++  sink_.Bind(std::move(sink));
++  sink_.set_disconnect_handler(base::BindOnce(&AuxRecorderAgent::Retire,
++                                             weak_factory_.GetWeakPtr(), false));
++  const auto original_document = *document_;
++  const auto weak = weak_factory_.GetWeakPtr();
++  auto* isolate = frame->GetAgentGroupScheduler()->Isolate();
++  v8::HandleScope scope(isolate);
++  auto global = frame->ExecuteScriptInIsolatedWorldAndReturnValue(
++      ISOLATED_WORLD_ID_AUX_RECORDER,
++      blink::WebScriptSource(blink::WebString::FromUtf8("globalThis")),
++      blink::BackForwardCacheAware::kAllow);
++  if (!weak) { std::move(callback).Run(false); return; }
++  if (!Current(id, generation, original_document) || global.IsEmpty() ||
++      !global->IsObject()) {
++    Retire(true);
++    std::move(callback).Run(false);
++    return;
++  }
++  auto context = global.As<v8::Object>()->GetCreationContextChecked();
++  v8::MicrotasksScope microtasks_scope(
++      isolate, context->GetMicrotaskQueue(),
++      v8::MicrotasksScope::kDoNotRunMicrotasks);
++  v8::Context::Scope context_scope(context);
++  auto binding = gin::CreateFunctionTemplate(
++      isolate, base::BindRepeating(&AuxRecorderAgent::Capture,
++          weak_factory_.GetWeakPtr(), id_, generation_, *document_))
++      ->GetFunction(context);
++  v8::Local<v8::Function> function;
++  const bool bound = binding.ToLocal(&function) &&
++      context->Global()->Set(context, gin::StringToSymbol(isolate, "__auxRec"),
++                             function).FromMaybe(false);
++  if (!weak) { std::move(callback).Run(false); return; }
++  if (!bound) {
++    Retire(true);
++    std::move(callback).Run(false);
++    return;
++  }
++  if (!weak) { std::move(callback).Run(false); return; }
++  if (!Current(id, generation, original_document)) {
++    Retire(true);
++    std::move(callback).Run(false);
++    return;
++  }
++  auto result = frame->ExecuteScriptInIsolatedWorldAndReturnValue(
++      ISOLATED_WORLD_ID_AUX_RECORDER,
++      blink::WebScriptSource(blink::WebString(aux::recorder_script::kStreamingBegin)),
++      blink::BackForwardCacheAware::kAllow);
++  if (!weak) { std::move(callback).Run(false); return; }
++  const bool accepted = !result.IsEmpty() && result->IsTrue() &&
++                        Current(id, generation, original_document);
++  if (!accepted) Retire(true);
++  std::move(callback).Run(accepted);
++}
++void AuxRecorderAgent::Capture(const std::string& id, uint64_t generation,
++                              const blink::DocumentToken& document,
++                              gin::Arguments* args) {
++  std::string step;
++  if (!Current(id, generation, document)) return;
++  if (!args->GetNext(&step) || args->Length() != 1 || step.size() > 16000 ||
++      sequence_ == std::numeric_limits<uint64_t>::max() ||
++      pending_events_ >= 50 || bytes_ + step.size() > 65536) {
++    sink_->Overflow();
++    Retire(false);
++    return;
++  }
++  bytes_ += step.size();
++  // Same associated RenderFrame group as FrameHost::BeginNavigation. The
++  // trusted DOM listener sends this before a submit starts that navigation.
++  ++pending_events_;
++  sink_->Event(++sequence_, step, base::BindOnce(
++      [](base::WeakPtr<AuxRecorderAgent> self, std::string id,
++         uint64_t generation, blink::DocumentToken document, size_t bytes,
++         bool accepted) {
++        if (!self || !self->Current(id, generation, document)) return;
++        if (!accepted) { self->Retire(false); return; }
++        --self->pending_events_;
++        self->bytes_ -= bytes;
++      }, weak_factory_.GetWeakPtr(), id, generation, document, step.size()));
++}
++void AuxRecorderAgent::Stop(const std::string& id, uint64_t generation,
++                           StopCallback callback) {
++  if (!sink_.is_bound() && id_.empty() && retired_id_ == id && retired_generation_ == generation) {
++    std::move(callback).Run(true);
++    return;
++  }
++  if (!document_ || !Current(id, generation, *document_)) {
++    std::move(callback).Run(false);
++    return;
++  }
++  Retire(true);
++  std::move(callback).Run(true);
++}
++void AuxRecorderAgent::Retire(bool notify) {
++  auto* frame = render_frame()->GetWebFrame();
++  const bool original = frame && document_ && frame->GetDocument().Token() == *document_;
++  if (!id_.empty()) { retired_id_ = id_; retired_generation_ = generation_; }
++  id_.clear(); generation_ = 0; document_.reset();
++  if (notify && sink_.is_bound()) sink_->DocumentEnded();
++  sink_.reset();
++  if (original) frame->ExecuteScriptInIsolatedWorld(
++      ISOLATED_WORLD_ID_AUX_RECORDER,
++      blink::WebScriptSource(blink::WebString(aux::recorder_script::kStreamingStop)),
++      blink::BackForwardCacheAware::kAllow);
++}
++void AuxRecorderAgent::DidCreateNewDocument() { receivers_.Clear(); Retire(true); }
++void AuxRecorderAgent::WillDetach(blink::DetachReason) { receivers_.Clear(); Retire(true); }
++void AuxRecorderAgent::OnDestruct() { delete this; }
++}  // namespace chrome
+diff --git a/chrome/renderer/aux_recorder_agent.h b/chrome/renderer/aux_recorder_agent.h
+new file mode 100644
+index 0000000000..c6fd81ab7a
+--- /dev/null
++++ b/chrome/renderer/aux_recorder_agent.h
+@@ -0,0 +1,56 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_RENDERER_AUX_RECORDER_AGENT_H_
++#define CHROME_RENDERER_AUX_RECORDER_AGENT_H_
++
++#include <optional>
++#include <memory>
++#include <string>
++#include "base/memory/weak_ptr.h"
++#include "chrome/common/aux_recorder.mojom.h"
++#include "content/public/renderer/render_frame_observer.h"
++#include "mojo/public/cpp/bindings/associated_receiver_set.h"
++#include "mojo/public/cpp/bindings/associated_remote.h"
++#include "third_party/blink/public/common/tokens/tokens.h"
++namespace gin { class Arguments; }
++namespace chrome {
++// Owned by RenderFrame; only the browser's closed associated endpoint can arm.
++class AuxRecorderAgent final : public content::RenderFrameObserver,
++                               public mojom::AuxRecorder {
++ public:
++  explicit AuxRecorderAgent(content::RenderFrame* frame);
++  ~AuxRecorderAgent() override;
++ private:
++  void Bind(mojo::PendingAssociatedReceiver<mojom::AuxRecorder> receiver);
++  void Prepare(PrepareCallback callback) override;
++  void Start(const std::string& id, uint64_t generation,
++             mojo::PendingAssociatedRemote<mojom::AuxRecorderSink> sink,
++             StartCallback callback) override;
++  void Stop(const std::string& id, uint64_t generation,
++            StopCallback callback) override;
++  void Capture(const std::string& id, uint64_t generation,
++               const blink::DocumentToken& document, gin::Arguments* args);
++  bool Current(const std::string& id, uint64_t generation,
++               const blink::DocumentToken& document) const;
++  void Retire(bool notify);
++  void DidCreateNewDocument() override;
++  void WillDetach(blink::DetachReason reason) override;
++  void OnDestruct() override;
++  std::string id_;
++  std::string retired_id_;
++  uint64_t retired_generation_ = 0;
++  uint64_t generation_ = 0;
++  uint64_t sequence_ = 0;
++  size_t bytes_ = 0;
++  size_t pending_events_ = 0;
++  std::optional<blink::DocumentToken> document_;
++  struct ReceiverScope {
++    explicit ReceiverScope(blink::DocumentToken token) : document(token) {}
++    const blink::DocumentToken document;
++    bool prepared = false;
++  };
++  mojo::AssociatedReceiverSet<mojom::AuxRecorder, std::shared_ptr<ReceiverScope>> receivers_;
++  mojo::AssociatedRemote<mojom::AuxRecorderSink> sink_;
++  base::WeakPtrFactory<AuxRecorderAgent> weak_factory_{this};
++};
++}  // namespace chrome
++#endif

@@ -1,0 +1,301 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 96b63c06c..a5d28327c 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -21,6 +21,8 @@ source_set("runtime") {
+     "browser_export_picker_mac.mm",
+     "browser_profile_decode.h",
+     "browser_profile_decode.cc",
++    "browser_arc_sidebar.cc",
++    "browser_arc_sidebar.h",
+     "browser_profile_discovery.h",
+     "browser_profile_discovery.cc",
+     "browser_profile_extension_installer.h",
+diff --git a/chrome/browser/ui/aux/browser_arc_sidebar.cc b/chrome/browser/ui/aux/browser_arc_sidebar.cc
+new file mode 100644
+index 0000000..11066dd
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_arc_sidebar.cc
+@@ -0,0 +1,191 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license.
++#include "chrome/browser/ui/aux/browser_arc_sidebar.h"
++#include <algorithm>
++#include <map>
++#include <set>
++#include <utility>
++#include "base/files/file_util.h"
++#include "base/json/json_reader.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++namespace aux {
++namespace {
++constexpr size_t kMaximumItems = 100000;
++constexpr size_t kMaximumTabs = 10000;
++constexpr size_t kMaximumDepth = 128;
++bool Text(const std::string* value, size_t maximum, bool allow_empty = false) {
++  return value && (allow_empty || !value->empty()) && value->size() <= maximum && base::IsStringUTF8(*value) &&
++      std::ranges::none_of(*value, [](unsigned char c) { return c < 32 || c == 127; });
++}
++bool PairMap(const base::ListValue* values, size_t maximum,
++    std::map<std::string, const base::DictValue*>& output) {
++  if (!values || values->size() % 2 || values->size() / 2 > maximum) return false;
++  for (size_t i = 0; i < values->size(); i += 2) {
++    const auto* id = (*values)[i].GetIfString();
++    const auto* data = (*values)[i + 1].GetIfDict();
++    if (!Text(id, 160) || !data || !output.emplace(*id, data).second) return false;
++    if (const auto* saved_id = data->FindString("id"); saved_id && *saved_id != *id) return false;
++  }
++  return true;
++}
++// Persisted Arc v1 Space.newContainerIDs maps pinned/unpinned variants to
++// original root IDs; items/spaces use alternating ID/object arrays. References:
++// https://github.com/ivnvxd/arc-export/blob/main/main.py
++// https://github.com/dharminnagar/arc-bookmarks-exporter/blob/main/main.py
++struct Root { std::string name; bool pinned; int window; };
++}  // namespace
++DecodedBrowserProfile DecodeArcSidebar(const BrowserProfileSnapshot& snapshot,
++    const std::vector<std::string>& categories,
++    const base::RepeatingCallback<bool()>& cancelled) {
++  DecodedBrowserProfile result;
++  auto fail = [&] { result.snapshot_error = "The Arc sidebar schema, hierarchy, or original snapshot is unavailable or changed.";
++    result.bookmarks.clear(); result.tabs.clear(); };
++  if (!snapshot.OriginalIsCurrent() || cancelled.Run()) { fail(); return result; }
++  std::string text;
++  if (!base::ReadFileToStringWithMaxSize(snapshot.path().AppendASCII("StorableSidebar.json"), &text, 32 * 1024 * 1024)) { fail(); return result; }
++  auto parsed = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
++  const auto* sidebar = parsed ? parsed->FindDict("sidebar") : nullptr;
++  const auto* containers = sidebar ? sidebar->FindList("containers") : nullptr;
++  if (!parsed || parsed->FindInt("version") != 1 || !containers || containers->size() > 64) { fail(); return result; }
++  const bool bookmarks = std::ranges::find(categories, "bookmarks") != categories.end();
++  const bool tabs = std::ranges::find(categories, "tabs") != categories.end();
++  size_t total_items = 0;
++  int window = 0;
++  bool known_container = false;
++  size_t bookmark_nodes = 0;
++  std::map<int, size_t> bookmark_spaces;
++  std::map<std::pair<int, std::vector<std::u16string>>, std::vector<size_t>> bookmark_paths;
++  for (const auto& raw : *containers) {
++    if (cancelled.Run()) { fail(); return result; }
++    const auto* container = raw.GetIfDict();
++    if (!container) { fail(); return result; }
++    if (!container->contains("spaces") && !container->contains("items")) {
++      if (!container->contains("global")) { fail(); return result; }
++      continue;
++    }
++    known_container = true;
++    // Do not infer privacy from names. Explicit private flags, when present,
++    // reduce admission; this does not claim unknown Arc schemas are excluded.
++    if (const auto* private_value = container->Find("isPrivate")) {
++      if (!private_value->is_bool()) { fail(); return result; }
++      if (private_value->GetBool()) continue;
++    }
++    std::map<std::string, const base::DictValue*> items, spaces;
++    if (!PairMap(container->FindList("items"), kMaximumItems, items) ||
++        !PairMap(container->FindList("spaces"), 1024, spaces) || items.size() > kMaximumItems - total_items) { fail(); return result; }
++    total_items += items.size();
++    std::map<std::string, Root> roots;
++    const auto* raw_spaces = container->FindList("spaces");
++    for (size_t position = 0; position < raw_spaces->size(); position += 2) {
++      const auto& id = (*raw_spaces)[position].GetString();
++      const auto* space = spaces.at(id);
++      const auto* private_value = space->Find("isPrivate");
++      if (private_value && !private_value->is_bool()) { fail(); return result; }
++      if (private_value && private_value->GetBool()) continue;
++      const auto* title = space->FindString("title");
++      if (title && !Text(title, 4096, true)) { fail(); return result; }
++      const std::string name = title && !title->empty() ? *title : "Untitled Space";
++      const auto* ids = space->FindList("newContainerIDs");
++      if (!ids || ids->size() % 2 || ids->size() > 16) { fail(); return result; }
++      const int space_window = window++;
++      for (size_t i = 0; i < ids->size(); i += 2) {
++        const auto* tag = (*ids)[i].GetIfDict();
++        const auto* root_id = (*ids)[i + 1].GetIfString();
++        if (!tag || tag->size() != 1 || !Text(root_id, 160) || !items.contains(*root_id) ||
++            (tag->contains("pinned") == tag->contains("unpinned")) ||
++            !roots.emplace(*root_id, Root{name, tag->contains("pinned"), space_window}).second) { fail(); return result; }
++      }
++    }
++    const auto* raw_items = container->FindList("items");
++    for (size_t position = 0; position < raw_items->size(); position += 2) {
++      const auto& id = (*raw_items)[position].GetString();
++      const auto* item = items.at(id);
++      const auto* data = item->FindDict("data");
++      const auto* tab = data ? data->FindDict("tab") : nullptr;
++      if (!tab) continue;
++      const auto* private_value = tab->Find("isPrivate");
++      if (!private_value) private_value = item->Find("isPrivate");
++      if (private_value && !private_value->is_bool()) { fail(); return result; }
++      if (private_value && private_value->GetBool()) continue;
++      const auto* url = tab->FindString("savedURL");
++      if (!url) {
++        if (tab->contains("savedURL")) { fail(); return result; }
++        continue;  // A transient blank tab has no saved URL to import.
++      }
++      if (!Text(url, 8192, true)) { fail(); return result; }
++      if (url->empty()) continue;
++      GURL address(*url);
++      if (!address.is_valid() || !address.SchemeIsHTTPOrHTTPS() || address.has_username() || address.has_password()) continue;
++      const auto* title = item->FindString("title");
++      if (!title) title = tab->FindString("savedTitle");
++      if (title && !Text(title, 4096, true)) { fail(); return result; }
++      const auto* parent = item->FindString("parentID");
++      std::vector<std::u16string> path;
++      std::set<std::string> visited{id};
++      const Root* root = nullptr;
++      for (size_t depth = 0; parent && depth < kMaximumDepth; ++depth) {
++        if (!Text(parent, 160) || !visited.insert(*parent).second) { fail(); return result; }
++        if (auto found = roots.find(*parent); found != roots.end()) { root = &found->second; break; }
++        auto ancestor = items.find(*parent);
++        if (ancestor == items.end()) { fail(); return result; }
++        if (const auto* ancestor_private_value = ancestor->second->Find("isPrivate")) {
++          if (!ancestor_private_value->is_bool()) { fail(); return result; }
++          if (ancestor_private_value->GetBool()) break;
++        }
++        const auto* ancestor_data = ancestor->second->FindDict("data");
++        if (!ancestor_data || (!ancestor_data->contains("list") && !ancestor_data->contains("itemContainer") && !ancestor_data->contains("splitView"))) { fail(); return result; }
++        if (const auto* folder = ancestor->second->FindString("title")) {
++          if (!Text(folder, 4096, true)) { fail(); return result; }
++          if (ancestor_data->contains("list")) path.push_back(base::UTF8ToUTF16(*folder));
++        }
++        parent = ancestor->second->FindString("parentID");
++      }
++      // Roots of explicitly private Spaces are absent. Unrecognized roots are
++      // not silently attributed to a public Space or Chromium Profile.
++      if (!root) {
++        if (parent && visited.size() >= kMaximumDepth + 1) { fail(); return result; }
++        continue;
++      }
++      std::ranges::reverse(path);
++      path.insert(path.begin(), base::UTF8ToUTF16(root->name));
++      const auto name = title ? base::UTF8ToUTF16(*title) : base::UTF8ToUTF16(address.spec());
++      if (bookmarks && root->pinned) {
++        if (result.bookmarks.size() >= kMaximumItems) { fail(); return result; }
++        auto [space, inserted] = bookmark_spaces.try_emplace(root->window, result.bookmarks.size());
++        if (inserted) {
++          if (++bookmark_nodes > kMaximumItems) { fail(); return result; }
++          result.bookmarks.push_back({base::UTF8ToUTF16(root->name), GURL(), {}});
++          bookmark_paths.emplace(std::make_pair(root->window, std::vector<std::u16string>{}), std::vector<size_t>{space->second});
++        }
++        std::vector<std::u16string> prefix;
++        std::vector<size_t> indices{space->second};
++        auto node = [&]() -> ImportedProfileBookmark* {
++          auto* current = &result.bookmarks[indices.front()];
++          for (size_t i = 1; i < indices.size(); ++i) current = &current->children[indices[i]];
++          return current;
++        };
++        for (size_t i = 1; i < path.size(); ++i) {
++          prefix.push_back(path[i]);
++          auto existing = bookmark_paths.find({root->window, prefix});
++          if (existing != bookmark_paths.end()) { indices = existing->second; continue; }
++          if (++bookmark_nodes > kMaximumItems) { fail(); return result; }
++          auto* parent_node = node();
++          const size_t child = parent_node->children.size();
++          parent_node->children.push_back({path[i], GURL(), {}});
++          indices.push_back(child);
++          bookmark_paths.emplace(std::make_pair(root->window, prefix), indices);
++        }
++        if (++bookmark_nodes > kMaximumItems) { fail(); return result; }
++        node()->children.push_back({name, address, {}});
++      }
++      if (tabs) {
++        if (result.tabs.size() >= kMaximumTabs) { fail(); return result; }
++        result.tabs.push_back({address, name, root->window, root->pinned});
++      }
++    }
++  }
++  if (!known_container || cancelled.Run() || !snapshot.OriginalIsCurrent()) fail();
++  return result;
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_arc_sidebar.h b/chrome/browser/ui/aux/browser_arc_sidebar.h
+new file mode 100644
+index 000000000..1186d408c
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_arc_sidebar.h
+@@ -0,0 +1,15 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_ARC_SIDEBAR_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_ARC_SIDEBAR_H_
++#include <string>
++#include <vector>
++#include "chrome/browser/ui/aux/browser_profile_decode.h"
++namespace aux {
++// Reads only a native-held Arc application-root snapshot. This shared sidebar
++// is not assigned to any inferred Chromium Profile. No executable data is read.
++DecodedBrowserProfile DecodeArcSidebar(const BrowserProfileSnapshot& snapshot,
++    const std::vector<std::string>& categories,
++    const base::RepeatingCallback<bool()>& cancelled);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_profile_discovery.cc b/chrome/browser/ui/aux/browser_profile_discovery.cc
+--- a/chrome/browser/ui/aux/browser_profile_discovery.cc
++++ b/chrome/browser/ui/aux/browser_profile_discovery.cc
+@@ -90,6 +90,25 @@
+           path, std::move(*anchor), std::move(categories), std::nullopt, {}});
+     }
+   }
++  // Arc's shared sidebar belongs to its application storage root, not to an
++  // inferred Chromium Profile below User Data. Publish it exactly once.
++  const auto arc_root = support.AppendASCII("Arc");
++  if (base::PathExists(arc_root.AppendASCII("StorableSidebar.json"))) {
++    auto sidebar = BrowserProfileSnapshot::Capture(arc_root, {"StorableSidebar.json"}, false, cancelled);
++    if (sidebar.has_value() && (*sidebar)->OriginalIsCurrent()) {
++      if (found.size() >= 128) return base::unexpected("Too many browser sources are present.");
++      DiscoveredBrowserProfile source;
++      source.source_id = "arc";
++      source.label = "Arc";
++      source.profile_id = "Arc sidebar (all Spaces)";
++      source.brand = BrowserProfileBrand::kArc;
++      source.path = arc_root;
++      source.anchor = std::move(*sidebar);
++      source.categories = {"bookmarks", "tabs"};
++      source.arc_sidebar = true;
++      found.push_back(std::move(source));
++    }
++  }
+   const auto firefox_ini = GetProfilesINI();
+   auto firefox_registration = BrowserProfileSnapshot::Capture(
+       firefox_ini.DirName(), {firefox_ini.BaseName().value()}, false, cancelled);
+diff --git a/chrome/browser/ui/aux/browser_profile_discovery.h b/chrome/browser/ui/aux/browser_profile_discovery.h
+index b01fa37e2..40ff6d626 100644
+--- a/chrome/browser/ui/aux/browser_profile_discovery.h
++++ b/chrome/browser/ui/aux/browser_profile_discovery.h
+@@ -28,6 +28,7 @@ struct DiscoveredBrowserProfile {
+   bool firefox_profile = false;
+   std::shared_ptr<BrowserProfileSnapshot> registration_anchor;
+   std::shared_ptr<const SafariWindowSnapshot> safari_window;
++  bool arc_sidebar = false;
+ };
+ // No renderer or runtime filesystem path is accepted. Registered profile names
+ // come from a held native snapshot of the browser's actual Local State.
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.cc b/chrome/browser/ui/aux/browser_profile_importer.cc
+--- a/chrome/browser/ui/aux/browser_profile_importer.cc
++++ b/chrome/browser/ui/aux/browser_profile_importer.cc
+@@ -22,6 +22,7 @@
+ #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+ #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "chrome/browser/ui/aux/browser_profile_decode.h"
++#include "chrome/browser/ui/aux/browser_arc_sidebar.h"
+ #include "chrome/browser/ui/aux/browser_export_decode.h"
+ #include "chrome/browser/ui/aux/browser_firefox_import.h"
+ #include "chrome/browser/ui/aux/browser_firefox_snapshot.h"
+@@ -805,7 +806,7 @@
+ void BrowserProfileImporter::Decode(const std::shared_ptr<Job>& job) {
+   job->working = true;
+   const bool needs_key = !job->source->discovered.export_format &&
+-      !job->source->discovered.firefox_profile && !job->source->discovered.safari_window && (std::ranges::find(job->categories, "passwords") != job->categories.end() ||
++      !job->source->discovered.firefox_profile && !job->source->discovered.safari_window && !job->source->discovered.arc_sidebar && (std::ranges::find(job->categories, "passwords") != job->categories.end() ||
+       (std::ranges::find(job->categories, "tabs") != job->categories.end() &&
+        base::DirectoryExists(job->source->discovered.path.Append(sessions::kEncryptedSessionsDirectory))));
+   auto decoded = base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
+@@ -828,6 +829,8 @@
+             else captured.tabs = source.safari_window->tabs;
+             return captured;
+           }
++          if (source.arc_sidebar)
++            return DecodeArcSidebar(*source.anchor, original->categories, cancelled);
+           if (source.firefox_profile)
+             return PrepareFirefoxSnapshot(source.path, original->categories, cancelled);
+           if (source.export_format)

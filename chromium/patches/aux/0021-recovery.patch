@@ -1,0 +1,208 @@
+diff --git a/chrome/browser/ui/aux/methods/recovery_methods.cc b/chrome/browser/ui/aux/methods/recovery_methods.cc
+new file mode 100644
+index 0000000000..503aa8cc78
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/recovery_methods.cc
+@@ -0,0 +1,202 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++
++#include <cmath>
++#include <utility>
++#include <variant>
++
++#include "base/files/file_util.h"
++#include "base/functional/bind.h"
++#include "base/memory/ref_counted_memory.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/shell_integration.h"
++#include "printing/buildflags/buildflags.h"
++#include "content/public/browser/host_zoom_map.h"
++#include "third_party/blink/public/common/page/page_zoom.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/notimplemented.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/browser/bookmarks/bookmark_model_factory.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/devtools/devtools_window.h"
++#if BUILDFLAG(ENABLE_PRINTING)
++#if BUILDFLAG(ENABLE_PRINT_PREVIEW)
++#include "chrome/browser/printing/print_view_manager.h"
++#else
++#include "chrome/browser/printing/print_view_manager_basic.h"
++#endif
++#include "components/printing/browser/print_to_pdf/pdf_print_utils.h"
++#endif
++#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/dictation_mac.h"
++#include "chrome/browser/ui/aux/extension_bridge.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/profile_search_engine.h"
++#include "chrome/browser/ui/aux/result_preview.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/zap_controller.h"
++#include "components/guest_contents/browser/guest_contents_handle.h"
++#include "components/prefs/pref_change_registrar.h"
++#include "components/prefs/pref_service.h"
++#endif
++#include "chrome/browser/contextual_search/contextual_search_service_factory.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
++#include "chrome/browser/ui/bookmarks/bookmarks_service_feature.h"
++#include "chrome/browser/ui/browser_element_identifiers.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/interaction/browser_elements.h"
++#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
++#include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
++#include "chrome/browser/ui/tabs/tab_drag_api/tab_drag_service_feature.h"
++#include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h"
++#include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h"
++#include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
++#include "chrome/browser/ui/webui/favicon_source.h"
++#include "chrome/browser/ui/webui/searchbox/realbox_handler.h"
++#include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h"
++#include "chrome/browser/ui/webui_browser/bookmark_bar_page_handler.h"
++#include "chrome/browser/ui/webui_browser/webui_browser.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_page_handler.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "chrome/common/webui_url_constants.h"
++#include "chrome/grit/branded_strings.h"
++#include "chrome/grit/generated_resources.h"
++#include "chrome/grit/tab_strip_api_resources_map.h"
++#include "chrome/grit/webui_browser_resources.h"
++#include "chrome/grit/webui_browser_resources_map.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/grit/aux_host_resources.h"
++#include "chrome/grit/aux_host_resources_map.h"
++#include "chrome/grit/aux_resources.h"
++#include "chrome/grit/aux_resources_map.h"
++#include "ui/display/screen.h"
++#include "ui/events/event.h"
++#include "ui/events/event_observer.h"
++#include "ui/views/event_monitor.h"
++#include "ui/shell_dialogs/selected_file_info.h"
++#endif
++#include "net/base/filename_util.h"
++#include "chrome/grit/webui_toolbar_shared_resources.h"
++#include "chrome/grit/webui_toolbar_shared_resources_map.h"
++#include "components/contextual_search/contextual_search_service.h"
++#include "components/contextual_search/contextual_search_session_handle.h"
++#include "components/favicon_base/favicon_url_parser.h"
++#include "components/guest_contents/browser/guest_contents_host_impl.h"
++#include "components/surface_embed/common/features.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/storage_partition.h"
++#include "content/public/browser/web_ui.h"
++#include "content/public/browser/web_ui_data_source.h"
++#include "services/network/public/mojom/content_security_policy.mojom.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "net/cookies/cookie_options.h"
++#include "net/cookies/cookie_partition_key_collection.h"
++#include "net/cookies/canonical_cookie.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
++#include "services/network/public/mojom/cookie_manager.mojom.h"
++#endif
++#include "ui/base/l10n/l10n_util.h"
++#include "ui/views/interaction/element_tracker_views.h"
++#include "ui/webui/tracked_element/tracked_element_handler.h"
++#include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
++#include "ui/webui/webui_util.h"
++#include "url/origin.h"
++#include "url/gurl.h"
++
++#include <set>
++
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++void WebUIBrowserUI::HandleAuxRecoveryRequest(
++    const std::string& method, const base::ListValue& args,
++    RequestCallback callback) {
++  const base::ListValue* list = &args;
++  if (method == "exportRuntimeBackup" ||
++      method == "cancelRuntimeRestore" ||
++      method == "runtimeRestoreStatus") {
++    if (!list->empty() || browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid runtime backup request");
++      return;
++    }
++    auto* host = AuxRuntimeHost::ForProfile(browser_->GetProfile());
++    if (!host) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "Aux runtime is unavailable");
++      return;
++    }
++    const char* api = method == "exportRuntimeBackup"
++                          ? "installation.createBackup"
++                          : method == "cancelRuntimeRestore"
++                                ? "installation.cancelRestore"
++                                : "installation.restoreStatus";
++    host->CallApi(api, "{}",
++        base::BindOnce(
++            [](RequestCallback callback, bool backup,
++               AuxRuntimeHost::Response response) {
++              if (!response.ok || !backup) {
++                std::move(callback).Run(response.ok, response.result_json,
++                                        response.error_code,
++                                        response.error_message);
++                return;
++              }
++              auto parsed = base::JSONReader::Read(response.result_json,
++                                                   base::JSON_PARSE_RFC);
++              if (!parsed || !parsed->is_dict()) {
++                std::move(callback).Run(false, "", "backend_unavailable",
++                                        "Aux backup result is invalid");
++                return;
++              }
++              base::DictValue result = parsed->GetDict().Clone();
++              result.Remove("createdAt");
++              result.Remove("schemaVersion");
++              std::move(callback).Run(true,
++                  *base::WriteJson(base::Value(std::move(result))), "", "");
++            }, std::move(callback), method == "exportRuntimeBackup"));
++    return;
++  }
++  if (method == "stageRuntimeRestore") {
++    if (!list->empty() || browser_->GetProfile()->IsOffTheRecord() ||
++        open_file_dialog_) {
++      std::move(callback).Run(false, "", "conflict",
++                              "Runtime restore requires an available regular Profile");
++      return;
++    }
++    auto* active = browser_->GetTabStripModel()->GetActiveWebContents();
++    open_file_dialog_ = ui::SelectFileDialog::Create(
++        this, std::make_unique<ChromeSelectFilePolicy>(active));
++    if (!open_file_dialog_) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "The system file dialog is unavailable");
++      return;
++    }
++    file_dialog_purpose_ = FileDialogPurpose::kRuntimeRestore;
++    file_dialog_callback_ = std::move(callback);
++    open_file_dialog_->SelectFile(
++        ui::SelectFileDialog::SELECT_FOLDER, std::u16string(),
++        browser_->GetProfile()->last_selected_directory(), nullptr, 0,
++        base::FilePath::StringType(), browser_->GetWindow()->GetNativeWindow());
++    return;
++  }
++
++
++  std::move(callback).Run(false, "", "not_found",
++                          "Unsupported Aux shell method: " + method);
++}
++#endif

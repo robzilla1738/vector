@@ -1,0 +1,1019 @@
+diff --git a/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm b/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm
+index 1fb0173915..44568de61d 100644
+--- a/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm
++++ b/chrome/browser/renderer_host/chrome_render_widget_host_view_mac_delegate.mm
+@@ -15,6 +15,11 @@
+ #import "chrome/browser/renderer_host/chrome_render_widget_host_view_mac_history_swiper.h"
+ #include "chrome/browser/renderer_host/chrome_render_widget_host_view_mac_history_swiping_control.h"
+ #include "chrome/browser/ui/browser.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "components/input/native_web_keyboard_event.h"
++#endif
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/tabs/inactive_window_mouse_event_controller.h"
+ #include "chrome/browser/ui/tabs/public/tab_features.h"
+@@ -134,6 +139,16 @@
+ // delegate method if implemented. Return YES if the event is fully handled, or
+ // NO if normal processing should take place.
+ - (BOOL)handleEvent:(NSEvent*)event {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (event.type == NSEventTypeKeyDown || event.type == NSEventTypeKeyUp) {
++    NSWindow* native_window = self.nsView.window;
++    if (native_window) {
++      auto* window = WebUIBrowserWindow::FromNativeWindow(gfx::NativeWindow(native_window));
++      input::NativeWebKeyboardEvent physical{base::apple::OwnedNSEvent(event)};
++      if (window && window->HandleAuxWebsiteKeyEvent(physical, self.webContents)) return YES;
++    }
++  }
++#endif
+   return [_historySwiper handleEvent:event];
+ }
+ 
+diff --git a/chrome/browser/ui/aux/native_cdp_input_mac.h b/chrome/browser/ui/aux/native_cdp_input_mac.h
+new file mode 100644
+index 0000000000..118166fbb5
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_cdp_input_mac.h
+@@ -0,0 +1,26 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_CDP_INPUT_MAC_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_CDP_INPUT_MAC_H_
++#include <optional>
++#include <cstdint>
++#include <string>
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "ui/gfx/native_ui_types.h"
++namespace content {
++class NativePlatformInputAdmission;
++}
++namespace aux {
++struct NativeCdpPersonInput {
++  std::string page_id;
++  content::WeakDocumentPtr document;
++  NativeCdpRetirementReceipt retired;
++  int source_pid = 0;
++};
++// Only the original native NSViewHost admission path may call this. It does
++// not read key text/codes, credentials, cookies or sessions.
++void PublishNativeCdpPersonTakeover(const NativeCdpPersonInput& input);
++std::optional<NativeCdpPersonInput> RetireForNativeCdpPersonInput(
++    const content::NativePlatformInputAdmission& admission);
++}
++#endif
+diff --git a/chrome/browser/ui/aux/native_cdp_input_mac.mm b/chrome/browser/ui/aux/native_cdp_input_mac.mm
+new file mode 100644
+index 0000000000..e0e342fb17
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_cdp_input_mac.mm
+@@ -0,0 +1,108 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_cdp_input_mac.h"
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/logging.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++#import <Cocoa/Cocoa.h>
++#include <limits>
++#include <utility>
++#include <unistd.h>
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/native_platform_input_admission.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/render_widget_host.h"
++#include "content/public/browser/render_widget_host_view.h"
++#include "content/public/browser/web_contents.h"
++namespace aux {
++void PublishNativeCdpPersonTakeover(const NativeCdpPersonInput& input) {
++  // Native retirement already happened synchronously. Only its exact original
++  // registered scope travels to the authenticated runtime; a page-only input
++  // notification could otherwise stop a later run that reused the same tab.
++  auto* frame = input.document.AsRenderFrameHostIfValid();
++  auto* process = frame ? frame->GetProcess() : nullptr;
++  auto* profile = process ? Profile::FromBrowserContext(
++      process->GetBrowserContext()) : nullptr;
++  auto* catalog = profile ? TabCatalog::GetForProfile(profile) : nullptr;
++  auto* contents = catalog ? catalog->FindPage(input.page_id) : nullptr;
++  if (!profile || profile->IsOffTheRecord() || !frame || !contents ||
++      contents->GetPrimaryMainFrame() != frame || !frame->IsActive() ||
++      !frame->IsRenderFrameLive())
++    return;
++  base::DictValue payload;
++  payload.Set("scope", input.retired.original_scope.Clone());
++  const bool installed = !input.retired.original_lease.empty();
++  payload.Set("phase", installed ? "installed" : "preparing");
++  if (installed)
++    payload.Set("lease", input.retired.original_lease.Clone());
++  auto json = base::WriteJson(payload);
++  if (!json)
++    return;
++  auto* runtime = AuxRuntimeHost::ForProfile(profile);
++  if (!runtime)
++    return;
++  // No runtime reply can rearm the native document. The runtime revalidates
++  // this original scope inside its acknowledged serialized control boundary.
++  runtime->CallInternal("view.takeover", std::move(*json), base::BindOnce(
++      [](AuxRuntimeHost::Response response) {
++        if (!response.ok)
++          LOG(WARNING) << "Aux native takeover refused: " << response.error_code;
++      }));
++}
++std::optional<NativeCdpPersonInput> RetireForNativeCdpPersonInput(
++    const content::NativePlatformInputAdmission& admission) {
++  if (!admission.Consume())
++    return std::nullopt;
++  auto* contents = admission.contents();
++  auto* widget = admission.widget();
++  const auto& document = admission.document();
++  const auto& native_event = admission.event();
++  NSEvent* event = native_event.Get();
++  auto* frame = document.AsRenderFrameHostIfValid();
++  auto* profile = contents ? Profile::FromBrowserContext(contents->GetBrowserContext())
++                           : nullptr;
++  if (!profile || profile->IsOffTheRecord() || !widget || !frame || !event ||
++      !event.CGEvent || contents->GetPrimaryMainFrame() != frame ||
++      !frame->IsActive() || !frame->IsRenderFrameLive() || !widget->GetProcess() ||
++      widget->GetProcess()->GetBrowserContext() != profile)
++    return std::nullopt;
++  const bool keyboard = event.type == NSEventTypeKeyDown ||
++                        event.type == NSEventTypeKeyUp ||
++                        event.type == NSEventTypeFlagsChanged;
++  const bool mouse = event.type == NSEventTypeLeftMouseDown ||
++                     event.type == NSEventTypeRightMouseDown ||
++                     event.type == NSEventTypeOtherMouseDown ||
++                     event.type == NSEventTypeLeftMouseUp ||
++                     event.type == NSEventTypeRightMouseUp ||
++                     event.type == NSEventTypeOtherMouseUp ||
++                     event.type == NSEventTypeLeftMouseDragged ||
++                     event.type == NSEventTypeRightMouseDragged ||
++                     event.type == NSEventTypeOtherMouseDragged ||
++                     event.type == NSEventTypeScrollWheel;
++  if (!keyboard && !mouse)
++    return std::nullopt;
++  const int64_t source = CGEventGetIntegerValueField(
++      event.CGEvent, kCGEventSourceUnixProcessID);
++  if (source < 0 || source > std::numeric_limits<int>::max() || source == getpid())
++    return std::nullopt;
++  auto* root_widget = frame->GetRenderWidgetHost();
++  auto* view = root_widget ? root_widget->GetView() : nullptr;
++  if (!view || !view->HasNativeInputAdmissionForDocument(document))
++    return std::nullopt;
++  const std::string page_id = PageIdentity::GetOrCreate(profile, contents);
++  auto* catalog = TabCatalog::GetForProfile(profile);
++  auto* egress = EgressController::ForProfile(profile);
++  if (!catalog || catalog->FindPage(page_id) != contents ||
++      !egress || !egress->IsIsolatedPage(contents))
++    return std::nullopt;
++  auto retired = egress->RetireForNativePersonInput(contents, document);
++  if (!retired)
++    return std::nullopt;
++  return NativeCdpPersonInput{page_id, document, std::move(*retired),
++                            static_cast<int>(source)};
++}
++}
+diff --git a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h
+index 1f515437b6..ce754691cc 100644
+--- a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h
++++ b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.h
+@@ -58,6 +58,10 @@ class RenderWidgetHostNSViewBridge : public mojom::RenderWidgetHostNSView,
+   // method is expected to go away).
+   RenderWidgetHostViewCocoa* GetNSView();
+ 
++  void SetNativeInputDocumentBinding(
++      const std::string& binding,
++      SetNativeInputDocumentBindingCallback callback) override;
++
+   // mojom::RenderWidgetHostNSView implementation.
+   void InitAsPopup(const gfx::Rect& content_rect,
+                    uint64_t popup_parent_ns_view_id) override;
+diff --git a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm
+index 2eda2e79d7..1e537d1c7a 100644
+--- a/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm
++++ b/content/app_shim_remote_cocoa/render_widget_host_ns_view_bridge.mm
+@@ -176,6 +176,13 @@ void RenderWidgetHostNSViewBridge::SetBackgroundColor(SkColor color) {
+       skia::CGColorCreateFromSkColor(color).get();
+ }
+ 
++void RenderWidgetHostNSViewBridge::SetNativeInputDocumentBinding(
++    const std::string& binding,
++    SetNativeInputDocumentBindingCallback callback) {
++  [cocoa_view_ setNativeInputDocumentBinding:binding];
++  std::move(callback).Run();
++}
++
+ void RenderWidgetHostNSViewBridge::SetVisible(bool visible) {
+   ScopedCAActionDisabler disabler;
+   cocoa_view_.hidden = !visible;
+diff --git a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h
+index 679c80ebaf..6073ddd026 100644
+--- a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h
++++ b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.h
+@@ -9,6 +9,7 @@
+ 
+ #include <optional>
+ #include <set>
++#include <string>
+ #include <vector>
+ 
+ #include "base/containers/flat_set.h"
+@@ -56,6 +57,8 @@ CONTENT_EXPORT
+                        NSTextInputClient,
+                        NSAccessibility>
+ 
++- (void)setNativeInputDocumentBinding:(const std::string&)binding;
++
+ @property(nonatomic, assign) NSRange markedRange;
+ @property(nonatomic, assign) ui::TextInputType textInputType;
+ @property(nonatomic, assign) int textInputFlags;
+diff --git a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm
+index 6a2880e6e5..2c984a2d45 100644
+--- a/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm
++++ b/content/app_shim_remote_cocoa/render_widget_host_view_cocoa.mm
+@@ -53,6 +53,7 @@
+ #include "ui/display/display.h"
+ #include "ui/display/screen.h"
+ #include "ui/events/event_utils.h"
++#include "ui/events/cocoa/cocoa_event_utils.h"
+ #include "ui/events/keycodes/dom/dom_code.h"
+ #include "ui/events/keycodes/dom/keycode_converter.h"
+ #include "ui/events/platform/platform_event_source.h"
+@@ -258,6 +259,7 @@ gfx::PointF GetSanitizedFlippedPoint(NSPoint point, CGFloat height) {
+   // information) and access to accessibility structures (only present in the
+   // browser process).
+   raw_ptr<remote_cocoa::RenderWidgetHostNSViewHostHelper> _hostHelper;
++  std::string _nativeInputDocumentBinding;
+ 
+   // This ivar is the cocoa delegate of the NSResponder.
+   NSObject<RenderWidgetHostViewMacDelegate>* __strong _responderDelegate;
+@@ -887,6 +889,7 @@ static NSWindow* __weak _deferredResignKeyWindow;
+ }
+ 
+ - (void)setHostDisconnected {
++  _nativeInputDocumentBinding.clear();
+   // Set the host to be an abandoned message pipe, and set the hostHelper
+   // to forward messages to that host.
+   std::ignore = _dummyHost.BindNewPipeAndPassReceiver();
+@@ -1158,6 +1161,14 @@ static NSWindow* __weak _deferredResignKeyWindow;
+     return;
+   }
+ 
++  // Admit the original native event before any real or derived mouse event
++  // from this owned Cocoa view is routed. The associated NSViewHost endpoint
++  // orders this ahead of remote helper forwarding; local calls are synchronous.
++  if (theEvent == NSApp.currentEvent &&
++      theEvent.window == self.window && self.window)
++    _host->AdmitNativeInputEvent(_nativeInputDocumentBinding,
++                                 ui::EventToData(theEvent));
++
+   // After re-centering the cursor for pointer lock, macOS folds the
+   // re-centering distance into the delta of the first real mouse-move. Suppress
+   // locked move/crossing events until that movement is absorbed so the spurious
+@@ -1472,6 +1483,10 @@ static NSWindow* __weak _deferredResignKeyWindow;
+   // all event and Ime messages target the same RenderWidgetHost throughout this
+   // function call.
+   _host->BeginKeyboardEvent();
++  if (theEvent == NSApp.currentEvent &&
++      theEvent.window == self.window && self.window)
++    _host->AdmitNativeInputEvent(_nativeInputDocumentBinding,
++                                 ui::EventToData(theEvent));
+ 
+   bool shouldAutohideCursor = _textInputType != ui::TEXT_INPUT_TYPE_NONE &&
+                               eventType == NSEventTypeKeyDown &&
+@@ -1781,6 +1796,10 @@ static NSWindow* __weak _deferredResignKeyWindow;
+   _host->LookUpDictionaryOverlayAtPoint(rootPoint);
+ }
+ 
++- (void)setNativeInputDocumentBinding:(const std::string&)binding {
++  _nativeInputDocumentBinding = binding.size() <= 64 ? binding : std::string();
++}
++
+ - (void)scrollWheel:(NSEvent*)event {
+   // Consult with the delegate to see if it wants to handle the event. If the
+   // delegate has handled the event, it takes priority over the page scrolling.
+@@ -1804,6 +1823,11 @@ static NSWindow* __weak _deferredResignKeyWindow;
+                                      }];
+   }
+ 
++  if (event == NSApp.currentEvent &&
++      event.window == self.window && self.window)
++    _host->AdmitNativeInputEvent(_nativeInputDocumentBinding,
++                                 ui::EventToData(event));
++
+   // At this point, the delegate has passed on handling the event itself, so
+   // build a mouse wheel event, and pass it on to the renderer for processing.
+   WebMouseWheelEvent webEvent = WebMouseWheelEventBuilder::Build(event, self);
+diff --git a/content/browser/renderer_host/render_widget_host_view_base.cc b/content/browser/renderer_host/render_widget_host_view_base.cc
+index e636ae0c62..c60f662689 100644
+--- a/content/browser/renderer_host/render_widget_host_view_base.cc
++++ b/content/browser/renderer_host/render_widget_host_view_base.cc
+@@ -66,6 +66,29 @@
+ #endif
+ 
+ namespace content {
++bool RenderWidgetHostView::HasNativeInputAdmissionForDocument(
++    const WeakDocumentPtr& document) const {
++  return false;
++}
++
++void RenderWidgetHostView::AwaitNativeInputAdmissionForDocument(
++    const WeakDocumentPtr& document,
++    base::OnceCallback<void(bool)> callback) {
++  std::move(callback).Run(false);
++}
++
++
++viz::SurfaceId RenderWidgetHostView::GetAuxPersonCaptureSurfaceId() const { return {}; }
++void RenderWidgetHostView::CopyAuxPersonCaptureSurface(const viz::SurfaceId&,
++    const std::vector<viz::SurfaceId>&, const std::vector<uint32_t>&,
++    base::TimeDelta, base::OnceCallback<void(const CopyFromSurfaceResult&)> callback) {
++  std::move(callback).Run(base::unexpected(CopyFromSurfaceError::kUnknownVizError));
++}
++
++viz::SurfaceId RenderWidgetHostViewBase::GetAuxPersonCaptureSurfaceId() const {
++  return viz::SurfaceId(GetFrameSinkId(), GetLocalSurfaceId());
++}
++
+ 
+ void RenderWidgetHostViewBase::OnUnconfirmedTapConvertedToTap() {}
+ 
+diff --git a/content/browser/renderer_host/render_widget_host_view_base.h b/content/browser/renderer_host/render_widget_host_view_base.h
+index fbaad741af..8aedff49e2 100644
+--- a/content/browser/renderer_host/render_widget_host_view_base.h
++++ b/content/browser/renderer_host/render_widget_host_view_base.h
+@@ -142,6 +142,7 @@ class CONTENT_EXPORT RenderWidgetHostViewBase
+   gfx::Size GetVisibleViewportSizeDevicePx() override;
+   void SetInsets(const gfx::Insets& insets) override;
+   bool IsSurfaceAvailableForCopy() override;
++  viz::SurfaceId GetAuxPersonCaptureSurfaceId() const override;
+   void CopyFromSurface(
+       const gfx::Rect& src_rect,
+       const gfx::Size& output_size,
+diff --git a/content/browser/renderer_host/render_widget_host_view_mac.h b/content/browser/renderer_host/render_widget_host_view_mac.h
+index 2856a74454..ea2ab6c69e 100644
+--- a/content/browser/renderer_host/render_widget_host_view_mac.h
++++ b/content/browser/renderer_host/render_widget_host_view_mac.h
+@@ -8,6 +8,8 @@
+ #import <Cocoa/Cocoa.h>
+ 
+ #include <optional>
++#include <map>
++#include <memory>
+ #include <string>
+ #include <string_view>
+ #include <vector>
+@@ -16,6 +18,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "base/memory/weak_ptr.h"
++#include "content/public/browser/weak_document_ptr.h"
+ #include "base/time/time.h"
+ #include "base/timer/timer.h"
+ #include "components/viz/common/surfaces/surface_id.h"
+@@ -261,6 +264,10 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+       gfx::PointF* transformed_point) override;
+   viz::FrameSinkId GetRootFrameSinkId() override;
+   viz::SurfaceId GetCurrentSurfaceId() const override;
++  viz::SurfaceId GetAuxPersonCaptureSurfaceId() const override;
++  void CopyAuxPersonCaptureSurface(const viz::SurfaceId& surface,
++      const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens, base::TimeDelta timeout,
++      base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) override;
+ 
+   // TextInputManager::Observer implementation.
+   void OnUpdateTextInputStateCalled(TextInputManager* text_input_manager,
+@@ -388,6 +395,14 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+   void OnWindowFrameInScreenChanged(
+       const gfx::Rect& window_frame_in_screen_dip) override;
+   void OnScreenInfosChanged(const display::ScreenInfos& screen_infos) override;
++  void AdmitNativeInputEvent(
++      const std::string& binding,
++      const std::vector<uint8_t>& native_event_data) override;
++  bool HasNativeInputAdmissionForDocument(
++      const content::WeakDocumentPtr& document) const override;
++  void AwaitNativeInputAdmissionForDocument(
++      const content::WeakDocumentPtr& document,
++      base::OnceCallback<void(bool)> callback) override;
+   void BeginKeyboardEvent() override;
+   void EndKeyboardEvent() override;
+   void ForwardKeyboardEventWithCommands(
+@@ -548,6 +563,7 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+ 
+  private:
+   friend class RenderWidgetHostViewMacTest;
++  friend class NativeInputAcknowledgementTestPeer;
+   friend class MockPointerLockRenderWidgetHostView;
+   FRIEND_TEST_ALL_PREFIXES(RenderWidgetHostViewMacTest, GetPageTextForSpeech);
+ 
+@@ -757,6 +773,24 @@ class CONTENT_EXPORT RenderWidgetHostViewMac
+   // details.
+   base::OneShotTimer update_windows_timer_;
+ 
++  struct NativeInputAdmissionWaiter {
++    std::string binding;
++    content::WeakDocumentPtr document;
++    base::OnceCallback<void(bool)> callback;
++    base::OneShotTimer timer;
++  };
++  void FinishNativeInputAdmissionWaiter(const std::string& id);
++  void FinishNativeInputAdmissionWaiters(bool ready);
++  std::map<std::string, std::unique_ptr<NativeInputAdmissionWaiter>>
++      native_input_waiters_;
++  void RetireNativeInputBinding();
++  void PublishNativeInputBinding();
++  std::string native_input_binding_;
++  content::WeakDocumentPtr native_input_document_;
++  bool native_input_ready_ = false;
++  // Friend-only one-shot transport hold, after the genuine NSView ACK. It
++  // retains the unchanged original-document completion, never authority.
++
+   // Factory used to safely scope delayed calls to ShutdownHost().
+   base::WeakPtrFactory<RenderWidgetHostViewMac> weak_factory_;
+ };
+diff --git a/content/browser/renderer_host/render_widget_host_view_mac.mm b/content/browser/renderer_host/render_widget_host_view_mac.mm
+index 8aee3fc94c..f3d7e1c74d 100644
+--- a/content/browser/renderer_host/render_widget_host_view_mac.mm
++++ b/content/browser/renderer_host/render_widget_host_view_mac.mm
+@@ -21,6 +21,7 @@
+ #include "base/command_line.h"
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/logging.h"
+ #include "base/mac/mac_util.h"
+ #include "base/metrics/histogram_functions.h"
+@@ -31,6 +32,7 @@
+ #include "base/strings/utf_string_conversions.h"
+ #import "base/task/single_thread_task_runner.h"
+ #include "base/time/time.h"
++#include "base/unguessable_token.h"
+ #include "components/device_event_log/device_event_log.h"
+ #include "components/input/cursor_manager.h"
+ #import "components/input/events_helper.h"
+@@ -53,7 +55,11 @@
+ #include "content/browser/renderer_host/unbounded_surface_window_mac.h"
+ #include "content/browser/renderer_host/visible_time_request_trigger.h"
+ #include "content/common/features.h"
++#include "content/browser/web_contents/web_contents_impl.h"
+ #include "content/public/browser/browser_context.h"
++#include "content/public/browser/content_browser_client.h"
++#include "content/public/browser/native_platform_input_admission.h"
++#include "content/public/common/content_client.h"
+ #include "content/public/browser/browser_plugin_guest_manager.h"
+ #include "content/public/browser/render_widget_host.h"
+ #include "content/public/browser/web_contents.h"
+@@ -341,6 +347,7 @@ RenderWidgetHostViewMac::RenderWidgetHostViewMac(RenderWidgetHost* widget)
+ }
+ 
+ RenderWidgetHostViewMac::~RenderWidgetHostViewMac() {
++  RetireNativeInputBinding();
+   gesture_provider_->Shutdown();
+   if (popup_parent_host_view_) {
+     CHECK(!popup_parent_host_view_->popup_child_host_view_ ||
+@@ -361,6 +368,7 @@ RenderWidgetHostViewMac::~RenderWidgetHostViewMac() {
+ void RenderWidgetHostViewMac::MigrateNSViewBridge(
+     remote_cocoa::mojom::Application* remote_cocoa_application,
+     uint64_t parent_ns_view_id) {
++  RetireNativeInputBinding();
+   // Destroy the previous remote accessibility element.
+   remote_window_accessible_ = nil;
+ 
+@@ -393,6 +401,7 @@ void RenderWidgetHostViewMac::MigrateNSViewBridge(
+     // TODO(crbug.com/40179941): Maybe recreate `in_process_ns_view_bridge_`?
+     display::Screen::Get()->RemoveObserver(in_process_ns_view_bridge_.get());
+     display::Screen::Get()->AddObserver(in_process_ns_view_bridge_.get());
++    PublishNativeInputBinding();
+     return;
+   }
+ 
+@@ -414,6 +423,7 @@ void RenderWidgetHostViewMac::MigrateNSViewBridge(
+       ns_view_id_, std::move(stub_client), std::move(stub_bridge_receiver));
+ 
+   ns_view_ = remote_ns_view_.get();
++  PublishNativeInputBinding();
+ 
+   // New remote NSViews start out as visible, make sure we hide it if it is
+   // supposed to be hidden already.
+@@ -517,6 +527,7 @@ RenderWidgetHostViewMac::GetTextSelection() {
+ 
+ void RenderWidgetHostViewMac::InitAsChild(gfx::NativeView parent_view) {
+   CHECK_EQ(widget_type_, WidgetType::kFrame, base::NotFatalUntil::M152);
++  PublishNativeInputBinding();
+ }
+ 
+ ui::Compositor* RenderWidgetHostViewMac::GetCompositor() {
+@@ -766,6 +777,7 @@ input::CursorManager* RenderWidgetHostViewMac::GetCursorManager() {
+ }
+ 
+ void RenderWidgetHostViewMac::OnOldViewDidNavigatePreCommit() {
++  RetireNativeInputBinding();
+   CHECK(browser_compositor_) << "Shouldn't be called during destruction!";
+   browser_compositor_->DidNavigateMainFramePreCommit();
+   gesture_provider_->ResetDetection();
+@@ -773,9 +785,11 @@ void RenderWidgetHostViewMac::OnOldViewDidNavigatePreCommit() {
+ 
+ void RenderWidgetHostViewMac::OnNewViewDidNavigatePostCommit() {
+   gesture_provider_->ResetDetection();
++  PublishNativeInputBinding();
+ }
+ 
+ void RenderWidgetHostViewMac::DidEnterBackForwardCache() {
++  RetireNativeInputBinding();
+   CHECK(browser_compositor_) << "Shouldn't be called during destruction!";
+   browser_compositor_->DidEnterBackForwardCache();
+   // If we have the fallback content timer running, force it to stop. Else, when
+@@ -796,6 +810,7 @@ void RenderWidgetHostViewMac::DidEnterBackForwardCache() {
+ 
+ void RenderWidgetHostViewMac::ActivatedOrEvictedFromBackForwardCache() {
+   browser_compositor_->ActivatedOrEvictedFromBackForwardCache();
++  PublishNativeInputBinding();
+ }
+ 
+ void RenderWidgetHostViewMac::SetIsLoading(bool is_loading) {
+@@ -951,6 +966,7 @@ void RenderWidgetHostViewMac::RenderProcessGone() {
+ }
+ 
+ void RenderWidgetHostViewMac::Destroy() {
++  RetireNativeInputBinding();
+   host()->render_frame_metadata_provider()->RemoveObserver(this);
+ 
+   // Unlock the mouse in the NSView's process before destroying our bridge to
+@@ -1065,6 +1081,7 @@ RenderWidgetHostViewMac::DidUpdateVisualProperties(
+ 
+ void RenderWidgetHostViewMac::DidNavigate() {
+   browser_compositor_->DidNavigate();
++  PublishNativeInputBinding();
+ }
+ 
+ gfx::Size RenderWidgetHostViewMac::GetRequestedRendererSize() {
+@@ -1189,6 +1206,13 @@ void RenderWidgetHostViewMac::SetSupportsAutoFill(bool supports) {
+   ns_view_->SetSupportsAutoFill(supports);
+ }
+ 
++viz::SurfaceId RenderWidgetHostViewMac::GetAuxPersonCaptureSurfaceId() const { return GetCurrentSurfaceId(); }
++void RenderWidgetHostViewMac::CopyAuxPersonCaptureSurface(const viz::SurfaceId& surface,
++      const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens,
++    base::TimeDelta timeout, base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback) {
++  browser_compositor_->GetDelegatedFrameHost()->CopyAuxPersonCaptureSurface(surface, required_surfaces, required_tokens, timeout, std::move(callback));
++}
++
+ void RenderWidgetHostViewMac::CopyFromSurface(
+     const gfx::Rect& src_subrect,
+     const gfx::Size& dst_size,
+@@ -2530,6 +2554,168 @@ void RenderWidgetHostViewMac::SetRemoteAccessibilityWindowToken(
+ // mojom::RenderWidgetHostNSViewHost functions that translate events and
+ // forward them to the RenderWidgetHostNSViewHostHelper implementation:
+ 
++void RenderWidgetHostViewMac::RetireNativeInputBinding() {
++  native_input_ready_ = false;
++  native_input_binding_.clear();
++  native_input_document_ = {};
++  FinishNativeInputAdmissionWaiters(false);
++  if (ns_view_)
++    ns_view_->SetNativeInputDocumentBinding({}, base::DoNothing());
++}
++
++bool RenderWidgetHostViewMac::HasNativeInputAdmissionForDocument(
++    const content::WeakDocumentPtr& document) const {
++  auto* frame = document.AsRenderFrameHostIfValid();
++  return native_input_ready_ && ns_view_ && frame &&
++         native_input_document_.AsRenderFrameHostIfValid() == frame;
++}
++
++void RenderWidgetHostViewMac::AwaitNativeInputAdmissionForDocument(
++    const content::WeakDocumentPtr& document,
++    base::OnceCallback<void(bool)> callback) {
++  auto* frame = document.AsRenderFrameHostIfValid();
++  if (!frame || native_input_document_.AsRenderFrameHostIfValid() != frame ||
++      native_input_binding_.empty() || !ns_view_ ||
++      native_input_waiters_.size() >= 8) {
++    std::move(callback).Run(false);
++    return;
++  }
++  if (HasNativeInputAdmissionForDocument(document)) {
++    std::move(callback).Run(true);
++    return;
++  }
++  const auto id = base::UnguessableToken::Create().ToString();
++  auto waiter = std::make_unique<NativeInputAdmissionWaiter>();
++  waiter->binding = native_input_binding_;
++  waiter->document = document;
++  waiter->callback = std::move(callback);
++  waiter->timer.Start(FROM_HERE, base::Seconds(8), base::BindOnce(
++      &RenderWidgetHostViewMac::FinishNativeInputAdmissionWaiter,
++      weak_factory_.GetWeakPtr(), id));
++  native_input_waiters_.emplace(id, std::move(waiter));
++}
++
++void RenderWidgetHostViewMac::FinishNativeInputAdmissionWaiter(
++    const std::string& id) {
++  auto found = native_input_waiters_.find(id);
++  if (found == native_input_waiters_.end()) return;
++  auto waiter = std::move(found->second);
++  native_input_waiters_.erase(found);
++  waiter->timer.Stop();
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(std::move(waiter->callback), false));
++}
++
++void RenderWidgetHostViewMac::FinishNativeInputAdmissionWaiters(bool ready) {
++  auto waiters = std::move(native_input_waiters_);
++  native_input_waiters_.clear();
++  const auto weak = weak_factory_.GetWeakPtr();
++  for (auto& [id, waiter] : waiters) {
++    waiter->timer.Stop();
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(
++            [](base::WeakPtr<RenderWidgetHostViewMac> view, bool ready,
++               std::string binding, content::WeakDocumentPtr document,
++               base::OnceCallback<void(bool)> callback) {
++              const bool admitted = ready && view &&
++                  view->native_input_binding_ == binding &&
++                  view->HasNativeInputAdmissionForDocument(document);
++              std::move(callback).Run(admitted);
++            }, weak, ready, std::move(waiter->binding), waiter->document,
++            std::move(waiter->callback)));
++  }
++}
++
++void RenderWidgetHostViewMac::PublishNativeInputBinding() {
++  auto* contents = WebContentsImpl::FromRenderWidgetHostImpl(host());
++  auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++  // Both post-commit entrypoints report one genuine document. Do not replace
++  // its pending associated ACK. Navigation/BFCache/bridge retirement clears
++  // the original binding before any new document can reach this fast path.
++  if (ns_view_ && frame && frame->IsActive() && frame->IsRenderFrameLive() &&
++      !native_input_binding_.empty() &&
++      native_input_document_.AsRenderFrameHostIfValid() == frame)
++    return;
++  RetireNativeInputBinding();
++  if (!ns_view_ || !frame || !frame->IsActive() || !frame->IsRenderFrameLive())
++    return;
++  native_input_binding_ = base::UnguessableToken::Create().ToString();
++  native_input_document_ = frame->GetWeakDocumentPtr();
++  ns_view_->SetNativeInputDocumentBinding(
++      native_input_binding_, base::BindOnce(
++          [](base::WeakPtr<RenderWidgetHostViewMac> view, std::string binding,
++             content::WeakDocumentPtr document) {
++            auto* frame = document.AsRenderFrameHostIfValid();
++            if (!view || !frame || binding != view->native_input_binding_ ||
++                view->native_input_document_.AsRenderFrameHostIfValid() != frame)
++              return;
++            auto complete = base::BindOnce(
++                [](base::WeakPtr<RenderWidgetHostViewMac> original_view,
++                   std::string original_binding,
++                   content::WeakDocumentPtr original_document) {
++                  auto* original_frame =
++                      original_document.AsRenderFrameHostIfValid();
++                  if (!original_view || !original_frame ||
++                      original_view->native_input_binding_ != original_binding ||
++                      original_view->native_input_document_
++                              .AsRenderFrameHostIfValid() != original_frame)
++                    return;
++                  auto* contents = WebContentsImpl::FromRenderWidgetHostImpl(
++                      original_view->host());
++                  if (!contents ||
++                      contents->GetPrimaryMainFrame() != original_frame ||
++                      !original_frame->IsActive() ||
++                      !original_frame->IsRenderFrameLive())
++                    return;
++                  original_view->native_input_ready_ = true;
++                  original_view->FinishNativeInputAdmissionWaiters(true);
++                }, view, binding, document);
++            std::move(complete).Run();
++          }, weak_factory_.GetWeakPtr(), native_input_binding_, native_input_document_));
++}
++
++void RenderWidgetHostViewMac::AdmitNativeInputEvent(
++    const std::string& binding,
++    const std::vector<uint8_t>& native_event_data) {
++  if (binding.empty() || binding != native_input_binding_ ||
++      !HasNativeInputAdmissionForDocument(native_input_document_) ||
++      native_event_data.empty() || native_event_data.size() > 8192)
++    return;
++  auto native_event = base::apple::OwnedNSEvent(
++      ui::EventFromData(native_event_data));
++  if (!native_event.Get())
++    return;
++  const auto type = [native_event.Get() type];
++  const bool keyboard = type == NSEventTypeKeyDown ||
++                        type == NSEventTypeKeyUp ||
++                        type == NSEventTypeFlagsChanged;
++  const bool mouse = type == NSEventTypeLeftMouseDown ||
++                     type == NSEventTypeRightMouseDown ||
++                     type == NSEventTypeOtherMouseDown ||
++                     type == NSEventTypeLeftMouseUp ||
++                     type == NSEventTypeRightMouseUp ||
++                     type == NSEventTypeOtherMouseUp ||
++                     type == NSEventTypeLeftMouseDragged ||
++                     type == NSEventTypeRightMouseDragged ||
++                     type == NSEventTypeOtherMouseDragged ||
++                     type == NSEventTypeScrollWheel;
++  if (!keyboard && !mouse)
++    return;
++  auto* widget = keyboard ? GetWidgetForKeyboardEvent() : host();
++  auto* contents = widget ? WebContentsImpl::FromRenderWidgetHostImpl(widget)
++                          : nullptr;
++  auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++  if (!widget || !contents || !frame ||
++      native_input_document_.AsRenderFrameHostIfValid() != frame)
++    return;
++  const auto document = native_input_document_;
++  // No generic WebInputEvent flags are promoted to person provenance. Chrome
++  // receives the original decoded OS event on the owned native view endpoint.
++  const NativePlatformInputAdmission admission(
++      contents->GetWeakPtr(), widget->GetWeakPtr(), document, native_event);
++  GetContentClient()->browser()->WillDispatchNativeInput(admission);
++}
++
+ void RenderWidgetHostViewMac::ForwardKeyboardEventWithCommands(
+     std::unique_ptr<blink::WebCoalescedInputEvent> input_event,
+     const std::vector<uint8_t>& native_event_data,
+diff --git a/content/browser/web_contents/web_contents_view.cc b/content/browser/web_contents/web_contents_view.cc
+new file mode 100644
+index 0000000000..1099c2c733
+--- /dev/null
++++ b/content/browser/web_contents/web_contents_view.cc
+@@ -0,0 +1,18 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "content/browser/web_contents/web_contents_view.h"
++
++#include "base/functional/callback.h"
++
++namespace content {
++
++#if BUILDFLAG(IS_MAC)
++bool WebContentsView::DeferEmbeddingCloseIfNeeded(
++    base::OnceClosure continuation) {
++  return false;
++}
++#endif
++
++}  // namespace content
+diff --git a/content/browser/web_contents/web_contents_view.h b/content/browser/web_contents/web_contents_view.h
+index 654fb9d77d..c0e21d18fe 100644
+--- a/content/browser/web_contents/web_contents_view.h
++++ b/content/browser/web_contents/web_contents_view.h
+@@ -5,9 +5,11 @@
+ #ifndef CONTENT_BROWSER_WEB_CONTENTS_WEB_CONTENTS_VIEW_H_
+ #define CONTENT_BROWSER_WEB_CONTENTS_WEB_CONTENTS_VIEW_H_
+ 
++#include "base/functional/callback_forward.h"
+ #include <string>
+ 
+ #include "build/build_config.h"
++#include "content/common/content_export.h"
+ #include "ui/gfx/geometry/rect.h"
+ #include "ui/gfx/geometry/size.h"
+ #include "ui/gfx/native_ui_types.h"
+@@ -26,7 +28,7 @@ struct DropData;
+ // The `WebContentsView` is an interface that is implemented by the platform-
+ // dependent web contents views. The `WebContents` uses this interface to talk
+ // to them.
+-class WebContentsView {
++class CONTENT_EXPORT WebContentsView {
+  public:
+   virtual ~WebContentsView() = default;
+ 
+@@ -118,6 +120,8 @@ class WebContentsView {
+   // it will be the responsibility of |this| to call CloseTab when the nested
+   // loop has ended.
+   virtual bool CloseTabAfterEventTrackingIfNeeded() = 0;
++  // Existing views do not defer this distinct token-bearing continuation.
++  virtual bool DeferEmbeddingCloseIfNeeded(base::OnceClosure continuation);
+ #endif
+ 
+   virtual void FullscreenStateChanged(bool is_fullscreen) = 0;
+diff --git a/content/browser/web_contents/web_contents_view_mac.h b/content/browser/web_contents/web_contents_view_mac.h
+index b9868665c8..b0fb5580d3 100644
+--- a/content/browser/web_contents/web_contents_view_mac.h
++++ b/content/browser/web_contents/web_contents_view_mac.h
+@@ -7,6 +7,7 @@
+ 
+ #import <Cocoa/Cocoa.h>
+ 
++#include "base/functional/callback_forward.h"
+ #include <list>
+ #include <memory>
+ #include <string>
+@@ -91,6 +92,7 @@ class CONTENT_EXPORT WebContentsViewMac
+                              RenderViewHost* new_host) override;
+   void SetOverscrollControllerEnabled(bool enabled) override;
+   bool CloseTabAfterEventTrackingIfNeeded() override;
++  bool DeferEmbeddingCloseIfNeeded(base::OnceClosure continuation) override;
+   void OnCapturerCountChanged() override;
+   void FullscreenStateChanged(bool is_fullscreen) override;
+   BackForwardTransitionAnimationManager*
+@@ -257,6 +259,7 @@ class CONTENT_EXPORT WebContentsViewMac
+   mojo::AssociatedReceiver<remote_cocoa::mojom::WebContentsNSViewHost>
+       remote_ns_view_host_receiver_{this};
+ 
++  base::OnceClosure deferred_embedding_close_;
+   // Used by CloseTabAfterEventTrackingIfNeeded.
+   base::WeakPtrFactory<WebContentsViewMac> deferred_close_weak_ptr_factory_;
+ };
+diff --git a/content/browser/web_contents/web_contents_view_mac.mm b/content/browser/web_contents/web_contents_view_mac.mm
+index 4283e1b4a1..16a41936e5 100644
+--- a/content/browser/web_contents/web_contents_view_mac.mm
++++ b/content/browser/web_contents/web_contents_view_mac.mm
+@@ -520,6 +520,7 @@ bool WebContentsViewMac::CloseTabAfterEventTrackingIfNeeded() {
+     return false;
+   }
+ 
++  deferred_embedding_close_.Reset();
+   deferred_close_weak_ptr_factory_.InvalidateWeakPtrs();
+   auto weak_ptr = deferred_close_weak_ptr_factory_.GetWeakPtr();
+   CFRunLoopPerformBlock(CFRunLoopGetCurrent(), kCFRunLoopDefaultMode, ^{
+@@ -529,6 +530,19 @@ bool WebContentsViewMac::CloseTabAfterEventTrackingIfNeeded() {
+   return true;
+ }
+ 
++bool WebContentsViewMac::DeferEmbeddingCloseIfNeeded(base::OnceClosure continuation) {
++  if (!base::message_pump_apple::IsHandlingSendEvent()) return false;
++  deferred_close_weak_ptr_factory_.InvalidateWeakPtrs();
++  deferred_embedding_close_ = std::move(continuation);
++  auto weak_ptr = deferred_close_weak_ptr_factory_.GetWeakPtr();
++  CFRunLoopPerformBlock(CFRunLoopGetCurrent(), kCFRunLoopDefaultMode, ^{
++    if (!weak_ptr || !weak_ptr->deferred_embedding_close_) return;
++    auto original = std::move(weak_ptr->deferred_embedding_close_);
++    std::move(original).Run();
++  });
++  return true;
++}
++
+ void WebContentsViewMac::CloseTab() {
+   web_contents_->Close();
+ }
+diff --git a/content/common/render_widget_host_ns_view.mojom b/content/common/render_widget_host_ns_view.mojom
+index 566af79647..a2f156bc77 100644
+--- a/content/common/render_widget_host_ns_view.mojom
++++ b/content/common/render_widget_host_ns_view.mojom
+@@ -43,6 +43,10 @@ struct PopupMenu {
+ // the RenderWidgetHostViewCocoa NSView. No synchronous communication is allowed
+ // in this direction.
+ interface RenderWidgetHostNSView {
++  // Browser-issued current-document binding. Reply only after this exact view
++  // has installed the binding; empty retires every earlier admission.
++  SetNativeInputDocumentBinding(string binding) => ();
++
+   // Specify that the NSView will a popup (e.g, date/time picker) that will
+   // create its own NSWindow.
+   InitAsPopup(gfx.mojom.Rect content_rect, uint64 popup_parent_ns_view_id);
+@@ -189,6 +193,10 @@ interface RenderWidgetHostNSViewHost {
+   // Indicate the begin and end block of a keyboard event. The beginning of this
+   // block will record the active RenderWidgetHost, and will forward all
+   // remaining keyboard and Ime messages to that RenderWidgetHost.
++  // Original OS-event bytes from this owned Cocoa view. Sent on this same
++  // associated pipe before the matching event is forwarded. This admission
++  // does not synthesize an event or permit any protocol command.
++  AdmitNativeInputEvent(string binding, array<uint8> native_event_data);
+   BeginKeyboardEvent();
+   EndKeyboardEvent();
+ 
+diff --git a/content/public/browser/native_platform_input_admission.cc b/content/public/browser/native_platform_input_admission.cc
+new file mode 100644
+index 0000000000..3a7018eca9
+--- /dev/null
++++ b/content/public/browser/native_platform_input_admission.cc
+@@ -0,0 +1,21 @@
++// Copyright 2026 The Aux Authors
++#include "content/public/browser/native_platform_input_admission.h"
++
++#include "content/public/browser/render_widget_host.h"
++#include "content/public/browser/web_contents.h"
++
++namespace content {
++
++NativePlatformInputAdmission::NativePlatformInputAdmission(
++    base::WeakPtr<WebContents> contents,
++    base::WeakPtr<RenderWidgetHost> widget,
++    const WeakDocumentPtr& document,
++    const gfx::NativeEvent& event)
++    : contents_(contents),
++      widget_(widget),
++      document_(document),
++      event_(event) {}
++
++NativePlatformInputAdmission::~NativePlatformInputAdmission() = default;
++
++}  // namespace content
+diff --git a/content/public/browser/native_platform_input_admission.h b/content/public/browser/native_platform_input_admission.h
+new file mode 100644
+index 0000000000..0ecf53c6a6
+--- /dev/null
++++ b/content/public/browser/native_platform_input_admission.h
+@@ -0,0 +1,43 @@
++// Copyright 2026 The Aux Authors
++#ifndef CONTENT_PUBLIC_BROWSER_NATIVE_PLATFORM_INPUT_ADMISSION_H_
++#define CONTENT_PUBLIC_BROWSER_NATIVE_PLATFORM_INPUT_ADMISSION_H_
++#include "base/memory/weak_ptr.h"
++#include "content/common/content_export.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "ui/gfx/native_ui_types.h"
++namespace content {
++class WebContents;
++class RenderWidgetHost;
++class RenderWidgetHostViewMac;
++// Stack-bound one-use original platform admission. Only the native view can
++// construct this after matching its browser-issued current-document binding.
++// It cannot be constructed by a renderer, protocol client or runtime API.
++class CONTENT_EXPORT NativePlatformInputAdmission final {
++ public:
++  ~NativePlatformInputAdmission();
++  NativePlatformInputAdmission(const NativePlatformInputAdmission&) = delete;
++  NativePlatformInputAdmission& operator=(const NativePlatformInputAdmission&) = delete;
++  WebContents* contents() const { return contents_.get(); }
++  RenderWidgetHost* widget() const { return widget_.get(); }
++  const WeakDocumentPtr& document() const { return document_; }
++  const gfx::NativeEvent& event() const { return event_; }
++  bool Consume() const {
++    if (consumed_)
++      return false;
++    consumed_ = true;
++    return true;
++  }
++ private:
++  friend class RenderWidgetHostViewMac;
++  NativePlatformInputAdmission(base::WeakPtr<WebContents> contents,
++                               base::WeakPtr<RenderWidgetHost> widget,
++                               const WeakDocumentPtr& document,
++                               const gfx::NativeEvent& event);
++  const base::WeakPtr<WebContents> contents_;
++  const base::WeakPtr<RenderWidgetHost> widget_;
++  const WeakDocumentPtr document_;
++  const gfx::NativeEvent event_;
++  mutable bool consumed_ = false;
++};
++}
++#endif
+diff --git a/content/public/browser/render_widget_host_view.h b/content/public/browser/render_widget_host_view.h
+index 6b7a3301cb..ae876aac7b 100644
+--- a/content/public/browser/render_widget_host_view.h
++++ b/content/public/browser/render_widget_host_view.h
+@@ -4,15 +4,21 @@
+ 
+ #ifndef CONTENT_PUBLIC_BROWSER_RENDER_WIDGET_HOST_VIEW_H_
+ #define CONTENT_PUBLIC_BROWSER_RENDER_WIDGET_HOST_VIEW_H_
++#include <vector>
+ 
+ #include <optional>
+ #include <string>
++#include <utility>
++
++#include "base/functional/callback.h"
+ 
+ #include "base/containers/flat_map.h"
+ #include "base/containers/flat_set.h"
+ #include "base/types/expected.h"
+ #include "build/build_config.h"
+ #include "content/common/content_export.h"
++#include "components/viz/common/surfaces/surface_id.h"
++#include "components/viz/common/frame_sinks/copy_output_result.h"
+ #include "third_party/blink/public/common/input/web_input_event.h"
+ #include "third_party/blink/public/mojom/input/pointer_lock_result.mojom.h"
+ #include "third_party/skia/include/core/SkColor.h"
+@@ -65,6 +71,7 @@ using CopyFromSurfaceResult =
+     base::expected<viz::CopyOutputBitmapWithMetadata, CopyFromSurfaceError>;
+ 
+ class RenderWidgetHost;
++class WeakDocumentPtr;
+ class TouchSelectionControllerClientManager;
+ 
+ // RenderWidgetHostView is an interface implemented by an object that acts as
+@@ -83,6 +90,17 @@ class CONTENT_EXPORT RenderWidgetHostView {
+  public:
+   virtual ~RenderWidgetHostView() {}
+ 
++  // Explicit platform capability. Unsupported views cannot admit native
++  // person input for a protected agent attachment.
++  virtual bool HasNativeInputAdmissionForDocument(
++      const WeakDocumentPtr& document) const;
++  // Fixed native attachment readiness only; never grants script/input scope.
++  // Unsupported embeddings refuse. Callers must recheck original authority
++  // immediately before attaching after this callback.
++  virtual void AwaitNativeInputAdmissionForDocument(
++      const WeakDocumentPtr& document,
++      base::OnceCallback<void(bool)> callback);
++
+   // Initialize this object for use as a drawing area.  |parent_view| may be
+   // left as nullptr on platforms where a parent view is not required to
+   // initialize a child window.
+@@ -253,6 +271,11 @@ class CONTENT_EXPORT RenderWidgetHostView {
+       base::OnceCallback<void(const CopyFromSurfaceResult&)> callback) = 0;
+ 
+ 
++  virtual viz::SurfaceId GetAuxPersonCaptureSurfaceId() const;
++  virtual void CopyAuxPersonCaptureSurface(const viz::SurfaceId& surface,
++      const std::vector<viz::SurfaceId>& required_surfaces, const std::vector<uint32_t>& required_tokens,
++      base::TimeDelta timeout, base::OnceCallback<void(const CopyFromSurfaceResult&)> callback);
++
+   // Creates a video capturer, which will allow the caller to receive a stream
+   // of media::VideoFrames captured from this view. The capturer is configured
+   // to target this view, so there is no need to call ChangeTarget() before

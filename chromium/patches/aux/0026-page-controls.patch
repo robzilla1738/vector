@@ -1,0 +1,4393 @@
+diff --git a/chrome/browser/external_protocol/external_protocol_handler.cc b/chrome/browser/external_protocol/external_protocol_handler.cc
+index a6f0cfe5b5..1d4b829f59 100644
+--- a/chrome/browser/external_protocol/external_protocol_handler.cc
++++ b/chrome/browser/external_protocol/external_protocol_handler.cc
+@@ -385,6 +385,8 @@ ExternalProtocolHandler::BlockState ExternalProtocolHandler::GetBlockState(
+     Profile* profile) {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+ 
++  // aux:// is a native LaunchServices selection protocol, never web authority.
++  if (scheme == "aux") return BLOCK;
+   LogRequestForScheme(scheme);
+ 
+   // If we are being flooded with requests, block the request.
+diff --git a/chrome/browser/ui/aux/health_recorder.cc b/chrome/browser/ui/aux/health_recorder.cc
+new file mode 100644
+index 0000000000..47f46cef9b
+--- /dev/null
++++ b/chrome/browser/ui/aux/health_recorder.cc
+@@ -0,0 +1,210 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/health_recorder.h"
++
++#include <algorithm>
++#include <cmath>
++#include <memory>
++#include <set>
++#include <vector>
++
++#include "base/process/process_metrics.h"
++#include "base/supports_user_data.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "components/prefs/pref_service.h"
++
++namespace aux {
++namespace {
++
++constexpr char kRecorderKey = 0;
++constexpr base::TimeDelta kInterval = base::Minutes(1);
++constexpr base::TimeDelta kRetention = base::Days(7);
++constexpr size_t kMaxSamples = 10080;
++
++double Number(const base::DictValue& row, const char* key) {
++  return row.FindDouble(key).value_or(
++      static_cast<double>(row.FindInt(key).value_or(0)));
++}
++
++base::DictValue Stats(std::vector<double> values) {
++  base::DictValue result;
++  if (values.empty()) {
++    result.Set("p50", 0.0);
++    result.Set("p95", 0.0);
++    result.Set("max", 0.0);
++    return result;
++  }
++  std::sort(values.begin(), values.end());
++  result.Set("p50", values[(values.size() - 1) / 2]);
++  result.Set("p95", values[static_cast<size_t>(
++      std::ceil(values.size() * 0.95) - 1)]);
++  result.Set("max", values.back());
++  return result;
++}
++
++void TrimSamples(base::ListValue& samples, int64_t now_ms) {
++  const int64_t cutoff = now_ms - kRetention.InMilliseconds();
++  while (!samples.empty()) {
++    const base::DictValue* first = samples.front().GetIfDict();
++    if (samples.size() <= kMaxSamples && first &&
++        Number(*first, "at") >= cutoff)
++      break;
++    samples.erase(samples.begin());
++  }
++}
++
++class Recorder : public base::SupportsUserData::Data {
++ public:
++  explicit Recorder(Profile* profile)
++      : profile_(profile),
++        metrics_(base::ProcessMetrics::CreateCurrentProcessMetrics()) {
++    base::ListValue retained =
++        profile_->GetPrefs()->GetList(kHealthSamplesPref).Clone();
++    const size_t previous_size = retained.size();
++    TrimSamples(retained, base::Time::Now().InMillisecondsSinceUnixEpoch());
++    if (retained.size() != previous_size)
++      profile_->GetPrefs()->SetList(kHealthSamplesPref, std::move(retained));
++    profile_->GetPrefs()->SetInteger(
++        kHealthSessionsPref,
++        profile_->GetPrefs()->GetInteger(kHealthSessionsPref) + 1);
++    first_sample_.Start(FROM_HERE, base::Seconds(2), this,
++                        &Recorder::BeginSampling);
++  }
++
++  void Tick() { Sample(/*initial=*/false); }
++
++ private:
++  void BeginSampling() {
++    Sample(/*initial=*/true);
++    timer_.Start(FROM_HERE, kInterval, this, &Recorder::Tick);
++  }
++
++  void Sample(bool initial) {
++    const base::TimeTicks now = base::TimeTicks::Now();
++    const double lag_ms = initial ? 0.0 :
++        std::max(0.0, (now - expected_tick_).InMillisecondsF());
++    expected_tick_ = now + kInterval;
++    const int64_t at = base::Time::Now().InMillisecondsSinceUnixEpoch();
++    base::DictValue row;
++    row.Set("at", static_cast<double>(at));
++    row.Set("session", profile_->GetPrefs()->GetInteger(kHealthSessionsPref));
++    row.Set("lag", lag_ms);
++    double cpu = 0;
++    double memory = 0;
++    if (metrics_) {
++      auto usage = metrics_->GetPlatformIndependentCPUUsage();
++      if (usage.has_value()) cpu = std::max(0.0, usage.value());
++      auto info = metrics_->GetMemoryInfo();
++      if (info.has_value())
++        memory = info->resident_set_bytes / (1024.0 * 1024.0);
++    }
++    row.Set("cpu", cpu);
++    row.Set("memory", memory);
++    const base::DictValue snapshot =
++        TabCatalog::GetForProfile(profile_)->Snapshot();
++    const auto* windows = snapshot.FindList("windows");
++    const auto* tabs = snapshot.FindList("tabs");
++    row.Set("windows", static_cast<int>(windows ? windows->size() : 0));
++    row.Set("pages", static_cast<int>(tabs ? tabs->size() : 0));
++    base::ListValue samples =
++        profile_->GetPrefs()->GetList(kHealthSamplesPref).Clone();
++    samples.Append(std::move(row));
++    TrimSamples(samples, at);
++    profile_->GetPrefs()->SetList(kHealthSamplesPref, std::move(samples));
++  }
++
++  raw_ptr<Profile> profile_;
++  std::unique_ptr<base::ProcessMetrics> metrics_;
++  base::TimeTicks expected_tick_;
++  base::OneShotTimer first_sample_;
++  base::RepeatingTimer timer_;
++};
++
++}  // namespace
++
++void StartHealthRecorder(Profile* profile) {
++  if (!profile || profile->GetUserData(&kRecorderKey)) return;
++  profile->SetUserData(&kRecorderKey, std::make_unique<Recorder>(profile));
++}
++
++base::DictValue HealthSummary(Profile* profile) {
++  StartHealthRecorder(profile);
++  PrefService* prefs = profile->GetPrefs();
++  const base::ListValue& rows = prefs->GetList(kHealthSamplesPref);
++  std::vector<double> cpu, memory, lag;
++  std::set<int> sessions;
++  int observed_minutes = 0;
++  int previous_session = -1;
++  double previous_at = 0;
++  int max_windows = 0, max_pages = 0;
++  double earliest = 0, latest = 0;
++  for (const base::Value& value : rows) {
++    const base::DictValue* row = value.GetIfDict();
++    if (!row) continue;
++    const double at = Number(*row, "at");
++    if (!earliest || at < earliest) earliest = at;
++    latest = std::max(latest, at);
++    const int session = row->FindInt("session").value_or(0);
++    sessions.insert(session);
++    if (session == previous_session && at > previous_at &&
++        at - previous_at <= 120000.0)
++      ++observed_minutes;
++    previous_session = session;
++    previous_at = at;
++    cpu.push_back(Number(*row, "cpu"));
++    memory.push_back(Number(*row, "memory"));
++    lag.push_back(Number(*row, "lag"));
++    max_windows = std::max(max_windows, row->FindInt("windows").value_or(0));
++    max_pages = std::max(max_pages, row->FindInt("pages").value_or(0));
++  }
++  base::DictValue result;
++  if (earliest) result.Set("recordingSince", earliest);
++  if (latest) result.Set("latestAt", latest);
++  result.Set("samples", static_cast<int>(cpu.size()));
++  result.Set("sessions", static_cast<int>(sessions.size()));
++  result.Set("observedMinutes", observed_minutes);
++  const double span_days = earliest ? (latest - earliest) / 86400000.0 : 0.0;
++  result.Set("spanDays", span_days);
++  result.Set("sevenDaySpan", span_days >= 6.95);
++  result.Set("cpuPercent", Stats(std::move(cpu)));
++  result.Set("memoryMb", Stats(std::move(memory)));
++  result.Set("eventLoopLagMs", Stats(std::move(lag)));
++  result.Set("maxWindows", max_windows);
++  result.Set("maxPages", max_pages);
++  result.Set("maxSuspendedPages", 0);
++  result.Set("pageCrashes", prefs->GetInteger(kHealthCrashesPref));
++  result.Set("pageUnresponsive", prefs->GetInteger(kHealthHangsPref));
++  result.Set("suspensionFailures", 0);
++  return result;
++}
++
++base::DictValue ClearHealth(Profile* profile) {
++  StartHealthRecorder(profile);
++  PrefService* prefs = profile->GetPrefs();
++  prefs->SetList(kHealthSamplesPref, base::ListValue());
++  prefs->SetInteger(kHealthSessionsPref, 1);
++  prefs->SetInteger(kHealthCrashesPref, 0);
++  prefs->SetInteger(kHealthHangsPref, 0);
++  return HealthSummary(profile);
++}
++
++void RecordPageCrash(Profile* profile) {
++  if (!profile) return;
++  PrefService* prefs = profile->GetPrefs();
++  prefs->SetInteger(kHealthCrashesPref,
++                    prefs->GetInteger(kHealthCrashesPref) + 1);
++}
++
++void RecordPageUnresponsive(Profile* profile) {
++  if (!profile) return;
++  PrefService* prefs = profile->GetPrefs();
++  prefs->SetInteger(kHealthHangsPref,
++                    prefs->GetInteger(kHealthHangsPref) + 1);
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/health_recorder.h b/chrome/browser/ui/aux/health_recorder.h
+new file mode 100644
+index 0000000000..6141c83ab7
+--- /dev/null
++++ b/chrome/browser/ui/aux/health_recorder.h
+@@ -0,0 +1,28 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_HEALTH_RECORDER_H_
++#define CHROME_BROWSER_UI_AUX_HEALTH_RECORDER_H_
++
++#include "base/values.h"
++
++class Profile;
++
++namespace aux {
++
++inline constexpr char kHealthSamplesPref[] = "aux.health.samples";
++inline constexpr char kHealthSessionsPref[] = "aux.health.sessions";
++inline constexpr char kHealthCrashesPref[] = "aux.health.crashes";
++inline constexpr char kHealthHangsPref[] = "aux.health.hangs";
++
++// Starts once per profile. Samples contain aggregate numbers only.
++void StartHealthRecorder(Profile* profile);
++base::DictValue HealthSummary(Profile* profile);
++base::DictValue ClearHealth(Profile* profile);
++void RecordPageCrash(Profile* profile);
++void RecordPageUnresponsive(Profile* profile);
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_HEALTH_RECORDER_H_
+diff --git a/chrome/browser/ui/aux/methods/content_methods.cc b/chrome/browser/ui/aux/methods/content_methods.cc
+new file mode 100644
+index 0000000000..0b67de7c16
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/content_methods.cc
+@@ -0,0 +1,1650 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++
++#include <algorithm>
++#include <cmath>
++#include <array>
++#include <optional>
++#include <string>
++#include <string_view>
++#include <utility>
++#include <variant>
++
++#include "base/base64.h"
++#include "build/build_config.h"
++#include "base/files/file_util.h"
++#include "base/feature_list.h"
++#include "base/functional/bind.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/ref_counted_memory.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/shell_integration.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/app/aux_crash_reporting_mac.h"
++#endif
++#include "printing/buildflags/buildflags.h"
++#include "content/public/browser/host_zoom_map.h"
++#include "third_party/blink/public/common/page/page_zoom.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/notimplemented.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/values.h"
++#include "base/time/time.h"
++#include "chrome/browser/bookmarks/bookmark_model_factory.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/devtools/devtools_window.h"
++#if BUILDFLAG(ENABLE_PRINTING)
++#if BUILDFLAG(ENABLE_PRINT_PREVIEW)
++#include "chrome/browser/printing/print_view_manager.h"
++#else
++#include "chrome/browser/printing/print_view_manager_basic.h"
++#endif
++#include "components/printing/browser/print_to_pdf/pdf_print_utils.h"
++#endif
++#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/thumbnails/thumbnail_image.h"
++#include "chrome/browser/ui/thumbnails/thumbnail_tab_helper.h"
++#include "components/tabs/public/tab_interface.h"
++#include "chrome/browser/ui/login/login_tab_helper.h"
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/dictation_mac.h"
++#include "chrome/browser/ui/aux/extension_bridge.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/profile_search_engine.h"
++#include "chrome/browser/ui/aux/result_preview.h"
++#include "chrome/browser/ui/aux/site_prefs.h"
++#include "chrome/browser/ui/aux/shell_events.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/zap_controller.h"
++#include "chrome/browser/dom_distiller/dom_distiller_service_factory.h"
++#include "components/dom_distiller/content/browser/distiller_page_web_contents.h"
++#include "components/dom_distiller/content/browser/distiller_javascript_utils.h"
++#include "components/dom_distiller/core/dom_distiller_service.h"
++#include "components/dom_distiller/core/proto/distilled_article.pb.h"
++#include "components/dom_distiller/core/task_tracker.h"
++#include "components/dom_distiller/core/url_utils.h"
++#include "chrome/common/chrome_isolated_world_ids.h"
++#include "components/guest_contents/browser/guest_contents_handle.h"
++#include "components/security_interstitials/content/https_only_mode_blocking_page.h"
++#include "components/security_interstitials/content/security_interstitial_page.h"
++#include "components/security_interstitials/content/security_interstitial_tab_helper.h"
++#include "components/security_interstitials/content/ssl_blocking_page.h"
++#include "components/security_interstitials/core/controller_client.h"
++#include "components/prefs/pref_change_registrar.h"
++#include "components/prefs/pref_service.h"
++#include "components/content_settings/core/browser/cookie_settings.h"
++#include "components/content_settings/core/common/pref_names.h"
++#include "components/browsing_data/content/conditional_cache_counting_helper.h"
++#include "components/zoom/zoom_controller.h"
++#endif
++#include "chrome/browser/contextual_search/contextual_search_service_factory.h"
++#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ssl/chrome_security_state_util.h"
++#include "chrome/browser/ssl/https_only_mode_tab_helper.h"
++#include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
++#include "chrome/browser/ui/bookmarks/bookmarks_service_feature.h"
++#include "chrome/browser/ui/browser_element_identifiers.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/interaction/browser_elements.h"
++#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
++#include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
++#include "chrome/browser/ui/tabs/tab_drag_api/tab_drag_service_feature.h"
++#include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h"
++#include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h"
++#include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
++#include "chrome/browser/ui/webui/favicon_source.h"
++#include "chrome/browser/ui/webui/searchbox/realbox_handler.h"
++#include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h"
++#include "chrome/browser/ui/webui_browser/bookmark_bar_page_handler.h"
++#include "chrome/browser/ui/webui_browser/webui_browser.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_page_handler.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "chrome/common/webui_url_constants.h"
++#include "chrome/common/pref_names.h"
++#include "chrome/common/chrome_features.h"
++#include "chrome/grit/branded_strings.h"
++#include "chrome/grit/generated_resources.h"
++#include "chrome/grit/tab_strip_api_resources_map.h"
++#include "chrome/grit/webui_browser_resources.h"
++#include "chrome/grit/webui_browser_resources_map.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/grit/aux_host_resources.h"
++#include "chrome/grit/aux_host_resources_map.h"
++#include "chrome/grit/aux_resources.h"
++#include "chrome/grit/aux_resources_map.h"
++#include "ui/display/screen.h"
++#include "ui/events/event.h"
++#include "ui/events/event_observer.h"
++#include "ui/views/event_monitor.h"
++#include "ui/shell_dialogs/selected_file_info.h"
++#endif
++#include "net/base/filename_util.h"
++#include "net/base/net_errors.h"
++#include "chrome/grit/webui_toolbar_shared_resources.h"
++#include "chrome/grit/webui_toolbar_shared_resources_map.h"
++#include "components/contextual_search/contextual_search_service.h"
++#include "components/contextual_search/contextual_search_session_handle.h"
++#include "components/favicon_base/favicon_url_parser.h"
++#include "components/guest_contents/browser/guest_contents_host_impl.h"
++#include "components/surface_embed/common/features.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/browsing_data_filter_builder.h"
++#include "content/public/browser/browsing_data_remover.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/storage_partition.h"
++#include "components/content_settings/core/browser/host_content_settings_map.h"
++#include "components/content_settings/core/common/content_settings.h"
++#include "components/content_settings/core/common/content_settings_pattern.h"
++#include "components/content_settings/core/common/content_settings_types.h"
++#include "components/security_state/core/security_state.h"
++#include "content/public/browser/web_ui.h"
++#include "content/public/browser/web_ui_data_source.h"
++#include "content/public/common/isolated_world_ids.h"
++#include "services/network/public/mojom/content_security_policy.mojom.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "net/cookies/cookie_options.h"
++#include "net/base/registry_controlled_domains/registry_controlled_domain.h"
++#include "net/cookies/cookie_partition_key_collection.h"
++#include "net/cookies/canonical_cookie.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
++#include "services/network/public/mojom/cookie_manager.mojom.h"
++#endif
++#include "ui/base/l10n/l10n_util.h"
++#include "ui/views/interaction/element_tracker_views.h"
++#include "ui/webui/tracked_element/tracked_element_handler.h"
++#include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
++#include "ui/webui/webui_util.h"
++#include "url/origin.h"
++#include "url/gurl.h"
++
++#include <set>
++
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++namespace {
++
++constexpr int kTranslationWorld =
++    content::ISOLATED_WORLD_ID_CONTENT_END + 7;
++
++// Text nodes and their originals remain in the page's isolated world. Neither
++// original nor translated text is sent to the Aux shell.
++constexpr char16_t kTranslationCaptureScript[] = uR"JS((() => {
++  if (!document.body || document.readyState === 'loading') return null;
++  const prior = globalThis.__auxTranslation;
++  if (prior && prior.applied) {
++    for (const record of prior.records) {
++      if (record.node.isConnected && record.node.textContent === record.applied)
++        record.node.textContent = record.original;
++    }
++  }
++  const records = [];
++  const texts = [];
++  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
++  let inspected = 0;
++  let truncated = false;
++  while (walker.nextNode()) {
++    if (++inspected > 10000) { truncated = true; break; }
++    const node = walker.currentNode;
++    const parent = node.parentElement;
++    if (!parent || parent.closest('script,style,noscript,textarea,input,select,option,code,pre,[contenteditable],[aria-hidden="true"],[hidden]')) continue;
++    const original = node.textContent || '';
++    const text = original.trim();
++    if (!text || text.length > 4000) continue;
++    const style = getComputedStyle(parent);
++    if (style.display === 'none' || style.visibility !== 'visible') continue;
++    const range = document.createRange();
++    range.selectNodeContents(node);
++    if (!range.getClientRects().length) continue;
++    if (texts.length === 400) { truncated = true; break; }
++    records.push({node, original, applied: null});
++    texts.push(text);
++  }
++  if (!texts.length) return null;
++  const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
++  globalThis.__auxTranslation = {token, records, applied: false};
++  return {token, texts, title: document.title.slice(0, 200), truncated};
++})())JS";
++
++constexpr char16_t kTranslationRestoreScript[] = uR"JS((() => {
++  const state = globalThis.__auxTranslation;
++  if (!state) return 0;
++  let restored = 0;
++  for (const record of state.records) {
++    if (record.applied !== null && record.node.isConnected &&
++        record.node.textContent === record.applied) {
++      record.node.textContent = record.original;
++      restored++;
++    }
++  }
++  delete globalThis.__auxTranslation;
++  return restored;
++})())JS";
++
++void EmitTranslationState(Profile* profile, const std::string& page_id,
++                          base::DictValue state) {
++  state.Set("pageId", page_id);
++  if (auto json = base::WriteJson(base::Value(std::move(state))))
++    aux::EmitShellEvent(profile, "onTranslationChanged", std::move(*json));
++}
++
++bool TranslationPageCurrent(WebUIBrowserUI* ui, const std::string& page_id,
++                            content::WebContents* expected, int navigation_id,
++                            const GURL& url) {
++  BrowserWindowInterface* owner = nullptr;
++  auto* catalog = aux::TabCatalog::GetForProfile(ui->browser()->GetProfile());
++  auto* page = catalog ? catalog->FindPage(page_id, &owner) : nullptr;
++  const auto* entry = page ? page->GetController().GetLastCommittedEntry() : nullptr;
++  return page && page == expected && owner == ui->browser() && entry &&
++         entry->GetUniqueID() == navigation_id &&
++         page->GetLastCommittedURL() == url;
++}
++
++// Distillation owns a ViewerHandle only while the source document is current.
++// Its result crosses the WebUI boundary as a bounded HTML envelope; the shell
++// converts that envelope to its restricted ReaderNode tree before rendering.
++class ReaderRequest final : public dom_distiller::ViewRequestDelegate,
++                            public content::WebContentsObserver {
++ public:
++  using Reply = base::OnceCallback<void(const dom_distiller::DistilledArticleProto*)>;
++
++  ReaderRequest(content::WebContents* contents, Reply reply)
++      : content::WebContentsObserver(contents), reply_(std::move(reply)) {}
++  ~ReaderRequest() override { viewer_.reset(); }
++
++  void Start() {
++    if (!dom_distiller::DistillerJavaScriptWorldIdIsSet()) {
++      dom_distiller::SetDistillerJavaScriptWorldId(
++          ISOLATED_WORLD_ID_CHROME_INTERNAL);
++    }
++    auto* service = dom_distiller::DomDistillerServiceFactory::GetForBrowserContext(
++        web_contents()->GetBrowserContext());
++    if (!service) { Finish(nullptr); return; }
++    auto source = std::make_unique<dom_distiller::SourcePageHandleWebContents>(
++        web_contents(), false);
++    auto page = service->CreateDefaultDistillerPageWithHandle(std::move(source));
++    viewer_ = service->ViewUrlIgnoreCache(
++        this, std::move(page), web_contents()->GetLastCommittedURL());
++    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++        FROM_HERE, base::BindOnce(&ReaderRequest::Timeout,
++                                  weak_factory_.GetWeakPtr()), base::Seconds(15));
++  }
++
++  void OnArticleReady(const dom_distiller::DistilledArticleProto* article) override {
++    Finish(article);
++  }
++  void OnArticleUpdated(dom_distiller::ArticleDistillationUpdate) override {}
++  void OnDistillationFailed(dom_distiller::DistillationParseResult) override {
++    Finish(nullptr);
++  }
++  void PrimaryPageChanged(content::Page&) override { Finish(nullptr); }
++  void PrimaryMainFrameRenderProcessGone(base::TerminationStatus) override {
++    Finish(nullptr);
++  }
++  void WebContentsDestroyed() override { Finish(nullptr); }
++
++ private:
++  void Timeout() { Finish(nullptr); }
++  void Finish(const dom_distiller::DistilledArticleProto* article) {
++    if (finished_) return;
++    finished_ = true;
++    Observe(nullptr);
++    std::move(reply_).Run(article);
++    // Cancelling during a distiller callback can invalidate its observer list.
++    base::SequencedTaskRunner::GetCurrentDefault()->DeleteSoon(FROM_HERE, this);
++  }
++  Reply reply_;
++  std::unique_ptr<dom_distiller::ViewerHandle> viewer_;
++  bool finished_ = false;
++  base::WeakPtrFactory<ReaderRequest> weak_factory_{this};
++};
++
++// A thumbnail can arrive after the shell asks for it. Keep the subscription
++// alive for a bounded interval and detach it outside the image callback.
++class PreviewRequest : public base::RefCounted<PreviewRequest> {
++ public:
++  using Reply = base::OnceCallback<void(ThumbnailImage::CompressedThumbnailData)>;
++
++  PreviewRequest(scoped_refptr<ThumbnailImage> image, Reply reply)
++      : image_(std::move(image)), reply_(std::move(reply)) {}
++
++  void Start() {
++    subscription_ = image_->Subscribe();
++    subscription_->SetCompressedImageCallback(base::BindRepeating(
++        &PreviewRequest::OnData, base::RetainedRef(this)));
++    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++        FROM_HERE, base::BindOnce(&PreviewRequest::Complete,
++                                  base::RetainedRef(this), nullptr),
++        base::Seconds(5));
++    image_->RequestCompressedThumbnailData();
++  }
++
++ private:
++  friend class base::RefCounted<PreviewRequest>;
++  ~PreviewRequest() = default;
++
++  void OnData(ThumbnailImage::CompressedThumbnailData data) {
++    if (data) Complete(std::move(data));
++  }
++
++  void Complete(ThumbnailImage::CompressedThumbnailData data) {
++    if (finished_) return;
++    finished_ = true;
++    std::move(reply_).Run(std::move(data));
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(&PreviewRequest::Detach,
++                                  base::RetainedRef(this)));
++  }
++
++  void Detach() { subscription_.reset(); }
++
++  scoped_refptr<ThumbnailImage> image_;
++  Reply reply_;
++  std::unique_ptr<ThumbnailImage::Subscription> subscription_;
++  bool finished_ = false;
++};
++
++struct SitePermissionKind {
++  std::string_view name;
++  ContentSettingsType type;
++};
++
++// Only persistent allow/block content settings belong in this list. Capture
++// and sanitized clipboard access do not have per-origin saved decisions here.
++constexpr std::array<SitePermissionKind, 7> kSitePermissionKinds = {{
++    {"media:audio", ContentSettingsType::MEDIASTREAM_MIC},
++    {"media:video", ContentSettingsType::MEDIASTREAM_CAMERA},
++    {"geolocation", ContentSettingsType::GEOLOCATION},
++    {"notifications", ContentSettingsType::NOTIFICATIONS},
++    {"pointerLock", ContentSettingsType::POINTER_LOCK},
++    {"idle-detection", ContentSettingsType::IDLE_DETECTION},
++    {"clipboard-read", ContentSettingsType::CLIPBOARD_READ_WRITE},
++}};
++
++class SiteDataRemoval final : public content::BrowsingDataRemover::Observer {
++ public:
++  SiteDataRemoval(content::BrowsingDataRemover* remover,
++                  base::OnceCallback<void(uint64_t)> done)
++      : remover_(remover), done_(std::move(done)) {
++    remover_->AddObserver(this);
++  }
++
++  void OnBrowsingDataRemoverDone(uint64_t failed_data_types) override {
++    auto done = std::move(done_);
++    delete this;
++    std::move(done).Run(failed_data_types);
++  }
++
++ private:
++  ~SiteDataRemoval() override { remover_->RemoveObserver(this); }
++  raw_ptr<content::BrowsingDataRemover> remover_;
++  base::OnceCallback<void(uint64_t)> done_;
++};
++
++bool ParseBrowsingDataRange(const base::ListValue& args, base::Time* begin,
++                            base::Time* end) {
++  if (args.size() < 2 || (!args[0].is_int() && !args[0].is_double()) ||
++      (!args[1].is_int() && !args[1].is_double())) {
++    return false;
++  }
++  const double since_ms = args[0].GetDouble();
++  const double before_ms = args[1].GetDouble();
++  constexpr double kMaxDateMs = 8640000000000000.0;
++  if (!std::isfinite(since_ms) || !std::isfinite(before_ms) ||
++      since_ms < 0 || before_ms <= since_ms || before_ms > kMaxDateMs ||
++      std::floor(since_ms) != since_ms ||
++      std::floor(before_ms) != before_ms) {
++    return false;
++  }
++  *begin = base::Time::FromMillisecondsSinceUnixEpoch(
++      static_cast<int64_t>(since_ms));
++  *end = base::Time::FromMillisecondsSinceUnixEpoch(
++      static_cast<int64_t>(before_ms));
++  return true;
++}
++
++bool SavedSitePermission(const ContentSettingPatternSource& rule,
++                         bool private_profile, std::string* origin) {
++  // A wildcard, policy, extension or inherited private rule is not a decision
++  // that this site's Reset button may remove.
++  if (rule.source != content_settings::mojom::ProviderType::kPrefProvider ||
++      (private_profile && !rule.incognito)) {
++    return false;
++  }
++  const GURL url(rule.primary_pattern.ToString());
++  if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS() ||
++      rule.primary_pattern != ContentSettingsPattern::FromURLNoWildcard(url)) {
++    return false;
++  }
++  const std::string serialized = url::Origin::Create(url).Serialize();
++  if (rule.secondary_pattern != ContentSettingsPattern::Wildcard() &&
++      rule.secondary_pattern != rule.primary_pattern) {
++    return false;
++  }
++  const ContentSetting setting = rule.GetContentSetting();
++  if (setting != CONTENT_SETTING_ALLOW && setting != CONTENT_SETTING_BLOCK) {
++    return false;
++  }
++  *origin = serialized;
++  return true;
++}
++
++base::DictValue SavedSitePermissions(HostContentSettingsMap* map,
++                                     bool private_profile) {
++  base::DictValue sites;
++  for (const auto& kind : kSitePermissionKinds) {
++    for (const auto& rule : map->GetSettingsForOneType(kind.type)) {
++      std::string origin;
++      if (!SavedSitePermission(rule, private_profile, &origin)) continue;
++      base::DictValue* decisions = sites.EnsureDict(origin);
++      decisions->Set(kind.name, rule.GetContentSetting() == CONTENT_SETTING_ALLOW
++                                    ? "allow" : "deny");
++    }
++  }
++  return sites;
++}
++
++}  // namespace
++
++void WebUIBrowserUI::HandleAuxContentRequest(
++    const std::string& method, const base::ListValue& args,
++    RequestCallback callback) {
++  const base::ListValue* list = &args;
++  if (method == "browsingDataPreview") {
++    base::Time begin;
++    base::Time end;
++    if (list->size() != 2 || !ParseBrowsingDataRange(*list, &begin, &end)) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Choose a valid browsing-data time period");
++      return;
++    }
++    if (browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Browsing-data counts require a regular Profile");
++      return;
++    }
++    browser_->GetProfile()->GetDefaultStoragePartition()
++        ->GetCookieManagerForBrowserProcess()
++        ->GetAllCookies(mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++            base::BindOnce(
++                [](base::WeakPtr<WebUIBrowserUI> ui, base::Time begin,
++                   base::Time end, RequestCallback callback,
++                   const net::CookieList& cookies) {
++                  if (!ui || !ui->IsAuthorizedAuxDocument()) {
++                    std::move(callback).Run(false, "", "forbidden",
++                                            "The Aux shell is no longer active");
++                    return;
++                  }
++                  int cookie_count = 0;
++                  for (const auto& cookie : cookies) {
++                    if (cookie.CreationDate() >= begin &&
++                        cookie.CreationDate() < end) {
++                      ++cookie_count;
++                    }
++                  }
++                  browsing_data::ConditionalCacheCountingHelper::Count(
++                      ui->browser_->GetProfile()->GetDefaultStoragePartition(),
++                      begin, end,
++                      base::BindOnce(
++                          [](base::WeakPtr<WebUIBrowserUI> ui,
++                             int cookie_count, RequestCallback callback,
++                             bool upper_limit, int64_t cache_bytes) {
++                            if (!ui || !ui->IsAuthorizedAuxDocument()) {
++                              std::move(callback).Run(
++                                  false, "", "forbidden",
++                                  "The Aux shell is no longer active");
++                              return;
++                            }
++                            if (cache_bytes < 0) {
++                              std::move(callback).Run(
++                                  false, "", "backend_unavailable",
++                                  "Chromium could not count cached files");
++                              return;
++                            }
++                            base::DictValue result;
++                            result.Set("cookies", cookie_count);
++                            result.Set("cacheBytes",
++                                       static_cast<double>(cache_bytes));
++                            result.Set("cacheEstimate", upper_limit);
++                            std::move(callback).Run(
++                                true,
++                                *base::WriteJson(base::Value(std::move(result))),
++                                "", "");
++                          },
++                          ui, cookie_count, std::move(callback)));
++                },
++                weak_factory_.GetWeakPtr(), begin, end,
++                std::move(callback)),
++            net::CookieList()));
++    return;
++  }
++  if (method == "clearBrowsingData") {
++    base::Time begin;
++    base::Time end;
++    if (list->size() != 3 || !ParseBrowsingDataRange(*list, &begin, &end) ||
++        !(*list)[2].is_dict()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Choose a valid browsing-data removal");
++      return;
++    }
++    const base::DictValue& selected = (*list)[2].GetDict();
++    const bool cookies = selected.FindBool("cookies").value_or(false);
++    const bool cache = selected.FindBool("cache").value_or(false);
++    if (selected.size() != 2 || !selected.FindBool("cookies") ||
++        !selected.FindBool("cache") || (!cookies && !cache)) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Select cookies or cached files to clear");
++      return;
++    }
++    if (browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Browsing data cannot be cleared from Private mode");
++      return;
++    }
++    uint64_t mask = 0;
++    if (cookies) mask |= content::BrowsingDataRemover::DATA_TYPE_COOKIES;
++    if (cache) mask |= content::BrowsingDataRemover::DATA_TYPE_CACHE;
++    auto* remover = browser_->GetProfile()->GetBrowsingDataRemover();
++    auto* observer = new SiteDataRemoval(remover, base::BindOnce(
++        [](RequestCallback callback, uint64_t failed_data_types) {
++          if (failed_data_types) {
++            std::move(callback).Run(false, "", "backend_unavailable",
++                                    "Chromium could not clear all selected browsing data");
++          } else {
++            std::move(callback).Run(true, "true", "", "");
++          }
++        }, std::move(callback)));
++    remover->RemoveAndReply(
++        begin, end, mask,
++        content::BrowsingDataRemover::ORIGIN_TYPE_UNPROTECTED_WEB |
++            content::BrowsingDataRemover::ORIGIN_TYPE_PROTECTED_WEB,
++        observer);
++    return;
++  }
++  if (method == "translatePage" || method == "showOriginal") {
++    if (args.size() != 1 || !args[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Expected a page identity");
++      return;
++    }
++    const std::string page_id = args[0].GetString();
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    auto* contents = catalog ? catalog->FindPage(page_id, &owner) : nullptr;
++    if (!contents || owner != browser_ ||
++        browser_->GetProfile()->IsOffTheRecord() ||
++        browser_->GetTabStripModel()->GetActiveWebContents() != contents ||
++        !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ||
++        contents->GetLastCommittedURL().has_username() ||
++        contents->GetLastCommittedURL().has_password()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Translation requires the active web page in a regular window");
++      return;
++    }
++    const auto* entry = contents->GetController().GetLastCommittedEntry();
++    if (!entry || !contents->GetPrimaryMainFrame()) {
++      std::move(callback).Run(false, "", "stale_page",
++                              "The page is still loading");
++      return;
++    }
++    const int navigation_id = entry->GetUniqueID();
++    const GURL url = contents->GetLastCommittedURL();
++    auto weak_contents = contents->GetWeakPtr();
++    if (method == "showOriginal") {
++      contents->GetPrimaryMainFrame()->ExecuteJavaScriptInIsolatedWorld(
++          kTranslationRestoreScript,
++          base::BindOnce(
++              [](base::WeakPtr<WebUIBrowserUI> ui, std::string page_id,
++                 base::WeakPtr<content::WebContents> page, int navigation_id,
++                 GURL url, RequestCallback callback, base::Value result) {
++                if (!ui || !page || !TranslationPageCurrent(
++                        ui.get(), page_id, page.get(), navigation_id, url)) {
++                  std::move(callback).Run(false, "", "stale_page",
++                                          "The page changed before restoration");
++                  return;
++                }
++                const int restored = result.is_int() ? result.GetInt() : 0;
++                EmitTranslationState(ui->browser_->GetProfile(), page_id, {});
++                std::move(callback).Run(true, base::NumberToString(restored),
++                                        "", "");
++              },
++              weak_factory_.GetWeakPtr(), page_id, weak_contents,
++              navigation_id, url, std::move(callback)),
++          kTranslationWorld);
++      return;
++    }
++    contents->GetPrimaryMainFrame()->ExecuteJavaScriptInIsolatedWorld(
++        kTranslationCaptureScript,
++        base::BindOnce(
++            [](base::WeakPtr<WebUIBrowserUI> ui, std::string page_id,
++               base::WeakPtr<content::WebContents> page, int navigation_id,
++               GURL url, RequestCallback callback, base::Value captured) {
++              if (!ui || !page || !TranslationPageCurrent(
++                      ui.get(), page_id, page.get(), navigation_id, url)) {
++                std::move(callback).Run(false, "", "stale_page",
++                                        "The page changed before translation");
++                return;
++              }
++              const auto* capture = captured.GetIfDict();
++              const auto* texts = capture ? capture->FindList("texts") : nullptr;
++              const auto* token = capture ? capture->FindString("token") : nullptr;
++              const auto* title = capture ? capture->FindString("title") : nullptr;
++              if (!texts || texts->empty() || texts->size() > 400 ||
++                  !token || token->size() > 64 || !title ||
++                  title->size() > 200) {
++                std::move(callback).Run(false, "", "unavailable",
++                                        "No visible page text could be translated");
++                return;
++              }
++              size_t total_bytes = 0;
++              for (const auto& text : *texts) {
++                if (!text.is_string() || text.GetString().empty() ||
++                    text.GetString().size() > 4000 ||
++                    (total_bytes += text.GetString().size()) > 400000) {
++                  std::move(callback).Run(false, "", "too_large",
++                                          "Visible page text exceeds translation limits");
++                  return;
++                }
++              }
++              base::DictValue params;
++              params.Set("texts", texts->Clone());
++              params.Set("context", *title);
++              auto params_json = base::WriteJson(base::Value(std::move(params)));
++              auto* runtime = AuxRuntimeHost::ForProfile(
++                  ui->browser_->GetProfile());
++              if (!runtime || !params_json) {
++                std::move(callback).Run(false, "", "unavailable",
++                                        "Translation runtime is unavailable");
++                return;
++              }
++              base::DictValue pending;
++              pending.Set("pending", true);
++              EmitTranslationState(ui->browser_->GetProfile(), page_id,
++                                   std::move(pending));
++              const bool capture_truncated =
++                  capture->FindBool("truncated").value_or(false);
++              runtime->CallApi(
++                  "translate.page", std::move(*params_json),
++                  base::BindOnce(
++                      [](base::WeakPtr<WebUIBrowserUI> ui,
++                         std::string page_id,
++                         base::WeakPtr<content::WebContents> page,
++                         int navigation_id, GURL url, std::string token,
++                         size_t expected_count, bool capture_truncated,
++                         RequestCallback callback,
++                         AuxRuntimeHost::Response response) {
++                        if (!ui) return;
++                        auto fail = [&](const std::string& code,
++                                        const std::string& message) {
++                          EmitTranslationState(ui->browser_->GetProfile(),
++                                               page_id, {});
++                          std::move(callback).Run(false, "", code, message);
++                        };
++                        if (!page || !TranslationPageCurrent(
++                                ui.get(), page_id, page.get(), navigation_id,
++                                url)) {
++                          fail("stale_page", "The page changed during translation");
++                          return;
++                        }
++                        if (!response.ok) {
++                          fail(response.error_code.empty() ? "unavailable"
++                                                           : response.error_code,
++                               response.error_message.empty()
++                                   ? "Translation failed"
++                                   : response.error_message);
++                          return;
++                        }
++                        auto parsed = base::JSONReader::Read(
++                            response.result_json, base::JSON_PARSE_RFC);
++                        const auto* result = parsed ? parsed->GetIfDict() : nullptr;
++                        const auto* translations =
++                            result ? result->FindList("translations") : nullptr;
++                        const auto* lang = result ? result->FindString("lang") : nullptr;
++                        if (!translations || !lang || lang->empty() ||
++                            lang->size() > 40 ||
++                            translations->size() != expected_count) {
++                          fail("invalid_response",
++                               "Translation returned misaligned segments");
++                          return;
++                        }
++                        size_t bytes = 0;
++                        for (const auto& item : *translations) {
++                          if (!item.is_string() ||
++                              (bytes += item.GetString().size()) > 1600000) {
++                            fail("invalid_response",
++                                 "Translation returned invalid text");
++                            return;
++                          }
++                        }
++                        auto token_json = base::WriteJson(base::Value(token));
++                        auto values_json = base::WriteJson(
++                            base::Value(translations->Clone()));
++                        if (!token_json || !values_json) {
++                          fail("invalid_response",
++                               "Translation could not be applied");
++                          return;
++                        }
++                        const std::string script =
++                            "((token, values) => {"
++                            "const state = globalThis.__auxTranslation;"
++                            "if (!state || state.token !== token ||"
++                            "state.records.length !== values.length) return -1;"
++                            "let count = 0;"
++                            "for (let i = 0; i < values.length; i++) {"
++                            "const record = state.records[i];"
++                            "if (!record.node.isConnected ||"
++                            "record.node.textContent !== record.original) continue;"
++                            "const prefix = record.original.match(/^\\s*/)[0];"
++                            "const suffix = record.original.match(/\\s*$/)[0];"
++                            "record.applied = prefix + values[i] + suffix;"
++                            "record.node.textContent = record.applied;"
++                            "count++;"
++                            "}"
++                            "state.applied = count > 0;"
++                            "return count;"
++                            "})(" + *token_json + "," + *values_json + ")";
++                        page->GetPrimaryMainFrame()
++                            ->ExecuteJavaScriptInIsolatedWorld(
++                                base::UTF8ToUTF16(script),
++                                base::BindOnce(
++                                    [](base::WeakPtr<WebUIBrowserUI> ui,
++                                       std::string page_id,
++                                       base::WeakPtr<content::WebContents> page,
++                                       int navigation_id, GURL url,
++                                       std::string lang, bool truncated,
++                                       RequestCallback callback,
++                                       base::Value applied) {
++                                      if (!ui || !page ||
++                                          !TranslationPageCurrent(
++                                              ui.get(), page_id, page.get(),
++                                              navigation_id, url)) {
++                                        if (ui)
++                                          EmitTranslationState(
++                                              ui->browser_->GetProfile(),
++                                              page_id, {});
++                                        std::move(callback).Run(
++                                            false, "", "stale_page",
++                                            "The page changed before translated text was applied");
++                                        return;
++                                      }
++                                      const int count = applied.is_int()
++                                          ? applied.GetInt() : 0;
++                                      if (count <= 0) {
++                                        EmitTranslationState(
++                                            ui->browser_->GetProfile(),
++                                            page_id, {});
++                                        std::move(callback).Run(
++                                            false, "", "stale_page",
++                                            "The page text changed before translation was applied");
++                                        return;
++                                      }
++                                      base::DictValue state;
++                                      state.Set("lang", lang);
++                                      state.Set("count", count);
++                                      state.Set("truncated", truncated);
++                                      EmitTranslationState(
++                                          ui->browser_->GetProfile(), page_id,
++                                          state.Clone());
++                                      std::move(callback).Run(
++                                          true,
++                                          *base::WriteJson(base::Value(
++                                              std::move(state))),
++                                          "", "");
++                                    },
++                                    ui, page_id, page, navigation_id, url,
++                                    *lang,
++                                    capture_truncated ||
++                                        result->FindBool("truncated").value_or(false),
++                                    std::move(callback)),
++                                kTranslationWorld);
++                      },
++                      ui, page_id, page, navigation_id, url, *token,
++                      texts->size(), capture_truncated, std::move(callback)));
++            },
++            weak_factory_.GetWeakPtr(), page_id, weak_contents,
++            navigation_id, url, std::move(callback)),
++        kTranslationWorld);
++    return;
++  }
++  if (method == "proceedInsecure" || method == "useHttp") {
++    if (list->size() != 2 || !(*list)[0].is_string() ||
++        !(*list)[1].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "A page ID and failing URL are required");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    content::WebContents* contents = catalog ? catalog->FindPage(
++        (*list)[0].GetString(), &owner) : nullptr;
++    const base::DictValue* failure = aux::PageNavigationError(contents);
++    const std::string* failed_url = failure ? failure->FindString("url") : nullptr;
++    auto* helper = contents ? security_interstitials::
++        SecurityInterstitialTabHelper::FromWebContents(contents) : nullptr;
++    auto* blocking = helper ? helper->GetBlockingPageForFrame(
++        contents->GetPrimaryMainFrame()->GetFrameTreeNodeId()) : nullptr;
++    if (!contents || owner != browser_ || !failed_url || !blocking ||
++        contents->GetVisibleURL().spec() != *failed_url) {
++      std::move(callback).Run(true, "false", "", "");
++      return;
++    }
++    const std::string& requested = (*list)[1].GetString();
++    bool allowed = false;
++    if (method == "proceedInsecure") {
++      const int code = failure->FindInt("code").value_or(net::OK);
++      allowed = requested == *failed_url && net::IsCertificateError(code) &&
++          blocking->GetTypeForTesting() == SSLBlockingPage::kTypeForTesting;
++    } else {
++      const std::string* fallback = failure->FindString("upgradedFrom");
++      auto* upgrade = HttpsOnlyModeTabHelper::FromWebContents(contents);
++      allowed = fallback && requested == *fallback &&
++          GURL(requested).SchemeIs("http") && upgrade &&
++          upgrade->is_navigation_fallback() &&
++          upgrade->fallback_url().spec() == requested &&
++          blocking->GetTypeForTesting() == security_interstitials::
++              HttpsOnlyModeBlockingPage::kTypeForTesting;
++    }
++    if (allowed) {
++      blocking->CommandReceived(base::NumberToString(
++          security_interstitials::CMD_PROCEED));
++    }
++    std::move(callback).Run(true, allowed ? "true" : "false", "", "");
++    return;
++  }
++  if (method == "readArticle") {
++    if (args.size() != 1 || !args[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument", "Expected a page identity");
++      return;
++    }
++    const std::string page_id = args[0].GetString();
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    content::WebContents* contents = catalog ? catalog->FindPage(page_id, &owner) : nullptr;
++    if (!contents || owner != browser_ ||
++        !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ||
++        !dom_distiller::url_utils::IsUrlDistillable(contents->GetLastCommittedURL())) {
++      std::move(callback).Run(false, "", "not_found", "No readable page is available");
++      return;
++    }
++    const auto* entry = contents->GetController().GetLastCommittedEntry();
++    if (!entry) {
++      std::move(callback).Run(false, "", "not_found", "The page has not loaded");
++      return;
++    }
++    const int navigation_id = entry->GetUniqueID();
++    const GURL url = contents->GetLastCommittedURL();
++    auto reply = base::BindOnce(
++        [](base::WeakPtr<WebUIBrowserUI> ui, std::string page_id,
++           int navigation_id, GURL url, RequestCallback callback,
++           const dom_distiller::DistilledArticleProto* article) {
++          if (!ui) return;
++          BrowserWindowInterface* current_owner = nullptr;
++          auto* catalog = aux::TabCatalog::GetForProfile(ui->browser()->GetProfile());
++          auto* page = catalog ? catalog->FindPage(page_id, &current_owner) : nullptr;
++          const auto* entry = page ? page->GetController().GetLastCommittedEntry() : nullptr;
++          if (!page || current_owner != ui->browser() || !entry ||
++              entry->GetUniqueID() != navigation_id || page->GetLastCommittedURL() != url) {
++            std::move(callback).Run(false, "", "stale_page", "The page changed while preparing Reader view");
++            return;
++          }
++          if (!article || article->pages_size() == 0 ||
++              article->pages(0).html().empty()) {
++            std::move(callback).Run(false, "", "unavailable", "Reader could not extract this article");
++            return;
++          }
++          std::string html;
++          for (const auto& distilled_page : article->pages()) {
++            if (html.size() + distilled_page.html().size() > 2 * 1024 * 1024) {
++              std::move(callback).Run(false, "", "too_large", "This article is too large for Reader view");
++              return;
++            }
++            html += distilled_page.html();
++          }
++          base::DictValue envelope;
++          envelope.Set("title", article->title().empty()
++                                    ? base::UTF16ToUTF8(page->GetTitle()) : article->title());
++          envelope.Set("byline", "");
++          envelope.Set("site", url.host());
++          envelope.Set("url", url.spec());
++          envelope.Set("minutes", 1);
++          base::DictValue content;
++          content.Set("tag", "__aux_distilled_html");
++          base::ListValue children;
++          children.Append(std::move(html));
++          content.Set("children", std::move(children));
++          envelope.Set("content", std::move(content));
++          std::move(callback).Run(true, *base::WriteJson(envelope), "", "");
++        }, weak_factory_.GetWeakPtr(), page_id, navigation_id, url,
++        std::move(callback));
++    (new ReaderRequest(contents, std::move(reply)))->Start();
++    return;
++  }
++  if (method == "preview") {
++    if (args.size() != 1 || !args[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Expected a page identity");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    content::WebContents* contents =
++        catalog ? catalog->FindPage(args[0].GetString(), &owner) : nullptr;
++    if (!contents || owner != browser_) {
++      std::move(callback).Run(false, "", "not_found",
++                              "The page is no longer in this window");
++      return;
++    }
++    auto* tab = tabs::TabInterface::MaybeGetFromContents(contents);
++    auto* helper = tab ? ThumbnailTabHelper::From(tab) : nullptr;
++    auto image = helper ? helper->thumbnail() : nullptr;
++    if (!image) {
++      std::move(callback).Run(true, "null", "", "");
++      return;
++    }
++    const auto* entry = contents->GetController().GetLastCommittedEntry();
++    const int navigation_id = entry ? entry->GetUniqueID() : 0;
++    auto reply = base::BindOnce(
++        [](base::WeakPtr<WebUIBrowserUI> ui, std::string page_id,
++           int navigation_id, RequestCallback callback,
++           ThumbnailImage::CompressedThumbnailData jpeg) {
++          if (!ui) return;
++          BrowserWindowInterface* current_owner = nullptr;
++          auto* catalog = aux::TabCatalog::GetForProfile(ui->browser()->GetProfile());
++          auto* page = catalog
++              ? catalog->FindPage(page_id, &current_owner) : nullptr;
++          const auto* entry = page
++              ? page->GetController().GetLastCommittedEntry() : nullptr;
++          if (!page || current_owner != ui->browser() || !entry ||
++              entry->GetUniqueID() != navigation_id || !jpeg ||
++              jpeg->data.empty() || jpeg->data.size() > 512 * 1024) {
++            std::move(callback).Run(true, "null", "", "");
++            return;
++          }
++          std::string encoded = base::Base64Encode(std::string_view(
++              reinterpret_cast<const char*>(jpeg->data.data()),
++              jpeg->data.size()));
++          std::move(callback).Run(
++              true,
++              *base::WriteJson(base::Value("data:image/jpeg;base64," + encoded)),
++              "", "");
++        },
++        weak_factory_.GetWeakPtr(), args[0].GetString(), navigation_id,
++        std::move(callback));
++    base::MakeRefCounted<PreviewRequest>(image, std::move(reply))->Start();
++    return;
++  }
++  if (method == "httpAuthRequests" || method == "respondHttpAuth") {
++    if (method == "httpAuthRequests" && !list->empty()) {
++      std::move(callback).Run(false, "", "invalid_argument", "No arguments expected");
++      return;
++    }
++    if (method == "respondHttpAuth" &&
++        (list->size() != 2 || !(*list)[0].is_string() ||
++         (!(*list)[1].is_none() && !(*list)[1].is_dict()))) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid authentication response");
++      return;
++    }
++    auto* tabs = browser_->GetTabStripModel();
++    base::ListValue requests;
++    bool handled = false;
++    for (int i = 0; i < tabs->count(); ++i) {
++      auto* login = LoginTabHelper::FromWebContents(tabs->GetWebContentsAt(i));
++      if (!login) continue;
++      const auto pending = login->GetAuxAuthRequest();
++      if (!pending) continue;
++      if (method == "httpAuthRequests") {
++        base::DictValue row;
++        row.Set("id", pending->id);
++        row.Set("origin", pending->origin);
++        row.Set("realm", pending->realm);
++        row.Set("proxy", pending->proxy);
++        row.Set("retry", pending->retry);
++        requests.Append(std::move(row));
++        continue;
++      }
++      if (pending->id != (*list)[0].GetString()) continue;
++      std::optional<net::AuthCredentials> credentials;
++      if ((*list)[1].is_dict()) {
++        const auto& value = (*list)[1].GetDict();
++        const std::string* username = value.FindString("username");
++        const std::string* password = value.FindString("password");
++        if (!username || !password) {
++          std::move(callback).Run(false, "", "invalid_argument", "Credentials are incomplete");
++          return;
++        }
++        credentials.emplace(base::UTF8ToUTF16(*username),
++                            base::UTF8ToUTF16(*password));
++      }
++      handled = login->RespondAuxAuth(pending->id, credentials);
++      if (handled) aux::EmitShellEvent(browser_->GetProfile(), "onHttpAuthChanged", "{}");
++      break;
++    }
++    if (method == "httpAuthRequests") {
++      std::move(callback).Run(true, *base::WriteJson(requests), "", "");
++    } else {
++      std::move(callback).Run(true, handled ? "true" : "false", "", "");
++    }
++    return;
++  }
++  if (method == "crashReporting") {
++    if (!list->empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Crash reporting state takes no arguments");
++      return;
++    }
++    base::DictValue result;
++#if BUILDFLAG(IS_MAC)
++    result.Set("available", aux_crash_reporting::HasConfiguredEndpoint());
++    result.Set("decided", aux_crash_reporting::HasUserChoice());
++    result.Set("consent", aux_crash_reporting::HasConsent());
++#else
++    result.Set("available", false);
++    result.Set("decided", false);
++    result.Set("consent", false);
++#endif
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "setCrashReporting") {
++    if (browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Crash reporting consent cannot change in Private mode");
++      return;
++    }
++    if (list->size() != 1 || !(*list)[0].is_bool()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "A crash reporting choice is required");
++      return;
++    }
++#if BUILDFLAG(IS_MAC)
++    if (!aux_crash_reporting::HasConfiguredEndpoint()) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "This build has no crash report destination");
++      return;
++    }
++    const bool consent = (*list)[0].GetBool();
++    if (!aux_crash_reporting::SetConsent(consent)) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Crash reporting consent could not be saved");
++      return;
++    }
++    std::move(callback).Run(true, consent ? "true" : "false", "", "");
++#else
++    std::move(callback).Run(false, "", "backend_unavailable",
++                            "Crash reporting consent is unavailable on this platform");
++#endif
++    return;
++  }
++  if (method == "cookieControls") {
++    if (!list->empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Cookie controls take no arguments");
++      return;
++    }
++    auto* prefs = browser_->GetProfile()->GetPrefs();
++    base::DictValue result;
++    result.Set("blockThirdParty",
++               prefs->GetInteger(prefs::kCookieControlsMode) ==
++                   static_cast<int>(content_settings::CookieControlsMode::kBlockThirdParty));
++    result.Set("managed", prefs->IsManagedPreference(prefs::kCookieControlsMode));
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "setCookieControls") {
++    if (browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Cookie controls cannot change in Private mode");
++      return;
++    }
++    if (list->size() != 1 || !(*list)[0].is_bool()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "A third-party cookie setting is required");
++      return;
++    }
++    auto* prefs = browser_->GetProfile()->GetPrefs();
++    if (prefs->IsManagedPreference(prefs::kCookieControlsMode)) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Cookie controls are managed by your organization");
++      return;
++    }
++    const bool block = (*list)[0].GetBool();
++    prefs->SetInteger(prefs::kCookieControlsMode,
++                      static_cast<int>(block ? content_settings::CookieControlsMode::kBlockThirdParty
++                                             : content_settings::CookieControlsMode::kOff));
++    std::move(callback).Run(true, block ? "true" : "false", "", "");
++    return;
++  }
++  if (method == "httpsUpgrade") {
++    if (!list->empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "HTTPS upgrade state takes no arguments");
++      return;
++    }
++    auto* prefs = browser_->GetProfile()->GetPrefs();
++    const bool policy_allowed = prefs->GetBoolean(prefs::kHttpsUpgradesEnabled);
++    const bool available =
++        policy_allowed && base::FeatureList::IsEnabled(features::kHttpsUpgrades);
++    base::DictValue result;
++    result.Set("enabled", available && prefs->GetBoolean(aux::kHttpsUpgradesEnabled));
++    result.Set("available", available);
++    result.Set("managed", !policy_allowed &&
++                              prefs->IsManagedPreference(prefs::kHttpsUpgradesEnabled));
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "setHttpsUpgrade") {
++    if (browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "HTTPS upgrade settings cannot change in Private mode");
++      return;
++    }
++    if (list->size() != 1 || !(*list)[0].is_bool()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "An HTTPS upgrade setting is required");
++      return;
++    }
++    const bool enabled = (*list)[0].GetBool();
++    auto* pref_service = browser_->GetProfile()->GetPrefs();
++    if (enabled && !pref_service->GetBoolean(prefs::kHttpsUpgradesEnabled)) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "HTTPS upgrades are disabled by browser policy");
++      return;
++    }
++    if (enabled && !base::FeatureList::IsEnabled(features::kHttpsUpgrades)) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "HTTPS upgrades are unavailable in this build");
++      return;
++    }
++    pref_service->SetBoolean(aux::kHttpsUpgradesEnabled, enabled);
++    std::move(callback).Run(true, enabled ? "true" : "false", "", "");
++    return;
++  }
++  if (method == "siteDataCount") {
++    if (list->size() != 1 || !(*list)[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "A page ID is required to count website data");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* profile = browser_->GetProfile();
++    const std::string page_id = (*list)[0].GetString();
++    content::WebContents* contents =
++        aux::TabCatalog::GetForProfile(profile)->FindPage(page_id, &owner);
++    if (!contents || owner != browser_ ||
++        !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
++      std::move(callback).Run(false, "", "not_found",
++                              "The website is no longer in this window");
++      return;
++    }
++    const GURL url = contents->GetLastCommittedURL();
++    const content::NavigationEntry* entry =
++        contents->GetController().GetLastCommittedEntry();
++    if (!entry) {
++      std::move(callback).Run(false, "", "conflict",
++                              "The page is still loading");
++      return;
++    }
++    std::string domain = net::registry_controlled_domains::GetDomainAndRegistry(
++        url, net::registry_controlled_domains::INCLUDE_PRIVATE_REGISTRIES);
++    if (domain.empty() &&
++        (url.HostIsIPAddress() || url.host().find('.') == std::string::npos)) {
++      domain = url.host();
++    }
++    if (domain.empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "The website has no clearable domain");
++      return;
++    }
++    profile->GetStoragePartitionForUrl(url)
++        ->GetCookieManagerForBrowserProcess()
++        ->GetAllCookies(mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++            base::BindOnce(
++                [](base::WeakPtr<WebUIBrowserUI> ui, std::string page_id,
++                   GURL expected_url, int navigation_id, std::string domain,
++                   RequestCallback callback, const net::CookieList& cookies) {
++                  if (!ui || !ui->IsAuthorizedAuxDocument()) {
++                    std::move(callback).Run(false, "", "forbidden",
++                                            "The Aux shell is no longer active");
++                    return;
++                  }
++                  BrowserWindowInterface* owner = nullptr;
++                  auto* current = aux::TabCatalog::GetForProfile(
++                                      ui->browser_->GetProfile())
++                                      ->FindPage(page_id, &owner);
++                  const auto* current_entry = current
++                      ? current->GetController().GetLastCommittedEntry()
++                      : nullptr;
++                  if (!current || owner != ui->browser_ ||
++                      current->GetLastCommittedURL() != expected_url ||
++                      !current_entry ||
++                      current_entry->GetUniqueID() != navigation_id) {
++                    std::move(callback).Run(false, "", "conflict",
++                                            "The page changed. Review website data again");
++                    return;
++                  }
++                  int count = 0;
++                  for (const auto& cookie : cookies) {
++                    std::string host = cookie.Domain();
++                    if (!host.empty() && host.front() == '.') host.erase(0, 1);
++                    if (host == domain ||
++                        (host.size() > domain.size() &&
++                         host.compare(host.size() - domain.size(),
++                                      domain.size(), domain) == 0 &&
++                         host[host.size() - domain.size() - 1] == '.')) {
++                      ++count;
++                    }
++                  }
++                  base::DictValue result;
++                  result.Set("domain", domain);
++                  result.Set("cookies", count);
++                  std::move(callback).Run(
++                      true, *base::WriteJson(base::Value(std::move(result))),
++                      "", "");
++                },
++                weak_factory_.GetWeakPtr(), page_id, url,
++                entry->GetUniqueID(), std::move(domain), std::move(callback)),
++            net::CookieList()));
++    return;
++  }
++  if (method == "clearSiteData") {
++    if (list->size() != 1 || !(*list)[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "A page ID is required to clear website data");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* profile = browser_->GetProfile();
++    content::WebContents* contents =
++        aux::TabCatalog::GetForProfile(profile)->FindPage(
++            (*list)[0].GetString(), &owner);
++    if (!contents || owner != browser_ ||
++        !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
++      std::move(callback).Run(false, "", "not_found",
++                              "The website is no longer in this window");
++      return;
++    }
++    const GURL url = contents->GetLastCommittedURL();
++    std::string domain = net::registry_controlled_domains::GetDomainAndRegistry(
++        url, net::registry_controlled_domains::INCLUDE_PRIVATE_REGISTRIES);
++    if (domain.empty() &&
++        (url.HostIsIPAddress() || url.host().find('.') == std::string::npos)) {
++      domain = url.host();
++    }
++    if (domain.empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "The website has no clearable domain");
++      return;
++    }
++    auto filter = content::BrowsingDataFilterBuilder::Create(
++        content::BrowsingDataFilterBuilder::Mode::kDelete);
++    filter->AddRegisterableDomain(domain);
++    auto* remover = profile->GetBrowsingDataRemover();
++    auto* observer = new SiteDataRemoval(remover, base::BindOnce(
++        [](RequestCallback callback, uint64_t failed_data_types) {
++          if (failed_data_types) {
++            std::move(callback).Run(false, "", "backend_unavailable",
++                                    "Website data could not be completely cleared");
++          } else {
++            std::move(callback).Run(true, "true", "", "");
++          }
++        }, std::move(callback)));
++    remover->RemoveWithFilterAndReply(
++        base::Time(), base::Time::Max(),
++        content::BrowsingDataRemover::DATA_TYPE_DOM_STORAGE |
++            content::BrowsingDataRemover::DATA_TYPE_COOKIES,
++        content::BrowsingDataRemover::ORIGIN_TYPE_UNPROTECTED_WEB |
++            content::BrowsingDataRemover::ORIGIN_TYPE_PROTECTED_WEB,
++        std::move(filter), observer);
++    return;
++  }
++  if (method == "sitePermissions") {
++    if (!list->empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Site permissions take no arguments");
++      return;
++    }
++    auto* profile = browser_->GetProfile();
++    auto* map = HostContentSettingsMapFactory::GetForProfile(profile);
++    std::move(callback).Run(
++        true, *base::WriteJson(SavedSitePermissions(map, profile->IsOffTheRecord())),
++        "", "");
++    return;
++  }
++  if (method == "clearSitePermission") {
++    if (list->empty() || list->size() > 2 || !(*list)[0].is_string() ||
++        (list->size() == 2 && !(*list)[1].is_string())) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid permission reset request");
++      return;
++    }
++    const GURL url((*list)[0].GetString());
++    if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS() ||
++        url::Origin::Create(url).Serialize() != (*list)[0].GetString()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "An exact website origin is required");
++      return;
++    }
++    const std::string requested = list->size() == 2 ? (*list)[1].GetString() : "";
++    if (!requested.empty() && requested != "media" &&
++        std::ranges::none_of(kSitePermissionKinds,
++                             [&](const SitePermissionKind& kind) {
++                               return kind.name == requested;
++                             })) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Unknown website permission");
++      return;
++    }
++    auto* profile = browser_->GetProfile();
++    auto* map = HostContentSettingsMapFactory::GetForProfile(profile);
++    for (const auto& kind : kSitePermissionKinds) {
++      if (!requested.empty() && requested != kind.name &&
++          !(requested == "media" &&
++            (kind.name == "media:audio" || kind.name == "media:video"))) {
++        continue;
++      }
++      for (const auto& rule : map->GetSettingsForOneType(kind.type)) {
++        std::string origin;
++        if (!SavedSitePermission(rule, profile->IsOffTheRecord(), &origin) ||
++            origin != (*list)[0].GetString()) {
++          continue;
++        }
++        map->SetContentSettingCustomScope(rule.primary_pattern,
++                                          rule.secondary_pattern, kind.type,
++                                          CONTENT_SETTING_DEFAULT);
++      }
++    }
++    std::move(callback).Run(true, "true", "", "");
++    return;
++  }
++  if (method == "privatePageZoom") {
++    if (!browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "permission_denied",
++                              "Private page zoom is only available in Private windows");
++      return;
++    }
++    if (list->size() != 2 || !(*list)[0].is_string() || !(*list)[1].is_dict()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid Private page zoom request");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    content::WebContents* contents =
++        catalog->FindPage((*list)[0].GetString(), &owner);
++    if (!contents || owner != browser_) {
++      std::move(callback).Run(false, "", "not_found",
++                              "The page is no longer in this window");
++      return;
++    }
++    auto* zoom_controller = zoom::ZoomController::FromWebContents(contents);
++    if (!zoom_controller) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "Page zoom is unavailable");
++      return;
++    }
++    const base::DictValue& options = (*list)[1].GetDict();
++    const double current = zoom_controller->GetZoomLevel();
++    double next = current;
++    bool requested = false;
++    constexpr double kZoomBase = 1.2;
++    constexpr std::array<int, 16> kZoomPercentages = {
++        25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500};
++    if (options.FindBool("reset").value_or(false)) {
++      requested = true;
++      next = zoom_controller->GetDefaultZoomLevel();
++    } else if (const std::string* direction = options.FindString("direction")) {
++      if (*direction != "in" && *direction != "out") {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Invalid zoom direction");
++        return;
++      }
++      requested = true;
++      const int current_percent =
++          static_cast<int>(std::round(100.0 * std::pow(kZoomBase, current)));
++      int stepped = *direction == "in" ? 500 : 25;
++      for (int percentage : kZoomPercentages) {
++        if (*direction == "in" && percentage > current_percent) {
++          stepped = percentage;
++          break;
++        }
++        if (*direction == "out" && percentage < current_percent)
++          stepped = percentage;
++      }
++      next = std::log(stepped / 100.0) / std::log(kZoomBase);
++    } else if (const std::optional<double> level = options.FindDouble("level")) {
++      requested = true;
++      next = *level;
++    } else if (const std::optional<double> delta = options.FindDouble("delta")) {
++      requested = true;
++      next += *delta;
++    }
++    if (!std::isfinite(next)) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid page zoom");
++      return;
++    }
++    if (requested) {
++      next = std::clamp(next, std::log(0.25) / std::log(kZoomBase),
++                        std::log(5.0) / std::log(kZoomBase));
++    }
++    if (requested && next != current && !zoom_controller->SetZoomLevel(next)) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "Page zoom is disabled");
++      return;
++    }
++    base::DictValue result;
++    result.Set("level", zoom_controller->GetZoomLevel());
++    std::move(callback).Run(true, *base::WriteJson(result), "", "");
++    return;
++  }
++  if (method == "siteZoom") {
++    if (list->size() > 1 || (!list->empty() && !(*list)[0].is_string())) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid saved zoom request");
++      return;
++    }
++    auto* map = content::HostZoomMap::GetDefaultForBrowserContext(browser_->GetProfile());
++    auto key = [](const content::HostZoomMap::ZoomLevelChange& entry) {
++      return entry.scheme.empty() ? entry.host : entry.scheme + "://" + entry.host;
++    };
++    if (!list->empty()) {
++      for (const auto& entry : map->GetAllZoomLevels()) {
++        if (key(entry) != (*list)[0].GetString()) continue;
++        if (entry.scheme.empty()) map->SetZoomLevelForHost(entry.host, 0);
++        else map->SetZoomLevelForHostAndScheme(entry.scheme, entry.host, 0);
++      }
++      if (shell_host_client_.is_bound())
++        shell_host_client_->OnEvent("onSiteZoomChanged", "{}");
++    }
++    base::ListValue result;
++    for (const auto& entry : map->GetAllZoomLevels()) {
++      if (entry.mode == content::HostZoomMap::ZOOM_CHANGED_TEMPORARY_ZOOM ||
++          entry.host.empty()) continue;
++      base::DictValue row;
++      row.Set("origin", key(entry));
++      row.Set("percentage", static_cast<int>(std::round(
++          blink::ZoomLevelToZoomFactor(entry.zoom_level) * 100)));
++      result.Append(std::move(row));
++    }
++    std::move(callback).Run(true, *base::WriteJson(result), "", "");
++    return;
++  }
++  if (method == "siteInfo" || method == "setSiteTrackers") {
++    if (list->size() != (method == "siteInfo" ? 1u : 2u) ||
++        !(*list)[0].is_string() ||
++        (method == "setSiteTrackers" && !(*list)[1].is_bool())) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid site controls request");
++      return;
++    }
++    const std::string page_id = (*list)[0].GetString();
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    content::WebContents* contents = catalog->FindPage(page_id, &owner);
++    if (!contents || owner != browser_ ||
++        !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
++      std::move(callback).Run(false, "", "not_found",
++                              "The website is no longer in this window");
++      return;
++    }
++    const GURL url = contents->GetLastCommittedURL();
++    const content::NavigationEntry* entry =
++        contents->GetController().GetLastCommittedEntry();
++    if (!entry) {
++      std::move(callback).Run(false, "", "conflict",
++                              "The page is still loading");
++      return;
++    }
++    const int navigation_id = entry->GetUniqueID();
++    auto* blocker =
++        aux::ContentBlockingController::ForProfile(browser_->GetProfile());
++    if (method == "setSiteTrackers") {
++      const bool allowed = (*list)[1].GetBool();
++      if (browser_->GetProfile()->IsOffTheRecord()) {
++        const bool previous = blocker->IsAllowed(url.host());
++        if (!blocker->SetPrivateSiteAllowed(url.host(), allowed)) {
++          std::move(callback).Run(false, "", "invalid_argument",
++                                  "Invalid private site exception");
++          return;
++        }
++        aux::ZapController::ForProfile(browser_->GetProfile())
++            ->RefreshCosmetic(base::BindOnce(
++                [](base::WeakPtr<WebUIBrowserUI> owner, std::string page_id,
++                   GURL url, int navigation_id, bool previous, bool allowed,
++                   RequestCallback callback, bool applied) {
++                  if (!owner) return;
++                  auto* profile = owner->browser_->GetProfile();
++                  auto* catalog = aux::TabCatalog::GetForProfile(profile);
++                  auto* page = catalog ? catalog->FindPage(page_id) : nullptr;
++                  const auto* entry = page
++                      ? page->GetController().GetLastCommittedEntry() : nullptr;
++                  if (!page || page->GetLastCommittedURL() != url || !entry ||
++                      entry->GetUniqueID() != navigation_id) applied = false;
++                  if (!applied) {
++                    aux::ContentBlockingController::ForProfile(profile)
++                        ->SetPrivateSiteAllowed(url.host(), previous);
++                    aux::ZapController::ForProfile(profile)->RefreshCosmetic(
++                        base::BindOnce(
++                            [](RequestCallback callback, bool) {
++                              std::move(callback).Run(
++                                  false, "", "conflict",
++                                  "The page changed or rejected the cosmetic rule");
++                            }, std::move(callback)));
++                    return;
++                  }
++                  base::DictValue result;
++                  result.Set("hostname", url.host());
++                  result.Set("allowed", allowed);
++                  std::move(callback).Run(true, *base::WriteJson(result), "", "");
++                }, weak_factory_.GetWeakPtr(), page_id, url, navigation_id,
++                previous, allowed, std::move(callback)));
++        return;
++      }
++      base::DictValue params;
++      params.Set("hostname", url.host());
++      params.Set("allowed", allowed);
++      base::DictValue site_guard;
++      site_guard.Set("pageId", page_id);
++      site_guard.Set("expectedUrl", url.spec());
++      site_guard.Set("navigationId", navigation_id);
++      params.Set("siteGuard", std::move(site_guard));
++      AuxRuntimeHost::ForProfile(browser_->GetProfile())
++          ->CallInternal("blocking.setSiteAllowed", *base::WriteJson(params),
++                         base::BindOnce(
++                             [](RequestCallback callback,
++                                AuxRuntimeHost::Response response) {
++                               std::move(callback).Run(
++                                   response.ok, response.result_json,
++                                   response.error_code, response.error_message);
++                             },
++                             std::move(callback)));
++      return;
++    }
++    base::DictValue result;
++    result.Set("pageId", page_id);
++    result.Set("url", url.spec());
++    const std::string origin = url::Origin::Create(url).Serialize();
++    result.Set("origin", origin);
++    result.Set("title", base::UTF16ToUTF8(contents->GetTitle()));
++    result.Set("security",
++               url.SchemeIs("https")
++                   ? (chrome_security_state::GetSecurityLevel(contents) ==
++                              security_state::SECURE
++                          ? "secure"
++                          : "insecure")
++                   : (url.HostIsIPAddress() || url.host() == "localhost"
++                          ? "local"
++                          : "insecure"));
++    result.Set("trackersAllowed",
++               !blocker->enabled() || blocker->IsAllowed(url.host()));
++    result.Set("blockedCount", blocker->BlockedForSite(url.host()));
++    auto* map = HostContentSettingsMapFactory::GetForProfile(browser_->GetProfile());
++    base::DictValue saved = SavedSitePermissions(
++        map, browser_->GetProfile()->IsOffTheRecord());
++    const base::DictValue* decisions = saved.FindDict(origin);
++    result.Set("permissions", decisions ? decisions->Clone() : base::DictValue());
++    browser_->GetProfile()
++        ->GetStoragePartitionForUrl(url)
++        ->GetCookieManagerForBrowserProcess()
++        ->GetCookieList(
++            url, net::CookieOptions::MakeAllInclusive(),
++            net::CookiePartitionKeyCollection::ContainsAll(),
++            mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++                base::BindOnce(
++                    [](base::WeakPtr<WebUIBrowserUI> ui, std::string page_id,
++                       GURL expected_url, int navigation_id,
++                       base::DictValue result, RequestCallback callback,
++                       const net::CookieAccessResultList& cookies,
++                       const net::CookieAccessResultList&) {
++                      if (!ui || !ui->IsAuthorizedAuxDocument()) {
++                        std::move(callback).Run(
++                            false, "", "forbidden",
++                            "The Aux shell is no longer active");
++                        return;
++                      }
++                      BrowserWindowInterface* owner = nullptr;
++                      content::WebContents* current =
++                          aux::TabCatalog::GetForProfile(
++                              ui->browser_->GetProfile())
++                              ->FindPage(page_id, &owner);
++                      if (!current || owner != ui->browser_ ||
++                          current->GetLastCommittedURL() != expected_url ||
++                          !current->GetController().GetLastCommittedEntry() ||
++                          current->GetController()
++                                  .GetLastCommittedEntry()
++                                  ->GetUniqueID() != navigation_id) {
++                        std::move(callback).Run(
++                            false, "", "conflict",
++                            "The page changed. Open site controls again");
++                        return;
++                      }
++                      result.Set("cookieCount",
++                                 static_cast<int>(cookies.size()));
++                      std::move(callback).Run(true, *base::WriteJson(result),
++                                              "", "");
++                    },
++                    weak_factory_.GetWeakPtr(), page_id, url, navigation_id,
++                    std::move(result), std::move(callback)),
++                net::CookieAccessResultList(), net::CookieAccessResultList()));
++    return;
++  }
++  std::move(callback).Run(false, "", "not_found",
++                          "Unsupported Aux shell method: " + method);
++}
++#endif
+diff --git a/chrome/browser/ui/aux/methods/health_methods.cc b/chrome/browser/ui/aux/methods/health_methods.cc
+new file mode 100644
+index 0000000000..74e1e1d4aa
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/health_methods.cc
+@@ -0,0 +1,72 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++
++#include <utility>
++
++#include "base/json/json_writer.h"
++#include "base/time/time.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/appearance_prefs.h"
++#include "chrome/browser/ui/aux/health_recorder.h"
++#include "chrome/browser/ui/aux/method_registry.h"
++#include "chrome/browser/ui/aux/site_prefs.h"
++#include "components/prefs/pref_service.h"
++#include "components/version_info/version_info.h"
++
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++void WebUIBrowserUI::HandleAuxHealthRequest(
++    const std::string& method, const base::ListValue& args,
++    RequestCallback callback) {
++  Profile* profile = browser_->GetProfile();
++  if (method == "healthSummary" || method == "clearHealth") {
++    base::DictValue summary = method == "clearHealth"
++                                  ? aux::ClearHealth(profile)
++                                  : aux::HealthSummary(profile);
++    const auto json = base::WriteJson(summary);
++    std::move(callback).Run(json.has_value(), json.value_or(""),
++                            json ? "" : "io_error",
++                            json ? "" : "Health summary could not be encoded");
++    return;
++  }
++  if (method == "exportDiagnostics") {
++    const base::DictValue capabilities = aux::AuxMethodRegistry::Get().Capabilities();
++    base::DictValue report;
++    report.Set("format", "aux-support-report-v1");
++    report.Set("createdAt", static_cast<double>(
++        base::Time::Now().InMillisecondsSinceUnixEpoch()));
++    report.Set("browserVersion", version_info::GetVersionNumber());
++    report.Set("buildId", *capabilities.FindString("buildId"));
++    report.Set("sourceCommit", *capabilities.FindString("sourceCommit"));
++    const base::ListValue* methods = capabilities.FindList("methods");
++    report.Set("availableHostMethods", static_cast<int>(methods ? methods->size() : 0));
++    report.Set("health", aux::HealthSummary(profile));
++    base::DictValue modes;
++    PrefService* prefs = profile->GetPrefs();
++    modes.Set("appearanceTheme", prefs->GetString(aux::kAppearanceThemePref));
++    modes.Set("httpsUpgradeEnabled", prefs->GetBoolean(aux::kHttpsUpgradesEnabled));
++    modes.Set("privateProfile", profile->IsOffTheRecord());
++    report.Set("modes", std::move(modes));
++    base::ListValue limits;
++    limits.Append("CPU and memory samples cover the browser process only.");
++    limits.Append("Responsiveness is one-minute UI task scheduling delay.");
++    limits.Append("Suspension counts and startup timing are not recorded yet.");
++    limits.Append("Page crash and hang counts are since the last Clear action.");
++    limits.Append("Runtime version and state are not included yet.");
++    report.Set("knownLimits", std::move(limits));
++    const auto content = base::WriteJsonWithOptions(
++        report, base::OPTIONS_PRETTY_PRINT);
++    if (!content) {
++      std::move(callback).Run(false, "", "io_error",
++                              "Support report could not be encoded");
++      return;
++    }
++    BeginAuxGeneratedSave("Aux-support-report.json", *content + "\n",
++                          base::FilePath(), 0, std::move(callback));
++    return;
++  }
++  std::move(callback).Run(false, "", "not_found", "Unknown health method");
++}
++#endif
+diff --git a/chrome/browser/ui/aux/methods/native_content_methods.cc b/chrome/browser/ui/aux/methods/native_content_methods.cc
+new file mode 100644
+index 0000000000..ee7ed6ee4a
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/native_content_methods.cc
+@@ -0,0 +1,149 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/runtime_host.h"
++
++#include "base/task/thread_pool.h"
++
++#include <fcntl.h>
++#include <poll.h>
++#include <sys/socket.h>
++#include <sys/stat.h>
++#include <sys/un.h>
++#include <unistd.h>
++
++#include <algorithm>
++#include <array>
++#include <cerrno>
++#include <cmath>
++#include <memory>
++#include <limits>
++#include <optional>
++#include <utility>
++#include <vector>
++
++#include "base/base_paths.h"
++#include "base/command_line.h"
++#include "base/containers/span.h"
++#include "base/files/file_util.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/path_service.h"
++#include "base/process/launch.h"
++#include "base/rand_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/synchronization/waitable_event.h"
++#include "base/time/time.h"
++#include "base/task/bind_post_task.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/cdp_broker.h"
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/cosmetic_controller.h"
++#include "chrome/browser/ui/aux/credential_fill.h"
++#include "chrome/browser/ui/aux/cookie_import.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/profile_library.h"
++#include "chrome/browser/ui/aux/profile_search_engine.h"
++#include "chrome/browser/ui/aux/readable_capture.h"
++#include "chrome/browser/ui/aux/secret_store_mac.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/native_find.h"
++#include "chrome/browser/ui/aux/zap_controller.h"
++#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "components/sessions/core/session_id.h"
++#include "components/find_in_page/find_result_observer.h"
++#include "components/find_in_page/find_tab_helper.h"
++#include "components/version_info/version_info.h"
++#include "components/zoom/zoom_controller.h"
++#include "content/public/browser/devtools_agent_host.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/common/stop_find_action.h"
++#include "ui/base/base_window.h"
++#include "url/gurl.h"
++
++
++namespace {
++base::DictValue NativeFault(std::string code, std::string message) {
++  base::DictValue error;
++  error.Set("code", std::move(code));
++  error.Set("message", std::move(message));
++  base::DictValue reply;
++  reply.Set("error", std::move(error));
++  return reply;
++}
++}  // namespace
++
++namespace {
++
++bool CaptureAllowed(Profile* profile, const base::DictValue& params,
++                    content::WebContents** page_out) {
++  if (!profile || profile->IsOffTheRecord()) return false;
++  const std::string* page_id = params.FindString("pageId");
++  const std::string* workspace_id = params.FindString("workspaceId");
++  const std::string* expected_url = params.FindString("expectedUrl");
++  if (!page_id || page_id->empty() || page_id->size() > 200 ||
++      !workspace_id || workspace_id->empty() || workspace_id->size() > 200 ||
++      !expected_url || expected_url->size() > 8192) return false;
++  const GURL url(*expected_url);
++  if (!url.is_valid() || !url.SchemeIs("https") || url.has_username() ||
++      url.has_password() || url.spec() != *expected_url) return false;
++  auto* catalog = aux::TabCatalog::GetForProfile(profile);
++  BrowserWindowInterface* owner = nullptr;
++  content::WebContents* page = catalog ? catalog->FindPage(*page_id, &owner) : nullptr;
++  if (!page || !owner || owner->GetProfile() != profile || !owner->IsActive() ||
++      owner->GetTabStripModel()->GetActiveWebContents() != page ||
++      page->GetLastCommittedURL() != url) return false;
++  const auto* identity = aux::PageIdentity::FromWebContents(page);
++  if (!identity || identity->runtime_owned()) return false;
++  std::string error;
++  const auto snapshot = aux::OrganizationStore::Snapshot(
++      profile, base::NumberToString(owner->GetSessionID().id()), &error);
++  const base::DictValue* layout = snapshot ? snapshot->FindDict("layout") : nullptr;
++  if (!layout ||
++      !aux::ReadableWorkspaceMatches(*layout, *page_id, *workspace_id))
++    return false;
++  *page_out = page;
++  return true;
++}
++
++}  // namespace
++
++void AuxRuntimeHost::HandleReadableCapture(
++    const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  content::WebContents* page = nullptr;
++  if (!CaptureAllowed(profile_, params, &page)) {
++    std::move(callback).Run(NativeFault("permission_denied", "Select the visible HTTPS page in its owning Space"));
++    return;
++  }
++  auto* capture = aux::ReadableCapture::FromWebContents(page);
++  if (!capture) {
++    std::move(callback).Run(NativeFault("permission_denied", "Page response eligibility is unavailable"));
++    return;
++  }
++  capture->Extract(
++      *params.FindString("expectedUrl"),
++      base::BindOnce(
++          [](base::WeakPtr<AuxRuntimeHost> owner, base::DictValue params,
++             content::WebContents* original,
++             base::OnceCallback<void(base::DictValue)> callback,
++             base::DictValue reply) {
++            content::WebContents* current = nullptr;
++            if (!owner || !CaptureAllowed(owner->profile_, params, &current) ||
++                current != original) {
++              std::move(callback).Run(NativeFault("conflict", "Page or Space changed during capture"));
++              return;
++            }
++            std::move(callback).Run(std::move(reply));
++          }, weak_factory_.GetWeakPtr(), params.Clone(), page,
++          std::move(callback)));
++}
+diff --git a/chrome/browser/ui/aux/methods/native_page_controls_methods.cc b/chrome/browser/ui/aux/methods/native_page_controls_methods.cc
+new file mode 100644
+index 0000000000..aae9f73428
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/native_page_controls_methods.cc
+@@ -0,0 +1,158 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/runtime_host.h"
++
++#include "base/task/thread_pool.h"
++
++#include <fcntl.h>
++#include <poll.h>
++#include <sys/socket.h>
++#include <sys/stat.h>
++#include <sys/un.h>
++#include <unistd.h>
++
++#include <algorithm>
++#include <array>
++#include <cerrno>
++#include <cmath>
++#include <memory>
++#include <limits>
++#include <optional>
++#include <utility>
++#include <vector>
++
++#include "base/base_paths.h"
++#include "base/command_line.h"
++#include "base/containers/span.h"
++#include "base/files/file_util.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/path_service.h"
++#include "base/process/launch.h"
++#include "base/rand_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/synchronization/waitable_event.h"
++#include "base/time/time.h"
++#include "base/task/bind_post_task.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/cdp_broker.h"
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/cosmetic_controller.h"
++#include "chrome/browser/ui/aux/credential_fill.h"
++#include "chrome/browser/ui/aux/cookie_import.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/profile_library.h"
++#include "chrome/browser/ui/aux/profile_search_engine.h"
++#include "chrome/browser/ui/aux/readable_capture.h"
++#include "chrome/browser/ui/aux/secret_store_mac.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/native_find.h"
++#include "chrome/browser/ui/aux/zap_controller.h"
++#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "components/sessions/core/session_id.h"
++#include "components/find_in_page/find_result_observer.h"
++#include "components/find_in_page/find_tab_helper.h"
++#include "components/version_info/version_info.h"
++#include "components/zoom/zoom_controller.h"
++#include "content/public/browser/devtools_agent_host.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/common/stop_find_action.h"
++#include "ui/base/base_window.h"
++#include "url/gurl.h"
++
++
++namespace {
++base::DictValue NativeFault(std::string code, std::string message) {
++  base::DictValue error;
++  error.Set("code", std::move(code));
++  error.Set("message", std::move(message));
++  base::DictValue reply;
++  reply.Set("error", std::move(error));
++  return reply;
++}
++base::DictValue NativeResult(base::Value value) {
++  base::DictValue reply;
++  reply.Set("result", std::move(value));
++  return reply;
++}
++}  // namespace
++
++base::DictValue AuxRuntimeHost::HandleNativePageControlsCall(
++    const std::string& method, const base::DictValue& params,
++    uint64_t /*connection_generation*/) {
++  constexpr double kZoomBase = 1.2;
++  constexpr double kMinZoomFactor = 0.25;
++  constexpr double kMaxZoomFactor = 5.0;
++  constexpr std::array<int, 16> kZoomPercentages = {
++      25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500};
++  auto* catalog = aux::TabCatalog::GetForProfile(profile_);
++  if (method == "native.stopFind") return native_find_->Stop(params);
++  if (method == "native.setZoom") {
++    const std::string* page_id = params.FindString("pageId");
++    content::WebContents* contents =
++        page_id ? catalog->FindPage(*page_id) : nullptr;
++    if (!contents) {
++      return NativeFault("not_found", "Page is not in this Profile");
++    }
++    auto* zoom_controller = zoom::ZoomController::FromWebContents(contents);
++    if (!zoom_controller) {
++      return NativeFault("backend_unavailable", "Page zoom is unavailable");
++    }
++    const double current = zoom_controller->GetZoomLevel();
++    double next = current;
++    bool requested = false;
++    if (params.FindBool("reset").value_or(false)) {
++      requested = true;
++      next = zoom_controller->GetDefaultZoomLevel();
++    } else if (const std::string* direction = params.FindString("direction")) {
++      requested = true;
++      if (*direction != "in" && *direction != "out") {
++        return NativeFault("invalid_argument", "Invalid zoom direction");
++      }
++      const int current_percent =
++          static_cast<int>(std::round(100.0 * std::pow(kZoomBase, current)));
++      int stepped = *direction == "in" ? 500 : 25;
++      for (int percentage : kZoomPercentages) {
++        if (*direction == "in" && percentage > current_percent) {
++          stepped = percentage;
++          break;
++        }
++        if (*direction == "out" && percentage < current_percent) {
++          stepped = percentage;
++        }
++      }
++      next = std::log(stepped / 100.0) / std::log(kZoomBase);
++    } else if (const std::optional<double> level = params.FindDouble("level")) {
++      requested = true;
++      next = *level;
++    } else if (const std::optional<double> delta = params.FindDouble("delta")) {
++      requested = true;
++      next += *delta;
++    }
++    if (!std::isfinite(next)) {
++      return NativeFault("invalid_argument", "Invalid page zoom");
++    }
++    if (requested) {
++      next = std::clamp(next, std::log(kMinZoomFactor) / std::log(kZoomBase),
++                        std::log(kMaxZoomFactor) / std::log(kZoomBase));
++    }
++    if (requested && next != current && !zoom_controller->SetZoomLevel(next)) {
++      return NativeFault("backend_unavailable", "Page zoom is disabled");
++    }
++    base::DictValue result;
++    result.Set("level", zoom_controller->GetZoomLevel());
++    return NativeResult(base::Value(std::move(result)));
++  }
++  return NativeFault("backend_unavailable",
++                     "Native method is unavailable in this build");
++}
+diff --git a/chrome/browser/ui/aux/methods/page_controls_methods.cc b/chrome/browser/ui/aux/methods/page_controls_methods.cc
+new file mode 100644
+index 0000000000..eb59bb5337
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
+@@ -0,0 +1,770 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++
++#include <cmath>
++#include <utility>
++#include <variant>
++
++#include "base/files/file_util.h"
++#include "base/functional/bind.h"
++#include "base/memory/ref_counted_memory.h"
++#include "base/task/thread_pool.h"
++#include "chrome/browser/shell_integration.h"
++#include "printing/buildflags/buildflags.h"
++#include "content/public/browser/host_zoom_map.h"
++#include "third_party/blink/public/common/page/page_zoom.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/notimplemented.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "chrome/browser/bookmarks/bookmark_model_factory.h"
++#include "chrome/browser/background/extensions/background_mode_manager.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/download/download_prefs.h"
++#include "chrome/browser/prefs/session_startup_pref.h"
++#include "chrome/browser/devtools/devtools_window.h"
++#include "chrome/browser/devtools/devtools_toggle_action.h"
++#if BUILDFLAG(ENABLE_PRINTING)
++#if BUILDFLAG(ENABLE_PRINT_PREVIEW)
++#include "chrome/browser/printing/print_view_manager.h"
++#else
++#include "chrome/browser/printing/print_view_manager_basic.h"
++#endif
++#include "components/printing/browser/print_to_pdf/pdf_print_utils.h"
++#endif
++#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "components/download/public/common/download_item.h"
++#include "components/download/public/common/download_url_parameters.h"
++#include "content/public/browser/download_manager.h"
++#include "net/traffic_annotation/network_traffic_annotation.h"
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/dictation_mac.h"
++#include "chrome/browser/ui/aux/extension_bridge.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/zoom/chrome_zoom_level_prefs.h"
++#include "chrome/browser/ui/aux/profile_search_engine.h"
++#include "chrome/browser/ui/aux/result_preview.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/zap_controller.h"
++#include "components/guest_contents/browser/guest_contents_handle.h"
++#include "components/prefs/pref_change_registrar.h"
++#include "components/prefs/pref_service.h"
++#include "chrome/common/pref_names.h"
++#include "components/language/core/browser/language_prefs.h"
++#include "components/language/core/browser/pref_names.h"
++#include "components/content_settings/core/browser/host_content_settings_map.h"
++#include "components/spellcheck/spellcheck_buildflags.h"
++#if BUILDFLAG(ENABLE_SPELLCHECK)
++#include "components/spellcheck/browser/pref_names.h"
++#endif
++#endif
++#include "chrome/browser/contextual_search/contextual_search_service_factory.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
++#include "chrome/browser/ui/bookmarks/bookmarks_service_feature.h"
++#include "chrome/browser/ui/browser_element_identifiers.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/interaction/browser_elements.h"
++#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
++#include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
++#include "chrome/browser/ui/tabs/tab_drag_api/tab_drag_service_feature.h"
++#include "chrome/browser/ui/tabs/tab_strip_api/controllers/tab_strip_ui_controller_impl.h"
++#include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h"
++#include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
++#include "chrome/browser/ui/webui/favicon_source.h"
++#include "chrome/browser/ui/webui/searchbox/realbox_handler.h"
++#include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h"
++#include "chrome/browser/ui/webui_browser/bookmark_bar_page_handler.h"
++#include "chrome/browser/ui/webui_browser/webui_browser.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_page_handler.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "chrome/common/webui_url_constants.h"
++#include "chrome/grit/branded_strings.h"
++#include "chrome/grit/generated_resources.h"
++#include "chrome/grit/tab_strip_api_resources_map.h"
++#include "chrome/grit/webui_browser_resources.h"
++#include "chrome/grit/webui_browser_resources_map.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/grit/aux_host_resources.h"
++#include "chrome/grit/aux_host_resources_map.h"
++#include "chrome/grit/aux_resources.h"
++#include "chrome/grit/aux_resources_map.h"
++#include "ui/display/screen.h"
++#include "ui/events/event.h"
++#include "ui/events/event_observer.h"
++#include "ui/views/event_monitor.h"
++#include "ui/shell_dialogs/selected_file_info.h"
++#endif
++#include "net/base/filename_util.h"
++#include "chrome/grit/webui_toolbar_shared_resources.h"
++#include "chrome/grit/webui_toolbar_shared_resources_map.h"
++#include "components/contextual_search/contextual_search_service.h"
++#include "components/contextual_search/contextual_search_session_handle.h"
++#include "components/favicon_base/favicon_url_parser.h"
++#include "components/guest_contents/browser/guest_contents_host_impl.h"
++#include "components/surface_embed/common/features.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/storage_partition.h"
++#include "content/public/browser/web_ui.h"
++#include "content/public/browser/web_ui_data_source.h"
++#include "services/network/public/mojom/content_security_policy.mojom.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "net/cookies/cookie_options.h"
++#include "net/cookies/cookie_partition_key_collection.h"
++#include "net/cookies/canonical_cookie.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
++#include "services/network/public/mojom/cookie_manager.mojom.h"
++#endif
++#include "ui/base/l10n/l10n_util.h"
++#include "ui/views/interaction/element_tracker_views.h"
++#include "ui/webui/tracked_element/tracked_element_handler.h"
++#include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
++#include "ui/webui/webui_util.h"
++#include "url/origin.h"
++#include "url/gurl.h"
++
++#include <set>
++
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++void WebUIBrowserUI::HandleAuxPageControlsRequest(
++    const std::string& method, const base::ListValue& args,
++    RequestCallback callback) {
++  const base::ListValue* list = &args;
++  if (method == "defaultPageZoom") {
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Default page zoom requires a regular profile");
++      return;
++    }
++    auto* zoom_prefs = profile->GetZoomLevelPrefs();
++    auto* prefs = profile->GetPrefs();
++    const auto* pref = prefs->FindPreference(prefs::kPartitionDefaultZoomLevel);
++    if (!zoom_prefs || !pref) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "Default page zoom is unavailable");
++      return;
++    }
++    if (!list->empty()) {
++      if (pref->IsManaged()) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Default page zoom is managed by policy");
++        return;
++      }
++      if (!(*list)[0].is_int() || (*list)[0].GetInt() < 50 ||
++          (*list)[0].GetInt() > 200) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Choose a page zoom from 50% to 200%");
++        return;
++      }
++      zoom_prefs->SetDefaultZoomLevelPref(
++          blink::ZoomFactorToZoomLevel((*list)[0].GetInt() / 100.0));
++    }
++    base::DictValue result;
++    result.Set("percentage", static_cast<int>(std::round(
++        zoom_prefs->GetDefaultZoomFactor() * 100)));
++    result.Set("managed", pref->IsManaged());
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "keepRuntimeInBackground") {
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Background runtime requires a regular profile");
++      return;
++    }
++    auto* prefs = profile->GetPrefs();
++    const auto* preference =
++        prefs->FindPreference(aux::kKeepRuntimeInBackgroundPref);
++    auto* manager = g_browser_process->background_mode_manager();
++    auto* local_state = g_browser_process->local_state();
++    const bool available = manager && local_state &&
++        local_state->GetBoolean(prefs::kBackgroundModeEnabled);
++    if (!list->empty()) {
++      if (preference->IsManaged()) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Background runtime is managed by policy");
++        return;
++      }
++      if (!(*list)[0].is_bool() || (!available && (*list)[0].GetBool())) {
++        std::move(callback).Run(false, "", "not_supported",
++                                "Browser background mode is unavailable");
++        return;
++      }
++      prefs->SetBoolean(aux::kKeepRuntimeInBackgroundPref,
++                        (*list)[0].GetBool());
++      if ((*list)[0].GetBool())
++        AuxRuntimeHost::ForProfile(profile);
++    }
++    base::DictValue result;
++    result.Set("enabled", prefs->GetBoolean(aux::kKeepRuntimeInBackgroundPref));
++    result.Set("available", available);
++    result.Set("managed", preference->IsManaged());
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "automaticPictureInPicture") {
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Automatic picture-in-picture requires a regular profile");
++      return;
++    }
++    auto* map = HostContentSettingsMapFactory::GetForProfile(profile);
++    constexpr auto type = ContentSettingsType::AUTO_PICTURE_IN_PICTURE;
++    HostContentSettingsMap::ProviderType provider;
++    ContentSetting setting = map->GetDefaultContentSetting(type, &provider);
++    const bool managed = provider == content_settings::ProviderType::kPolicyProvider;
++    if (!list->empty()) {
++      if (managed) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Automatic picture-in-picture is managed by policy");
++        return;
++      }
++      if (!(*list)[0].is_string()) {
++        std::move(callback).Run(false, "", "invalid_argument", "Invalid setting");
++        return;
++      }
++      const std::string& choice = (*list)[0].GetString();
++      if (choice == "ask") setting = CONTENT_SETTING_ASK;
++      else if (choice == "allow") setting = CONTENT_SETTING_ALLOW;
++      else if (choice == "block") setting = CONTENT_SETTING_BLOCK;
++      else {
++        std::move(callback).Run(false, "", "invalid_argument", "Unknown setting");
++        return;
++      }
++      map->SetDefaultContentSetting(type, setting);
++      setting = map->GetDefaultContentSetting(type, &provider);
++    }
++    base::DictValue result;
++    result.Set("mode", setting == CONTENT_SETTING_ALLOW ? "allow" :
++                       setting == CONTENT_SETTING_BLOCK ? "block" : "ask");
++    result.Set("managed", provider == content_settings::ProviderType::kPolicyProvider);
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "languagePreferences") {
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Language preferences require a regular profile");
++      return;
++    }
++    auto* prefs = profile->GetPrefs();
++    const auto* selected_pref =
++        prefs->FindPreference(language::prefs::kSelectedLanguages);
++    if (!selected_pref) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "Language preferences are unavailable");
++      return;
++    }
++    language::LanguagePrefs languages(prefs);
++    if (!list->empty()) {
++      if (selected_pref->IsManaged()) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Languages are managed by policy");
++        return;
++      }
++      if (!(*list)[0].is_list()) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Expected a language list");
++        return;
++      }
++      const base::ListValue& input = (*list)[0].GetList();
++      if (input.empty() || input.size() > 20) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Choose between 1 and 20 languages");
++        return;
++      }
++      std::vector<std::string> selected;
++      std::set<std::string> unique;
++      for (const base::Value& entry : input) {
++        if (!entry.is_string() || entry.GetString().empty() ||
++            !unique.insert(entry.GetString()).second) {
++          std::move(callback).Run(false, "", "invalid_argument",
++                                  "Languages must be distinct valid codes");
++          return;
++        }
++        selected.push_back(entry.GetString());
++      }
++      if (l10n_util::KeepAcceptedLanguages(selected) != selected) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Unsupported language code");
++        return;
++      }
++      languages.SetUserSelectedLanguagesList(selected);
++    }
++    std::vector<std::string> selected;
++    std::vector<std::string> effective;
++    languages.GetUserSelectedLanguagesList(&selected);
++    languages.GetAcceptLanguagesList(&effective);
++    base::ListValue selected_json;
++    base::ListValue effective_json;
++    for (const auto& code : selected) selected_json.Append(code);
++    for (const auto& code : effective) effective_json.Append(code);
++    base::ListValue forced_json =
++        prefs->GetList(language::prefs::kForcedLanguages).Clone();
++    base::DictValue result;
++    result.Set("selected", std::move(selected_json));
++    result.Set("effective", std::move(effective_json));
++    result.Set("forced", std::move(forced_json));
++    result.Set("managed", selected_pref->IsManaged());
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "startupPreferences") {
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Startup preferences require a regular profile");
++      return;
++    }
++    auto* prefs = profile->GetPrefs();
++    const bool managed = SessionStartupPref::TypeIsManaged(prefs) ||
++                         SessionStartupPref::URLsAreManaged(prefs);
++    if (!list->empty()) {
++      if (managed) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Startup preferences are managed by policy");
++        return;
++      }
++      const base::DictValue& input = (*list)[0].GetDict();
++      const std::string* mode = input.FindString("mode");
++      const base::ListValue* urls = input.FindList("urls");
++      if (!mode || !urls || urls->size() > 20) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Invalid startup preferences");
++        return;
++      }
++      SessionStartupPref::Type type;
++      if (*mode == "new-tab") {
++        type = SessionStartupPref::DEFAULT;
++      } else if (*mode == "continue") {
++        type = SessionStartupPref::LAST;
++      } else if (*mode == "pages") {
++        type = SessionStartupPref::URLS;
++      } else if (*mode == "continue-and-pages") {
++        type = SessionStartupPref::LAST_AND_URLS;
++      } else {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Unknown startup mode");
++        return;
++      }
++      if ((type == SessionStartupPref::URLS ||
++           type == SessionStartupPref::LAST_AND_URLS) && urls->empty()) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Add a startup page first");
++        return;
++      }
++      SessionStartupPref next(type);
++      for (const base::Value& value : *urls) {
++        if (!value.is_string()) {
++          std::move(callback).Run(false, "", "invalid_argument",
++                                  "Invalid startup page");
++          return;
++        }
++        const GURL url(value.GetString());
++        if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS() ||
++            !url.username().empty() || !url.password().empty() ||
++            url.spec().size() > 2048) {
++          std::move(callback).Run(false, "", "invalid_argument",
++                                  "Startup pages must be ordinary web URLs");
++          return;
++        }
++        next.urls.push_back(url);
++      }
++      SessionStartupPref::SetStartupPref(profile, next);
++    }
++    const SessionStartupPref current = SessionStartupPref::GetStartupPref(profile);
++    base::DictValue result;
++    switch (current.type) {
++      case SessionStartupPref::DEFAULT:
++        result.Set("mode", "new-tab");
++        break;
++      case SessionStartupPref::LAST:
++        result.Set("mode", "continue");
++        break;
++      case SessionStartupPref::URLS:
++        result.Set("mode", "pages");
++        break;
++      case SessionStartupPref::LAST_AND_URLS:
++        result.Set("mode", "continue-and-pages");
++        break;
++    }
++    base::ListValue saved_urls;
++    for (const GURL& url : current.urls)
++      saved_urls.Append(url.spec());
++    result.Set("urls", std::move(saved_urls));
++    result.Set("managed", managed);
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "spellCheck") {
++#if BUILDFLAG(ENABLE_SPELLCHECK)
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Spell check settings require a regular profile");
++      return;
++    }
++    auto* prefs = profile->GetPrefs();
++    const auto* pref = prefs->FindPreference(spellcheck::prefs::kSpellCheckEnable);
++    if (!pref) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "Spell check preferences are unavailable");
++      return;
++    }
++    if (!list->empty() && (*list)[0].is_bool()) {
++      if (pref->IsManaged()) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Spell check is managed by policy");
++        return;
++      }
++      prefs->SetBoolean(spellcheck::prefs::kSpellCheckEnable,
++                        (*list)[0].GetBool());
++    }
++    base::DictValue result;
++    result.Set("enabled", prefs->GetBoolean(spellcheck::prefs::kSpellCheckEnable));
++    result.Set("managed", pref->IsManaged());
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++#else
++    std::move(callback).Run(false, "", "not_supported",
++                            "Spell check is unavailable in this build");
++#endif
++    return;
++  }
++  if (method == "downloadFolder" || method == "chooseDownloadFolder") {
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Private downloads use a per-download save location");
++      return;
++    }
++    auto* prefs = DownloadPrefs::FromBrowserContext(profile);
++    if (!prefs) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "Download preferences are unavailable");
++      return;
++    }
++    if (method == "chooseDownloadFolder" && !list->empty() &&
++        (*list)[0].is_bool() && (*list)[0].GetBool()) {
++      if (prefs->IsDownloadPathManaged()) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Download location is managed by policy");
++        return;
++      }
++      prefs->SetDownloadPath(DownloadPrefs::GetDefaultDownloadDirectory());
++    } else if (method == "chooseDownloadFolder") {
++      if (prefs->IsDownloadPathManaged()) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Download location is managed by policy");
++        return;
++      }
++      if (open_file_dialog_) {
++        std::move(callback).Run(false, "", "conflict",
++                                "A file dialog is already open");
++        return;
++      }
++      open_file_dialog_ = ui::SelectFileDialog::Create(
++          this, std::make_unique<ChromeSelectFilePolicy>(
++                    web_ui()->GetWebContents()));
++      if (!open_file_dialog_) {
++        std::move(callback).Run(false, "", "not_supported",
++                                "The system folder dialog is unavailable");
++        return;
++      }
++      file_dialog_purpose_ = FileDialogPurpose::kDownloadFolder;
++      file_dialog_callback_ = std::move(callback);
++      ui::SelectFileDialog::FileTypeInfo file_types;
++      file_types.allowed_paths = ui::SelectFileDialog::FileTypeInfo::NATIVE_PATH;
++      open_file_dialog_->SelectFile(
++          ui::SelectFileDialog::SELECT_FOLDER, std::u16string(),
++          prefs->DownloadPath(), &file_types, 0, base::FilePath::StringType(),
++          browser_->GetWindow()->GetNativeWindow());
++      return;
++    }
++    base::DictValue result;
++    result.Set("path", prefs->DownloadPath().AsUTF8Unsafe());
++    result.Set("custom", prefs->DownloadPath() !=
++                             DownloadPrefs::GetDefaultDownloadDirectory());
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "downloadsSnapshot") {
++    base::ListValue result;
++    content::DownloadManager::DownloadVector items;
++    if (auto* manager = browser_->GetProfile()->GetDownloadManager()) {
++      manager->GetAllDownloads(&items);
++    }
++    for (download::DownloadItem* item : items) {
++      base::DictValue row;
++      row.Set("id", item->GetGuid());
++      if (!item->GetURL().is_empty())
++        row.Set("sourceUrl", item->GetURL().spec());
++      const std::string filename = item->GetFileNameToReportUser().AsUTF8Unsafe();
++      row.Set("filename", filename.empty() ? "download" : filename);
++      row.Set("path", item->GetTargetFilePath().AsUTF8Unsafe());
++      row.Set("size", static_cast<double>(item->GetReceivedBytes()));
++      if (item->GetTotalBytes() > 0)
++        row.Set("totalBytes", static_cast<double>(item->GetTotalBytes()));
++      row.Set("paused", item->IsPaused());
++      row.Set("canResume", item->CanResume());
++      row.Set("canCancel", item->GetState() == download::DownloadItem::IN_PROGRESS);
++      const char* state = "progressing";
++      switch (item->GetState()) {
++        case download::DownloadItem::COMPLETE: state = "completed"; break;
++        case download::DownloadItem::CANCELLED: state = "cancelled"; break;
++        case download::DownloadItem::INTERRUPTED: state = "interrupted"; break;
++        case download::DownloadItem::IN_PROGRESS:
++          state = item->GetReceivedBytes() == 0 ? "started" : "progressing";
++          break;
++        case download::DownloadItem::MAX_DOWNLOAD_STATE: break;
++      }
++      row.Set("state", state);
++      row.Set("startedAt", static_cast<double>(
++                               item->GetStartTime().InMillisecondsSinceUnixEpoch()));
++      if (item->GetState() != download::DownloadItem::IN_PROGRESS &&
++          !item->GetEndTime().is_null()) {
++        row.Set("endedAt", static_cast<double>(
++                             item->GetEndTime().InMillisecondsSinceUnixEpoch()));
++      }
++      result.Append(std::move(row));
++    }
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "controlDownload" || method == "retryDownload") {
++    auto* manager = browser_->GetProfile()->GetDownloadManager();
++    download::DownloadItem* item = manager && !list->empty() && (*list)[0].is_string()
++        ? manager->GetDownloadByGuid((*list)[0].GetString()) : nullptr;
++    if (!item) {
++      std::move(callback).Run(false, "", "not_found", "Download no longer exists");
++      return;
++    }
++    if (method == "controlDownload") {
++      const std::string& action = (*list)[1].GetString();
++      if (action == "pause" && item->GetState() == download::DownloadItem::IN_PROGRESS)
++        item->Pause();
++      else if (action == "resume" && item->CanResume())
++        item->Resume(true);
++      else if (action == "cancel" && item->GetState() == download::DownloadItem::IN_PROGRESS)
++        item->Cancel(true);
++      else {
++        std::move(callback).Run(false, "", "conflict",
++                                "Download cannot perform this action now");
++        return;
++      }
++    } else {
++      const GURL url = item->GetURL();
++      if ((item->GetState() != download::DownloadItem::INTERRUPTED &&
++           item->GetState() != download::DownloadItem::CANCELLED) ||
++          !url.SchemeIsHTTPOrHTTPS()) {
++        std::move(callback).Run(false, "", "not_supported",
++                                "Retry requires an interrupted HTTP download");
++        return;
++      }
++      static constexpr net::NetworkTrafficAnnotationTag kRetryAnnotation =
++          net::DefineNetworkTrafficAnnotation("aux_user_download_retry", R"(
++            semantics {
++              sender: "Aux Downloads"
++              description: "Retries a download after the user presses Retry."
++              trigger: "The user presses Retry in the Downloads panel."
++              data: "The saved download URL is requested."
++              destination: WEBSITE
++            }
++            policy { cookies_allowed: YES cookies_store: "user" setting: "No separate setting." }
++          )");
++      auto params = std::make_unique<download::DownloadUrlParameters>(
++          url, kRetryAnnotation);
++      params->set_content_initiated(false);
++      params->set_download_source(download::DownloadSource::RETRY_FROM_BUBBLE);
++      manager->DownloadUrl(std::move(params));
++    }
++    std::move(callback).Run(true, "null", "", "");
++    return;
++  }
++  if (method == "createResultPreview") {
++    if (browser_->GetProfile()->IsOffTheRecord() || list->size() != 1 ||
++        !(*list)[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid HTML result preview request");
++      return;
++    }
++    auto url = aux::ResultPreviewStore::Create(
++        web_ui()->GetWebContents(), (*list)[0].GetString());
++    if (!url) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "HTML result preview is unavailable or too large");
++      return;
++    }
++    std::move(callback).Run(true, *base::WriteJson(base::Value(*url)), "", "");
++    return;
++  }
++  if (method == "releaseResultPreview") {
++    if (list->size() != 1 || !(*list)[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid HTML result preview URL");
++      return;
++    }
++    const bool released = aux::ResultPreviewStore::Release(
++        web_ui()->GetWebContents(), GURL((*list)[0].GetString()));
++    std::move(callback).Run(true, *base::WriteJson(base::Value(released)), "", "");
++    return;
++  }
++  if (method == "surfaceContentId") {
++    if (list->size() != 1 || !(*list)[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid page identifier");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    content::WebContents* contents =
++        aux::TabCatalog::GetForProfile(browser_->GetProfile())
++            ->FindPage((*list)[0].GetString(), &owner);
++    if (!contents || owner != browser_) {
++      std::move(callback).Run(false, "", "not_found",
++                              "Page is outside this browser window");
++      return;
++    }
++    guest_contents::GuestContentsHandle::CreateForWebContents(contents);
++    auto* handle =
++        guest_contents::GuestContentsHandle::FromWebContents(contents);
++    std::move(callback).Run(true, *base::WriteJson(base::Value(handle->id().ToString())),
++                            "", "");
++    return;
++  }
++  if (method == "hardReload" || method == "printPage" ||
++      method == "devTools") {
++    if ((list->size() != 1 && !(method == "devTools" && list->size() == 2 &&
++         (*list)[1].is_string() && ((*list)[1].GetString() == "toggle" || (*list)[1].GetString() == "inspect"))) ||
++        !(*list)[0].is_string() || (*list)[0].GetString().empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "A browser page ID is required");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    auto* contents = catalog->FindPage((*list)[0].GetString(), &owner);
++    if (!contents || owner != browser_) {
++      std::move(callback).Run(false, "", "not_found",
++                              "The page is no longer in this window");
++      return;
++    }
++    if (method == "hardReload") {
++      // Keep Chromium's repost confirmation when bypassing the HTTP cache.
++      contents->GetController().Reload(content::ReloadType::BYPASSING_CACHE,
++                                       /*check_for_repost=*/true);
++    } else if (method == "devTools") {
++      if (!DevToolsWindow::AllowDevToolsFor(browser_->GetProfile(), contents)) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Developer tools are disabled for this page");
++        return;
++      }
++      DevToolsWindow::OpenDevToolsWindow(
++          contents, list->size() == 2 && (*list)[1].GetString() == "inspect"
++              ? DevToolsToggleAction::Inspect() : DevToolsToggleAction::Toggle(),
++          DevToolsOpenedByAction::kMainMenuOrMainShortcut);
++    } else {
++      // Browser print commands act on the active tab. Never print a different
++      // page if selection changed while the shell request was in flight.
++      if (browser_->GetTabStripModel()->GetActiveWebContents() != contents) {
++        std::move(callback).Run(false, "", "conflict",
++                                "Select this page before printing");
++        return;
++      }
++      if (!chrome::CanPrint(browser_)) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Printing is unavailable for this page");
++        return;
++      }
++      chrome::Print(browser_);
++    }
++    std::move(callback).Run(true, "true", "", "");
++    return;
++  }
++  if (method == "savePagePdf") {
++#if !BUILDFLAG(ENABLE_PRINTING)
++    std::move(callback).Run(false, "", "not_supported",
++                            "PDF rendering is unavailable");
++    return;
++#else
++    if (list->size() != 1 || !(*list)[0].is_string() ||
++        (*list)[0].GetString().empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "A browser page ID is required");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    auto* contents = catalog->FindPage((*list)[0].GetString(), &owner);
++    if (!contents || owner != browser_ ||
++        browser_->GetTabStripModel()->GetActiveWebContents() != contents) {
++      std::move(callback).Run(false, "", "not_found",
++                              "Select the page before saving its PDF");
++      return;
++    }
++    if (!chrome::CanPrint(browser_)) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "PDF export is unavailable for this page");
++      return;
++    }
++    if (open_file_dialog_) {
++      std::move(callback).Run(false, "", "conflict",
++                              "A file dialog is already open");
++      return;
++    }
++    open_file_dialog_ = ui::SelectFileDialog::Create(
++        this, std::make_unique<ChromeSelectFilePolicy>(contents));
++    if (!open_file_dialog_) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "The system file dialog is unavailable");
++      return;
++    }
++    file_dialog_purpose_ = FileDialogPurpose::kSavePdf;
++    save_pdf_page_id_ = (*list)[0].GetString();
++    file_dialog_callback_ = std::move(callback);
++    ui::SelectFileDialog::FileTypeInfo file_types;
++    file_types.extensions = {{FILE_PATH_LITERAL("pdf")}};
++    const auto name = net::GenerateFileName(
++        contents->GetLastCommittedURL(), "", "",
++        base::UTF16ToUTF8(contents->GetTitle()), "application/pdf", "Page")
++                          .ReplaceExtension(FILE_PATH_LITERAL("pdf"));
++    const auto destination =
++        browser_->GetProfile()->last_selected_directory().Append(name);
++    open_file_dialog_->SelectFile(
++        ui::SelectFileDialog::SELECT_SAVEAS_FILE, std::u16string(), destination,
++        &file_types, 0, FILE_PATH_LITERAL("pdf"),
++        browser_->GetWindow()->GetNativeWindow());
++    return;
++#endif
++  }
++  std::move(callback).Run(false, "", "not_found",
++                          "Unsupported Aux shell method: " + method);
++}
++#endif
+diff --git a/chrome/browser/ui/aux/native_find.cc b/chrome/browser/ui/aux/native_find.cc
+new file mode 100644
+index 0000000000..4611787efd
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_find.cc
+@@ -0,0 +1,163 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/native_find.h"
++
++#include <algorithm>
++#include <utility>
++#include <vector>
++
++#include "base/functional/bind.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/time/time.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "components/find_in_page/find_tab_helper.h"
++#include "components/find_in_page/find_types.h"
++#include "content/public/browser/web_contents.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++base::DictValue Fault(const char* code, const char* message) {
++  base::DictValue error;
++  error.Set("code", code);
++  error.Set("message", message);
++  base::DictValue result;
++  result.Set("error", std::move(error));
++  return result;
++}
++base::DictValue Result(int matches, int active) {
++  base::DictValue value;
++  value.Set("matches", matches);
++  if (active > 0) value.Set("activeMatch", active);
++  base::DictValue result;
++  result.Set("result", std::move(value));
++  return result;
++}
++}  // namespace
++
++NativeFind::NativeFind(Profile* profile) : profile_(profile) {}
++NativeFind::~NativeFind() {
++  for (auto& [helper, contents] : observed_) helper->RemoveObserver(this);
++  while (!pending_.empty())
++    Finish(pending_.begin()->first,
++           Fault("backend_unavailable", "The browser Profile closed"));
++}
++
++void NativeFind::Finish(const std::string& page_id, base::DictValue result) {
++  auto it = pending_.find(page_id);
++  if (it == pending_.end()) return;
++  Reply reply = std::move(it->second.reply);
++  pending_.erase(it);
++  std::move(reply).Run(std::move(result));
++}
++
++void NativeFind::Find(const base::DictValue& params, Reply reply) {
++  const std::string* page_id = params.FindString("pageId");
++  const std::string* text = params.FindString("text");
++  const auto forward = params.FindBool("forward");
++  const auto find_next = params.FindBool("findNext");
++  if (!page_id || !text || !forward || !find_next || text->empty() ||
++      text->size() > 4096 || !base::IsStringUTF8(*text)) {
++    std::move(reply).Run(Fault("invalid_argument", "Invalid find request"));
++    return;
++  }
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  content::WebContents* contents = catalog ? catalog->FindPage(*page_id) : nullptr;
++  if (!contents || contents->GetBrowserContext() != profile_ ||
++      !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
++    std::move(reply).Run(Fault("not_found", "Page is not in this Profile"));
++    return;
++  }
++  auto* helper = find_in_page::FindTabHelper::FromWebContents(contents);
++  if (!helper) {
++    find_in_page::FindTabHelper::CreateForWebContents(contents);
++    helper = find_in_page::FindTabHelper::FromWebContents(contents);
++  }
++  if (!helper) {
++    std::move(reply).Run(Fault("backend_unavailable", "Page find is unavailable"));
++    return;
++  }
++  Finish(*page_id, Fault("conflict", "A newer find replaced this request"));
++  if (observed_.emplace(helper, contents).second) helper->AddObserver(this);
++  if (!*find_next) helper->StopFinding(find_in_page::SelectionAction::kClear);
++  pending_.emplace(*page_id, Pending{reinterpret_cast<uintptr_t>(contents),
++                                     reinterpret_cast<uintptr_t>(&contents->GetPrimaryPage()), 0,
++                                     std::move(reply)});
++  helper->StartFinding(base::UTF8ToUTF16(*text), *forward,
++                       /*case_sensitive=*/false, /*find_match=*/true);
++  const int request_id = helper->current_find_request_id();
++  if (auto it = pending_.find(*page_id); it != pending_.end())
++    it->second.request_id = request_id;
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
++      FROM_HERE, base::BindOnce(
++          [](base::WeakPtr<NativeFind> self, std::string id, int request) {
++            if (!self) return;
++            auto it = self->pending_.find(id);
++            if (it != self->pending_.end() && it->second.request_id == request)
++              self->Finish(id, Fault("backend_unavailable", "Find timed out"));
++          }, weak_factory_.GetWeakPtr(), *page_id, request_id), base::Seconds(10));
++}
++
++base::DictValue NativeFind::Stop(const base::DictValue& params) {
++  const std::string* page_id = params.FindString("pageId");
++  const std::string* action = params.FindString("action");
++  if (!page_id || !action || (*action != "clear" && *action != "keep"))
++    return Fault("invalid_argument", "Invalid stop-find request");
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  content::WebContents* contents = catalog ? catalog->FindPage(*page_id) : nullptr;
++  if (!contents || contents->GetBrowserContext() != profile_)
++    return Fault("not_found", "Page is not in this Profile");
++  Finish(*page_id, Fault("conflict", "Find was stopped"));
++  if (auto* helper = find_in_page::FindTabHelper::FromWebContents(contents))
++    helper->StopFinding(*action == "keep" ? find_in_page::SelectionAction::kKeep
++                                          : find_in_page::SelectionAction::kClear);
++  base::DictValue value;
++  value.Set("ok", true);
++  base::DictValue result;
++  result.Set("result", std::move(value));
++  return result;
++}
++
++void NativeFind::OnFindResultAvailable(content::WebContents* contents) {
++  auto* helper = find_in_page::FindTabHelper::FromWebContents(contents);
++  if (!helper) return;
++  const auto& found = helper->find_result();
++  if (!found.final_update()) return;
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  std::vector<std::string> stale;
++  std::vector<std::string> matches;
++  for (const auto& [id, pending] : pending_) {
++    if (pending.contents != reinterpret_cast<uintptr_t>(contents)) continue;
++    if (!catalog || catalog->FindPage(id) != contents ||
++        pending.document != reinterpret_cast<uintptr_t>(&contents->GetPrimaryPage())) {
++      stale.push_back(id);
++      continue;
++    }
++    if (pending.request_id == found.request_id()) {
++      matches.push_back(id);
++    }
++  }
++  for (const auto& id : stale)
++    Finish(id, Fault("conflict", "Page changed during find"));
++  for (const auto& id : matches)
++    Finish(id, Result(std::max(0, found.number_of_matches()),
++                      found.active_match_ordinal()));
++}
++
++void NativeFind::OnFindTabHelperDestroyed(find_in_page::FindTabHelper* helper) {
++  auto it = observed_.find(helper);
++  if (it == observed_.end()) return;
++  content::WebContents* contents = it->second;
++  observed_.erase(it);
++  std::vector<std::string> cancelled;
++  for (const auto& [id, pending] : pending_)
++    if (pending.contents == reinterpret_cast<uintptr_t>(contents)) cancelled.push_back(id);
++  for (const auto& id : cancelled)
++    Finish(id, Fault("conflict", "Page closed during find"));
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/native_find.h b/chrome/browser/ui/aux/native_find.h
+new file mode 100644
+index 0000000000..25cccf8d81
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_find.h
+@@ -0,0 +1,53 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_FIND_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_FIND_H_
++
++#include <map>
++#include <cstdint>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/values.h"
++#include "components/find_in_page/find_result_observer.h"
++
++class Profile;
++namespace content { class Page; class WebContents; }
++namespace find_in_page { class FindTabHelper; }
++
++namespace aux {
++
++// Observes Chromium's actual find results. Pending results are tied to the
++// owning Profile, page ID, document, and find request; stale replies fail.
++class NativeFind final : public find_in_page::FindResultObserver {
++ public:
++  using Reply = base::OnceCallback<void(base::DictValue)>;
++  explicit NativeFind(Profile* profile);
++  ~NativeFind() override;
++  void Find(const base::DictValue& params, Reply reply);
++  base::DictValue Stop(const base::DictValue& params);
++
++ private:
++  struct Pending {
++    // Identity values only. A navigation may destroy either object before a
++    // delayed result or timeout; neither pointer is ever dereferenced.
++    uintptr_t contents;
++    uintptr_t document;
++    int request_id;
++    Reply reply;
++  };
++  void Finish(const std::string& page_id, base::DictValue result);
++  void OnFindResultAvailable(content::WebContents* contents) override;
++  void OnFindTabHelperDestroyed(find_in_page::FindTabHelper* helper) override;
++  raw_ptr<Profile> profile_;
++  std::map<std::string, Pending> pending_;
++  std::map<find_in_page::FindTabHelper*, content::WebContents*> observed_;
++  base::WeakPtrFactory<NativeFind> weak_factory_{this};
++};
++
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_AUX_NATIVE_FIND_H_
+diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
+new file mode 100644
+index 0000000000..fa0b285e1a
+--- /dev/null
++++ b/chrome/browser/ui/aux/shell_events.cc
+@@ -0,0 +1,946 @@
++#include <set>
++#include "chrome/browser/ui/aux/download_naming.h"
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/shell_events.h"
++
++#include <string>
++#include <map>
++#include <optional>
++#include <set>
++#include <utility>
++#include <vector>
++
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/logging.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "base/uuid.h"
++#include "chrome/browser/download/download_prefs.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
++#include "chrome/browser/notifications/notification_display_service.h"
++#include "chrome/browser/notifications/notification_display_service_impl.h"
++#include "chrome/browser/notifications/notification_display_service_factory.h"
++#include "chrome/browser/notifications/notification_handler.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/health_recorder.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/readable_capture.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/login/login_tab_helper.h"
++#include "chrome/browser/ssl/https_only_mode_tab_helper.h"
++#include "components/security_interstitials/content/https_only_mode_blocking_page.h"
++#include "components/security_interstitials/content/security_interstitial_tab_helper.h"
++#include "components/security_interstitials/content/ssl_blocking_page.h"
++#include "components/download/public/common/download_item.h"
++#include "components/prefs/pref_service.h"
++#include "components/content_settings/core/browser/host_content_settings_map.h"
++#include "components/content_settings/core/common/content_settings_types.h"
++#include "components/sessions/content/session_tab_helper.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/download_manager.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/media_player_id.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/web_contents_user_data.h"
++#include "content/public/common/isolated_world_ids.h"
++#include "net/base/net_errors.h"
++#include "crypto/hash.h"
++#include "third_party/blink/public/common/input/web_input_event.h"
++#include "ui/base/models/image_model.h"
++#include "ui/base/page_transition_types.h"
++#include "ui/message_center/public/cpp/notification.h"
++#include "ui/message_center/public/cpp/notifier_id.h"
++#include "url/origin.h"
++
++namespace aux {
++namespace {
++
++const char kRouterKey = 0;
++const char kDownloadsKey = 0;
++const char kNotificationsKey = 0;
++const char kRunAttentionKey = 0;
++const char kPasswordOfferKey = 0;
++constexpr int kPageChangeWorld = content::ISOLATED_WORLD_ID_CONTENT_END + 10;
++constexpr size_t kPageChangeMaxTextBytes = 64 * 1024;
++constexpr char16_t kPageChangeScript[] = uR"JS((() => {
++  if (document.visibilityState !== 'visible' || document.readyState === 'loading') return null;
++  if (document.querySelector('input[type="password"], input[autocomplete~="one-time-code"], input[autocomplete^="cc-"], input[autocomplete="current-password"], input[autocomplete="new-password"], [contenteditable="true"], [role="textbox"], meta[http-equiv="Cache-Control"][content*="no-store" i], form[action*="login" i], form[action*="signin" i], form[action*="checkout" i], form[action*="payment" i]')) return null;
++  const source = document.querySelector('article') || document.querySelector('main') || document.body;
++  if (!source || source.querySelectorAll('*').length > 10000) return null;
++  const walker = document.createTreeWalker(source, NodeFilter.SHOW_TEXT);
++  let units = 0;
++  while (walker.nextNode()) {
++    units += walker.currentNode.textContent.length;
++    if (units > 65536) return null;
++  }
++  const copy = source.cloneNode(true);
++  copy.querySelectorAll('script,style,form,input,textarea,button,select,iframe,object,embed,nav,aside,footer,header,[hidden],[aria-hidden="true"]').forEach(node => node.remove());
++  const text = (copy.textContent || '').replace(/\s+/g, ' ').trim();
++  return text && text.length <= 65536 ? text : null;
++})())JS";
++
++class PasswordOfferData final : public base::SupportsUserData::Data {
++ public:
++  PasswordOfferData(std::string origin, std::string id)
++      : origin(std::move(origin)), id(std::move(id)) {}
++
++  const std::string origin;
++  const std::string id;
++};
++
++class Router : public base::SupportsUserData::Data {
++ public:
++  static Router* Get(Profile* profile) {
++    return profile ? static_cast<Router*>(profile->GetUserData(&kRouterKey))
++                   : nullptr;
++  }
++  static Router& GetOrCreate(Profile* profile) {
++    if (auto* existing = Get(profile)) {
++      return *existing;
++    }
++    auto created = std::make_unique<Router>();
++    Router* raw = created.get();
++    profile->SetUserData(&kRouterKey, std::move(created));
++    return *raw;
++  }
++
++  base::RepeatingCallbackList<void(const std::string&, const std::string&)>
++      observers;
++};
++
++void EmitDict(Profile* profile, std::string_view name, base::DictValue payload) {
++  auto json = base::WriteJson(payload);
++  if (json) {
++    EmitShellEvent(profile, name, std::move(*json));
++  }
++}
++
++std::string PageId(content::WebContents* contents) {
++  Profile* profile = Profile::FromBrowserContext(contents->GetBrowserContext());
++  return profile ? PageIdentity::GetOrCreate(profile, contents) : std::string();
++}
++
++class PageSignals : public content::WebContentsObserver,
++                    public content::WebContentsUserData<PageSignals> {
++ public:
++  const base::DictValue* navigation_error() const {
++    return navigation_error_ ? &*navigation_error_ : nullptr;
++  }
++
++  bool has_video() const { return !video_players_.empty(); }
++
++  ~PageSignals() override {
++    if (!page_id_.empty()) {
++      base::DictValue payload;
++      payload.Set("pageId", page_id_);
++      payload.Set("muted", false);
++      payload.Set("audible", false);
++      payload.Set("video", false);
++      payload.Set("pip", false);
++      payload.Set("removed", true);
++      EmitDict(profile_, "onAudio", std::move(payload));
++    }
++  }
++
++ private:
++  friend class content::WebContentsUserData<PageSignals>;
++  explicit PageSignals(content::WebContents* contents)
++      : content::WebContentsObserver(contents),
++        content::WebContentsUserData<PageSignals>(*contents),
++        profile_(Profile::FromBrowserContext(contents->GetBrowserContext())),
++        page_id_(PageId(contents)) {
++    PublishLoading();
++    PublishAudio(contents->IsCurrentlyAudible());
++    page_change_timer_.Start(FROM_HERE, base::Seconds(15), this,
++                             &PageSignals::ObservePageChange);
++  }
++
++  void DidStartLoading() override { PublishLoading(); }
++  void DidStopLoading() override { PublishLoading(); }
++  void OnAudioStateChanged(bool audible) override { PublishAudio(audible); }
++  void DidGetUserInteraction(const blink::WebInputEvent& event) override {
++    // Agent input enters through the private DevTools broker and carries the
++    // debugger bit. An unmarked interaction on this guest page asks the
++    // runtime to hand control to the person. This observer runs before the
++    // event is dispatched to the renderer.
++    if (!profile_ || profile_->IsOffTheRecord() || page_id_.empty() ||
++        (event.GetModifiers() & blink::WebInputEvent::kFromDebugger))
++      return;
++    const base::TimeTicks now = base::TimeTicks::Now();
++    if (!last_physical_takeover_.is_null() &&
++        now - last_physical_takeover_ < base::Milliseconds(100))
++      return;
++    auto* runtime = AuxRuntimeHost::ForProfile(profile_);
++    if (!runtime)
++      return;
++    base::DictValue payload;
++    payload.Set("pageId", page_id_);
++    if (auto json = base::WriteJson(payload)) {
++      last_physical_takeover_ = now;
++      runtime->CallInternal("view.takeover", std::move(*json),
++                            base::BindOnce([](AuxRuntimeHost::Response response) {
++                              if (!response.ok) {
++                                LOG(WARNING) << "Aux physical takeover refused: "
++                                             << response.error_code;
++                                return;
++                              }
++                              auto result = base::JSONReader::Read(
++                                  response.result_json, base::JSON_PARSE_RFC);
++                              const base::DictValue* dict =
++                                  result ? result->GetIfDict() : nullptr;
++                              if (dict && dict->FindBool("accepted").value_or(false)) {
++                                LOG(INFO) << "Aux physical takeover accepted";
++                              }
++                            }));
++    }
++  }
++  void PrimaryMainFrameRenderProcessGone(base::TerminationStatus status) override {
++    if (status == base::TERMINATION_STATUS_PROCESS_CRASHED ||
++        status == base::TERMINATION_STATUS_ABNORMAL_TERMINATION ||
++        status == base::TERMINATION_STATUS_PROCESS_WAS_KILLED)
++      RecordPageCrash(profile_);
++  }
++  void OnRendererUnresponsive(content::RenderProcessHost*) override {
++    RecordPageUnresponsive(profile_);
++  }
++  void DidStartNavigation(content::NavigationHandle* handle) override {
++    if (!handle->IsInPrimaryMainFrame() || handle->IsSameDocument()) return;
++    web_contents()->RemoveUserData(&kPasswordOfferKey);
++    page_change_url_.clear();
++    ++navigation_generation_;
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(&PageSignals::PublishAuth, weak_factory_.GetWeakPtr()));
++  }
++  // LoginTabHelper shows its prompt from its own DidFinishNavigation.
++  // Read the prompt after that observer returns.
++  void DidFinishNavigation(content::NavigationHandle* handle) override {
++    if (handle->IsInPrimaryMainFrame() && handle->IsSameDocument() &&
++        handle->HasCommitted() && !page_change_url_.empty() &&
++        handle->GetURL().SchemeIsHTTPOrHTTPS() &&
++        !handle->GetURL().has_username() &&
++        !handle->GetURL().has_password()) {
++      page_change_url_ = handle->GetURL().spec();
++    }
++    if (handle->IsInPrimaryMainFrame() && !handle->IsSameDocument() &&
++        handle->HasCommitted()) {
++      const GURL& url = handle->GetURL();
++      const auto* identity = PageIdentity::FromWebContents(web_contents());
++      if (profile_ && !profile_->IsOffTheRecord() && identity && !identity->runtime_owned() &&
++          handle->IsRendererInitiated() && handle->HasUserGesture() &&
++          ui::PageTransitionCoreTypeIs(handle->GetPageTransition(), ui::PAGE_TRANSITION_LINK) &&
++          !handle->IsErrorPage() && handle->GetNetErrorCode() == net::OK &&
++          url.SchemeIsHTTPOrHTTPS() && !url.has_username() && !url.has_password()) {
++        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++            FROM_HERE, base::BindOnce(&PageSignals::PublishLinkPick,
++            weak_factory_.GetWeakPtr(), url, navigation_generation_));
++      }
++      if (url.SchemeIsHTTPOrHTTPS() && !url.has_username() &&
++          !url.has_password() &&
++          ReadableResponseAllowed(handle->GetResponseHeaders())) {
++        page_change_url_ = url.spec();
++      }
++      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++          FROM_HERE,
++          base::BindOnce(&PageSignals::PublishNavigation,
++                         weak_factory_.GetWeakPtr(), handle->GetURL(),
++                         handle->GetNetErrorCode(), handle->IsErrorPage(),
++                         navigation_generation_));
++    }
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(&PageSignals::PublishAuth, weak_factory_.GetWeakPtr()));
++  }
++
++  void PublishLinkPick(const GURL& url, int generation) {
++    if (!web_contents() || generation != navigation_generation_ ||
++        web_contents()->GetLastCommittedURL() != url || page_id_.empty()) return;
++    auto* runtime = AuxRuntimeHost::ForProfile(profile_);
++    if (!runtime) return;
++    base::DictValue pick;
++    pick.Set("pageId", page_id_);
++    pick.Set("url", url.spec());
++    pick.Set("navigationId", base::Uuid::GenerateRandomV4().AsLowercaseString());
++    if (auto json = base::WriteJson(pick)) {
++      runtime->CallInternal("command.ranking.link", std::move(*json),
++                           base::BindOnce([](AuxRuntimeHost::Response) {}));
++    }
++  }
++
++  void PublishNavigation(const GURL& url, int net_error, bool error_page,
++                         int generation) {
++    if (!web_contents() || generation != navigation_generation_) return;
++    std::optional<base::DictValue> next;
++    auto* helper = security_interstitials::SecurityInterstitialTabHelper::
++        FromWebContents(web_contents());
++    auto* blocking = helper ? helper->GetBlockingPageForFrame(
++        web_contents()->GetPrimaryMainFrame()->GetFrameTreeNodeId()) : nullptr;
++    const bool ssl = blocking && blocking->GetTypeForTesting() ==
++                                     SSLBlockingPage::kTypeForTesting;
++    const bool https_only = blocking && blocking->GetTypeForTesting() ==
++                                            security_interstitials::
++                                                HttpsOnlyModeBlockingPage::
++                                                    kTypeForTesting;
++    if (ssl || https_only || (error_page && net_error != net::OK)) {
++      const int code = ssl && !net::IsCertificateError(net_error)
++                           ? net::ERR_CERT_INVALID
++                           : net_error != net::OK ? net_error
++                                                  : net::ERR_SSL_PROTOCOL_ERROR;
++      base::DictValue failure;
++      failure.Set("url", url.spec());
++      failure.Set("code", code);
++      failure.Set("message", net::ErrorToString(code));
++      if (https_only) {
++        auto* upgrade = HttpsOnlyModeTabHelper::FromWebContents(web_contents());
++        if (upgrade && upgrade->is_navigation_fallback() &&
++            upgrade->fallback_url().SchemeIs("http")) {
++          failure.Set("upgradedFrom", upgrade->fallback_url().spec());
++        }
++      }
++      next = std::move(failure);
++    }
++    if (navigation_error_ == next) return;
++    navigation_error_ = std::move(next);
++    if (!page_id_.empty()) {
++      if (auto* runtime = AuxRuntimeHost::ForProfile(profile_)) {
++        runtime->NotifyNavigationError(page_id_, navigation_error());
++      }
++    }
++    if (auto* catalog = TabCatalog::GetForProfile(profile_)) {
++      catalog->RefreshPage();
++    }
++  }
++
++  void PublishAuth() {
++    if (!web_contents()) {
++      return;
++    }
++    bool showing = false;
++    if (auto* login = LoginTabHelper::FromWebContents(web_contents())) {
++      showing = login->IsShowingPrompt();
++    }
++    if (showing == auth_prompt_) {
++      return;
++    }
++    auth_prompt_ = showing;
++    EmitShellEvent(profile_, "onHttpAuthChanged", "{}");
++  }
++
++  void PublishLoading() {
++    if (page_id_.empty()) {
++      return;
++    }
++    base::DictValue payload;
++    payload.Set("pageId", page_id_);
++    payload.Set("loading", web_contents()->IsLoading());
++    EmitDict(profile_, "onLoading", std::move(payload));
++  }
++
++  void MediaMetadataChanged(const MediaPlayerInfo& info,
++                            const content::MediaPlayerId& id) override {
++    if (info.has_video) video_players_.insert(id);
++    else video_players_.erase(id);
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++  }
++  void MediaStartedPlaying(const MediaPlayerInfo& info,
++                           const content::MediaPlayerId& id) override {
++    MediaMetadataChanged(info, id);
++  }
++  void MediaStoppedPlaying(const MediaPlayerInfo&,
++                           const content::MediaPlayerId&,
++                           MediaStoppedReason) override {
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++  }
++  void MediaResized(const gfx::Size& size,
++                    const content::MediaPlayerId& id) override {
++    if (!size.IsEmpty()) video_players_.insert(id);
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++  }
++  void MediaDestroyed(const content::MediaPlayerId& id) override {
++    video_players_.erase(id);
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++  }
++  void PrimaryPageChanged(content::Page&) override {
++    video_players_.clear();
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++  }
++  void MediaPictureInPictureChanged(bool) override {
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++    base::DictValue state;
++    state.Set("pageId", page_id_);
++    state.Set("active", web_contents()->HasPictureInPictureVideo() ||
++                        web_contents()->HasPictureInPictureDocument());
++    EmitDict(profile_, "onPictureInPicture", std::move(state));
++  }
++
++  void PublishAudio(bool audible) {
++    if (page_id_.empty()) {
++      return;
++    }
++    base::DictValue payload;
++    payload.Set("pageId", page_id_);
++    payload.Set("muted", web_contents()->IsAudioMuted());
++    payload.Set("audible", audible);
++    payload.Set("video", has_video());
++    payload.Set("pip", web_contents()->HasPictureInPictureVideo() || web_contents()->HasPictureInPictureDocument());
++    EmitDict(profile_, "onAudio", std::move(payload));
++  }
++
++  // Only the authenticated Chromium host can submit page observations. Ask
++  // the runtime whether this exact page has an armed Skill before extracting
++  // any text. The extracted text stays in the browser process; only a digest
++  // crosses the runtime boundary.
++  void ObservePageChange() {
++    if (page_change_pending_ || !profile_ || profile_->IsOffTheRecord() ||
++        page_id_.empty() || !web_contents() ||
++        web_contents()->GetVisibility() != content::Visibility::VISIBLE)
++      return;
++    const GURL url = web_contents()->GetLastCommittedURL();
++    auto* runtime = AuxRuntimeHost::ForProfile(profile_);
++    if (page_change_url_ != url.spec() || !runtime)
++      return;
++    page_change_pending_ = true;
++    const int generation = navigation_generation_;
++    base::DictValue params;
++    params.Set("pageId", page_id_);
++    params.Set("url", url.spec());
++    const auto json = base::WriteJson(params);
++    if (!json) {
++      page_change_pending_ = false;
++      return;
++    }
++    runtime->CallInternal(
++        "routines.pageChangeTarget", *json,
++        base::BindOnce(&PageSignals::OnPageChangeTarget,
++                       weak_factory_.GetWeakPtr(), url.spec(), generation));
++  }
++
++  bool SamePage(const std::string& url, int generation) const {
++    return web_contents() && generation == navigation_generation_ &&
++           page_change_url_ == url &&
++           web_contents()->GetLastCommittedURL().spec() == url &&
++           web_contents()->GetVisibility() == content::Visibility::VISIBLE;
++  }
++
++  void OnPageChangeTarget(std::string url, int generation,
++                          AuxRuntimeHost::Response response) {
++    if (!SamePage(url, generation) || !response.ok) {
++      page_change_pending_ = false;
++      return;
++    }
++    const auto parsed =
++        base::JSONReader::Read(response.result_json, base::JSON_PARSE_RFC);
++    const base::DictValue* target = parsed ? parsed->GetIfDict() : nullptr;
++    const std::optional<int> epoch =
++        target ? target->FindInt("documentEpoch") : std::nullopt;
++    if (!epoch || !web_contents()->GetPrimaryMainFrame()) {
++      page_change_pending_ = false;
++      return;
++    }
++    web_contents()->GetPrimaryMainFrame()->ExecuteJavaScriptInIsolatedWorld(
++        kPageChangeScript,
++        base::BindOnce(&PageSignals::OnPageChangeText,
++                       weak_factory_.GetWeakPtr(), std::move(url), generation,
++                       *epoch),
++        kPageChangeWorld);
++  }
++
++  void OnPageChangeText(std::string url, int generation, int epoch,
++                        base::Value value) {
++    page_change_pending_ = false;
++    if (!SamePage(url, generation)) return;
++    const std::string* text = value.GetIfString();
++    auto* runtime = AuxRuntimeHost::ForProfile(profile_);
++    if (!text || text->empty() || text->size() > kPageChangeMaxTextBytes ||
++        !runtime) return;
++    base::DictValue event;
++    event.Set("kind", "page_change");
++    event.Set("eventId", base::Uuid::GenerateRandomV4().AsLowercaseString());
++    event.Set("pageId", page_id_);
++    event.Set("url", url);
++    event.Set("documentEpoch", epoch);
++    event.Set("contentSha256", base::HexEncodeLower(crypto::hash::Sha256(*text)));
++    event.Set("observedAt", static_cast<double>(
++                                base::Time::Now().InMillisecondsSinceUnixEpoch()));
++    if (auto json = base::WriteJson(event)) {
++      runtime->CallInternal("routines.ingestEvent", std::move(*json),
++                            base::BindOnce([](AuxRuntimeHost::Response) {}));
++    }
++  }
++
++  raw_ptr<Profile> profile_;
++  std::string page_id_;
++  base::TimeTicks last_physical_takeover_;
++  bool auth_prompt_ = false;
++  int navigation_generation_ = 0;
++  std::string page_change_url_;
++  std::set<content::MediaPlayerId> video_players_;
++  std::optional<base::DictValue> navigation_error_;
++  base::RepeatingTimer page_change_timer_;
++  bool page_change_pending_ = false;
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++  base::WeakPtrFactory<PageSignals> weak_factory_{this};
++};
++
++WEB_CONTENTS_USER_DATA_KEY_IMPL(PageSignals);
++
++const base::DictValue* FindSpace(const base::DictValue& root,
++                                 const std::string& space_id) {
++  const base::DictValue* shared = root.FindDict("shared");
++  if (!shared) {
++    return nullptr;
++  }
++  for (const char* key : {"spaces", "archivedSpaces"}) {
++    const base::ListValue* list = shared->FindList(key);
++    if (!list) {
++      continue;
++    }
++    for (const base::Value& entry : *list) {
++      const base::DictValue* space = entry.GetIfDict();
++      const std::string* id = space ? space->FindString("id") : nullptr;
++      if (id && *id == space_id && space->FindString("name") &&
++          space->FindString("color")) {
++        return space;
++      }
++    }
++  }
++  return nullptr;
++}
++
++class DownloadSignals : public content::DownloadManager::Observer,
++                        public download::DownloadItem::Observer,
++                        public base::SupportsUserData::Data {
++ public:
++  explicit DownloadSignals(Profile* profile) : profile_(profile) {
++    if (auto* manager = profile->GetDownloadManager()) {
++      manager_observation_ = manager;
++      manager->AddObserver(this);
++      Scan(manager);
++    }
++  }
++  ~DownloadSignals() override {
++    ForgetItems();
++    if (manager_observation_) {
++      manager_observation_->RemoveObserver(this);
++      manager_observation_ = nullptr;
++    }
++  }
++
++  void OnDownloadCreated(content::DownloadManager* manager,
++                         download::DownloadItem* item) override {
++    ObserveItem(item, !manager->IsManagerInitialized());
++  }
++  void OnDownloadUpdated(download::DownloadItem* item) override { Publish(item); }
++  void OnDownloadDestroyed(download::DownloadItem* item) override {
++    std::erase(observed_, item);
++    completed_.erase(item->GetGuid());
++  }
++  void OnManagerInitialized() override {
++    if (manager_observation_) {
++      Scan(manager_observation_);
++    }
++  }
++  void ManagerGoingDown(content::DownloadManager* manager) override {
++    ForgetItems();
++    manager->RemoveObserver(this);
++    manager_observation_ = nullptr;
++  }
++
++ private:
++  void Scan(content::DownloadManager* manager) {
++    content::DownloadManager::DownloadVector items;
++    manager->GetAllDownloads(&items);
++    for (download::DownloadItem* item : items) {
++      ObserveItem(item, true);
++    }
++  }
++  void ObserveItem(download::DownloadItem* item, bool restored) {
++    if (!item) {
++      return;
++    }
++    for (download::DownloadItem* existing : observed_) {
++      if (existing == item) {
++        return;
++      }
++    }
++    // Scan/startup COMPLETE items are history; a genuine initialized-manager
++    // creation can already be complete and must still get its one admission.
++    if (restored && item->GetState() == download::DownloadItem::COMPLETE)
++      completed_.insert(item->GetGuid());
++    observed_.push_back(item);
++    item->AddObserver(this);
++    Publish(item);
++  }
++  void ForgetItems() {
++    for (download::DownloadItem* item : observed_) {
++      item->RemoveObserver(this);
++    }
++    observed_.clear();
++  }
++  void Publish(download::DownloadItem* item) {
++    const std::string filename = item->GetFileNameToReportUser().AsUTF8Unsafe();
++    base::DictValue payload;
++    payload.Set("id", item->GetGuid());
++    if (!item->GetURL().is_empty()) {
++      payload.Set("sourceUrl", item->GetURL().spec());
++    }
++    if (!item->GetTabUrl().is_empty()) {
++      payload.Set("tabUrl", item->GetTabUrl().spec());
++    }
++    if (!profile_->IsOffTheRecord()) {
++      if (auto* prefs = DownloadPrefs::FromBrowserContext(profile_)) {
++        payload.Set("downloadRoot", prefs->DownloadPath().AsUTF8Unsafe());
++      }
++    }
++    payload.Set("filename", filename.empty() ? "download" : filename);
++    payload.Set("path", item->GetTargetFilePath().AsUTF8Unsafe());
++    payload.Set("size", static_cast<double>(item->GetReceivedBytes()));
++    if (item->GetTotalBytes() > 0) {
++      payload.Set("totalBytes", static_cast<double>(item->GetTotalBytes()));
++    }
++    payload.Set("paused", item->IsPaused());
++    payload.Set("canResume", item->CanResume());
++    payload.Set("canCancel", item->GetState() ==
++                                  download::DownloadItem::IN_PROGRESS);
++    const char* state = "progressing";
++    switch (item->GetState()) {
++      case download::DownloadItem::COMPLETE:
++        state = "completed";
++        break;
++      case download::DownloadItem::CANCELLED:
++        state = "cancelled";
++        break;
++      case download::DownloadItem::INTERRUPTED:
++        state = "interrupted";
++        break;
++      case download::DownloadItem::IN_PROGRESS:
++        state = item->GetReceivedBytes() == 0 ? "started" : "progressing";
++        break;
++      case download::DownloadItem::MAX_DOWNLOAD_STATE:
++        break;
++    }
++    payload.Set("state", state);
++    payload.Set("startedAt", static_cast<double>(
++                                 item->GetStartTime().InMillisecondsSinceUnixEpoch()));
++    if (item->GetState() != download::DownloadItem::IN_PROGRESS &&
++        !item->GetEndTime().is_null()) {
++      payload.Set("endedAt", static_cast<double>(
++                                 item->GetEndTime().InMillisecondsSinceUnixEpoch()));
++    }
++    EmitDict(profile_, "onDownload", std::move(payload));
++    if (item->GetState() == download::DownloadItem::COMPLETE &&
++        completed_.insert(item->GetGuid()).second &&
++        aux::EligibleDownloadName(profile_, item)) {
++      const auto candidate = aux::RecordDownloadNamingCandidate(profile_, item);
++      if (!candidate) return;
++      if (auto* runtime = AuxRuntimeHost::ForProfile(profile_)) {
++        if (auto json = base::WriteJson(*candidate)) {
++          runtime->CallInternal("downloads.completedNative", std::move(*json),
++              base::BindOnce([](AuxRuntimeHost::Response) {}));
++        }
++      }
++    }
++  }
++
++  raw_ptr<Profile> profile_;
++  raw_ptr<content::DownloadManager> manager_observation_ = nullptr;
++  std::vector<raw_ptr<download::DownloadItem>> observed_;
++  std::set<std::string> completed_;
++};
++
++class NotificationSignals final : public NotificationDisplayService::Observer,
++                                  public base::SupportsUserData::Data {
++ public:
++  explicit NotificationSignals(Profile* profile) : profile_(profile) {
++    service_ = NotificationDisplayServiceFactory::GetForProfile(profile);
++    if (service_) service_->AddObserver(this);
++  }
++  ~NotificationSignals() override {
++    if (service_) service_->RemoveObserver(this);
++  }
++
++  void OnNotificationDisplayed(
++      const message_center::Notification& notification,
++      const NotificationCommon::Metadata* const metadata) override {
++    if (!profile_ || profile_->IsOffTheRecord() || !metadata ||
++        (metadata->type != NotificationHandler::Type::WEB_PERSISTENT &&
++         metadata->type != NotificationHandler::Type::WEB_NON_PERSISTENT) ||
++        notification.notifier_id().type != message_center::NotifierType::WEB_PAGE ||
++        notification.id().empty() || notification.id().size() > 1024)
++      return;
++    const GURL& source = notification.origin_url();
++    if (!source.SchemeIsHTTPOrHTTPS() || source.has_username() ||
++        source.has_password())
++      return;
++    auto* settings = HostContentSettingsMapFactory::GetForProfile(profile_);
++    if (!settings ||
++        settings->GetContentSetting(source, source,
++                                    ContentSettingsType::NOTIFICATIONS) !=
++            CONTENT_SETTING_ALLOW)
++      return;
++    auto* runtime = AuxRuntimeHost::ForProfile(profile_);
++    if (!runtime) return;
++    base::DictValue event;
++    event.Set("kind", "site_notification");
++    event.Set("origin", url::Origin::Create(source).Serialize());
++    event.Set("eventId", notification.id());
++    event.Set("permissionGranted", true);
++    event.Set("observedAt", static_cast<double>(
++                                base::Time::Now().InMillisecondsSinceUnixEpoch()));
++    if (auto json = base::WriteJson(event)) {
++      runtime->CallInternal("routines.ingestEvent", std::move(*json),
++                            base::BindOnce([](AuxRuntimeHost::Response) {}));
++    }
++  }
++  void OnNotificationClosed(const std::string&) override {}
++  void OnNotificationDisplayServiceDestroyed(
++      NotificationDisplayService* service) override {
++    if (service_ == service) {
++      service_->RemoveObserver(this);
++      service_ = nullptr;
++    }
++  }
++
++ private:
++  raw_ptr<Profile> profile_;
++  raw_ptr<NotificationDisplayService> service_ = nullptr;
++};
++
++struct RunAttentionEntry {
++  std::string run_id;
++  std::string identity;
++  std::string window_id;
++};
++
++class RunAttentionState final : public base::SupportsUserData::Data {
++ public:
++  std::map<std::string, RunAttentionEntry> entries;
++  std::map<std::string, base::TimeTicks> last_by_kind;
++};
++
++class RunAttentionHandler final : public NotificationHandler {
++ public:
++  void OnClick(Profile* profile, const GURL&, const std::string& notification_id,
++               const std::optional<int>&, const std::optional<std::u16string>&,
++               base::OnceClosure completed) override {
++    auto* state = profile ? static_cast<RunAttentionState*>(
++        profile->GetUserData(&kRunAttentionKey)) : nullptr;
++    if (state) {
++      auto it = state->entries.find(notification_id);
++      if (it != state->entries.end()) {
++        base::DictValue payload;
++        payload.Set("runId", it->second.run_id);
++        payload.Set("identity", it->second.identity);
++        payload.Set("windowId", it->second.window_id);
++        EmitDict(profile, "onRunAttentionActivated", std::move(payload));
++        state->entries.erase(it);
++      }
++    }
++    std::move(completed).Run();
++  }
++  void OnClose(Profile* profile, const GURL&, const std::string& notification_id,
++               bool, base::OnceClosure completed) override {
++    auto* state = profile ? static_cast<RunAttentionState*>(
++        profile->GetUserData(&kRunAttentionKey)) : nullptr;
++    if (state) state->entries.erase(notification_id);
++    std::move(completed).Run();
++  }
++};
++
++}  // namespace
++
++bool ShowRunAttention(Profile* profile, const std::string& kind,
++                      const std::string& run_id, const std::string& identity,
++                      const std::string& window_id) {
++  if (!profile || profile->IsOffTheRecord() || run_id.empty() || identity.empty() ||
++      window_id.empty() || run_id.size() > 128 || identity.size() > 128 ||
++      window_id.size() > 128) return false;
++  const char16_t* title = nullptr;
++  const char16_t* body = nullptr;
++  if (kind == "completed") {
++    title = u"Aux finished a task";
++    body = u"Open Aux to review the result.";
++  } else if (kind == "question") {
++    title = u"Aux needs your answer";
++    body = u"Open Aux to review a question.";
++  } else if (kind == "handoff") {
++    title = u"Your turn in Aux";
++    body = u"Open Aux to finish a browser step.";
++  } else {
++    return false;
++  }
++  auto* service = NotificationDisplayServiceImpl::GetForProfile(profile);
++  if (!service) return false;
++  if (!service->GetNotificationHandler(NotificationHandler::Type::AUX_RUN_ATTENTION)) {
++    service->AddNotificationHandler(NotificationHandler::Type::AUX_RUN_ATTENTION,
++                                    std::make_unique<RunAttentionHandler>());
++  }
++  auto* state = static_cast<RunAttentionState*>(
++      profile->GetUserData(&kRunAttentionKey));
++  if (!state) {
++    profile->SetUserData(&kRunAttentionKey, std::make_unique<RunAttentionState>());
++    state = static_cast<RunAttentionState*>(profile->GetUserData(&kRunAttentionKey));
++  }
++  const auto now = base::TimeTicks::Now();
++  auto last = state->last_by_kind.find(kind);
++  if (last != state->last_by_kind.end() && now - last->second < base::Seconds(5))
++    return false;
++  const std::string notification_id =
++      "aux-run-attention-" + base::Uuid::GenerateRandomV4().AsLowercaseString();
++  state->entries.emplace(notification_id,
++                         RunAttentionEntry{run_id, identity, window_id});
++  state->last_by_kind[kind] = now;
++  message_center::RichNotificationData data;
++  message_center::Notification notification(
++      message_center::NOTIFICATION_TYPE_SIMPLE, notification_id,
++      std::u16string(title), std::u16string(body), ui::ImageModel(), u"Aux",
++      GURL(), message_center::NotifierId(), data, nullptr);
++  service->Display(NotificationHandler::Type::AUX_RUN_ATTENTION,
++                   notification, nullptr);
++  return true;  // Enqueued; OS permission can still deny display. The shell keeps a fallback.
++}
++
++void StartShellEvents(Profile* profile) {
++  if (!profile) {
++    return;
++  }
++  Router::GetOrCreate(profile);
++  if (!profile->IsOffTheRecord() && !profile->GetUserData(&kNotificationsKey)) {
++    profile->SetUserData(&kNotificationsKey,
++                         std::make_unique<NotificationSignals>(profile));
++  }
++  if (profile->GetUserData(&kDownloadsKey)) {
++    return;
++  }
++  profile->SetUserData(&kDownloadsKey,
++                       std::make_unique<DownloadSignals>(profile));
++}
++
++void EmitShellEvent(Profile* profile,
++                    std::string_view name,
++                    std::string payload_json) {
++  if (Router* router = Router::Get(profile)) {
++    router->observers.Notify(std::string(name), payload_json);
++  }
++}
++
++void PublishPasswordOffer(Profile* profile,
++                          content::WebContents* contents,
++                          std::string origin,
++                          std::string username,
++                          bool update) {
++  if (!profile || profile->IsOffTheRecord() || !contents ||
++      contents->GetBrowserContext() != profile || origin.empty()) {
++    return;
++  }
++  const std::string page_id = PageId(contents);
++  if (page_id.empty()) return;
++  const std::string offer_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  contents->SetUserData(&kPasswordOfferKey,
++                        std::make_unique<PasswordOfferData>(origin, offer_id));
++  base::DictValue payload;
++  payload.Set("pageId", page_id);
++  payload.Set("username", username.substr(0, 256));
++  payload.Set("origin", std::move(origin));
++  payload.Set("kind", update ? "update" : "save");
++  payload.Set("offerId", offer_id);
++  EmitDict(profile, "onVaultOffer", std::move(payload));
++}
++
++bool ConsumePasswordOffer(content::WebContents* contents,
++                          std::string_view origin,
++                          std::string_view offer_id) {
++  auto* offer = contents ? static_cast<PasswordOfferData*>(
++      contents->GetUserData(&kPasswordOfferKey)) : nullptr;
++  if (!offer || offer_id.empty() || offer->id != offer_id ||
++      offer->origin != origin) {
++    return false;
++  }
++  contents->RemoveUserData(&kPasswordOfferKey);
++  return true;
++}
++
++base::CallbackListSubscription ObserveShellEvents(
++    Profile* profile,
++    base::RepeatingCallback<void(const std::string&, const std::string&)>
++        callback) {
++  if (!profile) {
++    return {};
++  }
++  StartShellEvents(profile);
++  return Router::GetOrCreate(profile).observers.Add(std::move(callback));
++}
++
++void WatchPageShellEvents(content::WebContents* contents) {
++  if (contents && !PageSignals::FromWebContents(contents)) {
++    PageSignals::CreateForWebContents(contents);
++  }
++}
++
++const base::DictValue* PageNavigationError(content::WebContents* contents) {
++  auto* signals = contents ? PageSignals::FromWebContents(contents) : nullptr;
++  return signals ? signals->navigation_error() : nullptr;
++}
++
++bool PageHasVideo(content::WebContents* contents) {
++  WatchPageShellEvents(contents);
++  auto* signals = contents ? PageSignals::FromWebContents(contents) : nullptr;
++  return signals && signals->has_video();
++}
++
++void PublishTabPlacement(Profile* profile,
++                         content::WebContents* contents,
++                         const std::string& space_id,
++                         const std::string& workspace_id) {
++  if (!profile || !contents || space_id.empty()) {
++    return;
++  }
++  const base::DictValue* space =
++      FindSpace(profile->GetPrefs()->GetDict(kOrganizationPref), space_id);
++  if (!space) {
++    return;
++  }
++  const SessionID window_id =
++      sessions::SessionTabHelper::IdForWindowContainingTab(contents);
++  if (!window_id.is_valid()) {
++    return;
++  }
++  base::DictValue space_payload;
++  space_payload.Set("id", space_id);
++  space_payload.Set("name", *space->FindString("name"));
++  space_payload.Set("color", *space->FindString("color"));
++  int grain = space->FindInt("grain").value_or(0);
++  if (grain < 0) {
++    grain = 0;
++  } else if (grain > 100) {
++    grain = 100;
++  }
++  space_payload.Set("grain", grain);
++  if (!workspace_id.empty()) {
++    space_payload.Set("workspaceId", workspace_id);
++  }
++  base::DictValue placement;
++  placement.Set("space", std::move(space_payload));
++  base::DictValue payload;
++  payload.Set("pageId", PageIdentity::GetOrCreate(profile, contents));
++  payload.Set("windowId", base::NumberToString(window_id.id()));
++  payload.Set("placement", std::move(placement));
++  EmitDict(profile, "onTabsPlacement", std::move(payload));
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/shell_events.h b/chrome/browser/ui/aux/shell_events.h
+new file mode 100644
+index 0000000000..efb2a8858b
+--- /dev/null
++++ b/chrome/browser/ui/aux/shell_events.h
+@@ -0,0 +1,57 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_SHELL_EVENTS_H_
++#define CHROME_BROWSER_UI_AUX_SHELL_EVENTS_H_
++
++#include <string>
++#include <string_view>
++
++#include "base/callback_list.h"
++#include "base/functional/callback.h"
++#include "base/values.h"
++
++class Profile;
++
++namespace content {
++class WebContents;
++}
++
++namespace aux {
++
++// Browser-originated shell events. The Aux WebUI subscribes and forwards each
++// payload to the renderer. Payloads are JSON text.
++void StartShellEvents(Profile* profile);
++// Only fixed browser-owned copy reaches macOS; opaque IDs route a click back to
++// the exact run after the renderer rechecks its durable state.
++bool ShowRunAttention(Profile* profile, const std::string& kind,
++                      const std::string& run_id,
++                      const std::string& identity,
++                      const std::string& window_id);
++void EmitShellEvent(Profile* profile,
++                    std::string_view name,
++                    std::string payload_json);
++void PublishPasswordOffer(Profile* profile,
++                          content::WebContents* contents,
++                          std::string origin,
++                          std::string username,
++                          bool update);
++bool ConsumePasswordOffer(content::WebContents* contents,
++                          std::string_view origin,
++                          std::string_view offer_id);
++base::CallbackListSubscription ObserveShellEvents(
++    Profile* profile,
++    base::RepeatingCallback<void(const std::string&, const std::string&)>
++        callback);
++void WatchPageShellEvents(content::WebContents* contents);
++const base::DictValue* PageNavigationError(content::WebContents* contents);
++bool PageHasVideo(content::WebContents* contents);
++void PublishTabPlacement(Profile* profile,
++                         content::WebContents* contents,
++                         const std::string& space_id,
++                         const std::string& workspace_id);
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_SHELL_EVENTS_H_
+diff --git a/chrome/browser/ui/aux/site_prefs.h b/chrome/browser/ui/aux/site_prefs.h
+new file mode 100644
+index 0000000000..24b019111a
+--- /dev/null
++++ b/chrome/browser/ui/aux/site_prefs.h
+@@ -0,0 +1,14 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_SITE_PREFS_H_
++#define CHROME_BROWSER_UI_AUX_SITE_PREFS_H_
++
++namespace aux {
++
++inline constexpr char kHttpsUpgradesEnabled[] = "aux.https_upgrades_enabled";
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_SITE_PREFS_H_
+diff --git a/chrome/browser/ui/browser_tabrestore.cc b/chrome/browser/ui/browser_tabrestore.cc
+index fa43dd782c..9850e47981 100644
+--- a/chrome/browser/ui/browser_tabrestore.cc
++++ b/chrome/browser/ui/browser_tabrestore.cc
+@@ -10,6 +10,10 @@
+ 
+ #include "base/containers/span.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/page_identity.h"
++#endif
+ #include "chrome/browser/apps/app_service/web_contents_app_id_utils.h"
+ #include "chrome/browser/glic/glic_tab_restore_helper.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -79,12 +83,22 @@ std::unique_ptr<WebContents> CreateRestoredTab(
+   std::unique_ptr<WebContents> web_contents =
+       WebContents::CreateWithSessionStorage(create_params,
+                                             session_storage_namespace_map);
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  // An agent task's storage partition and authority end with its run. A
++  // historical tab entry must never replay its URL in the Profile partition.
++  if (aux::PageIdentity::IsEphemeralTaskExtraData(extra_data)) {
++    return web_contents;
++  }
++#endif
+   apps::SetAppIdForWebContents(browser->GetProfile(), web_contents.get(),
+                                extension_app_id);
+ 
+   glic::RestoreGlicStateFromExtraData(web_contents.get(), extra_data);
+   send_tab_to_self::SendTabToSelfActivationTracker::RestoreFromExtraData(
+       web_contents.get(), extra_data);
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  aux::PageIdentity::RestoreFromExtraData(web_contents.get(), extra_data);
++#endif
+ 
+   std::vector<std::unique_ptr<NavigationEntry>> entries =
+       ContentSerializedNavigationBuilder::ToNavigationEntries(

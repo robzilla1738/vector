@@ -1,0 +1,193 @@
+diff --git a/chrome/browser/resources/aux/BUILD.gn b/chrome/browser/resources/aux/BUILD.gn
+--- a/chrome/browser/resources/aux/BUILD.gn
++++ b/chrome/browser/resources/aux/BUILD.gn
+@@ -6,10 +6,12 @@
+ import("//chrome/common/features.gni")
+ import("//tools/grit/grit_rule.gni")
+ import("//ui/webui/resources/tools/generate_grd.gni")
++import("//ui/webui/resources/tools/generate_code_cache.gni")
++import("//ui/webui/webui_features.gni")
+ 
+ assert(enable_aux_shell)
+ 
+-# stage-shell verifies every file against the checked-in SHA-256 manifest.
++# The local build stages the current renderer and its resource inventory.
+ shell_manifest = read_file("assets/manifest.json", "json")
+ shell_files = []
+ shell_inputs = []
+@@ -39,3 +41,30 @@
+   input_files = shell_files
+   input_files_base_dir = rebase_path("assets", "//")
+ }
++
++if (enable_webui_generate_code_cache) {
++  generate_code_cache("build_code_cache") {
++    in_folder = "assets"
++    in_files = filter_include(shell_files, [ "*.js" ])
++    out_folder = "$target_gen_dir/code_cache"
++    out_manifest = "$target_gen_dir/build_code_cache_manifest.json"
++  }
++  generate_grd("build_code_cache_grd") {
++    grd_prefix = "aux_code_cache"
++    out_grd = "$target_gen_dir/code_cache_resources.grd"
++    manifest_files = [ "$target_gen_dir/build_code_cache_manifest.json" ]
++    deps = [ ":build_code_cache" ]
++  }
++  grit("code_cache_resources") {
++    enable_input_discovery_for_gn_analyze = false
++    source = "$target_gen_dir/code_cache_resources.grd"
++    deps = [ ":build_code_cache_grd" ]
++    outputs = [
++      "grit/aux_code_cache_resources.h",
++      "grit/aux_code_cache_resources_map.h",
++      "grit/aux_code_cache_resources_map.cc",
++      "aux_code_cache_resources.pak",
++    ]
++    output_dir = "$root_gen_dir/chrome"
++  }
++}
+diff --git a/chrome/browser/resources/aux_host/BUILD.gn b/chrome/browser/resources/aux_host/BUILD.gn
+--- a/chrome/browser/resources/aux_host/BUILD.gn
++++ b/chrome/browser/resources/aux_host/BUILD.gn
+@@ -9,6 +9,7 @@
+ 
+ build_webui("build") {
+   grd_prefix = "aux_host"
++  generate_code_cache = enable_webui_generate_code_cache
+   ts_files = [ "aux_host_bootstrap.ts", "aux_feature_stages.ts" ]
+   mojo_files = [ "$root_gen_dir/chrome/browser/ui/webui_browser/shell_host.mojom-webui.ts" ]
+   mojo_files_deps = [ "//chrome/browser/ui/webui_browser:shell_host_mojo_bindings_ts__generator" ]
+diff --git a/chrome/browser/resources/BUILD.gn b/chrome/browser/resources/BUILD.gn
+--- a/chrome/browser/resources/BUILD.gn
++++ b/chrome/browser/resources/BUILD.gn
+@@ -239,6 +239,12 @@
+       "side_panel/tabs_from_other_devices:code_cache_resources",
+       "webui_toolbar:code_cache_resources",
+     ]
++    if (enable_aux_shell) {
++      public_deps += [
++        "aux:code_cache_resources",
++        "aux_host:code_cache_resources",
++      ]
++    }
+   }
+ }
+ 
+diff --git a/chrome/browser/ui/webui/util/BUILD.gn b/chrome/browser/ui/webui/util/BUILD.gn
+--- a/chrome/browser/ui/webui/util/BUILD.gn
++++ b/chrome/browser/ui/webui/util/BUILD.gn
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//ui/webui/webui_features.gni")
++import("//chrome/browser/buildflags.gni")
+ 
+ assert(is_win || is_mac || is_linux || is_chromeos)
+ 
+diff --git a/chrome/browser/ui/webui/util/webui_util_desktop.cc b/chrome/browser/ui/webui/util/webui_util_desktop.cc
+--- a/chrome/browser/ui/webui/util/webui_util_desktop.cc
++++ b/chrome/browser/ui/webui/util/webui_util_desktop.cc
+@@ -15,6 +15,7 @@
+ #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "chrome/common/chrome_features.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/common/webui_url_constants.h"
+ #include "chrome/common/webui_url_utils.h"
+ #include "content/public/common/url_constants.h"
+@@ -25,6 +26,10 @@
+ 
+ #if BUILDFLAG(ENABLE_WEBUI_GENERATE_CODE_CACHE)
+ #include "chrome/browser/ui/ui_features.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/grit/aux_code_cache_resources_map.h"
++#include "chrome/grit/aux_host_code_cache_resources_map.h"
++#endif
+ #include "chrome/grit/side_panel_bookmarks_code_cache_resources_map.h"
+ #include "chrome/grit/side_panel_customize_chrome_code_cache_resources_map.h"
+ #include "chrome/grit/side_panel_reading_list_code_cache_resources_map.h"
+@@ -204,6 +209,15 @@
+ 
+ #if BUILDFLAG(ENABLE_WEBUI_GENERATE_CODE_CACHE)
+   if (features::kWebUIBundledCodeCacheGenerateResourceMap.Get()) {
++    // Aux bundles the exact staged shell scripts and Mojo bootstrap.
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++    AppendWebUIResourceURLToCodeCachePairs(
++        content::kChromeUIScheme, chrome::kChromeUIAuxHost,
++        kAuxCodeCacheResources, url_to_code_cache_pairs);
++    AppendWebUIResourceURLToCodeCachePairs(
++        content::kChromeUIScheme, chrome::kChromeUIAuxHost,
++        kAuxHostCodeCacheResources, url_to_code_cache_pairs);
++#endif
+     // Shared resources.
+     AppendWebUIResourceURLToCodeCachePairs(
+         content::kChromeUIScheme, content::kChromeUIResourcesHost,
+diff --git a/chrome/browser/metrics/chrome_feature_list_creator.cc b/chrome/browser/metrics/chrome_feature_list_creator.cc
+--- a/chrome/browser/metrics/chrome_feature_list_creator.cc
++++ b/chrome/browser/metrics/chrome_feature_list_creator.cc
+@@ -26,6 +26,7 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "third_party/blink/public/common/features.h"
++#include "content/public/common/content_features.h"
+ #endif
+ #include "chrome/common/chrome_switches.h"
+ #include "chrome/installer/util/initial_preferences.h"
+@@ -245,6 +246,8 @@
+   auto extra_overrides = content::GetSwitchDependentFeatureOverrides(
+       *base::CommandLine::ForCurrentProcess());
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++  extra_overrides.emplace_back(features::kWebUIBundledCodeCache,
++                               base::FeatureList::OVERRIDE_ENABLE_FEATURE);
+   extra_overrides.emplace_back(
+       blink::features::kBrowserInitiatedAutomaticPictureInPicture,
+       base::FeatureList::OVERRIDE_ENABLE_FEATURE);
+diff --git a/chrome/chrome_paks.gni b/chrome/chrome_paks.gni
+--- a/chrome/chrome_paks.gni
++++ b/chrome/chrome_paks.gni
+@@ -610,6 +610,12 @@
+     }
+ 
+     if (enable_webui_generate_code_cache) {
++      if (enable_aux_shell) {
++        sources += [
++          "$root_gen_dir/chrome/aux_code_cache_resources.pak",
++          "$root_gen_dir/chrome/aux_host_code_cache_resources.pak",
++        ]
++      }
+       sources += [
+         "$root_gen_dir/chrome/side_panel_bookmarks_code_cache_resources.pak",
+         "$root_gen_dir/chrome/side_panel_customize_chrome_code_cache_resources.pak",
+diff --git a/ui/webui/webui_features.gni b/ui/webui/webui_features.gni
+--- a/ui/webui/webui_features.gni
++++ b/ui/webui/webui_features.gni
+@@ -67,7 +67,7 @@
+ if (enable_webui_generate_code_cache) {
+   enable_webui_generate_code_cache =
+       optimize_webui && host_toolchain == current_toolchain && !is_msan &&
+-      (is_linux || is_win)
++      (is_linux || is_win || is_mac)
+ }
+ 
+ if (load_webui_from_disk) {
+diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
+--- a/tools/gritsettings/resource_ids.spec
++++ b/tools/gritsettings/resource_ids.spec
+@@ -244,9 +244,17 @@
+     "META": {"sizes": {"includes": [1000],}},
+     "includes": [2860],
+   },
++  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux/code_cache_resources.grd": {
++    "META": {"sizes": {"includes": [400]}},
++    "includes": [2869],
++  },
+   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux/resources.grd": {
+     "META": {"sizes": {"includes": [1000]}},
+     "includes": [2870],
++  },
++  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux_host/code_cache_resources.grd": {
++    "META": {"sizes": {"includes": [30]}},
++    "includes": [2874],
+   },
+   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux_host/resources.grd": {
+     "META": {"sizes": {"includes": [20]}},

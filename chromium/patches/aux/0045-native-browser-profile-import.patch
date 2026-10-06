@@ -1,0 +1,2287 @@
+diff --git a/chrome/browser/extensions/webstore_standalone_installer.cc b/chrome/browser/extensions/webstore_standalone_installer.cc
+index 2465fb793..d6d85796f 100644
+--- a/chrome/browser/extensions/webstore_standalone_installer.cc
++++ b/chrome/browser/extensions/webstore_standalone_installer.cc
+@@ -55,6 +55,8 @@ void WebstoreStandaloneInstaller::BeginInstall() {
+   // Add a ref to keep this alive for WebstoreDataFetcher.
+   // All code paths from here eventually lead to either CompleteInstall or
+   // AbortInstall, which both call CleanUp to release this ref.
++  CHECK(!begun_);
++  begun_ = true;
+   AddRef();
+ 
+   if (!crx_file::id_util::IdIsValid(id_)) {
+@@ -94,7 +96,19 @@ void WebstoreStandaloneInstaller::RunCallback(bool success,
+   std::move(callback_).Run(success, error, result);
+ }
+ 
++bool WebstoreStandaloneInstaller::CancelPendingInstall() {
++  if (!begun_ || completed_ || install_dispatched_) return false;
++  // Invalidate helper/dialog callbacks before destroying their producers.
++  // Unlike AbortInstall, deliver a final, provably-unsent completion receipt.
++  weak_ptr_factory_.InvalidateWeakPtrs();
++  install_ui_.reset();
++  webstore_data_fetcher_.reset();
++  CompleteInstall(webstore_install::ABORTED, std::string());
++  return true;
++}
++
+ void WebstoreStandaloneInstaller::AbortInstall() {
++  completed_ = true;
+   callback_.Reset();
+   // Abort any in-progress fetches.
+   if (webstore_data_fetcher_) {
+@@ -128,6 +142,7 @@ bool WebstoreStandaloneInstaller::EnsureUniqueInstall(
+ void WebstoreStandaloneInstaller::CompleteInstall(
+     webstore_install::Result result,
+     const std::string& error) {
++  completed_ = true;
+   scoped_active_install_.reset();
+   if (!callback_.is_null())
+     RunCallback(result == webstore_install::SUCCESS, error, result);
+@@ -197,6 +212,10 @@ void WebstoreStandaloneInstaller::OnInstallPromptDone(
+ 
+   DCHECK(payload.result == ExtensionInstallPrompt::Result::ACCEPTED);
+ 
++  // This UI-sequence boundary accepts the effect after CheckRequestorAlive.
++  // Once accepted, retain the actual installer completion rather than claiming
++  // that metadata/prompt cancellation can retract destination writes.
++  install_dispatched_ = true;
+   std::unique_ptr<InstallApproval> approval = CreateApproval();
+ 
+   ExtensionRegistry* extension_registry = ExtensionRegistry::Get(profile_);
+diff --git a/chrome/browser/extensions/webstore_standalone_installer.h b/chrome/browser/extensions/webstore_standalone_installer.h
+index 335db5231..0cea11244 100644
+--- a/chrome/browser/extensions/webstore_standalone_installer.h
++++ b/chrome/browser/extensions/webstore_standalone_installer.h
+@@ -65,6 +65,11 @@ class WebstoreStandaloneInstaller
+ 
+   void BeginInstall();
+ 
++  // Cancels metadata/prompt work only before the destination effect is accepted.
++  // False means an accepted install must be joined through its real callback;
++  // this method never claims to roll back or cancel a dispatched CRX install.
++  bool CancelPendingInstall();
++
+  protected:
+   ~WebstoreStandaloneInstaller() override;
+ 
+@@ -205,6 +210,9 @@ class WebstoreStandaloneInstaller
+   // Input configuration.
+   std::string id_;
+   Callback callback_;
++  bool begun_ = false;
++  bool completed_ = false;
++  bool install_dispatched_ = false;
+   raw_ptr<Profile> profile_;
+   base::ScopedObservation<Profile, ProfileObserver> observation_{this};
+   WebstoreInstaller::InstallSource install_source_{
+diff --git a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
+index 8e9a3fd49..2cf82e934 100644
+--- a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
++++ b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.cc
+@@ -93,6 +93,8 @@ std::ostream& operator<<(std::ostream& out,
+       return out << "kFetchKeepAlive";
+     case ProfileKeepAliveOrigin::kOmniboxEverywhere:
+       return out << "kOmniboxEverywhere";
++    case ProfileKeepAliveOrigin::kAuxBrowserImport:
++      return out << "kAuxBrowserImport";
+     case ProfileKeepAliveOrigin::kAuxContentFilterCommit:
+       return out << "kAuxContentFilterCommit";
+     case ProfileKeepAliveOrigin::kAuxShellWarmup:
+diff --git a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
+index 3a9a1e5fa..243b95f1b 100644
+--- a/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
++++ b/chrome/browser/profiles/keep_alive/profile_keep_alive_types.h
+@@ -196,7 +196,9 @@ enum class ProfileKeepAliveOrigin {
+   // Accepted Aux content-filter configuration awaiting durable publication.
+   kAuxContentFilterCommit = 48,
+ 
+-  kMaxValue = kAuxContentFilterCommit,
++  kAuxBrowserImport = 49,
++
++  kMaxValue = kAuxBrowserImport,
+ };
+ // LINT.ThenChange(/tools/metrics/histograms/metadata/profile/enums.xml)
+ 
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 31715e313..2062b23ee 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -8,6 +8,20 @@ assert(enable_aux_shell)
+ 
+ source_set("runtime") {
+   sources = [
++    "browser_profile_decode.h",
++    "browser_profile_decode.cc",
++    "browser_profile_discovery.h",
++    "browser_profile_discovery.cc",
++    "browser_profile_extension_installer.h",
++    "browser_profile_extension_installer.cc",
++    "browser_profile_importer.h",
++    "browser_profile_importer.cc",
++    "browser_profile_key_provider.h",
++    "browser_profile_key_provider.mm",
++    "browser_profile_readers.h",
++    "browser_profile_readers.cc",
++    "browser_profile_snapshot.h",
++    "browser_profile_snapshot.cc",
+     "native_project.cc",
+     "native_project.h",
+     "native_project_files.cc",
+@@ -136,6 +150,13 @@ source_set("runtime") {
+     "zap_controller.h",
+   ]
+   deps = [
++    "//components/sessions",
++    "//components/os_crypt/async/browser",
++    "//components/os_crypt/async/browser:key_provider_interface",
++    "//components/password_manager/core/browser/import:importer",
++    "//components/password_manager/core/browser/ui",
++    "//chrome/browser/extensions/api/passwords_private",
++    "//chrome/browser/extensions",
+     "//chrome/browser/ui/aux/adblock_engine:engine",
+     "//extensions/browser",
+     "//extensions/common",
+diff --git a/chrome/browser/ui/aux/browser_profile_decode.cc b/chrome/browser/ui/aux/browser_profile_decode.cc
+new file mode 100644
+index 000000000..af493660d
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_decode.cc
+@@ -0,0 +1,58 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_profile_decode.h"
++#include <algorithm>
++#include <utility>
++#include "components/os_crypt/async/common/encryptor.h"
++namespace aux {
++DecodedBrowserProfile DecodeBrowserProfile(
++    const base::FilePath& source, const std::vector<std::string>& categories,
++    scoped_refptr<os_crypt_async::Encryptor> source_encryptor,
++    const base::RepeatingCallback<bool()>& cancelled) {
++  DecodedBrowserProfile result;
++  auto selected = [&](const char* name) {
++    return std::ranges::find(categories, name) != categories.end();
++  };
++  std::vector<std::string> files;
++  if (selected("bookmarks")) files.push_back("Bookmarks");
++  if (selected("history")) {
++    for (const char* suffix : {"", "-wal", "-shm", "-journal"})
++      files.push_back(std::string("History") + suffix);
++  }
++  if (selected("passwords")) {
++    for (const char* database : {"Login Data", "Login Data For Account"})
++      for (const char* suffix : {"", "-wal", "-shm", "-journal"})
++        files.push_back(std::string(database) + suffix);
++  }
++  if (selected("extensions")) files.insert(files.end(), {"Preferences", "Secure Preferences"});
++  auto snapshot = BrowserProfileSnapshot::Capture(source, files, selected("tabs"), cancelled);
++  if (!snapshot.has_value()) {
++    result.snapshot_error = snapshot.error();
++    return result;
++  }
++  result.snapshot = std::move(*snapshot);
++  auto read = [&](const char* name, auto reader, auto& destination) {
++    if (!selected(name)) return;
++    if (cancelled.Run()) {
++      result.errors.emplace(name, "Browser import was cancelled.");
++      return;
++    }
++    auto decoded = reader();
++    if (!decoded.has_value()) result.errors.emplace(name, decoded.error());
++    else destination = std::move(*decoded);
++  };
++  read("bookmarks", [&] { return ReadProfileBookmarks(*result.snapshot); }, result.bookmarks);
++  read("history", [&] { return ReadProfileHistory(*result.snapshot); }, result.history);
++  read("tabs", [&] { return ReadProfileTabs(*result.snapshot, source_encryptor); }, result.tabs);
++  read("passwords", [&] { return ReadProfilePasswords(*result.snapshot, source_encryptor); }, result.passwords);
++  read("extensions", [&] { return ReadProfileStoreExtensions(*result.snapshot); }, result.extensions);
++  if (cancelled.Run() || !result.snapshot->OriginalIsCurrent()) {
++    result.snapshot_error = cancelled.Run() ? "Browser import was cancelled." :
++        "The original browser changed. Close it and refresh the preview.";
++    // Never retain decrypted passwords when admission cannot be reached.
++    result.passwords.clear();
++  }
++  return result;
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_decode.h b/chrome/browser/ui/aux/browser_profile_decode.h
+new file mode 100644
+index 000000000..e76eab791
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_decode.h
+@@ -0,0 +1,36 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_DECODE_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_DECODE_H_
++#include <map>
++#include <memory>
++#include <string>
++#include <vector>
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
++#include "base/memory/scoped_refptr.h"
++#include "chrome/browser/ui/aux/browser_profile_readers.h"
++#include "chrome/browser/ui/aux/browser_profile_snapshot.h"
++namespace os_crypt_async { class Encryptor; }
++namespace aux {
++struct DecodedBrowserProfile {
++  std::unique_ptr<BrowserProfileSnapshot> snapshot;
++  std::vector<ImportedProfileBookmark> bookmarks;
++  std::vector<ImportedProfileHistory> history;
++  std::vector<ImportedProfileTab> tabs;
++  std::vector<password_manager::StoredCredential> passwords;
++  std::vector<std::string> extensions;
++  std::map<std::string, std::string> errors;
++  std::string snapshot_error;
++};
++// Blocking snapshot/Chromium decoding runs on one native single-thread task runner.
++// No original browser file is writable, no plaintext secrets cross IPC, and
++// the cancellation callback is worker-safe (never a BrowserWindow/UI pointer).
++DecodedBrowserProfile DecodeBrowserProfile(
++    const base::FilePath& source,
++    const std::vector<std::string>& categories,
++    scoped_refptr<os_crypt_async::Encryptor> source_encryptor,
++    const base::RepeatingCallback<bool()>& cancelled);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_profile_discovery.cc b/chrome/browser/ui/aux/browser_profile_discovery.cc
+new file mode 100644
+index 000000000..fa3d7face
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_discovery.cc
+@@ -0,0 +1,92 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_profile_discovery.h"
++#include <algorithm>
++#include <set>
++#include <string_view>
++#include <utility>
++#include "base/files/file_enumerator.h"
++#include "base/files/file_util.h"
++#include "base/json/json_reader.h"
++#include "base/strings/string_util.h"
++#include "chrome/browser/ui/aux/browser_profile_snapshot.h"
++#include "components/sessions/core/session_constants.h"
++namespace aux {
++namespace {
++struct Source {
++  const char* id;
++  const char* label;
++  const char* relative_path;
++  BrowserProfileBrand brand;
++};
++constexpr Source kSources[] = {
++  {"chrome", "Chrome", "Google/Chrome", BrowserProfileBrand::kChrome},
++  {"chrome-beta", "Chrome Beta", "Google/Chrome Beta", BrowserProfileBrand::kChrome},
++  {"chromium", "Chromium", "Chromium", BrowserProfileBrand::kChromium},
++  {"edge", "Microsoft Edge", "Microsoft Edge", BrowserProfileBrand::kEdge},
++  {"brave", "Brave", "BraveSoftware/Brave-Browser", BrowserProfileBrand::kBrave},
++  {"arc", "Arc", "Arc/User Data", BrowserProfileBrand::kArc},
++  {"dia", "Dia", "Dia/User Data", BrowserProfileBrand::kDia},
++  {"comet", "Comet", "Comet", BrowserProfileBrand::kComet},
++};
++bool ProfileName(const std::string& value) {
++  return !value.empty() && value.size() <= 64 && value != "." && value != ".." &&
++      value.find_first_of("/\\") == std::string::npos &&
++      value.find('\0') == std::string::npos;
++}
++bool ConventionalProfile(const std::string& name) {
++  if (name == "Default") return true;
++  if (!base::StartsWith(name, "Profile ")) return false;
++  const auto suffix = std::string_view(name).substr(8);
++  return !suffix.empty() && std::ranges::all_of(suffix,
++      [](char c) { return c >= '0' && c <= '9'; });
++}
++}  // namespace
++base::expected<std::vector<DiscoveredBrowserProfile>, std::string>
++DiscoverBrowserProfiles(
++    const base::RepeatingCallback<bool()>& cancelled) {
++  std::vector<DiscoveredBrowserProfile> found;
++  if (!cancelled || cancelled.Run())
++    return base::unexpected("Browser import was cancelled.");
++  const auto support = base::GetHomeDir().AppendASCII("Library/Application Support");
++  for (const auto& source : kSources) {
++    if (cancelled.Run()) return base::unexpected("Browser import was cancelled.");
++    const auto root = support.AppendASCII(source.relative_path);
++    if (!base::DirectoryExists(root)) continue;
++    auto root_copy = BrowserProfileSnapshot::Capture(root, {"Local State"}, false, cancelled);
++    if (!root_copy.has_value()) continue;
++    std::set<std::string> registered;
++    std::string json;
++    if (base::ReadFileToStringWithMaxSize((*root_copy)->path().AppendASCII("Local State"),
++                                         &json, 8 * 1024 * 1024)) {
++      auto state = base::JSONReader::ReadDict(json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
++      const auto* cache = state ? state->FindDictByDottedPath("profile.info_cache") : nullptr;
++      if (cache) for (const auto [name, value] : *cache)
++        if (ProfileName(name)) registered.insert(name);
++    }
++    base::FileEnumerator profiles(root, false, base::FileEnumerator::DIRECTORIES);
++    for (auto path = profiles.Next(); !path.empty(); path = profiles.Next()) {
++      if (cancelled.Run()) return base::unexpected("Browser import was cancelled.");
++      if (found.size() == 128)
++        return base::unexpected("Too many browser Profiles are present. Select a source Profile explicitly.");
++      const auto name = path.BaseName().value();
++      if (!ProfileName(name) || (!ConventionalProfile(name) && !registered.contains(name))) continue;
++      auto anchor = BrowserProfileSnapshot::Capture(path, {}, false, cancelled);
++      if (!anchor.has_value() || !(*root_copy)->OriginalIsCurrent()) continue;
++      std::vector<std::string> categories;
++      if (base::PathExists(path.AppendASCII("Bookmarks"))) categories.push_back("bookmarks");
++      if (base::PathExists(path.AppendASCII("History"))) categories.push_back("history");
++      if (base::DirectoryExists(path.Append(sessions::kSessionsDirectory)) ||
++          base::DirectoryExists(path.Append(sessions::kEncryptedSessionsDirectory))) categories.push_back("tabs");
++      if (base::PathExists(path.AppendASCII("Login Data")) ||
++          base::PathExists(path.AppendASCII("Login Data For Account"))) categories.push_back("passwords");
++      if (base::PathExists(path.AppendASCII("Preferences")) ||
++          base::PathExists(path.AppendASCII("Secure Preferences"))) categories.push_back("extensions");
++      if (!categories.empty()) found.push_back({source.id, source.label, name, source.brand,
++          path, std::move(*anchor), std::move(categories)});
++    }
++  }
++  return found;
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_discovery.h b/chrome/browser/ui/aux/browser_profile_discovery.h
+new file mode 100644
+index 000000000..f35ed283f
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_discovery.h
+@@ -0,0 +1,30 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_DISCOVERY_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_DISCOVERY_H_
++#include <memory>
++#include <string>
++#include <vector>
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
++#include "base/types/expected.h"
++#include "chrome/browser/ui/aux/browser_profile_key_provider.h"
++namespace aux {
++class BrowserProfileSnapshot;
++struct DiscoveredBrowserProfile {
++  std::string source_id;
++  std::string label;
++  std::string profile_id;
++  BrowserProfileBrand brand;
++  base::FilePath path;
++  std::unique_ptr<BrowserProfileSnapshot> anchor;
++  std::vector<std::string> categories;
++};
++// No renderer or runtime filesystem path is accepted. Registered profile names
++// come from a held native snapshot of the browser's actual Local State.
++base::expected<std::vector<DiscoveredBrowserProfile>, std::string>
++DiscoverBrowserProfiles(
++    const base::RepeatingCallback<bool()>& cancelled);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_profile_extension_installer.cc b/chrome/browser/ui/aux/browser_profile_extension_installer.cc
+new file mode 100644
+index 000000000..430d661a2
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_extension_installer.cc
+@@ -0,0 +1,19 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_profile_extension_installer.h"
++#include <utility>
++#include "base/check.h"
++namespace aux {
++BrowserProfileExtensionInstaller::BrowserProfileExtensionInstaller(
++    const std::string& id, Profile* profile, gfx::NativeWindow window,
++    base::RepeatingCallback<bool()> current, Callback callback)
++    : WebstoreInstallWithPrompt(id, profile, window, std::move(callback)),
++      current_(std::move(current)) {
++  CHECK(current_);
++}
++BrowserProfileExtensionInstaller::~BrowserProfileExtensionInstaller() = default;
++bool BrowserProfileExtensionInstaller::CheckRequestorAlive() const {
++  return current_.Run() && WebstoreInstallWithPrompt::CheckRequestorAlive();
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_extension_installer.h b/chrome/browser/ui/aux/browser_profile_extension_installer.h
+new file mode 100644
+index 000000000..2328b16a1
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_extension_installer.h
+@@ -0,0 +1,25 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_EXTENSION_INSTALLER_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_EXTENSION_INSTALLER_H_
++#include "base/functional/callback.h"
++#include "chrome/browser/extensions/webstore_install_with_prompt.h"
++namespace aux {
++// Native human consent is still shown by the normal Chrome Web Store installer.
++// The mandatory guard captures the original window/document and held source;
++// neither renderer input nor a downloaded extension can grant import authority.
++class BrowserProfileExtensionInstaller final
++    : public extensions::WebstoreInstallWithPrompt {
++ public:
++  BrowserProfileExtensionInstaller(const std::string& id, Profile* profile,
++      gfx::NativeWindow window, base::RepeatingCallback<bool()> current,
++      Callback callback);
++ protected:
++  ~BrowserProfileExtensionInstaller() override;
++  bool CheckRequestorAlive() const override;
++ private:
++  base::RepeatingCallback<bool()> current_;
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.cc b/chrome/browser/ui/aux/browser_profile_importer.cc
+new file mode 100644
+index 000000000..493ba9ef6
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_importer.cc
+@@ -0,0 +1,624 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_profile_importer.h"
++#include <algorithm>
++#include <atomic>
++#include <set>
++#include <utility>
++#include "base/check.h"
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/files/file_util.h"
++#include "components/sessions/core/session_constants.h"
++#include "components/password_manager/core/browser/ui/credential_ui_entry.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/task/thread_pool.h"
++#include "base/uuid.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
++#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
++#include "chrome/browser/ui/aux/browser_profile_decode.h"
++#include "chrome/browser/ui/aux/browser_profile_discovery.h"
++#include "chrome/browser/ui/aux/browser_profile_extension_installer.h"
++#include "chrome/browser/ui/aux/profile_library.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "ui/base/base_window.h"
++#include "chrome/browser/extensions/api/passwords_private/passwords_private_delegate_factory.h"
++#include "chrome/browser/extensions/api/passwords_private/passwords_private_delegate.h"
++#include "components/os_crypt/async/browser/os_crypt_async.h"
++#include "components/password_manager/core/browser/import/csv_password.h"
++#include "components/password_manager/core/browser/import/password_importer.h"
++#include "components/password_manager/core/browser/import/import_results.h"
++#include "components/password_manager/core/browser/ui/saved_passwords_presenter.h"
++namespace aux {
++namespace {
++base::DictValue Fault(const char* code, const char* message) {
++  base::DictValue result;
++  result.Set("code", code);
++  result.Set("message", message);
++  base::DictValue reply;
++  reply.Set("error", std::move(result));
++  return reply;
++}
++std::string HistoryTitle(const std::u16string& title) {
++  const std::string text = base::UTF16ToUTF8(title);
++  return std::string(base::TruncateUTF8ToByteSize(text, 1000));
++}
++bool ValidOperation(const std::string& id) {
++  return id.size() >= 16 && id.size() <= 128 && std::ranges::all_of(id,
++      [](char c) { return base::IsAsciiAlpha(c) || base::IsAsciiDigit(c) || c == '_' || c == '-'; });
++}
++constexpr const char* kCategories[] = {"bookmarks", "history", "tabs", "passwords", "extensions"};
++}  // namespace
++struct BrowserProfileImporter::Source {
++  std::string handle;
++  std::string owner;
++  base::WeakPtr<BrowserWindowInterface> window;
++  Current current;
++  DiscoveredBrowserProfile discovered;
++};
++struct BrowserProfileImporter::Job {
++  std::string operation;
++  std::shared_ptr<Source> source;
++  std::vector<std::string> categories;
++  std::shared_ptr<std::atomic_bool> cancelled = std::make_shared<std::atomic_bool>(false);
++  bool done = false;
++  bool working = false;
++  bool cleanup = false;
++  size_t category = 0;
++  size_t offset = 0;
++  size_t batch_end = 0;
++  std::vector<NativeBookmarkImportEntry> bookmark_rows;
++  std::map<size_t, base::Uuid> bookmark_folders;
++  std::string error;
++  base::ListValue progress;
++  DecodedBrowserProfile decoded;
++  std::unique_ptr<os_crypt_async::OSCryptAsync> source_crypt;
++  std::unique_ptr<password_manager::PasswordImporter> password_importer;
++  scoped_refptr<BrowserProfileExtensionInstaller> extension_installer;
++};
++BrowserProfileImporter::BrowserProfileImporter(Profile* profile, std::shared_ptr<ProfileLibrary> library)
++    : profile_(profile), library_(std::move(library)) {
++  CHECK(profile_ && library_ && !profile_->IsOffTheRecord());
++  profile_keep_alive_ = ScopedProfileKeepAlive::TryAcquire(profile_, ProfileKeepAliveOrigin::kAuxBrowserImport);
++  worker_ = base::ThreadPool::CreateSingleThreadTaskRunner(
++      {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
++       base::TaskShutdownBehavior::BLOCK_SHUTDOWN});
++}
++BrowserProfileImporter::~BrowserProfileImporter() {
++  CHECK(discoveries_in_flight_ == 0);
++  for (const auto& [id, job] : jobs_) CHECK(job->done && !job->cleanup);
++}
++bool BrowserProfileImporter::CurrentJob(const Job& job) const {
++  return profile_keep_alive_ && !closed_ && !job.cancelled->load() && job.source->current.Run() &&
++      job.source->window && job.source->window->GetProfile() == profile_ &&
++      job.source->discovered.anchor->OriginalIsCurrent() &&
++      (!job.decoded.snapshot || job.decoded.snapshot->OriginalIsCurrent());
++}
++void BrowserProfileImporter::Discover(const std::string& owner_token,
++    base::WeakPtr<BrowserWindowInterface> window, Current current, Reply callback) {
++  if (!profile_keep_alive_ || closed_ || owner_token.empty() || !window || !current || !current.Run() ||
++      window->GetProfile() != profile_ || profile_->IsOffTheRecord()) {
++    std::move(callback).Run(Fault("permission_denied", "The original import window is unavailable."));
++    return;
++  }
++  std::erase_if(sources_, [&](const auto& item) {
++    return item.second->owner == owner_token || !item.second->current.Run();
++  });
++  if (discoveries_in_flight_ || sources_.size() >= 256) {
++    std::move(callback).Run(Fault("conflict", "A browser preview is already in progress. Close old previews and retry."));
++    return;
++  }
++  ++discoveries_in_flight_;
++  auto cancelled = std::make_shared<std::atomic_bool>(false);
++  discovery_owner_ = owner_token;
++  discovery_cancelled_ = cancelled;
++  auto replies = base::SplitOnceCallback(std::move(callback));
++  const bool posted = worker_->PostTaskAndReplyWithResult(FROM_HERE,
++      base::BindOnce(&DiscoverBrowserProfiles, base::BindRepeating(
++          [](std::shared_ptr<std::atomic_bool> flag) { return flag->load(); }, cancelled)),
++      base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
++          std::string owner, base::WeakPtr<BrowserWindowInterface> window,
++          Current current, Reply reply,
++          base::expected<std::vector<DiscoveredBrowserProfile>, std::string> found) {
++        if (!self) return;
++        --self->discoveries_in_flight_;
++        self->discovery_cancelled_.reset();
++        self->discovery_owner_.clear();
++        if (self->closed_ || !window || !current.Run() || !found.has_value()) {
++          std::move(reply).Run(Fault("cancelled", "The browser preview was retired or could not be read safely."));
++          self->MaybeJoined();
++          return;
++        }
++        std::erase_if(self->sources_, [&](const auto& item) { return item.second->owner == owner || !item.second->current.Run(); });
++        base::ListValue sources;
++        base::ListValue handles;
++        std::map<std::string, base::DictValue> summaries;
++        for (auto& discovered : *found) {
++          auto source = std::make_shared<Source>();
++          source->handle = base::Uuid::GenerateRandomV4().AsLowercaseString();
++          source->owner = owner;
++          source->window = window;
++          source->current = current;
++          source->discovered = std::move(discovered);
++          base::ListValue available;
++          for (const char* category : kCategories) {
++            base::DictValue item;
++            item.Set("category", category);
++            item.Set("available", std::ranges::find(source->discovered.categories, category) != source->discovered.categories.end());
++            available.Append(std::move(item));
++          }
++          auto [entry, inserted] = summaries.try_emplace(source->discovered.source_id);
++          if (inserted) {
++            entry->second.Set("id", source->discovered.source_id);
++            entry->second.Set("label", source->discovered.label);
++            entry->second.Set("profiles", base::ListValue());
++            entry->second.Set("categories", available.Clone());
++            entry->second.Set("profileCategories", base::ListValue());
++          }
++          if (!inserted) {
++            auto* categories = entry->second.FindList("categories");
++            for (size_t i = 0; i < available.size(); ++i) {
++              auto& aggregate = (*categories)[i].GetDict();
++              aggregate.Set("available", aggregate.FindBool("available").value_or(false) ||
++                  available[i].GetDict().FindBool("available").value_or(false));
++            }
++          }
++          entry->second.FindList("profiles")->Append(source->discovered.profile_id);
++          base::DictValue profile;
++          profile.Set("profileId", source->discovered.profile_id);
++          profile.Set("categories", std::move(available));
++          entry->second.FindList("profileCategories")->Append(std::move(profile));
++          base::DictValue handle;
++          handle.Set("sourceId", source->discovered.source_id);
++          handle.Set("profileId", source->discovered.profile_id);
++          handle.Set("sourceHandle", source->handle);
++          handles.Append(std::move(handle));
++          self->sources_.emplace(source->handle, std::move(source));
++        }
++        for (auto& [id, summary] : summaries) sources.Append(std::move(summary));
++        base::DictValue result;
++        result.Set("sources", std::move(sources));
++        result.Set("snapshots", std::move(handles));
++        base::DictValue response;
++        response.Set("result", std::move(result));
++        std::move(reply).Run(std::move(response));
++        self->MaybeJoined();
++      }, weak_factory_.GetWeakPtr(), owner_token, window, current, std::move(replies.first)));
++  if (!posted) {
++    --discoveries_in_flight_;
++    discovery_cancelled_.reset();
++    discovery_owner_.clear();
++    std::move(replies.second).Run(Fault("cancelled", "Browser discovery could not start during shutdown."));
++    MaybeJoined();
++  }
++}
++base::DictValue BrowserProfileImporter::Begin(const std::string& owner,
++    const std::string& operation, const std::string& handle,
++    const std::vector<std::string>& requested) {
++  auto old = jobs_.find(operation);
++  if (old != jobs_.end()) {
++    if (old->second->source->owner != owner || old->second->source->handle != handle ||
++        old->second->categories != requested)
++      return Fault("conflict", "This operation already belongs to another import selection.");
++    return Poll(operation);
++  }
++  auto source = sources_.find(handle);
++  if (!profile_keep_alive_ || closed_ || !ValidOperation(operation) || source == sources_.end() ||
++      source->second->owner != owner || !source->second->current.Run() ||
++      !source->second->window || source->second->window->GetProfile() != profile_ ||
++      !source->second->discovered.anchor->OriginalIsCurrent())
++    return Fault("permission_denied", "Refresh the original browser import preview.");
++  std::set<std::string> unique(requested.begin(), requested.end());
++  if (requested.empty() || requested.size() > 5 || unique.size() != requested.size())
++    return Fault("invalid_params", "Choose each import category only once.");
++  for (const auto& category : requested) {
++    if (std::ranges::find(source->second->discovered.categories, category) == source->second->discovered.categories.end())
++      return Fault("invalid_params", "This category is not available in the original browser Profile.");
++  }
++  for (const auto& [id, existing] : jobs_)
++    if (!existing->done || existing->cleanup) return Fault("conflict", "Join or cancel the current native import first.");
++  while (jobs_.size() >= 128) {
++    auto terminal = std::ranges::find_if(jobs_, [](const auto& item) {
++      return item.second->done && !item.second->cleanup;
++    });
++    if (terminal == jobs_.end()) break;
++    jobs_.erase(terminal);
++  }
++  if (jobs_.size() >= 128)
++    return Fault("conflict", "Too many import receipts are retained in this native session.");
++  auto job = std::make_shared<Job>();
++  job->operation = operation;
++  job->source = source->second;
++  job->categories = requested;
++  for (const auto& category : requested) {
++    base::DictValue progress;
++    progress.Set("source", job->source->discovered.source_id);
++    progress.Set("label", job->source->discovered.label);
++    progress.Set("profileId", job->source->discovered.profile_id);
++    progress.Set("category", category);
++    progress.Set("state", "running");
++    progress.Set("imported", 0);
++    progress.Set("skipped", 0);
++    job->progress.Append(std::move(progress));
++  }
++  jobs_.emplace(operation, job);
++  Decode(job);
++  return Poll(operation);
++}
++base::DictValue BrowserProfileImporter::Poll(const std::string& operation) const {
++  auto found = jobs_.find(operation);
++  base::DictValue result;
++  result.Set("operationId", operation);
++  if (found == jobs_.end()) {
++    result.Set("unknown", true);
++    base::DictValue reply;
++    reply.Set("result", std::move(result));
++    return reply;
++  }
++  const auto& job = *found->second;
++  result.Set("unknown", false);
++  result.Set("done", job.done && !job.cleanup);
++  result.Set("cancelled", job.cancelled->load());
++  result.Set("progress", job.progress.Clone());
++  if (!job.error.empty()) result.Set("error", job.error);
++  base::DictValue reply;
++  reply.Set("result", std::move(result));
++  return reply;
++}
++base::DictValue BrowserProfileImporter::Cancel(const std::string& operation) {
++  auto found = jobs_.find(operation);
++  if (found == jobs_.end()) return Poll(operation);
++  auto job = found->second;
++  job->cancelled->store(true);
++  if (auto installer = job->extension_installer) installer->CancelPendingInstall();
++  if (!job->done && !job->working) Finish(job, "");
++  return Poll(operation);
++}
++void BrowserProfileImporter::RetireOwner(const std::string& owner) {
++  if (discovery_owner_ == owner && discovery_cancelled_) discovery_cancelled_->store(true);
++  std::vector<std::string> operations;
++  for (const auto& [id, job] : jobs_)
++    if (job->source->owner == owner && !job->done) operations.push_back(id);
++  for (const auto& id : operations) Cancel(id);
++  std::erase_if(sources_, [&](const auto& item) { return item.second->owner == owner; });
++}
++void BrowserProfileImporter::Close(base::OnceClosure joined) {
++  closed_ = true;
++  if (discovery_cancelled_) discovery_cancelled_->store(true);
++  joins_.push_back(std::move(joined));
++  std::vector<std::string> operations;
++  for (const auto& [id, job] : jobs_) if (!job->done) operations.push_back(id);
++  for (const auto& id : operations) Cancel(id);
++  sources_.clear();
++  MaybeJoined();
++}
++void BrowserProfileImporter::MaybeJoined() {
++  if (!closed_ || discoveries_in_flight_) return;
++  for (const auto& [id, job] : jobs_) if (!job->done || job->cleanup) return;
++  auto joins = std::move(joins_);
++  for (auto& joined : joins)
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, std::move(joined));
++}
++void BrowserProfileImporter::Decode(const std::shared_ptr<Job>& job) {
++  job->working = true;
++  const bool needs_key = std::ranges::find(job->categories, "passwords") != job->categories.end() ||
++      (std::ranges::find(job->categories, "tabs") != job->categories.end() &&
++       base::DirectoryExists(job->source->discovered.path.Append(sessions::kEncryptedSessionsDirectory)));
++  auto decoded = base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
++      std::shared_ptr<Job> job, scoped_refptr<os_crypt_async::Encryptor> encryptor) {
++    if (!self) return;
++    if (!self->CurrentJob(*job)) {
++      job->working = false;
++      self->Finish(job, "The original browser import was retired before acceptance.");
++      return;
++    }
++    const bool posted = self->worker_->PostTaskAndReplyWithResult(FROM_HERE,
++        base::BindOnce(&DecodeBrowserProfile, job->source->discovered.path,
++            job->categories, std::move(encryptor), base::BindRepeating(
++                [](std::shared_ptr<std::atomic_bool> flag) { return flag->load(); }, job->cancelled)),
++        base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
++            std::shared_ptr<Job> job, DecodedBrowserProfile data) {
++          if (!self) return;
++          job->decoded = std::move(data);
++          job->working = false;
++          job->source_crypt.reset();
++          if (!job->decoded.snapshot_error.empty()) self->Finish(job, job->decoded.snapshot_error);
++          else self->Dispatch(job);
++        }, self, job));
++    if (!posted) {
++      job->working = false;
++      self->Finish(job, "Browser decoding could not start during shutdown.");
++    }
++  }, weak_factory_.GetWeakPtr(), job);
++  if (!needs_key) {
++    std::move(decoded).Run(nullptr);
++    return;
++  }
++  std::vector<std::pair<os_crypt_async::OSCryptAsync::Precedence,
++                        std::unique_ptr<os_crypt_async::KeyProvider>>> providers;
++  providers.emplace_back(1, std::make_unique<BrowserProfileKeyProvider>(job->source->discovered.brand, job->cancelled));
++  job->source_crypt = std::make_unique<os_crypt_async::OSCryptAsync>(std::move(providers));
++  job->source_crypt->GetInstance(std::move(decoded));
++}
++void BrowserProfileImporter::ScheduleDispatch(const std::shared_ptr<Job>& job) {
++  if (!base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
++      base::BindOnce(&BrowserProfileImporter::Dispatch, weak_factory_.GetWeakPtr(), job)))
++    Finish(job, "The next browser import batch was not accepted during shutdown.");
++}
++void BrowserProfileImporter::Dispatch(const std::shared_ptr<Job>& job) {
++  if (job->done || job->working) return;
++  if (!CurrentJob(*job)) {
++    job->cancelled->store(true);
++    Finish(job, "");
++    return;
++  }
++  if (job->category == job->categories.size()) {
++    Finish(job, "");
++    return;
++  }
++  const auto& category = job->categories[job->category];
++  auto& progress = job->progress[job->category].GetDict();
++  auto error = job->decoded.errors.find(category);
++  if (error != job->decoded.errors.end()) {
++    progress.Set("state", "error");
++    progress.Set("detail", error->second);
++    ++job->category;
++    job->offset = 0;
++    ScheduleDispatch(job);
++    return;
++  }
++  if (category == "bookmarks") {
++    if (job->bookmark_rows.empty() && job->offset == 0) {
++      job->bookmark_rows.push_back({1, 0, base::UTF8ToUTF16("Imported from " +
++          job->source->discovered.label + " (" + job->source->discovered.profile_id + ")"), GURL()});
++      auto flatten = [&](auto&& visit, const ImportedProfileBookmark& node, size_t parent) -> void {
++        const size_t id = job->bookmark_rows.size() + 1;
++        job->bookmark_rows.push_back({id, parent, node.title, node.url});
++        for (const auto& child : node.children) visit(visit, child, id);
++      };
++      for (const auto& root : job->decoded.bookmarks) flatten(flatten, root, 1);
++    }
++    if (job->offset < job->bookmark_rows.size()) {
++      const size_t end = std::min(job->offset + 500, job->bookmark_rows.size());
++      std::vector<NativeBookmarkImportEntry> rows(job->bookmark_rows.begin() + job->offset,
++                                                job->bookmark_rows.begin() + end);
++      const auto reply = library_->ImportNativeBookmarks(rows, job->bookmark_folders,
++          base::BindRepeating([](base::WeakPtr<BrowserProfileImporter> self, std::shared_ptr<Job> job) {
++            return self && self->CurrentJob(*job);
++          }, weak_factory_.GetWeakPtr(), job));
++      const auto* result = reply.FindDict("result");
++      if (!result || !result->FindInt("added") || !result->FindInt("skipped")) {
++        progress.Set("state", "error");
++        progress.Set("detail", "Chromium could not complete this bookmark batch.");
++        job->offset = job->bookmark_rows.size();
++      } else {
++        progress.Set("imported", progress.FindInt("imported").value() + *result->FindInt("added"));
++        progress.Set("skipped", progress.FindInt("skipped").value() + *result->FindInt("skipped"));
++        job->offset = end;
++        if (result->FindBool("retired").value_or(false)) job->cancelled->store(true);
++      }
++      ScheduleDispatch(job);
++      return;
++    }
++  } else if (category == "history") {
++    if (job->offset < job->decoded.history.size()) {
++      base::ListValue rows;
++      const size_t end = std::min(job->offset + 500, job->decoded.history.size());
++      for (size_t i = job->offset; i < end; ++i) {
++        const auto& visit = job->decoded.history[i];
++        base::DictValue row;
++        row.Set("url", visit.url.spec());
++        row.Set("title", HistoryTitle(visit.title));
++        row.Set("visitedAt", static_cast<double>(visit.last_visit.InMillisecondsSinceUnixEpoch()));
++        rows.Append(std::move(row));
++      }
++      base::DictValue params;
++      params.Set("visits", std::move(rows));
++      job->batch_end = end;
++      job->working = true;
++      library_->ImportHistory(params,
++          base::BindOnce(&BrowserProfileImporter::OnHistory, weak_factory_.GetWeakPtr(), job),
++          base::BindRepeating([](base::WeakPtr<BrowserProfileImporter> self, std::shared_ptr<Job> job) {
++            return self && self->CurrentJob(*job);
++          }, weak_factory_.GetWeakPtr(), job));
++      return;
++    }
++  } else if (category == "tabs") {
++    if (job->offset < job->decoded.tabs.size()) {
++      const auto& tab = job->decoded.tabs[job->offset];
++      base::DictValue command;
++      command.Set("kind", "open");
++      command.Set("url", tab.url.spec());
++      command.Set("background", true);
++      auto result = TabCatalog::GetForProfile(profile_)->Command(job->source->window.get(),
++          job->operation + "_tab_" + std::to_string(job->offset), command, std::nullopt);
++      const auto* status = result.FindString("status");
++      if (status && (*status == "applied" || *status == "duplicate")) {
++        progress.Set("imported", progress.FindInt("imported").value() + 1);
++        const auto* page = result.FindString("pageId");
++        if (tab.pinned && page && CurrentJob(*job)) {
++          BrowserWindowInterface* owner = nullptr;
++          auto* contents = TabCatalog::GetForProfile(profile_)->FindPage(*page, &owner);
++          if (contents && owner == job->source->window.get()) {
++            auto* strip = owner->GetTabStripModel();
++            const int index = strip->GetIndexOfWebContents(contents);
++            if (index >= 0) strip->SetTabPinned(index, true);
++          }
++        }
++      } else {
++        progress.Set("state", "error");
++        progress.Set("detail", "Chromium could not create an imported tab.");
++      }
++      ++job->offset;
++      // Yield between actual tab effects, so retirement/cancellation can stop
++      // the next admission even for large original browser sessions.
++      ScheduleDispatch(job);
++      return;
++    }
++  } else if (category == "passwords") {
++    if (job->offset < job->decoded.passwords.size()) {
++      auto delegate = extensions::PasswordsPrivateDelegateFactory::GetForBrowserContext(profile_, true);
++      auto* presenter = delegate ? delegate->GetSavedPasswordsPresenter() : nullptr;
++      if (!presenter || presenter->IsWaitingForPasswordStore()) {
++        progress.Set("state", "error");
++        progress.Set("detail", "Saved passwords are still loading. Refresh this category before retrying.");
++        job->offset = job->decoded.passwords.size();
++      } else {
++        const size_t end = std::min(job->offset + 500, job->decoded.passwords.size());
++        std::vector<password_manager::CSVPassword> passwords;
++        // Public native cache view preserves every real facet in grouped saved
++        // credentials. Never replace an existing profile/account password, and
++        // reject duplicate source rows before the same native importer batch.
++        std::set<std::pair<std::string, std::u16string>> occupied;
++        for (const auto& saved : presenter->GetSavedCredentials()) {
++          if (!saved.passkey_credential_id.empty()) continue;
++          for (const auto& facet : saved.facets)
++            occupied.emplace(facet.signon_realm, saved.username);
++        }
++        for (size_t i = job->offset; i < end; ++i) {
++          const auto& credential = job->decoded.passwords[i];
++          password_manager::CSVPassword csv(credential.url,
++              base::UTF16ToUTF8(credential.username_value),
++              base::UTF16ToUTF8(credential.password_value.secure_value()), "",
++              password_manager::CSVPassword::Status::kOK);
++          password_manager::CredentialUIEntry destination(csv);
++          if (destination.password.empty() ||
++              !occupied.emplace(destination.GetFirstSignonRealm(), destination.username).second) {
++            progress.Set("skipped", progress.FindInt("skipped").value() + 1);
++            continue;
++          }
++          passwords.push_back(std::move(csv));
++        }
++        job->batch_end = end;
++        job->working = true;
++        job->password_importer = std::make_unique<password_manager::PasswordImporter>(*presenter);
++        job->password_importer->SetDispatchGuard(base::BindRepeating(
++            [](base::WeakPtr<BrowserProfileImporter> self, std::shared_ptr<Job> job) {
++              return self && self->CurrentJob(*job);
++            }, weak_factory_.GetWeakPtr(), job));
++        job->password_importer->Import(passwords,
++            password_manager::PasswordForm::Store::kProfileStore,
++            base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
++                std::shared_ptr<Job> job, size_t count, const password_manager::ImportResults& result) {
++              if (self) self->OnPasswords(job, count, result.status, result.number_imported);
++            }, weak_factory_.GetWeakPtr(), job, passwords.size()));
++        return;
++      }
++    }
++  } else if (category == "extensions") {
++    if (job->offset < job->decoded.extensions.size()) {
++      const auto& id = job->decoded.extensions[job->offset];
++      job->working = true;
++      job->extension_installer = base::MakeRefCounted<BrowserProfileExtensionInstaller>(
++          id, profile_, job->source->window->GetWindow()->GetNativeWindow(),
++          base::BindRepeating([](base::WeakPtr<BrowserProfileImporter> self, std::shared_ptr<Job> job) {
++            return self && self->CurrentJob(*job);
++          }, weak_factory_.GetWeakPtr(), job),
++          base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
++              std::shared_ptr<Job> job, bool success, const std::string&, extensions::webstore_install::Result) {
++            if (self) self->OnExtension(job, success);
++          }, weak_factory_.GetWeakPtr(), job));
++      job->extension_installer->BeginInstall();
++      return;
++    }
++  }
++  if (progress.FindString("state") && *progress.FindString("state") == "running") progress.Set("state", "done");
++  ++job->category;
++  job->offset = 0;
++  ScheduleDispatch(job);
++}
++void BrowserProfileImporter::OnHistory(const std::shared_ptr<Job>& job, base::DictValue reply) {
++  job->working = false;
++  auto& progress = job->progress[job->category].GetDict();
++  const auto* result = reply.FindDict("result");
++  const auto added = result ? result->FindInt("added") : std::nullopt;
++  const auto skipped = result ? result->FindInt("skipped") : std::nullopt;
++  if (!added || !skipped || *added < 0 || *skipped < 0 ||
++      static_cast<size_t>(*added + *skipped) > job->batch_end - job->offset) {
++    progress.Set("state", "error");
++    progress.Set("detail", "Chromium did not confirm this history batch.");
++    job->offset = job->decoded.history.size();
++  } else {
++    progress.Set("imported", progress.FindInt("imported").value() + *added);
++    progress.Set("skipped", progress.FindInt("skipped").value() + *skipped);
++    job->offset = job->batch_end;
++  }
++  Dispatch(job);
++}
++void BrowserProfileImporter::OnPasswords(const std::shared_ptr<Job>& job,
++    size_t total, int status, size_t imported) {
++  if (status == password_manager::ImportResults::CONFLICTS && CurrentJob(*job)) {
++    // Existing credentials are never overwritten by source import. This is the
++    // upstream importer's explicit skip-conflicts continuation, still subject
++    // to the mandatory final native dispatch guard.
++    job->password_importer->ContinueImport({}, base::BindOnce(
++        [](base::WeakPtr<BrowserProfileImporter> self, std::shared_ptr<Job> job,
++           size_t total, const password_manager::ImportResults& result) {
++          if (self) self->OnPasswords(job, total, result.status, result.number_imported);
++        }, weak_factory_.GetWeakPtr(), job, total));
++    return;
++  }
++  job->working = false;
++  auto& progress = job->progress[job->category].GetDict();
++  if (status == password_manager::ImportResults::SUCCESS && imported <= total) {
++    progress.Set("imported", progress.FindInt("imported").value() + static_cast<int>(imported));
++    progress.Set("skipped", progress.FindInt("skipped").value() + static_cast<int>(total - imported));
++  } else {
++    progress.Set("state", "error");
++    progress.Set("detail", "Chromium did not confirm this password batch.");
++  }
++  // Deleting the importer is deferred until its completion stack returns.
++  auto completed = std::move(job->password_importer);
++  base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(FROM_HERE, std::move(completed));
++  job->offset = status == password_manager::ImportResults::SUCCESS && imported <= total
++      ? job->batch_end : job->decoded.passwords.size();
++  Dispatch(job);
++}
++void BrowserProfileImporter::OnExtension(const std::shared_ptr<Job>& job, bool success) {
++  job->working = false;
++  auto& progress = job->progress[job->category].GetDict();
++  const char* counter = success ? "imported" : "skipped";
++  progress.Set(counter, progress.FindInt(counter).value() + 1);
++  if (!success) progress.Set("detail", "An extension was declined or could not be installed from the Chrome Web Store.");
++  job->extension_installer.reset();
++  ++job->offset;
++  Dispatch(job);
++}
++void BrowserProfileImporter::Finish(const std::shared_ptr<Job>& job, const std::string& error) {
++  if (job->done) return;
++  CHECK(!job->working);
++  job->done = true;
++  job->error = error;
++  for (auto& value : job->progress) {
++    auto& progress = value.GetDict();
++    const auto* state = progress.FindString("state");
++    if (state && *state == "running") {
++      progress.Set("state", error.empty() ? "skipped" : "error");
++      progress.Set("detail", error.empty() ? "Cancelled before the next native batch was accepted." : error);
++    }
++  }
++  job->decoded.passwords.clear();
++  job->bookmark_rows.clear();
++  job->bookmark_folders.clear();
++  job->cleanup = true;
++  auto decoded = std::make_unique<DecodedBrowserProfile>(std::move(job->decoded));
++  const bool posted = worker_->PostTaskAndReply(FROM_HERE,
++      base::BindOnce([](std::unique_ptr<DecodedBrowserProfile> data) { data.reset(); }, std::move(decoded)),
++      base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self, std::shared_ptr<Job> job) {
++        job->cleanup = false;
++        if (self) self->MaybeJoined();
++      }, weak_factory_.GetWeakPtr(), job));
++  // A rejected task is destroyed synchronously, including its decoded data.
++  if (!posted) job->cleanup = false;
++  job->password_importer.reset();
++  job->extension_installer.reset();
++  job->source_crypt.reset();
++  MaybeJoined();
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.h b/chrome/browser/ui/aux/browser_profile_importer.h
+new file mode 100644
+index 000000000..0b8c9f102
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_importer.h
+@@ -0,0 +1,75 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_IMPORTER_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_IMPORTER_H_
++#include <atomic>
++#include <map>
++#include <memory>
++#include <string>
++#include <vector>
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/scoped_refptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/values.h"
++class Profile;
++class BrowserWindowInterface;
++class ScopedProfileKeepAlive;
++namespace base { class SingleThreadTaskRunner; }
++namespace aux {
++class ProfileLibrary;
++// Owned by the original native runtime host. Discover/Begin receive authority
++// derived there from its actual WeakDocumentPtr + window + socket generation.
++// Poll/Cancel only reduce known jobs, including after owner retirement.
++class BrowserProfileImporter {
++ public:
++  using Reply = base::OnceCallback<void(base::DictValue)>;
++  using Current = base::RepeatingCallback<bool()>;
++  BrowserProfileImporter(Profile* profile, std::shared_ptr<ProfileLibrary> library);
++  ~BrowserProfileImporter();
++  BrowserProfileImporter(const BrowserProfileImporter&) = delete;
++  BrowserProfileImporter& operator=(const BrowserProfileImporter&) = delete;
++  void Discover(const std::string& owner_token,
++                base::WeakPtr<BrowserWindowInterface> window,
++                Current current, Reply callback);
++  // Idempotence is exact operation ID + original owner/source/category tuple.
++  // The caller persists operation_id before this method can accept any effect.
++  base::DictValue Begin(const std::string& owner_token,
++                       const std::string& operation_id,
++                       const std::string& source_handle,
++                       const std::vector<std::string>& categories);
++  base::DictValue Poll(const std::string& operation_id) const;
++  base::DictValue Cancel(const std::string& operation_id);
++  void RetireOwner(const std::string& owner_token);
++  // A callback is an actual join: no decoding work, prompt, accepted installer
++  // or backend batch remains. It is not a rollback of accepted import effects.
++  void Close(base::OnceClosure joined);
++ private:
++  struct Source;
++  struct Job;
++  void Decode(const std::shared_ptr<Job>& job);
++  void Dispatch(const std::shared_ptr<Job>& job);
++  void ScheduleDispatch(const std::shared_ptr<Job>& job);
++  void OnHistory(const std::shared_ptr<Job>& job, base::DictValue result);
++  void OnPasswords(const std::shared_ptr<Job>& job, size_t total,
++                   int status, size_t imported);
++  void OnExtension(const std::shared_ptr<Job>& job, bool success);
++  void Finish(const std::shared_ptr<Job>& job, const std::string& error);
++  void MaybeJoined();
++  bool CurrentJob(const Job& job) const;
++  raw_ptr<Profile> profile_;
++  std::shared_ptr<ProfileLibrary> library_;
++  std::unique_ptr<ScopedProfileKeepAlive> profile_keep_alive_;
++  bool closed_ = false;
++  scoped_refptr<base::SingleThreadTaskRunner> worker_;
++  std::string discovery_owner_;
++  std::shared_ptr<std::atomic_bool> discovery_cancelled_;
++  size_t discoveries_in_flight_ = 0;
++  std::map<std::string, std::shared_ptr<Source>> sources_;
++  std::map<std::string, std::shared_ptr<Job>> jobs_;
++  std::vector<base::OnceClosure> joins_;
++  base::WeakPtrFactory<BrowserProfileImporter> weak_factory_{this};
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_profile_key_provider.h b/chrome/browser/ui/aux/browser_profile_key_provider.h
+new file mode 100644
+index 000000000..896af1906
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_key_provider.h
+@@ -0,0 +1,25 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_KEY_PROVIDER_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_KEY_PROVIDER_H_
++#include <atomic>
++#include <memory>
++#include "components/os_crypt/async/browser/key_provider.h"
++namespace aux {
++enum class BrowserProfileBrand { kChrome, kChromium, kEdge, kBrave, kArc, kDia, kComet };
++// A separate OSCryptAsync instance decodes only this native disposable snapshot.
++// Never changes Aux's global key, exports a key, or creates a source Keychain item.
++class BrowserProfileKeyProvider final : public os_crypt_async::KeyProvider {
++ public:
++  BrowserProfileKeyProvider(BrowserProfileBrand source,
++                            std::shared_ptr<std::atomic_bool> cancelled);
++  ~BrowserProfileKeyProvider() override;
++  void GetKey(KeyCallback callback) override;
++  bool UseForEncryption() override;
++ private:
++  BrowserProfileBrand source_;
++  std::shared_ptr<std::atomic_bool> cancelled_;
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_profile_key_provider.mm b/chrome/browser/ui/aux/browser_profile_key_provider.mm
+new file mode 100644
+index 000000000..c309089d7
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_key_provider.mm
+@@ -0,0 +1,99 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_profile_key_provider.h"
++#include <Security/Security.h>
++#include <array>
++#include <vector>
++#include <utility>
++#include "base/apple/scoped_cftyperef.h"
++#include "base/apple/foundation_util.h"
++#include "base/containers/span.h"
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "base/task/thread_pool.h"
++#include "components/os_crypt/async/common/algorithm.mojom.h"
++#include "crypto/apple/keychain_v2.h"
++#include "crypto/kdf.h"
++#include "crypto/secure_util.h"
++#include "crypto/subtle_passkey.h"
++namespace aux {
++namespace {
++const char* Service(BrowserProfileBrand source) {
++  switch (source) {
++    case BrowserProfileBrand::kChrome: return "Chrome Safe Storage";
++    case BrowserProfileBrand::kChromium: return "Chromium Safe Storage";
++    case BrowserProfileBrand::kEdge: return "Microsoft Edge Safe Storage";
++    case BrowserProfileBrand::kBrave: return "Brave Safe Storage";
++    case BrowserProfileBrand::kArc: return "Arc Safe Storage";
++    case BrowserProfileBrand::kDia: return "Dia Safe Storage";
++    case BrowserProfileBrand::kComet: return "Comet Safe Storage";
++  }
++  return nullptr;
++}
++base::expected<os_crypt_async::Encryptor::Key, os_crypt_async::KeyProvider::KeyError>
++ReadSourceKey(BrowserProfileBrand source, std::shared_ptr<std::atomic_bool> cancelled,
++              crypto::SubtlePassKey passkey) {
++  using Error = os_crypt_async::KeyProvider::KeyError;
++  if (cancelled->load()) return base::unexpected(Error::kTemporarilyUnavailable);
++  const char* name = Service(source);
++  if (!name) return base::unexpected(Error::kTemporarilyUnavailable);
++  base::apple::ScopedCFTypeRef<CFStringRef> service(
++      CFStringCreateWithCString(kCFAllocatorDefault, name, kCFStringEncodingUTF8));
++  const void* keys[] = {kSecClass, kSecAttrService, kSecMatchLimit,
++                         kSecReturnAttributes, kSecReturnData};
++  const void* values[] = {kSecClassGenericPassword, service.get(), kSecMatchLimitAll,
++                           kCFBooleanTrue, kCFBooleanTrue};
++  base::apple::ScopedCFTypeRef<CFDictionaryRef> query(CFDictionaryCreate(
++      kCFAllocatorDefault, keys, values, std::size(keys),
++      &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
++  base::apple::ScopedCFTypeRef<CFTypeRef> result;
++  // Read-only query: missing/ambiguous/auth-denied keys refuse this category.
++  // Stock KeychainPassword::GetPassword would create a missing source key.
++  if (crypto::apple::KeychainV2::GetInstance().ItemCopyMatching(
++          query.get(), result.InitializeInto()) != errSecSuccess || !result ||
++      CFGetTypeID(result.get()) != CFArrayGetTypeID())
++    return base::unexpected(Error::kTemporarilyUnavailable);
++  if (cancelled->load()) return base::unexpected(Error::kTemporarilyUnavailable);
++  auto array = static_cast<CFArrayRef>(result.get());
++  if (CFArrayGetCount(array) != 1)
++    return base::unexpected(Error::kTemporarilyUnavailable);
++  auto item = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(array, 0));
++  if (!item || CFGetTypeID(item) != CFDictionaryGetTypeID())
++    return base::unexpected(Error::kTemporarilyUnavailable);
++  auto data = static_cast<CFDataRef>(CFDictionaryGetValue(item, kSecValueData));
++  if (!data || CFGetTypeID(data) != CFDataGetTypeID() || CFDataGetLength(data) <= 0 ||
++      CFDataGetLength(data) > 4096)
++    return base::unexpected(Error::kTemporarilyUnavailable);
++  const auto bytes = base::apple::CFDataToSpan(data);
++  std::vector<uint8_t> password(bytes.begin(), bytes.end());
++  // The same persisted macOS v10 codec parameters used by Chromium's provider.
++  constexpr auto salt = std::to_array<uint8_t>({'s','a','l','t','y','s','a','l','t'});
++  std::array<uint8_t, 16> key_bytes;
++  crypto::kdf::Pbkdf2HmacSha1({.iterations = 1003}, password, salt, key_bytes, passkey);
++  crypto::SecureZeroBuffer(password);
++  os_crypt_async::Encryptor::Key key(key_bytes,
++                                    os_crypt_async::mojom::Algorithm::kAES128CBC);
++  crypto::SecureZeroBuffer(key_bytes);
++  return key;
++}
++}  // namespace
++BrowserProfileKeyProvider::BrowserProfileKeyProvider(BrowserProfileBrand source,
++    std::shared_ptr<std::atomic_bool> cancelled)
++    : source_(source), cancelled_(std::move(cancelled)) {}
++BrowserProfileKeyProvider::~BrowserProfileKeyProvider() = default;
++void BrowserProfileKeyProvider::GetKey(KeyCallback callback) {
++  auto replies = base::SplitOnceCallback(std::move(callback));
++  const bool posted = base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE,
++      {base::MayBlock(), base::TaskPriority::USER_BLOCKING,
++       base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
++      base::BindOnce(&ReadSourceKey, source_, cancelled_, crypto::SubtlePassKey{}),
++      base::BindOnce(std::move(replies.first), "v10"));
++  if (!posted) std::move(replies.second).Run("v10",
++      base::unexpected(KeyError::kTemporarilyUnavailable));
++}
++bool BrowserProfileKeyProvider::UseForEncryption() {
++  // Only a disposable native copy may need codec/schema migration encryption.
++  return true;
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_readers.cc b/chrome/browser/ui/aux/browser_profile_readers.cc
+new file mode 100644
+index 000000000..a220fbc2b
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_readers.cc
+@@ -0,0 +1,214 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_profile_readers.h"
++#include <algorithm>
++#include <set>
++#include <utility>
++#include "base/files/file_util.h"
++#include "base/functional/callback_helpers.h"
++#include "base/json/json_reader.h"
++#include "base/task/sequenced_task_runner.h"
++#include "chrome/browser/ui/aux/browser_profile_snapshot.h"
++#include "components/bookmarks/browser/bookmark_codec.h"
++#include "components/bookmarks/browser/bookmark_node.h"
++#include "components/download/public/common/download_interrupt_reasons.h"
++#include "components/history/core/browser/history_database.h"
++#include "components/os_crypt/async/common/encryptor.h"
++#include "components/password_manager/core/browser/password_store/login_database.h"
++#include "components/password_manager/core/browser/sync/password_store_sync.h"
++#include "components/sessions/core/command_storage_backend.h"
++#include "components/sessions/core/command_storage_manager.h"
++#include "components/sessions/core/session_constants.h"
++#include "components/sessions/core/session_service_commands.h"
++#include "components/sessions/core/session_types.h"
++
++namespace aux {
++namespace {
++bool SafeUrl(const GURL& url) {
++  return url.is_valid() && url.SchemeIsHTTPOrHTTPS() &&
++      !url.has_username() && !url.has_password() && url.spec().size() <= 8192;
++}
++
++base::expected<ImportedProfileBookmark, std::string> ProjectBookmark(
++    const bookmarks::BookmarkNode& node, size_t depth, size_t& count) {
++  if (depth > 64 || ++count > 100000)
++    return base::unexpected("This bookmark tree exceeds the safe import size.");
++  ImportedProfileBookmark result{node.GetTitle().substr(0, 1000), GURL(), {}};
++  if (node.is_url()) {
++    if (!SafeUrl(node.url()))
++      return base::unexpected("This bookmark has a private or unsupported URL.");
++    result.url = node.url();
++  } else {
++    for (const auto& child : node.children()) {
++      // Internal browser URLs and credential-bearing URLs cannot leave the
++      // original Profile. Keep folders and the safe web bookmarks they contain.
++      if (child->is_url() && !SafeUrl(child->url())) continue;
++      auto projected = ProjectBookmark(*child, depth + 1, count);
++      if (!projected.has_value()) return base::unexpected(projected.error());
++      result.children.push_back(std::move(*projected));
++    }
++  }
++  return result;
++}
++}
++base::expected<std::vector<ImportedProfileBookmark>, std::string>
++ReadProfileBookmarks(const BrowserProfileSnapshot& snapshot) {
++  if (!snapshot.OriginalIsCurrent())
++    return base::unexpected("The original bookmark store changed.");
++  std::string json;
++  if (!base::ReadFileToStringWithMaxSize(snapshot.path().AppendASCII("Bookmarks"),
++                                       &json, 64 * 1024 * 1024))
++    return base::unexpected("The copied bookmark store is unreadable or too large.");
++  auto encoded = base::JSONReader::ReadDict(json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
++  if (!encoded) return base::unexpected("The copied bookmark store is malformed.");
++  auto bar = bookmarks::BookmarkPermanentNode::CreateBookmarkBar(1, false);
++  auto other = bookmarks::BookmarkPermanentNode::CreateOtherBookmarks(2, false);
++  auto mobile = bookmarks::BookmarkPermanentNode::CreateMobileBookmarks(3, false);
++  bookmarks::BookmarkCodec codec;
++  int64_t max_id = 3;
++  std::string sync_metadata;
++  if (!codec.Decode(*encoded, {1, 2, 3}, bar.get(), other.get(), mobile.get(),
++                    &max_id, &sync_metadata))
++    return base::unexpected("Chromium could not decode the copied bookmarks.");
++  std::vector<ImportedProfileBookmark> results;
++  size_t count = 0;
++  for (const auto* root : {bar.get(), other.get(), mobile.get()}) {
++    auto projected = ProjectBookmark(*root, 0, count);
++    if (!projected.has_value()) return base::unexpected(projected.error());
++    results.push_back(std::move(*projected));
++  }
++  if (!snapshot.OriginalIsCurrent())
++    return base::unexpected("The original bookmark store changed.");
++  return results;
++}
++
++base::expected<std::vector<ImportedProfileHistory>, std::string>
++ReadProfileHistory(const BrowserProfileSnapshot& snapshot) {
++  if (!snapshot.OriginalIsCurrent())
++    return base::unexpected("The original history store changed.");
++  // HistoryDatabase may migrate its database. Its only path is the disposable
++  // immutable-source copy, never the original browser's History file.
++  const auto history_size = base::GetFileSize(snapshot.path().AppendASCII("History"));
++  if (!history_size || *history_size <= 0)
++    return base::unexpected("The copied history store is missing or empty.");
++  history::HistoryDatabase database(download::DOWNLOAD_INTERRUPT_REASON_NONE,
++                                   download::DOWNLOAD_INTERRUPT_REASON_CRASH);
++  if (database.Init(snapshot.path().AppendASCII("History")) != sql::INIT_OK)
++    return base::unexpected("Chromium could not decode the copied history.");
++  history::URLDatabase::URLEnumerator enumerator;
++  if (!database.InitURLEnumeratorForEverything(&enumerator))
++    return base::unexpected("Chromium could not enumerate the copied history.");
++  std::vector<ImportedProfileHistory> results;
++  history::URLRow row;
++  while (enumerator.GetNextURL(&row)) {
++    if (!SafeUrl(row.url()) || row.last_visit().is_null()) continue;
++    if (results.size() == 1000000)
++      return base::unexpected("This history exceeds the safe import size.");
++    results.push_back({row.url(), row.title().substr(0, 1000), row.last_visit()});
++  }
++  if (!enumerator.Succeeded())
++    return base::unexpected("The copied history could not be read completely.");
++  if (!snapshot.OriginalIsCurrent())
++    return base::unexpected("The original history store changed.");
++  return results;
++}
++base::expected<std::vector<ImportedProfileTab>, std::string> ReadProfileTabs(
++    const BrowserProfileSnapshot& snapshot,
++    scoped_refptr<os_crypt_async::Encryptor> source_encryptor) {
++  if (!snapshot.OriginalIsCurrent())
++    return base::unexpected("The original browser Profile changed.");
++  const bool encrypted = base::DirectoryExists(
++      snapshot.path().Append(sessions::kEncryptedSessionsDirectory));
++  if (encrypted && (!source_encryptor || !source_encryptor->IsDecryptionAvailable()))
++    return base::unexpected("Allow access to the original browser’s Safe Storage key to import encrypted tabs.");
++  auto backend = base::MakeRefCounted<sessions::CommandStorageBackend>(
++      base::SequencedTaskRunner::GetCurrentDefault(), snapshot.path(),
++      sessions::CommandStorageManager::SessionType::kSessionRestore,
++      encrypted ? source_encryptor : nullptr);
++  auto commands = backend->ReadLastSessionCommands();
++  if (commands.error_reading)
++    return base::unexpected("Chromium could not decode this browser’s session.");
++  std::vector<std::unique_ptr<sessions::SessionWindow>> windows;
++  SessionID active = SessionID::InvalidValue();
++  std::string platform_id;
++  std::set<SessionID> discarded;
++  sessions::RestoreSessionFromCommands(commands.commands, &windows, &active,
++                                       &platform_id, &discarded);
++  std::vector<ImportedProfileTab> tabs;
++  for (const auto& window : windows) {
++    for (const auto& tab : window->tabs) {
++      if (tab->navigations.empty()) continue;
++      const auto& navigation = tab->navigations[tab->normalized_navigation_index()];
++      if (!SafeUrl(navigation.virtual_url())) continue;
++      tabs.push_back({navigation.virtual_url(), navigation.title().substr(0, 1000),
++                      window->window_id.id(), tab->pinned});
++    }
++  }
++  if (!snapshot.OriginalIsCurrent())
++    return base::unexpected("The original browser session changed.");
++  return tabs;
++}
++
++base::expected<std::vector<password_manager::StoredCredential>, std::string>
++ReadProfilePasswords(const BrowserProfileSnapshot& snapshot,
++                    scoped_refptr<os_crypt_async::Encryptor> source_encryptor) {
++  if (!snapshot.OriginalIsCurrent() || !source_encryptor ||
++      !source_encryptor->IsDecryptionAvailable())
++    return base::unexpected("Allow access to the original browser’s Safe Storage key to import passwords.");
++  std::vector<password_manager::StoredCredential> all;
++  for (const auto& [filename, account] :
++       {std::pair{"Login Data", false}, std::pair{"Login Data For Account", true}}) {
++    const auto file = snapshot.path().AppendASCII(filename);
++    if (!base::PathExists(file)) continue;
++    const auto size = base::GetFileSize(file);
++    if (!size || *size <= 0)
++      return base::unexpected("The copied password store is empty or unreadable.");
++    password_manager::LoginDatabase database(file,
++        password_manager::IsAccountStore(account),
++        password_manager::LoginDatabase::DeletingUndecryptablePasswordsEnabled(false));
++    if (!database.Init(base::DoNothing(), source_encryptor))
++      return base::unexpected("Chromium could not open the copied password store.");
++    std::vector<password_manager::StoredCredential> credentials;
++    if (database.GetAllLogins(&credentials) !=
++        password_manager::FormRetrievalResult::kSuccess)
++      return base::unexpected("The original browser’s passwords could not all be decrypted.");
++    for (auto& credential : credentials) {
++      if (!credential.blocked_by_user && SafeUrl(credential.url))
++        all.push_back(std::move(credential));
++    }
++  }
++  if (!snapshot.OriginalIsCurrent())
++    return base::unexpected("The original password store changed.");
++  return all;
++}
++
++base::expected<std::vector<std::string>, std::string> ReadProfileStoreExtensions(
++    const BrowserProfileSnapshot& snapshot) {
++  if (!snapshot.OriginalIsCurrent())
++    return base::unexpected("The original browser Profile changed.");
++  // Preferences are metadata only. Never inspect/copy executable extension code.
++  std::set<std::string> ids;
++  for (const auto* filename : {"Preferences", "Secure Preferences"}) {
++    const auto file = snapshot.path().AppendASCII(filename);
++    if (!base::PathExists(file)) continue;
++    std::string json;
++    if (!base::ReadFileToStringWithMaxSize(file, &json, 16 * 1024 * 1024))
++      return base::unexpected("This browser’s extension metadata is too large or unreadable.");
++    auto data = base::JSONReader::ReadDict(json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
++    const auto* settings = data ? data->FindDictByDottedPath("extensions.settings") : nullptr;
++    if (!data) return base::unexpected("This browser’s extension metadata is malformed.");
++    if (!settings) continue;
++    for (const auto [id, raw] : *settings) {
++      const auto* extension = raw.GetIfDict();
++      if (id.size() != 32 || !std::ranges::all_of(id,
++          [](char c) { return c >= 'a' && c <= 'p'; }) || !extension ||
++          !extension->FindBool("from_webstore").value_or(false)) continue;
++      ids.insert(id);
++    }
++  }
++  if (!snapshot.OriginalIsCurrent())
++    return base::unexpected("The original browser’s extension list changed.");
++  return std::vector<std::string>(ids.begin(), ids.end());
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_readers.h b/chrome/browser/ui/aux/browser_profile_readers.h
+new file mode 100644
+index 000000000..4f76b4c27
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_readers.h
+@@ -0,0 +1,47 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_READERS_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_READERS_H_
++#include <string>
++#include <vector>
++#include "base/memory/scoped_refptr.h"
++#include "base/time/time.h"
++#include "base/types/expected.h"
++#include "components/password_manager/core/browser/password_store/stored_credential.h"
++#include "url/gurl.h"
++namespace os_crypt_async { class Encryptor; }
++namespace aux {
++class BrowserProfileSnapshot;
++struct ImportedProfileBookmark {
++  std::u16string title;
++  GURL url;
++  std::vector<ImportedProfileBookmark> children;
++};
++struct ImportedProfileHistory {
++  GURL url;
++  std::u16string title;
++  base::Time last_visit;
++};
++base::expected<std::vector<ImportedProfileBookmark>, std::string>
++ReadProfileBookmarks(const BrowserProfileSnapshot& snapshot);
++base::expected<std::vector<ImportedProfileHistory>, std::string>
++ReadProfileHistory(const BrowserProfileSnapshot& snapshot);
++struct ImportedProfileTab {
++  GURL url;
++  std::u16string title;
++  int original_window_id;
++  bool pinned;
++};
++base::expected<std::vector<ImportedProfileTab>, std::string> ReadProfileTabs(
++    const BrowserProfileSnapshot& snapshot,
++    scoped_refptr<os_crypt_async::Encryptor> source_encryptor);
++// PasswordString is Chromium's protected native-memory representation. This
++// result is sent only to the destination native PasswordStore, never to JS/IPC.
++base::expected<std::vector<password_manager::StoredCredential>, std::string>
++ReadProfilePasswords(const BrowserProfileSnapshot& snapshot,
++                    scoped_refptr<os_crypt_async::Encryptor> source_encryptor);
++base::expected<std::vector<std::string>, std::string> ReadProfileStoreExtensions(
++    const BrowserProfileSnapshot& snapshot);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_profile_snapshot.cc b/chrome/browser/ui/aux/browser_profile_snapshot.cc
+new file mode 100644
+index 000000000..193c23bdd
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_snapshot.cc
+@@ -0,0 +1,194 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_profile_snapshot.h"
++
++#include <dirent.h>
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++
++#include <array>
++#include <cerrno>
++#include <utility>
++
++#include "base/containers/span.h"
++#include "base/files/file_util.h"
++#include "base/files/scoped_file.h"
++#include "base/posix/eintr_wrapper.h"
++#include "base/strings/string_util.h"
++#include "components/sessions/core/session_constants.h"
++
++namespace aux {
++namespace {
++constexpr int64_t kMaxSnapshotBytes = 1024LL * 1024 * 1024;
++constexpr size_t kMaxSessionFiles = 256;
++
++bool SameEntry(const struct stat& before, const struct stat& after) {
++  return before.st_dev == after.st_dev && before.st_ino == after.st_ino &&
++         before.st_mode == after.st_mode && before.st_size == after.st_size &&
++         before.st_mtimespec.tv_sec == after.st_mtimespec.tv_sec &&
++         before.st_mtimespec.tv_nsec == after.st_mtimespec.tv_nsec &&
++         before.st_ctimespec.tv_sec == after.st_ctimespec.tv_sec &&
++         before.st_ctimespec.tv_nsec == after.st_ctimespec.tv_nsec;
++}
++
++bool SafeLeaf(const std::string& leaf) {
++  return !leaf.empty() && leaf != "." && leaf != ".." &&
++         leaf.find('/') == std::string::npos && leaf.find('\0') == std::string::npos;
++}
++}  // namespace
++
++struct BrowserProfileSnapshot::HeldEntry {
++  base::ScopedFD descriptor;
++  base::ScopedFD parent;
++  std::string leaf;
++  struct stat identity;
++  bool contents = true;
++  bool Current() const {
++    struct stat current, linked;
++    return fstat(descriptor.get(), &current) == 0 &&
++        (contents ? SameEntry(identity, current) :
++          identity.st_dev == current.st_dev && identity.st_ino == current.st_ino && identity.st_mode == current.st_mode) &&
++        (leaf.empty() || (fstatat(parent.get(), leaf.c_str(), &linked,
++                                  AT_SYMLINK_NOFOLLOW) == 0 &&
++                         (contents ? SameEntry(identity, linked) :
++                             identity.st_dev == linked.st_dev && identity.st_ino == linked.st_ino && identity.st_mode == linked.st_mode)));
++  }
++};
++BrowserProfileSnapshot::BrowserProfileSnapshot() = default;
++BrowserProfileSnapshot::~BrowserProfileSnapshot() = default;
++
++bool BrowserProfileSnapshot::OriginalIsCurrent() const {
++  for (const auto& entry : originals_) if (!entry->Current()) return false;
++  return true;
++}
++
++base::expected<std::unique_ptr<BrowserProfileSnapshot>, std::string>
++BrowserProfileSnapshot::Capture(const base::FilePath& profile,
++                               const std::vector<std::string>& files,
++                               bool include_sessions,
++                               const base::RepeatingCallback<bool()>& cancelled) {
++  if (cancelled.is_null() || cancelled.Run())
++    return base::unexpected("Browser import was cancelled.");
++  auto snapshot = std::unique_ptr<BrowserProfileSnapshot>(new BrowserProfileSnapshot);
++  if (!profile.IsAbsolute() || profile.ReferencesParent())
++    return base::unexpected("Invalid original browser Profile.");
++  base::ScopedFD root(HANDLE_EINTR(open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC)));
++  for (const auto& component : profile.GetComponents()) {
++    if (component == "/") continue;
++    if (!SafeLeaf(component) || component == ".")
++      return base::unexpected("Invalid original browser Profile.");
++    auto entry = std::make_unique<HeldEntry>();
++    entry->parent.reset(HANDLE_EINTR(dup(root.get())));
++    entry->leaf = component;
++    entry->descriptor.reset(HANDLE_EINTR(openat(root.get(), component.c_str(),
++        O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)));
++    entry->contents = false;
++    if (!entry->descriptor.is_valid() || !entry->parent.is_valid() ||
++        fstat(entry->descriptor.get(), &entry->identity) != 0)
++      return base::unexpected("The browser Profile path changed or contains a symbolic link.");
++    root.reset(HANDLE_EINTR(dup(entry->descriptor.get())));
++    snapshot->originals_.push_back(std::move(entry));
++  }
++  if (!root.is_valid() || !snapshot->directory_.CreateUniqueTempDir())
++    return base::unexpected("This browser Profile could not be opened safely.");
++  if (chmod(snapshot->path().value().c_str(), 0700) != 0)
++    return base::unexpected("A private import snapshot could not be created.");
++  auto retain_directory = [&](int descriptor, int parent = -1, const char* leaf = "") {
++    auto entry = std::make_unique<HeldEntry>();
++    entry->descriptor.reset(HANDLE_EINTR(dup(descriptor)));
++    if (parent >= 0) entry->parent.reset(HANDLE_EINTR(dup(parent)));
++    entry->leaf = leaf;
++    if (!entry->descriptor.is_valid() || fstat(descriptor, &entry->identity) != 0)
++      return false;
++    snapshot->originals_.push_back(std::move(entry));
++    return true;
++  };
++  if (!retain_directory(root.get()))
++    return base::unexpected("The original browser Profile is unavailable.");
++  int64_t total = 0;
++  auto copy = [&](int source_directory, const std::string& leaf,
++                  const base::FilePath& destination) {
++    if (!SafeLeaf(leaf)) return false;
++    auto entry = std::make_unique<HeldEntry>();
++    entry->descriptor.reset(HANDLE_EINTR(openat(source_directory, leaf.c_str(),
++        O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)));
++    entry->parent.reset(HANDLE_EINTR(dup(source_directory)));
++    entry->leaf = leaf;
++    if (!entry->descriptor.is_valid() || !entry->parent.is_valid() ||
++        fstat(entry->descriptor.get(), &entry->identity) != 0 ||
++        !S_ISREG(entry->identity.st_mode) || entry->identity.st_size < 0 ||
++        entry->identity.st_size > kMaxSnapshotBytes - total) return false;
++    base::ScopedFD output(HANDLE_EINTR(open(destination.value().c_str(),
++        O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600)));
++    if (!output.is_valid()) return false;
++    std::array<char, 64 * 1024> buffer;
++    int64_t copied = 0;
++    for (;;) {
++      if (cancelled.Run()) return false;
++      ssize_t count = HANDLE_EINTR(read(entry->descriptor.get(), buffer.data(), buffer.size()));
++      if (count < 0) return false;
++      if (count == 0) break;
++      if (count > entry->identity.st_size - copied) return false;
++      ssize_t written = 0;
++      while (written < count) {
++        const auto remaining = base::span(buffer).first(static_cast<size_t>(count)).subspan(static_cast<size_t>(written));
++        ssize_t next = HANDLE_EINTR(write(output.get(), remaining.data(), remaining.size()));
++        if (next <= 0) return false;
++        written += next;
++      }
++      copied += count;
++    }
++    if (copied != entry->identity.st_size || !entry->Current()) return false;
++    total += copied;
++    snapshot->originals_.push_back(std::move(entry));
++    return true;
++  };
++  for (const auto& leaf : files) {
++    if (cancelled.Run()) return base::unexpected("Browser import was cancelled.");
++    if (!SafeLeaf(leaf)) return base::unexpected("Invalid browser import file.");
++    struct stat identity;
++    if (fstatat(root.get(), leaf.c_str(), &identity, AT_SYMLINK_NOFOLLOW) != 0) {
++      if (errno == ENOENT) continue;
++      return base::unexpected("A browser import file is unavailable.");
++    }
++    if (!copy(root.get(), leaf, snapshot->path().AppendASCII(leaf)))
++      return base::unexpected("The browser changed while it was being read. Close it and try again.");
++  }
++  if (include_sessions) {
++    for (const char* name : {sessions::kSessionsDirectory.data(),
++                             sessions::kEncryptedSessionsDirectory.data()}) {
++      base::ScopedFD directory(HANDLE_EINTR(openat(root.get(), name,
++          O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)));
++      if (!directory.is_valid()) {
++        if (errno == ENOENT) continue;
++        return base::unexpected("The original browser session is unavailable.");
++      }
++      if (!retain_directory(directory.get(), root.get(), name) ||
++          !base::CreateDirectory(snapshot->path().AppendASCII(name)))
++        return base::unexpected("The browser session could not be copied safely.");
++      DIR* entries = fdopendir(HANDLE_EINTR(dup(directory.get())));
++      if (!entries) return base::unexpected("The browser session could not be listed.");
++      size_t count = 0;
++      bool copied = true;
++      errno = 0;
++      while (auto* entry = readdir(entries)) {
++        const std::string leaf(entry->d_name);
++        if (!base::StartsWith(leaf, "Session_") && !base::StartsWith(leaf, "Tabs_")) continue;
++        if (++count > kMaxSessionFiles || !copy(directory.get(), leaf,
++            snapshot->path().AppendASCII(name).AppendASCII(leaf))) { copied = false; break; }
++        errno = 0;
++      }
++      const int listing_error = errno;
++      closedir(entries);
++      if (!copied || listing_error || !snapshot->OriginalIsCurrent())
++        return base::unexpected("The browser session changed. Close it and try again.");
++    }
++  }
++  if (cancelled.Run()) return base::unexpected("Browser import was cancelled.");
++  if (!snapshot->OriginalIsCurrent())
++    return base::unexpected("The browser changed while it was being read. Close it and try again.");
++  return snapshot;
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_snapshot.h b/chrome/browser/ui/aux/browser_profile_snapshot.h
+new file mode 100644
+index 000000000..9b59b081d
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_snapshot.h
+@@ -0,0 +1,37 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_SNAPSHOT_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_SNAPSHOT_H_
++
++#include <memory>
++#include <string>
++#include <vector>
++
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
++#include "base/files/scoped_temp_dir.h"
++#include "base/types/expected.h"
++
++namespace aux {
++// Created only from a native-discovered or human-selected browser Profile.
++// Original directory/file descriptors remain held until the native job retires.
++// Decoders may mutate the disposable copy; they never receive original paths.
++class BrowserProfileSnapshot {
++ public:
++  static base::expected<std::unique_ptr<BrowserProfileSnapshot>, std::string>
++  Capture(const base::FilePath& profile, const std::vector<std::string>& files,
++          bool include_sessions, const base::RepeatingCallback<bool()>& cancelled);
++  ~BrowserProfileSnapshot();
++  BrowserProfileSnapshot(const BrowserProfileSnapshot&) = delete;
++  BrowserProfileSnapshot& operator=(const BrowserProfileSnapshot&) = delete;
++  bool OriginalIsCurrent() const;
++  const base::FilePath& path() const { return directory_.GetPath(); }
++ private:
++  struct HeldEntry;
++  BrowserProfileSnapshot();
++  base::ScopedTempDir directory_;
++  std::vector<std::unique_ptr<HeldEntry>> originals_;
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/profile_library.cc b/chrome/browser/ui/aux/profile_library.cc
+index 9bc354e03..0b5dbd77b 100644
+--- a/chrome/browser/ui/aux/profile_library.cc
++++ b/chrome/browser/ui/aux/profile_library.cc
+@@ -84,6 +84,8 @@ struct ProfileLibrary::HistoryImportState {
+   int skipped = 0;
+   std::set<std::pair<std::string, int64_t>> dispatched;
+   std::optional<Visit> last_added;
++  base::RepeatingCallback<bool()> dispatch_guard;
++  bool authority_retired = false;
+   base::OnceCallback<void(base::DictValue)> reply;
+ };
+ 
+@@ -908,9 +910,51 @@ ProfileLibrary::BookmarkCall(const std::string &method,
+   return Fault("not_found", "Unsupported Chromium bookmark method");
+ }
+ 
++base::DictValue ProfileLibrary::ImportNativeBookmarks(
++    const std::vector<NativeBookmarkImportEntry>& entries,
++    std::map<size_t, base::Uuid>& accepted_folders,
++    base::RepeatingCallback<bool()> current) {
++  if (!bookmarks_ || !bookmarks_->loaded() || !current || entries.size() > 500)
++    return Fault("backend_unavailable", "Native bookmark import is unavailable");
++  int added = 0, skipped = 0;
++  bool retired = false;
++  for (const auto& entry : entries) {
++    if (!current.Run()) { retired = true; break; }
++    const bookmarks::BookmarkNode* parent = bookmarks_->bookmark_bar_node();
++    if (entry.parent_source_id) {
++      auto found = accepted_folders.find(entry.parent_source_id);
++      parent = found == accepted_folders.end() ? nullptr : bookmarks_->GetNodeByUuid(
++          found->second, bookmarks::BookmarkModel::NodeTypeForUuidLookup::kLocalOrSyncableNodes);
++    }
++    if (!parent || !parent->is_folder() || entry.title.size() > 1000 ||
++        !entry.source_id || entry.source_id == entry.parent_source_id) {
++      retired = true;
++      break;
++    }
++    if (entry.url.is_empty()) {
++      if (accepted_folders.contains(entry.source_id)) { retired = true; break; }
++      const auto* folder = bookmarks_->AddFolder(parent, parent->children().size(), entry.title);
++      accepted_folders.emplace(entry.source_id, folder->uuid());
++    } else if (!ValidWebUrl(entry.url.spec())) {
++      ++skipped;
++    } else if (!bookmarks_->GetNodesByURL(entry.url).empty()) {
++      ++skipped;
++    } else {
++      bookmarks_->AddNewURL(parent, parent->children().size(), entry.title, entry.url);
++      ++added;
++    }
++  }
++  base::DictValue result;
++  result.Set("added", added);
++  result.Set("skipped", skipped);
++  result.Set("retired", retired);
++  return Result(base::Value(std::move(result)));
++}
++
+ void ProfileLibrary::ImportHistory(
+     const base::DictValue &params,
+-    base::OnceCallback<void(base::DictValue)> callback) {
++    base::OnceCallback<void(base::DictValue)> callback,
++    base::RepeatingCallback<bool()> dispatch_guard) {
+   if (!history_) {
+     std::move(callback).Run(
+         Fault("backend_unavailable", "Chromium HistoryService is unavailable"));
+@@ -922,6 +966,7 @@ void ProfileLibrary::ImportHistory(
+     return;
+   }
+   auto state = std::make_shared<HistoryImportState>();
++  state->dispatch_guard = std::move(dispatch_guard);
+   state->visits.reserve(rows->size());
+   for (const base::Value &value : *rows) {
+     const base::DictValue *row = value.GetIfDict();
+@@ -944,6 +989,11 @@ void ProfileLibrary::ImportHistory(
+ 
+ void ProfileLibrary::ImportHistoryNext(
+     std::shared_ptr<HistoryImportState> state) {
++  if (!state->authority_retired && state->dispatch_guard &&
++      !state->dispatch_guard.Run()) {
++    state->authority_retired = true;
++    state->next = state->visits.size();
++  }
+   if (!history_) {
+     std::move(state->reply).Run(
+         Fault("backend_unavailable", "Chromium HistoryService closed"));
+@@ -954,6 +1004,7 @@ void ProfileLibrary::ImportHistoryNext(
+       base::DictValue result;
+       result.Set("added", state->added);
+       result.Set("skipped", state->skipped);
++      if (state->dispatch_guard) result.Set("retired", state->authority_retired);
+       std::move(state->reply).Run(Result(base::Value(std::move(result))));
+       return;
+     }
+@@ -979,9 +1030,10 @@ void ProfileLibrary::ImportHistoryNext(
+               base::DictValue result;
+               result.Set("added", state->added);
+               result.Set("skipped", state->skipped);
++      if (state->dispatch_guard) result.Set("retired", state->authority_retired);
+               std::move(state->reply).Run(Result(base::Value(std::move(result))));
+             },
+-            weak_factory_.GetWeakPtr(), state, last),
++            import_weak_factory_.GetWeakPtr(), state, last),
+         &tracker_);
+     return;
+   }
+@@ -1003,6 +1055,12 @@ void ProfileLibrary::ImportHistoryNext(
+                   "backend_unavailable", "Chromium HistoryService closed"));
+               return;
+             }
++            if (state->dispatch_guard && !state->dispatch_guard.Run()) {
++              state->authority_retired = true;
++              state->next = state->visits.size();
++              self->ImportHistoryNext(state);
++              return;
++            }
+             const bool exists = query.success &&
+                 std::any_of(query.visits.begin(), query.visits.end(),
+                             [&](const history::VisitRow &row) {
+@@ -1024,7 +1082,7 @@ void ProfileLibrary::ImportHistoryNext(
+             }
+             self->ImportHistoryNext(state);
+           },
+-          weak_factory_.GetWeakPtr(), state, visit),
++          import_weak_factory_.GetWeakPtr(), state, visit),
+       &tracker_);
+ }
+ 
+diff --git a/chrome/browser/ui/aux/profile_library.h b/chrome/browser/ui/aux/profile_library.h
+index fbfc12bec..a888edebd 100644
+--- a/chrome/browser/ui/aux/profile_library.h
++++ b/chrome/browser/ui/aux/profile_library.h
+@@ -7,6 +7,7 @@
+ 
+ #include <cstdint>
+ #include <deque>
++#include <map>
+ #include <memory>
+ #include <set>
+ #include <string>
+@@ -18,6 +19,7 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/task/cancelable_task_tracker.h"
+ #include "base/values.h"
++#include "base/uuid.h"
+ #include "components/bookmarks/browser/bookmark_model_observer.h"
+ #include "components/history/core/browser/history_service_observer.h"
+ #include "components/history/core/browser/history_types.h"
+@@ -37,6 +39,12 @@ namespace aux {
+ // Profile-owned Chromium data adapter. History is projected into runtime FTS;
+ // bookmarks are served directly from BookmarkModel. No timer or second writable
+ // bookmark tree exists in the Chromium host.
++struct NativeBookmarkImportEntry {
++  size_t source_id;
++  size_t parent_source_id;
++  std::u16string title;
++  GURL url;  // Empty for folders; source IDs are native snapshot ordinals only.
++};
+ class ProfileLibrary final : public history::HistoryServiceObserver,
+                              public bookmarks::BookmarkModelObserver {
+ public:
+@@ -50,10 +58,17 @@ public:
+   void OnRuntimeDisconnected();
+   base::DictValue BookmarkCall(const std::string &method,
+                                  const base::DictValue &params);
++  // Typed, native-decoded import preserves empty/duplicate-named folders and
++  // Unicode titles. It never accepts renderer paths, node IDs or foreign UUIDs.
++  base::DictValue ImportNativeBookmarks(
++      const std::vector<NativeBookmarkImportEntry>& entries,
++      std::map<size_t, base::Uuid>& accepted_folders,
++      base::RepeatingCallback<bool()> current);
+   void ClearHistory(const base::DictValue &params,
+                     base::OnceCallback<void(base::DictValue)> callback);
+   void ImportHistory(const base::DictValue &params,
+-                     base::OnceCallback<void(base::DictValue)> callback);
++                     base::OnceCallback<void(base::DictValue)> callback,
++                     base::RepeatingCallback<bool()> dispatch_guard = {});
+   void RemoveVisit(const base::DictValue &params,
+                    base::OnceCallback<void(base::DictValue)> callback);
+ 
+@@ -125,6 +140,9 @@ private:
+   uint64_t sequence_ = 0;
+   std::vector<Visit> snapshot_visits_;
+   std::deque<base::DictValue> pending_deltas_;
++  // Accepted import completion survives runtime-projection disconnect. Its
++  // final backend query still joins the original destination batch.
++  base::WeakPtrFactory<ProfileLibrary> import_weak_factory_{this};
+   base::WeakPtrFactory<ProfileLibrary> weak_factory_{this};
+ };
+ 
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index c39edc71e..91a49ff1f 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -68,6 +68,7 @@
+ #include "content/public/common/url_constants.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
+ #include "chrome/browser/ui/aux/profile_library.h"
++#include "chrome/browser/ui/aux/browser_profile_importer.h"
+ #include "chrome/browser/ui/aux/profile_search_engine.h"
+ #include "chrome/browser/ui/aux/readable_capture.h"
+ #include "chrome/browser/ui/aux/secret_store_mac.h"
+@@ -167,7 +168,7 @@ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
+                   );
+   cdp_authority_subscription_ = aux::EgressController::ForProfile(profile_)->ObserveAuthority(
+       base::BindRepeating(&AuxRuntimeHost::OnCdpAuthorityChanged, weak_factory_.GetWeakPtr()));
+-  profile_library_ = std::make_unique<aux::ProfileLibrary>(
++  profile_library_ = std::make_shared<aux::ProfileLibrary>(
+       profile,
+       base::BindRepeating(
+           [](base::WeakPtr<AuxRuntimeHost> host, std::string method,
+@@ -212,6 +213,12 @@ AuxRuntimeHost::~AuxRuntimeHost() {
+   if (recovery_authenticator_ && recovery_auth_pending_)
+     recovery_authenticator_->Cancel();
+   weak_factory_.InvalidateWeakPtrs();
++  if (browser_importer_) {
++    // Self-owned drain keeps the exact Profile/library and accepted backends
++    // alive after host authority is retired. No UI-thread wait or false ACK.
++    auto importer = std::move(browser_importer_);
++    importer->Close(base::BindOnce([](std::shared_ptr<aux::BrowserProfileImporter>) {}, importer));
++  }
+   native_find_.reset();
+   worker_.Reset();
+   // Destroy the sequence-bound worker before quitting its thread, but join
+@@ -484,6 +491,63 @@ void AuxRuntimeHost::NativeConnectionPublished(uint64_t generation) {
+   admitted_native_generation_ = generation;
+   native_person_connection_id_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+ }
++void AuxRuntimeHost::HandleNativeBrowserImportCall(const std::string& method,
++    const base::DictValue& params, uint64_t generation,
++    std::shared_ptr<std::atomic_bool> cancelled,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  if (shutting_down_ || !generation || generation != admitted_native_generation_ ||
++      generation <= retired_native_generation_ || cancelled->load()) {
++    std::move(callback).Run(NativeFault("ref_stale", "Original import connection retired")); return;
++  }
++  if (method == "native.browserImportPoll" || method == "native.browserImportCancel") {
++    const auto* operation = params.FindString("operationId");
++    if (params.size() != 1 || !operation || operation->size() < 16 || operation->size() > 128) {
++      std::move(callback).Run(NativeFault("invalid_params", "An original import operation is required")); return;
++    }
++    // Authenticated same-Profile reduction only: no new source reads or effects.
++    if (!browser_importer_) {
++      base::DictValue result;
++      result.Set("operationId", *operation);
++      result.Set("unknown", true);
++      std::move(callback).Run(base::DictValue().Set("result", std::move(result))); return;
++    }
++    std::move(callback).Run(method == "native.browserImportPoll" ?
++        browser_importer_->Poll(*operation) : browser_importer_->Cancel(*operation)); return;
++  }
++  const auto* token = params.FindString("token");
++  auto owner = token ? turn_contexts_.find(*token) : turn_contexts_.end();
++  if (!token || owner == turn_contexts_.end() || owner->second.generation != generation ||
++      !TurnContextCurrent(owner->second)) {
++    std::move(callback).Run(NativeFault("ref_stale", "The original human import window retired")); return;
++  }
++  if (!browser_importer_) browser_importer_ =
++      std::make_shared<aux::BrowserProfileImporter>(profile_, profile_library_);
++  if (method == "native.browserImportDiscover" && params.size() == 1) {
++    const auto original = owner->second;
++    browser_importer_->Discover(*token, original.window, base::BindRepeating(
++        [](base::WeakPtr<AuxRuntimeHost> host, TurnContextOwner original,
++           std::shared_ptr<std::atomic_bool> cancelled) {
++          return host && !cancelled->load() && host->TurnContextCurrent(original);
++        }, weak_factory_.GetWeakPtr(), original, cancelled), std::move(callback)); return;
++  }
++  if (method == "native.browserImportBegin" && params.size() == 4) {
++    const auto* operation = params.FindString("operationId");
++    const auto* source = params.FindString("sourceHandle");
++    const auto* choices = params.FindList("categories");
++    if (operation && source && source->size() <= 128 && choices &&
++        !choices->empty() && choices->size() <= 5) {
++      std::vector<std::string> categories;
++      for (const auto& value : *choices) {
++        if (!value.is_string() || value.GetString().size() > 32) {
++          std::move(callback).Run(NativeFault("invalid_params", "Exact original import categories are required")); return;
++        }
++        categories.push_back(value.GetString());
++      }
++      std::move(callback).Run(browser_importer_->Begin(*token, *operation, *source, categories)); return;
++    }
++  }
++  std::move(callback).Run(NativeFault("invalid_params", "Exact original import parameters are required"));
++}
+ void AuxRuntimeHost::HandleNativeProjectCall(const std::string& method, const base::DictValue& params,
+     uint64_t generation, base::OnceCallback<void(base::DictValue)> callback) {
+   const auto fail = [&](const char* message) { std::move(callback).Run(NativeFault("permission_denied", message)); };
+@@ -687,6 +751,12 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+   native_person_connection_id_.clear();
+   native_projects_.clear();
+   native_terminals_.clear();
++  if (browser_importer_) {
++    std::vector<std::string> import_owners;
++    for (const auto& [token, owner] : turn_contexts_)
++      if (owner.generation == generation) import_owners.push_back(token);
++    for (const auto& token : import_owners) browser_importer_->RetireOwner(token);
++  }
+   turn_contexts_.clear();
+   ++native_recorder_session_generation_;
+   auto recorder = native_recorder_;
+@@ -1505,6 +1575,13 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
+                         base::DictValue params,
+                         uint64_t connection_generation,
+                         std::shared_ptr<NativeReplyState> state) {
++                       if (owner && method.starts_with("native.browserImport")) {
++                         owner->HandleNativeBrowserImportCall(method, params, connection_generation, state->cancelled,
++                             base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
++                               state->reply = std::move(reply); state->ready.Signal();
++                             }, state));
++                         return;
++                       }
+                        if (owner && method.starts_with("native.project")) {
+                          owner->HandleNativeProjectCall(method, params, connection_generation,
+                              base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 3766712c3..069c4a6f1 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -47,6 +47,7 @@ class ContentBlockingController;
+ class PowerActivityMac;
+ class CdpBroker;
+ class ProfileLibrary;
++class BrowserProfileImporter;
+ class NativeFind;
+ class NativeRecorderController;
+ class NativePersonObserverController;
+@@ -247,7 +248,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   base::SequenceBound<Worker> worker_;
+   std::unique_ptr<aux::CdpBroker> cdp_broker_;
+   base::CallbackListSubscription cdp_authority_subscription_;
+-  std::unique_ptr<aux::ProfileLibrary> profile_library_;
++  std::shared_ptr<aux::ProfileLibrary> profile_library_;
++  std::shared_ptr<aux::BrowserProfileImporter> browser_importer_;
+   struct CredentialAdmission {
+     base::DictValue request;
+     base::DictValue lease;
+@@ -293,6 +295,9 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   void HandleNativeTerminalCall(const std::string& method, const base::DictValue& params,
+       uint64_t connection_generation, base::OnceCallback<void(base::DictValue)> callback);
+   std::map<std::string, std::unique_ptr<aux::NativeTerminal>> native_terminals_;
++  void HandleNativeBrowserImportCall(const std::string& method, const base::DictValue& params,
++      uint64_t generation, std::shared_ptr<std::atomic_bool> cancelled,
++      base::OnceCallback<void(base::DictValue)> callback);
+   struct TurnContextOwner {
+     base::WeakPtr<BrowserWindowInterface> window;
+     content::WeakDocumentPtr document;
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index c6fb201b7..386312de3 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1020,7 +1020,9 @@ void WebUIBrowserUI::Request(const std::string& method,
+   if (api_method == "runs.start" || api_method == "tasks.start" ||
+       api_method == "runs.retry" || api_method == "agent.images.generate" ||
+       api_method == "agent.utility.intent" || api_method == "agent.tidy.propose" ||
+-      api_method == "agent.tabName.suggest" || api_method == "models.auth.start" ||
++      api_method == "agent.tabName.suggest" || api_method == "import.preview" || api_method == "import.run" ||
++        api_method == "import.status" || api_method == "import.cancel" ||
++        api_method == "models.auth.start" ||
+       api_method == "models.auth.status" || api_method == "models.auth.cancel" ||
+       api_method == "projects.files" || api_method == "projects.file" || api_method == "projects.changes" ||
+       api_method == "settings.cloud.status" || api_method == "settings.cloud.configure" ||
+diff --git a/components/history/core/browser/url_database.cc b/components/history/core/browser/url_database.cc
+index 834a4a608..b12510e9f 100644
+--- a/components/history/core/browser/url_database.cc
++++ b/components/history/core/browser/url_database.cc
+@@ -33,6 +33,10 @@ URLDatabase::URLEnumeratorBase::URLEnumeratorBase()
+ 
+ URLDatabase::URLEnumeratorBase::~URLEnumeratorBase() = default;
+ 
++bool URLDatabase::URLEnumeratorBase::Succeeded() const {
++  return initialized_ && statement_.Succeeded();
++}
++
+ URLDatabase::URLEnumerator::URLEnumerator() = default;
+ 
+ bool URLDatabase::URLEnumerator::GetNextURL(URLRow* r) {
+diff --git a/components/history/core/browser/url_database.h b/components/history/core/browser/url_database.h
+index 44e14dff9..c30f0f896 100644
+--- a/components/history/core/browser/url_database.h
++++ b/components/history/core/browser/url_database.h
+@@ -137,6 +137,9 @@ class URLDatabase {
+ 
+     virtual ~URLEnumeratorBase();
+ 
++    // Distinguishes complete enumeration from a database read failure.
++    bool Succeeded() const;
++
+    private:
+     friend class URLDatabase;
+ 
+diff --git a/components/password_manager/core/browser/import/password_importer.cc b/components/password_manager/core/browser/import/password_importer.cc
+index b3faebd4e..acf29260b 100644
+--- a/components/password_manager/core/browser/import/password_importer.cc
++++ b/components/password_manager/core/browser/import/password_importer.cc
+@@ -426,6 +426,12 @@ PasswordImporter::PasswordImporter(SavedPasswordsPresenter& presenter,
+ 
+ PasswordImporter::~PasswordImporter() = default;
+ 
++void PasswordImporter::SetDispatchGuard(base::RepeatingCallback<bool()> guard) {
++  CHECK(IsState(kNotStarted));
++  CHECK(!guard.is_null());
++  dispatch_guard_ = std::move(guard);
++}
++
+ const mojo::Remote<mojom::CSVPasswordParser>& PasswordImporter::GetParser() {
+   if (!parser_) {
+     parser_ = LaunchCSVPasswordParser();
+@@ -638,6 +644,13 @@ void PasswordImporter::ExecuteImport(ImportResultsCallback results_callback,
+                                      ImportResults results,
+                                      IncomingPasswords incoming_passwords,
+                                      size_t conflicts_count) {
++  if (dispatch_guard_ && !dispatch_guard_.Run()) {
++    state_ = kNotStarted;
++    results.status = ImportResults::UNKNOWN_ERROR;
++    results.number_imported = 0;
++    std::move(results_callback).Run(results);
++    return;
++  }
+   // Run `results_callback` when both `AddCredentials` and
+   // `UpdateStoredCredentials` have finished running.
+   auto barrier_done_callback = base::BarrierClosure(
+diff --git a/components/password_manager/core/browser/import/password_importer.h b/components/password_manager/core/browser/import/password_importer.h
+index 66c5bf7e5..323fb1ef1 100644
+--- a/components/password_manager/core/browser/import/password_importer.h
++++ b/components/password_manager/core/browser/import/password_importer.h
+@@ -91,6 +91,10 @@ class PasswordImporter {
+   PasswordImporter& operator=(const PasswordImporter&) = delete;
+   ~PasswordImporter();
+ 
++  // Native Profile import can retire its exact source/window while queued work
++  // is pending. The guard is checked at the final password-write boundary.
++  void SetDispatchGuard(base::RepeatingCallback<bool()> guard);
++
+   // Imports passwords from the |csv_data| string into the |to_store|.
+   // |results_callback| is used to return import summary back to the user.
+   // The only supported data format is CSV.
+@@ -208,6 +212,7 @@ class PasswordImporter {
+   // the store.
+   const bool user_confirmation_required_;
+ 
++  base::RepeatingCallback<bool()> dispatch_guard_;
+   base::WeakPtrFactory<PasswordImporter> weak_ptr_factory_{this};
+ };
+ 
+diff --git a/crypto/subtle_passkey.h b/crypto/subtle_passkey.h
+index 50d882eb6..0f9d8404a 100644
+--- a/crypto/subtle_passkey.h
++++ b/crypto/subtle_passkey.h
+@@ -7,6 +7,10 @@
+ 
+ #include "crypto/crypto_export.h"
+ 
++namespace aux {
++class BrowserProfileKeyProvider;
++}
++
+ namespace ash {
+ class CryptohomeTokenEncryptor;
+ class Key;
+@@ -83,6 +87,10 @@ class CRYPTO_EXPORT SubtlePassKey final {
+   friend class os_crypt_async::FreedesktopSecretKeyProvider;
+   friend class os_crypt_async::KeychainKeyProvider;
+ 
++  // Browser import must decode the existing macOS v10 codec without creating
++  // or changing a key belonging to the original browser.
++  friend class aux::BrowserProfileKeyProvider;
++
+   // This class uses custom scrypt parameters and has to keep doing so for
+   // compatibility with a server-side implementation.
+   friend SubtlePassKey password_manager::MakeCryptoPassKey();
+diff --git a/tools/metrics/histograms/metadata/profile/enums.xml b/tools/metrics/histograms/metadata/profile/enums.xml
+index a5c709c26..b733783be 100644
+--- a/tools/metrics/histograms/metadata/profile/enums.xml
++++ b/tools/metrics/histograms/metadata/profile/enums.xml
+@@ -432,6 +432,7 @@ chromium-metrics-reviews@google.com.
+   <int value="46" label="kOmniboxEverywhere"/>
+   <int value="47" label="kAuxShellWarmup"/>
+   <int value="48" label="kAuxContentFilterCommit"/>
++  <int value="49" label="kAuxBrowserImport"/>
+ </enum>
+ 
+ <!-- LINT.IfChange(ProfileLockStatus) -->

@@ -1,0 +1,1004 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 2062b23ee..42e4c446b 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -8,6 +8,10 @@ assert(enable_aux_shell)
+ 
+ source_set("runtime") {
+   sources = [
++    "browser_export_decode.h",
++    "browser_export_decode.cc",
++    "browser_export_picker.h",
++    "browser_export_picker_mac.mm",
+     "browser_profile_decode.h",
+     "browser_profile_decode.cc",
+     "browser_profile_discovery.h",
+@@ -198,6 +202,10 @@ source_set("runtime") {
+     "//components/zoom",
+     "//components/permissions",
+     "//content/public/browser",
++    "//components/user_data_importer/mojom",
++    "//components/user_data_importer/utility:bookmarks",
++    "//components/strings:components_strings_grit",
++    "//third_party/zlib/google:zip",
+     "//content/public/common",
+     "//crypto",
+     "//mojo/public/cpp/bindings",
+@@ -222,6 +230,7 @@ source_set("runtime") {
+     "PDFKit.framework",
+     "AVFoundation.framework",
+     "Cocoa.framework",
++    "UniformTypeIdentifiers.framework",
+     "IOKit.framework",
+     "ServiceManagement.framework",
+     "Security.framework",
+diff --git a/chrome/browser/ui/aux/browser_export_decode.cc b/chrome/browser/ui/aux/browser_export_decode.cc
+new file mode 100644
+index 000000000..a75ccbb52
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_export_decode.cc
+@@ -0,0 +1,178 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_export_decode.h"
++#include <algorithm>
++#include <cmath>
++#include <set>
++#include "base/files/file_util.h"
++#include "base/json/json_reader.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "components/password_manager/core/browser/import/csv_password_sequence.h"
++#include "components/password_manager/core/browser/password_string.h"
++#include "third_party/zlib/google/zip_reader.h"
++namespace aux {
++namespace {
++constexpr size_t kEntryBytes = 32 * 1024 * 1024;
++constexpr size_t kArchiveBytes = 128 * 1024 * 1024;
++constexpr size_t kEntries = 256;
++bool SafeURL(const GURL& url) {
++  return url.is_valid() && url.SchemeIsHTTPOrHTTPS() &&
++      !url.has_username() && !url.has_password();
++}
++bool Selected(const std::vector<std::string>& categories, const char* name) {
++  return std::ranges::find(categories, name) != categories.end();
++}
++bool ReadPasswords(std::string text, DecodedBrowserProfile& output) {
++  password_manager::CSVPasswordSequence sequence(std::move(text));
++  if (sequence.result() != password_manager::CSVPassword::Status::kOK) return false;
++  for (const auto& row : sequence) {
++    if (row.GetParseStatus() != password_manager::CSVPassword::Status::kOK ||
++        !row.GetURL().has_value() || !SafeURL(*row.GetURL())) return false;
++    password_manager::StoredCredential credential;
++    credential.url = *row.GetURL();
++    credential.signon_realm = credential.url.DeprecatedGetOriginAsURL().spec();
++    credential.username_value = base::UTF8ToUTF16(row.GetUsername());
++    credential.password_value = password_manager::PasswordString(base::UTF8ToUTF16(row.GetPassword()));
++    credential.SetPasswordNote(base::UTF8ToUTF16(row.GetNote()));
++    output.passwords.push_back(std::move(credential));
++  }
++  return true;
++}
++std::optional<int64_t> Integer(const base::Value* value) {
++  if (!value || (!value->is_int() && !value->is_double())) return std::nullopt;
++  const double number = value->GetDouble();
++  if (!std::isfinite(number) || number < 0 || number > 9007199254740991.0 ||
++      std::floor(number) != number) return std::nullopt;
++  return static_cast<int64_t>(number);
++}
++bool ReadHistory(const base::DictValue& data, DecodedBrowserProfile& output) {
++  const auto* items = data.FindList("history");
++  if (!items) return false;
++  for (const auto& item : *items) {
++    if (!item.is_dict()) return false;
++    const auto& row = item.GetDict();
++    const auto* address = row.FindString("url");
++    const auto time = Integer(row.Find("time_usec"));
++    // Apple's published schema calls this visits_count; actual Safari archives
++    // and Chromium's maintained fixtures also use visit_count. Neither is used
++    // to invent visits: the destination imports the exact most-recent visit.
++    const auto* documented = row.Find("visits_count");
++    const auto* exported = row.Find("visit_count");
++    const auto visits = Integer(documented ? documented : exported);
++    if (!address || !time || ((documented || exported) && (!visits || !*visits)) ||
++        (documented && exported && Integer(documented) != Integer(exported))) return false;
++    GURL url(*address);
++    if (!SafeURL(url)) continue;
++    const auto* title = row.FindString("title");
++    output.history.push_back({url, title ? base::UTF8ToUTF16(*title) : std::u16string(),
++        base::Time::UnixEpoch() + base::Microseconds(*time)});
++  }
++  return true;
++}
++}  // namespace
++DecodedBrowserProfile DecodeBrowserExport(const base::FilePath& directory,
++    const std::string& leaf, BrowserExportFormat format,
++    const std::vector<std::string>& categories,
++    const base::RepeatingCallback<bool()>& cancelled) {
++  DecodedBrowserProfile output;
++  auto snapshot = BrowserProfileSnapshot::Capture(directory, {leaf}, false, cancelled);
++  if (!snapshot.has_value()) {
++    output.snapshot_error = snapshot.error();
++    return output;
++  }
++  output.snapshot = std::move(*snapshot);
++  const auto file = output.snapshot->path().Append(leaf);
++  auto fail = [&](const char* message) {
++    output.snapshot_error = message;
++    output.passwords.clear();
++    output.bookmark_html.clear();
++  };
++  if (format != BrowserExportFormat::kSafariArchive) {
++    std::string text;
++    if (!base::ReadFileToStringWithMaxSize(file, &text, kEntryBytes)) {
++      fail("The selected browser export is unavailable or exceeds the safe file size.");
++      return output;
++    }
++    output.export_categories.push_back(format == BrowserExportFormat::kPasswordsCsv ? "passwords" :
++        format == BrowserExportFormat::kTabsHtml ? "tabs" : "bookmarks");
++    if (format == BrowserExportFormat::kPasswordsCsv) {
++      if (!ReadPasswords(std::move(text), output)) fail("The selected password CSV is not a valid browser export.");
++    } else {
++      // The existing sandboxed Chromium BookmarkHtmlParser performs HTML parsing
++      // later. Never run ParseBookmarksUnsafe in the browser process.
++      output.bookmark_html = std::move(text);
++      output.bookmarks_as_tabs = format == BrowserExportFormat::kTabsHtml;
++    }
++  } else {
++    zip::ZipReader archive;
++    if (!archive.Open(file)) {
++      fail("The selected Safari export is not a readable ZIP archive.");
++      return output;
++    }
++    size_t entries = 0, bytes = 0;
++    std::set<std::string> names;
++    bool has_html = false, has_csv = false, has_history = false;
++    while (const auto* entry = archive.Next()) {
++      if (cancelled.Run() || ++entries > kEntries || entry->is_unsafe ||
++          entry->is_symbolic_link || entry->is_encrypted ||
++          !names.insert(entry->path.value()).second) {
++        fail("The browser archive contains unsafe or duplicate entries, or was cancelled.");
++        return output;
++      }
++      if (entry->is_directory) continue;
++      std::string text;
++      if (!archive.ExtractCurrentEntryToString(kEntryBytes, &text) ||
++          text.size() > kArchiveBytes - bytes) {
++        fail("The browser archive exceeds the safe expanded size or is damaged.");
++        return output;
++      }
++      bytes += text.size();
++      const auto extension = base::ToLowerASCII(entry->path.FinalExtension());
++      if (extension == ".html") {
++        if (has_html) { fail("The archive contains more than one bookmark export."); return output; }
++        has_html = true;
++        if (Selected(categories, "bookmarks")) output.bookmark_html = std::move(text);
++      } else if (extension == ".csv") {
++        if (has_csv) { fail("The archive contains more than one password export."); return output; }
++        has_csv = true;
++        if (Selected(categories, "passwords") && !ReadPasswords(std::move(text), output)) {
++          fail("The Safari password export is not valid."); return output;
++        }
++      } else if (extension == ".json") {
++        auto parsed = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
++        if (!parsed) { fail("The Safari export contains invalid JSON metadata."); return output; }
++        const auto* metadata = parsed->FindDict("metadata");
++        const auto* browser = metadata ? metadata->FindString("browser_name") : nullptr;
++        const auto* type = metadata ? metadata->FindString("data_type") : nullptr;
++        const auto version = metadata ? Integer(metadata->Find("schema_version")) : std::nullopt;
++        if (!browser || (*browser != "Safari" && *browser != "Safari Technology Preview") ||
++            !type || !version || *version != 1) {
++          fail("This archive does not use the supported official Safari export schema."); return output;
++        }
++        if (*type == "history") {
++          has_history = true;
++          if (Selected(categories, "history") && !ReadHistory(*parsed, output)) {
++            fail("The Safari history export is not valid."); return output;
++          }
++        } else if (*type != "extensions" && *type != "payment_cards") {
++          fail("The Safari export has an unknown data type."); return output;
++        }
++        // Payment cards and OTP seeds are outside browser import categories.
++        // Safari App Store IDs are not Chrome Web Store IDs; never infer a mapping.
++      }
++    }
++    if (has_html) output.export_categories.push_back("bookmarks");
++    if (has_history) output.export_categories.push_back("history");
++    if (has_csv) output.export_categories.push_back("passwords");
++    if (!archive.ok() || (Selected(categories, "bookmarks") && !has_html) ||
++        (Selected(categories, "passwords") && !has_csv) ||
++        (Selected(categories, "history") && !has_history))
++      fail("The selected Safari categories are missing or the archive is damaged.");
++  }
++  if (cancelled.Run() || !output.snapshot->OriginalIsCurrent())
++    fail("The original browser export changed or its import was cancelled.");
++  return output;
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_export_decode.h b/chrome/browser/ui/aux/browser_export_decode.h
+new file mode 100644
+index 000000000..9c9df3bd8
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_export_decode.h
+@@ -0,0 +1,16 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_EXPORT_DECODE_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_EXPORT_DECODE_H_
++#include "chrome/browser/ui/aux/browser_profile_decode.h"
++namespace aux {
++enum class BrowserExportFormat { kSafariArchive, kBookmarksHtml, kPasswordsCsv, kTabsHtml };
++// The path is a native-held private snapshot, never a renderer supplied path.
++// ZIP entries stay in bounded memory; no archive path is extracted to disk.
++DecodedBrowserProfile DecodeBrowserExport(
++    const base::FilePath& snapshot_directory, const std::string& leaf,
++    BrowserExportFormat format, const std::vector<std::string>& categories,
++    const base::RepeatingCallback<bool()>& cancelled);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_export_picker.h b/chrome/browser/ui/aux/browser_export_picker.h
+new file mode 100644
+index 000000000..f8dbd5c03
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_export_picker.h
+@@ -0,0 +1,23 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_EXPORT_PICKER_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_EXPORT_PICKER_H_
++#include <memory>
++#include "base/files/file_path.h"
++#include "base/functional/callback.h"
++#include "base/types/expected.h"
++#include "chrome/browser/ui/aux/browser_export_decode.h"
++#include "ui/gfx/native_ui_types.h"
++namespace aux {
++class BrowserExportPicker {
++ public:
++  using Selected = base::OnceCallback<void(base::expected<base::FilePath, std::string>)>;
++  virtual ~BrowserExportPicker() = default;
++  // Cancels the original panel. The original completion callback still joins it.
++  virtual void Cancel() = 0;
++  static std::unique_ptr<BrowserExportPicker> Show(
++      gfx::NativeWindow original_window, BrowserExportFormat format, Selected selected);
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_export_picker_mac.mm b/chrome/browser/ui/aux/browser_export_picker_mac.mm
+new file mode 100644
+index 000000000..f2b31d65c
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_export_picker_mac.mm
+@@ -0,0 +1,60 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_export_picker.h"
++#import <Cocoa/Cocoa.h>
++#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
++#include "base/apple/foundation_util.h"
++#include "base/functional/bind.h"
++#include "base/memory/weak_ptr.h"
++#include "base/task/single_thread_task_runner.h"
++namespace aux {
++namespace {
++class MacBrowserExportPicker final : public BrowserExportPicker {
++ public:
++  MacBrowserExportPicker(NSWindow* window, BrowserExportFormat format, Selected selected)
++      : selected_(std::move(selected)) {
++    panel_ = [NSOpenPanel openPanel];
++    panel_.allowsMultipleSelection = NO;
++    panel_.canChooseDirectories = NO;
++    panel_.canChooseFiles = YES;
++    panel_.resolvesAliases = NO;
++    panel_.prompt = @"Review export";
++    panel_.message = @"Choose a browser export. Aux reads a private snapshot; it does not modify this file or the original browser.";
++    NSString* extension = format == BrowserExportFormat::kSafariArchive ? @"zip" :
++        format == BrowserExportFormat::kPasswordsCsv ? @"csv" : @"html";
++    UTType* type = [UTType typeWithFilenameExtension:extension];
++    if (type) panel_.allowedContentTypes = @[type];
++    auto weak = weak_factory_.GetWeakPtr();
++    [panel_ beginSheetModalForWindow:window completionHandler:^(NSModalResponse response) {
++      if (!weak) return;
++      auto callback = std::move(weak->selected_);
++      base::expected<base::FilePath, std::string> result =
++          base::unexpected("Browser export selection was cancelled.");
++      if (response == NSModalResponseOK && weak->panel_.URL.isFileURL)
++        result = base::apple::NSURLToFilePath(weak->panel_.URL);
++      weak->panel_ = nil;
++      // The owner may destroy the panel object in this callback. Dispatch it
++      // after Cocoa has returned from the original sheet completion stack.
++      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
++          base::BindOnce(std::move(callback), std::move(result)));
++    }];
++  }
++  ~MacBrowserExportPicker() override {
++    weak_factory_.InvalidateWeakPtrs();
++    Cancel();
++  }
++  void Cancel() override { if (panel_) [panel_ cancel:nil]; }
++ private:
++  NSOpenPanel* __strong panel_ = nil;
++  Selected selected_;
++  base::WeakPtrFactory<MacBrowserExportPicker> weak_factory_{this};
++};
++}  // namespace
++std::unique_ptr<BrowserExportPicker> BrowserExportPicker::Show(
++    gfx::NativeWindow original_window, BrowserExportFormat format, Selected selected) {
++  NSWindow* window = original_window.GetNativeNSWindow();
++  if (!window || !window.isVisible) return nullptr;
++  return std::make_unique<MacBrowserExportPicker>(window, format, std::move(selected));
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_decode.h b/chrome/browser/ui/aux/browser_profile_decode.h
+index e76eab791..6ada3aad6 100644
+--- a/chrome/browser/ui/aux/browser_profile_decode.h
++++ b/chrome/browser/ui/aux/browser_profile_decode.h
+@@ -23,6 +23,9 @@ struct DecodedBrowserProfile {
+   std::vector<std::string> extensions;
+   std::map<std::string, std::string> errors;
+   std::string snapshot_error;
++  std::string bookmark_html;
++  bool bookmarks_as_tabs = false;
++  std::vector<std::string> export_categories;
+ };
+ // Blocking snapshot/Chromium decoding runs on one native single-thread task runner.
+ // No original browser file is writable, no plaintext secrets cross IPC, and
+diff --git a/chrome/browser/ui/aux/browser_profile_discovery.cc b/chrome/browser/ui/aux/browser_profile_discovery.cc
+index fa3d7face..2073def17 100644
+--- a/chrome/browser/ui/aux/browser_profile_discovery.cc
++++ b/chrome/browser/ui/aux/browser_profile_discovery.cc
+@@ -84,7 +84,7 @@ DiscoverBrowserProfiles(
+       if (base::PathExists(path.AppendASCII("Preferences")) ||
+           base::PathExists(path.AppendASCII("Secure Preferences"))) categories.push_back("extensions");
+       if (!categories.empty()) found.push_back({source.id, source.label, name, source.brand,
+-          path, std::move(*anchor), std::move(categories)});
++          path, std::move(*anchor), std::move(categories), std::nullopt, {}});
+     }
+   }
+   return found;
+diff --git a/chrome/browser/ui/aux/browser_profile_discovery.h b/chrome/browser/ui/aux/browser_profile_discovery.h
+index f35ed283f..ebd5b442b 100644
+--- a/chrome/browser/ui/aux/browser_profile_discovery.h
++++ b/chrome/browser/ui/aux/browser_profile_discovery.h
+@@ -4,12 +4,14 @@
+ #ifndef CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_DISCOVERY_H_
+ #define CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_DISCOVERY_H_
+ #include <memory>
++#include <optional>
+ #include <string>
+ #include <vector>
+ #include "base/files/file_path.h"
+ #include "base/functional/callback.h"
+ #include "base/types/expected.h"
+ #include "chrome/browser/ui/aux/browser_profile_key_provider.h"
++#include "chrome/browser/ui/aux/browser_export_decode.h"
+ namespace aux {
+ class BrowserProfileSnapshot;
+ struct DiscoveredBrowserProfile {
+@@ -20,6 +22,8 @@ struct DiscoveredBrowserProfile {
+   base::FilePath path;
+   std::unique_ptr<BrowserProfileSnapshot> anchor;
+   std::vector<std::string> categories;
++  std::optional<BrowserExportFormat> export_format;
++  std::string export_leaf;
+ };
+ // No renderer or runtime filesystem path is accepted. Registered profile names
+ // come from a held native snapshot of the browser's actual Local State.
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.cc b/chrome/browser/ui/aux/browser_profile_importer.cc
+index 493ba9e..6275489 100644
+--- a/chrome/browser/ui/aux/browser_profile_importer.cc
++++ b/chrome/browser/ui/aux/browser_profile_importer.cc
+@@ -21,6 +21,13 @@
+ #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+ #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "chrome/browser/ui/aux/browser_profile_decode.h"
++#include "chrome/browser/ui/aux/browser_export_decode.h"
++#include "chrome/browser/ui/aux/browser_export_picker.h"
++#include "components/user_data_importer/utility/bookmark_parser.h"
++#include "components/user_data_importer/mojom/bookmark_html_parser.mojom.h"
++#include "components/strings/grit/components_strings.h"
++#include "content/public/browser/service_process_host.h"
++#include "mojo/public/cpp/bindings/remote.h"
+ #include "chrome/browser/ui/aux/browser_profile_discovery.h"
+ #include "chrome/browser/ui/aux/browser_profile_extension_installer.h"
+ #include "chrome/browser/ui/aux/profile_library.h"
+@@ -56,12 +63,24 @@ bool ValidOperation(const std::string& id) {
+ constexpr const char* kCategories[] = {"bookmarks", "history", "tabs", "passwords", "extensions"};
+ }  // namespace
+ struct BrowserProfileImporter::Source {
++  ~Source() {
++    // Human exports can be large. Dispose private snapshots on the original
++    // blocking worker, never by recursively deleting them on the UI thread.
++    if (discovered.export_format && discovered.anchor)
++      cleanup_runner->DeleteSoon(FROM_HERE, std::move(discovered.anchor));
++  }
++  scoped_refptr<base::SingleThreadTaskRunner> cleanup_runner;
+   std::string handle;
+   std::string owner;
+   base::WeakPtr<BrowserWindowInterface> window;
+   Current current;
+   DiscoveredBrowserProfile discovered;
+ };
++struct BrowserProfileImporter::ExportSelection {
++  std::string owner;
++  bool done = false;
++  base::DictValue reply;
++};
+ struct BrowserProfileImporter::Job {
+   std::string operation;
+   std::shared_ptr<Source> source;
+@@ -79,6 +98,7 @@ struct BrowserProfileImporter::Job {
+   base::ListValue progress;
+   DecodedBrowserProfile decoded;
+   std::unique_ptr<os_crypt_async::OSCryptAsync> source_crypt;
++  mojo::Remote<user_data_importer::mojom::BookmarkHtmlParser> bookmark_parser;
+   std::unique_ptr<password_manager::PasswordImporter> password_importer;
+   scoped_refptr<BrowserProfileExtensionInstaller> extension_installer;
+ };
+@@ -135,59 +155,7 @@ void BrowserProfileImporter::Discover(const std::string& owner_token,
+           self->MaybeJoined();
+           return;
+         }
+-        std::erase_if(self->sources_, [&](const auto& item) { return item.second->owner == owner || !item.second->current.Run(); });
+-        base::ListValue sources;
+-        base::ListValue handles;
+-        std::map<std::string, base::DictValue> summaries;
+-        for (auto& discovered : *found) {
+-          auto source = std::make_shared<Source>();
+-          source->handle = base::Uuid::GenerateRandomV4().AsLowercaseString();
+-          source->owner = owner;
+-          source->window = window;
+-          source->current = current;
+-          source->discovered = std::move(discovered);
+-          base::ListValue available;
+-          for (const char* category : kCategories) {
+-            base::DictValue item;
+-            item.Set("category", category);
+-            item.Set("available", std::ranges::find(source->discovered.categories, category) != source->discovered.categories.end());
+-            available.Append(std::move(item));
+-          }
+-          auto [entry, inserted] = summaries.try_emplace(source->discovered.source_id);
+-          if (inserted) {
+-            entry->second.Set("id", source->discovered.source_id);
+-            entry->second.Set("label", source->discovered.label);
+-            entry->second.Set("profiles", base::ListValue());
+-            entry->second.Set("categories", available.Clone());
+-            entry->second.Set("profileCategories", base::ListValue());
+-          }
+-          if (!inserted) {
+-            auto* categories = entry->second.FindList("categories");
+-            for (size_t i = 0; i < available.size(); ++i) {
+-              auto& aggregate = (*categories)[i].GetDict();
+-              aggregate.Set("available", aggregate.FindBool("available").value_or(false) ||
+-                  available[i].GetDict().FindBool("available").value_or(false));
+-            }
+-          }
+-          entry->second.FindList("profiles")->Append(source->discovered.profile_id);
+-          base::DictValue profile;
+-          profile.Set("profileId", source->discovered.profile_id);
+-          profile.Set("categories", std::move(available));
+-          entry->second.FindList("profileCategories")->Append(std::move(profile));
+-          base::DictValue handle;
+-          handle.Set("sourceId", source->discovered.source_id);
+-          handle.Set("profileId", source->discovered.profile_id);
+-          handle.Set("sourceHandle", source->handle);
+-          handles.Append(std::move(handle));
+-          self->sources_.emplace(source->handle, std::move(source));
+-        }
+-        for (auto& [id, summary] : summaries) sources.Append(std::move(summary));
+-        base::DictValue result;
+-        result.Set("sources", std::move(sources));
+-        result.Set("snapshots", std::move(handles));
+-        base::DictValue response;
+-        response.Set("result", std::move(result));
+-        std::move(reply).Run(std::move(response));
++        std::move(reply).Run(self->PublishSources(owner, window, current, std::move(*found)));
+         self->MaybeJoined();
+       }, weak_factory_.GetWeakPtr(), owner_token, window, current, std::move(replies.first)));
+   if (!posted) {
+@@ -198,6 +166,262 @@ void BrowserProfileImporter::Discover(const std::string& owner_token,
+     MaybeJoined();
+   }
+ }
++base::DictValue BrowserProfileImporter::PublishSources(const std::string& owner,
++    base::WeakPtr<BrowserWindowInterface> window, Current current,
++    std::vector<DiscoveredBrowserProfile> found) {
++  base::ListValue sources;
++  base::ListValue handles;
++  std::map<std::string, base::DictValue> summaries;
++  for (auto& discovered : found) {
++    auto source = std::make_shared<Source>();
++    source->cleanup_runner = worker_;
++    source->handle = base::Uuid::GenerateRandomV4().AsLowercaseString();
++    source->owner = owner;
++    source->window = window;
++    source->current = current;
++    source->discovered = std::move(discovered);
++    base::ListValue available;
++    for (const char* category : kCategories) {
++      base::DictValue item;
++      item.Set("category", category);
++      item.Set("available", std::ranges::find(source->discovered.categories, category) != source->discovered.categories.end());
++      available.Append(std::move(item));
++    }
++    auto [entry, inserted] = summaries.try_emplace(source->discovered.source_id);
++    if (inserted) {
++      entry->second.Set("id", source->discovered.source_id);
++      entry->second.Set("label", source->discovered.label);
++      entry->second.Set("profiles", base::ListValue());
++      entry->second.Set("categories", available.Clone());
++      entry->second.Set("profileCategories", base::ListValue());
++    }
++    if (!inserted) {
++      auto* categories = entry->second.FindList("categories");
++      for (size_t i = 0; i < available.size(); ++i) {
++        auto& aggregate = (*categories)[i].GetDict();
++        aggregate.Set("available", aggregate.FindBool("available").value_or(false) ||
++            available[i].GetDict().FindBool("available").value_or(false));
++      }
++    }
++    entry->second.FindList("profiles")->Append(source->discovered.profile_id);
++    base::DictValue profile;
++    profile.Set("profileId", source->discovered.profile_id);
++    profile.Set("categories", std::move(available));
++    entry->second.FindList("profileCategories")->Append(std::move(profile));
++    base::DictValue handle;
++    handle.Set("sourceId", source->discovered.source_id);
++    handle.Set("profileId", source->discovered.profile_id);
++    handle.Set("sourceHandle", source->handle);
++    handles.Append(std::move(handle));
++    sources_.emplace(source->handle, std::move(source));
++  }
++  for (auto& [id, summary] : summaries) sources.Append(std::move(summary));
++  base::DictValue result;
++  result.Set("sources", std::move(sources));
++  result.Set("snapshots", std::move(handles));
++  base::DictValue response;
++  response.Set("result", std::move(result));
++  return response;
++}
++void BrowserProfileImporter::SelectExport(const std::string& owner,
++    base::WeakPtr<BrowserWindowInterface> window, Current current,
++    const std::string& source_id, BrowserExportFormat format, Reply start_reply) {
++  static constexpr const char* kSources[] = {"chrome", "arc", "safari", "firefox",
++      "edge", "brave", "dia", "comet", "atlas"};
++  if (!profile_keep_alive_ || closed_ || !window || !current || !current.Run() ||
++      window->GetProfile() != profile_ || profile_->IsOffTheRecord() || owner.empty()) {
++    std::move(start_reply).Run(Fault("permission_denied", "The original browser import window is unavailable.")); return;
++  }
++  if (std::ranges::find(kSources, source_id) == std::end(kSources) ||
++      (format == BrowserExportFormat::kSafariArchive && source_id != "safari")) {
++    std::move(start_reply).Run(Fault("invalid_params", "Choose an actual browser export format.")); return;
++  }
++  if (discoveries_in_flight_ || sources_.size() >= 256) {
++    std::move(start_reply).Run(Fault("conflict", "Join the current browser preview before choosing another export.")); return;
++  }
++  while (export_selections_.size() >= 32) {
++    auto terminal = std::ranges::find_if(export_selections_, [](const auto& item) { return item.second->done; });
++    if (terminal == export_selections_.end()) {
++      std::move(start_reply).Run(Fault("conflict", "Join the original export selection first.")); return;
++    }
++    export_selections_.erase(terminal);
++  }
++  const std::string selection_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  auto selection = std::make_shared<ExportSelection>();
++  selection->owner = owner;
++  export_selections_.emplace(selection_id, selection);
++  Reply reply = base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
++      std::shared_ptr<ExportSelection> original, base::DictValue response) {
++    if (!self) return;
++    original->reply = std::move(response);
++    original->done = true;
++    self->MaybeJoined();
++  }, weak_factory_.GetWeakPtr(), selection);
++  ++discoveries_in_flight_;
++  discovery_owner_ = owner;
++  auto cancelled = std::make_shared<std::atomic_bool>(false);
++  discovery_cancelled_ = cancelled;
++  auto replies = base::SplitOnceCallback(std::move(reply));
++  export_picker_ = BrowserExportPicker::Show(window->GetWindow()->GetNativeWindow(), format,
++      base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self, std::string owner,
++          base::WeakPtr<BrowserWindowInterface> window, Current current, std::string source_id,
++          BrowserExportFormat format, std::shared_ptr<std::atomic_bool> cancelled, Reply reply,
++          base::expected<base::FilePath, std::string> selected) {
++        if (!self) return;
++        self->export_picker_.reset();
++        if (!selected || self->closed_ || cancelled->load() || !window || !current.Run()) {
++          --self->discoveries_in_flight_;
++          self->discovery_cancelled_.reset();
++          self->discovery_owner_.clear();
++          std::move(reply).Run(Fault("cancelled", "The original export selection was cancelled."));
++          self->MaybeJoined(); return;
++        }
++        auto replies = base::SplitOnceCallback(std::move(reply));
++        const bool posted = self->worker_->PostTaskAndReplyWithResult(FROM_HERE,
++            base::BindOnce([](base::FilePath selected, std::string source_id,
++                BrowserExportFormat format, std::shared_ptr<std::atomic_bool> cancelled)
++                -> base::expected<DiscoveredBrowserProfile, std::string> {
++              auto stopped = base::BindRepeating(
++                  [](std::shared_ptr<std::atomic_bool> flag) { return flag->load(); }, cancelled);
++              const std::string leaf = selected.BaseName().value();
++              auto snapshot = BrowserProfileSnapshot::Capture(selected.DirName(), {leaf}, false, stopped);
++              if (!snapshot.has_value()) return base::unexpected(snapshot.error());
++              if (!base::PathExists((*snapshot)->path().Append(leaf)))
++                return base::unexpected("The selected export file is unavailable.");
++              // Preview is native-only parsing of the selected immutable copy;
++              // no destination effects, paths or password values leave native.
++              auto decoded = DecodeBrowserExport((*snapshot)->path(), leaf, format, {}, stopped);
++              if (!decoded.snapshot_error.empty()) return base::unexpected(decoded.snapshot_error);
++              DiscoveredBrowserProfile profile;
++              profile.source_id = source_id;
++              profile.label = source_id;
++              profile.profile_id = format == BrowserExportFormat::kSafariArchive ? "Safari export" :
++                  format == BrowserExportFormat::kPasswordsCsv ? "Passwords export" :
++                  format == BrowserExportFormat::kTabsHtml ? "Tabs export" : "Bookmarks export";
++              profile.brand = BrowserProfileBrand::kChrome;  // Exports never use a Profile Keychain provider.
++              profile.export_format = format;
++              profile.export_leaf = leaf;
++              profile.path = (*snapshot)->path();
++              profile.anchor = std::move(*snapshot);
++              profile.categories = std::move(decoded.export_categories);
++              if (profile.categories.empty()) return base::unexpected("The export has no supported browser data.");
++              return profile;
++            }, *selected, source_id, format, cancelled),
++            base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self, std::string owner,
++                base::WeakPtr<BrowserWindowInterface> window, Current current,
++                std::shared_ptr<std::atomic_bool> cancelled, Reply reply,
++                base::expected<DiscoveredBrowserProfile, std::string> profile) {
++              if (!self) return;
++              --self->discoveries_in_flight_;
++              self->discovery_cancelled_.reset();
++              self->discovery_owner_.clear();
++              if (self->closed_ || cancelled->load() || !window || !current.Run()) {
++                if (profile && profile->anchor)
++                  self->worker_->DeleteSoon(FROM_HERE, std::move(profile->anchor));
++                std::move(reply).Run(Fault("cancelled", "The original export review was retired."));
++              } else if (!profile) {
++                std::move(reply).Run(Fault("invalid_params", "Choose a valid export containing the selected browser data."));
++              } else {
++                std::vector<DiscoveredBrowserProfile> profiles;
++                profiles.push_back(std::move(*profile));
++                std::move(reply).Run(self->PublishSources(owner, window, current, std::move(profiles)));
++              }
++              self->MaybeJoined();
++            }, self, owner, window, current, cancelled, std::move(replies.first)));
++        if (!posted) {
++          --self->discoveries_in_flight_;
++          self->discovery_cancelled_.reset();
++          self->discovery_owner_.clear();
++          std::move(replies.second).Run(Fault("cancelled", "Export review could not start during shutdown."));
++          self->MaybeJoined();
++        }
++      }, weak_factory_.GetWeakPtr(), owner, window, current, source_id, format, cancelled,
++          std::move(replies.first)));
++  if (!export_picker_) {
++    --discoveries_in_flight_;
++    discovery_cancelled_.reset();
++    discovery_owner_.clear();
++    std::move(replies.second).Run(Fault("backend_unavailable", "The original native export picker is unavailable."));
++    MaybeJoined();
++  }
++  // Never block the runtime's native worker on a human file-selection sheet.
++  std::move(start_reply).Run(PollExport(selection_id));
++
++}
++base::DictValue BrowserProfileImporter::PollExport(const std::string& id) const {
++  auto found = export_selections_.find(id);
++  base::DictValue result;
++  result.Set("selectionId", id);
++  result.Set("unknown", found == export_selections_.end());
++  if (found != export_selections_.end()) {
++    const auto& selection = *found->second;
++    result.Set("done", selection.done);
++    if (selection.done) {
++      if (const auto* discovery = selection.reply.FindDict("result"))
++        result.Set("discovery", discovery->Clone());
++      if (const auto* error = selection.reply.FindDict("error"))
++        result.Set("error", error->Clone());
++    }
++  }
++  return base::DictValue().Set("result", std::move(result));
++}
++base::DictValue BrowserProfileImporter::CancelExport(const std::string& id) {
++  auto found = export_selections_.find(id);
++  if (found != export_selections_.end() && !found->second->done &&
++      found->second->owner == discovery_owner_) {
++    if (discovery_cancelled_) discovery_cancelled_->store(true);
++    if (export_picker_) export_picker_->Cancel();
++  }
++  return PollExport(id);
++}
++void BrowserProfileImporter::ParseExportBookmarks(const std::shared_ptr<Job>& job) {
++  if (!CurrentJob(*job)) { Finish(job, "The original export was retired before parsing."); return; }
++  job->working = true;
++  job->bookmark_parser = content::ServiceProcessHost::Launch<user_data_importer::mojom::BookmarkHtmlParser>(
++      content::ServiceProcessHost::Options().WithDisplayName(
++          IDS_CONTENT_BOOKMARK_PARSER_SERVICE_DISPLAY_NAME).Pass());
++  job->bookmark_parser.set_disconnect_handler(base::BindOnce(
++      [](base::WeakPtr<BrowserProfileImporter> self, std::shared_ptr<Job> job) {
++        if (!self) return;
++        job->working = false;
++        self->Finish(job, "The sandboxed browser export parser disconnected.");
++      }, weak_factory_.GetWeakPtr(), job));
++  job->bookmark_parser->Parse(std::move(job->decoded.bookmark_html), base::BindOnce(
++      [](base::WeakPtr<BrowserProfileImporter> self, std::shared_ptr<Job> job,
++          user_data_importer::BookmarkParser::ParsedBookmarks parsed) {
++        if (!self) return;
++        job->bookmark_parser.reset();
++        job->working = false;
++        if (!self->CurrentJob(*job)) { self->Finish(job, "The original export was retired before acceptance."); return; }
++        parsed.bookmarks.insert(parsed.bookmarks.end(), parsed.reading_list.begin(), parsed.reading_list.end());
++        job->bookmark_rows.push_back({1, 0, base::UTF8ToUTF16("Imported from " + job->source->discovered.label), GURL()});
++        std::map<std::vector<std::u16string>, size_t> folders;
++        folders[{}] = 1;
++        for (const auto& entry : parsed.bookmarks) {
++          if (!entry.is_folder && (!entry.url.is_valid() || !entry.url.SchemeIsHTTPOrHTTPS() ||
++              entry.url.has_username() || entry.url.has_password())) continue;
++          if (job->decoded.bookmarks_as_tabs) {
++            if (!entry.is_folder) job->decoded.tabs.push_back({entry.url, entry.title, 0, false});
++            continue;
++          }
++          std::vector<std::u16string> path;
++          size_t parent = 1;
++          for (const auto& component : entry.path) {
++            path.push_back(component);
++            auto existing = folders.find(path);
++            if (existing != folders.end()) { parent = existing->second; continue; }
++            const size_t id = job->bookmark_rows.size() + 1;
++            job->bookmark_rows.push_back({id, parent, component, GURL()});
++            folders[path] = id;
++            parent = id;
++          }
++          const size_t id = job->bookmark_rows.size() + 1;
++          job->bookmark_rows.push_back({id, parent, entry.title, entry.is_folder ? GURL() : entry.url});
++          if (entry.is_folder) { path.push_back(entry.title); folders[path] = id; }
++        }
++        self->Dispatch(job);
++      }, weak_factory_.GetWeakPtr(), job));
++}
+ base::DictValue BrowserProfileImporter::Begin(const std::string& owner,
+     const std::string& operation, const std::string& handle,
+     const std::vector<std::string>& requested) {
+@@ -276,12 +500,19 @@ base::DictValue BrowserProfileImporter::Cancel(const std::string& operation) {
+   if (found == jobs_.end()) return Poll(operation);
+   auto job = found->second;
+   job->cancelled->store(true);
++  if (job->bookmark_parser.is_bound()) {
++    job->bookmark_parser.reset();
++    job->working = false;
++  }
+   if (auto installer = job->extension_installer) installer->CancelPendingInstall();
+   if (!job->done && !job->working) Finish(job, "");
+   return Poll(operation);
+ }
+ void BrowserProfileImporter::RetireOwner(const std::string& owner) {
+-  if (discovery_owner_ == owner && discovery_cancelled_) discovery_cancelled_->store(true);
++  if (discovery_owner_ == owner && discovery_cancelled_) {
++    discovery_cancelled_->store(true);
++    if (export_picker_) export_picker_->Cancel();
++  }
+   std::vector<std::string> operations;
+   for (const auto& [id, job] : jobs_)
+     if (job->source->owner == owner && !job->done) operations.push_back(id);
+@@ -291,25 +522,52 @@ void BrowserProfileImporter::RetireOwner(const std::string& owner) {
+ void BrowserProfileImporter::Close(base::OnceClosure joined) {
+   closed_ = true;
+   if (discovery_cancelled_) discovery_cancelled_->store(true);
++  if (export_picker_) export_picker_->Cancel();
+   joins_.push_back(std::move(joined));
+   std::vector<std::string> operations;
+   for (const auto& [id, job] : jobs_) if (!job->done) operations.push_back(id);
+   for (const auto& id : operations) Cancel(id);
+-  sources_.clear();
+   MaybeJoined();
+ }
+ void BrowserProfileImporter::MaybeJoined() {
+   if (!closed_ || discoveries_in_flight_) return;
+   for (const auto& [id, job] : jobs_) if (!job->done || job->cleanup) return;
++  if (!sources_retired_) {
++    if (source_retirement_pending_) return;
++    source_retirement_pending_ = true;
++    if (!retiring_sources_) {
++      retiring_sources_ = std::make_shared<std::vector<std::unique_ptr<BrowserProfileSnapshot>>>();
++      for (auto& [handle, source] : sources_)
++        if (source->discovered.anchor) retiring_sources_->push_back(std::move(source->discovered.anchor));
++      for (auto& [operation, job] : jobs_)
++        if (job->source->discovered.anchor) retiring_sources_->push_back(std::move(job->source->discovered.anchor));
++      sources_.clear();
++    }
++    // A barrier on this same worker also joins snapshots retired by earlier
++    // source previews. No accepted destination batch is cancelled or rolled back.
++    const bool posted = worker_->PostTaskAndReply(FROM_HERE,
++        base::BindOnce([](std::shared_ptr<std::vector<std::unique_ptr<BrowserProfileSnapshot>>> snapshots) {
++          snapshots->clear();
++        }, retiring_sources_),
++        base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self) {
++          if (!self) return;
++          self->sources_retired_ = true;
++          self->source_retirement_pending_ = false;
++          self->retiring_sources_.reset();
++          self->MaybeJoined();
++        }, weak_factory_.GetWeakPtr()));
++    if (!posted) source_retirement_pending_ = false;
++    return;  // A rejected worker task is not a fictional cleanup acknowledgement.
++  }
+   auto joins = std::move(joins_);
+   for (auto& joined : joins)
+     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, std::move(joined));
+ }
+ void BrowserProfileImporter::Decode(const std::shared_ptr<Job>& job) {
+   job->working = true;
+-  const bool needs_key = std::ranges::find(job->categories, "passwords") != job->categories.end() ||
++  const bool needs_key = !job->source->discovered.export_format && (std::ranges::find(job->categories, "passwords") != job->categories.end() ||
+       (std::ranges::find(job->categories, "tabs") != job->categories.end() &&
+-       base::DirectoryExists(job->source->discovered.path.Append(sessions::kEncryptedSessionsDirectory)));
++       base::DirectoryExists(job->source->discovered.path.Append(sessions::kEncryptedSessionsDirectory))));
+   auto decoded = base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
+       std::shared_ptr<Job> job, scoped_refptr<os_crypt_async::Encryptor> encryptor) {
+     if (!self) return;
+@@ -319,9 +577,17 @@ void BrowserProfileImporter::Decode(const std::shared_ptr<Job>& job) {
+       return;
+     }
+     const bool posted = self->worker_->PostTaskAndReplyWithResult(FROM_HERE,
+-        base::BindOnce(&DecodeBrowserProfile, job->source->discovered.path,
+-            job->categories, std::move(encryptor), base::BindRepeating(
+-                [](std::shared_ptr<std::atomic_bool> flag) { return flag->load(); }, job->cancelled)),
++        base::BindOnce([](std::shared_ptr<Job> original,
++            scoped_refptr<os_crypt_async::Encryptor> encryptor) {
++          auto cancelled = base::BindRepeating(
++              [](std::shared_ptr<std::atomic_bool> flag) { return flag->load(); }, original->cancelled);
++          const auto& source = original->source->discovered;
++          if (source.export_format)
++            return DecodeBrowserExport(source.anchor->path(), source.export_leaf,
++                *source.export_format, original->categories, cancelled);
++          return DecodeBrowserProfile(source.path, original->categories,
++              std::move(encryptor), cancelled);
++        }, job, std::move(encryptor)),
+         base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
+             std::shared_ptr<Job> job, DecodedBrowserProfile data) {
+           if (!self) return;
+@@ -329,6 +595,7 @@ void BrowserProfileImporter::Decode(const std::shared_ptr<Job>& job) {
+           job->working = false;
+           job->source_crypt.reset();
+           if (!job->decoded.snapshot_error.empty()) self->Finish(job, job->decoded.snapshot_error);
++          else if (!job->decoded.bookmark_html.empty()) self->ParseExportBookmarks(job);
+           else self->Dispatch(job);
+         }, self, job));
+     if (!posted) {
+@@ -485,7 +752,8 @@ void BrowserProfileImporter::Dispatch(const std::shared_ptr<Job>& job) {
+           const auto& credential = job->decoded.passwords[i];
+           password_manager::CSVPassword csv(credential.url,
+               base::UTF16ToUTF8(credential.username_value),
+-              base::UTF16ToUTF8(credential.password_value.secure_value()), "",
++              base::UTF16ToUTF8(credential.password_value.secure_value()),
++              base::UTF16ToUTF8(credential.GetPasswordNote()),
+               password_manager::CSVPassword::Status::kOK);
+           password_manager::CredentialUIEntry destination(csv);
+           if (destination.password.empty() ||
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.h b/chrome/browser/ui/aux/browser_profile_importer.h
+index 0b8c9f102..40f72fded 100644
+--- a/chrome/browser/ui/aux/browser_profile_importer.h
++++ b/chrome/browser/ui/aux/browser_profile_importer.h
+@@ -13,12 +13,16 @@
+ #include "base/memory/scoped_refptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/values.h"
++#include "chrome/browser/ui/aux/browser_export_decode.h"
+ class Profile;
+ class BrowserWindowInterface;
+ class ScopedProfileKeepAlive;
+ namespace base { class SingleThreadTaskRunner; }
+ namespace aux {
+ class ProfileLibrary;
++class BrowserExportPicker;
++class BrowserProfileSnapshot;
++struct DiscoveredBrowserProfile;
+ // Owned by the original native runtime host. Discover/Begin receive authority
+ // derived there from its actual WeakDocumentPtr + window + socket generation.
+ // Poll/Cancel only reduce known jobs, including after owner retirement.
+@@ -33,6 +37,11 @@ class BrowserProfileImporter {
+   void Discover(const std::string& owner_token,
+                 base::WeakPtr<BrowserWindowInterface> window,
+                 Current current, Reply callback);
++  void SelectExport(const std::string& owner_token,
++                    base::WeakPtr<BrowserWindowInterface> window, Current current,
++                    const std::string& source_id, BrowserExportFormat format, Reply callback);
++  base::DictValue PollExport(const std::string& selection_id) const;
++  base::DictValue CancelExport(const std::string& selection_id);
+   // Idempotence is exact operation ID + original owner/source/category tuple.
+   // The caller persists operation_id before this method can accept any effect.
+   base::DictValue Begin(const std::string& owner_token,
+@@ -48,6 +57,11 @@ class BrowserProfileImporter {
+  private:
+   struct Source;
+   struct Job;
++  struct ExportSelection;
++  base::DictValue PublishSources(const std::string& owner,
++      base::WeakPtr<BrowserWindowInterface> window, Current current,
++      std::vector<DiscoveredBrowserProfile> found);
++  void ParseExportBookmarks(const std::shared_ptr<Job>& job);
+   void Decode(const std::shared_ptr<Job>& job);
+   void Dispatch(const std::shared_ptr<Job>& job);
+   void ScheduleDispatch(const std::shared_ptr<Job>& job);
+@@ -66,8 +80,13 @@ class BrowserProfileImporter {
+   std::string discovery_owner_;
+   std::shared_ptr<std::atomic_bool> discovery_cancelled_;
+   size_t discoveries_in_flight_ = 0;
++  std::unique_ptr<BrowserExportPicker> export_picker_;
++  bool sources_retired_ = false;
++  bool source_retirement_pending_ = false;
++  std::shared_ptr<std::vector<std::unique_ptr<BrowserProfileSnapshot>>> retiring_sources_;
+   std::map<std::string, std::shared_ptr<Source>> sources_;
+   std::map<std::string, std::shared_ptr<Job>> jobs_;
++  std::map<std::string, std::shared_ptr<ExportSelection>> export_selections_;
+   std::vector<base::OnceClosure> joins_;
+   base::WeakPtrFactory<BrowserProfileImporter> weak_factory_{this};
+ };
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -506,6 +506,20 @@
+       generation <= retired_native_generation_ || cancelled->load()) {
+     std::move(callback).Run(NativeFault("ref_stale", "Original import connection retired")); return;
+   }
++  if (method == "native.browserImportExportPoll" || method == "native.browserImportExportCancel") {
++    const auto* selection = params.FindString("selectionId");
++    if (params.size() != 1 || !selection || selection->size() < 16 || selection->size() > 128) {
++      std::move(callback).Run(NativeFault("invalid_params", "The original export selection is required")); return;
++    }
++    if (!browser_importer_) {
++      base::DictValue result;
++      result.Set("selectionId", *selection);
++      result.Set("unknown", true);
++      std::move(callback).Run(base::DictValue().Set("result", std::move(result))); return;
++    }
++    std::move(callback).Run(method == "native.browserImportExportPoll" ?
++        browser_importer_->PollExport(*selection) : browser_importer_->CancelExport(*selection)); return;
++  }
+   if (method == "native.browserImportPoll" || method == "native.browserImportCancel") {
+     const auto* operation = params.FindString("operationId");
+     if (params.size() != 1 || !operation || operation->size() < 16 || operation->size() > 128) {
+@@ -536,6 +550,24 @@
+            std::shared_ptr<std::atomic_bool> cancelled) {
+           return host && !cancelled->load() && host->TurnContextCurrent(original);
+         }, weak_factory_.GetWeakPtr(), original, cancelled), std::move(callback)); return;
++  }
++  if (method == "native.browserImportSelectExport" && params.size() == 3) {
++    const auto* source = params.FindString("sourceId");
++    const auto* type = params.FindString("format");
++    std::optional<aux::BrowserExportFormat> format;
++    if (type && *type == "safari-archive") format = aux::BrowserExportFormat::kSafariArchive;
++    else if (type && *type == "bookmarks-html") format = aux::BrowserExportFormat::kBookmarksHtml;
++    else if (type && *type == "passwords-csv") format = aux::BrowserExportFormat::kPasswordsCsv;
++    else if (type && *type == "tabs-html") format = aux::BrowserExportFormat::kTabsHtml;
++    if (!source || source->size() > 32 || !format) {
++      std::move(callback).Run(NativeFault("invalid_params", "Choose a supported original browser export format")); return;
++    }
++    const auto original = owner->second;
++    browser_importer_->SelectExport(*token, original.window, base::BindRepeating(
++        [](base::WeakPtr<AuxRuntimeHost> host, TurnContextOwner original,
++           std::shared_ptr<std::atomic_bool> cancelled) {
++          return host && !cancelled->load() && host->TurnContextCurrent(original);
++        }, weak_factory_.GetWeakPtr(), original, cancelled), *source, *format, std::move(callback)); return;
+   }
+   if (method == "native.browserImportBegin" && params.size() == 4) {
+     const auto* operation = params.FindString("operationId");
+
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 0bebc5e47..b9a077508 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1038,7 +1038,8 @@ void WebUIBrowserUI::Request(const std::string& method,
+   if (api_method == "runs.start" || api_method == "runs.useLocalExecution" || api_method == "tasks.start" ||
+       api_method == "runs.retry" || api_method == "agent.images.generate" ||
+       api_method == "agent.utility.intent" || api_method == "agent.tidy.propose" ||
+-      api_method == "agent.tabName.suggest" || api_method == "import.preview" || api_method == "import.run" ||
++      api_method == "agent.tabName.suggest" || api_method == "import.preview" || api_method == "import.selectExport" || api_method == "import.exportStatus" ||
++      api_method == "import.cancelExport" || api_method == "import.run" ||
+         api_method == "import.status" || api_method == "import.cancel" ||
+         api_method == "models.auth.start" ||
+       api_method == "models.auth.status" || api_method == "models.auth.cancel" ||

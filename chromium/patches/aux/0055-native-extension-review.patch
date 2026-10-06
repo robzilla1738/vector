@@ -1,0 +1,898 @@
+diff --git a/chrome/browser/extensions/chrome_extension_registrar_delegate.cc b/chrome/browser/extensions/chrome_extension_registrar_delegate.cc
+index 9b76aa559..a6befbdf4 100644
+--- a/chrome/browser/extensions/chrome_extension_registrar_delegate.cc
++++ b/chrome/browser/extensions/chrome_extension_registrar_delegate.cc
+@@ -358,6 +358,10 @@ ChromeExtensionRegistrarDelegate::GetDisableReasonsOnInstalled(
+   base::flat_set<int> disable_reasons =
+       extension_registrar_->GetDisableReasonsOnInstalled(extension);
+ 
++  if (install_flags & kInstallFlagInitiallyDisabled) {
++    disable_reasons.insert(disable_reason::DISABLE_USER_ACTION);
++  }
++
+   // If the old version of the extension was disabled due to corruption, this
+   // new install may correct the problem.
+   disable_reasons.erase(disable_reason::DISABLE_CORRUPTED);
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 980c080af..96b63c06c 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -24,6 +24,8 @@ source_set("runtime") {
+     "browser_profile_discovery.h",
+     "browser_profile_discovery.cc",
+     "browser_profile_extension_installer.h",
++    "browser_profile_extension_candidates.cc",
++    "browser_profile_extension_candidates.h",
+     "browser_profile_extension_installer.cc",
+     "browser_profile_importer.h",
+     "browser_profile_importer.cc",
+diff --git a/chrome/browser/ui/aux/browser_export_decode.cc b/chrome/browser/ui/aux/browser_export_decode.cc
+index a75ccbb52..7f24c4379 100644
+--- a/chrome/browser/ui/aux/browser_export_decode.cc
++++ b/chrome/browser/ui/aux/browser_export_decode.cc
+@@ -114,6 +114,7 @@ DecodedBrowserProfile DecodeBrowserExport(const base::FilePath& directory,
+     size_t entries = 0, bytes = 0;
+     std::set<std::string> names;
+     bool has_html = false, has_csv = false, has_history = false;
++    bool has_extensions = false;
+     while (const auto* entry = archive.Next()) {
+       if (cancelled.Run() || ++entries > kEntries || entry->is_unsafe ||
+           entry->is_symbolic_link || entry->is_encrypted ||
+@@ -156,7 +157,24 @@ DecodedBrowserProfile DecodeBrowserExport(const base::FilePath& directory,
+           if (Selected(categories, "history") && !ReadHistory(*parsed, output)) {
+             fail("The Safari history export is not valid."); return output;
+           }
+-        } else if (*type != "extensions" && *type != "payment_cards") {
++        } else if (*type == "extensions") {
++          has_extensions = true;
++          if (Selected(categories, "extensions")) {
++            auto candidates = ReadSafariExtensionCandidates(*parsed);
++            if (!candidates) {
++              fail("The Safari extension metadata is malformed or too large."); return output;
++            }
++            for (auto& candidate : *candidates) {
++              auto existing = std::ranges::find(output.extension_candidates, candidate.source_id, &BrowserExtensionCandidate::source_id);
++              if (existing == output.extension_candidates.end()) {
++                if (output.extension_candidates.size() >= kBrowserExtensionCandidateLimit) {
++                  fail("The Safari extension metadata has too many unique items."); return output;
++                }
++                output.extension_candidates.push_back(std::move(candidate));
++              } else if (*existing != candidate) { fail("The Safari export contains conflicting extension identities."); return output; }
++            }
++          }
++        } else if (*type != "payment_cards") {
+           fail("The Safari export has an unknown data type."); return output;
+         }
+         // Payment cards and OTP seeds are outside browser import categories.
+@@ -166,9 +184,11 @@ DecodedBrowserProfile DecodeBrowserExport(const base::FilePath& directory,
+     if (has_html) output.export_categories.push_back("bookmarks");
+     if (has_history) output.export_categories.push_back("history");
+     if (has_csv) output.export_categories.push_back("passwords");
++    if (has_extensions) output.export_categories.push_back("extensions");
+     if (!archive.ok() || (Selected(categories, "bookmarks") && !has_html) ||
+         (Selected(categories, "passwords") && !has_csv) ||
+-        (Selected(categories, "history") && !has_history))
++        (Selected(categories, "history") && !has_history) ||
++        (Selected(categories, "extensions") && !has_extensions))
+       fail("The selected Safari categories are missing or the archive is damaged.");
+   }
+   if (cancelled.Run() || !output.snapshot->OriginalIsCurrent())
+diff --git a/chrome/browser/ui/aux/browser_profile_decode.cc b/chrome/browser/ui/aux/browser_profile_decode.cc
+index af493660d..4bd536a3b 100644
+--- a/chrome/browser/ui/aux/browser_profile_decode.cc
++++ b/chrome/browser/ui/aux/browser_profile_decode.cc
+@@ -25,7 +25,7 @@ DecodedBrowserProfile DecodeBrowserProfile(
+       for (const char* suffix : {"", "-wal", "-shm", "-journal"})
+         files.push_back(std::string(database) + suffix);
+   }
+-  if (selected("extensions")) files.insert(files.end(), {"Preferences", "Secure Preferences"});
++  // Extensions are admitted only from the separately held human review.
+   auto snapshot = BrowserProfileSnapshot::Capture(source, files, selected("tabs"), cancelled);
+   if (!snapshot.has_value()) {
+     result.snapshot_error = snapshot.error();
+@@ -46,7 +46,7 @@ DecodedBrowserProfile DecodeBrowserProfile(
+   read("history", [&] { return ReadProfileHistory(*result.snapshot); }, result.history);
+   read("tabs", [&] { return ReadProfileTabs(*result.snapshot, source_encryptor); }, result.tabs);
+   read("passwords", [&] { return ReadProfilePasswords(*result.snapshot, source_encryptor); }, result.passwords);
+-  read("extensions", [&] { return ReadProfileStoreExtensions(*result.snapshot); }, result.extensions);
++
+   if (cancelled.Run() || !result.snapshot->OriginalIsCurrent()) {
+     result.snapshot_error = cancelled.Run() ? "Browser import was cancelled." :
+         "The original browser changed. Close it and refresh the preview.";
+diff --git a/chrome/browser/ui/aux/browser_profile_decode.h b/chrome/browser/ui/aux/browser_profile_decode.h
+index 03fe16247..3b17fbcab 100644
+--- a/chrome/browser/ui/aux/browser_profile_decode.h
++++ b/chrome/browser/ui/aux/browser_profile_decode.h
+@@ -14,6 +14,7 @@
+ #include "base/functional/callback.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "chrome/browser/ui/aux/browser_profile_readers.h"
++#include "chrome/browser/ui/aux/browser_profile_extension_candidates.h"
+ #include "chrome/browser/ui/aux/browser_profile_snapshot.h"
+ namespace os_crypt_async { class Encryptor; }
+ namespace aux {
+@@ -27,7 +28,7 @@ struct DecodedBrowserProfile {
+   std::vector<ImportedProfileHistory> history;
+   std::vector<ImportedProfileTab> tabs;
+   std::vector<password_manager::StoredCredential> passwords;
+-  std::vector<std::string> extensions;
++  std::vector<BrowserExtensionCandidate> extension_candidates;
+   std::map<std::string, std::string> errors;
+   std::string snapshot_error;
+   std::string bookmark_html;
+diff --git a/chrome/browser/ui/aux/browser_profile_discovery.cc b/chrome/browser/ui/aux/browser_profile_discovery.cc
+--- a/chrome/browser/ui/aux/browser_profile_discovery.cc
++++ b/chrome/browser/ui/aux/browser_profile_discovery.cc
+@@ -115,6 +115,7 @@
+         if (base::PathExists(detail.path.AppendASCII("sessionstore.jsonlz4")) ||
+             base::PathExists(detail.path.AppendASCII("sessionstore-backups").AppendASCII("recovery.jsonlz4")) ||
+             base::PathExists(detail.path.AppendASCII("sessionstore-backups").AppendASCII("recovery.baklz4"))) categories.push_back("tabs");
++        if (base::PathExists(detail.path.AppendASCII("extensions.json"))) categories.push_back("extensions");
+         if (categories.empty()) continue;
+         found.push_back({"firefox", "Firefox", profile_id,
+             BrowserProfileBrand::kChrome, detail.path, std::move(*anchor),
+diff --git a/chrome/browser/ui/aux/browser_profile_extension_candidates.cc b/chrome/browser/ui/aux/browser_profile_extension_candidates.cc
+new file mode 100644
+index 000000000..4f26f7708
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_extension_candidates.cc
+@@ -0,0 +1,187 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license.
++#include "chrome/browser/ui/aux/browser_profile_extension_candidates.h"
++
++#include <algorithm>
++#include <map>
++#include <string_view>
++
++#include "base/files/file_util.h"
++#include "base/json/json_reader.h"
++#include "base/strings/string_util.h"
++#include "chrome/browser/ui/aux/browser_profile_snapshot.h"
++#include "extensions/common/extension_urls.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++constexpr size_t kMetadataBytes = 16 * 1024 * 1024;
++bool Text(const std::string* value, size_t limit) {
++  return value && !value->empty() && value->size() <= limit &&
++         base::IsStringUTF8(*value) &&
++         std::ranges::none_of(*value, [](unsigned char c) {
++           return c < 32 || c == 127;
++         });
++}
++std::string Name(const base::DictValue& metadata, const std::string& id) {
++  const auto* name = metadata.FindString("name");
++  return Text(name, 200) && !base::StartsWith(*name, "__MSG_") ? *name : id;
++}
++bool StoreURL(const GURL& url) {
++  return url.is_valid() && url.SchemeIs("https") && !url.has_username() &&
++         !url.has_password() && !url.has_ref();
++}
++base::expected<base::DictValue, std::string> ReadMetadata(
++    const BrowserProfileSnapshot& snapshot, const char* leaf) {
++  if (!snapshot.OriginalIsCurrent())
++    return base::unexpected("The original extension source changed.");
++  std::string text;
++  if (!base::ReadFileToStringWithMaxSize(snapshot.path().AppendASCII(leaf),
++                                       &text, kMetadataBytes))
++    return base::unexpected("The extension metadata is unavailable or too large.");
++  auto parsed = base::JSONReader::ReadDict(text, base::JSON_PARSE_RFC);
++  if (!parsed || !snapshot.OriginalIsCurrent())
++    return base::unexpected("The extension metadata is malformed or changed.");
++  return std::move(*parsed);
++}
++}  // namespace
++
++bool ValidChromeWebStoreId(const std::string& id) {
++  return id.size() == 32 && std::ranges::all_of(id, [](char c) {
++    return c >= 'a' && c <= 'p';
++  });
++}
++
++base::expected<std::vector<BrowserExtensionCandidate>, std::string>
++ReadChromiumExtensionCandidates(const BrowserProfileSnapshot& snapshot) {
++  std::map<std::string, BrowserExtensionCandidate> candidates;
++  for (const char* leaf : {"Preferences", "Secure Preferences"}) {
++    if (!base::PathExists(snapshot.path().AppendASCII(leaf))) continue;
++    auto data = ReadMetadata(snapshot, leaf);
++    if (!data) return base::unexpected(data.error());
++    const auto* settings = data->FindDictByDottedPath("extensions.settings");
++    if (!settings) continue;
++    if (settings->size() > kBrowserExtensionCandidateLimit)
++      return base::unexpected("Too many source extensions to review safely.");
++    for (const auto [id, value] : *settings) {
++      const auto* source = value.GetIfDict();
++      if (!ValidChromeWebStoreId(id) || !source)
++        return base::unexpected("The browser extension identity is malformed.");
++      const auto* manifest = source->FindDict("manifest");
++      BrowserExtensionCandidate candidate;
++      candidate.source_id = id;
++      candidate.name = manifest ? Name(*manifest, id) : id;
++      candidate.kind = "unsupported";
++      candidate.detail = "No verified store origin is available. This item is not installed automatically.";
++      // Chromium's current persistent disable-reasons list is authoritative.
++      // Missing state stays unknown; metadata absence is not permission to enable.
++      if (const auto* reasons = source->FindList("disable_reasons")) {
++        if (reasons->size() > 64 || std::ranges::any_of(*reasons, [](const base::Value& reason) {
++              return !reason.is_int() || reason.GetInt() <= 0;
++            })) return base::unexpected("The source extension disabled state is malformed.");
++        candidate.enabled = reasons->empty();
++      }
++      const auto* update = manifest ? manifest->FindString("update_url") : nullptr;
++      const GURL url(update ? *update : std::string());
++      if (StoreURL(url) && extension_urls::IsWebstoreUpdateUrl(url) &&
++          source->FindBool("from_webstore").value_or(false)) {
++        candidate.kind = "cws";
++        candidate.chrome_web_store_id = id;
++        candidate.detail = "Reinstall this Chrome Web Store item after its native permission review.";
++      } else if (StoreURL(url) && url.host() == "edge.microsoft.com" &&
++                 url.path() == "/extensionwebstorebase/v1/crx") {
++        candidate.kind = "edge";
++        candidate.detail = "Choose a Chrome Web Store counterpart explicitly; the Edge store ID is not a Chrome ID.";
++      }
++      const auto existing = candidates.find(id);
++      if (existing != candidates.end() && existing->second != candidate)
++        return base::unexpected("The source contains conflicting extension metadata. Refresh its preview.");
++      candidates.insert_or_assign(id, std::move(candidate));
++      if (candidates.size() > kBrowserExtensionCandidateLimit)
++        return base::unexpected("Too many source extensions to review safely.");
++    }
++  }
++  if (!snapshot.OriginalIsCurrent())
++    return base::unexpected("The original browser extension list changed.");
++  std::vector<BrowserExtensionCandidate> result;
++  for (auto& [id, candidate] : candidates) result.push_back(std::move(candidate));
++  return result;
++}
++
++base::expected<std::vector<BrowserExtensionCandidate>, std::string>
++ReadFirefoxExtensionCandidates(const BrowserProfileSnapshot& snapshot) {
++  auto data = ReadMetadata(snapshot, "extensions.json");
++  if (!data) return base::unexpected(data.error());
++  // Firefox's published XPIProvider/XPIDatabase current persistent schema.
++  // A future schema needs an explicit decoder update rather than guessed IDs.
++  if (data->FindInt("schemaVersion") != 37)
++    return base::unexpected("This Firefox extension metadata schema is not supported.");
++  const auto* addons = data->FindList("addons");
++  if (!addons || addons->size() > kBrowserExtensionCandidateLimit)
++    return base::unexpected("The Firefox extension list is malformed or too large.");
++  std::vector<BrowserExtensionCandidate> result;
++  std::map<std::string, bool> ids;
++  for (const auto& value : *addons) {
++    const auto* source = value.GetIfDict();
++    if (!source) return base::unexpected("The Firefox extension record is malformed.");
++    const auto* type = source->FindString("type");
++    if (!type) return base::unexpected("The Firefox add-on type is missing.");
++    if (*type != "extension") continue;
++    const auto* id = source->FindString("id");
++    const auto* location = source->FindString("location");
++    const auto* locale = source->FindDict("defaultLocale");
++    const auto* name = locale ? locale->FindString("name") : nullptr;
++    if (!Text(id, 512) || !Text(name, 200) || !Text(location, 64) || ids.contains(*id))
++      return base::unexpected("The Firefox extension identity is malformed or duplicated.");
++    ids.emplace(*id, true);
++    BrowserExtensionCandidate candidate;
++    candidate.source_id = *id;
++    candidate.name = *name;
++    candidate.kind = *location == "app-profile" ? "firefox" : "unsupported";
++    candidate.enabled = source->FindBool("active");
++    candidate.detail = candidate.kind == "firefox" ?
++        "Choose a Chrome Web Store counterpart explicitly; Firefox add-on IDs are not Chrome IDs." :
++        "This built-in or non-Profile add-on has no transferable Chromium installation.";
++    if (source->FindBool("pendingUninstall").value_or(false)) {
++      candidate.kind = "unsupported";
++      candidate.detail = "This add-on is pending removal in the source browser.";
++    }
++    result.push_back(std::move(candidate));
++  }
++  return result;
++}
++
++base::expected<std::vector<BrowserExtensionCandidate>, std::string>
++ReadSafariExtensionCandidates(const base::DictValue& exported) {
++  const auto* metadata = exported.FindDict("metadata");
++  const auto* browser = metadata ? metadata->FindString("browser_name") : nullptr;
++  const auto* type = metadata ? metadata->FindString("data_type") : nullptr;
++  if (!browser || (*browser != "Safari" && *browser != "Safari Technology Preview") ||
++      !type || *type != "extensions" ||
++      metadata->FindInt("schema_version") != 1)
++    return base::unexpected("The Safari extension export schema is not supported.");
++  const auto* extensions = exported.FindList("extensions");
++  if (!extensions || extensions->size() > kBrowserExtensionCandidateLimit)
++    return base::unexpected("The Safari extension list is malformed or too large.");
++  std::vector<BrowserExtensionCandidate> result;
++  std::map<std::string, bool> ids;
++  for (const auto& value : *extensions) {
++    const auto* source = value.GetIfDict();
++    const auto* id = source ? source->FindString("composed_identifier") : nullptr;
++    const auto* name = source ? source->FindString("display_name") : nullptr;
++    const auto* publisher = source ? source->FindString("developer_name") : nullptr;
++    if (!Text(id, 512) || !Text(name, 200) || !Text(publisher, 200) || ids.contains(*id))
++      return base::unexpected("The Safari extension identity is malformed or duplicated.");
++    ids.emplace(*id, true);
++    BrowserExtensionCandidate candidate;
++    candidate.source_id = *id;
++    candidate.name = *name;
++    candidate.publisher = *publisher;
++    candidate.enabled = true;  // Apple's export contains installed, enabled items.
++    candidate.kind = "safari";
++    candidate.detail = "Choose a Chrome Web Store counterpart explicitly. Safari apps and their data are not transferred.";
++    result.push_back(std::move(candidate));
++  }
++  return result;
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_extension_candidates.h b/chrome/browser/ui/aux/browser_profile_extension_candidates.h
+new file mode 100644
+index 000000000..98f709a38
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_profile_extension_candidates.h
+@@ -0,0 +1,39 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_EXTENSION_CANDIDATES_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_EXTENSION_CANDIDATES_H_
++
++#include <cstddef>
++#include <optional>
++#include <string>
++#include <vector>
++
++#include "base/types/expected.h"
++#include "base/values.h"
++
++namespace aux {
++class BrowserProfileSnapshot;
++
++// Source metadata only. No executable paths, source settings, downloaded code,
++// or inferred cross-store identifiers are retained or exposed.
++struct BrowserExtensionCandidate {
++  std::string source_id;
++  std::string name;
++  std::string kind;
++  std::string publisher;
++  std::optional<bool> enabled;
++  std::string chrome_web_store_id;
++  std::string detail;
++  bool operator==(const BrowserExtensionCandidate&) const = default;
++};
++
++constexpr size_t kBrowserExtensionCandidateLimit = 512;
++bool ValidChromeWebStoreId(const std::string& id);
++base::expected<std::vector<BrowserExtensionCandidate>, std::string>
++ReadChromiumExtensionCandidates(const BrowserProfileSnapshot& snapshot);
++base::expected<std::vector<BrowserExtensionCandidate>, std::string>
++ReadFirefoxExtensionCandidates(const BrowserProfileSnapshot& snapshot);
++base::expected<std::vector<BrowserExtensionCandidate>, std::string>
++ReadSafariExtensionCandidates(const base::DictValue& exported);
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_profile_extension_installer.cc b/chrome/browser/ui/aux/browser_profile_extension_installer.cc
+index 430d661a2..4ef6b2948 100644
+--- a/chrome/browser/ui/aux/browser_profile_extension_installer.cc
++++ b/chrome/browser/ui/aux/browser_profile_extension_installer.cc
+@@ -4,16 +4,29 @@
+ #include "chrome/browser/ui/aux/browser_profile_extension_installer.h"
+ #include <utility>
+ #include "base/check.h"
++#include "chrome/browser/profiles/profile.h"
++#include "extensions/browser/install_approval.h"
++#include "extensions/browser/extension_registry.h"
+ namespace aux {
+ BrowserProfileExtensionInstaller::BrowserProfileExtensionInstaller(
+     const std::string& id, Profile* profile, gfx::NativeWindow window,
+-    base::RepeatingCallback<bool()> current, Callback callback)
++    base::RepeatingCallback<bool()> current, bool initially_disabled, Callback callback)
+     : WebstoreInstallWithPrompt(id, profile, window, std::move(callback)),
+-      current_(std::move(current)) {
++      current_(std::move(current)), initially_disabled_(initially_disabled),
++      destination_id_(id), destination_profile_(profile) {
+   CHECK(current_);
+ }
+ BrowserProfileExtensionInstaller::~BrowserProfileExtensionInstaller() = default;
+ bool BrowserProfileExtensionInstaller::CheckRequestorAlive() const {
+-  return current_.Run() && WebstoreInstallWithPrompt::CheckRequestorAlive();
++  return current_.Run() &&
++      !extensions::ExtensionRegistry::Get(destination_profile_)->GetExtensionById(
++          destination_id_, extensions::ExtensionRegistry::EVERYTHING) &&
++      WebstoreInstallWithPrompt::CheckRequestorAlive();
++}
++std::unique_ptr<extensions::InstallApproval>
++BrowserProfileExtensionInstaller::CreateApproval() const {
++  auto approval = WebstoreInstallWithPrompt::CreateApproval();
++  approval->initially_disabled = initially_disabled_;
++  return approval;
+ }
+ }  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_extension_installer.h b/chrome/browser/ui/aux/browser_profile_extension_installer.h
+index 2328b16a1..262cd0cb5 100644
+--- a/chrome/browser/ui/aux/browser_profile_extension_installer.h
++++ b/chrome/browser/ui/aux/browser_profile_extension_installer.h
+@@ -4,6 +4,7 @@
+ #ifndef CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_EXTENSION_INSTALLER_H_
+ #define CHROME_BROWSER_UI_AUX_BROWSER_PROFILE_EXTENSION_INSTALLER_H_
+ #include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
+ #include "chrome/browser/extensions/webstore_install_with_prompt.h"
+ namespace aux {
+ // Native human consent is still shown by the normal Chrome Web Store installer.
+@@ -13,13 +14,17 @@ class BrowserProfileExtensionInstaller final
+     : public extensions::WebstoreInstallWithPrompt {
+  public:
+   BrowserProfileExtensionInstaller(const std::string& id, Profile* profile,
+-      gfx::NativeWindow window, base::RepeatingCallback<bool()> current,
++      gfx::NativeWindow window, base::RepeatingCallback<bool()> current, bool initially_disabled,
+       Callback callback);
+  protected:
+   ~BrowserProfileExtensionInstaller() override;
+   bool CheckRequestorAlive() const override;
++  std::unique_ptr<extensions::InstallApproval> CreateApproval() const override;
+  private:
+   base::RepeatingCallback<bool()> current_;
++  const bool initially_disabled_;
++  const std::string destination_id_;
++  raw_ptr<Profile> destination_profile_;
+ };
+ }  // namespace aux
+ #endif
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.cc b/chrome/browser/ui/aux/browser_profile_importer.cc
+--- a/chrome/browser/ui/aux/browser_profile_importer.cc
++++ b/chrome/browser/ui/aux/browser_profile_importer.cc
+@@ -7,6 +7,7 @@
+ #include <set>
+ #include <utility>
+ #include "base/check.h"
++#include "extensions/browser/extension_registry.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/strings/utf_string_conversions.h"
+@@ -72,6 +73,16 @@
+ }
+ constexpr const char* kCategories[] = {"bookmarks", "history", "tabs", "passwords", "extensions"};
+ }  // namespace
++struct BrowserProfileImporter::ExtensionReview {
++  ~ExtensionReview() {
++    if (snapshot) cleanup_runner->DeleteSoon(FROM_HERE, std::move(snapshot));
++  }
++  scoped_refptr<base::SingleThreadTaskRunner> cleanup_runner;
++  std::string id;
++  std::unique_ptr<BrowserProfileSnapshot> snapshot;
++  std::vector<std::string> candidate_ids;
++  std::vector<BrowserExtensionCandidate> candidates;
++};
+ struct BrowserProfileImporter::Source {
+   ~Source() {
+     // Human exports can be large. Dispose private snapshots on the original
+@@ -85,6 +96,8 @@
+   base::WeakPtr<BrowserWindowInterface> window;
+   Current current;
+   DiscoveredBrowserProfile discovered;
++  std::shared_ptr<ExtensionReview> extension_review;
++  std::shared_ptr<std::atomic_bool> review_cancelled;
+ };
+ struct BrowserProfileImporter::ExportSelection {
+   std::string owner;
+@@ -95,6 +108,9 @@
+   std::string operation;
+   std::shared_ptr<Source> source;
+   std::vector<std::string> categories;
++  std::shared_ptr<ExtensionReview> extension_review;
++  base::DictValue extension_choices;
++  std::vector<std::string> extension_destinations;
+   std::shared_ptr<std::atomic_bool> cancelled = std::make_shared<std::atomic_bool>(false);
+   bool done = false;
+   bool working = false;
+@@ -129,8 +145,99 @@
+   return profile_keep_alive_ && !closed_ && !job.cancelled->load() && job.source->current.Run() &&
+       job.source->window && job.source->window->GetProfile() == profile_ &&
+       OriginalSourceCurrent(job.source->discovered) &&
++      (!job.extension_review || job.extension_review->snapshot->OriginalIsCurrent()) &&
+       (!job.decoded.snapshot || job.decoded.snapshot->OriginalIsCurrent());
+ }
++void BrowserProfileImporter::ReviewExtensions(const std::string& owner,
++    const std::string& handle, Reply callback) {
++  auto found = sources_.find(handle);
++  if (closed_ || !profile_keep_alive_ || found == sources_.end() ||
++      found->second->owner != owner || !found->second->current.Run() ||
++      !found->second->window || found->second->window->GetProfile() != profile_ ||
++      !OriginalSourceCurrent(found->second->discovered) ||
++      std::ranges::find(found->second->discovered.categories, "extensions") == found->second->discovered.categories.end()) {
++    std::move(callback).Run(Fault("permission_denied", "Refresh the original extension source preview.")); return;
++  }
++  auto source = found->second;
++  if (source->review_cancelled) source->review_cancelled->store(true);
++  source->extension_review.reset();
++  auto cancelled = std::make_shared<std::atomic_bool>(false);
++  source->review_cancelled = cancelled;
++  ++discoveries_in_flight_;
++  auto replies = base::SplitOnceCallback(std::move(callback));
++  const bool posted = worker_->PostTaskAndReplyWithResult(FROM_HERE,
++      base::BindOnce([](std::shared_ptr<Source> source, std::shared_ptr<std::atomic_bool> flag) {
++        DecodedBrowserProfile result;
++        auto stopped = base::BindRepeating([](std::shared_ptr<std::atomic_bool> flag) { return flag->load(); }, flag);
++        const auto& original = source->discovered;
++        if (original.export_format) {
++          return DecodeBrowserExport(original.anchor->path(), original.export_leaf,
++              *original.export_format, {"extensions"}, stopped);
++        }
++        auto captured = BrowserProfileSnapshot::Capture(original.path,
++            original.firefox_profile ? std::vector<std::string>{"extensions.json"} :
++                std::vector<std::string>{"Preferences", "Secure Preferences"}, false, stopped);
++        if (!captured.has_value()) { result.snapshot_error = captured.error(); return result; }
++        result.snapshot = std::move(*captured);
++        auto candidates = original.firefox_profile ? ReadFirefoxExtensionCandidates(*result.snapshot) :
++            ReadChromiumExtensionCandidates(*result.snapshot);
++        if (!candidates) result.snapshot_error = candidates.error();
++        else result.extension_candidates = std::move(*candidates);
++        return result;
++      }, source, cancelled),
++      base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
++          std::shared_ptr<Source> source, std::shared_ptr<std::atomic_bool> cancelled,
++          Reply reply, DecodedBrowserProfile captured) {
++        if (!self) return;
++        --self->discoveries_in_flight_;
++        auto review = std::make_shared<ExtensionReview>();
++        review->cleanup_runner = self->worker_;
++        review->snapshot = std::move(captured.snapshot);
++        if (self->closed_ || cancelled->load() || source->review_cancelled != cancelled ||
++            self->sources_.find(source->handle) == self->sources_.end() ||
++            !source->current.Run() || !source->window || source->window->GetProfile() != self->profile_ ||
++            !OriginalSourceCurrent(source->discovered)) {
++          std::move(reply).Run(Fault("cancelled", "The original extension review retired."));
++        } else if (!captured.snapshot_error.empty() || !review->snapshot || !review->snapshot->OriginalIsCurrent()) {
++          std::move(reply).Run(Fault("ref_stale", "The extension metadata is unavailable, unsupported, or changed."));
++        } else {
++          review->id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++          review->candidates = std::move(captured.extension_candidates);
++          base::ListValue candidates;
++          for (const auto& source_candidate : review->candidates) {
++            const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++            review->candidate_ids.push_back(id);
++            base::DictValue candidate;
++            candidate.Set("candidateId", id);
++            candidate.Set("name", source_candidate.name);
++            candidate.Set("sourceIdentity", source_candidate.source_id);
++            candidate.Set("kind", source_candidate.kind);
++            candidate.Set("detail", source_candidate.detail);
++            if (!source_candidate.publisher.empty()) candidate.Set("publisher", source_candidate.publisher);
++            if (source_candidate.enabled) candidate.Set("enabled", *source_candidate.enabled);
++            if (!source_candidate.chrome_web_store_id.empty()) candidate.Set("chromeWebStoreId", source_candidate.chrome_web_store_id);
++            candidates.Append(std::move(candidate));
++          }
++          source->extension_review = review;
++          base::DictValue result;
++          result.Set("reviewId", review->id);
++          result.Set("candidates", std::move(candidates));
++          base::DictValue response;
++          response.Set("result", std::move(result));
++          std::move(reply).Run(std::move(response));
++        }
++        // Destroy failed snapshots before posting the same-worker close barrier.
++        review.reset();
++        self->MaybeJoined();
++      }, weak_factory_.GetWeakPtr(), source, cancelled, std::move(replies.first)));
++  if (!posted) {
++    --discoveries_in_flight_;
++    cancelled->store(true);
++    std::move(replies.second).Run(Fault("cancelled", "Extension review could not start during shutdown."));
++    MaybeJoined();
++  }
++}
++
+ void BrowserProfileImporter::Discover(const std::string& owner_token,
+     base::WeakPtr<BrowserWindowInterface> window, Current current, Reply callback) {
+   if (!profile_keep_alive_ || closed_ || owner_token.empty() || !window || !current || !current.Run() ||
+@@ -508,11 +615,11 @@
+ }
+ base::DictValue BrowserProfileImporter::Begin(const std::string& owner,
+     const std::string& operation, const std::string& handle,
+-    const std::vector<std::string>& requested) {
++    const std::vector<std::string>& requested, const base::DictValue& extension_choices) {
+   auto old = jobs_.find(operation);
+   if (old != jobs_.end()) {
+     if (old->second->source->owner != owner || old->second->source->handle != handle ||
+-        old->second->categories != requested)
++        old->second->categories != requested || old->second->extension_choices != extension_choices)
+       return Fault("conflict", "This operation already belongs to another import selection.");
+     return Poll(operation);
+   }
+@@ -529,6 +636,42 @@
+     if (std::ranges::find(source->second->discovered.categories, category) == source->second->discovered.categories.end())
+       return Fault("invalid_params", "This category is not available in the original browser Profile.");
+   }
++  std::shared_ptr<ExtensionReview> reviewed;
++  std::vector<std::string> destinations;
++  if (unique.contains("extensions")) {
++    reviewed = source->second->extension_review;
++    const auto* review_id = extension_choices.FindString("reviewId");
++    const auto* choices = extension_choices.FindList("choices");
++    if (!reviewed || !review_id || *review_id != reviewed->id || !choices ||
++        extension_choices.size() != 2 || choices->size() != reviewed->candidates.size() ||
++        !reviewed->snapshot->OriginalIsCurrent())
++      return Fault("ref_stale", "Review every extension from the original source before importing.");
++    std::set<std::string> selected;
++    std::set<std::string> destination_ids;
++    for (const auto& value : *choices) {
++      const auto* choice = value.GetIfDict();
++      const auto* candidate_id = choice ? choice->FindString("candidateId") : nullptr;
++      const auto* destination = choice ? choice->FindString("chromeWebStoreId") : nullptr;
++      const bool skip = choice && choice->FindBool("skip").value_or(false);
++      if (!candidate_id || choice->size() != 2 || (skip == !!destination) ||
++          !selected.insert(*candidate_id).second)
++        return Fault("invalid_params", "Each original extension needs one exact reviewed choice.");
++      auto found = std::ranges::find(reviewed->candidate_ids, *candidate_id);
++      if (found == reviewed->candidate_ids.end())
++        return Fault("permission_denied", "The extension choice belongs to another source review.");
++      if (destination && (!ValidChromeWebStoreId(*destination) || !destination_ids.insert(*destination).second))
++        return Fault("invalid_params", "Choose each valid Chrome Web Store counterpart only once.");
++    }
++    for (const auto& id : reviewed->candidate_ids) {
++      const auto selected_choice = std::ranges::find_if(*choices, [&](const base::Value& value) {
++        return *value.GetDict().FindString("candidateId") == id;
++      });
++      const auto* destination = selected_choice->GetDict().FindString("chromeWebStoreId");
++      destinations.push_back(destination ? *destination : std::string());
++    }
++  } else if (!extension_choices.empty()) {
++    return Fault("invalid_params", "Extension review requires the extensions category.");
++  }
+   for (const auto& [id, existing] : jobs_)
+     if (!existing->done || existing->cleanup) return Fault("conflict", "Join or cancel the current native import first.");
+   while (jobs_.size() >= 128) {
+@@ -544,6 +687,9 @@
+   job->operation = operation;
+   job->source = source->second;
+   job->categories = requested;
++  job->extension_review = std::move(reviewed);
++  job->extension_choices = extension_choices.Clone();
++  job->extension_destinations = std::move(destinations);
+   for (const auto& category : requested) {
+     base::DictValue progress;
+     progress.Set("source", job->source->discovered.source_id);
+@@ -601,10 +747,14 @@
+   for (const auto& [id, job] : jobs_)
+     if (job->source->owner == owner && !job->done) operations.push_back(id);
+   for (const auto& id : operations) Cancel(id);
++  for (auto& [id, source] : sources_)
++    if (source->owner == owner && source->review_cancelled) source->review_cancelled->store(true);
+   std::erase_if(sources_, [&](const auto& item) { return item.second->owner == owner; });
+ }
+ void BrowserProfileImporter::Close(base::OnceClosure joined) {
+   closed_ = true;
++  for (auto& [id, source] : sources_)
++    if (source->review_cancelled) source->review_cancelled->store(true);
+   if (discovery_cancelled_) discovery_cancelled_->store(true);
+   if (source_picker_) source_picker_->Cancel();
+   joins_.push_back(std::move(joined));
+@@ -625,6 +775,11 @@
+         if (source->discovered.anchor) retiring_sources_->push_back(std::move(source->discovered.anchor));
+       for (auto& [operation, job] : jobs_)
+         if (job->source->discovered.anchor) retiring_sources_->push_back(std::move(job->source->discovered.anchor));
++      for (auto& [id, source] : sources_) source->extension_review.reset();
++      for (auto& [id, job] : jobs_) {
++        job->extension_review.reset();
++        job->source->extension_review.reset();
++      }
+       sources_.clear();
+     }
+     // A barrier on this same worker also joins snapshots retired by earlier
+@@ -688,7 +843,10 @@
+           job->working = false;
+           job->source_crypt.reset();
+           if (!job->decoded.snapshot_error.empty()) self->Finish(job, job->decoded.snapshot_error);
+-          else if (job->source->discovered.firefox_profile) self->ParseFirefox(job);
++          else if (job->source->discovered.firefox_profile &&
++              std::ranges::any_of(job->categories, [](const std::string& category) {
++                return category == "bookmarks" || category == "history" || category == "tabs";
++              })) self->ParseFirefox(job);
+           else if (!job->decoded.bookmark_html.empty()) self->ParseExportBookmarks(job);
+           else self->Dispatch(job);
+         }, self, job));
+@@ -874,14 +1032,22 @@
+       }
+     }
+   } else if (category == "extensions") {
+-    if (job->offset < job->decoded.extensions.size()) {
+-      const auto& id = job->decoded.extensions[job->offset];
++    if (job->offset < job->extension_destinations.size()) {
++      const auto& id = job->extension_destinations[job->offset];
++      if (id.empty() || extensions::ExtensionRegistry::Get(profile_)->GetExtensionById(
++              id, extensions::ExtensionRegistry::EVERYTHING)) {
++        progress.Set("skipped", progress.FindInt("skipped").value() + 1);
++        ++job->offset;
++        ScheduleDispatch(job);
++        return;
++      }
+       job->working = true;
+       job->extension_installer = base::MakeRefCounted<BrowserProfileExtensionInstaller>(
+           id, profile_, job->source->window->GetWindow()->GetNativeWindow(),
+           base::BindRepeating([](base::WeakPtr<BrowserProfileImporter> self, std::shared_ptr<Job> job) {
+             return self && self->CurrentJob(*job);
+           }, weak_factory_.GetWeakPtr(), job),
++          job->extension_review->candidates[job->offset].enabled == false,
+           base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
+               std::shared_ptr<Job> job, bool success, const std::string&, extensions::webstore_install::Result) {
+             if (self) self->OnExtension(job, success);
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.h b/chrome/browser/ui/aux/browser_profile_importer.h
+index 3f8cc6c56..657fbc4da 100644
+--- a/chrome/browser/ui/aux/browser_profile_importer.h
++++ b/chrome/browser/ui/aux/browser_profile_importer.h
+@@ -35,6 +35,8 @@ class BrowserProfileImporter {
+   ~BrowserProfileImporter();
+   BrowserProfileImporter(const BrowserProfileImporter&) = delete;
+   BrowserProfileImporter& operator=(const BrowserProfileImporter&) = delete;
++  void ReviewExtensions(const std::string& owner_token,
++                        const std::string& source_handle, Reply callback);
+   void Discover(const std::string& owner_token,
+                 base::WeakPtr<BrowserWindowInterface> window,
+                 Current current, Reply callback);
+@@ -51,7 +53,8 @@ class BrowserProfileImporter {
+   base::DictValue Begin(const std::string& owner_token,
+                        const std::string& operation_id,
+                        const std::string& source_handle,
+-                       const std::vector<std::string>& categories);
++                       const std::vector<std::string>& categories,
++                       const base::DictValue& extension_review);
+   base::DictValue Poll(const std::string& operation_id) const;
+   base::DictValue Cancel(const std::string& operation_id);
+   void RetireOwner(const std::string& owner_token);
+@@ -59,6 +62,7 @@ class BrowserProfileImporter {
+   // or backend batch remains. It is not a rollback of accepted import effects.
+   void Close(base::OnceClosure joined);
+  private:
++  struct ExtensionReview;
+   struct Source;
+   struct Job;
+   struct ExportSelection;
+diff --git a/chrome/browser/ui/aux/browser_profile_readers.cc b/chrome/browser/ui/aux/browser_profile_readers.cc
+index a220fbc2b..62b0b2d6c 100644
+--- a/chrome/browser/ui/aux/browser_profile_readers.cc
++++ b/chrome/browser/ui/aux/browser_profile_readers.cc
+@@ -183,32 +183,4 @@ ReadProfilePasswords(const BrowserProfileSnapshot& snapshot,
+   return all;
+ }
+ 
+-base::expected<std::vector<std::string>, std::string> ReadProfileStoreExtensions(
+-    const BrowserProfileSnapshot& snapshot) {
+-  if (!snapshot.OriginalIsCurrent())
+-    return base::unexpected("The original browser Profile changed.");
+-  // Preferences are metadata only. Never inspect/copy executable extension code.
+-  std::set<std::string> ids;
+-  for (const auto* filename : {"Preferences", "Secure Preferences"}) {
+-    const auto file = snapshot.path().AppendASCII(filename);
+-    if (!base::PathExists(file)) continue;
+-    std::string json;
+-    if (!base::ReadFileToStringWithMaxSize(file, &json, 16 * 1024 * 1024))
+-      return base::unexpected("This browser’s extension metadata is too large or unreadable.");
+-    auto data = base::JSONReader::ReadDict(json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+-    const auto* settings = data ? data->FindDictByDottedPath("extensions.settings") : nullptr;
+-    if (!data) return base::unexpected("This browser’s extension metadata is malformed.");
+-    if (!settings) continue;
+-    for (const auto [id, raw] : *settings) {
+-      const auto* extension = raw.GetIfDict();
+-      if (id.size() != 32 || !std::ranges::all_of(id,
+-          [](char c) { return c >= 'a' && c <= 'p'; }) || !extension ||
+-          !extension->FindBool("from_webstore").value_or(false)) continue;
+-      ids.insert(id);
+-    }
+-  }
+-  if (!snapshot.OriginalIsCurrent())
+-    return base::unexpected("The original browser’s extension list changed.");
+-  return std::vector<std::string>(ids.begin(), ids.end());
+-}
+ }  // namespace aux
+diff --git a/chrome/browser/ui/aux/browser_profile_readers.h b/chrome/browser/ui/aux/browser_profile_readers.h
+index 4f76b4c27..260c7de8a 100644
+--- a/chrome/browser/ui/aux/browser_profile_readers.h
++++ b/chrome/browser/ui/aux/browser_profile_readers.h
+@@ -41,7 +41,5 @@ base::expected<std::vector<ImportedProfileTab>, std::string> ReadProfileTabs(
+ base::expected<std::vector<password_manager::StoredCredential>, std::string>
+ ReadProfilePasswords(const BrowserProfileSnapshot& snapshot,
+                     scoped_refptr<os_crypt_async::Encryptor> source_encryptor);
+-base::expected<std::vector<std::string>, std::string> ReadProfileStoreExtensions(
+-    const BrowserProfileSnapshot& snapshot);
+ }  // namespace aux
+ #endif
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -551,6 +551,13 @@
+           return host && !cancelled->load() && host->TurnContextCurrent(original);
+         }, weak_factory_.GetWeakPtr(), original, cancelled), std::move(callback)); return;
+   }
++  if (method == "native.browserImportExtensionReview" && params.size() == 2) {
++    const auto* handle = params.FindString("sourceHandle");
++    if (!handle || handle->size() > 128) {
++      std::move(callback).Run(NativeFault("invalid_params", "Choose the original extension source")); return;
++    }
++    browser_importer_->ReviewExtensions(*token, *handle, std::move(callback)); return;
++  }
+   if (method == "native.browserImportSelectWindow" && params.size() == 2) {
+     const auto* source = params.FindString("sourceId");
+     if (!source || *source != "safari") {
+@@ -581,11 +588,12 @@
+           return host && !cancelled->load() && host->TurnContextCurrent(original);
+         }, weak_factory_.GetWeakPtr(), original, cancelled), *source, *format, std::move(callback)); return;
+   }
+-  if (method == "native.browserImportBegin" && params.size() == 4) {
++  if (method == "native.browserImportBegin" && params.size() == 5) {
+     const auto* operation = params.FindString("operationId");
+     const auto* source = params.FindString("sourceHandle");
+     const auto* choices = params.FindList("categories");
+-    if (operation && source && source->size() <= 128 && choices &&
++    const auto* review = params.FindDict("extensionReview");
++    if (review && operation && source && source->size() <= 128 && choices &&
+         !choices->empty() && choices->size() <= 5) {
+       std::vector<std::string> categories;
+       for (const auto& value : *choices) {
+@@ -594,7 +602,7 @@
+         }
+         categories.push_back(value.GetString());
+       }
+-      std::move(callback).Run(browser_importer_->Begin(*token, *operation, *source, categories)); return;
++      std::move(callback).Run(browser_importer_->Begin(*token, *operation, *source, categories, *review)); return;
+     }
+   }
+   std::move(callback).Run(NativeFault("invalid_params", "Exact original import parameters are required"));
+
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1038,7 +1038,7 @@
+   if (api_method == "runs.start" || api_method == "runs.useLocalExecution" || api_method == "tasks.start" ||
+       api_method == "runs.retry" || api_method == "agent.images.generate" ||
+       api_method == "agent.utility.intent" || api_method == "agent.tidy.propose" ||
+-      api_method == "agent.tabName.suggest" || api_method == "import.preview" || api_method == "import.selectExport" || api_method == "import.selectWindow" || api_method == "import.exportStatus" ||
++      api_method == "agent.tabName.suggest" || api_method == "import.preview" || api_method == "import.selectExport" || api_method == "import.extensions.review" || api_method == "import.selectWindow" || api_method == "import.exportStatus" ||
+       api_method == "import.cancelExport" || api_method == "import.run" ||
+         api_method == "import.status" || api_method == "import.cancel" ||
+         api_method == "models.auth.start" ||
+
+diff --git a/extensions/browser/crx_installer.cc b/extensions/browser/crx_installer.cc
+index f683c1894..93a65d5c4 100644
+--- a/extensions/browser/crx_installer.cc
++++ b/extensions/browser/crx_installer.cc
+@@ -209,8 +209,11 @@ CrxInstaller::CrxInstaller(content::BrowserContext* context,
+     minimum_version_ = base::Version(*approval->minimum_version);
+   }
+ 
++  if (approval->initially_disabled) {
++    install_flags_ |= kInstallFlagInitiallyDisabled;
++  }
+   if (approval->bypassed_safebrowsing_friction) {
+-    install_flags_ = kInstallFlagBypassedSafeBrowsingFriction;
++    install_flags_ |= kInstallFlagBypassedSafeBrowsingFriction;
+   }
+ }
+ 
+diff --git a/extensions/browser/install_approval.h b/extensions/browser/install_approval.h
+index 00a98e0c3..0c7bd2294 100644
+--- a/extensions/browser/install_approval.h
++++ b/extensions/browser/install_approval.h
+@@ -106,6 +106,10 @@ struct InstallApproval : public base::SupportsUserData::Data {
+   // are granted at installation.
+   bool withhold_permissions = false;
+ 
++  // An accepted browser import may preserve a known disabled source state.
++  // Applied during registration, before the extension can be activated.
++  bool initially_disabled = false;
++
+  private:
+   InstallApproval();
+ };
+diff --git a/extensions/browser/install_flag.h b/extensions/browser/install_flag.h
+index 6882b24aa..343a58ee7 100644
+--- a/extensions/browser/install_flag.h
++++ b/extensions/browser/install_flag.h
+@@ -32,6 +32,9 @@ enum InstallFlag {
+   // not included in the Enhanced Safe Browsing CRX allowlist and the user has
+   // enabled Enhanced Protection.
+   kInstallFlagBypassedSafeBrowsingFriction = 1 << 5,
++
++  // Preserve an explicitly reviewed disabled browser-import source.
++  kInstallFlagInitiallyDisabled = 1 << 6,
+ };
+ 
+ }  // namespace extensions

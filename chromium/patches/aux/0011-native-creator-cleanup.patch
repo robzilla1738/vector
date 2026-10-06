@@ -1,0 +1,1039 @@
+diff --git a/chrome/browser/ui/aux/native_creator_close_receipt.cc b/chrome/browser/ui/aux/native_creator_close_receipt.cc
+new file mode 100644
+index 0000000000..45cd682bf4
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_creator_close_receipt.cc
+@@ -0,0 +1,149 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_creator_close_receipt.h"
++
++#include <utility>
++#include <algorithm>
++#include "base/functional/bind.h"
++#include "base/task/single_thread_task_runner.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/render_frame_host.h"
++
++namespace aux {
++NativeCreatorCloseReceipt::NativeCreatorCloseReceipt(
++    content::WebContents* page, base::TimeTicks original_deadline,
++    base::RepeatingCallback<bool()> current,
++    base::OnceCallback<void(bool)> completion)
++    : content::WebContentsUserData<NativeCreatorCloseReceipt>(*page),
++      content::WebContentsObserver(page),
++      original_document_(page->GetPrimaryMainFrame()->GetWeakDocumentPtr()),
++      original_deadline_(original_deadline),
++      current_(std::move(current)), completion_(std::move(completion)) {
++  // The native creator/lease/transition admission supplies its existing
++  // absolute deadline. Unload callbacks never start a fresh authority window.
++  deadline_timer_.Start(
++      FROM_HERE, std::max(base::TimeDelta(), original_deadline_ - base::TimeTicks::Now()),
++      base::BindOnce(
++          [](base::WeakPtr<NativeCreatorCloseReceipt> receipt,
++             base::UnguessableToken token) {
++            if (receipt) receipt->Refuse(token);
++          }, weak_factory_.GetWeakPtr(), token_));
++}
++NativeCreatorCloseReceipt::~NativeCreatorCloseReceipt() {
++  weak_factory_.InvalidateWeakPtrs();
++  // Userdata removal/replacement is not evidence that its page was closed.
++  Finish(false);
++}
++base::UnguessableToken NativeCreatorCloseReceipt::invocation() const {
++  return active_ ? token_ : base::UnguessableToken();
++}
++bool NativeCreatorCloseReceipt::Current(const base::UnguessableToken& token) {
++  if (token.is_empty() || token != token_ || retired_ || detaching_ ||
++      !current_ || !completion_ || !web_contents() ||
++      original_deadline_.is_null() || base::TimeTicks::Now() >= original_deadline_ ||
++      original_document_.AsRenderFrameHostIfValid() !=
++          web_contents()->GetPrimaryMainFrame()) return false;
++  auto weak = weak_factory_.GetWeakPtr();
++  auto current = current_;
++  const bool valid = current.Run();
++  return weak && valid && !retired_ && !detaching_ && web_contents() &&
++      base::TimeTicks::Now() < original_deadline_ &&
++      original_document_.AsRenderFrameHostIfValid() ==
++          web_contents()->GetPrimaryMainFrame();
++}
++bool NativeCreatorCloseReceipt::Begin(const base::UnguessableToken& token) {
++  if (active_ || !Current(token)) return false;
++  active_ = true;
++  return true;
++}
++void NativeCreatorCloseReceipt::End(const base::UnguessableToken& token) {
++  if (token == token_) { active_ = false; detach_ready_ = false; }
++}
++bool NativeCreatorCloseReceipt::MayDetach(const base::UnguessableToken& token) {
++  if (!active_ || !Current(token)) return false;
++  // This callback-bearing check does not publish successful destruction.
++  // The caller must recheck the original model/member after it returns.
++  detach_ready_ = true;
++  return true;
++}
++bool NativeCreatorCloseReceipt::ConsumeForDetach(
++    const base::UnguessableToken& token) {
++  // No callback or event-loop boundary between these original checks and the
++  // irreversible effect. MayDetach alone cannot make destructor cleanup win.
++  if (token.is_empty() || token != token_ || !active_ || !detach_ready_ ||
++      retired_ || detaching_ || !completion_ || !web_contents() ||
++      original_document_.AsRenderFrameHostIfValid() !=
++          web_contents()->GetPrimaryMainFrame() ||
++      original_deadline_.is_null() || base::TimeTicks::Now() >= original_deadline_)
++    return false;
++  detach_ready_ = false;
++  detaching_ = true;
++  active_ = false;
++  return true;
++}
++void NativeCreatorCloseReceipt::CancelForHuman() {
++  retired_ = true;
++  active_ = false;
++  detach_ready_ = false;
++  current_.Reset();
++  Finish(false);
++}
++void NativeCreatorCloseReceipt::Refuse(const base::UnguessableToken& token) {
++  if (token != token_ || detaching_) return;
++  retired_ = true;
++  active_ = false;
++  detach_ready_ = false;
++  current_.Reset();
++  Finish(false);
++}
++bool NativeCreatorCloseReceipt::MayContinue(const base::UnguessableToken& token) {
++  return Current(token);
++}
++bool NativeCreatorCloseReceipt::QueueHumanClose(base::OnceClosure close) {
++  if (!original_ack_pending_) return false;
++  if (!human_close_) human_close_ = std::move(close);
++  CancelForHuman();
++  return true;
++}
++void NativeCreatorCloseReceipt::AwaitOriginalAck(const base::UnguessableToken& token) {
++  if (token == token_ && !retired_ && !detaching_)
++    original_ack_pending_ = true;
++}
++bool NativeCreatorCloseReceipt::OriginalAck(const base::UnguessableToken& token,
++                                          bool await_unload) {
++  if (token != token_) return false;
++  const bool human_close = static_cast<bool>(human_close_);
++  if (human_close && await_unload) return true;
++  original_ack_pending_ = false;
++  if (human_close_)
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, std::move(human_close_));
++  return human_close;
++}
++void NativeCreatorCloseReceipt::Finish(bool closed) {
++  if (!completion_) return;
++  // Do not reenter tab-strip mutation while it owns its reentrancy guard.
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE, base::BindOnce(std::move(completion_), closed));
++}
++base::WeakPtr<NativeCreatorCloseReceipt>
++NativeCreatorCloseReceipt::GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
++void NativeCreatorCloseReceipt::PrimaryPageChanged(content::Page&) {
++  // A replacement page retires the original callback identity. A queued human
++  // invocation retains its own original document fence and cannot close this
++  // replacement merely because the old renderer callback disappeared.
++  Refuse(token_);
++  OriginalAck(token_);
++}
++void NativeCreatorCloseReceipt::RenderFrameDeleted(content::RenderFrameHost*) {
++  if (!original_document_.AsRenderFrameHostIfValid()) {
++    Refuse(token_);
++    OriginalAck(token_);
++  }
++}
++void NativeCreatorCloseReceipt::WebContentsDestroyed() {
++  human_close_.Reset();
++  original_ack_pending_ = false;
++  Finish(detaching_);
++}
++WEB_CONTENTS_USER_DATA_KEY_IMPL(NativeCreatorCloseReceipt);
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/native_creator_close_receipt.h b/chrome/browser/ui/aux/native_creator_close_receipt.h
+new file mode 100644
+index 0000000000..2c1e572037
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_creator_close_receipt.h
+@@ -0,0 +1,74 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_CREATOR_CLOSE_RECEIPT_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_CREATOR_CLOSE_RECEIPT_H_
++
++#include "base/functional/callback.h"
++#include "base/callback_list.h"
++#include "base/memory/weak_ptr.h"
++#include "base/unguessable_token.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "content/public/browser/web_contents_user_data.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/weak_document_ptr.h"
++
++namespace aux {
++class EgressController;
++// Native-only one-use close invocation. An ordinary close cancels this receipt;
++// its delayed renderer continuation cannot become a new human close.
++class NativeCreatorCloseReceipt final
++    : public content::WebContentsUserData<NativeCreatorCloseReceipt>,
++      public content::WebContentsObserver {
++ public:
++  ~NativeCreatorCloseReceipt() override;
++  const base::UnguessableToken& token() const { return token_; }
++  base::UnguessableToken invocation() const;
++  bool Begin(const base::UnguessableToken& token);
++  void End(const base::UnguessableToken& token);
++  bool MayDetach(const base::UnguessableToken& token);
++  // Callback-free final consumption, only after original model/member checks.
++  bool ConsumeForDetach(const base::UnguessableToken& token);
++  void CancelForHuman();
++  void Refuse(const base::UnguessableToken& token);
++  // A separate genuine human close waits for the original agent callback to
++  // retire; it never takes over that callback's token or current metadata.
++  bool QueueHumanClose(base::OnceClosure close);
++  void AwaitOriginalAck(const base::UnguessableToken& token);
++  // Returns whether this ACK belongs to a separately queued human close.
++  // Accepted beforeunload keeps that close queued until its final unload ACK.
++  bool OriginalAck(const base::UnguessableToken& token,
++                   bool await_unload = false);
++  bool MayContinue(const base::UnguessableToken& token);
++  base::WeakPtr<NativeCreatorCloseReceipt> GetWeakPtr();
++
++ private:
++  friend class EgressController;
++  friend class NativeCreatorCloseReceiptBrowserTestPeer;
++  friend class content::WebContentsUserData<NativeCreatorCloseReceipt>;
++  NativeCreatorCloseReceipt(content::WebContents* page,
++      base::TimeTicks original_deadline,
++      base::RepeatingCallback<bool()> current,
++      base::OnceCallback<void(bool)> completion);
++  bool Current(const base::UnguessableToken& token);
++  void Finish(bool closed);
++  void PrimaryPageChanged(content::Page& page) override;
++  void RenderFrameDeleted(content::RenderFrameHost* frame) override;
++  void WebContentsDestroyed() override;
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++  const content::WeakDocumentPtr original_document_;
++  const base::TimeTicks original_deadline_;
++  const base::UnguessableToken token_ = base::UnguessableToken::Create();
++  base::RepeatingCallback<bool()> current_;
++  base::OnceCallback<void(bool)> completion_;
++  bool active_ = false;
++  bool retired_ = false;
++  bool detaching_ = false;
++  bool detach_ready_ = false;
++  bool original_ack_pending_ = false;
++  base::OnceClosure human_close_;
++  base::OneShotTimer deadline_timer_;
++  base::CallbackListSubscription authority_subscription_;
++  base::WeakPtrFactory<NativeCreatorCloseReceipt> weak_factory_{this};
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+index 9e27bdcb53..4a913454e2 100644
+--- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
++++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
+@@ -13,6 +13,7 @@
+ #include "chrome/browser/background/background_contents.h"
+ #include "chrome/browser/background/background_contents_service.h"
+ #include "chrome/browser/background/background_contents_service_factory.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+ #include "chrome/browser/content_settings/page_specific_content_settings_delegate.h"
+ #include "chrome/browser/custom_handlers/protocol_handler_registry_factory.h"
+@@ -45,10 +46,15 @@
+ #include "chrome/browser/ui/tab_dialogs.h"
+ #include "chrome/browser/ui/tab_modal_confirm_dialog.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_close_types_data.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/frame/contents_web_view.h"
+ #include "chrome/browser/ui/views/status_bubble_views.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "chrome/browser/ui/aux/native_creator_close_receipt.h"
++#endif
+ #include "chrome/browser/ui/web_applications/app_browser_controller.h"
+ #include "chrome/browser/web_applications/web_app_provider.h"
+ #include "chrome/browser/web_applications/web_app_registrar.h"
+@@ -764,6 +770,28 @@ void BrowserWebContentsDelegate::LoadingStateChanged(
+       source, should_show_loading_ui);
+ }
+ 
++void BrowserWebContentsDelegate::CloseContentsWithEmbeddingInvocation(
++    content::WebContents* source, base::UnguessableToken invocation,
++    content::WeakDocumentPtr original_document) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* receipt = aux::NativeCreatorCloseReceipt::FromWebContents(source);
++  if (!receipt) return;
++  auto original = receipt->GetWeakPtr();
++  receipt->OriginalAck(invocation);
++  if (!original || invocation.is_empty() ||
++      original_document.AsRenderFrameHostIfValid() != source->GetPrimaryMainFrame() ||
++      !original->MayContinue(invocation)) return;
++  auto contents = source->GetWeakPtr();
++  if (!unload_controller_->CanCloseContents(source) || !contents || !original ||
++      original_document.AsRenderFrameHostIfValid() != source->GetPrimaryMainFrame() ||
++      !original->MayContinue(invocation)) return;
++  auto* close_data = TabCloseTypesData::FromWebContents(source);
++  const uint32_t types = close_data ? close_data->close_types() : TabCloseTypes::CLOSE_NONE;
++  browser_->GetTabStripModel()->CloseWebContentsForCreatorCleanup(
++      source, types, invocation);
++#endif
++}
++
+ void BrowserWebContentsDelegate::CloseContents(content::WebContents* source) {
+   if (unload_controller_->CanCloseContents(source)) {
+     chrome::CloseWebContents(&browser_.get(), source, true);
+@@ -795,6 +823,15 @@ void BrowserWebContentsDelegate::UpdateTargetURL(content::WebContents* source,
+                                                  const GURL& url) {
+   std::vector<StatusBubble*> status_bubbles =
+       browser_ui_controller_->GetStatusBubbles();
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (WebUIBrowserWindow::FromBrowser(&*browser_)) {
++    if (source == browser_->GetTabStripModel()->GetActiveWebContents()) {
++      for (StatusBubble* bubble : status_bubbles)
++        bubble->SetURL(url);
++    }
++    return;
++  }
++#endif
+   for (StatusBubble* status_bubble : status_bubbles) {
+     StatusBubbleViews* status_bubble_views =
+         static_cast<StatusBubbleViews*>(status_bubble);
+@@ -822,6 +859,18 @@ void BrowserWebContentsDelegate::ContentsMouseEvent(
+   // Mouse motion events update the status bubble, if it exists.
+   std::vector<StatusBubble*> status_bubbles =
+       browser_ui_controller_->GetStatusBubbles();
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (WebUIBrowserWindow::FromBrowser(&*browser_)) {
++    if (source == browser_->GetTabStripModel()->GetActiveWebContents() &&
++        (type == ui::EventType::kMouseMoved || exited)) {
++      for (StatusBubble* bubble : status_bubbles) {
++        bubble->MouseMoved(exited);
++        if (exited) bubble->SetURL(GURL());
++      }
++    }
++    return;
++  }
++#endif
+   for (StatusBubble* status_bubble : status_bubbles) {
+     StatusBubbleViews* status_bubble_views =
+         static_cast<StatusBubbleViews*>(status_bubble);
+@@ -871,6 +920,44 @@ void BrowserWebContentsDelegate::BeforeUnloadFired(
+                                         proceed_to_fire_unload);
+ }
+ 
++void BrowserWebContentsDelegate::BeforeUnloadFiredWithEmbeddingInvocation(
++    content::WebContents* source, bool proceed, bool* proceed_to_fire_unload,
++    base::UnguessableToken invocation,
++    content::WeakDocumentPtr original_document) {
++  *proceed_to_fire_unload = false;
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* receipt = aux::NativeCreatorCloseReceipt::FromWebContents(source);
++  if (!receipt) return;
++  auto original = receipt->GetWeakPtr();
++  const bool human_close = receipt->OriginalAck(
++      invocation, proceed && original_document.AsRenderFrameHostIfValid() ==
++                                 source->GetPrimaryMainFrame());
++  // The agent remains retired. An accepted ACK for this exact document may
++  // complete the separate queued human close through ordinary unload handling.
++  if (human_close && proceed && original &&
++      original_document.AsRenderFrameHostIfValid() == source->GetPrimaryMainFrame()) {
++    unload_controller_->BeforeUnloadFired(source, proceed, proceed_to_fire_unload);
++    return;
++  }
++  if (!original || invocation.is_empty() ||
++      original_document.AsRenderFrameHostIfValid() != source->GetPrimaryMainFrame() ||
++      !original->MayContinue(invocation)) {
++    if (original) original->Refuse(invocation);
++    return;
++  }
++  auto contents = source->GetWeakPtr();
++  unload_controller_->BeforeUnloadFired(source, proceed, proceed_to_fire_unload);
++  if (!contents || !original) { *proceed_to_fire_unload = false; return; }
++  if (original_document.AsRenderFrameHostIfValid() != source->GetPrimaryMainFrame() ||
++      !original->MayContinue(invocation)) {
++    *proceed_to_fire_unload = false;
++    return;
++  }
++  if (*proceed_to_fire_unload) original->AwaitOriginalAck(invocation);
++  else original->Refuse(invocation);
++#endif
++}
++
+ bool BrowserWebContentsDelegate::ShouldFocusLocationBarByDefault(
+     content::WebContents* source) {
+   // Navigations in background tabs shouldn't change the focus state of the
+diff --git a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h
+index 05a9d7f7f2..62304d6327 100644
+--- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h
++++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h
+@@ -129,6 +129,9 @@ class BrowserWebContentsDelegate : public content::WebContentsDelegate {
+   void LoadingStateChanged(content::WebContents* source,
+                            bool should_show_loading_ui) override;
+   void CloseContents(content::WebContents* source) override;
++  void CloseContentsWithEmbeddingInvocation(content::WebContents* source,
++      base::UnguessableToken invocation,
++      content::WeakDocumentPtr original_document) override;
+   void SetContentsBounds(content::WebContents* source,
+                          const gfx::Rect& bounds) override;
+   void UpdateTargetURL(content::WebContents* source, const GURL& url) override;
+@@ -144,6 +147,10 @@ class BrowserWebContentsDelegate : public content::WebContentsDelegate {
+   void BeforeUnloadFired(content::WebContents* source,
+                          bool proceed,
+                          bool* proceed_to_fire_unload) override;
++  void BeforeUnloadFiredWithEmbeddingInvocation(content::WebContents* source,
++      bool proceed, bool* proceed_to_fire_unload,
++      base::UnguessableToken invocation,
++      content::WeakDocumentPtr original_document) override;
+   bool ShouldFocusLocationBarByDefault(content::WebContents* source) override;
+   bool ShouldFocusPageAfterCrash(content::WebContents* source) override;
+   void ShowRepostFormWarningDialog(content::WebContents* source) override;
+diff --git a/chrome/browser/ui/unload_controller.cc b/chrome/browser/ui/unload_controller.cc
+index 6ac2d32db9..fd7131eefb 100644
+--- a/chrome/browser/ui/unload_controller.cc
++++ b/chrome/browser/ui/unload_controller.cc
+@@ -10,6 +10,10 @@
+ #include "base/location.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "chrome/browser/browser_process.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/native_creator_close_receipt.h"
++#endif
+ #include "chrome/browser/devtools/devtools_window.h"
+ #include "chrome/browser/download/download_core_service.h"
+ #include "chrome/browser/download/download_core_service_factory.h"
+@@ -275,6 +279,20 @@ bool UnloadController::ShouldRunUnloadEventsHelper(
+ }
+ 
+ bool UnloadController::RunUnloadEventsHelper(content::WebContents* contents) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* creator_receipt = aux::NativeCreatorCloseReceipt::FromWebContents(contents);
++  const auto creator_invocation = creator_receipt
++      ? creator_receipt->invocation() : base::UnguessableToken();
++  // DevTools interception/custom confirmation callbacks currently resume the
++  // ordinary close API and do not retain this invocation. Refuse those paths
++  // rather than allowing them to acquire human close semantics at callback time.
++  if (!creator_invocation.is_empty() &&
++      DevToolsWindow::GetInstanceForInspectedWebContents(contents)) {
++    creator_receipt->Refuse(creator_invocation);
++    return false;
++  }
++#endif
++
+   // If a tab unload handler indicates that beforeunload handling should be
+   // skipped (for example, because the user already confirmed closing the tab
+   // via a custom task confirmation dialog), return false immediately. This
+@@ -292,6 +310,14 @@ bool UnloadController::RunUnloadEventsHelper(content::WebContents* contents) {
+   }
+ 
+   if (handler_to_show) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++    if (!creator_invocation.is_empty()) {
++      // Reacquire only to retire the captured token, never to originate another.
++      if (auto* original = aux::NativeCreatorCloseReceipt::FromWebContents(contents))
++        original->Refuse(creator_invocation);
++      return false;
++    }
++#endif
+     if (handler_to_show->ShowCustomConfirmation(
+             contents,
+             base::BindOnce(&UnloadController::OnCustomConfirmationClosed,
+@@ -344,6 +370,30 @@ bool UnloadController::RunUnloadEventsHelper(content::WebContents* contents) {
+     // them. Once they have fired, we'll get a message back saying whether
+     // to proceed closing the page or not, which sends us back to this method
+     // with the NeedToFireBeforeUnloadOrUnloadEvents bit cleared.
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++    if (auto* receipt = aux::NativeCreatorCloseReceipt::FromWebContents(contents)) {
++      const auto invocation = receipt->invocation();
++      if (!invocation.is_empty()) {
++        auto original = receipt->GetWeakPtr();
++        auto page = contents->GetWeakPtr();
++        if (!receipt->MayContinue(invocation)) {
++          if (original) original->Refuse(invocation);
++          if (page) performance_manager::execution_context_priority::SetPageIsClosing(
++              page.get(), /*is_closing=*/false);
++          return false;
++        }
++        if (!original || !page) return false;
++        original->AwaitOriginalAck(invocation);
++        if (!page->DispatchBeforeUnloadForEmbeddingClose(invocation) && original) {
++          original->OriginalAck(invocation);
++          original->Refuse(invocation);
++          if (page) performance_manager::execution_context_priority::SetPageIsClosing(
++              page.get(), /*is_closing=*/false);
++        }
++        return true;
++      }
++    }
++#endif
+     contents->DispatchBeforeUnload(false /* auto_cancel */);
+     return true;
+   }
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc b/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc
+index 7a7812c6cc..f8ec44fec9 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc
+@@ -8,7 +8,11 @@
+ #include "chrome/browser/ui/browser.h"
+ #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "chrome/common/webui_url_constants.h"
+ #include "chrome/common/chrome_render_frame.mojom.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/page_navigator.h"
++#include "content/public/browser/reload_type.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_observer.h"
+ #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
+@@ -48,6 +52,21 @@ content::WebContents* WebUIBrowserWebContentsDelegate::OpenURLFromTab(
+     const content::OpenURLParams& params,
+     base::OnceCallback<void(content::NavigationHandle&)>
+         navigation_handle_callback) {
++  if (source == web_contents() && params.url.SchemeIs("chrome") &&
++      params.url.host() == chrome::kChromeUIAuxHost) {
++    // The Aux WebUI controller requires the top shell WebContents. A document
++    // navigation must stay there instead of opening a guest tab.
++    if (params.url == source->GetLastCommittedURL()) {
++      source->GetController().Reload(content::ReloadType::BYPASSING_CACHE,
++                                     /*check_for_repost=*/false);
++      return source;
++    }
++    auto handle = source->GetController().LoadURLWithParams(
++        content::NavigationController::LoadURLParams(params));
++    if (handle && navigation_handle_callback)
++      std::move(navigation_handle_callback).Run(*handle);
++    return source;
++  }
+   return window_->browser()->OpenURL(params,
+                                      std::move(navigation_handle_callback));
+ }
+diff --git a/content/browser/renderer_host/render_frame_host_delegate.h b/content/browser/renderer_host/render_frame_host_delegate.h
+index 47ec9c62d8..0e0fd06ba4 100644
+--- a/content/browser/renderer_host/render_frame_host_delegate.h
++++ b/content/browser/renderer_host/render_frame_host_delegate.h
+@@ -758,6 +758,9 @@ class CONTENT_EXPORT RenderFrameHostDelegate {
+ 
+   // Called by the main frame to close the current tab/window.
+   virtual void Close(RenderFrameHostImpl* render_frame_host) {}
++  // Nonempty native embedding invocation has no default effect.
++  virtual void CloseWithEmbeddingInvocation(RenderFrameHostImpl* render_frame_host,
++      base::UnguessableToken invocation, content::WeakDocumentPtr original_document) {}
+ 
+   // True if the delegate is currently showing a JavaScript dialog.
+   virtual bool IsJavaScriptDialogShowing() const;
+diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
+index 0356398469..357c317114 100644
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -7193,6 +7193,10 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+ 
+   bool showed_dialog = has_shown_beforeunload_dialog_;
+ 
++  const auto embedding_close_invocation = before_unload_embedding_close_invocation_;
++  const auto embedding_close_document = before_unload_embedding_close_document_;
++  before_unload_embedding_close_invocation_ = {};
++  before_unload_embedding_close_document_ = {};
+   // Resets beforeunload waiting state.
+   is_waiting_for_beforeunload_completion_ = false;
+   has_shown_beforeunload_dialog_ = false;
+@@ -7209,7 +7213,8 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+       [](base::WeakPtr<RenderFrameHostImpl> self,
+          const base::TimeTicks& before_unload_end_time, bool proceed,
+          bool unload_ack_is_for_navigation, bool for_legacy,
+-         bool showed_dialog) {
++         bool showed_dialog, base::UnguessableToken embedding_close_invocation,
++         content::WeakDocumentPtr embedding_close_document) {
+         if (!self) {
+           return;
+         }
+@@ -7222,7 +7227,11 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+                                                    before_unload_end_time,
+                                                    for_legacy, showed_dialog);
+         } else {
+-          frame->render_manager()->BeforeUnloadCompleted(proceed);
++          if (embedding_close_invocation.is_empty())
++            frame->render_manager()->BeforeUnloadCompleted(proceed);
++          else
++            frame->render_manager()->BeforeUnloadCompletedForEmbeddingClose(
++                proceed, embedding_close_document, embedding_close_invocation);
+         }
+       },
+       // The overhead of the browser->renderer IPC may be non trivial. Account
+@@ -7232,7 +7241,8 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
+       weak_ptr_factory_.GetWeakPtr(),
+       before_unload_end_time - browser_to_renderer_ipc_time_delta, proceed,
+       unload_ack_is_for_navigation_,
+-      execution_mode == BeforeUnloadExecutionMode::kForLegacy, showed_dialog);
++      execution_mode == BeforeUnloadExecutionMode::kForLegacy, showed_dialog,
++      embedding_close_invocation, embedding_close_document);
+ 
+   if (is_frame_being_destroyed) {
+     CHECK(proceed);
+@@ -7842,8 +7852,15 @@ bool RenderFrameHostImpl::HasStickyUserActivationForHistoryIntervention()
+ }
+ 
+ void RenderFrameHostImpl::ClosePage(
+-    ClosePageSource source,
+-    base::RepeatingClosure completion_callback) {
++    ClosePageSource source, base::RepeatingClosure completion_callback) {
++  ClosePageWithEmbeddingInvocation(source, completion_callback, {}, {});
++}
++
++void RenderFrameHostImpl::ClosePageWithEmbeddingInvocation(
++    ClosePageSource source, base::RepeatingClosure completion_callback,
++    base::UnguessableToken invocation, content::WeakDocumentPtr original_document) {
++  if (!invocation.is_empty() &&
++      original_document.AsRenderFrameHostIfValid() != this) return;
+   // This path is taken when tab/window close is initiated by either the
+   // browser process or via a window.close() call through a proxy. In both
+   // cases, we need to tell the main frame's renderer process to run unload
+@@ -7866,24 +7883,32 @@ void RenderFrameHostImpl::ClosePage(
+ 
+   if (IsRenderFrameLive() && !IsPageReadyToBeClosed()) {
+     close_timeout_ = std::make_unique<input::TimeoutMonitor>(
+-        base::BindRepeating(&RenderFrameHostImpl::ClosePageTimeout,
++        base::BindRepeating(&RenderFrameHostImpl::ClosePageTimeoutWithEmbeddingInvocation,
+                             weak_ptr_factory_.GetWeakPtr(), source,
+-                            completion_callback),
++                            completion_callback, invocation, original_document),
+         GetUIThreadTaskRunner({BrowserTaskType::kUserInput}));
+     close_timeout_->Start(kUnloadTimeout);
+     GetAssociatedLocalMainFrame()->ClosePage(base::BindOnce(
+-        &RenderFrameHostImpl::ClosePageIgnoringUnloadEvents,
+-        weak_ptr_factory_.GetWeakPtr(), source, completion_callback));
++        &RenderFrameHostImpl::ClosePageIgnoringUnloadEventsWithEmbeddingInvocation,
++        weak_ptr_factory_.GetWeakPtr(), source, completion_callback,
++        invocation, original_document));
+   } else {
+     // This RenderFrameHost doesn't have a live renderer (or has already run
+     // unload handlers), so just skip the close event and close the page.
+-    ClosePageIgnoringUnloadEvents(source, completion_callback);
++    ClosePageIgnoringUnloadEventsWithEmbeddingInvocation(source, completion_callback, invocation, original_document);
+   }
+ }
+ 
+ void RenderFrameHostImpl::ClosePageIgnoringUnloadEvents(
+-    ClosePageSource source,
+-    base::RepeatingClosure completion_callback) {
++    ClosePageSource source, base::RepeatingClosure completion_callback) {
++  ClosePageIgnoringUnloadEventsWithEmbeddingInvocation(source, completion_callback, {}, {});
++}
++
++void RenderFrameHostImpl::ClosePageIgnoringUnloadEventsWithEmbeddingInvocation(
++    ClosePageSource source, base::RepeatingClosure completion_callback,
++    base::UnguessableToken invocation, content::WeakDocumentPtr original_document) {
++  if (!invocation.is_empty() &&
++      original_document.AsRenderFrameHostIfValid() != this) return;
+   if (close_timeout_) {
+     close_timeout_->Stop();
+     close_timeout_.reset();
+@@ -7919,7 +7944,8 @@ void RenderFrameHostImpl::ClosePageIgnoringUnloadEvents(
+     return;
+   }
+ 
+-  delegate_->Close(this);
++  if (invocation.is_empty()) delegate_->Close(this);
++  else delegate_->CloseWithEmbeddingInvocation(this, invocation, original_document);
+ }
+ 
+ bool RenderFrameHostImpl::IsPageReadyToBeClosed() {
+@@ -7935,13 +7961,20 @@ bool RenderFrameHostImpl::IsPageReadyToBeClosed() {
+ }
+ 
+ void RenderFrameHostImpl::ClosePageTimeout(
+-    ClosePageSource source,
+-    base::RepeatingClosure completion_callback) {
++    ClosePageSource source, base::RepeatingClosure completion_callback) {
++  ClosePageTimeoutWithEmbeddingInvocation(source, completion_callback, {}, {});
++}
++
++void RenderFrameHostImpl::ClosePageTimeoutWithEmbeddingInvocation(
++    ClosePageSource source, base::RepeatingClosure completion_callback,
++    base::UnguessableToken invocation, content::WeakDocumentPtr original_document) {
++  if (!invocation.is_empty() &&
++      original_document.AsRenderFrameHostIfValid() != this) return;
+   if (source == ClosePageSource::kRenderer &&
+       delegate_->ShouldIgnoreUnresponsiveRenderer()) {
+     return;
+   }
+-  ClosePageIgnoringUnloadEvents(source, completion_callback);
++  ClosePageIgnoringUnloadEventsWithEmbeddingInvocation(source, completion_callback, invocation, original_document);
+ }
+ 
+ void RenderFrameHostImpl::SetWindowRect(const gfx::Rect& bounds,
+@@ -10652,6 +10685,16 @@ void RenderFrameHostImpl::CreateNewWindow(
+     return;
+   }
+ 
++  if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE) {
++    const auto original_document = GetWeakDocumentPtr();
++    GetContentClient()->browser()->OnNativeManualDocumentPictureInPicture(*this);
++    if (original_document.AsRenderFrameHostIfValid() != this ||
++        !IsActive() || !is_render_frame_created()) {
++      std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
++      return;
++    }
++  }
++
+   // Otherwise, consume user activation before we proceed. In particular, it is
+   // important to do this before we return from the |opener_suppressed| case
+   // below.
+@@ -12395,6 +12438,16 @@ void RenderFrameHostImpl::Stop() {
+   GetAssociatedLocalFrame()->StopLoading();
+ }
+ 
++bool RenderFrameHostImpl::DispatchBeforeUnloadForEmbeddingClose(
++    base::UnguessableToken invocation) {
++  if (invocation.is_empty() || !IsActive() || !IsOutermostMainFrame() ||
++      is_waiting_for_beforeunload_completion_) return false;
++  before_unload_embedding_close_invocation_ = invocation;
++  before_unload_embedding_close_document_ = GetWeakDocumentPtr();
++  DispatchBeforeUnload(BeforeUnloadType::TAB_CLOSE, false);
++  return true;
++}
++
+ void RenderFrameHostImpl::DispatchBeforeUnload(BeforeUnloadType type,
+                                                bool is_reload) {
+   TRACE_EVENT("navigation", "RenderFrameHostImpl::DispatchBeforeUnload",
+@@ -12437,9 +12490,12 @@ void RenderFrameHostImpl::DispatchBeforeUnload(BeforeUnloadType type,
+     // Dispatch the ACK to prevent re-entrancy.
+     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+         FROM_HERE,
+-        base::BindOnce(&RenderFrameHostManager::BeforeUnloadCompleted,
+-                       owner_->GetRenderFrameHostManager().GetWeakPtr(),
+-                       /*proceed=*/true));
++        base::BindOnce(&RenderFrameHostManager::BeforeUnloadCompletedForEmbeddingClose,
++                       owner_->GetRenderFrameHostManager().GetWeakPtr(), true,
++                       before_unload_embedding_close_document_,
++                       before_unload_embedding_close_invocation_));
++    before_unload_embedding_close_document_ = {};
++    before_unload_embedding_close_invocation_ = {};
+     return;
+   }
+ 
+diff --git a/content/browser/renderer_host/render_frame_host_impl.h b/content/browser/renderer_host/render_frame_host_impl.h
+index 7bd838f0db..e8db500204 100644
+--- a/content/browser/renderer_host/render_frame_host_impl.h
++++ b/content/browser/renderer_host/render_frame_host_impl.h
+@@ -1461,6 +1461,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
+   // corresponds to tab close and not a navigation, |is_reload| should be
+   // false.
+   void DispatchBeforeUnload(BeforeUnloadType type, bool is_reload);
++  bool DispatchBeforeUnloadForEmbeddingClose(base::UnguessableToken invocation);
+ 
+   // Simulate beforeunload completion callback on behalf of renderer if it's
+   // unrenresponsive.
+@@ -3233,6 +3234,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
+   void ClosePage(
+       ClosePageSource source,
+       base::RepeatingClosure completion_callback = base::DoNothing());
++  void ClosePageWithEmbeddingInvocation(
++      ClosePageSource source, base::RepeatingClosure completion_callback,
++      base::UnguessableToken invocation,
++      content::WeakDocumentPtr original_document);
+ 
+   // When true, indicates that the unload handlers have already executed (e.g.,
+   // after receiving a ClosePage ACK) or that they should be ignored. This is
+@@ -4444,6 +4449,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
+   void ClosePageIgnoringUnloadEvents(
+       ClosePageSource source,
+       base::RepeatingClosure completion_callback = base::DoNothing());
++  void ClosePageIgnoringUnloadEventsWithEmbeddingInvocation(
++      ClosePageSource source, base::RepeatingClosure completion_callback,
++      base::UnguessableToken invocation,
++      content::WeakDocumentPtr original_document);
+ 
+   // Called when this frame's page has started closing via ClosePage(), and the
+   // timer for running unload events has expired. The `source` parameter
+@@ -4455,6 +4464,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
+   void ClosePageTimeout(
+       ClosePageSource source,
+       base::RepeatingClosure completion_callback = base::DoNothing());
++  void ClosePageTimeoutWithEmbeddingInvocation(
++      ClosePageSource source, base::RepeatingClosure completion_callback,
++      base::UnguessableToken invocation,
++      content::WeakDocumentPtr original_document);
+ 
+   // Perform pre-conditions checks on RenderFrameHost lifecycle state and fenced
+   // frame properties that are common for `SendFencedFrameReportingBeacon()` and
+@@ -4816,6 +4829,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
+   // TODO(clamy): Remove this boolean and add one more state to the state
+   // machine.
+   bool is_waiting_for_beforeunload_completion_ = false;
++  base::UnguessableToken before_unload_embedding_close_invocation_;
++  content::WeakDocumentPtr before_unload_embedding_close_document_;
+ 
+   // Valid only when |is_waiting_for_beforeunload_completion_| is true. This
+   // indicates whether a subsequent request to launch a modal dialog should be
+diff --git a/content/browser/renderer_host/render_frame_host_manager.cc b/content/browser/renderer_host/render_frame_host_manager.cc
+index f840f244a6..9549855844 100644
+--- a/content/browser/renderer_host/render_frame_host_manager.cc
++++ b/content/browser/renderer_host/render_frame_host_manager.cc
+@@ -104,6 +104,15 @@
+ 
+ namespace content {
+ 
++void RenderFrameHostManager::Delegate::BeforeUnloadFiredForEmbeddingClose(
++    bool proceed,
++    bool* proceed_to_fire_unload,
++    base::UnguessableToken invocation,
++    content::WeakDocumentPtr original_document) {
++  *proceed_to_fire_unload = false;
++}
++
++
+ using LifecycleStateImpl = RenderFrameHostImpl::LifecycleStateImpl;
+ using perfetto::protos::pbzero::ChromeTrackEvent;
+ 
+@@ -978,6 +987,14 @@ void RenderFrameHostManager::SetIsLoading(bool is_loading) {
+ }
+ 
+ void RenderFrameHostManager::BeforeUnloadCompleted(bool proceed) {
++  BeforeUnloadCompletedForEmbeddingClose(proceed, {}, {});
++}
++
++void RenderFrameHostManager::BeforeUnloadCompletedForEmbeddingClose(
++    bool proceed, content::WeakDocumentPtr original_document,
++    base::UnguessableToken invocation) {
++  // The typed completion still retires its original invocation when the
++  // document was replaced. The embedding delegate must refuse all effects.
+   // If beforeunload was dispatched as part of preparing this frame for
+   // attaching an inner delegate, continue attaching now.
+   if (is_attaching_inner_delegate()) {
+@@ -990,9 +1007,19 @@ void RenderFrameHostManager::BeforeUnloadCompleted(bool proceed) {
+     return;
+   }
+ 
++  auto original_manager = weak_factory_.GetWeakPtr();
+   bool proceed_to_fire_unload = false;
+-  delegate_->BeforeUnloadFiredFromRenderManager(proceed,
+-                                                &proceed_to_fire_unload);
++  if (invocation.is_empty()) {
++    delegate_->BeforeUnloadFiredFromRenderManager(proceed,
++                                                 &proceed_to_fire_unload);
++  } else {
++    delegate_->BeforeUnloadFiredForEmbeddingClose(
++        proceed, &proceed_to_fire_unload, invocation, original_document);
++  }
++  if (!original_manager) return;
++  if (!invocation.is_empty() &&
++      original_document.AsRenderFrameHostIfValid() != render_frame_host_.get())
++    return;
+   if (proceed_to_fire_unload) {
+     // If we're about to close the tab and there's a speculative RFH, cancel it.
+     // Otherwise, if the navigation in the speculative RFH completes before the
+@@ -1005,8 +1032,9 @@ void RenderFrameHostManager::BeforeUnloadCompleted(bool proceed) {
+     // TODO(crbug.com/40252524): This is not always browser-initiated, so
+     // we should track whether the close is browser or renderer-initiated and
+     // use that here.
+-    render_frame_host_->ClosePage(
+-        RenderFrameHostImpl::ClosePageSource::kBrowser);
++    render_frame_host_->ClosePageWithEmbeddingInvocation(
++        RenderFrameHostImpl::ClosePageSource::kBrowser, base::DoNothing(),
++        invocation, original_document);
+   }
+ }
+ 
+diff --git a/content/browser/renderer_host/render_frame_host_manager.h b/content/browser/renderer_host/render_frame_host_manager.h
+index b175efa9a3..8a72c52df6 100644
+--- a/content/browser/renderer_host/render_frame_host_manager.h
++++ b/content/browser/renderer_host/render_frame_host_manager.h
+@@ -211,6 +211,10 @@ class CONTENT_EXPORT RenderFrameHostManager {
+     virtual void BeforeUnloadFiredFromRenderManager(
+         bool proceed,
+         bool* proceed_to_fire_unload) = 0;
++    virtual void BeforeUnloadFiredForEmbeddingClose(
++        bool proceed, bool* proceed_to_fire_unload,
++        base::UnguessableToken invocation,
++        content::WeakDocumentPtr original_document);
+     virtual void CancelModalDialogsForRenderManager() = 0;
+     virtual void NotifyPrimaryPageWillBeDeactivated(PageImpl& page) = 0;
+     virtual void NotifySwappedFromRenderManager(
+@@ -410,6 +414,9 @@ class CONTENT_EXPORT RenderFrameHostManager {
+   //      in which case beforeunload is triggered in the current frame. This
+   //      only happens for child frames.
+   void BeforeUnloadCompleted(bool proceed);
++  void BeforeUnloadCompletedForEmbeddingClose(
++      bool proceed, content::WeakDocumentPtr original_document,
++      base::UnguessableToken invocation);
+ 
+   // Called when a renderer's frame navigates.
+   void DidNavigateFrame(
+diff --git a/content/browser/web_contents/web_contents_impl.cc b/content/browser/web_contents/web_contents_impl.cc
+index c6d3b300d2..64c70f75fb 100644
+--- a/content/browser/web_contents/web_contents_impl.cc
++++ b/content/browser/web_contents/web_contents_impl.cc
+@@ -3316,6 +3316,11 @@ bool WebContentsImpl::NeedToFireBeforeUnloadOrUnloadEvents() {
+   return false;
+ }
+ 
++bool WebContentsImpl::DispatchBeforeUnloadForEmbeddingClose(
++    base::UnguessableToken invocation) {
++  return GetPrimaryMainFrame()->DispatchBeforeUnloadForEmbeddingClose(invocation);
++}
++
+ void WebContentsImpl::DispatchBeforeUnload(bool auto_cancel) {
+   OPTIONAL_TRACE_EVENT1("content", "WebContentsImpl::DispatchBeforeUnload",
+                         "auto_cancel", auto_cancel);
+@@ -9631,6 +9636,28 @@ void WebContentsImpl::NotifyOnJavaScriptDialogDismiss(
+   javascript_dialog_dismiss_notifier_->NotifyOnDismiss(std::move(callback));
+ }
+ 
++void WebContentsImpl::CloseWithEmbeddingInvocation(
++    RenderFrameHostImpl* render_frame_host, base::UnguessableToken invocation,
++    content::WeakDocumentPtr original_document) {
++  if (invocation.is_empty() ||
++      original_document.AsRenderFrameHostIfValid() != render_frame_host ||
++      render_frame_host != GetPrimaryMainFrame()) return;
++#if BUILDFLAG(IS_MAC)
++  if (view_->DeferEmbeddingCloseIfNeeded(base::BindOnce(
++          &WebContentsImpl::ContinueEmbeddingClose, weak_factory_.GetWeakPtr(),
++          invocation, original_document))) return;
++#endif
++  ContinueEmbeddingClose(invocation, original_document);
++}
++
++void WebContentsImpl::ContinueEmbeddingClose(
++    base::UnguessableToken invocation, content::WeakDocumentPtr original_document) {
++  if (invocation.is_empty() ||
++      original_document.AsRenderFrameHostIfValid() != GetPrimaryMainFrame()) return;
++  if (delegate_)
++    delegate_->CloseContentsWithEmbeddingInvocation(this, invocation, original_document);
++}
++
+ void WebContentsImpl::Close(RenderFrameHostImpl* render_frame_host) {
+   if (GuestPageHolderImpl* guest_holder =
+           GuestPageHolderImpl::FromRenderFrameHost(*render_frame_host)) {
+@@ -11291,6 +11318,23 @@ void WebContentsImpl::RendererResponsive(
+   }
+ }
+ 
++void WebContentsImpl::BeforeUnloadFiredForEmbeddingClose(
++    bool proceed, bool* proceed_to_fire_unload,
++    base::UnguessableToken invocation,
++    content::WeakDocumentPtr original_document) {
++  *proceed_to_fire_unload = false;
++  if (invocation.is_empty()) return;
++  auto original = GetWeakPtr();
++  if (original_document.AsRenderFrameHostIfValid() == GetPrimaryMainFrame())
++    observers_.NotifyObservers(&WebContentsObserver::BeforeUnloadFired, proceed);
++  if (!original) return;
++  if (delegate_)
++    delegate_->BeforeUnloadFiredWithEmbeddingInvocation(
++        this, proceed, proceed_to_fire_unload, invocation, original_document);
++  // The delegate may destroy this WebContents. A stale document can only
++  // retire the original opaque invocation, never fire the replacement unload.
++}
++
+ void WebContentsImpl::BeforeUnloadFiredFromRenderManager(
+     bool proceed,
+     bool* proceed_to_fire_unload) {
+diff --git a/content/browser/web_contents/web_contents_impl.h b/content/browser/web_contents/web_contents_impl.h
+index e0e8ed566b..0a6e8338cb 100644
+--- a/content/browser/web_contents/web_contents_impl.h
++++ b/content/browser/web_contents/web_contents_impl.h
+@@ -513,6 +513,8 @@ class CONTENT_EXPORT WebContentsImpl
+   Visibility GetVisibility() override;
+   bool NeedToFireBeforeUnloadOrUnloadEvents() override;
+   void DispatchBeforeUnload(bool auto_cancel) override;
++  bool DispatchBeforeUnloadForEmbeddingClose(
++      base::UnguessableToken invocation) override;
+   void AttachInnerWebContents(std::unique_ptr<WebContents> inner_web_contents,
+                               RenderFrameHost* render_frame_host,
+                               bool is_full_page) override;
+@@ -586,6 +588,8 @@ class CONTENT_EXPORT WebContentsImpl
+   const std::string& GetContentsMimeType() override;
+   blink::RendererPreferences* GetMutableRendererPrefs() override;
+   void Close() override;
++  void ContinueEmbeddingClose(base::UnguessableToken invocation,
++      content::WeakDocumentPtr original_document);
+   void SetClosedByUserGesture(bool value) override;
+   bool GetClosedByUserGesture() override;
+   int GetMinimumZoomPercent() override;
+@@ -736,6 +740,9 @@ class CONTENT_EXPORT WebContentsImpl
+                            bool disable_third_party_subframe_suppresion,
+                            JavaScriptDialogCallback response_callback) override;
+   void Close(RenderFrameHostImpl* render_frame_host) override;
++  void CloseWithEmbeddingInvocation(RenderFrameHostImpl* render_frame_host,
++      base::UnguessableToken invocation,
++      content::WeakDocumentPtr original_document) override;
+   void RunBeforeUnloadConfirm(
+       RenderFrameHostImpl* render_frame_host,
+       bool is_reload,
+@@ -1279,6 +1286,10 @@ class CONTENT_EXPORT WebContentsImpl
+   void BeforeUnloadFiredFromRenderManager(
+       bool proceed,
+       bool* proceed_to_fire_unload) override;
++  void BeforeUnloadFiredForEmbeddingClose(
++      bool proceed, bool* proceed_to_fire_unload,
++      base::UnguessableToken invocation,
++      content::WeakDocumentPtr original_document) override;
+   void CancelModalDialogsForRenderManager() override;
+   void NotifyPrimaryPageWillBeDeactivated(PageImpl& page) override;
+   void NotifySwappedFromRenderManager(RenderFrameHostImpl* old_frame,
+diff --git a/content/public/browser/web_contents_delegate.cc b/content/public/browser/web_contents_delegate.cc
+index 5159cb2891..384c6745e1 100644
+--- a/content/public/browser/web_contents_delegate.cc
++++ b/content/public/browser/web_contents_delegate.cc
+@@ -33,6 +33,16 @@
+ 
+ namespace content {
+ 
++void WebContentsDelegate::BeforeUnloadFiredWithEmbeddingInvocation(
++    WebContents* tab,
++    bool proceed,
++    bool* proceed_to_fire_unload,
++    base::UnguessableToken invocation,
++    content::WeakDocumentPtr original_document) {
++  *proceed_to_fire_unload = false;
++}
++
++
+ WebContentsDelegate::WebContentsDelegate() = default;
+ 
+ WebContents* WebContentsDelegate::OpenURLFromTab(
+diff --git a/content/public/browser/web_contents_delegate.h b/content/public/browser/web_contents_delegate.h
+index c3d8d88a3e..902e113932 100644
+--- a/content/public/browser/web_contents_delegate.h
++++ b/content/public/browser/web_contents_delegate.h
+@@ -5,6 +5,8 @@
+ #ifndef CONTENT_PUBLIC_BROWSER_WEB_CONTENTS_DELEGATE_H_
+ #define CONTENT_PUBLIC_BROWSER_WEB_CONTENTS_DELEGATE_H_
+ 
++#include "base/unguessable_token.h"
++#include "content/public/browser/weak_document_ptr.h"
+ #include <stdint.h>
+ 
+ #include <memory>
+@@ -236,6 +238,11 @@ class CONTENT_EXPORT WebContentsDelegate {
+   // Request the delegate to close this web contents, and do whatever cleanup
+   // it needs to do.
+   virtual void CloseContents(WebContents* source) {}
++  // A nonempty embedding invocation must be handled explicitly; it never
++  // becomes an ordinary close merely because its original authority retired.
++  virtual void CloseContentsWithEmbeddingInvocation(WebContents* source,
++      base::UnguessableToken invocation,
++      content::WeakDocumentPtr original_document) {}
+ 
+   // Request the delegate to resize this WebContents to the specified size in
+   // screen coordinates. The embedder is free to ignore the request.
+@@ -287,6 +294,11 @@ class CONTENT_EXPORT WebContentsDelegate {
+                                  bool proceed,
+                                  bool* proceed_to_fire_unload);
+ 
++  virtual void BeforeUnloadFiredWithEmbeddingInvocation(
++      WebContents* tab, bool proceed, bool* proceed_to_fire_unload,
++      base::UnguessableToken invocation,
++      content::WeakDocumentPtr original_document);
++
+   // Returns true if the location bar should be focused by default rather than
+   // the page contents. NOTE: this is only used if WebContents can't determine
+   // for itself whether the location bar should be focused by default. For a

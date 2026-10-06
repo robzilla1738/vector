@@ -1,0 +1,1296 @@
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -228,6 +228,8 @@
+ #include "chrome/browser/ui/aux/native_cdp_input_mac.h"
+ #endif
+ #include "chrome/browser/ui/aux/result_preview.h"
++#include "chrome/browser/ui/aux/native_project_preview.h"
++#include "net/base/net_errors.h"
+ #include "chrome/browser/ui/aux/zap_controller.h"
+ #endif
+ #include "chrome/common/channel_info.h"
+@@ -5576,6 +5578,7 @@
+     content::NavigationThrottleRegistry& registry) {
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   aux::MaybeAddResultPreviewNavigationThrottle(registry);
++  aux::NativeProjectPreview::AddNavigationThrottle(registry);
+ #endif
+   CreateAndAddChromeThrottlesForNavigation(registry);
+ }
+@@ -5584,6 +5587,7 @@
+     content::NavigationThrottleRegistry& registry) {
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   aux::MaybeAddResultPreviewNavigationThrottle(registry);
++  aux::NativeProjectPreview::AddNavigationThrottle(registry);
+ #endif
+   CreateAndAddChromeThrottlesForCommitWithoutUrlLoader(registry);
+ }
+@@ -6801,7 +6805,15 @@
+   // Final inspection runs after extension and enterprise header mutations.
+   // Every factory path, including navigation/worker/keepalive, preserves its
+   // browser-owned provenance or is denied when attribution is ambiguous.
+-  aux::EgressController::ProxyFactory(Profile::FromBrowserContext(browser_context),
++  auto* factory_process = frame ? frame->GetProcess() : content::RenderProcessHost::FromID(render_process_id);
++  auto* preview_partition = factory_process ? factory_process->GetStoragePartition() : nullptr;
++  if (aux::NativeProjectPreview::IsPreviewPartition(preview_partition)) {
++    // This unique human-owned partition has a stronger exact Project/process
++    // authority than ambiguous agent-worker attribution. Its own final wrapper
++    // always denies a retired/missing Preview authority, including workers.
++    aux::NativeProjectPreview::ProxyFactory(frame, render_process_id,
++        type == URLLoaderFactoryType::kNavigation, factory_builder, header_client);
++  } else aux::EgressController::ProxyFactory(Profile::FromBrowserContext(browser_context),
+       frame, type == URLLoaderFactoryType::kNavigation,
+       type == URLLoaderFactoryType::kWorkerMainResource ||
+       type == URLLoaderFactoryType::kWorkerSubResource ||
+@@ -6881,11 +6893,35 @@
+     content::BrowserContext* context, content::RenderFrameHost* frame,
+     const std::string& kind) {
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (frame && aux::NativeProjectPreview::IsPreviewPartition(frame->GetProcess()->GetStoragePartition())) return false;
+   auto* controller = aux::EgressController::ForProfile(Profile::FromBrowserContext(context));
+   return controller && controller->AllowUninspectable(frame, kind);
+ #else
+   return true;
+ #endif
++}
++
++void ChromeContentBrowserClient::CheckWebSocketConnection(content::RenderFrameHost* frame, content::ChildProcessId process_id, const GURL& url,
++    mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers,
++    WebSocketConnectionCheck callback) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* process = content::RenderProcessHost::FromID(process_id);
++  auto* partition = process ? process->GetStoragePartition() : nullptr;
++  if (aux::NativeProjectPreview::IsPreviewPartition(partition)) {
++    auto preview = aux::NativeProjectPreview::ForPartition(partition);
++    if (!preview) { std::move(callback).Run(false, {}); return; }
++    preview->Admit(url, false, base::BindOnce([](base::WeakPtr<aux::NativeProjectPreview> preview,
++        mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers,
++        WebSocketConnectionCheck callback, bool allowed) {
++      if (!allowed || !preview || !preview->Current()) { std::move(callback).Run(false, {}); return; }
++      std::move(callback).Run(true, aux::NativeProjectPreview::WrapHeaders(preview, std::move(headers)));
++    }, preview, std::move(headers), std::move(callback)));
++    return;
++  }
++#endif
++  auto* original_process = content::RenderProcessHost::FromID(process_id);
++  const bool allowed = original_process && AllowUninspectableNetworkTransport(original_process->GetBrowserContext(), frame, "websocket");
++  std::move(callback).Run(allowed, std::move(headers));
+ }
+ 
+ bool ChromeContentBrowserClient::WillInterceptWebSocket(
+@@ -6959,6 +6995,14 @@
+     mojo::PendingRemote<network::mojom::WebTransportHandshakeClient>
+         handshake_client,
+     WillCreateWebTransportCallback callback) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* original_process = content::RenderProcessHost::FromID(process_id);
++  if (original_process && aux::NativeProjectPreview::IsPreviewPartition(original_process->GetStoragePartition())) {
++    std::move(callback).Run(std::move(handshake_client), network::mojom::WebTransportError::New(
++        net::ERR_ACCESS_DENIED, 0, "Project Preview does not admit uninspectable WebTransport", true));
++    return;
++  }
++#endif
+ #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+   // TODO(crbug.com/40195467): Add a unit test which calls
+diff --git a/chrome/browser/chrome_content_browser_client.h b/chrome/browser/chrome_content_browser_client.h
+--- a/chrome/browser/chrome_content_browser_client.h
++++ b/chrome/browser/chrome_content_browser_client.h
+@@ -714,6 +714,9 @@
+       override;
+   bool AllowUninspectableNetworkTransport(content::BrowserContext* context,
+       content::RenderFrameHost* frame, const std::string& kind) override;
++  void CheckWebSocketConnection(content::RenderFrameHost* frame, content::ChildProcessId process_id, const GURL& url,
++      mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers,
++      WebSocketConnectionCheck callback) override;
+   bool WillInterceptWebSocket(content::RenderFrameHost* frame) override;
+   content::ContentBrowserClient::WebSocketOptions GetWebSocketOptions(
+       content::RenderFrameHost* frame) override;
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -13,6 +13,11 @@
+     "native_project_files.cc",
+     "native_project_files.h",
+     "native_terminal.cc",
++    "native_project_listener.cc",
++    "native_project_listener.h",
++    "native_project_preview.cc",
++    "native_project_preview.h",
++    "native_project_preview_network.cc",
+     "native_terminal.h",
+     "shell_warmup_manager.cc",
+     "shell_warmup_manager.h",
+@@ -159,6 +164,7 @@
+     "//components/content_settings/core/browser",
+     "//components/content_settings/core/common",
+     "//components/find_in_page",
++    "//components/guest_contents/browser",
+     "//components/keyed_service/content",
+     "//components/password_manager/content/browser",
+     "//components/password_manager/core/browser",
+diff --git a/chrome/browser/ui/aux/native_project_listener.cc b/chrome/browser/ui/aux/native_project_listener.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_listener.cc
+@@ -0,0 +1,87 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_project_listener.h"
++#include <arpa/inet.h>
++#include <libproc.h>
++#include <sys/proc_info.h>
++#include <sys/socket.h>
++#include <unistd.h>
++#include <algorithm>
++#include <array>
++#include <vector>
++namespace aux {
++namespace {
++bool Process(pid_t pid, proc_bsdinfo* info) {
++  return proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, info, sizeof(*info)) == static_cast<int>(sizeof(*info)) && info->pbi_uid == getuid();
++}
++bool Socket(pid_t pid, int fd, socket_fdinfo* socket) {
++  return proc_pidfdinfo(pid, fd, PROC_PIDFDSOCKETINFO, socket, sizeof(*socket)) == static_cast<int>(sizeof(*socket)) &&
++      socket->psi.soi_kind == SOCKINFO_TCP && socket->psi.soi_protocol == IPPROTO_TCP &&
++      !(socket->psi.soi_options & SO_REUSEPORT) &&
++      socket->psi.soi_proto.pri_tcp.tcpsi_state == TSI_S_LISTEN;
++}
++std::string LoopbackHost(const socket_fdinfo& socket) {
++  const auto& address = socket.psi.soi_proto.pri_tcp.tcpsi_ini.insi_laddr;
++  if (socket.psi.soi_family == AF_INET) {
++    const auto ipv4 = ntohl(address.ina_46.i46a_addr4.s_addr);
++    if (ipv4 == INADDR_ANY) return "127.0.0.1";
++    if ((ipv4 >> 24) == 127) {
++      std::array<char, INET_ADDRSTRLEN> host{};
++      if (inet_ntop(AF_INET, &address.ina_46.i46a_addr4, host.data(), host.size())) return host.data();
++    }
++  } else if (socket.psi.soi_family == AF_INET6) {
++    if (IN6_IS_ADDR_UNSPECIFIED(&address.ina_6) || IN6_IS_ADDR_LOOPBACK(&address.ina_6)) return "[::1]";
++  }
++  return {};
++}
++}
++bool CaptureProjectProcess(pid_t pid, NativeProjectProcess* process) {
++  proc_bsdinfo info{};
++  if (pid <= 0 || !Process(pid, &info)) return false;
++  *process = {pid, info.pbi_start_tvsec, info.pbi_start_tvusec};
++  return true;
++}
++bool ProjectProcessCurrent(const NativeProjectProcess& process) {
++  proc_bsdinfo info{};
++  return process.pid > 0 && Process(process.pid, &info) && info.pbi_pgid == static_cast<uint32_t>(process.pid) &&
++      info.pbi_start_tvsec == process.seconds && info.pbi_start_tvusec == process.microseconds;
++}
++std::vector<NativeProjectListener> FindProjectListeners(const NativeProjectProcess& process) {
++  if (!ProjectProcessCurrent(process)) return {};
++  // Refuse an overflowing process/fd inventory; never silently inspect another group.
++  std::array<pid_t, 4096> pids{};
++  const int bytes = proc_listpids(PROC_PGRP_ONLY, process.pid, pids.data(), sizeof(pids));
++  if (bytes <= 0 || bytes >= static_cast<int>(sizeof(pids))) return {};
++  std::vector<NativeProjectListener> listeners;
++  for (int index = 0; index < bytes / static_cast<int>(sizeof(pid_t)); ++index) {
++    const auto pid = pids[index]; proc_bsdinfo info{};
++    if (pid <= 0 || !Process(pid, &info) || info.pbi_pgid != static_cast<uint32_t>(process.pid)) continue;
++    std::array<proc_fdinfo, 4096> fds{};
++    const int count = proc_pidinfo(pid, PROC_PIDLISTFDS, 0, fds.data(), sizeof(fds));
++    if (count < 0 || count >= static_cast<int>(sizeof(fds))) return {};
++    for (int item = 0; item < count / static_cast<int>(sizeof(proc_fdinfo)); ++item) {
++      if (fds[item].proc_fdtype != PROX_FDTYPE_SOCKET) continue;
++      socket_fdinfo socket{};
++      if (!Socket(pid, fds[item].proc_fd, &socket)) continue;
++      const auto host = LoopbackHost(socket);
++      const auto& tcp = socket.psi.soi_proto.pri_tcp;
++      const uint16_t port = ntohs(static_cast<uint16_t>(tcp.tcpsi_ini.insi_lport));
++      if (host.empty() || !port) continue;
++      listeners.push_back({pid, static_cast<int>(fds[item].proc_fd), info.pbi_start_tvsec, info.pbi_start_tvusec,
++          socket.psi.soi_so, tcp.tcpsi_ini.insi_gencnt, host, port});
++      if (listeners.size() > 32) return {};
++    }
++  }
++  if (!ProjectProcessCurrent(process)) return {};
++  std::erase_if(listeners, [&](const auto& listener) { return !ProjectListenerCurrent(process, listener); });
++  return listeners;
++}
++bool ProjectListenerCurrent(const NativeProjectProcess& process, const NativeProjectListener& listener) {
++  if (!ProjectProcessCurrent(process)) return false;
++  proc_bsdinfo info{}; socket_fdinfo socket{};
++  return Process(listener.pid, &info) && info.pbi_pgid == static_cast<uint32_t>(process.pid) &&
++      info.pbi_start_tvsec == listener.started_seconds && info.pbi_start_tvusec == listener.started_microseconds &&
++      Socket(listener.pid, listener.fd, &socket) && socket.psi.soi_so == listener.socket &&
++      socket.psi.soi_proto.pri_tcp.tcpsi_ini.insi_gencnt == listener.generation && LoopbackHost(socket) == listener.host &&
++      ntohs(static_cast<uint16_t>(socket.psi.soi_proto.pri_tcp.tcpsi_ini.insi_lport)) == listener.port;
++}
++}
+diff --git a/chrome/browser/ui/aux/native_project_listener.h b/chrome/browser/ui/aux/native_project_listener.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_listener.h
+@@ -0,0 +1,26 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_LISTENER_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_LISTENER_H_
++#include <sys/types.h>
++#include <cstdint>
++#include <string>
++#include <vector>
++namespace aux {
++// Kernel identities stay native. A renderer receives only a randomly minted ID.
++struct NativeProjectListener {
++  pid_t pid;
++  int fd;
++  uint64_t started_seconds;
++  uint64_t started_microseconds;
++  uint64_t socket;
++  uint64_t generation;
++  std::string host;
++  uint16_t port;
++};
++struct NativeProjectProcess { pid_t pid; uint64_t seconds; uint64_t microseconds; };
++bool CaptureProjectProcess(pid_t pid, NativeProjectProcess* process);
++bool ProjectProcessCurrent(const NativeProjectProcess& process);
++std::vector<NativeProjectListener> FindProjectListeners(const NativeProjectProcess& process);
++bool ProjectListenerCurrent(const NativeProjectProcess& process, const NativeProjectListener& listener);
++}
++#endif
+diff --git a/chrome/browser/ui/aux/native_project_preview.cc b/chrome/browser/ui/aux/native_project_preview.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_preview.cc
+@@ -0,0 +1,205 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_project_preview.h"
++#include <map>
++#include <set>
++#include <utility>
++#include <vector>
++#include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
++#include "base/no_destructor.h"
++#include "base/task/bind_post_task.h"
++#include "base/uuid.h"
++#include "components/guest_contents/browser/guest_contents_handle.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/render_process_host_observer.h"
++#include "content/public/browser/shared_worker_service.h"
++#include "content/public/browser/child_process_termination_info.h"
++#include "content/public/browser/service_worker_context.h"
++#include "content/public/browser/site_instance.h"
++#include "content/public/browser/storage_partition.h"
++#include "services/network/public/mojom/cookie_manager.mojom.h"
++#include "content/public/browser/storage_partition_config.h"
++#include "content/public/browser/web_contents.h"
++#include "url/origin.h"
++#include "net/base/url_util.h"
++#include "ui/base/page_transition_types.h"
++namespace aux {
++namespace {
++constexpr char kDomain[] = "aux-project-preview";
++auto& Previews() {
++  static base::NoDestructor<std::map<std::string, base::WeakPtr<NativeProjectPreview>>> registry;
++  return *registry;
++}
++}
++struct NativeProjectPreview::CloseState final : content::RenderProcessHostObserver {
++  bool started = false;
++  bool finished = false;
++  bool failed = false;
++  bool workers_stopped = false;
++  bool cleared = false;
++  std::set<content::RenderProcessHost*> processes;
++  std::shared_ptr<CloseState> keep_alive;
++  std::vector<base::OnceCallback<void(bool)>> callbacks;
++  void Finish() {
++    if (finished || !workers_stopped || !cleared || !processes.empty()) return;
++    finished = true;
++    auto pending = std::move(callbacks);
++    for (auto& callback : pending) std::move(callback).Run(!failed);
++    auto owned = std::move(keep_alive);
++  }
++  void FailedCleanup() { failed = true; workers_stopped = true; cleared = true; Finish(); }
++  void RenderProcessReady(content::RenderProcessHost* host) override {
++    if (workers_stopped && !host->Shutdown(0)) failed = true;
++  }
++  void RenderProcessExited(content::RenderProcessHost* host,
++      const content::ChildProcessTerminationInfo&) override {
++    host->RemoveObserver(this); processes.erase(host); Finish();
++  }
++  void RenderProcessHostDestroyed(content::RenderProcessHost* host) override {
++    // Losing the native actor before its exit notification cannot manufacture ACK.
++    host->RemoveObserver(this); processes.erase(host); failed = true; Finish();
++  }
++};
++NativeProjectPreview::NativeProjectPreview(content::WebContents* owner, content::WeakDocumentPtr document,
++    GURL origin, base::RepeatingCallback<bool()> source, Review review)
++    : owner_document_(document), owner_(owner->GetWeakPtr()), context_(owner->GetBrowserContext()->GetWeakPtr()), origin_(std::move(origin)), source_(std::move(source)), review_(std::move(review)), close_(std::make_shared<CloseState>()) {}
++NativeProjectPreview::~NativeProjectPreview() {
++  Close(base::BindOnce([](bool) {}));
++  if (config_) Previews().erase(config_->partition_name());
++}
++bool NativeProjectPreview::Current() const {
++  auto* frame = owner_document_.AsRenderFrameHostIfValid();
++  return !retired_ && frame && content::WebContents::FromRenderFrameHost(frame) == owner_.get() && source_.Run();
++}
++content::StoragePartition* NativeProjectPreview::Partition() const {
++  return context_ && config_ ? context_->GetStoragePartition(*config_, false) : nullptr;
++}
++bool NativeProjectPreview::Open() {
++  if (!Current() || guest_ || !origin_.SchemeIsHTTPOrHTTPS() || origin_.has_username() || origin_.has_password()) return false;
++  auto* context = owner_->GetBrowserContext();
++  const auto partition = content::StoragePartitionConfig::Create(context, kDomain,
++      base::Uuid::GenerateRandomV4().AsLowercaseString(), true);
++  auto site = content::SiteInstance::CreateForFixedStoragePartition(context, origin_, partition);
++  if (!site) return false;
++  auto* storage = context->GetStoragePartition(site.get());
++  if (!storage || !storage->GetConfig().in_memory()) return false;
++  config_ = storage->GetConfig();
++  Previews()[config_->partition_name()] = weak_factory_.GetWeakPtr();
++  content::WebContents::CreateParams params(context, site);
++  params.opener_suppressed = true;
++  guest_ = content::WebContents::Create(params);
++  if (!guest_) return false;
++  guest_->SetDelegate(this);
++  auto* handle = guest_contents::GuestContentsHandle::CreateForWebContents(guest_.get());
++  handle->SetAttachmentValidator(base::BindRepeating([](base::WeakPtr<NativeProjectPreview> preview, content::RenderFrameHost* outer) {
++    return preview && preview->Current() && outer == preview->owner_document_.AsRenderFrameHostIfValid();
++  }, weak_factory_.GetWeakPtr()));
++  content_id_ = handle->id().ToString();
++  timer_.Start(FROM_HERE, base::Milliseconds(100), this, &NativeProjectPreview::CheckSource);
++  guest_->GetController().LoadURL(origin_, content::Referrer(), ui::PAGE_TRANSITION_AUTO_TOPLEVEL, "");
++  return Current();
++}
++base::DictValue NativeProjectPreview::Describe() const {
++  return base::DictValue().Set("contentId", content_id_).Set("url", origin_.spec());
++}
++bool NativeProjectPreview::MatchesEndpoint(const GURL& url, const net::IPEndPoint& endpoint) const {
++  if (!Current()) return false;
++  if (url.host() != origin_.host() || url.EffectiveIntPort() != origin_.EffectiveIntPort()) return url.SchemeIs("https") && endpoint.address().IsPubliclyRoutable();
++  return endpoint.address().ToString() == origin_.HostNoBrackets() && endpoint.port() == origin_.EffectiveIntPort();
++}
++bool NativeProjectPreview::Permits(const GURL& url, bool navigation) const {
++  if (!url.is_valid() || url.has_username() || url.has_password()) return false;
++  if (navigation) return url::Origin::Create(url) == url::Origin::Create(origin_);
++  // The dev app keeps public HTTPS assets. Local requests stay on its exact
++  // admitted endpoint; localhost URLs are never resolved from renderer input.
++  if (url.SchemeIsHTTPOrHTTPS() && url::Origin::Create(url) == url::Origin::Create(origin_)) return true;
++  if (url.SchemeIs("https")) return !net::IsLocalhost(url);
++  if (url.SchemeIs("http")) return false;
++  if (url.SchemeIsWSOrWSS() && url.host() == origin_.host() && url.EffectiveIntPort() == origin_.EffectiveIntPort()) return true;
++  return false;
++}
++void NativeProjectPreview::Admit(const GURL& url, bool navigation, base::OnceCallback<void(bool)> callback) {
++  callback = base::BindPostTaskToCurrentDefault(std::move(callback));
++  if (!Current() || !Permits(url, navigation)) { std::move(callback).Run(false); return; }
++  review_.Run(base::BindOnce([](base::WeakPtr<NativeProjectPreview> preview, GURL url, bool navigation,
++      base::OnceCallback<void(bool)> callback, bool reviewed) {
++    std::move(callback).Run(reviewed && preview && preview->Current() && preview->Permits(url, navigation));
++  }, weak_factory_.GetWeakPtr(), url, navigation, std::move(callback)));
++}
++void NativeProjectPreview::CheckSource() {
++  if (!Current()) { Close(base::BindOnce([](bool) {})); return; }
++  if (checking_) return;
++  checking_ = true;
++  review_.Run(base::BindOnce([](base::WeakPtr<NativeProjectPreview> preview, bool reviewed) {
++    if (!preview) return;
++    preview->checking_ = false;
++    if (!reviewed || !preview->Current()) preview->Close(base::BindOnce([](bool) {}));
++  }, weak_factory_.GetWeakPtr()));
++}
++void NativeProjectPreview::Close(base::OnceCallback<void(bool)> callback) {
++  retired_ = true; timer_.Stop();
++  if (close_->finished) { std::move(callback).Run(!close_->failed); return; }
++  close_->callbacks.push_back(std::move(callback));
++  if (close_->started) return;
++  close_->started = true;
++  close_->keep_alive = close_;
++  // Observe the real actors before dropping document/worker ownership. A unique
++  // partition cannot contain a Profile page or another Project's renderer.
++  auto* partition = Partition();
++  if (partition) {
++    for (auto hosts = content::RenderProcessHost::AllHostsIterator(); !hosts.IsAtEnd(); hosts.Advance()) {
++      auto* host = hosts.GetCurrentValue();
++      if (host->GetStoragePartition() == partition && host->IsInitializedAndNotDead()) {
++        close_->processes.insert(host); host->AddObserver(close_.get());
++      }
++    }
++  }
++  if (guest_) { guest_->Stop(); guest_.reset(); }
++  if (!partition) {
++    close_->failed = config_.has_value();
++    close_->workers_stopped = true; close_->cleared = true; close_->Finish(); return;
++  }
++  partition->GetSharedWorkerService()->Shutdown();
++  auto failed = base::ScopedClosureRunner(base::BindOnce([](std::shared_ptr<CloseState> state) {
++    state->FailedCleanup();
++  }, close_));
++  partition->GetServiceWorkerContext()->StopAllServiceWorkers(base::BindOnce([](
++      base::WeakPtr<content::BrowserContext> context, content::StoragePartitionConfig config,
++      std::shared_ptr<CloseState> state, base::ScopedClosureRunner failed) {
++    failed.Release().Reset();
++    auto* partition = context ? context->GetStoragePartition(config, false) : nullptr;
++    if (!partition) { state->FailedCleanup(); return; }
++    state->workers_stopped = true;
++    // Include actors whose startup finished while service-worker Stop awaited.
++    for (auto hosts = content::RenderProcessHost::AllHostsIterator(); !hosts.IsAtEnd(); hosts.Advance()) {
++      auto* host = hosts.GetCurrentValue();
++      if (host->GetStoragePartition() == partition && host->IsInitializedAndNotDead() && state->processes.insert(host).second)
++        host->AddObserver(state.get());
++    }
++    // WebSockets and dedicated/shared workers in this exact partition cannot
++    // survive an acknowledged renderer exit, even if their script ignores Stop.
++    const auto processes = state->processes;
++    for (auto* host : processes) if (state->processes.contains(host)) {
++      if (host->IsReady() && !host->Shutdown(0)) state->failed = true;
++    }
++    auto cleanup_failed = base::ScopedClosureRunner(base::BindOnce([](std::shared_ptr<CloseState> state) {
++      state->FailedCleanup();
++    }, state));
++    partition->ClearData(content::StoragePartition::REMOVE_DATA_MASK_ALL, nullptr, {}, nullptr, false,
++        base::Time(), base::Time::Max(), base::BindOnce([](std::shared_ptr<CloseState> state,
++            base::ScopedClosureRunner failed) {
++          failed.Release().Reset(); state->cleared = true; state->Finish();
++        }, state, std::move(cleanup_failed)));
++  }, context_, *config_, close_, std::move(failed)));
++}
++bool NativeProjectPreview::IsPreviewPartition(content::StoragePartition* partition) {
++  return partition && partition->GetConfig().in_memory() && partition->GetConfig().partition_domain() == kDomain;
++}
++base::WeakPtr<NativeProjectPreview> NativeProjectPreview::ForPartition(content::StoragePartition* partition) {
++  auto found = partition ? Previews().find(partition->GetConfig().partition_name()) : Previews().end();
++  return found == Previews().end() ? base::WeakPtr<NativeProjectPreview>() : found->second;
++}
++}
+diff --git a/chrome/browser/ui/aux/native_project_preview.h b/chrome/browser/ui/aux/native_project_preview.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_preview.h
+@@ -0,0 +1,64 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_PREVIEW_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PROJECT_PREVIEW_H_
++#include <memory>
++#include <optional>
++#include <string>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "content/public/browser/storage_partition_config.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "content/public/browser/web_contents_delegate.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "url/gurl.h"
++#include "net/base/ip_endpoint.h"
++#include "mojo/public/cpp/bindings/pending_remote.h"
++#include "services/network/public/mojom/network_context.mojom-forward.h"
++namespace content { class BrowserContext; class NavigationThrottleRegistry; class RenderFrameHost; class StoragePartition; class WebContents; }
++namespace network { class URLLoaderFactoryBuilder; }
++namespace aux {
++// A live local dev application retains its own origin, routes and network stack.
++// Its cookies/workers live only in a new in-memory partition, never in Profile storage.
++class NativeProjectPreview final : public content::WebContentsDelegate {
++ public:
++  using Review = base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
++  NativeProjectPreview(content::WebContents* owner, content::WeakDocumentPtr document,
++      GURL origin, base::RepeatingCallback<bool()> source, Review review);
++  ~NativeProjectPreview() override;
++  bool Open();
++  base::DictValue Describe() const;
++  bool Current() const;
++  bool MatchesEndpoint(const GURL& url, const net::IPEndPoint& endpoint) const;
++  void Admit(const GURL& url, bool navigation, base::OnceCallback<void(bool)> callback);
++  void Close(base::OnceCallback<void(bool)> callback);
++  static bool IsPreviewPartition(content::StoragePartition* partition);
++  static base::WeakPtr<NativeProjectPreview> ForPartition(content::StoragePartition* partition);
++  static void ProxyFactory(content::RenderFrameHost* frame, int process_id, bool navigation,
++                           network::URLLoaderFactoryBuilder& builder,
++                           mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>* headers);
++  static mojo::PendingRemote<network::mojom::TrustedHeaderClient> WrapHeaders(
++      base::WeakPtr<NativeProjectPreview> preview, mojo::PendingRemote<network::mojom::TrustedHeaderClient> target);
++  static void AddNavigationThrottle(content::NavigationThrottleRegistry& registry);
++ private:
++  void CheckSource();
++  content::StoragePartition* Partition() const;
++  bool Permits(const GURL& url, bool navigation) const;
++  content::WeakDocumentPtr owner_document_;
++  base::WeakPtr<content::WebContents> owner_;
++  base::WeakPtr<content::BrowserContext> context_;
++  const GURL origin_;
++  base::RepeatingCallback<bool()> source_;
++  Review review_;
++  std::unique_ptr<content::WebContents> guest_;
++  std::optional<content::StoragePartitionConfig> config_;
++  std::string content_id_;
++  bool retired_ = false;
++  bool checking_ = false;
++  struct CloseState;
++  std::shared_ptr<CloseState> close_;
++  base::RepeatingTimer timer_;
++  base::WeakPtrFactory<NativeProjectPreview> weak_factory_{this};
++};
++}
++#endif
+diff --git a/chrome/browser/ui/aux/native_project_preview_network.cc b/chrome/browser/ui/aux/native_project_preview_network.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_project_preview_network.cc
+@@ -0,0 +1,300 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_project_preview.h"
++#include <optional>
++#include <utility>
++#include "base/functional/bind.h"
++#include "base/memory/self_deleting.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/navigation_throttle.h"
++#include "content/public/browser/navigation_throttle_registry.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/web_contents.h"
++#include "mojo/public/cpp/bindings/receiver.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
++#include "mojo/public/cpp/bindings/remote.h"
++#include "mojo/public/cpp/bindings/self_owned_receiver.h"
++#include "net/base/net_errors.h"
++#include "net/base/url_util.h"
++#include "net/url_request/redirect_info.h"
++#include "services/network/public/cpp/http_request_headers_update_params.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/cpp/self_deleting_url_loader_factory.h"
++#include "services/network/public/cpp/url_loader_completion_status.h"
++#include "services/network/public/cpp/url_loader_factory_builder.h"
++#include "services/network/public/mojom/early_hints.mojom.h"
++#include "services/network/public/mojom/network_context.mojom.h"
++#include "services/network/public/mojom/url_loader.mojom.h"
++#include "services/network/public/mojom/url_response_head.mojom.h"
++namespace aux {
++namespace {
++void Check(base::WeakPtr<NativeProjectPreview> preview, const GURL& url, bool navigation,
++    base::OnceCallback<void(bool)> callback) {
++  if (!preview) { std::move(callback).Run(false); return; }
++  preview->Admit(url, navigation, std::move(callback));
++}
++class PreviewHeader final : public network::mojom::TrustedHeaderClient {
++ public:
++  PreviewHeader(base::WeakPtr<NativeProjectPreview> preview, bool navigation,
++      mojo::PendingRemote<network::mojom::TrustedHeaderClient> target)
++      : preview_(preview), navigation_(navigation), required_(!!target), target_(std::move(target)) {}
++  void OnBeforeSendHeaders(const GURL& url, const net::HttpRequestHeaders& headers,
++      OnBeforeSendHeadersCallback callback) override {
++    last_url_ = url;
++    if (target_) {
++      target_->OnBeforeSendHeaders(url, headers, mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          base::BindOnce(&PreviewHeader::ReviewedHeaders, weak_.GetWeakPtr(), url, std::move(callback)),
++          net::ERR_FAILED, std::nullopt, std::nullopt));
++    } else ReviewedHeaders(url, std::move(callback), required_ ? net::ERR_FAILED : net::OK, std::nullopt, std::nullopt);
++  }
++  void OnHeadersReceived(const std::string& headers, const net::IPEndPoint& endpoint,
++      const std::optional<net::SSLInfo>& ssl, OnHeadersReceivedCallback callback) override {
++    if (!preview_ || !preview_->MatchesEndpoint(last_url_, endpoint)) {
++      std::move(callback).Run(net::ERR_ACCESS_DENIED, std::nullopt, std::nullopt); return;
++    }
++    if (target_) target_->OnHeadersReceived(headers, endpoint, ssl, mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++        base::BindOnce(&PreviewHeader::ReviewedResponse, weak_.GetWeakPtr(), endpoint, std::move(callback)),
++        net::ERR_FAILED, std::nullopt, std::nullopt));
++    else ReviewedResponse(endpoint, std::move(callback), required_ ? net::ERR_FAILED : net::OK, std::nullopt, std::nullopt);
++  }
++ private:
++  void ReviewedResponse(net::IPEndPoint endpoint, OnHeadersReceivedCallback callback, int32_t result,
++      const std::optional<std::string>& headers, const std::optional<GURL>& preserve) {
++    if (result != net::OK || !preview_ || !preview_->MatchesEndpoint(last_url_, endpoint)) {
++      std::move(callback).Run(result == net::OK ? net::ERR_ACCESS_DENIED : result, std::nullopt, std::nullopt); return;
++    }
++    Check(preview_, last_url_, navigation_, base::BindOnce([](base::WeakPtr<NativeProjectPreview> preview,
++        GURL url, net::IPEndPoint endpoint, OnHeadersReceivedCallback callback,
++        std::optional<std::string> headers, std::optional<GURL> preserve, bool allowed) {
++      const bool current = allowed && preview && preview->MatchesEndpoint(url, endpoint);
++      std::move(callback).Run(current ? net::OK : net::ERR_ACCESS_DENIED,
++          current ? std::move(headers) : std::nullopt, current ? std::move(preserve) : std::nullopt);
++    }, preview_, last_url_, endpoint, std::move(callback), std::move(headers), std::move(preserve)));
++  }
++  void ReviewedHeaders(GURL url, OnBeforeSendHeadersCallback callback, int32_t result,
++      const std::optional<net::HttpRequestHeaders>& headers, std::optional<base::DictValue> log) {
++    if (result != net::OK) { std::move(callback).Run(result, std::nullopt, std::nullopt); return; }
++    // The final authority check follows all existing browser header mutations.
++    Check(preview_, url, navigation_, base::BindOnce([](OnBeforeSendHeadersCallback callback,
++        std::optional<net::HttpRequestHeaders> headers, std::optional<base::DictValue> log, bool allowed) {
++      std::move(callback).Run(allowed ? net::OK : net::ERR_ACCESS_DENIED,
++          allowed ? headers : std::nullopt, allowed ? std::move(log) : std::nullopt);
++    }, std::move(callback), headers, std::move(log)));
++  }
++  base::WeakPtr<NativeProjectPreview> preview_;
++  const bool navigation_;
++  const bool required_;
++  mojo::Remote<network::mojom::TrustedHeaderClient> target_;
++  GURL last_url_;
++  base::WeakPtrFactory<PreviewHeader> weak_{this};
++};
++class PreviewFactoryHeaders final : public network::mojom::TrustedURLLoaderHeaderClient {
++ public:
++  PreviewFactoryHeaders(base::WeakPtr<NativeProjectPreview> preview, bool navigation,
++      mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient> target)
++      : preview_(preview), navigation_(navigation), target_(std::move(target)) {}
++  void OnLoaderCreated(int32_t id, mojo::PendingReceiver<network::mojom::TrustedHeaderClient> receiver) override {
++    mojo::PendingRemote<network::mojom::TrustedHeaderClient> target;
++    if (target_) target_->OnLoaderCreated(id, target.InitWithNewPipeAndPassReceiver());
++    mojo::MakeSelfOwnedReceiver(std::make_unique<PreviewHeader>(preview_, navigation_, std::move(target)), std::move(receiver));
++  }
++  void OnLoaderForCorsPreflightCreated(const network::ResourceRequest& request,
++      mojo::PendingReceiver<network::mojom::TrustedHeaderClient> receiver) override {
++    mojo::PendingRemote<network::mojom::TrustedHeaderClient> target;
++    if (target_) target_->OnLoaderForCorsPreflightCreated(request, target.InitWithNewPipeAndPassReceiver());
++    mojo::MakeSelfOwnedReceiver(std::make_unique<PreviewHeader>(preview_, false, std::move(target)), std::move(receiver));
++  }
++ private:
++  base::WeakPtr<NativeProjectPreview> preview_;
++  const bool navigation_;
++  mojo::Remote<network::mojom::TrustedURLLoaderHeaderClient> target_;
++};
++class PreviewRequest final : public network::mojom::URLLoader, public network::mojom::URLLoaderClient {
++ public:
++  PreviewRequest(mojo::PendingReceiver<network::mojom::URLLoader> loader,
++      mojo::PendingRemote<network::mojom::URLLoaderClient> client,
++      base::WeakPtr<NativeProjectPreview> preview, GURL url, bool navigation)
++      : client_(std::move(client)), receiver_(this, std::move(loader)), target_receiver_(this), preview_(preview),
++        url_(std::move(url)), navigation_(navigation) {
++    target_receiver_.set_disconnect_handler(base::BindOnce(&PreviewRequest::TargetDisconnected, base::Unretained(this)));
++    receiver_.set_disconnect_handler(base::BindOnce(&PreviewRequest::Cancel, base::Unretained(this)));
++    client_.set_disconnect_handler(base::BindOnce(&PreviewRequest::Cancel, base::Unretained(this)));
++  }
++  void Hold(std::shared_ptr<PreviewRequest> owned) { keep_alive_ = std::move(owned); }
++  mojo::PendingRemote<network::mojom::URLLoaderClient> Client() { return target_receiver_.BindNewPipeAndPassRemote(); }
++  mojo::PendingReceiver<network::mojom::URLLoader> Target() { return target_.BindNewPipeAndPassReceiver(); }
++  void FollowRedirect(network::HttpRequestHeadersUpdateParams headers, const std::optional<GURL>& override_url) override {
++    if (!redirect_ || terminal_) { Reject(); return; }
++    const auto url = override_url.value_or(*redirect_);
++    ++pending_;
++    Check(preview_, url, navigation_, base::BindOnce([](base::WeakPtr<PreviewRequest> request,
++        network::HttpRequestHeadersUpdateParams headers, std::optional<GURL> override_url, GURL url, bool allowed) {
++      if (!request) return;
++      if (!allowed || request->terminal_) { request->Reject(); return; }
++      request->url_ = std::move(url); request->redirect_.reset();
++      request->target_->FollowRedirect(std::move(headers), override_url);
++      request->ReviewFinished();
++    }, weak_.GetWeakPtr(), std::move(headers), override_url, url));
++  }
++  void SetPriority(net::RequestPriority priority, int32_t value) override { if (target_ && !terminal_) target_->SetPriority(priority, value); }
++  void OnReceiveEarlyHints(network::mojom::EarlyHintsPtr hints) override {
++    if (!preview_ || !preview_->Current()) { Reject(); return; }
++    client_->OnReceiveEarlyHints(std::move(hints));
++  }
++  void OnReceiveResponse(network::mojom::URLResponseHeadPtr head, mojo::ScopedDataPipeConsumerHandle body,
++      std::optional<mojo_base::BigBuffer> metadata) override {
++    ++pending_;
++    Check(preview_, url_, navigation_, base::BindOnce([](base::WeakPtr<PreviewRequest> request,
++        network::mojom::URLResponseHeadPtr head, mojo::ScopedDataPipeConsumerHandle body,
++        std::optional<mojo_base::BigBuffer> metadata, bool allowed) {
++      if (!request) return;
++      if (!allowed || request->terminal_) { request->Reject(); return; }
++      request->client_->OnReceiveResponse(std::move(head), std::move(body), std::move(metadata));
++      request->ReviewFinished();
++    }, weak_.GetWeakPtr(), std::move(head), std::move(body), std::move(metadata)));
++  }
++  void OnReceiveRedirect(const net::RedirectInfo& info, network::mojom::URLResponseHeadPtr head) override {
++    ++pending_;
++    Check(preview_, info.new_url, navigation_, base::BindOnce([](base::WeakPtr<PreviewRequest> request,
++        net::RedirectInfo info, network::mojom::URLResponseHeadPtr head, bool allowed) {
++      if (!request) return;
++      if (!allowed || request->terminal_) { request->Reject(); return; }
++      request->redirect_ = info.new_url;
++      request->client_->OnReceiveRedirect(info, std::move(head));
++      request->ReviewFinished();
++    }, weak_.GetWeakPtr(), info, std::move(head)));
++  }
++  void OnUploadProgress(int64_t current, int64_t total, OnUploadProgressCallback callback) override {
++    if (!terminal_) client_->OnUploadProgress(current, total, std::move(callback));
++    else std::move(callback).Run();
++  }
++  void OnTransferSizeUpdated(int32_t size) override { if (!terminal_) client_->OnTransferSizeUpdated(size); }
++  void OnComplete(const network::URLLoaderCompletionStatus& status) override {
++    if (terminal_) return;
++    completion_ = status;
++    FinishIfReady();
++  }
++ private:
++  void Release() {
++    receiver_.reset(); target_receiver_.reset(); target_.reset(); weak_.InvalidateWeakPtrs();
++    auto owned = std::move(keep_alive_);
++  }
++  void ReviewFinished() { --pending_; FinishIfReady(); }
++  void FinishIfReady() {
++    if (terminal_ || pending_ || !completion_) return;
++    terminal_ = true; client_->OnComplete(*completion_); Release();
++  }
++  void TargetDisconnected() {
++    if (!terminal_ && !completion_) Reject();
++    // OnComplete may precede the runtime review. Keep this actual request
++    // alive until its deferred response/redirect is admitted or refused.
++  }
++  void Cancel() { terminal_ = true; Release(); }
++  void Reject() {
++    if (terminal_) return;
++    terminal_ = true; client_->OnComplete(network::URLLoaderCompletionStatus(net::ERR_ACCESS_DENIED));
++    Release();
++  }
++  mojo::Remote<network::mojom::URLLoaderClient> client_;
++  mojo::Receiver<network::mojom::URLLoader> receiver_;
++  mojo::Receiver<network::mojom::URLLoaderClient> target_receiver_;
++  std::shared_ptr<PreviewRequest> keep_alive_;
++  size_t pending_ = 0;
++  std::optional<network::URLLoaderCompletionStatus> completion_;
++  mojo::Remote<network::mojom::URLLoader> target_;
++  base::WeakPtr<NativeProjectPreview> preview_;
++  GURL url_;
++  const bool navigation_;
++  std::optional<GURL> redirect_;
++  bool terminal_ = false;
++  base::WeakPtrFactory<PreviewRequest> weak_{this};
++};
++class PreviewFactory final : public network::SelfDeletingURLLoaderFactory {
++ public:
++  PreviewFactory(mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver,
++      mojo::PendingRemote<network::mojom::URLLoaderFactory> target,
++      base::WeakPtr<NativeProjectPreview> preview, base::SelfDeletingPassKey key)
++      : network::SelfDeletingURLLoaderFactory(std::move(receiver), key), target_(std::move(target)), preview_(preview) {
++    target_.set_disconnect_handler(base::BindOnce(&PreviewFactory::Lost, base::Unretained(this)));
++  }
++  void CreateLoaderAndStart(mojo::PendingReceiver<network::mojom::URLLoader> receiver, int32_t id, uint32_t options,
++      const network::ResourceRequest& request, mojo::PendingRemote<network::mojom::URLLoaderClient> client,
++      const net::MutableNetworkTrafficAnnotationTag& annotation) override {
++    const bool navigation = request.destination == network::mojom::RequestDestination::kDocument ||
++        request.destination == network::mojom::RequestDestination::kIframe;
++    Check(preview_, request.url, navigation, base::BindOnce([](base::WeakPtr<PreviewFactory> factory,
++        mojo::PendingReceiver<network::mojom::URLLoader> receiver, int32_t id, uint32_t options,
++        network::ResourceRequest request, mojo::PendingRemote<network::mojom::URLLoaderClient> client,
++        net::MutableNetworkTrafficAnnotationTag annotation, bool allowed) {
++      if (!factory || !allowed) {
++        mojo::Remote<network::mojom::URLLoaderClient>(std::move(client))->OnComplete(
++            network::URLLoaderCompletionStatus(net::ERR_ACCESS_DENIED)); return;
++      }
++      const bool navigation = request.destination == network::mojom::RequestDestination::kDocument ||
++          request.destination == network::mojom::RequestDestination::kIframe;
++      auto guard = std::make_shared<PreviewRequest>(std::move(receiver), std::move(client), factory->preview_, request.url, navigation);
++      guard->Hold(guard);
++      auto target = guard->Target();
++      auto guarded_client = guard->Client();
++      // Public asset hostnames must never resolve into another local service.
++      request.required_ip_address_space = net::IsLocalhost(request.url) ? network::mojom::IPAddressSpace::kLoopback : network::mojom::IPAddressSpace::kPublic;
++      factory->target_->CreateLoaderAndStart(std::move(target), id, options, request, std::move(guarded_client), annotation);
++    }, weak_.GetWeakPtr(), std::move(receiver), id, options, request, std::move(client), annotation));
++  }
++ private:
++  ~PreviewFactory() override = default;
++  void Lost() { DisconnectReceiversAndDestroy(); }
++  mojo::Remote<network::mojom::URLLoaderFactory> target_;
++  base::WeakPtr<NativeProjectPreview> preview_;
++  base::WeakPtrFactory<PreviewFactory> weak_{this};
++};
++class PreviewNavigation final : public content::NavigationThrottle {
++ public:
++  PreviewNavigation(content::NavigationThrottleRegistry& registry, base::WeakPtr<NativeProjectPreview> preview)
++      : content::NavigationThrottle(registry), preview_(preview) {}
++  ThrottleCheckResult WillStartRequest() override { return Review(); }
++  ThrottleCheckResult WillRedirectRequest() override { return Review(); }
++  const char* GetNameForLogging() override { return "AuxProjectPreview"; }
++ private:
++  ThrottleCheckResult Review() {
++    if (!preview_ || !preview_->Current()) return CANCEL_AND_IGNORE;
++    Check(preview_, navigation_handle()->GetURL(), true,
++        base::BindOnce([](base::WeakPtr<PreviewNavigation> navigation, bool allowed) {
++          if (!navigation) return;
++          if (allowed) navigation->Resume();
++          else navigation->CancelDeferredNavigation(CANCEL_AND_IGNORE);
++        }, weak_.GetWeakPtr()));
++    return DEFER;
++  }
++  base::WeakPtr<NativeProjectPreview> preview_;
++  base::WeakPtrFactory<PreviewNavigation> weak_{this};
++};
++}
++void NativeProjectPreview::ProxyFactory(content::RenderFrameHost* frame, int process_id, bool navigation, network::URLLoaderFactoryBuilder& builder,
++    mojo::PendingRemote<network::mojom::TrustedURLLoaderHeaderClient>* headers) {
++  auto* process = frame ? frame->GetProcess() : content::RenderProcessHost::FromID(process_id);
++  auto* partition = process ? process->GetStoragePartition() : nullptr;
++  if (!IsPreviewPartition(partition)) return;
++  if (headers) {
++    auto original = std::move(*headers);
++    mojo::MakeSelfOwnedReceiver(std::make_unique<PreviewFactoryHeaders>(ForPartition(partition), navigation, std::move(original)),
++        headers->InitWithNewPipeAndPassReceiver());
++  }
++  auto [receiver, target] = builder.Append();
++  base::MakeSelfDeleting<PreviewFactory>(std::move(receiver), std::move(target), headers ? ForPartition(partition) : base::WeakPtr<NativeProjectPreview>());
++}
++mojo::PendingRemote<network::mojom::TrustedHeaderClient> NativeProjectPreview::WrapHeaders(
++    base::WeakPtr<NativeProjectPreview> preview, mojo::PendingRemote<network::mojom::TrustedHeaderClient> target) {
++  mojo::PendingRemote<network::mojom::TrustedHeaderClient> wrapped;
++  mojo::MakeSelfOwnedReceiver(std::make_unique<PreviewHeader>(preview, false, std::move(target)),
++      wrapped.InitWithNewPipeAndPassReceiver());
++  return wrapped;
++}
++void NativeProjectPreview::AddNavigationThrottle(content::NavigationThrottleRegistry& registry) {
++  auto* contents = registry.GetNavigationHandle().GetWebContents();
++  auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++  auto* partition = frame ? frame->GetProcess()->GetStoragePartition() : nullptr;
++  if (IsPreviewPartition(partition)) registry.AddThrottle(std::make_unique<PreviewNavigation>(registry, ForPartition(partition)));
++}
++}
+diff --git a/chrome/browser/ui/aux/native_terminal.cc b/chrome/browser/ui/aux/native_terminal.cc
+--- a/chrome/browser/ui/aux/native_terminal.cc
++++ b/chrome/browser/ui/aux/native_terminal.cc
+@@ -10,9 +10,12 @@
+ #include <stdlib.h>
+ #include <array>
+ #include <optional>
++#include <algorithm>
+ #include <vector>
+ #include "base/base64.h"
+ #include "base/environment.h"
++#include "base/uuid.h"
++#include "base/strings/strcat.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/functional/bind.h"
+ #include "base/task/thread_pool.h"
+@@ -127,7 +130,77 @@
+   if (flags < 0 || fcntl(master_, F_SETFL, flags | O_NONBLOCK) < 0 || fcntl(master_, F_SETFD, FD_CLOEXEC) < 0) {
+     Retire(); *error = "Cannot configure terminal descriptor"; return false;
+   }
++  if (!CaptureProjectProcess(pid_, &process_)) { Retire(); *error = "Original process identity is unavailable"; return false; }
++  cwd_ = cwd; device_ = device; inode_ = inode;
+   return true;
++}
++bool NativeTerminal::PreviewCurrent(const NativeProjectListener& listener) const {
++  if (!Current() || closing_ || pid_ <= 0 || !ProjectListenerCurrent(process_, listener)) return false;
++  const int directory = open(cwd_.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
++  struct stat identity{};
++  const bool current = directory >= 0 && fstat(directory, &identity) == 0 &&
++      base::NumberToString(static_cast<uint64_t>(identity.st_dev)) == device_ &&
++      base::NumberToString(static_cast<uint64_t>(identity.st_ino)) == inode_;
++  if (directory >= 0) close(directory);
++  return current;
++}
++void NativeTerminal::Listeners(base::OnceCallback<void(base::DictValue)> callback) {
++  if (!Current() || closing_ || !ProjectProcessCurrent(process_)) {
++    std::move(callback).Run(Fault("Original terminal process retired")); return;
++  }
++  base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},
++      base::BindOnce(&FindProjectListeners, process_), base::BindOnce(
++          [](base::WeakPtr<NativeTerminal> owner, base::OnceCallback<void(base::DictValue)> callback,
++             std::vector<NativeProjectListener> listeners) {
++            if (!owner || !owner->Current() || owner->closing_ || !ProjectProcessCurrent(owner->process_)) {
++              std::move(callback).Run(Fault("Original terminal process retired")); return;
++            }
++            base::ListValue result;
++            // Preserve opaque IDs only for the same live kernel socket; never reuse an old ID.
++            std::map<std::string, NativeProjectListener> admitted;
++            for (const auto& listener : listeners) {
++              if (!owner->PreviewCurrent(listener)) continue;
++              std::string id;
++              for (const auto& [old_id, old] : owner->listeners_) {
++                if (old.pid == listener.pid && old.fd == listener.fd && old.socket == listener.socket &&
++                    old.generation == listener.generation && old.started_seconds == listener.started_seconds &&
++                    old.started_microseconds == listener.started_microseconds) { id = old_id; break; }
++              }
++              if (id.empty()) id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++              admitted.emplace(id, listener);
++              result.Append(base::DictValue().Set("listenerId", id).Set("url",
++                  base::StrCat({"http://", listener.host, ":", base::NumberToString(listener.port), "/"})));
++            }
++            owner->listeners_ = std::move(admitted);
++            std::move(callback).Run(Result(base::DictValue().Set("terminalId", *owner->session_.FindString("terminalId"))
++                .Set("listeners", std::move(result))));
++          }, weak_factory_.GetWeakPtr(), std::move(callback)));
++}
++base::DictValue NativeTerminal::Preview(const std::string& listener_id, const std::string& preview_id,
++    const std::string& protocol, NativeProjectPreview::Review review) {
++  const auto listener = listeners_.find(listener_id);
++  if (listener == listeners_.end() || !PreviewCurrent(listener->second) || previews_.contains(preview_id) ||
++      previews_.size() >= 8 || (protocol != "http" && protocol != "https")) return Fault("Original Project listener changed");
++  const auto proof = listener->second;
++  const GURL origin(base::StrCat({protocol, "://", proof.host, ":", base::NumberToString(proof.port), "/"}));
++  auto preview = std::make_unique<NativeProjectPreview>(web_contents(), document_, origin,
++      base::BindRepeating([](base::WeakPtr<NativeTerminal> owner, NativeProjectListener listener) {
++        return owner && owner->PreviewCurrent(listener);
++      }, weak_factory_.GetWeakPtr(), proof), std::move(review));
++  if (!preview->Open()) return Fault("Cannot attach original Project preview");
++  auto result = preview->Describe(); result.Set("terminalId", *session_.FindString("terminalId")); result.Set("previewId", preview_id);
++  previews_.emplace(preview_id, std::move(preview)); return Result(std::move(result));
++}
++void NativeTerminal::ClosePreview(const std::string& preview_id, base::OnceCallback<void(base::DictValue)> callback) {
++  const auto preview = previews_.find(preview_id);
++  // This terminal owns the complete native guest inventory for its original
++  // document. Absence proves no guest exists, including an unstarted request.
++  if (preview == previews_.end()) { std::move(callback).Run(Result(base::DictValue().Set("closed", true))); return; }
++  preview->second->Close(base::BindOnce([](base::WeakPtr<NativeTerminal> owner, std::string id,
++      base::OnceCallback<void(base::DictValue)> callback, bool acknowledged) {
++    if (acknowledged && owner) owner->previews_.erase(id);
++    std::move(callback).Run(acknowledged ? Result(base::DictValue().Set("closed", true)) : Fault("Project preview cleanup is not acknowledged"));
++  }, weak_factory_.GetWeakPtr(), preview_id, std::move(callback)));
+ }
+ void NativeTerminal::Flush() {
+   while (master_ >= 0 && !pending_input_.empty()) {
+@@ -182,33 +255,34 @@
+ }
+ void NativeTerminal::Close(base::OnceCallback<void(base::DictValue)> callback) {
+   if (closing_) {
+-    if (closing_->failed) std::move(callback).Run(Fault("Terminal termination has no original reaping acknowledgement"));
++    if (closing_->completed) std::move(callback).Run(closing_->failed ? Fault("Terminal termination has no original acknowledgement") : Result(closing_->stopped.Clone()));
+     else closing_->callbacks.push_back(std::move(callback));
+     return;
+   }
+-  if (*session_.FindString("state") == "closed") {
+-    if (master_ >= 0) close(master_);
+-    master_ = -1; previous_chunk_.clear(); pending_input_.clear();
+-    std::move(callback).Run(Result(Session())); return;
+-  }
+   const pid_t pid = pid_; const int fd = master_;
++  // Fence the original group before any guest/service-worker cleanup can await.
+   if (pid > 0) { kill(-pid, SIGKILL); kill(pid, SIGKILL); }
+   pid_ = -1; master_ = -1; pending_input_.clear(); session_.Set("state", "closing");
+   closing_ = std::make_shared<CloseState>();
+   closing_->stopped = Session(); closing_->stopped.Set("state", "closed");
++  closing_->pending = previews_.size() + 1;
+   closing_->callbacks.push_back(std::move(callback));
++  auto joined = base::BindRepeating([](base::WeakPtr<NativeTerminal> owner, std::shared_ptr<CloseState> state, bool acknowledged) {
++    state->failed |= !acknowledged;
++    if (--state->pending) return;
++    state->completed = true;
++    if (owner && !state->failed) owner->session_ = state->stopped.Clone();
++    auto callbacks = std::move(state->callbacks);
++    for (auto& callback : callbacks) std::move(callback).Run(state->failed ? Fault("Terminal termination has no original acknowledgement") : Result(state->stopped.Clone()));
++  }, weak_factory_.GetWeakPtr(), closing_);
++  for (auto& [id, preview] : previews_) preview->Close(base::BindOnce(joined));
+   base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock(), base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
+       base::BindOnce(&KillAndReap, pid, fd), base::BindOnce(
+-          [](base::WeakPtr<NativeTerminal> owner, std::shared_ptr<CloseState> state, Termination result) {
+-            const bool acknowledged = result.acknowledged;
+-            state->failed = !acknowledged;
+-            if (owner && acknowledged) {
+-              if (result.exit_code) owner->exit_code_ = *result.exit_code;
+-              owner->session_ = state->stopped.Clone(); owner->closing_.reset();
+-            }
+-            auto callbacks = std::move(state->callbacks);
+-            for (auto& callback : callbacks) std::move(callback).Run(acknowledged ? Result(state->stopped.Clone()) : Fault("Terminal termination has no original reaping acknowledgement"));
+-          }, weak_factory_.GetWeakPtr(), closing_));
++          [](base::WeakPtr<NativeTerminal> owner,
++             base::RepeatingCallback<void(bool)> joined, Termination result) {
++            if (result.exit_code && owner) owner->exit_code_ = *result.exit_code;
++            joined.Run(result.acknowledged);
++          }, weak_factory_.GetWeakPtr(), joined));
+ }
+ void NativeTerminal::Retire() {
+   // Fence the original group immediately. Close joins the same eventual reaping ACK.
+diff --git a/chrome/browser/ui/aux/native_terminal.h b/chrome/browser/ui/aux/native_terminal.h
+--- a/chrome/browser/ui/aux/native_terminal.h
++++ b/chrome/browser/ui/aux/native_terminal.h
+@@ -4,6 +4,9 @@
+ #include <sys/types.h>
+ #include <cstdint>
+ #include <memory>
++#include <map>
++#include "chrome/browser/ui/aux/native_project_listener.h"
++#include "chrome/browser/ui/aux/native_project_preview.h"
+ #include <string>
+ #include <vector>
+ #include "base/functional/callback.h"
+@@ -28,6 +31,10 @@
+   base::DictValue Read(uint64_t offset);
+   base::DictValue Input(uint64_t sequence, const std::string& data);
+   base::DictValue Resize(int cols, int rows);
++  void Listeners(base::OnceCallback<void(base::DictValue)> callback);
++  base::DictValue Preview(const std::string& listener_id, const std::string& preview_id,
++                         const std::string& protocol, NativeProjectPreview::Review review);
++  void ClosePreview(const std::string& preview_id, base::OnceCallback<void(base::DictValue)> callback);
+   // Detaches ownership synchronously, then acknowledges actual child reaping.
+   void Close(base::OnceCallback<void(base::DictValue)> callback);
+   void PrimaryPageChanged(content::Page& page) override;
+@@ -36,6 +43,11 @@
+   void Retire();
+   void Flush();
+   void PollExit();
++  bool PreviewCurrent(const NativeProjectListener& listener) const;
++  NativeProjectProcess process_{};
++  std::string cwd_, device_, inode_;
++  std::map<std::string, NativeProjectListener> listeners_;
++  std::map<std::string, std::unique_ptr<NativeProjectPreview>> previews_;
+   content::WeakDocumentPtr document_;
+   std::string token_;
+   base::DictValue session_;
+@@ -50,6 +62,8 @@
+   struct CloseState {
+     base::DictValue stopped;
+     bool failed = false;
++    bool completed = false;
++    size_t pending = 0;
+     std::vector<base::OnceCallback<void(base::DictValue)>> callbacks;
+   };
+   std::shared_ptr<CloseState> closing_;
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -543,6 +543,12 @@
+     fail("Original terminal connection retired"); return;
+   }
+   auto session = native_terminals_.find(*id);
++  if (method == "native.terminalPreviewClose") {
++    const auto* preview_id = params.FindString("previewId");
++    if (params.size() != 3 || !preview_id || !base::Uuid::ParseLowercase(*preview_id).is_valid() ||
++        session == native_terminals_.end() || session->second->token() != *token) { fail("Original Preview close owner changed"); return; }
++    session->second->ClosePreview(*preview_id, std::move(callback)); return;
++  }
+   if (method == "native.terminalClose") {
+     if (params.size() != 2 || session == native_terminals_.end() || session->second->token() != *token) {
+       fail("Original terminal close owner changed"); return;
+@@ -572,6 +578,39 @@
+   }
+   if (session == native_terminals_.end() || session->second->token() != *token || !session->second->Current()) {
+     fail("Original terminal session retired"); return;
++  }
++  if (method == "native.terminalListeners") {
++    if (params.size() != 2) { fail("Exact terminal listener owner is required"); return; }
++    session->second->Listeners(std::move(callback)); return;
++  }
++  if (method == "native.terminalPreview") {
++    const auto* listener = params.FindString("listenerId"), *preview = params.FindString("previewId"), *protocol = params.FindString("protocol");
++    if (params.size() != 5 || !listener || !preview || !protocol ||
++        !base::Uuid::ParseLowercase(*listener).is_valid() || !base::Uuid::ParseLowercase(*preview).is_valid()) {
++      fail("Exact original Project listener is required"); return;
++    }
++    auto review = base::BindRepeating([](base::WeakPtr<AuxRuntimeHost> host, uint64_t generation,
++        std::string token, std::string terminal_id, std::string preview_id, base::OnceCallback<void(bool)> callback) {
++      if (!host || host->admitted_native_generation_ != generation || generation <= host->retired_native_generation_) {
++        std::move(callback).Run(false); return;
++      }
++      auto owner = host->turn_contexts_.find(token);
++      if (owner == host->turn_contexts_.end() || !host->TurnContextCurrent(owner->second)) {
++        std::move(callback).Run(false); return;
++      }
++      const auto json = base::WriteJson(base::DictValue().Set("terminalId", terminal_id).Set("previewId", preview_id).Set("token", token));
++      host->CallInternal("projects.preview.admit", *json, base::BindOnce([](base::WeakPtr<AuxRuntimeHost> host,
++          uint64_t generation, std::string token, base::OnceCallback<void(bool)> callback, Response response) {
++        if (!host || host->admitted_native_generation_ != generation || generation <= host->retired_native_generation_) {
++          std::move(callback).Run(false); return;
++        }
++        const auto owner = host->turn_contexts_.find(token);
++        const auto result = base::JSONReader::Read(response.result_json, base::JSON_PARSE_RFC);
++        std::move(callback).Run(response.ok && result && result->is_bool() && result->GetBool() &&
++            owner != host->turn_contexts_.end() && host->TurnContextCurrent(owner->second));
++      }, host, generation, token, std::move(callback)));
++    }, weak_factory_.GetWeakPtr(), generation, *token, *id, *preview);
++    std::move(callback).Run(session->second->Preview(*listener, *preview, *protocol, std::move(review))); return;
+   }
+   const auto integer = [&](const char* name) -> std::optional<uint64_t> {
+     auto value = params.FindDouble(name);
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1024,7 +1024,7 @@
+       api_method == "models.auth.status" || api_method == "models.auth.cancel" ||
+       api_method == "projects.files" || api_method == "projects.file" || api_method == "projects.changes" ||
+       api_method == "settings.cloud.status" || api_method == "settings.cloud.configure" ||
+-      api_method == "settings.cloud.clear" || api_method == "agentConnections.install" || api_method == "developer.cli.install" || api_method == "terminal.start" ||
++      api_method == "settings.cloud.clear" || api_method == "agentConnections.install" || api_method == "developer.cli.install" || api_method == "terminal.listeners" || api_method == "terminal.preview" || api_method == "terminal.previewClose" || api_method == "terminal.start" ||
+       api_method == "terminal.read" || api_method == "terminal.input" ||
+       api_method == "terminal.resize" || api_method == "terminal.close")
+     host->CallApiFromWindow(browser_->GetWeakPtr(), web_ui()->GetRenderFrameHost()->GetWeakDocumentPtr(),
+diff --git a/components/guest_contents/browser/guest_contents_handle.cc b/components/guest_contents/browser/guest_contents_handle.cc
+--- a/components/guest_contents/browser/guest_contents_handle.cc
++++ b/components/guest_contents/browser/guest_contents_handle.cc
+@@ -5,6 +5,7 @@
+ #include "components/guest_contents/browser/guest_contents_handle.h"
+ 
+ #include <map>
++#include <utility>
+ 
+ #include "base/no_destructor.h"
+ #include "content/public/browser/unowned_inner_web_contents_client.h"
+@@ -54,8 +55,17 @@
+   GetGuestContentsMap().erase(id_);
+ }
+ 
++void GuestContentsHandle::SetAttachmentValidator(
++    base::RepeatingCallback<bool(content::RenderFrameHost*)> validator) {
++  attachment_validator_ = std::move(validator);
++}
++bool GuestContentsHandle::CanAttach(content::RenderFrameHost* outer) const {
++  return !attachment_validator_ || attachment_validator_.Run(outer);
++}
++
+ void GuestContentsHandle::AttachToOuterWebContents(
+     content::RenderFrameHost* outer_delegate_frame) {
++  if (!CanAttach(outer_delegate_frame)) return;
+   CHECK(!web_contents()->GetOuterWebContents())
+       << "This WebContents is already attached to an outer WebContents. Hint: "
+          "use GuestContentsHandle::DetachFromOuterWebContents() before "
+diff --git a/components/guest_contents/browser/guest_contents_handle.h b/components/guest_contents/browser/guest_contents_handle.h
+--- a/components/guest_contents/browser/guest_contents_handle.h
++++ b/components/guest_contents/browser/guest_contents_handle.h
+@@ -6,6 +6,7 @@
+ #define COMPONENTS_GUEST_CONTENTS_BROWSER_GUEST_CONTENTS_HANDLE_H_
+ 
+ #include "base/sequence_checker.h"
++#include "base/functional/callback.h"
+ #include "base/unguessable_token.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_observer.h"
+@@ -34,6 +35,10 @@
+   // when the GuestContentsHandle is created.
+   GuestId id() { return id_; }
+ 
++  // Optional browser-owned authority, checked before a connector changes guests.
++  void SetAttachmentValidator(base::RepeatingCallback<bool(content::RenderFrameHost*)> validator);
++  bool CanAttach(content::RenderFrameHost* outer) const;
++
+   void AttachToOuterWebContents(
+       content::RenderFrameHost* outer_delegate_frame);
+ 
+@@ -49,6 +54,7 @@
+   void WebContentsDestroyed() override;
+ 
+   base::UnguessableToken id_;
++  base::RepeatingCallback<bool(content::RenderFrameHost*)> attachment_validator_;
+ 
+   SEQUENCE_CHECKER(sequence_checker_);
+ };
+diff --git a/components/surface_embed/browser/surface_embed_host.cc b/components/surface_embed/browser/surface_embed_host.cc
+--- a/components/surface_embed/browser/surface_embed_host.cc
++++ b/components/surface_embed/browser/surface_embed_host.cc
+@@ -129,6 +129,9 @@
+     return;
+   }
+ 
++  // Refuse a retired or foreign browser-owned guest before detaching any
++  // existing connector. The renderer cannot turn an opaque ID into authority.
++  if (!guest_handle->CanAttach(&collection_->render_frame_host())) return;
+   content::WebContents* web_contents_to_attach = guest_handle->web_contents();
+   CHECK(web_contents_to_attach);
+ 
+diff --git a/content/browser/websockets/websocket_connector_impl.cc b/content/browser/websockets/websocket_connector_impl.cc
+--- a/content/browser/websockets/websocket_connector_impl.cc
++++ b/content/browser/websockets/websocket_connector_impl.cc
+@@ -121,12 +121,35 @@
+   }
+ 
+   RenderFrameHost* frame = RenderFrameHost::FromID(frame_id_);
+-  if (!GetContentClient()->browser()->AllowUninspectableNetworkTransport(
+-          process->GetBrowserContext(), frame, "websocket")) return;
+-
+   content::ContentBrowserClient::WebSocketOptions options =
+       GetContentClient()->browser()->GetWebSocketOptions(frame);
+-
++  auto headers = std::move(options.header_client);
++  GetContentClient()->browser()->CheckWebSocketConnection(frame, frame_id_.child_id, url, std::move(headers),
++      base::BindOnce([](base::WeakPtr<WebSocketConnectorImpl> connector, GURL url,
++          std::vector<std::string> protocols, std::optional<std::string> user_agent,
++          net::StorageAccessApiStatus storage_access,
++          mojo::PendingRemote<network::mojom::WebSocketHandshakeClient> client,
++          std::optional<base::UnguessableToken> throttling, network::mojom::IPAddressSpace address_space,
++          content::ContentBrowserClient::WebSocketOptions options, bool allowed,
++          mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers) {
++        if (!connector || !allowed) return;
++        options.header_client = std::move(headers);
++        connector->ConnectAfterCheck(url, protocols, user_agent, storage_access,
++            std::move(client), throttling, address_space, std::move(options));
++      }, weak_factory_.GetWeakPtr(), url, requested_protocols, user_agent, storage_access_api_status,
++          std::move(handshake_client), throttling_profile_id, target_address_space, std::move(options)));
++}
++
++void WebSocketConnectorImpl::ConnectAfterCheck(const GURL& url, const std::vector<std::string>& requested_protocols,
++    const std::optional<std::string>& user_agent, net::StorageAccessApiStatus storage_access_api_status,
++    mojo::PendingRemote<network::mojom::WebSocketHandshakeClient> handshake_client,
++    const std::optional<base::UnguessableToken>& throttling_profile_id,
++    network::mojom::IPAddressSpace target_address_space,
++    content::ContentBrowserClient::WebSocketOptions options) {
++  if (frame_id_.frame_routing_id != IPC::mojom::kRoutingIdNone && !weak_document_.AsRenderFrameHostIfValid()) return;
++  auto* process = RenderProcessHost::FromID(frame_id_.child_id);
++  auto* frame = RenderFrameHost::FromID(frame_id_);
++  if (!process) return;
+   content::ContentBrowserClient::WebSocketFactory factory = base::BindOnce(
+       ConnectCalledByContentBrowserClient, requested_protocols,
+       storage_access_api_status, isolation_info_, frame_id_,
+diff --git a/content/browser/websockets/websocket_connector_impl.h b/content/browser/websockets/websocket_connector_impl.h
+--- a/content/browser/websockets/websocket_connector_impl.h
++++ b/content/browser/websockets/websocket_connector_impl.h
+@@ -10,6 +10,7 @@
+ #include <vector>
+ 
+ #include "base/unguessable_token.h"
++#include "base/memory/weak_ptr.h"
+ #include "content/public/browser/content_browser_client.h"
+ #include "content/public/browser/global_routing_id.h"
+ #include "content/public/browser/weak_document_ptr.h"
+@@ -58,6 +59,12 @@
+       network::mojom::IPAddressSpace target_address_space) override;
+ 
+  private:
++  void ConnectAfterCheck(const GURL& url, const std::vector<std::string>& requested_protocols,
++      const std::optional<std::string>& user_agent, net::StorageAccessApiStatus storage_access_api_status,
++      mojo::PendingRemote<network::mojom::WebSocketHandshakeClient> handshake_client,
++      const std::optional<base::UnguessableToken>& throttling_profile_id,
++      network::mojom::IPAddressSpace target_address_space,
++      content::ContentBrowserClient::WebSocketOptions options);
+   static void ConnectCalledByContentBrowserClient(
+       const std::vector<std::string>& requested_protocols,
+       net::StorageAccessApiStatus storage_access_api_status,
+@@ -86,6 +93,7 @@
+   const network::mojom::ClientSecurityStatePtr client_security_state_;
+   const base::UnguessableToken network_restrictions_id_;
+   const std::optional<base::UnguessableToken> devtools_worker_token_;
++  base::WeakPtrFactory<WebSocketConnectorImpl> weak_factory_{this};
+ };
+ 
+ }  // namespace content
+diff --git a/content/public/browser/content_browser_client.cc b/content/public/browser/content_browser_client.cc
+--- a/content/public/browser/content_browser_client.cc
++++ b/content/public/browser/content_browser_client.cc
+@@ -49,6 +49,7 @@
+ #include "content/public/browser/prerender_web_contents_delegate.h"
+ #include "content/public/browser/process_selection_deferring_condition.h"
+ #include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
+ #include "content/public/browser/responsiveness_calculator_delegate.h"
+ #include "content/public/browser/security_principal.h"
+ #include "content/public/browser/site_instance.h"
+@@ -1101,6 +1102,14 @@
+ bool ContentBrowserClient::AllowUninspectableNetworkTransport(
+     BrowserContext*, RenderFrameHost*, const std::string&) { return true; }
+ 
++void ContentBrowserClient::CheckWebSocketConnection(RenderFrameHost* frame, ChildProcessId process_id, const GURL& url,
++    mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers,
++    WebSocketConnectionCheck callback) {
++  auto* process = RenderProcessHost::FromID(process_id);
++  const bool allowed = process && AllowUninspectableNetworkTransport(process->GetBrowserContext(), frame, "websocket");
++  std::move(callback).Run(allowed, std::move(headers));
++}
++
+ bool ContentBrowserClient::WillInterceptWebSocket(RenderFrameHost*) {
+   return false;
+ }
+diff --git a/content/public/browser/content_browser_client.h b/content/public/browser/content_browser_client.h
+--- a/content/public/browser/content_browser_client.h
++++ b/content/public/browser/content_browser_client.h
+@@ -4,6 +4,7 @@
+ 
+ #ifndef CONTENT_PUBLIC_BROWSER_CONTENT_BROWSER_CLIENT_H_
+ #define CONTENT_PUBLIC_BROWSER_CONTENT_BROWSER_CLIENT_H_
++#include "content/public/common/child_process_id.h"
+ 
+ #include <stddef.h>
+ 
+@@ -2000,6 +2001,14 @@
+   virtual bool AllowUninspectableNetworkTransport(BrowserContext* context,
+       RenderFrameHost* frame, const std::string& kind);
+ 
++  // Runs before every frame or worker WebSocket handoff, with the original
++  // renderer process identity retained across an asynchronous embedder check.
++  using WebSocketConnectionCheck = base::OnceCallback<void(bool,
++      mojo::PendingRemote<network::mojom::TrustedHeaderClient>)>;
++  virtual void CheckWebSocketConnection(RenderFrameHost* frame, ChildProcessId process_id, const GURL& url,
++      mojo::PendingRemote<network::mojom::TrustedHeaderClient> headers,
++      WebSocketConnectionCheck callback);
++
+   virtual bool WillInterceptWebSocket(RenderFrameHost* frame);
+ 
+   struct CONTENT_EXPORT WebSocketOptions {

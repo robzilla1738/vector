@@ -1,0 +1,570 @@
+diff --git a/chrome/app/aux-product-Info.plist b/chrome/app/aux-product-Info.plist
+index c6e8c48fe..75a1ca4c9 100644
+--- a/chrome/app/aux-product-Info.plist
++++ b/chrome/app/aux-product-Info.plist
+@@ -4,5 +4,7 @@
+ <dict>
+   <key>CrProductDirName</key>
+   <string>Aux</string>
++  <key>NSAppleEventsUsageDescription</key>
++  <string>Aux can copy tabs from the one Safari window you explicitly choose. It does not read cookies, passwords or page contents.</string>
+ </dict>
+ </plist>
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 0183ef232..980c080af 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -9,6 +9,9 @@ assert(enable_aux_shell)
+ source_set("runtime") {
+   sources = [
+     "browser_export_decode.h",
++    "browser_import_picker.h",
++    "browser_safari_window.h",
++    "browser_safari_window_mac.mm",
+     "browser_firefox_import.cc",
+     "browser_firefox_import.h",
+     "browser_firefox_snapshot.cc",
+@@ -238,6 +241,7 @@ source_set("runtime") {
+     "AVFoundation.framework",
+     "Cocoa.framework",
+     "UniformTypeIdentifiers.framework",
++    "ScriptingBridge.framework",
+     "IOKit.framework",
+     "ServiceManagement.framework",
+     "Security.framework",
+diff --git a/chrome/browser/ui/aux/browser_export_picker.h b/chrome/browser/ui/aux/browser_export_picker.h
+index f8dbd5c..1af7cc9 100644
+--- a/chrome/browser/ui/aux/browser_export_picker.h
++++ b/chrome/browser/ui/aux/browser_export_picker.h
+@@ -9,13 +9,14 @@
+ #include "base/types/expected.h"
+ #include "chrome/browser/ui/aux/browser_export_decode.h"
+ #include "ui/gfx/native_ui_types.h"
++#include "chrome/browser/ui/aux/browser_import_picker.h"
+ namespace aux {
+-class BrowserExportPicker {
++class BrowserExportPicker : public BrowserImportPicker {
+  public:
+   using Selected = base::OnceCallback<void(base::expected<base::FilePath, std::string>)>;
+-  virtual ~BrowserExportPicker() = default;
++  ~BrowserExportPicker() override = default;
+   // Cancels the original panel. The original completion callback still joins it.
+-  virtual void Cancel() = 0;
++  void Cancel() override = 0;
+   static std::unique_ptr<BrowserExportPicker> Show(
+       gfx::NativeWindow original_window, BrowserExportFormat format, Selected selected);
+ };
+diff --git a/chrome/browser/ui/aux/browser_import_picker.h b/chrome/browser/ui/aux/browser_import_picker.h
+new file mode 100644
+index 000000000..9d938d3c7
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_import_picker.h
+@@ -0,0 +1,15 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_IMPORT_PICKER_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_IMPORT_PICKER_H_
++namespace aux {
++// Both file exports and live native window selection join their exact original
++// native completion. Cancel only retires admission; it cannot invent a receipt.
++class BrowserImportPicker {
++ public:
++  virtual ~BrowserImportPicker() = default;
++  virtual void Cancel() = 0;
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_profile_discovery.h b/chrome/browser/ui/aux/browser_profile_discovery.h
+index 0338ae921..b01fa37e2 100644
+--- a/chrome/browser/ui/aux/browser_profile_discovery.h
++++ b/chrome/browser/ui/aux/browser_profile_discovery.h
+@@ -14,6 +14,7 @@
+ #include "chrome/browser/ui/aux/browser_export_decode.h"
+ namespace aux {
+ class BrowserProfileSnapshot;
++struct SafariWindowSnapshot;
+ struct DiscoveredBrowserProfile {
+   std::string source_id;
+   std::string label;
+@@ -26,6 +27,7 @@ struct DiscoveredBrowserProfile {
+   std::string export_leaf;
+   bool firefox_profile = false;
+   std::shared_ptr<BrowserProfileSnapshot> registration_anchor;
++  std::shared_ptr<const SafariWindowSnapshot> safari_window;
+ };
+ // No renderer or runtime filesystem path is accepted. Registered profile names
+ // come from a held native snapshot of the browser's actual Local State.
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.cc b/chrome/browser/ui/aux/browser_profile_importer.cc
+--- a/chrome/browser/ui/aux/browser_profile_importer.cc
++++ b/chrome/browser/ui/aux/browser_profile_importer.cc
+@@ -25,6 +25,8 @@
+ #include "chrome/browser/ui/aux/browser_firefox_import.h"
+ #include "chrome/browser/ui/aux/browser_firefox_snapshot.h"
+ #include "chrome/browser/ui/aux/browser_export_picker.h"
++#include "chrome/browser/ui/aux/browser_safari_window.h"
++#include "base/strings/string_number_conversions.h"
+ #include "components/user_data_importer/utility/bookmark_parser.h"
+ #include "components/user_data_importer/mojom/bookmark_html_parser.mojom.h"
+ #include "components/strings/grit/components_strings.h"
+@@ -46,6 +48,12 @@
+ #include "components/password_manager/core/browser/ui/saved_passwords_presenter.h"
+ namespace aux {
+ namespace {
++bool OriginalSourceCurrent(const DiscoveredBrowserProfile& source) {
++  if (source.safari_window) return source.safari_window->OriginalProcessIsCurrent();
++  return source.anchor && source.anchor->OriginalIsCurrent() &&
++      (!source.registration_anchor || source.registration_anchor->OriginalIsCurrent());
++}
++
+ base::DictValue Fault(const char* code, const char* message) {
+   base::DictValue result;
+   result.Set("code", code);
+@@ -120,8 +128,7 @@
+ bool BrowserProfileImporter::CurrentJob(const Job& job) const {
+   return profile_keep_alive_ && !closed_ && !job.cancelled->load() && job.source->current.Run() &&
+       job.source->window && job.source->window->GetProfile() == profile_ &&
+-      job.source->discovered.anchor->OriginalIsCurrent() &&
+-      (!job.source->discovered.registration_anchor || job.source->discovered.registration_anchor->OriginalIsCurrent()) &&
++      OriginalSourceCurrent(job.source->discovered) &&
+       (!job.decoded.snapshot || job.decoded.snapshot->OriginalIsCurrent());
+ }
+ void BrowserProfileImporter::Discover(const std::string& owner_token,
+@@ -227,6 +234,53 @@
+   response.Set("result", std::move(result));
+   return response;
+ }
++void BrowserProfileImporter::SelectSafariWindow(const std::string& owner,
++    base::WeakPtr<BrowserWindowInterface> window, Current current, Reply start_reply) {
++  if (!profile_keep_alive_ || closed_ || !window || !current || !current.Run() ||
++      window->GetProfile() != profile_ || profile_->IsOffTheRecord() || owner.empty()) {
++    std::move(start_reply).Run(Fault("permission_denied", "The original Safari import window is unavailable.")); return;
++  }
++  if (discoveries_in_flight_ || sources_.size() >= 256) {
++    std::move(start_reply).Run(Fault("conflict", "Join the current browser selection first.")); return;
++  }
++  while (export_selections_.size() >= 32) {
++    auto terminal = std::ranges::find_if(export_selections_, [](const auto& entry) { return entry.second->done; });
++    if (terminal == export_selections_.end()) { std::move(start_reply).Run(Fault("conflict", "Join the original browser selection first.")); return; }
++    export_selections_.erase(terminal);
++  }
++  const auto id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  auto selection = std::make_shared<ExportSelection>(); selection->owner = owner;
++  export_selections_.emplace(id, selection);
++  ++discoveries_in_flight_; discovery_owner_ = owner;
++  auto cancelled = std::make_shared<std::atomic_bool>(false); discovery_cancelled_ = cancelled;
++  source_picker_ = BrowserSafariWindowPicker::Show(window->GetWindow()->GetNativeWindow(), current,
++      base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self, std::string owner,
++          base::WeakPtr<BrowserWindowInterface> window, Current current,
++          std::shared_ptr<std::atomic_bool> cancelled, std::shared_ptr<ExportSelection> selection,
++          base::expected<std::shared_ptr<const SafariWindowSnapshot>, std::string> captured) {
++        if (!self) return;
++        self->source_picker_.reset(); --self->discoveries_in_flight_;
++        self->discovery_cancelled_.reset(); self->discovery_owner_.clear();
++        if (self->closed_ || cancelled->load() || !window || !current.Run()) selection->reply = Fault("cancelled", "The original Safari window review was retired.");
++        else if (!captured.has_value()) selection->reply = Fault("permission_denied", captured.error().c_str());
++        else if (!(*captured)->OriginalProcessIsCurrent()) selection->reply = Fault("ref_stale", "The original Safari process changed before publication.");
++        else {
++          DiscoveredBrowserProfile source;
++          source.source_id = "safari"; source.label = "Safari";
++          source.profile_id = "Safari window " + base::NumberToString((*captured)->window_id);
++          source.brand = BrowserProfileBrand::kChrome; source.categories = {"tabs"};
++          source.safari_window = std::move(*captured);
++          std::vector<DiscoveredBrowserProfile> sources; sources.push_back(std::move(source));
++          selection->reply = self->PublishSources(owner, window, current, std::move(sources));
++        }
++        selection->done = true; self->MaybeJoined();
++      }, weak_factory_.GetWeakPtr(), owner, window, current, cancelled, selection));
++  if (!source_picker_) {
++    --discoveries_in_flight_; discovery_cancelled_.reset(); discovery_owner_.clear();
++    selection->reply = Fault("permission_denied", "The original native Safari review sheet could not open."); selection->done = true;
++  }
++  std::move(start_reply).Run(PollExport(id));
++}
+ void BrowserProfileImporter::SelectExport(const std::string& owner,
+     base::WeakPtr<BrowserWindowInterface> window, Current current,
+     const std::string& source_id, BrowserExportFormat format, Reply start_reply) {
+@@ -266,13 +320,13 @@
+   auto cancelled = std::make_shared<std::atomic_bool>(false);
+   discovery_cancelled_ = cancelled;
+   auto replies = base::SplitOnceCallback(std::move(reply));
+-  export_picker_ = BrowserExportPicker::Show(window->GetWindow()->GetNativeWindow(), format,
++  source_picker_ = BrowserExportPicker::Show(window->GetWindow()->GetNativeWindow(), format,
+       base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self, std::string owner,
+           base::WeakPtr<BrowserWindowInterface> window, Current current, std::string source_id,
+           BrowserExportFormat format, std::shared_ptr<std::atomic_bool> cancelled, Reply reply,
+           base::expected<base::FilePath, std::string> selected) {
+         if (!self) return;
+-        self->export_picker_.reset();
++        self->source_picker_.reset();
+         if (!selected || self->closed_ || cancelled->load() || !window || !current.Run()) {
+           --self->discoveries_in_flight_;
+           self->discovery_cancelled_.reset();
+@@ -341,7 +395,7 @@
+         }
+       }, weak_factory_.GetWeakPtr(), owner, window, current, source_id, format, cancelled,
+           std::move(replies.first)));
+-  if (!export_picker_) {
++  if (!source_picker_) {
+     --discoveries_in_flight_;
+     discovery_cancelled_.reset();
+     discovery_owner_.clear();
+@@ -374,7 +428,7 @@
+   if (found != export_selections_.end() && !found->second->done &&
+       found->second->owner == discovery_owner_) {
+     if (discovery_cancelled_) discovery_cancelled_->store(true);
+-    if (export_picker_) export_picker_->Cancel();
++    if (source_picker_) source_picker_->Cancel();
+   }
+   return PollExport(id);
+ }
+@@ -466,8 +520,7 @@
+   if (!profile_keep_alive_ || closed_ || !ValidOperation(operation) || source == sources_.end() ||
+       source->second->owner != owner || !source->second->current.Run() ||
+       !source->second->window || source->second->window->GetProfile() != profile_ ||
+-      (!source->second->discovered.anchor->OriginalIsCurrent() ||
+-       (source->second->discovered.registration_anchor && !source->second->discovered.registration_anchor->OriginalIsCurrent())))
++      !OriginalSourceCurrent(source->second->discovered))
+     return Fault("permission_denied", "Refresh the original browser import preview.");
+   std::set<std::string> unique(requested.begin(), requested.end());
+   if (requested.empty() || requested.size() > 5 || unique.size() != requested.size())
+@@ -542,7 +595,7 @@
+ void BrowserProfileImporter::RetireOwner(const std::string& owner) {
+   if (discovery_owner_ == owner && discovery_cancelled_) {
+     discovery_cancelled_->store(true);
+-    if (export_picker_) export_picker_->Cancel();
++    if (source_picker_) source_picker_->Cancel();
+   }
+   std::vector<std::string> operations;
+   for (const auto& [id, job] : jobs_)
+@@ -553,7 +606,7 @@
+ void BrowserProfileImporter::Close(base::OnceClosure joined) {
+   closed_ = true;
+   if (discovery_cancelled_) discovery_cancelled_->store(true);
+-  if (export_picker_) export_picker_->Cancel();
++  if (source_picker_) source_picker_->Cancel();
+   joins_.push_back(std::move(joined));
+   std::vector<std::string> operations;
+   for (const auto& [id, job] : jobs_) if (!job->done) operations.push_back(id);
+@@ -597,7 +650,7 @@
+ void BrowserProfileImporter::Decode(const std::shared_ptr<Job>& job) {
+   job->working = true;
+   const bool needs_key = !job->source->discovered.export_format &&
+-      !job->source->discovered.firefox_profile && (std::ranges::find(job->categories, "passwords") != job->categories.end() ||
++      !job->source->discovered.firefox_profile && !job->source->discovered.safari_window && (std::ranges::find(job->categories, "passwords") != job->categories.end() ||
+       (std::ranges::find(job->categories, "tabs") != job->categories.end() &&
+        base::DirectoryExists(job->source->discovered.path.Append(sessions::kEncryptedSessionsDirectory))));
+   auto decoded = base::BindOnce([](base::WeakPtr<BrowserProfileImporter> self,
+@@ -614,6 +667,12 @@
+           auto cancelled = base::BindRepeating(
+               [](std::shared_ptr<std::atomic_bool> flag) { return flag->load(); }, original->cancelled);
+           const auto& source = original->source->discovered;
++          if (source.safari_window) {
++            DecodedBrowserProfile captured;
++            if (cancelled.Run() || !source.safari_window->OriginalProcessIsCurrent()) captured.snapshot_error = "The original Safari process retired before import admission.";
++            else captured.tabs = source.safari_window->tabs;
++            return captured;
++          }
+           if (source.firefox_profile)
+             return PrepareFirefoxSnapshot(source.path, original->categories, cancelled);
+           if (source.export_format)
+diff --git a/chrome/browser/ui/aux/browser_profile_importer.h b/chrome/browser/ui/aux/browser_profile_importer.h
+index ec74c6b79..3f8cc6c56 100644
+--- a/chrome/browser/ui/aux/browser_profile_importer.h
++++ b/chrome/browser/ui/aux/browser_profile_importer.h
+@@ -21,7 +21,7 @@ namespace user_data_importer { struct ImportedBookmarkEntry; }
+ namespace base { class SingleThreadTaskRunner; }
+ namespace aux {
+ class ProfileLibrary;
+-class BrowserExportPicker;
++class BrowserImportPicker;
+ class BrowserProfileSnapshot;
+ struct DiscoveredBrowserProfile;
+ // Owned by the original native runtime host. Discover/Begin receive authority
+@@ -38,6 +38,9 @@ class BrowserProfileImporter {
+   void Discover(const std::string& owner_token,
+                 base::WeakPtr<BrowserWindowInterface> window,
+                 Current current, Reply callback);
++  void SelectSafariWindow(const std::string& owner_token,
++                         base::WeakPtr<BrowserWindowInterface> window, Current current,
++                         Reply callback);
+   void SelectExport(const std::string& owner_token,
+                     base::WeakPtr<BrowserWindowInterface> window, Current current,
+                     const std::string& source_id, BrowserExportFormat format, Reply callback);
+@@ -84,7 +87,7 @@ class BrowserProfileImporter {
+   std::string discovery_owner_;
+   std::shared_ptr<std::atomic_bool> discovery_cancelled_;
+   size_t discoveries_in_flight_ = 0;
+-  std::unique_ptr<BrowserExportPicker> export_picker_;
++  std::unique_ptr<BrowserImportPicker> source_picker_;
+   bool sources_retired_ = false;
+   bool source_retirement_pending_ = false;
+   std::shared_ptr<std::vector<std::unique_ptr<BrowserProfileSnapshot>>> retiring_sources_;
+diff --git a/chrome/browser/ui/aux/browser_safari_window.h b/chrome/browser/ui/aux/browser_safari_window.h
+new file mode 100644
+index 000000000..e2f3a046c
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_safari_window.h
+@@ -0,0 +1,31 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_BROWSER_SAFARI_WINDOW_H_
++#define CHROME_BROWSER_UI_AUX_BROWSER_SAFARI_WINDOW_H_
++#include <memory>
++#include <cstdint>
++#include "base/functional/callback.h"
++#include "base/types/expected.h"
++#include "chrome/browser/ui/aux/browser_import_picker.h"
++#include "chrome/browser/ui/aux/browser_profile_readers.h"
++#include "ui/gfx/native_ui_types.h"
++namespace aux {
++struct SafariWindowSnapshot {
++  int32_t pid;
++  uint64_t process_start_seconds;
++  uint64_t process_start_microseconds;
++  int32_t window_id;
++  std::vector<ImportedProfileTab> tabs;
++  // The selected window is captured once, after explicit native review. No
++  // subsequent all-window scans or tab URL reads happen during import effects.
++  bool OriginalProcessIsCurrent() const;
++};
++class BrowserSafariWindowPicker : public BrowserImportPicker {
++ public:
++  using Current = base::RepeatingCallback<bool()>;
++  using Selected = base::OnceCallback<void(base::expected<std::shared_ptr<const SafariWindowSnapshot>, std::string>)>;
++  static std::unique_ptr<BrowserSafariWindowPicker> Show(gfx::NativeWindow original_window, Current current, Selected selected);
++};
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/browser_safari_window_mac.mm b/chrome/browser/ui/aux/browser_safari_window_mac.mm
+new file mode 100644
+index 0000000..d164b39
+--- /dev/null
++++ b/chrome/browser/ui/aux/browser_safari_window_mac.mm
+@@ -0,0 +1,189 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/browser_safari_window.h"
++#import <AppKit/AppKit.h>
++#import <ScriptingBridge/ScriptingBridge.h>
++#include <libproc.h>
++#include <Security/Security.h>
++#include <atomic>
++#include <limits>
++#include <optional>
++#include "base/apple/scoped_cftyperef.h"
++#include "base/functional/bind.h"
++#include "base/memory/weak_ptr.h"
++#include "base/strings/sys_string_conversions.h"
++#include "base/task/single_thread_task_runner.h"
++#include "base/task/thread_pool.h"
++@interface AuxSafariEventErrors : NSObject <SBApplicationDelegate>
++@property(nonatomic) BOOL failed;
++@end
++@implementation AuxSafariEventErrors
++@synthesize failed = _failed;
++- (id)eventDidFail:(const AppleEvent*)event withError:(NSError*)error {
++  self.failed = YES;
++  return nil;
++}
++@end
++namespace aux {
++namespace {
++struct ProcessIdentity { int32_t pid; uint64_t seconds; uint64_t microseconds; };
++struct WindowMetadata { int32_t id; std::string title; };
++struct WindowChoice { ProcessIdentity process; std::vector<WindowMetadata> windows; };
++bool ProcessCurrent(const ProcessIdentity& original) {
++  struct proc_bsdinfo info;
++  return proc_pidinfo(original.pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) == sizeof(info) &&
++      info.pbi_start_tvsec == original.seconds && info.pbi_start_tvusec == original.microseconds;
++}
++bool GenuineSafari(int32_t pid) {
++  NSDictionary* attributes = @{(__bridge NSString*)kSecGuestAttributePid : @(pid)};
++  base::apple::ScopedCFTypeRef<SecCodeRef> code;
++  base::apple::ScopedCFTypeRef<SecRequirementRef> requirement;
++  return SecCodeCopyGuestWithAttributes(nullptr, (__bridge CFDictionaryRef)attributes,
++             kSecCSDefaultFlags, code.InitializeInto()) == errSecSuccess &&
++      SecRequirementCreateWithString(CFSTR("identifier \"com.apple.Safari\" and anchor apple"),
++             kSecCSDefaultFlags, requirement.InitializeInto()) == errSecSuccess &&
++      SecCodeCheckValidity(code.get(), kSecCSDefaultFlags, requirement.get()) == errSecSuccess;
++}
++SBApplication* Application(const ProcessIdentity& identity, AuxSafariEventErrors* errors) {
++  if (!ProcessCurrent(identity) || !GenuineSafari(identity.pid)) return nil;
++  SBApplication* application = [[SBApplication alloc] initWithProcessIdentifier:identity.pid];
++  application.delegate = errors;
++  application.timeout = 2 * 60;  // Apple-event ticks; bounded original local read.
++  application.sendMode = kAEWaitReply | kAENeverInteract;
++  return application.isRunning ? application : nil;
++}
++base::expected<WindowChoice, std::string> ReadMetadata(const std::shared_ptr<std::atomic_bool>& cancelled) {
++  @autoreleasepool {
++    NSArray<NSRunningApplication*>* applications = [NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.apple.Safari"];
++    if (cancelled->load() || applications.count != 1) return base::unexpected("Open the original Safari application before choosing a window.");
++    const int32_t pid = applications.firstObject.processIdentifier;
++    struct proc_bsdinfo info;
++    if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) != sizeof(info) || !GenuineSafari(pid)) return base::unexpected("The original Safari process could not be verified.");
++    WindowChoice result{{pid, info.pbi_start_tvsec, info.pbi_start_tvusec}, {}};
++    AuxSafariEventErrors* errors = [[AuxSafariEventErrors alloc] init];
++    SBApplication* application = Application(result.process, errors);
++    NSArray* windows = [[application elementArrayWithCode:'cwin'] get];
++    if (!application || errors.failed || ![windows isKindOfClass:[NSArray class]] || windows.count > 256) return base::unexpected("Safari window metadata is unavailable. Review macOS Automation permission for Aux.");
++    for (SBObject* window in windows) {
++      if (![window isKindOfClass:[SBObject class]]) return base::unexpected("Safari returned invalid window references.");
++      if (cancelled->load()) return base::unexpected("The original Safari selection was cancelled.");
++      id identifier = [[window propertyWithCode:'ID  '] get];
++      id title = [[window propertyWithCode:'pnam'] get];
++      if (errors.failed || ![identifier isKindOfClass:[NSNumber class]] || ![title isKindOfClass:[NSString class]]) return base::unexpected("The original Safari windows changed while being reviewed.");
++      const int64_t value = [identifier longLongValue];
++      if (value <= 0 || value > std::numeric_limits<int32_t>::max() || [title length] > 4096) return base::unexpected("Safari returned invalid window metadata.");
++      result.windows.push_back({static_cast<int32_t>(value), base::SysNSStringToUTF8(title)});
++    }
++    if (result.windows.empty() || cancelled->load() || !ProcessCurrent(result.process)) return base::unexpected("The original Safari windows are no longer available.");
++    return result;
++  }
++}
++base::expected<std::shared_ptr<const SafariWindowSnapshot>, std::string> CaptureSelected(
++    ProcessIdentity process, int32_t selected, const std::shared_ptr<std::atomic_bool>& cancelled) {
++  @autoreleasepool {
++    auto result = std::make_shared<SafariWindowSnapshot>();
++    result->pid = process.pid; result->process_start_seconds = process.seconds;
++    result->process_start_microseconds = process.microseconds; result->window_id = selected;
++    AuxSafariEventErrors* errors = [[AuxSafariEventErrors alloc] init];
++    SBApplication* application = Application(process, errors);
++    SBObject* window = [[application elementArrayWithCode:'cwin'] objectWithID:@(selected)];
++    id identifier = [[window propertyWithCode:'ID  '] get];
++    if (cancelled->load() || !application || errors.failed || ![identifier isKindOfClass:[NSNumber class]] || [identifier longLongValue] != selected) return base::unexpected("The selected original Safari window is unavailable.");
++    // Only this exact selected window's tabs are requested, never application
++    // documents/all windows, HTML, cookies, text or Javascript execution.
++    NSArray* tabs = [[window elementArrayWithCode:'bTab'] get];
++    if (errors.failed || ![tabs isKindOfClass:[NSArray class]] || tabs.count > 10000) return base::unexpected("The selected Safari tab list could not be captured safely.");
++    std::vector<std::string> urls;
++    for (SBObject* tab in tabs) {
++      if (![tab isKindOfClass:[SBObject class]]) return base::unexpected("Safari returned invalid tab references.");
++      if (cancelled->load() || !ProcessCurrent(process)) return base::unexpected("The original Safari selection was retired.");
++      id address = [[tab propertyWithCode:'pURL'] get]; id title = [[tab propertyWithCode:'pnam'] get];
++      if (errors.failed || ![address isKindOfClass:[NSString class]] || ![title isKindOfClass:[NSString class]] || [address length] > 8192 || [title length] > 4096) return base::unexpected("The selected Safari tabs changed while being captured.");
++      std::string captured = base::SysNSStringToUTF8(address);
++      urls.push_back(captured);
++      GURL url(captured);
++      if (url.is_valid() && url.SchemeIsHTTPOrHTTPS() && !url.has_username() && !url.has_password()) result->tabs.push_back({url, base::SysNSStringToUTF16(title), selected, false});
++    }
++    NSArray* after = [[window elementArrayWithCode:'bTab'] get];
++    if (errors.failed || ![after isKindOfClass:[NSArray class]] || after.count != urls.size()) return base::unexpected("The selected Safari tab list changed during capture.");
++    for (NSUInteger index = 0; index < after.count; ++index) {
++      if (cancelled->load()) return base::unexpected("The original Safari selection was cancelled.");
++      if (![after[index] isKindOfClass:[SBObject class]]) return base::unexpected("Safari returned invalid tab references.");
++      id address = [[after[index] propertyWithCode:'pURL'] get];
++      if (errors.failed || ![address isKindOfClass:[NSString class]] || base::SysNSStringToUTF8(address) != urls[index]) return base::unexpected("The selected Safari tabs changed during capture.");
++    }
++    identifier = [[window propertyWithCode:'ID  '] get];
++    if (errors.failed || ![identifier isKindOfClass:[NSNumber class]] || [identifier longLongValue] != selected || cancelled->load() || !ProcessCurrent(process)) return base::unexpected("The original Safari window was retired before capture completed.");
++    return std::shared_ptr<const SafariWindowSnapshot>(std::move(result));
++  }
++}
++class Picker final : public BrowserSafariWindowPicker {
++ public:
++  Picker(NSWindow* window, Current current, Selected selected) : window_(window), current_(std::move(current)), selected_(std::move(selected)), cancelled_(std::make_shared<std::atomic_bool>(false)), worker_(base::ThreadPool::CreateSingleThreadTaskRunner({base::MayBlock(), base::TaskPriority::USER_VISIBLE, base::TaskShutdownBehavior::BLOCK_SHUTDOWN})) {}
++  void Start() {
++    alert_ = [[NSAlert alloc] init]; alert_.messageText = @"Choose a Safari window";
++    alert_.informativeText = @"Aux will read Safari window titles so you can choose one window. Safari cannot report whether a window is private. Only the window you then select will have its tab URLs copied to Aux. No cookies, page contents or passwords are read.";
++    [alert_ addButtonWithTitle:@"Review windows"]; [alert_ addButtonWithTitle:@"Cancel"];
++    auto weak = weak_factory_.GetWeakPtr();
++    [alert_ beginSheetModalForWindow:window_ completionHandler:^(NSModalResponse response) { if (weak) weak->Reviewed(response); }];
++  }
++  void Cancel() override {
++    cancelled_->store(true);
++    if (alert_) [NSApp endSheet:alert_.window returnCode:NSModalResponseCancel];
++    // A pending Apple event must actually return before the completion joins.
++  }
++ private:
++  void Finish(base::expected<std::shared_ptr<const SafariWindowSnapshot>, std::string> result) {
++    alert_ = nil;
++    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, base::BindOnce(std::move(selected_), std::move(result)));
++  }
++  void Reviewed(NSModalResponse response) {
++    alert_ = nil;
++    if (response != NSAlertFirstButtonReturn || cancelled_->load() || !current_.Run()) { Finish(base::unexpected("The original Safari window review was cancelled.")); return; }
++    if (!worker_->PostTaskAndReplyWithResult(FROM_HERE, base::BindOnce(&ReadMetadata, cancelled_), base::BindOnce(&Picker::Choose, weak_factory_.GetWeakPtr()))) Finish(base::unexpected("Safari window review could not start during shutdown."));
++  }
++  void Choose(base::expected<WindowChoice, std::string> choices) {
++    if (!choices || cancelled_->load() || !current_.Run()) { Finish(base::unexpected(choices ? "The original Safari review was retired." : choices.error())); return; }
++    choices_ = std::move(*choices);
++    alert_ = [[NSAlert alloc] init]; alert_.messageText = @"Copy tabs from one Safari window";
++    alert_.informativeText = @"Safari cannot identify private windows. Choose only a window whose tab URLs you want saved in your Aux Profile.";
++    popup_ = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 420, 28) pullsDown:NO];
++    for (const auto& choice : choices_->windows) {
++      NSString* title = base::SysUTF8ToNSString(choice.title);
++      if (title.length > 160) title = [title substringToIndex:160];
++      [popup_ addItemWithTitle:[NSString stringWithFormat:@"Window %d — %@", choice.id, title]];
++    }
++    alert_.accessoryView = popup_; [alert_ addButtonWithTitle:@"Copy chosen tabs"]; [alert_ addButtonWithTitle:@"Cancel"];
++    auto weak = weak_factory_.GetWeakPtr();
++    [alert_ beginSheetModalForWindow:window_ completionHandler:^(NSModalResponse response) { if (weak) weak->SelectedWindow(response); }];
++  }
++  void SelectedWindow(NSModalResponse response) {
++    alert_ = nil;
++    if (response != NSAlertFirstButtonReturn || cancelled_->load() || !current_.Run() || !choices_ || popup_.indexOfSelectedItem < 0 || size_t(popup_.indexOfSelectedItem) >= choices_->windows.size()) { Finish(base::unexpected("The original Safari selection was cancelled.")); return; }
++    const auto original = choices_->process; const int32_t id = choices_->windows[popup_.indexOfSelectedItem].id;
++    if (!worker_->PostTaskAndReplyWithResult(FROM_HERE, base::BindOnce(&CaptureSelected, original, id, cancelled_), base::BindOnce(&Picker::Captured, weak_factory_.GetWeakPtr()))) Finish(base::unexpected("Safari capture could not start during shutdown."));
++  }
++  void Captured(base::expected<std::shared_ptr<const SafariWindowSnapshot>, std::string> result) {
++    if (cancelled_->load() || !current_.Run()) result = base::unexpected("The original Safari selection was retired before publication.");
++    Finish(std::move(result));
++  }
++  NSWindow* __weak window_;
++  NSAlert* __strong alert_;
++  NSPopUpButton* __strong popup_;
++  Current current_; Selected selected_;
++  std::optional<WindowChoice> choices_;
++  std::shared_ptr<std::atomic_bool> cancelled_;
++  scoped_refptr<base::SingleThreadTaskRunner> worker_;
++  base::WeakPtrFactory<Picker> weak_factory_{this};
++};
++}  // namespace
++bool SafariWindowSnapshot::OriginalProcessIsCurrent() const {
++  return ProcessCurrent({pid, process_start_seconds, process_start_microseconds});
++}
++std::unique_ptr<BrowserSafariWindowPicker> BrowserSafariWindowPicker::Show(gfx::NativeWindow original, Current current, Selected selected) {
++  NSWindow* window = original.GetNativeNSWindow();
++  if (!window || !window.visible || !current || !current.Run()) return nullptr;
++  auto picker = std::make_unique<Picker>(window, std::move(current), std::move(selected)); picker->Start(); return picker;
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -546,6 +546,18 @@
+   if (method == "native.browserImportDiscover" && params.size() == 1) {
+     const auto original = owner->second;
+     browser_importer_->Discover(*token, original.window, base::BindRepeating(
++        [](base::WeakPtr<AuxRuntimeHost> host, TurnContextOwner original,
++           std::shared_ptr<std::atomic_bool> cancelled) {
++          return host && !cancelled->load() && host->TurnContextCurrent(original);
++        }, weak_factory_.GetWeakPtr(), original, cancelled), std::move(callback)); return;
++  }
++  if (method == "native.browserImportSelectWindow" && params.size() == 2) {
++    const auto* source = params.FindString("sourceId");
++    if (!source || *source != "safari") {
++      std::move(callback).Run(NativeFault("invalid_params", "Choose the actual native Safari window source")); return;
++    }
++    const auto original = owner->second;
++    browser_importer_->SelectSafariWindow(*token, original.window, base::BindRepeating(
+         [](base::WeakPtr<AuxRuntimeHost> host, TurnContextOwner original,
+            std::shared_ptr<std::atomic_bool> cancelled) {
+           return host && !cancelled->load() && host->TurnContextCurrent(original);
+
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index b9a077508..3f5730169 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -1038,7 +1038,7 @@ void WebUIBrowserUI::Request(const std::string& method,
+   if (api_method == "runs.start" || api_method == "runs.useLocalExecution" || api_method == "tasks.start" ||
+       api_method == "runs.retry" || api_method == "agent.images.generate" ||
+       api_method == "agent.utility.intent" || api_method == "agent.tidy.propose" ||
+-      api_method == "agent.tabName.suggest" || api_method == "import.preview" || api_method == "import.selectExport" || api_method == "import.exportStatus" ||
++      api_method == "agent.tabName.suggest" || api_method == "import.preview" || api_method == "import.selectExport" || api_method == "import.selectWindow" || api_method == "import.exportStatus" ||
+       api_method == "import.cancelExport" || api_method == "import.run" ||
+         api_method == "import.status" || api_method == "import.cancel" ||
+         api_method == "models.auth.start" ||

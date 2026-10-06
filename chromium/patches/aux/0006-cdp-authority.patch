@@ -1,0 +1,1283 @@
+diff --git a/chrome/browser/ui/aux/cdp_broker.cc b/chrome/browser/ui/aux/cdp_broker.cc
+new file mode 100644
+index 0000000000..d38630532c
+--- /dev/null
++++ b/chrome/browser/ui/aux/cdp_broker.cc
+@@ -0,0 +1,953 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/cdp_broker.h"
++
++#include <array>
++#include <cstddef>
++#include <cstdint>
++#include <cmath>
++#include <optional>
++#include <set>
++#include <utility>
++#include <vector>
++
++#include "base/containers/span.h"
++#include "base/functional/bind.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/timer/timer.h"
++#include "base/time/time.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/memory/weak_ptr.h"
++#include "base/unguessable_token.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/strings/string_number_conversions.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "content/public/browser/devtools_agent_host.h"
++#include "content/public/browser/devtools_agent_host_client.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_widget_host.h"
++#include "content/public/browser/render_widget_host_view.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++
++constexpr size_t kMaxCdpMessageBytes = 1024 * 1024;
++constexpr std::array<const char*, 14> kPageDomains = {
++    "Page", "Runtime", "DOM", "DOMSnapshot", "Accessibility", "Input",
++    "Emulation", "Log", "CSS", "Performance", "Overlay", "IO", "Network",
++    "Fetch"};
++
++base::DictValue Fault(const char* code, const char* message) {
++  base::DictValue error;
++  error.Set("code", code);
++  error.Set("message", message);
++  base::DictValue reply;
++  reply.Set("error", std::move(error));
++  return reply;
++}
++
++bool IsPageURL(const GURL& url) {
++  return url.SchemeIsHTTPOrHTTPS() || url.spec() == "about:blank";
++}
++
++}  // namespace
++
++bool IsCdpMethodAllowed(const std::string& method) {
++  if (method == "Target.setAutoAttach" ||
++      method == "Target.detachFromTarget") {
++    return true;
++  }
++  const size_t dot = method.find('.');
++  if (dot == std::string::npos || dot == 0 || dot + 1 == method.size()) {
++    return false;
++  }
++  const std::string domain = method.substr(0, dot);
++  if (domain == "Network" &&
++      (method == "Network.getAllCookies" || method == "Network.getCookies" ||
++       base::StartsWith(method, "Network.setCookie") ||
++       base::StartsWith(method, "Network.deleteCookie") ||
++       method == "Network.clearBrowserCookies")) {
++    return false;
++  }
++  for (const char* allowed : kPageDomains) {
++    if (domain == allowed) {
++      return true;
++    }
++  }
++  return false;
++}
++
++class CdpBroker::Session final : public content::DevToolsAgentHostClient,
++                                 public content::WebContentsObserver {
++ public:
++  Session(Profile* profile, uint64_t connection_generation,
++          std::string page_id,
++          std::string scope, base::DictValue lease,
++          scoped_refptr<content::DevToolsAgentHost> host,
++          MessageCallback on_message, NavigationCallback on_navigation)
++      : content::WebContentsObserver(host->GetWebContents()),
++        profile_(profile),
++        connection_generation_(connection_generation),
++        page_id_(std::move(page_id)),
++        scope_(std::move(scope)),
++        lease_(std::move(lease)),
++        attachment_id_(base::UnguessableToken::Create().ToString()),
++        document_(host->GetWebContents()->GetPrimaryMainFrame()->GetWeakDocumentPtr()),
++        host_(std::move(host)),
++        on_message_(std::move(on_message)),
++        on_navigation_(std::move(on_navigation)),
++        owner_failure_epoch_(EgressController::ForProfile(profile)
++                                 ->owner_mutations().failure_epoch()) {}
++
++  ~Session() override {
++    weak_factory_.InvalidateWeakPtrs();
++    auto waiters = std::move(navigation_waiters_);
++    auto navigations = std::move(pending_navigations_);
++    auto notify = on_navigation_;
++    const auto generation = connection_generation_;
++    const auto page = page_id_, attachment = attachment_id_;
++    const auto* lease_id = lease_.FindString("leaseId");
++    const auto lease = lease_id ? *lease_id : std::string();
++    if (host_)
++      host_->DetachClient(this);
++    // Owned locals only after external callbacks can reenter host/broker.
++    for (auto& [id, waiter] : waiters) {
++      waiter->timer.Stop();
++      std::move(waiter->callback).Run(Fault("target_detached", "Original navigation attachment was retired"));
++    }
++    for (const auto& [id, pending] : navigations) {
++      if (pending.controlled && !lease.empty())
++        notify.Run(generation, page, attachment, id, lease, false);
++    }
++  }
++
++  bool Attach(double acknowledged_expiry) {
++    return Current() && AcknowledgedExpiryCurrent(acknowledged_expiry) &&
++        host_->AttachClient(this);
++  }
++  bool AcknowledgedCurrent(double expiry) const {
++    return Current() && AcknowledgedExpiryCurrent(expiry);
++  }
++  const std::string& attachment_id() const { return attachment_id_; }
++
++  bool Current() const {
++    auto* frame = document_.AsRenderFrameHostIfValid();
++    auto* contents = web_contents();
++    auto* catalog = TabCatalog::GetForProfile(profile_);
++    if (!host_ || !contents || !frame ||
++        contents->GetPrimaryMainFrame() != frame || !frame->IsActive() ||
++        !frame->IsRenderFrameLive() || !catalog ||
++        catalog->FindPage(page_id_) != contents ||
++        host_->GetWebContents() != contents ||
++        host_->GetBrowserContext() != profile_ ||
++        !IsPageURL(contents->GetLastCommittedURL()))
++      return false;
++    auto* widget = frame->GetRenderWidgetHost();
++    auto* view = widget ? widget->GetView() : nullptr;
++    if (!view || !view->HasNativeInputAdmissionForDocument(document_))
++      return false;
++    auto* egress = EgressController::ForProfile(profile_);
++    if (scope_ != "agent" || !egress ||
++        (egress->owner_mutations().pending() ||
++         egress->owner_mutations().failure_epoch() != owner_failure_epoch_))
++      return false;
++    auto current = egress->PermissionAuthority(frame);
++    auto expected = lease_.Clone();
++    current.Remove("expiresAt");
++    expected.Remove("expiresAt");
++    return !current.empty() && current == expected;
++  }
++  bool Owns(content::DevToolsAgentHost* host) const { return host_.get() == host; }
++  bool IsClosed() const { return !host_; }
++  bool OwnsChild(const std::string& session_id) const {
++    auto it = child_sessions_.find(session_id);
++    auto* frame = it == child_sessions_.end()
++                      ? nullptr : it->second.AsRenderFrameHostIfValid();
++    return frame && frame->IsActive() && frame->IsRenderFrameLive() &&
++           web_contents() && frame->GetMainFrame() ==
++               web_contents()->GetPrimaryMainFrame();
++  }
++
++  bool Send(const std::string& message, int command_id,
++            const std::string& method, bool root_command,
++            double acknowledged_expires_at, bool controlled = false) {
++    // Install the command association before dispatch can synchronously call
++    // PageHandler or deliver a protocol response. Child navigations never
++    // acquire whole-page transition authority.
++    if (!Current() || !AcknowledgedExpiryCurrent(acknowledged_expires_at) ||
++        pending_navigations_.contains(command_id))
++      return false;
++    auto weak = weak_factory_.GetWeakPtr();
++    if (root_command && method == "Page.navigate") {
++      if (!pending_navigations_.empty())
++        return false;
++      pending_navigations_.emplace(command_id, PendingNavigation{document_, acknowledged_expires_at, controlled});
++      navigation_dispatches_.push_back(command_id);
++    }
++    // No callback or await is permitted between the original scope check and
++    // the actual native protocol dispatch.
++    if (!AcknowledgedExpiryCurrent(acknowledged_expires_at) ||
++        !EgressController::ForProfile(profile_)->RecordFinalCdpDispatch(
++            {document_, page_id_, "cdp"}, lease_)) {
++      if (root_command && method == "Page.navigate") {
++        navigation_dispatches_.pop_back();
++        pending_navigations_.erase(command_id);
++      }
++      return false;
++    }
++    host_->DispatchProtocolMessage(this, base::as_byte_span(message));
++    if (weak && root_command && method == "Page.navigate")
++      navigation_dispatches_.pop_back();
++    return true;
++  }
++
++  void DidStartProtocolNavigation(content::NavigationHandle* navigation) override {
++    if (!navigation || navigation_dispatches_.empty() || !Current() ||
++        navigation->GetWebContents() != web_contents() ||
++        !navigation->IsInPrimaryMainFrame())
++      return;
++    auto it = pending_navigations_.find(navigation_dispatches_.back());
++    if (it == pending_navigations_.end() || it->second.navigation_id)
++      return;
++    it->second.navigation_id = navigation->GetNavigationId();
++  }
++
++  void DidFinishNavigation(content::NavigationHandle* navigation) override {
++    if (!navigation || !navigation->IsInPrimaryMainFrame() ||
++        navigation->IsSameDocument())
++      return;
++    for (auto& [id, pending] : pending_navigations_) {
++      if (pending.navigation_id != navigation->GetNavigationId()) {
++        if (navigation->HasCommitted())
++          pending.finished = true;
++        continue;
++      }
++      auto* frame = navigation->GetRenderFrameHost();
++      if (navigation->HasCommitted() && !navigation->IsErrorPage() &&
++          navigation->GetWebContents() == web_contents() && frame &&
++          web_contents()->GetPrimaryMainFrame() == frame) {
++        pending.committed_document = frame->GetWeakDocumentPtr();
++      }
++      pending.finished = true;
++    }
++    // A commit does not rebind document_. Every later dispatch on this
++    // attachment refuses. A separately validated transition receipt and fresh
++    // installed lease are required to create a new attachment.
++    child_sessions_.clear();
++    for (const auto& [id, waiter] : navigation_waiters_)
++      ScheduleReceiptCheck(id);
++    std::vector<int> commands;
++    for (const auto& [id, pending] : pending_navigations_)
++      commands.push_back(id);
++    auto weak = weak_factory_.GetWeakPtr();
++    for (int id : commands) {
++      NotifyNavigationState(id);
++      if (!weak) return;
++    }
++  }
++
++  base::DictValue StartControlledNavigation(int command_id,
++      const std::string& url, double acknowledged_expiry) {
++    if (command_id < 1 || url.size() > 2048 || !IsPageURL(GURL(url)))
++      return Fault("invalid_argument", "Invalid controlled navigation target");
++    auto encoded = base::WriteJson(base::DictValue().Set("id", command_id)
++        .Set("method", "Page.navigate")
++        .Set("params", base::DictValue().Set("url", url)));
++    auto weak = weak_factory_.GetWeakPtr();
++    if (!encoded || !Send(*encoded, command_id, "Page.navigate", true,
++                          acknowledged_expiry, true))
++      return Fault("permission_denied", "Original controlled navigation authority retired");
++    if (!weak)
++      return Fault("target_detached", "Original controlled navigation attachment closed");
++    // Immediate acknowledgement: waiting here would block the Worker needed
++    // to process genuine navigation egress and attended consent requests.
++    return base::DictValue().Set("result", base::DictValue().Set("accepted", true));
++  }
++
++  base::DictValue TakeReadyNavigationReceipt(int command_id) {
++    return TakeNavigationReceipt(command_id);
++  }
++
++  void WaitForNavigationReceipt(int command_id,
++      base::RepeatingCallback<bool()> caller_current,
++      base::OnceCallback<void(base::DictValue)> callback) {
++    if (!pending_navigations_.contains(command_id) || navigation_waiters_.contains(command_id)) {
++      std::move(callback).Run(Fault("ref_stale", "Original navigation receipt is unavailable or already awaited"));
++      return;
++    }
++    const auto deadline = pending_navigations_.at(command_id).original_deadline;
++    const auto now = base::TimeTicks::Now();
++    if (deadline.is_null() || now >= deadline) {
++      std::move(callback).Run(Fault("ref_stale", "Original navigation deadline expired"));
++      return;
++    }
++    auto waiter = std::make_unique<NavigationWaiter>();
++    waiter->callback = std::move(callback);
++    waiter->caller_current = std::move(caller_current);
++    waiter->timer.Start(FROM_HERE, deadline - now,
++        base::BindOnce(&Session::NavigationReceiptTimeout,
++                       weak_factory_.GetWeakPtr(), command_id));
++    navigation_waiters_.emplace(command_id, std::move(waiter));
++    CompleteNavigationReceipt(command_id);
++  }
++
++ private:
++  base::DictValue TakeNavigationReceipt(int command_id) {
++    auto it = pending_navigations_.find(command_id);
++    if (it == pending_navigations_.end() || !it->second.finished ||
++        !it->second.response_received || !it->second.navigation_id ||
++        !OriginalNavigationCurrent(it->second))
++      return Fault("ref_stale", "Original navigation has no current completed receipt");
++    const auto navigation_id = it->second.navigation_id;
++    const auto committed = it->second.committed_document;
++    // Consume before native retirement callbacks can reenter this session.
++    const auto* lease_id = lease_.FindString("leaseId");
++    if (!lease_id)
++      return Fault("permission_denied", "Original navigation lease is unavailable");
++    const auto original_attachment = attachment_id_;
++    const auto original_lease_id = *lease_id;
++    const double acknowledged_expiry = it->second.acknowledged_expires_at;
++    const auto original_deadline = it->second.original_deadline;
++    pending_navigations_.erase(it);
++    auto original_lease = lease_.Clone();
++    auto retired = EgressController::ForProfile(profile_)->RetireCdpNavigation(original_lease, committed, acknowledged_expiry, original_deadline);
++    const auto* result = retired.FindDict("result");
++    if (!result)
++      return retired;
++    auto receipt = result->Clone();
++    receipt.Set("originalAttachmentId", original_attachment);
++    receipt.Set("originalLeaseId", original_lease_id);
++    receipt.Set("commandId", command_id);
++    receipt.Set("navigationId", base::NumberToString(navigation_id));
++    return base::DictValue().Set("result", std::move(receipt));
++  }
++
++ public:
++  void DispatchProtocolMessage(content::DevToolsAgentHost* host,
++                               base::span<const uint8_t> message) override {
++    auto* catalog = TabCatalog::GetForProfile(profile_);
++    content::WebContents* contents = catalog ? catalog->FindPage(page_id_) : nullptr;
++    if (!Owns(host) || !contents || host->GetWebContents() != contents ||
++        host->GetBrowserContext() != profile_ ||
++        !IsPageURL(contents->GetLastCommittedURL())) {
++      return;
++    }
++    const std::string json(message.begin(), message.end());
++    const auto parsed = base::JSONReader::Read(json, base::JSON_PARSE_RFC);
++    const base::DictValue* event = parsed ? parsed->GetIfDict() : nullptr;
++    const std::string* method = event ? event->FindString("method") : nullptr;
++    const base::DictValue* params = event ? event->FindDict("params") : nullptr;
++    if (const std::string* session_id =
++            event ? event->FindString("sessionId") : nullptr;
++        session_id && !OwnsChild(*session_id)) {
++      return;
++    }
++    const auto response_id = event ? event->FindInt("id") : std::nullopt;
++    auto original_navigation = response_id ? pending_navigations_.find(*response_id)
++                                          : pending_navigations_.end();
++    // A committed old attachment remains retired for ALL effects/events.
++    // Only the original root navigation response can cross that boundary,
++    // with unchanged lease/generation and its exact committed WeakDocument.
++    if (!Current() && (method || original_navigation == pending_navigations_.end() ||
++        !OriginalNavigationCurrent(original_navigation->second)))
++      return;
++    if (method && *method == "Target.attachedToTarget") {
++      const std::string* session_id =
++          params ? params->FindString("sessionId") : nullptr;
++      const base::DictValue* info =
++          params ? params->FindDict("targetInfo") : nullptr;
++      const std::string* target_id =
++          info ? info->FindString("targetId") : nullptr;
++      const std::string* type = info ? info->FindString("type") : nullptr;
++      scoped_refptr<content::DevToolsAgentHost> child;
++      if (target_id) {
++        child = content::DevToolsAgentHost::GetForId(*target_id);
++      }
++      if (!session_id || !target_id || !type || *type != "iframe" ||
++          !child || child->GetBrowserContext() != profile_ ||
++          child->GetWebContents() != contents) {
++        return;
++      }
++      content::RenderFrameHost* child_frame = nullptr;
++      size_t frames_seen = 0;
++      bool overflow = false;
++      contents->GetPrimaryMainFrame()->ForEachRenderFrameHostWithAction(
++          [&](content::RenderFrameHost* frame) {
++            if (++frames_seen > 128) {
++              overflow = true;
++              return content::RenderFrameHost::FrameIterationAction::kStop;
++            }
++            if (frame->GetDevToolsFrameToken().ToString() == *target_id &&
++                frame != contents->GetPrimaryMainFrame() &&
++                frame->GetMainFrame() == contents->GetPrimaryMainFrame() &&
++                frame->IsActive() && frame->IsRenderFrameLive())
++              child_frame = frame;
++            return content::RenderFrameHost::FrameIterationAction::kContinue;
++          });
++      if (overflow || !child_frame || child_sessions_.size() >= 128)
++        return;
++      child_sessions_.insert_or_assign(*session_id,
++                                      child_frame->GetWeakDocumentPtr());
++    } else if (method && *method == "Target.detachedFromTarget") {
++      if (const std::string* child =
++              params ? params->FindString("sessionId") : nullptr) {
++        child_sessions_.erase(*child);
++      }
++    }
++    if (!event)
++      return;
++    auto envelope = event->Clone();
++    envelope.Set("auxAttachmentId", attachment_id_);
++    if (original_navigation != pending_navigations_.end())
++      envelope.Set("auxNavigationCommandId", *response_id);
++    const auto encoded = base::WriteJson(envelope);
++    bool navigation_refused = false;
++    if (response_id) {
++      auto pending = pending_navigations_.find(*response_id);
++      if (pending != pending_navigations_.end()) {
++        if (pending->second.response_received)
++          return;
++        if (event->FindDict("error")) {
++          navigation_refused = pending->second.controlled && !pending->second.notified;
++          pending_navigations_.erase(pending);
++        } else
++          pending->second.response_received = true;
++      }
++    }
++    if (response_id) {
++      ScheduleReceiptCheck(*response_id);
++      auto weak = weak_factory_.GetWeakPtr();
++      if (navigation_refused) EmitNavigationState(*response_id, false);
++      else NotifyNavigationState(*response_id);
++      if (!weak) return;
++    }
++    // Callback last: channel teardown may synchronously destroy this session.
++    if (encoded)
++      on_message_.Run(connection_generation_, page_id_, *encoded);
++  }
++
++  void AgentHostClosed(content::DevToolsAgentHost* host) override {
++    if (!Owns(host)) return;
++    host_.reset();
++    auto navigations = std::move(pending_navigations_);
++    auto waiters = std::move(navigation_waiters_);
++    auto notify = on_navigation_;
++    auto message = on_message_;
++    const auto generation = connection_generation_;
++    const auto page = page_id_, attachment = attachment_id_;
++    const auto* lease_id = lease_.FindString("leaseId");
++    const auto lease = lease_id ? *lease_id : std::string();
++    base::DictValue event;
++    event.Set("method", "Inspector.detached");
++    event.Set("params", base::DictValue().Set("reason", "target_closed"));
++    event.Set("auxAttachmentId", attachment);
++    const auto encoded = base::WriteJson(event);
++    // Only owned locals remain: a terminal callback can synchronously retire
++    // this session or destroy its broker before the next notification.
++    for (auto& [id, waiter] : waiters) {
++      waiter->timer.Stop();
++      std::move(waiter->callback).Run(Fault("target_detached", "Original navigation target closed"));
++    }
++    for (const auto& [id, pending] : navigations) {
++      if (pending.controlled && !lease.empty())
++        notify.Run(generation, page, attachment, id, lease, false);
++    }
++    if (encoded) message.Run(generation, page, *encoded);
++  }
++
++  bool MayAttachToURL(const GURL& url, bool is_webui) override {
++    return !is_webui && IsPageURL(url);
++  }
++
++ private:
++  void EmitNavigationState(int command_id, bool ready) {
++    const auto* lease_id = lease_.FindString("leaseId");
++    if (!lease_id) return;
++    auto callback = on_navigation_;
++    const auto generation = connection_generation_;
++    const auto page = page_id_, attachment = attachment_id_, lease = *lease_id;
++    // Distinct native-owned callback; never inferred from renderer CDP events.
++    callback.Run(generation, page, attachment, command_id, lease, ready);
++  }
++  void NotifyNavigationState(int command_id) {
++    auto it = pending_navigations_.find(command_id);
++    if (it == pending_navigations_.end() || !it->second.controlled ||
++        it->second.notified || !it->second.finished) return;
++    const bool ready = OriginalNavigationCurrent(it->second);
++    if (ready && !it->second.response_received) return;
++    it->second.notified = true;
++    EmitNavigationState(command_id, ready);
++  }
++  struct NavigationWaiter {
++    base::UnguessableToken identity = base::UnguessableToken::Create();
++    base::OneShotTimer timer;
++    base::OnceCallback<void(base::DictValue)> callback;
++    base::RepeatingCallback<bool()> caller_current;
++  };
++  void ScheduleReceiptCheck(int command_id) {
++    if (navigation_waiters_.contains(command_id))
++      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
++          base::BindOnce(&Session::CompleteNavigationReceipt,
++                         weak_factory_.GetWeakPtr(), command_id));
++  }
++  void NavigationReceiptTimeout(int command_id) {
++    auto waiter = navigation_waiters_.find(command_id);
++    if (waiter == navigation_waiters_.end())
++      return;
++    auto owned = std::move(waiter->second);
++    navigation_waiters_.erase(waiter);
++    pending_navigations_.erase(command_id);
++    std::move(owned->callback).Run(Fault("ref_stale", "Original navigation receipt deadline expired"));
++  }
++  void CompleteNavigationReceipt(int command_id) {
++    auto waiter = navigation_waiters_.find(command_id);
++    if (waiter == navigation_waiters_.end())
++      return;
++    auto weak = weak_factory_.GetWeakPtr();
++    const auto original_waiter = waiter->second->identity;
++    auto caller_current = waiter->second->caller_current;
++    const bool admitted = caller_current.Run();
++    if (!weak) return;
++    waiter = navigation_waiters_.find(command_id);
++    if (waiter == navigation_waiters_.end() || waiter->second->identity != original_waiter) return;
++    if (!admitted) {
++      auto owned = std::move(waiter->second);
++      navigation_waiters_.erase(waiter);
++      owned->timer.Stop();
++      pending_navigations_.erase(command_id);
++      std::move(owned->callback).Run(Fault("ref_stale", "Original navigation caller retired"));
++      return;
++    }
++    auto pending = pending_navigations_.find(command_id);
++    const bool missing = pending == pending_navigations_.end();
++    if (!missing && !pending->second.finished)
++      return;
++    if (!missing && pending->second.finished && !pending->second.response_received &&
++        OriginalNavigationCurrent(pending->second))
++      return;
++    auto owned = std::move(waiter->second);
++    navigation_waiters_.erase(waiter);
++    owned->timer.Stop();
++    auto result = missing ? Fault("ref_stale", "Original navigation command was retired")
++                          : TakeNavigationReceipt(command_id);
++    // Retirement notifications may destroy this session. Callback uses only
++    // the already-owned local reply, with no post-effect access to this.
++    std::move(owned->callback).Run(std::move(result));
++  }
++  struct PendingNavigation {
++    PendingNavigation(content::WeakDocumentPtr document, double expiry, bool fixed)
++        : acknowledged_expires_at(std::min(expiry,
++              static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch() + 8000))),
++          original_deadline(base::TimeTicks::Now() + std::min(base::Seconds(8),
++              base::Milliseconds(std::max(0.0, acknowledged_expires_at -
++                  base::Time::Now().InMillisecondsFSinceUnixEpoch())))),
++          original_document(std::move(document)), controlled(fixed) {}
++    double acknowledged_expires_at;
++    base::TimeTicks original_deadline;
++    content::WeakDocumentPtr original_document;
++    int64_t navigation_id = 0;
++    content::WeakDocumentPtr committed_document;
++    bool finished = false;
++    bool response_received = false;
++    bool controlled = false;
++    bool notified = false;
++  };
++  bool AcknowledgedExpiryCurrent(double expiry) const {
++    if (!std::isfinite(expiry) || expiry <= 0 ||
++        expiry > 9007199254740991.0 || std::floor(expiry) != expiry ||
++        expiry <= base::Time::Now().InMillisecondsFSinceUnixEpoch())
++      return false;
++    auto* frame = document_.AsRenderFrameHostIfValid();
++    auto* egress = EgressController::ForProfile(profile_);
++    if (!frame || !egress) return false;
++    const auto installed = egress->PermissionAuthority(frame);
++    const auto installed_expiry = installed.FindDouble("expiresAt");
++    return installed_expiry && expiry <= *installed_expiry;
++  }
++  bool OriginalNavigationCurrent(const PendingNavigation& pending) const {
++    auto* frame = pending.committed_document.AsRenderFrameHostIfValid();
++    if (pending.original_deadline.is_null() ||
++        base::TimeTicks::Now() >= pending.original_deadline ||
++        pending.acknowledged_expires_at <=
++            base::Time::Now().InMillisecondsFSinceUnixEpoch() ||
++        !pending.finished || !pending.navigation_id || !host_ || !frame ||
++        !web_contents() || host_->GetWebContents() != web_contents() ||
++        host_->GetBrowserContext() != profile_ ||
++        web_contents()->GetPrimaryMainFrame() != frame)
++      return false;
++    auto* egress = EgressController::ForProfile(profile_);
++    return egress && egress->owner_mutations().failure_epoch() == owner_failure_epoch_ &&
++        egress->HasOriginalCdpNavigationAuthority(lease_, pending.committed_document);
++  }
++  raw_ptr<Profile> profile_;
++  uint64_t connection_generation_;
++  std::string page_id_;
++  std::string scope_;
++  base::DictValue lease_;
++  std::string attachment_id_;
++  content::WeakDocumentPtr document_;
++  std::map<int, PendingNavigation> pending_navigations_;
++  std::map<int, std::unique_ptr<NavigationWaiter>> navigation_waiters_;
++  std::vector<int> navigation_dispatches_;
++  scoped_refptr<content::DevToolsAgentHost> host_;
++  std::map<std::string, content::WeakDocumentPtr> child_sessions_;
++  MessageCallback on_message_;
++  NavigationCallback on_navigation_;
++  uint64_t owner_failure_epoch_;
++  base::WeakPtrFactory<Session> weak_factory_{this};
++};
++
++CdpBroker::CdpBroker(Profile* profile, MessageCallback on_message,
++                     NavigationCallback on_navigation)
++    : profile_(profile), on_message_(std::move(on_message)),
++      on_navigation_(std::move(on_navigation)) {}
++CdpBroker::~CdpBroker() {
++  destroying_ = true;
++  weak_factory_.InvalidateWeakPtrs();
++  DetachAll();
++}
++
++base::DictValue CdpBroker::Catalog(uint64_t connection_generation) {
++  if (destroying_) return Fault("target_detached", "Native CDP broker is retiring");
++  auto weak = weak_factory_.GetWeakPtr();
++  if (connection_generation_ != connection_generation) {
++    const auto original_generation = connection_generation_;
++    DetachAll();
++    if (!weak) return Fault("target_detached", "Native CDP broker was retired");
++    if (connection_generation_ != original_generation || !sessions_.empty())
++      return Fault("ref_stale", "A new attachment replaced original connection retirement");
++    connection_generation_ = connection_generation;
++  }
++  if (!profile_ || profile_->IsOffTheRecord())
++    return Fault("permission_denied", "Native CDP requires a regular Profile");
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  auto* egress = EgressController::ForProfile(profile_);
++  if (!catalog || !egress || egress->owner_mutations().pending())
++    return Fault("permission_denied", "Native CDP authority is being retired");
++  auto snapshot = catalog->Snapshot();
++  const auto* tabs = snapshot.FindList("tabs");
++  if (!tabs || tabs->size() > 4096)
++    return Fault("permission_denied", "Native CDP catalog exceeds its authority bound");
++  base::ListValue pages;
++  for (const auto& value : *tabs) {
++    const auto* tab = value.GetIfDict();
++    const auto* page_id = tab ? tab->FindString("pageId") : nullptr;
++    if (!page_id)
++      continue;
++    auto* contents = catalog->FindPage(*page_id);
++    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++    if (!frame || contents->GetBrowserContext() != profile_ ||
++        !frame->IsActive() || !frame->IsRenderFrameLive() ||
++        !IsPageURL(contents->GetLastCommittedURL()))
++      continue;
++    // Metadata alone never admits commands. The fixed attachment waits for
++    // this exact document's original associated input-binding ACK.
++    auto lease = egress->PermissionAuthority(frame);
++    if (lease.empty())
++      continue;
++    if (pages.size() >= 128)
++      return Fault("permission_denied", "Native CDP admitted page bound exceeded");
++    auto host = content::DevToolsAgentHost::GetOrCreateFor(contents);
++    if (!host || host->GetWebContents() != contents || host->GetBrowserContext() != profile_)
++      continue;
++    base::DictValue page;
++    page.Set("pageId", *page_id);
++    page.Set("cdpTargetId", host->GetId());
++    page.Set("url", contents->GetLastCommittedURL().spec());
++    page.Set("title", base::UTF16ToUTF8(contents->GetTitle()));
++    page.Set("lease", std::move(lease));
++    pages.Append(std::move(page));
++  }
++  return base::DictValue().Set("result", base::DictValue().Set("pages", std::move(pages)));
++}
++
++base::DictValue CdpBroker::Attach(const std::string& page_id,
++                                    const std::string& scope,
++                                    const std::string& lease_id,
++                                    double acknowledged_expires_at,
++                                    uint64_t connection_generation) {
++  if (destroying_) return Fault("target_detached", "Native CDP broker is retiring");
++  auto weak = weak_factory_.GetWeakPtr();
++  if (connection_generation_ != connection_generation) {
++    const auto original_generation = connection_generation_;
++    DetachAll();
++    if (!weak) return Fault("target_detached", "Native CDP broker was retired");
++    if (connection_generation_ != original_generation || !sessions_.empty())
++      return Fault("ref_stale", "A new attachment replaced original connection retirement");
++    connection_generation_ = connection_generation;
++  }
++  if (!profile_ || profile_->IsOffTheRecord() ||
++      scope != "agent")
++    return Fault("permission_denied", "Invalid native CDP attachment scope");
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  auto* contents = catalog ? catalog->FindPage(page_id) : nullptr;
++  auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++  if (!frame || contents->GetBrowserContext() != profile_ ||
++      !IsPageURL(contents->GetLastCommittedURL()))
++    return Fault("not_found", "The attachment document is unavailable");
++  auto* egress = EgressController::ForProfile(profile_);
++  auto lease = egress->PermissionAuthority(frame);
++  const auto* installed = lease.FindString("leaseId");
++  if (!installed || *installed != lease_id)
++    return Fault("permission_denied", "The original installed lease is unavailable");
++  auto host = content::DevToolsAgentHost::GetOrCreateFor(contents);
++  if (!host || host->GetWebContents() != contents ||
++      host->GetBrowserContext() != profile_)
++    return Fault("permission_denied", "The target ownership changed");
++  const auto original_contents = contents->GetWeakPtr();
++  const auto original_document = frame->GetWeakDocumentPtr();
++  const auto original_controller = egress->GetWeakPtr();
++  const auto original_generation = connection_generation_;
++  RetireSession(page_id);
++  if (!weak) return Fault("target_detached", "Native CDP broker was retired");
++  if (sessions_.contains(page_id) || connection_generation_ != original_generation)
++    return Fault("ref_stale", "A new attachment replaced original retirement");
++  // Session retirement invokes original external callbacks. They may destroy
++  // the page or replace even a same-URL document without retiring this broker.
++  // Preserve the captured identity and reacquire no replacement authority.
++  auto* current_frame = original_document.AsRenderFrameHostIfValid();
++  auto* current_catalog = TabCatalog::GetForProfile(profile_);
++  if (!original_contents || !original_controller || !current_frame ||
++      current_catalog != catalog || current_catalog->FindPage(page_id) != original_contents.get() ||
++      original_contents->GetBrowserContext() != profile_ ||
++      original_contents->GetPrimaryMainFrame() != current_frame ||
++      host->GetWebContents() != original_contents.get() || host->GetBrowserContext() != profile_)
++    return Fault("ref_stale", "Original attachment document changed during retirement");
++  auto current_lease = original_controller->PermissionAuthority(current_frame);
++  auto original_identity = lease.Clone();
++  original_identity.Remove("expiresAt");
++  current_lease.Remove("expiresAt");
++  if (current_lease != original_identity)
++    return Fault("ref_stale", "Original attachment lease changed during retirement");
++  auto session = std::make_unique<Session>(
++      profile_, connection_generation_, page_id, scope, std::move(lease),
++      std::move(host), on_message_, on_navigation_);
++  if (!session->Attach(acknowledged_expires_at))
++    return Fault("permission_denied", "The native attachment scope is not current");
++  if (!weak) return Fault("target_detached", "Native CDP broker was retired");
++  if (!session->AcknowledgedCurrent(acknowledged_expires_at) || sessions_.contains(page_id))
++    return Fault("ref_stale", "Original attachment changed during native admission");
++  const auto attachment_id = session->attachment_id();
++  sessions_.emplace(page_id, std::move(session));
++  return base::DictValue().Set("result", base::DictValue()
++      .Set("attachmentId", attachment_id));
++}
++
++void CdpBroker::WaitForAttachment(const std::string& page_id,
++    const std::string& lease_id, double acknowledged_expires_at,
++    uint64_t connection_generation,
++    base::RepeatingCallback<bool()> caller_current,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  auto weak = weak_factory_.GetWeakPtr();
++  const bool caller_live = caller_current.Run();
++  if (!weak || !caller_live || destroying_ || !profile_ ||
++      profile_->IsOffTheRecord() || !connection_generation) {
++    std::move(callback).Run(Fault("ref_stale", "Original attachment caller is unavailable"));
++    return;
++  }
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  auto* page = catalog ? catalog->FindPage(page_id) : nullptr;
++  auto* frame = page ? page->GetPrimaryMainFrame() : nullptr;
++  auto* egress = EgressController::ForProfile(profile_);
++  auto lease = frame && egress ? egress->PermissionAuthority(frame) : base::DictValue();
++  auto* widget = frame ? frame->GetRenderWidgetHost() : nullptr;
++  auto* view = widget ? widget->GetView() : nullptr;
++  const auto* original_lease_id = lease.FindString("leaseId");
++  const auto installed_expiry = lease.FindDouble("expiresAt");
++  if (!std::isfinite(acknowledged_expires_at) ||
++      acknowledged_expires_at > 9007199254740991.0 ||
++      std::floor(acknowledged_expires_at) != acknowledged_expires_at ||
++      acknowledged_expires_at <= base::Time::Now().InMillisecondsFSinceUnixEpoch() ||
++      !installed_expiry || acknowledged_expires_at > *installed_expiry ||
++      !frame || !view || page->GetBrowserContext() != profile_ ||
++      !original_lease_id || *original_lease_id != lease_id ||
++      !IsPageURL(page->GetLastCommittedURL()) || egress->owner_mutations().pending()) {
++    std::move(callback).Run(Fault("permission_denied", "Original attachment document is unavailable"));
++    return;
++  }
++  const auto document = frame->GetWeakDocumentPtr();
++  const auto failure_epoch = egress->owner_mutations().failure_epoch();
++  view->AwaitNativeInputAdmissionForDocument(document, base::BindOnce(
++      [](base::WeakPtr<CdpBroker> broker, std::string page_id,
++         std::string lease_id, double acknowledged_expires_at,
++         uint64_t generation, uint64_t failure_epoch,
++         content::WeakDocumentPtr document, base::DictValue original,
++         base::RepeatingCallback<bool()> caller_current,
++         base::OnceCallback<void(base::DictValue)> callback, bool ready) {
++        const bool caller_live = caller_current.Run();
++        if (!broker || !caller_live || !ready || broker->destroying_) {
++          std::move(callback).Run(Fault("ref_stale", "Original input-binding acknowledgement retired"));
++          return;
++        }
++        auto* frame = document.AsRenderFrameHostIfValid();
++        auto* catalog = TabCatalog::GetForProfile(broker->profile_);
++        auto* page = catalog ? catalog->FindPage(page_id) : nullptr;
++        auto* egress = EgressController::ForProfile(broker->profile_);
++        auto installed = frame && egress ? egress->PermissionAuthority(frame) : base::DictValue();
++        original.Remove("expiresAt");
++        installed.Remove("expiresAt");
++        if (!frame || !page || page->GetBrowserContext() != broker->profile_ ||
++            page->GetPrimaryMainFrame() != frame || installed.empty() ||
++            installed != original || egress->owner_mutations().pending() ||
++            egress->owner_mutations().failure_epoch() != failure_epoch) {
++          std::move(callback).Run(Fault("ref_stale", "Original attachment authority changed while waiting"));
++          return;
++        }
++        auto result = broker->Attach(page_id, "agent", lease_id, acknowledged_expires_at, generation);
++        std::move(callback).Run(std::move(result));
++      }, weak, page_id, lease_id, acknowledged_expires_at, connection_generation, failure_epoch, document,
++      std::move(lease), std::move(caller_current), std::move(callback)));
++}
++
++base::DictValue CdpBroker::Dispatch(const std::string& page_id,
++                                      const std::string& attachment_id,
++                                      const std::string& message,
++                                      double acknowledged_expires_at,
++                                      uint64_t connection_generation) {
++  if (destroying_) return Fault("target_detached", "Native CDP broker is retiring");
++  auto weak = weak_factory_.GetWeakPtr();
++  if (connection_generation_ != connection_generation) {
++    const auto original_generation = connection_generation_;
++    DetachAll();
++    if (!weak) return Fault("target_detached", "Native CDP broker was retired");
++    if (connection_generation_ != original_generation || !sessions_.empty())
++      return Fault("ref_stale", "A new attachment replaced original connection retirement");
++    connection_generation_ = connection_generation;
++  }
++  if (!profile_ || profile_->IsOffTheRecord()) {
++    return Fault("permission_denied", "CDP requires a regular Profile");
++  }
++  if (message.size() > kMaxCdpMessageBytes) {
++    return Fault("invalid_argument", "CDP message exceeds 1 MiB");
++  }
++  const auto parsed = base::JSONReader::Read(message, base::JSON_PARSE_RFC);
++  const base::DictValue* command = parsed ? parsed->GetIfDict() : nullptr;
++  const std::string* method = command ? command->FindString("method") : nullptr;
++  const std::optional<int> id = command ? command->FindInt("id") : std::nullopt;
++  if (!command || !method || !id || *id < 1 ||
++      !IsCdpMethodAllowed(*method)) {
++    return Fault("permission_denied", "CDP method or envelope is not allowed");
++  }
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  content::WebContents* contents = catalog ? catalog->FindPage(page_id) : nullptr;
++  if (!contents || contents->GetBrowserContext() != profile_ ||
++      !IsPageURL(contents->GetLastCommittedURL())) {
++    RetireSession(page_id);
++    return Fault("not_found", "Page is outside this Profile or unavailable");
++  }
++  auto it = sessions_.find(page_id);
++  if (it == sessions_.end() || it->second->IsClosed() ||
++      it->second->attachment_id() != attachment_id || !it->second->Current())
++    return Fault("permission_denied", "The original CDP attachment is retired");
++  if (command->Find("sessionId") && !command->FindString("sessionId")) {
++    return Fault("invalid_argument", "Invalid CDP child session");
++  }
++  if (const std::string* session_id = command->FindString("sessionId");
++      session_id && !it->second->OwnsChild(*session_id)) {
++    return Fault("permission_denied", "CDP child session is not owned by this page");
++  }
++  std::string dispatched = message;
++  if (*method == "Target.setAutoAttach") {
++    const base::DictValue* params = command->FindDict("params");
++    if (!params || !params->FindBool("autoAttach") ||
++        !params->FindBool("flatten").value_or(false)) {
++      return Fault("invalid_argument", "Flat iframe attachment is required");
++    }
++    base::DictValue restricted = command->Clone();
++    base::DictValue options = params->Clone();
++    base::ListValue filter;
++    base::DictValue iframe;
++    iframe.Set("type", "iframe");
++    filter.Append(std::move(iframe));
++    base::DictValue exclude_all;
++    exclude_all.Set("type", "*");
++    exclude_all.Set("exclude", true);
++    filter.Append(std::move(exclude_all));
++    options.Set("filter", std::move(filter));
++    restricted.Set("params", std::move(options));
++    const auto encoded = base::WriteJson(restricted);
++    if (!encoded) {
++      return Fault("invalid_argument", "Invalid iframe attachment request");
++    }
++    dispatched = *encoded;
++  } else if (*method == "Target.detachFromTarget") {
++    const base::DictValue* params = command->FindDict("params");
++    const std::string* child = params ? params->FindString("sessionId") : nullptr;
++    if (!child || !it->second->OwnsChild(*child)) {
++      return Fault("permission_denied", "CDP child session is not owned by this page");
++    }
++  }
++  if (!it->second->Send(dispatched, *id, *method,
++                        !command->FindString("sessionId"), acknowledged_expires_at))
++    return Fault("permission_denied", "The original CDP authority is no longer current");
++  base::DictValue result;
++  result.Set("accepted", true);
++  base::DictValue reply;
++  reply.Set("result", std::move(result));
++  return reply;
++}
++
++base::DictValue CdpBroker::StartControlledNavigation(
++    const std::string& page_id, const std::string& attachment_id,
++    int command_id, const std::string& url, double acknowledged_expiry,
++    uint64_t connection_generation) {
++  auto it = sessions_.find(page_id);
++  if (destroying_ || connection_generation_ != connection_generation ||
++      command_id < 1 || it == sessions_.end() ||
++      it->second->attachment_id() != attachment_id)
++    return Fault("ref_stale", "Original controlled navigation attachment unavailable");
++  return it->second->StartControlledNavigation(command_id, url, acknowledged_expiry);
++}
++
++base::DictValue CdpBroker::TakeReadyNavigationReceipt(
++    const std::string& page_id, const std::string& attachment_id,
++    int command_id, uint64_t connection_generation) {
++  auto it = sessions_.find(page_id);
++  if (destroying_ || connection_generation_ != connection_generation ||
++      command_id < 1 || it == sessions_.end() ||
++      it->second->attachment_id() != attachment_id)
++    return Fault("ref_stale", "Original navigation attachment unavailable");
++  return it->second->TakeReadyNavigationReceipt(command_id);
++}
++
++void CdpBroker::WaitForNavigationReceipt(const std::string& page_id,
++    const std::string& attachment_id, int command_id,
++    uint64_t connection_generation,
++    base::RepeatingCallback<bool()> caller_current,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  auto it = sessions_.find(page_id);
++  if (destroying_ || connection_generation_ != connection_generation || command_id < 1 ||
++      it == sessions_.end() || it->second->attachment_id() != attachment_id) {
++    std::move(callback).Run(Fault("ref_stale", "Original navigation attachment is unavailable"));
++    return;
++  }
++  it->second->WaitForNavigationReceipt(command_id, std::move(caller_current), std::move(callback));
++}
++
++void CdpBroker::RetireSession(const std::string& page_id) {
++  auto it = sessions_.find(page_id);
++  if (it == sessions_.end()) return;
++  auto original = std::move(it->second);
++  sessions_.erase(it);
++  // Original callbacks run only after the owned map entry is retired.
++  original.reset();
++}
++
++void CdpBroker::DetachAll() {
++  std::map<std::string, std::unique_ptr<Session>> retired;
++  retired.swap(sessions_);
++  // Destruction/reentrant callbacks own only this detached local collection.
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/cdp_broker.h b/chrome/browser/ui/aux/cdp_broker.h
+new file mode 100644
+index 0000000000..884afc0644
+--- /dev/null
++++ b/chrome/browser/ui/aux/cdp_broker.h
+@@ -0,0 +1,86 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_CDP_BROKER_H_
++#define CHROME_BROWSER_UI_AUX_CDP_BROKER_H_
++
++#include <map>
++#include <cstdint>
++#include <memory>
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
++#include "base/values.h"
++
++class Profile;
++
++namespace aux {
++
++// Only page-scoped protocol domains are exposed to the Aux runtime. Browser,
++// Target, Storage and cookie commands must go through the native controllers.
++bool IsCdpMethodAllowed(const std::string& method);
++
++// A single DevTools client per catalog page in one regular Profile. Calls and
++// protocol events run on Chromium's UI sequence; no TCP listener is involved.
++class CdpBroker final {
++ public:
++  using MessageCallback =
++      base::RepeatingCallback<void(uint64_t, const std::string&,
++                                   const std::string&)>;
++
++  using NavigationCallback = base::RepeatingCallback<void(
++      uint64_t, const std::string&, const std::string&, int,
++      const std::string&, bool)>;
++  CdpBroker(Profile* profile, MessageCallback on_message,
++            NavigationCallback on_navigation);
++  ~CdpBroker();
++  CdpBroker(const CdpBroker&) = delete;
++  CdpBroker& operator=(const CdpBroker&) = delete;
++
++  base::DictValue Catalog(uint64_t connection_generation);
++  base::DictValue Attach(const std::string& page_id,
++                         const std::string& scope,
++                         const std::string& lease_id,
++                         double acknowledged_expires_at,
++                         uint64_t connection_generation);
++  void WaitForAttachment(const std::string& page_id,
++      const std::string& lease_id, double acknowledged_expires_at,
++      uint64_t connection_generation,
++      base::RepeatingCallback<bool()> caller_current,
++      base::OnceCallback<void(base::DictValue)> callback);
++  base::DictValue Dispatch(const std::string& page_id,
++                             const std::string& attachment_id,
++                             const std::string& message,
++                             double acknowledged_expires_at,
++                             uint64_t connection_generation);
++  base::DictValue StartControlledNavigation(const std::string& page_id,
++      const std::string& attachment_id, int command_id, const std::string& url,
++      double acknowledged_expires_at, uint64_t connection_generation);
++  base::DictValue TakeReadyNavigationReceipt(const std::string& page_id,
++      const std::string& attachment_id, int command_id,
++      uint64_t connection_generation);
++  void WaitForNavigationReceipt(const std::string& page_id,
++      const std::string& attachment_id, int command_id,
++      uint64_t connection_generation,
++      base::RepeatingCallback<bool()> caller_current,
++      base::OnceCallback<void(base::DictValue)> callback);
++  void DetachAll();
++
++ private:
++  class Session;
++  void RetireSession(const std::string& page_id);
++  raw_ptr<Profile> profile_;
++  MessageCallback on_message_;
++  NavigationCallback on_navigation_;
++  uint64_t connection_generation_ = 0;
++  std::map<std::string, std::unique_ptr<Session>> sessions_;
++  bool destroying_ = false;
++  base::WeakPtrFactory<CdpBroker> weak_factory_{this};
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_CDP_BROKER_H_
+diff --git a/chrome/browser/ui/aux/methods/native_cdp_methods.cc b/chrome/browser/ui/aux/methods/native_cdp_methods.cc
+new file mode 100644
+index 0000000000..ea18723356
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/native_cdp_methods.cc
+@@ -0,0 +1,149 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/runtime_host.h"
++
++#include "base/task/thread_pool.h"
++
++#include <fcntl.h>
++#include <poll.h>
++#include <sys/socket.h>
++#include <sys/stat.h>
++#include <sys/un.h>
++#include <unistd.h>
++
++#include <algorithm>
++#include <array>
++#include <cerrno>
++#include <cmath>
++#include <memory>
++#include <limits>
++#include <optional>
++#include <utility>
++#include <vector>
++
++#include "base/base_paths.h"
++#include "base/command_line.h"
++#include "base/containers/span.h"
++#include "base/files/file_util.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/path_service.h"
++#include "base/process/launch.h"
++#include "base/rand_util.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/synchronization/waitable_event.h"
++#include "base/time/time.h"
++#include "base/task/bind_post_task.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/cdp_broker.h"
++#include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/cosmetic_controller.h"
++#include "chrome/browser/ui/aux/credential_fill.h"
++#include "chrome/browser/ui/aux/cookie_import.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/profile_library.h"
++#include "chrome/browser/ui/aux/profile_search_engine.h"
++#include "chrome/browser/ui/aux/readable_capture.h"
++#include "chrome/browser/ui/aux/secret_store_mac.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/native_find.h"
++#include "chrome/browser/ui/aux/zap_controller.h"
++#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "components/sessions/core/session_id.h"
++#include "components/find_in_page/find_result_observer.h"
++#include "components/find_in_page/find_tab_helper.h"
++#include "components/version_info/version_info.h"
++#include "components/zoom/zoom_controller.h"
++#include "content/public/browser/devtools_agent_host.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/common/stop_find_action.h"
++#include "ui/base/base_window.h"
++#include "url/gurl.h"
++
++
++namespace {
++base::DictValue NativeFault(std::string code, std::string message) {
++  base::DictValue error;
++  error.Set("code", std::move(code));
++  error.Set("message", std::move(message));
++  base::DictValue reply;
++  reply.Set("error", std::move(error));
++  return reply;
++}
++base::DictValue NativeResult(base::Value value) {
++  base::DictValue reply;
++  reply.Set("result", std::move(value));
++  return reply;
++}
++}  // namespace
++
++base::DictValue AuxRuntimeHost::HandleNativeCdpCall(
++    const std::string& method, const base::DictValue& params,
++    uint64_t connection_generation) {
++  if (shutting_down_ || !connection_generation ||
++      connection_generation != admitted_native_generation_) {
++    return NativeFault("permission_denied", "Original CDP runtime connection is retired");
++  }
++  if (method == "native.cdpReset") {
++    if (!params.empty()) {
++      return NativeFault("invalid_argument", "CDP reset takes no arguments");
++    }
++    cdp_broker_->DetachAll();
++    return NativeResult(base::Value(base::DictValue()));
++  }
++  if (method == "native.cdpCatalog") {
++    if (!params.empty())
++      return NativeFault("invalid_argument", "CDP catalog takes no arguments");
++    return cdp_broker_->Catalog(connection_generation);
++  }
++  if (method == "native.cdpStartNavigation") {
++    const auto* page_id = params.FindString("pageId");
++    const auto* attachment_id = params.FindString("attachmentId");
++    const auto* url = params.FindString("url");
++    const auto command_id = params.FindInt("commandId");
++    const auto expiry = params.FindDouble("acknowledgedExpiresAt");
++    if (params.size() != 5 || !page_id || !attachment_id || !url ||
++        !command_id || *command_id < 1 || !expiry || url->size() > 2048)
++      return NativeFault("invalid_argument", "Invalid fixed navigation request");
++    return cdp_broker_->StartControlledNavigation(*page_id, *attachment_id,
++        *command_id, *url, *expiry, connection_generation);
++  }
++  if (method == "native.cdpAttach") {
++    return NativeFault("permission_denied", "Attachment requires original asynchronous caller authority");
++  }
++  if (method == "native.cdpDispatch") {
++    const std::string* page_id = params.FindString("pageId");
++    const std::string* attachment_id = params.FindString("attachmentId");
++    const std::string* message = params.FindString("message");
++    const auto acknowledged_expiry = params.FindDouble("acknowledgedExpiresAt");
++    if (!acknowledged_expiry || !std::isfinite(*acknowledged_expiry) ||
++        *acknowledged_expiry <= 0 || *acknowledged_expiry > 9007199254740991.0 ||
++        std::floor(*acknowledged_expiry) != *acknowledged_expiry ||
++        params.size() != 4 || !page_id || page_id->empty() ||
++        !attachment_id || attachment_id->empty() || !message) {
++      return NativeFault("invalid_argument", "Invalid CDP dispatch envelope");
++    }
++    return cdp_broker_->Dispatch(*page_id, *attachment_id, *message,
++                                  *acknowledged_expiry, connection_generation);
++  }
++  if (method == "native.cdpTakeNavigationReceipt") {
++    return NativeFault("permission_denied", "Navigation receipt requires original asynchronous caller authority");
++  }
++  if (method == "native.cdpVersion") {
++    base::DictValue result;
++    result.Set("version", version_info::GetVersionNumber());
++    return NativeResult(base::Value(std::move(result)));
++  }
++  return NativeFault("backend_unavailable",
++                     "Native method is unavailable in this build");
++}
+diff --git a/content/public/browser/devtools_agent_host_client.h b/content/public/browser/devtools_agent_host_client.h
+--- a/content/public/browser/devtools_agent_host_client.h
++++ b/content/public/browser/devtools_agent_host_client.h
+@@ -16,6 +16,7 @@
+ 
+ class DevToolsAgentHost;
+ class RenderFrameHost;
++class NavigationHandle;
+ 
+ // DevToolsAgentHostClient can attach to a DevToolsAgentHost and start
+ // debugging it.
+@@ -29,6 +30,11 @@
+ 
+   // This method is called when attached agent host is closed.
+   virtual void AgentHostClosed(DevToolsAgentHost* agent_host) = 0;
++
++  // Reports the exact request created by this client's Page.navigate before
++  // Navigator starts it. This is not a notification for unrelated navigations.
++  // Implementations must only record identity, without starting other work.
++  virtual void DidStartProtocolNavigation(NavigationHandle* navigation_handle) {}
+ 
+   // Returns true if the client is allowed to attach to the given URL.
+   // Note: this method may be called before navigation commits.
+diff --git a/content/public/browser/navigation_controller.h b/content/public/browser/navigation_controller.h
+--- a/content/public/browser/navigation_controller.h
++++ b/content/public/browser/navigation_controller.h
+@@ -12,6 +12,7 @@
+ #include <string>
+ #include <vector>
+ 
++#include "base/functional/callback.h"
+ #include "base/time/time.h"
+ #include "build/build_config.h"
+ #include "content/common/content_export.h"
+@@ -154,6 +155,12 @@
+     LoadURLParams& operator=(const LoadURLParams&) = delete;
+     LoadURLParams& operator=(LoadURLParams&&);
+     ~LoadURLParams();
++
++    // DevTools records the exact newly created request before Navigator starts
++    // it, including synchronous commits. Empty for ordinary navigations. The
++    // callback must only observe identity and must not mutate navigation state.
++    base::RepeatingCallback<void(NavigationHandle*)>
++        devtools_navigation_created_callback;
+ 
+     // The url to load. This field is required.
+     GURL url;
+diff --git a/content/browser/devtools/protocol/page_handler.cc b/content/browser/devtools/protocol/page_handler.cc
+--- a/content/browser/devtools/protocol/page_handler.cc
++++ b/content/browser/devtools/protocol/page_handler.cc
+@@ -1040,6 +1040,13 @@
+   }
+ 
+   NavigationController::LoadURLParams params(gurl);
++  params.devtools_navigation_created_callback = base::BindRepeating(
++      [](base::WeakPtr<PageHandler> handler, NavigationHandle* navigation) {
++        if (handler) {
++          handler->session()->GetClient()->DidStartProtocolNavigation(navigation);
++        }
++      },
++      weak_factory_.GetWeakPtr());
+   params.referrer = Referrer(GURL(referrer.value_or("")), policy);
+   params.transition_type = type;
+   params.frame_tree_node_id = frame_tree_node->frame_tree_node_id();
+diff --git a/content/browser/renderer_host/navigation_controller_impl.cc b/content/browser/renderer_host/navigation_controller_impl.cc
+--- a/content/browser/renderer_host/navigation_controller_impl.cc
++++ b/content/browser/renderer_host/navigation_controller_impl.cc
+@@ -4406,6 +4406,9 @@
+ 
+   base::WeakPtr<NavigationHandle> created_navigation_handle(
+       request->GetWeakPtr());
++  if (params.devtools_navigation_created_callback) {
++    params.devtools_navigation_created_callback.Run(request.get());
++  }
+   node->navigator().Navigate(std::move(request), reload_type);
+ 
+   return created_navigation_handle;

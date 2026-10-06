@@ -1,0 +1,674 @@
+diff --git a/chrome/browser/ui/aux/readable_capture.cc b/chrome/browser/ui/aux/readable_capture.cc
+new file mode 100644
+index 0000000000..83093c5a62
+--- /dev/null
++++ b/chrome/browser/ui/aux/readable_capture.cc
+@@ -0,0 +1,188 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/readable_capture.h"
++
++#include <string>
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/strings/string_util.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/common/isolated_world_ids.h"
++#include "net/http/http_response_headers.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++
++constexpr size_t kMaxTextBytes = 64 * 1024;
++constexpr size_t kMaxTitleBytes = 1024;
++constexpr int kCaptureWorld = content::ISOLATED_WORLD_ID_CONTENT_END + 9;
++
++base::DictValue Fault(const char* code, const char* message) {
++  base::DictValue error;
++  error.Set("code", code);
++  error.Set("message", message);
++  base::DictValue reply;
++  reply.Set("error", std::move(error));
++  return reply;
++}
++
++// Only inert text crosses the browser boundary. The fixed script runs in an
++// isolated world and rejects forms and editable/sensitive documents before
++// reading any content. The browser checks the returned UTF-8 size again.
++constexpr char16_t kExtractScript[] =
++    uR"JS((() => {
++  if (document.visibilityState !== 'visible' || document.readyState === 'loading') return null;
++  if (document.querySelector('input[type="password"], input[autocomplete~="one-time-code"], input[autocomplete^="cc-"], input[autocomplete="current-password"], input[autocomplete="new-password"], [contenteditable="true"], [role="textbox"], meta[http-equiv="Cache-Control"][content*="no-store" i], form[action*="login" i], form[action*="signin" i], form[action*="checkout" i], form[action*="payment" i]')) return null;
++  const source = document.querySelector('article') || document.querySelector('main') || document.body;
++  if (!source || source.querySelectorAll('*').length > 10000) return null;
++  const walker = document.createTreeWalker(source, NodeFilter.SHOW_TEXT);
++  let units = 0;
++  while (walker.nextNode()) {
++    units += walker.currentNode.textContent.length;
++    if (units > 65536) return null;
++  }
++  const copy = source.cloneNode(true);
++  copy.querySelectorAll('script,style,form,input,textarea,button,select,iframe,object,embed,nav,aside,footer,header,[hidden],[aria-hidden="true"]').forEach(node => node.remove());
++  const text = (copy.textContent || '').replace(/\s+/g, ' ').trim();
++  if (!text || text.length > 65536) return null;
++  return {title: document.title.slice(0, 1024), text};
++})())JS";
++
++}  // namespace
++
++bool ReadableResponseAllowed(const net::HttpResponseHeaders* headers) {
++  if (!headers || headers->response_code() < 200 ||
++      headers->response_code() >= 300) {
++    return false;
++  }
++  std::string mime;
++  if (!headers->GetMimeType(&mime) ||
++      !base::EqualsCaseInsensitiveASCII(mime, "text/html")) {
++    return false;
++  }
++  const auto cache = headers->GetNormalizedHeader("cache-control");
++  if (cache &&
++      base::ToLowerASCII(*cache).find("no-store") != std::string::npos) {
++    return false;
++  }
++  return true;
++}
++
++bool ReadableWorkspaceMatches(const base::DictValue& layout,
++                              const std::string& page_id,
++                              const std::string& workspace_id) {
++  const base::DictValue* window = layout.FindDict("window");
++  const base::DictValue* shared = layout.FindDict("shared");
++  const base::DictValue* tab_space =
++      window ? window->FindDict("tabSpace") : nullptr;
++  const std::string* space_id =
++      tab_space ? tab_space->FindString(page_id) : nullptr;
++  const std::string* active =
++      window ? window->FindString("activeSpaceId") : nullptr;
++  if (!space_id || !active || *space_id != *active) {
++    return false;
++  }
++  const base::ListValue* spaces =
++      shared ? shared->FindList("spaces") : nullptr;
++  if (!spaces) {
++    return false;
++  }
++  for (const base::Value& value : *spaces) {
++    const base::DictValue* space = value.GetIfDict();
++    if (space && space->FindString("id") &&
++        *space->FindString("id") == *space_id &&
++        space->FindString("workspaceId") &&
++        *space->FindString("workspaceId") == workspace_id) {
++      return true;
++    }
++  }
++  return false;
++}
++
++WEB_CONTENTS_USER_DATA_KEY_IMPL(ReadableCapture);
++
++ReadableCapture::ReadableCapture(content::WebContents* contents)
++    : content::WebContentsObserver(contents),
++      content::WebContentsUserData<ReadableCapture>(*contents) {}
++
++ReadableCapture::~ReadableCapture() = default;
++
++void ReadableCapture::DidFinishNavigation(content::NavigationHandle* nav) {
++  if (!nav->IsInPrimaryMainFrame() || !nav->HasCommitted()) {
++    return;
++  }
++  eligible_url_.clear();
++  document_id_ = 0;
++  const GURL& url = nav->GetURL();
++  if (!url.SchemeIs("https") || url.has_username() || url.has_password() ||
++      !ReadableResponseAllowed(nav->GetResponseHeaders())) {
++    return;
++  }
++  eligible_url_ = url.spec();
++  document_id_ = nav->GetNavigationId();
++}
++
++bool ReadableCapture::Eligible(const std::string& expected_url) const {
++  content::WebContents* contents = web_contents();
++  content::RenderFrameHost* frame =
++      contents ? contents->GetPrimaryMainFrame() : nullptr;
++  return !eligible_url_.empty() && eligible_url_ == expected_url &&
++         contents->GetLastCommittedURL().spec() == expected_url && frame &&
++         frame->GetNavigationId() == document_id_ &&
++         contents->GetVisibility() == content::Visibility::VISIBLE;
++}
++
++void ReadableCapture::Extract(
++    const std::string& expected_url,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  if (!Eligible(expected_url)) {
++    std::move(callback).Run(Fault("permission_denied",
++                                  "Page is not eligible for protected recall"));
++    return;
++  }
++  const int64_t document_id = document_id_;
++  web_contents()->GetPrimaryMainFrame()->ExecuteJavaScriptInIsolatedWorld(
++      kExtractScript,
++      base::BindOnce(
++          [](base::WeakPtr<ReadableCapture> self, std::string expected_url,
++             int64_t document_id,
++             base::OnceCallback<void(base::DictValue)> callback,
++             base::Value value) {
++            if (!self || self->document_id_ != document_id ||
++                !self->Eligible(expected_url)) {
++              std::move(callback).Run(
++                  Fault("conflict", "Page changed during capture"));
++              return;
++            }
++            const base::DictValue* article = value.GetIfDict();
++            const std::string* title =
++                article ? article->FindString("title") : nullptr;
++            const std::string* text =
++                article ? article->FindString("text") : nullptr;
++            if (!title || !text || title->size() > kMaxTitleBytes ||
++                text->empty() || text->size() > kMaxTextBytes) {
++              std::move(callback).Run(Fault("invalid_argument",
++                                            "Readable page exceeds safe bounds "
++                                            "or contains private fields"));
++              return;
++            }
++            base::DictValue result;
++            result.Set("url", expected_url);
++            result.Set("title", *title);
++            result.Set("text", *text);
++            base::DictValue reply;
++            reply.Set("result", std::move(result));
++            std::move(callback).Run(std::move(reply));
++          },
++          weak_factory_.GetWeakPtr(), expected_url, document_id,
++          std::move(callback)),
++      kCaptureWorld);
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/readable_capture.h b/chrome/browser/ui/aux/readable_capture.h
+new file mode 100644
+index 0000000000..e1c990a09c
+--- /dev/null
++++ b/chrome/browser/ui/aux/readable_capture.h
+@@ -0,0 +1,59 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_READABLE_CAPTURE_H_
++#define CHROME_BROWSER_UI_AUX_READABLE_CAPTURE_H_
++
++#include <string>
++
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/values.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/web_contents_user_data.h"
++
++namespace content {
++class WebContents;
++class NavigationHandle;
++}  // namespace content
++namespace net {
++class HttpResponseHeaders;
++}
++
++namespace aux {
++
++// Response status, MIME type, and cache directive gate for protected recall.
++bool ReadableResponseAllowed(const net::HttpResponseHeaders* headers);
++bool ReadableWorkspaceMatches(const base::DictValue& layout,
++                              const std::string& page_id,
++                              const std::string& workspace_id);
++
++// Records only response eligibility, never page contents or response headers.
++// This is installed when a tab enters the Profile catalog, before navigation.
++class ReadableCapture final
++    : public content::WebContentsObserver,
++      public content::WebContentsUserData<ReadableCapture> {
++ public:
++  ~ReadableCapture() override;
++  ReadableCapture(const ReadableCapture&) = delete;
++  ReadableCapture& operator=(const ReadableCapture&) = delete;
++
++  bool Eligible(const std::string& expected_url) const;
++  void Extract(const std::string& expected_url,
++               base::OnceCallback<void(base::DictValue)> callback);
++
++ private:
++  friend class content::WebContentsUserData<ReadableCapture>;
++  explicit ReadableCapture(content::WebContents* contents);
++  void DidFinishNavigation(content::NavigationHandle* navigation) override;
++
++  std::string eligible_url_;
++  int64_t document_id_ = 0;
++  base::WeakPtrFactory<ReadableCapture> weak_factory_{this};
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_READABLE_CAPTURE_H_
+diff --git a/chrome/browser/ui/aux/result_preview.cc b/chrome/browser/ui/aux/result_preview.cc
+new file mode 100644
+index 0000000000..1627230b6f
+--- /dev/null
++++ b/chrome/browser/ui/aux/result_preview.cc
+@@ -0,0 +1,322 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/result_preview.h"
++#include "chrome/browser/profiles/profile.h"
++
++#include <array>
++#include <cstdint>
++#include <memory>
++#include <string_view>
++#include <utility>
++
++#include "base/functional/bind.h"
++#include "base/rand_util.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/time/time.h"
++#include "content/public/browser/browser_context.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/global_routing_id.h"
++#include "content/public/browser/navigation_throttle.h"
++#include "content/public/browser/navigation_throttle_registry.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "mojo/public/cpp/bindings/remote.h"
++#include "mojo/public/cpp/bindings/self_owned_receiver.h"
++#include "mojo/public/cpp/system/data_pipe.h"
++#include "mojo/public/cpp/system/data_pipe_producer.h"
++#include "mojo/public/cpp/system/string_data_source.h"
++#include "net/base/net_errors.h"
++#include "net/http/http_request_headers.h"
++#include "net/http/http_response_headers.h"
++#include "net/traffic_annotation/network_traffic_annotation.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/cpp/url_loader_completion_status.h"
++#include "services/network/public/mojom/fetch_api.mojom.h"
++#include "services/network/public/mojom/url_loader.mojom.h"
++#include "services/network/public/mojom/url_response_head.mojom.h"
++
++namespace aux {
++namespace {
++
++constexpr size_t kMaxHtmlBytes = 256 * 1024;
++constexpr size_t kMaxPreviews = 32;
++constexpr base::TimeDelta kLifetime = base::Minutes(10);
++
++std::optional<std::string> TokenFromURL(const GURL& url) {
++  if (!url.is_valid() || !url.SchemeIs(kResultPreviewScheme) ||
++      url.host() != "preview" || url.has_username() || url.has_password() ||
++      url.has_port() || url.has_query() || url.has_ref() ||
++      url.path().size() != 49 || url.path()[0] != '/') {
++    return std::nullopt;
++  }
++  const std::string token(url.path().substr(1));
++  for (char character : token) {
++    if ((character < '0' || character > '9') &&
++        (character < 'a' || character > 'f')) {
++      return std::nullopt;
++    }
++  }
++  return token;
++}
++
++bool IsAuxShell(content::WebContents* contents) {
++  if (!contents || !contents->GetPrimaryMainFrame()) {
++    return false;
++  }
++  const GURL& url = contents->GetPrimaryMainFrame()->GetLastCommittedURL();
++  return url.is_valid() && url.SchemeIs("chrome") && url.host() == "aux" &&
++         url.path() == "/" && !url.has_query() && !url.has_ref();
++}
++
++network::mojom::URLResponseHeadPtr ResponseHead(size_t content_length) {
++  auto head = network::mojom::URLResponseHead::New();
++  head->mime_type = "text/html";
++  head->charset = "utf-8";
++  head->content_length = content_length;
++  head->headers = net::HttpResponseHeaders::Builder({1, 1}, "200 OK")
++                      .AddHeader("Content-Type", "text/html; charset=utf-8")
++                      .AddHeader("Content-Security-Policy", kResultPreviewCsp)
++                      .AddHeader("Cache-Control", "no-store")
++                      .AddHeader("X-Content-Type-Options", "nosniff")
++                      .AddHeader("Referrer-Policy", "no-referrer")
++                      .AddHeader("Permissions-Policy",
++                                 "camera=(), microphone=(), geolocation=(), "
++                                 "display-capture=(), clipboard-read=(), "
++                                 "clipboard-write=()")
++                      .Build();
++  return head;
++}
++
++struct WriteData {
++  mojo::Remote<network::mojom::URLLoaderClient> client;
++  std::string html;
++  std::unique_ptr<mojo::DataPipeProducer> producer;
++};
++
++void OnWrite(std::unique_ptr<WriteData> write_data, MojoResult result) {
++  write_data->producer.reset();
++  write_data->client->OnComplete(network::URLLoaderCompletionStatus(
++      result == MOJO_RESULT_OK ? net::OK : net::ERR_FAILED));
++}
++
++class ResultPreviewURLLoaderFactory final
++    : public network::mojom::URLLoaderFactory {
++ public:
++  explicit ResultPreviewURLLoaderFactory(content::FrameTreeNodeId node_id)
++      : node_id_(node_id) {}
++
++  void CreateLoaderAndStart(
++      mojo::PendingReceiver<network::mojom::URLLoader> loader,
++      int32_t request_id,
++      uint32_t options,
++      const network::ResourceRequest& request,
++      mojo::PendingRemote<network::mojom::URLLoaderClient> client_remote,
++      const net::MutableNetworkTrafficAnnotationTag& traffic_annotation)
++      override {
++    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++    mojo::Remote<network::mojom::URLLoaderClient> client(
++        std::move(client_remote));
++    content::WebContents* owner =
++        content::WebContents::FromFrameTreeNodeId(node_id_);
++    if (!owner || !IsAuxShell(owner) ||
++        owner->GetPrimaryMainFrame()->GetFrameTreeNodeId() == node_id_ ||
++        request.destination != network::mojom::RequestDestination::kIframe ||
++        request.method != net::HttpRequestHeaders::kGetMethod ||
++        !request.request_initiator || request.request_initiator->opaque() ||
++        !request.request_initiator->GetURL().SchemeIs("chrome") ||
++        request.request_initiator->host() != "aux") {
++      client->OnComplete(
++          network::URLLoaderCompletionStatus(net::ERR_ACCESS_DENIED));
++      return;
++    }
++    std::optional<std::string> html =
++        ResultPreviewStore::Read(owner, request.url);
++    if (!html) {
++      client->OnComplete(
++          network::URLLoaderCompletionStatus(net::ERR_FILE_NOT_FOUND));
++      return;
++    }
++
++    mojo::ScopedDataPipeProducerHandle producer;
++    mojo::ScopedDataPipeConsumerHandle consumer;
++    if (mojo::CreateDataPipe(nullptr, producer, consumer) != MOJO_RESULT_OK) {
++      client->OnComplete(
++          network::URLLoaderCompletionStatus(net::ERR_INSUFFICIENT_RESOURCES));
++      return;
++    }
++    client->OnReceiveResponse(ResponseHead(html->size()), std::move(consumer),
++                              std::nullopt);
++    auto write_data = std::make_unique<WriteData>();
++    write_data->client = std::move(client);
++    write_data->html = std::move(*html);
++    write_data->producer =
++        std::make_unique<mojo::DataPipeProducer>(std::move(producer));
++    mojo::DataPipeProducer* producer_ptr = write_data->producer.get();
++    std::string_view html_view(write_data->html);
++    producer_ptr->Write(
++        std::make_unique<mojo::StringDataSource>(
++            html_view, mojo::StringDataSource::AsyncWritingMode::
++                           STRING_STAYS_VALID_UNTIL_COMPLETION),
++        base::BindOnce(&OnWrite, std::move(write_data)));
++  }
++
++  void Clone(mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver)
++      override {
++    mojo::MakeSelfOwnedReceiver(
++        std::make_unique<ResultPreviewURLLoaderFactory>(node_id_),
++        std::move(receiver));
++  }
++
++ private:
++  const content::FrameTreeNodeId node_id_;
++};
++
++class ResultPreviewNavigationThrottle final
++    : public content::NavigationThrottle {
++ public:
++  explicit ResultPreviewNavigationThrottle(
++      content::NavigationThrottleRegistry& registry)
++      : content::NavigationThrottle(registry) {}
++
++  ThrottleCheckResult WillStartRequest() override { return BLOCK_REQUEST; }
++  ThrottleCheckResult WillRedirectRequest() override { return BLOCK_REQUEST; }
++  const char* GetNameForLogging() override {
++    return "ResultPreviewNavigationThrottle";
++  }
++};
++
++}  // namespace
++
++WEB_CONTENTS_USER_DATA_KEY_IMPL(ResultPreviewStore);
++
++ResultPreviewStore::ResultPreviewStore(content::WebContents* owner)
++    : content::WebContentsUserData<ResultPreviewStore>(*owner) {}
++
++ResultPreviewStore::~ResultPreviewStore() = default;
++
++void ResultPreviewStore::PurgeExpired() {
++  const base::TimeTicks now = base::TimeTicks::Now();
++  for (auto it = previews_.begin(); it != previews_.end();) {
++    if (it->second.expires_at <= now) {
++      it = previews_.erase(it);
++    } else {
++      ++it;
++    }
++  }
++}
++
++// static
++std::optional<std::string> ResultPreviewStore::Create(
++    content::WebContents* owner,
++    std::string html) {
++  if (!IsAuxShell(owner) || owner->GetBrowserContext()->IsOffTheRecord() ||
++      html.empty() || html.size() > kMaxHtmlBytes ||
++      html.find('\0') != std::string::npos) {
++    return std::nullopt;
++  }
++  if (!FromWebContents(owner)) {
++    CreateForWebContents(owner);
++  }
++  auto* store = FromWebContents(owner);
++  store->PurgeExpired();
++  if (store->previews_.size() >= kMaxPreviews) {
++    return std::nullopt;
++  }
++  for (int attempt = 0; attempt < 3; ++attempt) {
++    std::array<uint8_t, 24> random_bytes;
++    base::RandBytes(random_bytes);
++    const std::string token = base::ToLowerASCII(base::HexEncode(random_bytes));
++    if (store->previews_.contains(token)) {
++      continue;
++    }
++    store->previews_.emplace(
++        token, Preview{std::move(html), base::TimeTicks::Now() + kLifetime,
++                       owner->GetPrimaryMainFrame()->GetWeakDocumentPtr()});
++    return std::string(kResultPreviewScheme) + "://preview/" + token;
++  }
++  return std::nullopt;
++}
++
++// static
++bool ResultPreviewStore::Release(content::WebContents* owner, const GURL& url) {
++  auto token = TokenFromURL(url);
++  auto* store = owner ? FromWebContents(owner) : nullptr;
++  return token && store && store->previews_.erase(*token) == 1;
++}
++
++// static
++std::optional<std::string> ResultPreviewStore::Read(content::WebContents* owner,
++                                                    const GURL& url) {
++  auto token = TokenFromURL(url);
++  auto* store = owner ? FromWebContents(owner) : nullptr;
++  if (!token || !store || !IsAuxShell(owner)) {
++    return std::nullopt;
++  }
++  store->PurgeExpired();
++  auto it = store->previews_.find(*token);
++  if (it == store->previews_.end() ||
++      owner->GetBrowserContext()->IsOffTheRecord() ||
++      it->second.owner_document.AsRenderFrameHostIfValid() !=
++          owner->GetPrimaryMainFrame()) {
++    return std::nullopt;
++  }
++  return it->second.html;
++}
++
++// static
++bool ResultPreviewStore::IsValidURL(const GURL& url) {
++  return TokenFromURL(url).has_value();
++}
++
++std::optional<url::Origin> GetAdmittedResultPreviewOrigin(
++    content::NavigationHandle& navigation) {
++  auto* owner = navigation.GetWebContents();
++  auto* parent = navigation.GetParentFrame();
++  const auto& initiator = navigation.GetInitiatorOrigin();
++  const auto& initiator_token = navigation.GetInitiatorFrameToken();
++  auto* initiator_frame = initiator_token
++      ? content::RenderFrameHost::FromFrameToken(
++            content::GlobalRenderFrameHostToken(
++                navigation.GetInitiatorProcessId(), *initiator_token))
++      : nullptr;
++  if (!IsAuxShell(owner) || !parent || !parent->IsActive() ||
++      !parent->IsRenderFrameLive() ||
++      !Profile::FromBrowserContext(owner->GetBrowserContext())->IsRegularProfile() ||
++      parent != owner->GetPrimaryMainFrame() || initiator_frame != parent ||
++      !initiator || initiator->opaque() ||
++      !initiator->IsSameOriginWith(parent->GetLastCommittedOrigin()) ||
++      !ResultPreviewStore::Read(owner, navigation.GetURL())) {
++    return std::nullopt;
++  }
++  // The precursor is the destination, never the privileged shell initiator.
++  // Only a fresh opaque derivative can leave this private admission boundary.
++  return url::Origin::CreateFromNormalizedTuple(kResultPreviewScheme, "preview", 0)
++      .DeriveNewOpaqueOrigin();
++}
++
++mojo::PendingRemote<network::mojom::URLLoaderFactory>
++CreateResultPreviewURLLoaderFactory(
++    content::FrameTreeNodeId frame_tree_node_id) {
++  mojo::PendingRemote<network::mojom::URLLoaderFactory> remote;
++  mojo::MakeSelfOwnedReceiver(
++      std::make_unique<ResultPreviewURLLoaderFactory>(frame_tree_node_id),
++      remote.InitWithNewPipeAndPassReceiver());
++  return remote;
++}
++
++void MaybeAddResultPreviewNavigationThrottle(
++    content::NavigationThrottleRegistry& registry) {
++  content::RenderFrameHost* previous = content::RenderFrameHost::FromID(
++      registry.GetNavigationHandle().GetPreviousRenderFrameHostId());
++  if (previous &&
++      previous->GetLastCommittedURL().SchemeIs(kResultPreviewScheme)) {
++    registry.AddThrottle(
++        std::make_unique<ResultPreviewNavigationThrottle>(registry));
++  }
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/result_preview.h b/chrome/browser/ui/aux/result_preview.h
+new file mode 100644
+index 0000000000..a506b42649
+--- /dev/null
++++ b/chrome/browser/ui/aux/result_preview.h
+@@ -0,0 +1,81 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_RESULT_PREVIEW_H_
++#define CHROME_BROWSER_UI_AUX_RESULT_PREVIEW_H_
++
++#include <map>
++#include <optional>
++#include <string>
++
++#include "base/time/time.h"
++#include "content/public/browser/frame_tree_node_id.h"
++#include "content/public/browser/web_contents_user_data.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "url/origin.h"
++#include "mojo/public/cpp/bindings/pending_remote.h"
++#include "services/network/public/mojom/url_loader_factory.mojom.h"
++#include "url/gurl.h"
++
++namespace content {
++class NavigationHandle;
++class NavigationThrottleRegistry;
++class WebContents;
++}  // namespace content
++
++namespace aux {
++
++inline constexpr char kResultPreviewScheme[] = "aux-result";
++inline constexpr char kResultPreviewCsp[] =
++    "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; "
++    "style-src 'unsafe-inline'; img-src data:; font-src data:; "
++    "connect-src 'none'; media-src 'none'; frame-src 'none'; "
++    "object-src 'none'; form-action 'none'; base-uri 'none'";
++
++// The store is owned by one trusted shell WebContents. Tokens are memory-only
++// and cannot be loaded from another window or Profile.
++class ResultPreviewStore final
++    : public content::WebContentsUserData<ResultPreviewStore> {
++ public:
++  ResultPreviewStore(const ResultPreviewStore&) = delete;
++  ResultPreviewStore& operator=(const ResultPreviewStore&) = delete;
++  ~ResultPreviewStore() override;
++
++  static std::optional<std::string> Create(content::WebContents* owner,
++                                           std::string html);
++  static bool Release(content::WebContents* owner, const GURL& url);
++  static std::optional<std::string> Read(content::WebContents* owner,
++                                         const GURL& url);
++  static bool IsValidURL(const GURL& url);
++
++ private:
++  friend class content::WebContentsUserData<ResultPreviewStore>;
++  explicit ResultPreviewStore(content::WebContents* owner);
++
++  struct Preview {
++    std::string html;
++    base::TimeTicks expires_at;
++    content::WeakDocumentPtr owner_document;
++  };
++  void PurgeExpired();
++
++  std::map<std::string, Preview> previews_;
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++
++// Exact direct-shell-subframe admission. Only the opaque result is exposed;
++// no_access registration and CSP sandbox remain mandatory.
++std::optional<url::Origin> GetAdmittedResultPreviewOrigin(
++    content::NavigationHandle& navigation);
++
++// Navigation-only. Subresource and worker factories are intentionally absent.
++mojo::PendingRemote<network::mojom::URLLoaderFactory>
++CreateResultPreviewURLLoaderFactory(
++    content::FrameTreeNodeId frame_tree_node_id);
++void MaybeAddResultPreviewNavigationThrottle(
++    content::NavigationThrottleRegistry& registry);
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_RESULT_PREVIEW_H_

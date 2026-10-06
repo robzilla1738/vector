@@ -1,0 +1,1517 @@
+diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
+index a79df1d201..e46bd05f09 100644
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc
+@@ -3,6 +3,16 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/auto_pip_site_policy.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/surface_visibility.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "components/sessions/core/session_id.h"
++#include "components/tabs/public/tab_interface.h"
++#endif
+ 
+ #include "base/feature_list.h"
+ #include "base/metrics/histogram_functions.h"
+@@ -584,7 +594,43 @@ void AutoPictureInPictureTabHelper::MaybeEnterAutoPictureInPicture() {
+   auto_picture_in_picture_activation_time_ =
+       clock_->NowTicks() + blink::kActivationLifespan;
+   auto_pip_trigger_reason_ = GetAutoPipReason();
+-  content::MediaSession::Get(web_contents())->EnterAutoPictureInPicture();
++  auto* profile = Profile::FromBrowserContext(web_contents()->GetBrowserContext());
++  std::string page_id;
++  int window_id = -1;
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* identity = aux::PageIdentity::FromWebContents(web_contents());
++  auto* tab = tabs::TabInterface::GetFromContents(web_contents());
++  auto* owner = tab ? tab->GetBrowserWindowInterface() : nullptr;
++  if (!identity || !owner) return;
++  page_id = identity->id();
++  window_id = owner->GetSessionID().id();
++#endif
++  content::MediaSession::Get(web_contents())->EnterAutoPictureInPictureWithEligibility(
++      base::BindRepeating(&AutoPictureInPictureTabHelper::RevalidateAutoPictureInPicture,
++          dispatch_weak_factory_.GetWeakPtr(),
++          web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr(),
++          profile, std::move(page_id), window_id));
++}
++
++bool AutoPictureInPictureTabHelper::RevalidateAutoPictureInPicture(
++    base::WeakPtr<AutoPictureInPictureTabHelper> helper,
++    content::WeakDocumentPtr document, Profile* profile,
++    std::string page_id, int window_id) {
++  if (!helper || !helper->web_contents() ||
++      document.AsRenderFrameHostIfValid() != helper->web_contents()->GetPrimaryMainFrame() ||
++      Profile::FromBrowserContext(helper->web_contents()->GetBrowserContext()) != profile ||
++      helper->tab_observer_helper_->IsTabActivated() ||
++      helper->clock_->NowTicks() >= helper->auto_picture_in_picture_activation_time_ ||
++      (helper->window_occlusion_helper_ &&
++       helper->window_occlusion_helper_->GetOcclusionState() == OcclusionState::kOccluded)) return false;
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* identity = aux::PageIdentity::FromWebContents(helper->web_contents());
++  auto* tab = tabs::TabInterface::GetFromContents(helper->web_contents());
++  auto* owner = tab ? tab->GetBrowserWindowInterface() : nullptr;
++  if (!identity || identity->id() != page_id || !owner ||
++      owner->GetSessionID().id() != window_id) return false;
++#endif
++  return helper->IsEligibleForAutoPictureInPicture(false);
+ }
+ 
+ void AutoPictureInPictureTabHelper::MaybeScheduleAsyncTasks() {
+@@ -661,6 +707,23 @@ void AutoPictureInPictureTabHelper::MaybeStartOrStopObservers() {
+ 
+ bool AutoPictureInPictureTabHelper::IsEligibleForAutoPictureInPicture(
+     bool should_record_blocking_metrics) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* contents = web_contents();
++  auto* identity = aux::PageIdentity::FromWebContents(contents);
++  auto* tab = tabs::TabInterface::GetFromContents(contents);
++  auto* owner = tab ? tab->GetBrowserWindowInterface() : nullptr;
++  auto* frame = contents->GetPrimaryMainFrame();
++  if (!identity || identity->runtime_owned() || !owner || !frame ||
++      tab->IsActivated() || aux::IsStageVisible(contents) ||
++      GetCurrentContentSetting() != CONTENT_SETTING_ALLOW ||
++      aux::AutoPipPolicyForHost(contents->GetLastCommittedURL().host()) ==
++          aux::AutoPipSitePolicy::kNever) return false;
++  auto* profile = Profile::FromBrowserContext(contents->GetBrowserContext());
++  aux::EgressRequestContext context;
++  context.page_id = identity->id();
++  context.document = frame->GetWeakDocumentPtr();
++  if (aux::EgressController::ForProfile(profile)->IsProtected(context)) return false;
++#endif
+   // Don't try to autopip if picture-in-picture is currently disabled.
+   if (PictureInPictureWindowManager::GetInstance()
+           ->IsPictureInPictureDisabled()) {
+@@ -730,6 +793,11 @@ bool AutoPictureInPictureTabHelper::IsEligibleForAutoPictureInPicture(
+ }
+ 
+ bool AutoPictureInPictureTabHelper::MeetsVideoPlaybackConditions() const {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (aux::AutoPipPolicyForHost(web_contents()->GetLastCommittedURL().host()) ==
++      aux::AutoPipSitePolicy::kEvenInaudible)
++    return is_playing_ && has_safe_url_ && MeetsMediaEngagementConditions();
++#endif
+   return has_audio_focus_ && is_playing_ && WasRecentlyAudible() &&
+          has_safe_url_ && MeetsMediaEngagementConditions();
+ }
+@@ -972,6 +1040,19 @@ bool AutoPictureInPictureTabHelper::AreAutoPictureInPicturePreconditionsMet()
+   return clock_->NowTicks() < auto_picture_in_picture_activation_time_;
+ }
+ 
++void AutoPictureInPictureTabHelper::OnNativeManualDocumentPictureInPicture(
++    content::RenderFrameHost& frame) {
++  if (!frame.IsActive() || !frame.IsRenderFrameLive() ||
++      web_contents()->GetPrimaryMainFrame() != &frame ||
++      content::WebContents::FromRenderFrameHost(&frame) != web_contents()) {
++    return;
++  }
++  dispatch_weak_factory_.InvalidateWeakPtrs();
++  auto_picture_in_picture_activation_time_ = base::TimeTicks();
++  auto_pip_trigger_reason_ =
++      media::PictureInPictureEventsInfo::AutoPipReason::kUnknown;
++}
++
+ void AutoPictureInPictureTabHelper::set_auto_blocker_for_testing(
+     permissions::PermissionDecisionAutoBlockerBase* auto_blocker) {
+   auto_blocker_ = auto_blocker;
+diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
+index 496945dd16..1578c50ed1 100644
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h
+@@ -5,7 +5,9 @@
+ #ifndef CHROME_BROWSER_PICTURE_IN_PICTURE_AUTO_PICTURE_IN_PICTURE_TAB_HELPER_H_
+ #define CHROME_BROWSER_PICTURE_IN_PICTURE_AUTO_PICTURE_IN_PICTURE_TAB_HELPER_H_
+ 
++#include <string>
+ #include "base/gtest_prod_util.h"
++#include "content/public/browser/weak_document_ptr.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/weak_ptr.h"
+ #include "base/time/time.h"
+@@ -39,6 +41,7 @@ class AutoPipSettingHelper;
+ class AutoPipSettingOverlayView;
+ class HostContentSettingsMap;
+ class MediaEngagementService;
++class Profile;
+ 
+ // The AutoPictureInPictureTabHelper is a TabHelper attached to each WebContents
+ // that facilitates automatically opening and closing picture-in-picture windows
+@@ -135,6 +138,10 @@ class AutoPictureInPictureTabHelper
+   // clears the preconditions until the next time they're met.
+   bool AreAutoPictureInPicturePreconditionsMet() const;
+ 
++  // Retire pending automatic classification at an admitted native manual
++  // Document PiP intent. Caller must be the original current primary frame.
++  void OnNativeManualDocumentPictureInPicture(content::RenderFrameHost& frame);
++
+   void set_auto_blocker_for_testing(
+       permissions::PermissionDecisionAutoBlockerBase* auto_blocker);
+ 
+@@ -214,6 +221,18 @@ class AutoPictureInPictureTabHelper
+  private:
+   explicit AutoPictureInPictureTabHelper(content::WebContents* web_contents);
+   friend class content::WebContentsUserData<AutoPictureInPictureTabHelper>;
++  FRIEND_TEST_ALL_PREFIXES(AuxAutoPictureInPictureEligibilityBrowserTest,
++                          ExactSiteOptInIsRequired);
++  FRIEND_TEST_ALL_PREFIXES(AuxAutoPictureInPictureEligibilityBrowserTest,
++                          VisibleSplitPaneIsNotAHiddenCandidate);
++  FRIEND_TEST_ALL_PREFIXES(AuxAutoPictureInPictureEligibilityBrowserTest,
++                          CurrentActiveOwnerCannotAutoEnter);
++  FRIEND_TEST_ALL_PREFIXES(AuxAutoPictureInPictureEligibilityBrowserTest,
++                          RuntimeOwnedPageCannotAutoEnter);
++  FRIEND_TEST_ALL_PREFIXES(AuxAutoPictureInPictureEligibilityBrowserTest,
++                          NativeProtectedDocumentRefusesEntry);
++  FRIEND_TEST_ALL_PREFIXES(AuxAutoPictureInPictureEligibilityBrowserTest,
++                          NativeSecurityScopeRefusesEntry);
+   FRIEND_TEST_ALL_PREFIXES(AutoPictureInPictureTabHelperBrowserTest,
+                            CannotAutopipViaHttp);
+   FRIEND_TEST_ALL_PREFIXES(AutoPictureInPictureTabHelperBrowserTest,
+@@ -222,6 +241,10 @@ class AutoPictureInPictureTabHelper
+                            DoesNotDocumentAutopip_VideoInRemoteIFrame);
+ 
+   void MaybeEnterAutoPictureInPicture();
++  static bool RevalidateAutoPictureInPicture(
++      base::WeakPtr<AutoPictureInPictureTabHelper> helper,
++      content::WeakDocumentPtr document, Profile* profile,
++      std::string page_id, int window_id);
+ 
+   // If needed, schedules the asynchronous task to get the URL safety. When
+   // async tasks complete there may be a call to
+@@ -489,6 +512,7 @@ class AutoPictureInPictureTabHelper
+   // is invalidated during calls to `StopAndResetAsyncTasks`.
+   base::WeakPtrFactory<AutoPictureInPictureTabHelper> async_tasks_weak_factory_{
+       this};
++  base::WeakPtrFactory<AutoPictureInPictureTabHelper> dispatch_weak_factory_{this};
+ 
+   WEB_CONTENTS_USER_DATA_KEY_DECL();
+ };
+diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
+index 1c541e7122..53456517c8 100644
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
+@@ -5,6 +5,10 @@
+ #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.h"
+ 
+ #include "chrome/browser/ui/browser_tab_strip_tracker.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/surface_visibility.h"
++#endif
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+@@ -118,6 +122,9 @@ void AutoPictureInPictureTabStripObserverHelper::UpdateIsTabActivated(
+         tabs::TabInterface::GetFromContents(GetObservedWebContents());
+     is_tab_activated_ =
+         (tab_strip_model->GetActiveWebContents() == GetObservedWebContents()) ||
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++        aux::IsStageVisible(GetObservedWebContents()) ||
++#endif
+         (active_tab->IsSplit() &&
+          active_tab->GetSplit() == observed_tab->GetSplit());
+   }
+@@ -168,13 +175,15 @@ AutoPictureInPictureTabStripObserverHelper::GetActiveWebContents() const {
+ }
+ 
+ bool AutoPictureInPictureTabStripObserverHelper::IsTabActivated() {
++#if !BUILDFLAG(ENABLE_AUX_SHELL)
+   // If we're currently observing the tab strip, then `is_tab_activated_` is
+   // current so we can just return it.
+   if (is_observing_) {
+     return is_tab_activated_;
+   }
+ 
+-  // Otherwise, calculate it now.
++#endif
++  // Aux stage visibility can change independently of strip selection.
+   UpdateIsTabActivated(GetCurrentTabStripModel());
+   return is_tab_activated_;
+ }
+diff --git a/content/browser/media/session/media_session_controller.cc b/content/browser/media/session/media_session_controller.cc
+index 3dbea6f06c..6a9e361e34 100644
+--- a/content/browser/media/session/media_session_controller.cc
++++ b/content/browser/media/session/media_session_controller.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/media/session/media_session_controller.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
+ 
+ #include "content/browser/media/media_devices_util.h"
+ #include "content/browser/media/media_web_contents_observer.h"
+@@ -107,6 +108,14 @@ void MediaSessionController::OnEnterPictureInPicture(
+       ->RequestEnterPictureInPicture(min_size);
+ }
+ 
++void MediaSessionController::OnEnterAutomaticPictureInPicture(
++    int player_id, const base::UnguessableToken& ticket,
++    const gfx::Size& min_size) {
++  DCHECK_EQ(player_id_, player_id);
++  web_contents_->media_web_contents_observer()->GetMediaPlayerRemote(id_)
++      ->RequestEnterAutomaticPictureInPicture(ticket, min_size);
++}
++
+ void MediaSessionController::OnSaveVideoFrame(int player_id) {
+   DCHECK_EQ(player_id_, player_id);
+ 
+@@ -178,6 +187,26 @@ void MediaSessionController::OnRequestVisibility(
+       ->RequestVisibility(std::move(request_visibility_callback));
+ }
+ 
++void MediaSessionController::OnRequestAutoPictureInPictureSize(
++    int player_id, AutoPictureInPictureSizeCallback callback) {
++  DCHECK_EQ(player_id_, player_id);
++  auto* observer = web_contents_->media_web_contents_observer();
++  auto* frame = render_frame_host();
++  if (!frame || !frame->IsInPrimaryMainFrame() ||
++      !observer->IsMediaPlayerRemoteAvailable(id_)) {
++    std::move(callback).Run(gfx::Size());
++    return;
++  }
++  observer->GetMediaPlayerRemote(id_)->RequestAutoPictureInPictureSize(
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          base::BindOnce(
++              [](AutoPictureInPictureSizeCallback callback, const gfx::Size& size) {
++                std::move(callback).Run(size);
++              },
++              std::move(callback)),
++          gfx::Size()));
++}
++
+ RenderFrameHost* MediaSessionController::render_frame_host() const {
+   return RenderFrameHost::FromID(id_.frame_routing_id);
+ }
+diff --git a/content/browser/media/session/media_session_controller.h b/content/browser/media/session/media_session_controller.h
+index 7c1e9e9321..90f7e81f28 100644
+--- a/content/browser/media/session/media_session_controller.h
++++ b/content/browser/media/session/media_session_controller.h
+@@ -68,6 +68,9 @@ class CONTENT_EXPORT MediaSessionController
+   void OnEnterPictureInPicture(
+       int player_id,
+       const std::optional<gfx::Size>& min_size) override;
++  void OnEnterAutomaticPictureInPicture(
++      int player_id, const base::UnguessableToken& ticket,
++      const gfx::Size& min_size) override;
+   void OnSaveVideoFrame(int player_id) override;
+   void OnSetAudioSinkId(int player_id,
+                         const std::string& raw_device_id) override;
+@@ -76,6 +79,8 @@ class CONTENT_EXPORT MediaSessionController
+   void OnRequestVisibility(
+       int player_id,
+       RequestVisibilityCallback request_visibility_callback) override;
++  void OnRequestAutoPictureInPictureSize(
++      int player_id, AutoPictureInPictureSizeCallback callback) override;
+   RenderFrameHost* render_frame_host() const override;
+   std::optional<media_session::MediaPosition> GetPosition(
+       int player_id) const override;
+diff --git a/content/browser/media/session/media_session_impl.cc b/content/browser/media/session/media_session_impl.cc
+index 7c443c00c4..ebe8a2682a 100644
+--- a/content/browser/media/session/media_session_impl.cc
++++ b/content/browser/media/session/media_session_impl.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "third_party/blink/public/common/frame/user_activation_state.h"
+ #include "content/browser/media/session/media_session_impl.h"
+ 
+ #include <algorithm>
+@@ -9,6 +10,7 @@
+ #include <utility>
+ 
+ #include "base/functional/bind.h"
++#include "base/barrier_callback.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/time/time.h"
+@@ -295,6 +297,7 @@ void MediaSessionImpl::RenderFrameDeleted(RenderFrameHost* rfh) {
+ }
+ 
+ void MediaSessionImpl::PrimaryPageChanged(content::Page& page) {
++  ++auto_pip_generation_;
+   last_auto_picture_in_picture_info_.reset();
+ }
+ 
+@@ -1319,7 +1322,7 @@ void MediaSessionImpl::EnterPictureInPicture() {
+         blink::mojom::MediaSessionActionDetails::NewEnterPictureInPicture(
+             blink::mojom::MediaSessionEnterPictureInPictureDetails::New(
+                 blink::mojom::MediaSessionEnterPictureInPictureReason::
+-                    kUserAction)));
++                    kUserAction, std::nullopt, false)));
+     uma_helper_.RecordEnterPictureInPicture(
+         MediaSessionUmaHelper::EnterPictureInPictureType::kRegisteredManual);
+     return;
+@@ -1352,12 +1355,190 @@ void MediaSessionImpl::EnterAutoPictureInPicture() {
+       blink::mojom::MediaSessionActionDetails::NewEnterPictureInPicture(
+           blink::mojom::MediaSessionEnterPictureInPictureDetails::New(
+               blink::mojom::MediaSessionEnterPictureInPictureReason::
+-                  kContentOccluded)));
++                  kContentOccluded, std::nullopt,
++              GetContentClient()->browser()->RequiresCurrentAutoPictureInPictureAuthority())));
+   uma_helper_.RecordEnterPictureInPicture(
+       MediaSessionUmaHelper::EnterPictureInPictureType::kRegisteredAutomatic);
+   ReportAutoPictureInPictureInfoChanged();
+ }
+ 
++void MediaSessionImpl::EnterAutoPictureInPictureWithEligibility(
++    base::RepeatingCallback<bool()> eligible) {
++  auto weak = weak_factory_.GetWeakPtr();
++  if (!eligible || !eligible.Run() || !weak) return;
++  if (ShouldRouteAction(
++          media_session::mojom::MediaSessionAction::kEnterPictureInPicture)) {
++    auto* frame = routed_service_->GetRenderFrameHost();
++    if (frame != web_contents()->GetPrimaryMainFrame() || normal_players_.size() > 64) return;
++    const auto token = base::UnguessableToken::Create();
++    auto_pip_selection_timer_.Stop();
++    auto_pip_authority_.emplace(AutoPipAuthority{
++        token, std::nullopt, true, frame->GetWeakDocumentPtr(),
++        ++auto_pip_generation_, base::TimeTicks::Now() + blink::kActivationLifespan,
++        std::move(eligible)});
++    DidReceiveAction(
++        media_session::mojom::MediaSessionAction::kEnterPictureInPicture,
++        blink::mojom::MediaSessionActionDetails::NewEnterPictureInPicture(
++            blink::mojom::MediaSessionEnterPictureInPictureDetails::New(
++                blink::mojom::MediaSessionEnterPictureInPictureReason::kContentOccluded,
++                token, true)));
++    if (!weak) return;
++    uma_helper_.RecordEnterPictureInPicture(
++        MediaSessionUmaHelper::EnterPictureInPictureType::kRegisteredAutomatic);
++    ReportAutoPictureInPictureInfoChanged();
++    return;
++  }
++  SelectAutoPipPlayer(std::move(eligible));
++}
++
++bool MediaSessionImpl::IsAutoPipPlayerEligible(
++    const PlayerIdentifier& player) const {
++  if (!normal_players_.contains(player)) return false;
++  auto* frame = player.observer->render_frame_host();
++  return frame && frame->IsInPrimaryMainFrame() &&
++      frame == web_contents()->GetPrimaryMainFrame() &&
++      !player.observer->IsPaused(player.player_id) &&
++      player.observer->IsPictureInPictureAvailable(player.player_id);
++}
++
++void MediaSessionImpl::SelectAutoPipPlayer(
++    base::RepeatingCallback<bool()> eligible) {
++  if (!CanEnterBrowserInitiatedAutomaticPictureInPicture() ||
++      !base::FeatureList::IsEnabled(
++          blink::features::kBrowserInitiatedAutomaticPictureInPicture)) return;
++  std::vector<PlayerIdentifier> players;
++  for (const auto& item : normal_players_)
++    if (IsAutoPipPlayerEligible(item.first)) players.push_back(item.first);
++  if (players.empty() || players.size() > 64) return;
++  auto_pip_authority_.reset();
++  const auto generation = ++auto_pip_generation_;
++  auto_pip_selection_deadline_ = base::TimeTicks::Now() + base::Seconds(2);
++  auto_pip_selection_timer_.Start(FROM_HERE, base::Seconds(2),
++      base::BindOnce(&MediaSessionImpl::CancelAutoPipSelection,
++                    weak_factory_.GetWeakPtr(), generation));
++  auto sizes = base::BarrierCallback<AutoPipCandidate>(
++      players.size(), base::BindOnce(&MediaSessionImpl::AutoPipPlayerSizesReady,
++          weak_factory_.GetWeakPtr(), generation,
++          web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr(),
++          std::move(eligible)));
++  auto weak = weak_factory_.GetWeakPtr();
++  for (const auto& player : players) {
++    if (!weak || generation != auto_pip_generation_ ||
++        !IsAutoPipPlayerEligible(player)) return;
++    player.observer->OnRequestAutoPictureInPictureSize(player.player_id,
++        base::BindOnce([](base::RepeatingCallback<void(AutoPipCandidate)> sizes,
++                          PlayerIdentifier player, gfx::Size size) {
++          sizes.Run({player, size});
++        }, sizes, player));
++  }
++}
++
++void MediaSessionImpl::AutoPipPlayerSizesReady(
++    uint64_t generation, WeakDocumentPtr document,
++    base::RepeatingCallback<bool()> eligible,
++    std::vector<AutoPipCandidate> candidates) {
++  auto weak = weak_factory_.GetWeakPtr();
++  if (!eligible || !eligible.Run() || !weak) return;
++  if (generation != auto_pip_generation_ ||
++      document.AsRenderFrameHostIfValid() != web_contents()->GetPrimaryMainFrame() ||
++      !CanEnterBrowserInitiatedAutomaticPictureInPicture()) return;
++  std::optional<AutoPipCandidate> best;
++  for (const auto& candidate : candidates) {
++    if (!IsAutoPipPlayerEligible(candidate.player) ||
++        candidate.size.width() < kBrowserAutoPipMinSize.width() ||
++        candidate.size.height() < kBrowserAutoPipMinSize.height()) continue;
++    const auto area = static_cast<int64_t>(candidate.size.width()) * candidate.size.height();
++    const auto best_area = best ? static_cast<int64_t>(best->size.width()) * best->size.height() : 0;
++    if (!best || area > best_area ||
++        (area == best_area && candidate.player < best->player)) best = candidate;
++  }
++  if (!best) return;
++  best->player.observer->OnRequestAutoPictureInPictureSize(best->player.player_id,
++      base::BindOnce(&MediaSessionImpl::AutoPipPlayerRevalidated,
++          weak_factory_.GetWeakPtr(), generation, document, std::move(eligible),
++          best->player, best->size));
++}
++
++void MediaSessionImpl::AutoPipPlayerRevalidated(
++    uint64_t generation, WeakDocumentPtr document,
++    base::RepeatingCallback<bool()> eligible,
++    PlayerIdentifier player, gfx::Size expected_size, gfx::Size current_size) {
++  auto weak = weak_factory_.GetWeakPtr();
++  if (!eligible || !eligible.Run() || !weak) return;
++  if (generation != auto_pip_generation_ || current_size != expected_size ||
++      current_size.IsEmpty() ||
++      document.AsRenderFrameHostIfValid() != web_contents()->GetPrimaryMainFrame() ||
++      !IsAutoPipPlayerEligible(player) ||
++      !CanEnterBrowserInitiatedAutomaticPictureInPicture()) return;
++  auto_pip_selection_timer_.Stop();
++  const auto token = base::UnguessableToken::Create();
++  auto_pip_authority_.emplace(AutoPipAuthority{
++      token, player, false, document, ++auto_pip_generation_,
++      auto_pip_selection_deadline_, std::move(eligible)});
++  player.observer->OnEnterAutomaticPictureInPicture(
++      player.player_id, token, current_size);
++  if (!weak) return;
++  RecordBrowserInitiatedAutomaticPictureInPictureUkm(false);
++  uma_helper_.RecordEnterPictureInPicture(
++      MediaSessionUmaHelper::EnterPictureInPictureType::kDefaultAutomatic);
++}
++
++void MediaSessionImpl::CancelAutoPipSelection(uint64_t generation) {
++  if (generation == auto_pip_generation_) ++auto_pip_generation_;
++}
++
++bool MediaSessionImpl::CheckAutoPipAuthority(
++    const AutoPipAuthority& authority) {
++  auto weak = weak_factory_.GetWeakPtr();
++  if (!authority.eligible || !authority.eligible.Run() || !weak) return false;
++  return authority.generation == auto_pip_generation_ &&
++      base::TimeTicks::Now() < authority.deadline &&
++      authority.document.AsRenderFrameHostIfValid() ==
++          web_contents()->GetPrimaryMainFrame() &&
++      IsAutoPipAuthorityPlayerCurrent(authority) &&
++      (authority.registered_handler
++          ? (ShouldRouteAction(media_session::mojom::MediaSessionAction::kEnterPictureInPicture) &&
++             routed_service_->GetRenderFrameHost() == web_contents()->GetPrimaryMainFrame())
++          : CanEnterBrowserInitiatedAutomaticPictureInPicture());
++}
++
++bool MediaSessionImpl::IsAutoPipAuthorityPlayerCurrent(
++    const AutoPipAuthority& authority) const {
++  if (!authority.player) return authority.registered_handler;
++  const auto& player = *authority.player;
++  if (!normal_players_.contains(player)) return false;
++  auto* frame = player.observer->render_frame_host();
++  return frame && frame == authority.document.AsRenderFrameHostIfValid() &&
++      frame == web_contents()->GetPrimaryMainFrame() &&
++      player.observer->IsPictureInPictureAvailable(player.player_id) &&
++      (authority.registered_handler || !player.observer->IsPaused(player.player_id));
++}
++
++base::OnceCallback<bool()> MediaSessionImpl::TakeAutoPictureInPictureAuthority(
++    const base::UnguessableToken& token, RenderFrameHost* frame,
++    uint32_t player_id) {
++  auto weak = weak_factory_.GetWeakPtr();
++  if (!auto_pip_authority_ || auto_pip_authority_->token != token) return {};
++  auto authority = std::move(*auto_pip_authority_);
++  auto_pip_authority_.reset();
++  if (authority.registered_handler && !authority.player) {
++    for (const auto& [player, focus] : normal_players_) {
++      if (player.player_id == static_cast<int>(player_id) &&
++          player.observer->render_frame_host() == frame) {
++        authority.player = player;
++        break;
++      }
++    }
++  }
++  if (authority.document.AsRenderFrameHostIfValid() != frame ||
++      !authority.player || authority.player->player_id != static_cast<int>(player_id) ||
++      !CheckAutoPipAuthority(authority) || !weak) return {};
++  return base::BindOnce(
++      [](base::WeakPtr<MediaSessionImpl> session, AutoPipAuthority authority) {
++        return session && session->CheckAutoPipAuthority(authority);
++      }, weak, std::move(authority));
++}
++
+ void MediaSessionImpl::SaveVideoFrame() {
+   if (!IsVideoFrameAvailable()) {
+     return;
+@@ -1889,6 +2070,7 @@ base::WeakPtr<MediaSessionImpl> MediaSessionImpl::GetWeakPtr() {
+ }
+ 
+ void MediaSessionImpl::RebuildAndNotifyActionsChanged() {
++  ++auto_pip_generation_;
+   std::set<media_session::mojom::MediaSessionAction> actions =
+       routed_service_ ? routed_service_->actions()
+                       : std::set<media_session::mojom::MediaSessionAction>();
+@@ -2295,31 +2477,11 @@ bool MediaSessionImpl::CanEnterBrowserInitiatedAutomaticPictureInPicture()
+     return false;
+   }
+ 
+-  if (!IsPictureInPictureAvailable()) {
+-    return false;
+-  }
+-
+-  if (IsActivelyUsingCameraOrMicrophone()) {
+-    return false;
+-  }
+-
+-  // There should be one and only one player when we could enter browser
+-  // initiated automatic picture-in-picture.
+-  CHECK_EQ(normal_players_.size(), 1u);
+-
+-  auto& first = normal_players_.begin()->first;
+-  if (first.observer->IsPaused(first.player_id)) {
+-    return false;
+-  }
+-
+-  // Ensure that browser-initiated automatic picture-in-picture is only allowed
+-  // for the primary main frame.
+-  RenderFrameHost* frame = first.observer->render_frame_host();
+-  if (!frame || !frame->IsInPrimaryMainFrame()) {
+-    return false;
+-  }
+-
+-  return true;
++  if (IsActivelyUsingCameraOrMicrophone()) return false;
++  return normal_players_.size() <= 64 &&
++      std::ranges::any_of(normal_players_, [this](const auto& item) {
++        return IsAutoPipPlayerEligible(item.first);
++      });
+ }
+ 
+ void MediaSessionImpl::RecordBrowserInitiatedAutomaticPictureInPictureUkm(
+@@ -2352,9 +2514,17 @@ void MediaSessionImpl::MaybeEnterBrowserInitiatedAutomaticPictureInPicture() {
+     return;
+   }
+ 
++  // Aux has no owner/site receipt on this legacy route. Never turn its
++  // automatic request into the upstream manual renderer entry. Dry-run
++  // telemetry and other embedders retain their original behavior.
++  if (base::FeatureList::IsEnabled(
++          blink::features::kBrowserInitiatedAutomaticPictureInPicture) &&
++      GetContentClient()->browser()->RequiresCurrentAutoPictureInPictureAuthority())
++    return;
++
+   // There should be one and only one player when we could enter browser
+   // initiated automatic picture-in-picture.
+-  CHECK_EQ(normal_players_.size(), 1u);
++  if (normal_players_.size() != 1u) return;
+ 
+   if (base::FeatureList::IsEnabled(
+           blink::features::kBrowserInitiatedAutomaticPictureInPicture)) {
+diff --git a/content/browser/media/session/media_session_impl.h b/content/browser/media/session/media_session_impl.h
+index 41ef57c623..88edfee587 100644
+--- a/content/browser/media/session/media_session_impl.h
++++ b/content/browser/media/session/media_session_impl.h
+@@ -5,8 +5,10 @@
+ #ifndef CONTENT_BROWSER_MEDIA_SESSION_MEDIA_SESSION_IMPL_H_
+ #define CONTENT_BROWSER_MEDIA_SESSION_MEDIA_SESSION_IMPL_H_
+ 
++#include "base/unguessable_token.h"
+ #include <stddef.h>
+ 
++#include <cstdint>
+ #include <map>
+ #include <optional>
+ #include <set>
+@@ -27,6 +29,7 @@
+ #include "content/public/browser/page_user_data.h"
+ #include "content/public/browser/presentation_observer.h"
+ #include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/weak_document_ptr.h"
+ #include "content/public/browser/web_contents_user_data.h"
+ #include "media/base/picture_in_picture_events_info.h"
+ #include "mojo/public/cpp/bindings/receiver_set.h"
+@@ -293,6 +296,14 @@ class MediaSessionImpl : public MediaSession,
+   // Automatically enter picture-in-picture from a non-user source (e.g. in
+   // reaction to content being hidden).
+   void EnterAutoPictureInPicture() override;
++  void EnterAutoPictureInPictureWithEligibility(
++      base::RepeatingCallback<bool()> eligible) override;
++
++  // Consumes only the matching automatic ticket. The returned check must run
++  // at the native effect boundary, after any queued renderer work.
++  CONTENT_EXPORT base::OnceCallback<bool()> TakeAutoPictureInPictureAuthority(
++      const base::UnguessableToken& token, RenderFrameHost* frame,
++      uint32_t player_id);
+ 
+   // Save the current video frame.
+   void SaveVideoFrame() override;
+@@ -583,6 +594,36 @@ class MediaSessionImpl : public MediaSession,
+   // is registered by the browser (the user did not provide an
+   // `enterpictureinpicture` action handler).
+   void MaybeEnterBrowserInitiatedAutomaticPictureInPicture();
++  struct AutoPipCandidate {
++    PlayerIdentifier player;
++    gfx::Size size;
++  };
++  bool IsAutoPipPlayerEligible(const PlayerIdentifier& player) const;
++  void SelectAutoPipPlayer(base::RepeatingCallback<bool()> eligible);
++  void AutoPipPlayerSizesReady(
++      uint64_t generation, WeakDocumentPtr document,
++      base::RepeatingCallback<bool()> eligible,
++      std::vector<AutoPipCandidate> candidates);
++  void AutoPipPlayerRevalidated(
++      uint64_t generation, WeakDocumentPtr document,
++      base::RepeatingCallback<bool()> eligible,
++      PlayerIdentifier player, gfx::Size expected_size, gfx::Size current_size);
++  void CancelAutoPipSelection(uint64_t generation);
++  struct AutoPipAuthority {
++    base::UnguessableToken token;
++    std::optional<PlayerIdentifier> player;
++    bool registered_handler;
++    WeakDocumentPtr document;
++    uint64_t generation;
++    base::TimeTicks deadline;
++    base::RepeatingCallback<bool()> eligible;
++  };
++  bool CheckAutoPipAuthority(const AutoPipAuthority& authority);
++  bool IsAutoPipAuthorityPlayerCurrent(const AutoPipAuthority& authority) const;
++  std::optional<AutoPipAuthority> auto_pip_authority_;
++  base::TimeTicks auto_pip_selection_deadline_;
++  uint64_t auto_pip_generation_ = 0;
++  base::OneShotTimer auto_pip_selection_timer_;
+ 
+   // Records the UKM for browser-initiated automatic picture-in-picture.
+   void RecordBrowserInitiatedAutomaticPictureInPictureUkm(bool is_dry_run);
+diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.cc b/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
+--- a/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
++++ b/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "content/browser/media/session/media_session_impl.h"
+ #include "content/browser/picture_in_picture/picture_in_picture_service_impl.h"
+ 
+ #include <utility>
+@@ -30,6 +31,7 @@
+       StartSessionCallback callback);
+   ~PendingSession();
+ 
++  base::OnceCallback<bool()> automatic_authority;
+   uint32_t player_id;
+   mojo::PendingAssociatedRemote<media::mojom::MediaPlayer> player_remote;
+   viz::SurfaceId surface_id;
+@@ -90,6 +92,38 @@
+   }
+ }
+ 
++void PictureInPictureServiceImpl::StartAutomaticSession(
++    const base::UnguessableToken& ticket, uint32_t player_id,
++    mojo::PendingAssociatedRemote<media::mojom::MediaPlayer> player_remote,
++    const viz::SurfaceId& surface_id, const gfx::Size& natural_size,
++    bool show_play_pause_button,
++    mojo::PendingRemote<blink::mojom::PictureInPictureSessionObserver> observer,
++    const gfx::Rect& source_bounds,
++    const media::VideoSpatialFormat& spatial_format,
++    StartAutomaticSessionCallback callback) {
++  auto pending = std::make_unique<PendingSession>(
++      player_id, std::move(player_remote), surface_id, natural_size,
++      show_play_pause_button, std::move(observer), source_bounds, spatial_format,
++      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++          std::move(callback), mojo::NullRemote(), gfx::Size()));
++  DispatchAutomaticSession(ticket, std::move(pending));
++}
++
++void PictureInPictureServiceImpl::DispatchAutomaticSession(
++    const base::UnguessableToken& ticket, std::unique_ptr<PendingSession> pending) {
++  auto* contents = WebContents::FromRenderFrameHost(&render_frame_host());
++  auto authority = contents ? MediaSessionImpl::Get(contents)
++      ->TakeAutoPictureInPictureAuthority(
++          ticket, &render_frame_host(), pending->player_id)
++      : base::OnceCallback<bool()>();
++  // PendingSession owns an exact negative completion, including destruction
++  // or cancellation of a held continuation. No automatic/manual fallback.
++  if (!authority) return;
++  immersive_confirmation_weak_factory_.InvalidateWeakPtrs();
++  pending->automatic_authority = std::move(authority);
++  StartSessionInternal(std::move(pending), std::nullopt);
++}
++
+ void PictureInPictureServiceImpl::StartSessionInternal(
+     std::unique_ptr<PictureInPictureServiceImpl::PendingSession>
+         pending_session,
+@@ -104,7 +138,8 @@
+       std::move(pending_session->player_remote), pending_session->surface_id,
+       pending_session->natural_size, pending_session->show_play_pause_button,
+       std::move(pending_session->observer), pending_session->source_bounds,
+-      std::move(immersive_options), &session_remote, &window_size);
++      std::move(immersive_options), &session_remote, &window_size,
++      std::move(pending_session->automatic_authority));
+ 
+   if (result == PictureInPictureResult::kSuccess) {
+     // Frames are to be blocklisted from the back-forward cache because the
+diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.h b/content/browser/picture_in_picture/picture_in_picture_service_impl.h
+--- a/content/browser/picture_in_picture/picture_in_picture_service_impl.h
++++ b/content/browser/picture_in_picture/picture_in_picture_service_impl.h
+@@ -5,6 +5,9 @@
+ #ifndef CONTENT_BROWSER_PICTURE_IN_PICTURE_PICTURE_IN_PICTURE_SERVICE_IMPL_H_
+ #define CONTENT_BROWSER_PICTURE_IN_PICTURE_PICTURE_IN_PICTURE_SERVICE_IMPL_H_
+ 
++#include "base/functional/callback.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "base/unguessable_token.h"
+ #include "base/memory/weak_ptr.h"
+ #include "content/common/content_export.h"
+ #include "content/public/browser/document_service.h"
+@@ -59,9 +62,18 @@
+       const media::VideoSpatialFormat& spatial_format,
+       StartSessionCallback) final;
+ 
++  void StartAutomaticSession(
++      const base::UnguessableToken& ticket, uint32_t player_id,
++      mojo::PendingAssociatedRemote<media::mojom::MediaPlayer> player_remote,
++      const viz::SurfaceId& surface_id, const gfx::Size& natural_size,
++      bool show_play_pause_button,
++      mojo::PendingRemote<blink::mojom::PictureInPictureSessionObserver> observer,
++      const gfx::Rect& source_bounds,
++      const media::VideoSpatialFormat& spatial_format,
++      StartAutomaticSessionCallback callback) final;
++
+  private:
+   friend class PictureInPictureSession;
+-
+   struct PendingSession;
+ 
+   PictureInPictureServiceImpl(
+@@ -70,6 +82,9 @@
+   ~PictureInPictureServiceImpl() override;
+ 
+   VideoPictureInPictureWindowControllerImpl& GetController();
++
++  void DispatchAutomaticSession(const base::UnguessableToken& ticket,
++                                std::unique_ptr<PendingSession> pending_session);
+ 
+   void StartSessionInternal(std::unique_ptr<PendingSession> pending_session,
+                             std::optional<ImmersiveOptions> immersive_options);
+diff --git a/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc b/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc
+index f163d55709..9a53acc364 100644
+--- a/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc
++++ b/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "content/public/browser/weak_document_ptr.h"
+ #include "content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.h"
+ 
+ #include <set>
+@@ -295,7 +296,8 @@ PictureInPictureResult VideoPictureInPictureWindowControllerImpl::StartSession(
+     const gfx::Rect& source_bounds,
+     std::optional<content::ImmersiveOptions> immersive_options,
+     mojo::PendingRemote<blink::mojom::PictureInPictureSession>* session_remote,
+-    gfx::Size* window_size) {
++    gfx::Size* window_size,
++    base::OnceCallback<bool()> automatic_authority) {
+   if (window_) {
+     // We shouldn't be switching between standard and immersive
+     // Picture-in-Picture modes if a window already exists. Immersive mode is
+@@ -314,6 +316,19 @@ PictureInPictureResult VideoPictureInPictureWindowControllerImpl::StartSession(
+   WebContentsDelegate* delegate = web_contents()->GetDelegate();
+   if (delegate && (IsImmersive() ? delegate->IsImmersivePlaybackEnabled()
+                                  : delegate->IsPictureInPictureEnabled())) {
++    // The native effect occurs only after the one-use automatic ticket has
++    // rechecked document, selected player and current owner/site policy.
++    if (automatic_authority) {
++      auto document = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++      const bool authorized = std::move(automatic_authority).Run();
++      // The authority callback may retire its document/owner synchronously.
++      if (!document.AsRenderFrameHostIfValid())
++        return PictureInPictureResult::kNotSupported;
++      if (!authorized) {
++        is_immersive_ = false;
++        return PictureInPictureResult::kNotSupported;
++      }
++    }
+     result = GetWebContentsImpl()->EnterPictureInPicture();
+   }
+ 
+diff --git a/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.h b/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.h
+index d6fcb466e6..4a17554910 100644
+--- a/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.h
++++ b/content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.h
+@@ -150,7 +150,8 @@ class CONTENT_EXPORT VideoPictureInPictureWindowControllerImpl
+       std::optional<content::ImmersiveOptions> immersive_options,
+       mojo::PendingRemote<blink::mojom::PictureInPictureSession>*
+           session_remote,
+-      gfx::Size* window_size);
++      gfx::Size* window_size,
++      base::OnceCallback<bool()> automatic_authority = {});
+ 
+   using RequestImmersivePlaybackConfirmationCallback =
+       base::OnceCallback<void(content::ImmersivePlaybackConfirmationResult)>;
+diff --git a/content/public/browser/media_session.h b/content/public/browser/media_session.h
+index 34787cf9e1..3ccd9f7016 100644
+--- a/content/public/browser/media_session.h
++++ b/content/public/browser/media_session.h
+@@ -8,6 +8,7 @@
+ #include <string>
+ 
+ #include "base/time/time.h"
++#include "base/functional/callback.h"
+ #include "base/unguessable_token.h"
+ #include "content/common/content_export.h"
+ #include "services/media_session/public/mojom/media_session.mojom.h"
+@@ -28,6 +29,10 @@ class MediaSession : public media_session::mojom::MediaSession {
+  public:
+   ~MediaSession() override = default;
+ 
++  // Native embedder eligibility is rechecked after asynchronous video selection.
++  virtual void EnterAutoPictureInPictureWithEligibility(
++      base::RepeatingCallback<bool()> eligible) = 0;
++
+   // Returns the MediaSession associated to this WebContents. Creates one if
+   // none is currently available.
+   CONTENT_EXPORT static MediaSession* Get(WebContents* contents);
+diff --git a/content/public/browser/media_session_player_observer.cc b/content/public/browser/media_session_player_observer.cc
+index 9e38398e45..fd2baaff8a 100644
+--- a/content/public/browser/media_session_player_observer.cc
++++ b/content/public/browser/media_session_player_observer.cc
+@@ -17,6 +17,11 @@ void MediaSessionPlayerObserver::OnRequestVisibility(
+   std::move(request_visibility_callback).Run(false);
+ }
+ 
++void MediaSessionPlayerObserver::OnRequestAutoPictureInPictureSize(
++    int player_id, AutoPictureInPictureSizeCallback callback) {
++  std::move(callback).Run(gfx::Size());
++}
++
+ std::optional<media_session::MediaPosition>
+ MediaSessionPlayerObserver::GetPosition(int player_id) const {
+   return std::nullopt;
+diff --git a/content/public/browser/media_session_player_observer.h b/content/public/browser/media_session_player_observer.h
+index 3dfda5db7f..73e5fa6843 100644
+--- a/content/public/browser/media_session_player_observer.h
++++ b/content/public/browser/media_session_player_observer.h
+@@ -5,6 +5,7 @@
+ #ifndef CONTENT_PUBLIC_BROWSER_MEDIA_SESSION_PLAYER_OBSERVER_H_
+ #define CONTENT_PUBLIC_BROWSER_MEDIA_SESSION_PLAYER_OBSERVER_H_
+ 
++#include "base/unguessable_token.h"
+ #include <optional>
+ #include <string>
+ 
+@@ -57,6 +58,11 @@ class CONTENT_EXPORT MediaSessionPlayerObserver {
+       int player_id,
+       const std::optional<gfx::Size>& min_size) {}
+ 
++  // Unsupported observers refuse automatic entry rather than invoking manual PiP.
++  virtual void OnEnterAutomaticPictureInPicture(
++      int player_id, const base::UnguessableToken& ticket,
++      const gfx::Size& min_size) {}
++
+   // The given |player_id| has been requested to save the current video frame.
+   virtual void OnSaveVideoFrame(int player_id) {}
+ 
+@@ -85,6 +91,11 @@ class CONTENT_EXPORT MediaSessionPlayerObserver {
+       int player_id,
+       RequestVisibilityCallback request_visibility_callback);
+ 
++  // Empty size refuses automatic PiP; nonempty size is current visible layout in DIPs.
++  using AutoPictureInPictureSizeCallback = base::OnceCallback<void(gfx::Size)>;
++  virtual void OnRequestAutoPictureInPictureSize(
++      int player_id, AutoPictureInPictureSizeCallback callback);
++
+   // Returns the position for |player_id|.
+   virtual std::optional<media_session::MediaPosition> GetPosition(
+       int player_id) const;
+diff --git a/content/public/test/mock_media_session.h b/content/public/test/mock_media_session.h
+index 0923ac01f8..694f5fa4ef 100644
+--- a/content/public/test/mock_media_session.h
++++ b/content/public/test/mock_media_session.h
+@@ -108,6 +108,8 @@ class MockMediaSession : public MediaSession {
+   MOCK_METHOD(void, PreviousSlide, (), (override));
+   MOCK_METHOD(void, NextSlide, (), (override));
+   MOCK_METHOD(void, EnterAutoPictureInPicture, (), (override));
++  MOCK_METHOD(void, EnterAutoPictureInPictureWithEligibility,
++              (base::RepeatingCallback<bool()>), (override));
+   MOCK_METHOD(void, SaveVideoFrame, (), (override));
+ };
+ 
+diff --git a/media/mojo/mojom/media_player.mojom b/media/mojo/mojom/media_player.mojom
+index 8dcfa93038..61cce3cd52 100644
+--- a/media/mojo/mojom/media_player.mojom
++++ b/media/mojo/mojom/media_player.mojom
+@@ -6,6 +6,7 @@ module media.mojom;
+ 
+ import "media/mojo/mojom/media_types.mojom";
+ import "mojo/public/mojom/base/time.mojom";
++import "mojo/public/mojom/base/unguessable_token.mojom";
+ import "services/media_session/public/mojom/media_session.mojom";
+ import "ui/gfx/geometry/mojom/geometry.mojom";
+ 
+@@ -32,6 +33,10 @@ interface MediaPlayer {
+   // accounting for transforms and zoom).
+   RequestEnterPictureInPicture(gfx.mojom.Size? min_size);
+ 
++  // Automatic entry requires the browser-selected, one-use document ticket.
++  RequestEnterAutomaticPictureInPicture(
++      mojo_base.mojom.UnguessableToken ticket, gfx.mojom.Size min_size);
++
+   // Requests the media player to mute or unmute.
+   RequestMute(bool mute);
+ 
+@@ -73,6 +78,10 @@ interface MediaPlayer {
+ 
+   // Request the media player to save the current video frame.
+   RequestSaveVideoFrame();
++
++  // Returns empty for an ineligible player, otherwise its current visible
++  // transformed layout size in DIPs. This grants no activation or permission.
++  RequestAutoPictureInPictureSize() => (gfx.mojom.Size visible_size);
+ };
+ 
+ // Implemented by the MediaWebContentsObserver. The remote lives in the renderer
+diff --git a/third_party/blink/common/frame/user_activation_state.cc b/third_party/blink/common/frame/user_activation_state.cc
+index b4e18ada22..b8bd0f7a03 100644
+--- a/third_party/blink/common/frame/user_activation_state.cc
++++ b/third_party/blink/common/frame/user_activation_state.cc
+@@ -30,6 +30,7 @@ bool IsRestricted(UserActivationNotificationType notification_type) {
+ 
+ void UserActivationState::Activate(
+     UserActivationNotificationType notification_type) {
++  ++activation_generation_;
+   has_been_active_ = true;
+   last_activation_was_restricted_ = IsRestricted(notification_type);
+   ActivateTransientState();
+diff --git a/third_party/blink/public/common/frame/user_activation_state.h b/third_party/blink/public/common/frame/user_activation_state.h
+index 4f1ab42531..c84dd2e02b 100644
+--- a/third_party/blink/public/common/frame/user_activation_state.h
++++ b/third_party/blink/public/common/frame/user_activation_state.h
+@@ -5,6 +5,8 @@
+ #ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_FRAME_USER_ACTIVATION_STATE_H_
+ #define THIRD_PARTY_BLINK_PUBLIC_COMMON_FRAME_USER_ACTIVATION_STATE_H_
+ 
++#include <cstdint>
++
+ #include "base/time/time.h"
+ #include "base/time/time_override.h"
+ #include "third_party/blink/public/common/common_export.h"
+@@ -123,6 +125,8 @@ class BLINK_COMMON_EXPORT UserActivationState {
+   // recently been activated and the transient state hasn't been consumed yet.
+   bool IsActive() const;
+ 
++  uint64_t ActivationGeneration() const { return activation_generation_; }
++
+   // Consumes the transient activation state if available, and returns |true| if
+   // successfully consumed.
+   bool ConsumeIfActive();
+@@ -148,6 +152,7 @@ class BLINK_COMMON_EXPORT UserActivationState {
+ 
+   bool IsActiveInternal() const;
+ 
++  uint64_t activation_generation_ = 0;
+   bool has_been_active_ = false;
+   base::TimeTicks transient_state_expiry_time_;
+ 
+diff --git a/third_party/blink/public/mojom/mediasession/media_session.mojom b/third_party/blink/public/mojom/mediasession/media_session.mojom
+index d153b2bbaf..c81b20ab95 100644
+--- a/third_party/blink/public/mojom/mediasession/media_session.mojom
++++ b/third_party/blink/public/mojom/mediasession/media_session.mojom
+@@ -5,6 +5,7 @@
+ module blink.mojom;
+ 
+ import "mojo/public/mojom/base/time.mojom";
++import "mojo/public/mojom/base/unguessable_token.mojom";
+ import "mojo/public/mojom/base/string16.mojom";
+ import "services/media_session/public/mojom/media_session.mojom";
+ 
+@@ -45,6 +46,8 @@ struct MediaSessionSeekToDetails {
+ 
+ struct MediaSessionEnterPictureInPictureDetails {
+   MediaSessionEnterPictureInPictureReason reason;
++  mojo_base.mojom.UnguessableToken? automatic_ticket;
++  bool requires_current_authority = false;
+ };
+ 
+ union MediaSessionActionDetails {
+diff --git a/third_party/blink/public/mojom/picture_in_picture/picture_in_picture.mojom b/third_party/blink/public/mojom/picture_in_picture/picture_in_picture.mojom
+index 04fcfd410d..246ba39358 100644
+--- a/third_party/blink/public/mojom/picture_in_picture/picture_in_picture.mojom
++++ b/third_party/blink/public/mojom/picture_in_picture/picture_in_picture.mojom
+@@ -4,6 +4,7 @@
+ 
+ module blink.mojom;
+ 
++import "mojo/public/mojom/base/unguessable_token.mojom";
+ import "media/mojo/mojom/media_player.mojom";
+ import "media/mojo/mojom/media_types.mojom";
+ import "services/media_session/public/mojom/media_session.mojom";
+@@ -99,4 +100,18 @@ interface PictureInPictureService {
+       media.mojom.VideoSpatialFormat spatial_format)
+           => (pending_remote<PictureInPictureSession>? session,
+               gfx.mojom.Size size);
++
++  // Automatic entry never falls back to the manual session API.
++  StartAutomaticSession(
++      mojo_base.mojom.UnguessableToken ticket,
++      uint32 player_id,
++      pending_associated_remote<media.mojom.MediaPlayer> player_remote,
++      viz.mojom.SurfaceId surface_id,
++      gfx.mojom.Size natural_size,
++      bool show_play_pause_button,
++      pending_remote<PictureInPictureSessionObserver> observer,
++      gfx.mojom.Rect source_bounds,
++      media.mojom.VideoSpatialFormat spatial_format)
++          => (pending_remote<PictureInPictureSession>? session,
++              gfx.mojom.Size size);
+ };
+diff --git a/third_party/blink/renderer/core/frame/picture_in_picture_controller.h b/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
+index b3f24ba2f4..f81ec11b7b 100644
+--- a/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
++++ b/third_party/blink/renderer/core/frame/picture_in_picture_controller.h
+@@ -5,6 +5,9 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_PICTURE_IN_PICTURE_CONTROLLER_H_
+ #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_PICTURE_IN_PICTURE_CONTROLLER_H_
+ 
++#include <optional>
++
++#include "base/unguessable_token.h"
+ #include "services/media_session/public/mojom/media_session.mojom-blink.h"
+ #include "third_party/blink/public/mojom/picture_in_picture/picture_in_picture.mojom-blink.h"
+ #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+@@ -80,6 +83,15 @@ class CORE_EXPORT PictureInPictureController
+       HTMLVideoElement*,
+       ScriptPromiseResolver<PictureInPictureWindow>*) = 0;
+ 
++  virtual void EnterAutomaticPictureInPicture(
++      HTMLVideoElement*, const base::UnguessableToken&,
++      ScriptPromiseResolver<PictureInPictureWindow>* = nullptr) = 0;
++  virtual void SetAutomaticPictureInPictureContext(
++      const base::UnguessableToken&) = 0;
++  virtual void ClearAutomaticPictureInPictureContext() = 0;
++  virtual std::optional<base::UnguessableToken>
++      AutomaticPictureInPictureContext() const = 0;
++
+   // Enters an immersive Picture-in-Picture session for the given video element.
+   virtual void EnterPictureInPictureImmersive(
+       HTMLVideoElement& video_element) = 0;
+diff --git a/third_party/blink/renderer/core/html/media/html_media_element.h b/third_party/blink/renderer/core/html/media/html_media_element.h
+index f028964419..32aa259118 100644
+--- a/third_party/blink/renderer/core/html/media/html_media_element.h
++++ b/third_party/blink/renderer/core/html/media/html_media_element.h
+@@ -30,6 +30,7 @@
+ #include <limits>
+ #include <memory>
+ #include <optional>
++#include <utility>
+ #include <variant>
+ 
+ #include "base/memory/raw_ptr.h"
+@@ -66,6 +67,7 @@
+ #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+ #include "third_party/blink/renderer/platform/wtf/vector.h"
+ #include "third_party/webrtc_overrides/low_precision_timer.h"
++#include "ui/gfx/geometry/size.h"
+ 
+ namespace gfx {
+ class Size;
+@@ -665,8 +667,15 @@ class CORE_EXPORT HTMLMediaElement
+   void RequestSeekForward(base::TimeDelta seek_time) override;
+   void RequestSeekBackward(base::TimeDelta seek_time) override;
+   void RequestSeekTo(base::TimeDelta seek_time) override;
++  void RequestEnterAutomaticPictureInPicture(
++      const base::UnguessableToken& /*ticket*/,
++      const gfx::Size& /*min_size*/) override {}
+   void RequestEnterPictureInPicture(
+       const std::optional<gfx::Size>& min_size) override {}
++  void RequestAutoPictureInPictureSize(
++      RequestAutoPictureInPictureSizeCallback callback) override {
++    std::move(callback).Run(gfx::Size());
++  }
+   void RequestMute(bool mute) override;
+   void SetVolumeMultiplier(double multiplier) override;
+   void SetPersistentState(bool persistent) override {}
+diff --git a/third_party/blink/renderer/core/html/media/html_video_element.cc b/third_party/blink/renderer/core/html/media/html_video_element.cc
+index e07540f7b2..824a217178 100644
+--- a/third_party/blink/renderer/core/html/media/html_video_element.cc
++++ b/third_party/blink/renderer/core/html/media/html_video_element.cc
+@@ -599,7 +599,7 @@ void HTMLVideoElement::ResetCache(TimerBase*) {
+   cached_draw_info_.reset();
+ }
+ 
+-gfx::Size HTMLVideoElement::GetVisualSizeInDIPs() const {
++gfx::Size HTMLVideoElement::GetVisualSizeInDIPs(bool intersect_viewport) const {
+   auto* layout_video = DynamicTo<LayoutVideo>(GetLayoutObject());
+   LocalFrameView* view = GetDocument().View();
+   gfx::Rect viewport_rect;
+@@ -611,6 +611,9 @@ gfx::Size HTMLVideoElement::GetVisualSizeInDIPs() const {
+     viewport_rect = BoundsInWidget();
+   }
+ 
++  if (intersect_viewport && view) {
++    viewport_rect.Intersect(gfx::Rect(view->Size()));
++  }
+   gfx::Size dip_size = viewport_rect.size();
+   LocalFrame* frame = GetDocument().GetFrame();
+   if (auto* widget = frame ? frame->GetWidgetForLocalRoot() : nullptr) {
+@@ -714,8 +717,12 @@ void HTMLVideoElement::LogPictureInPictureSizeMetrics(
+ 
+ void HTMLVideoElement::RequestEnterPictureInPicture(
+     const std::optional<gfx::Size>& min_size) {
++  const auto current_size = min_size ? AutoPictureInPictureSize() : gfx::Size();
+   bool meets_constraint =
+-      MeetsRequestEnterPictureInPictureSizeConstraint(min_size);
++      MeetsRequestEnterPictureInPictureSizeConstraint(min_size) &&
++      (!min_size || (!current_size.IsEmpty() &&
++                    current_size.width() >= min_size->width() &&
++                    current_size.height() >= min_size->height()));
+ 
+   if (min_size.has_value()) {
+     LogPictureInPictureSizeMetrics(meets_constraint);
+@@ -729,6 +736,33 @@ void HTMLVideoElement::RequestEnterPictureInPicture(
+       .EnterPictureInPicture(this, /*promise=*/nullptr);
+ }
+ 
++void HTMLVideoElement::RequestEnterAutomaticPictureInPicture(
++    const base::UnguessableToken& ticket, const gfx::Size& min_size) {
++  const auto size = AutoPictureInPictureSize();
++  if (ticket.is_empty() || size.IsEmpty() ||
++      size.width() < min_size.width() || size.height() < min_size.height()) return;
++  PictureInPictureController::From(GetDocument())
++      .EnterAutomaticPictureInPicture(this, ticket);
++}
++
++gfx::Size HTMLVideoElement::AutoPictureInPictureSize() const {
++  auto* frame = GetDocument().GetFrame();
++  auto* layout = GetLayoutObject();
++  if (!frame || !frame->IsMainFrame() || !GetDocument().IsActive() ||
++      !layout || layout->StyleRef().Visibility() != EVisibility::kVisible ||
++      paused() || ended() || getReadyState() < kHaveCurrentData ||
++      PictureInPictureController::From(GetDocument()).IsElementAllowed(*this) !=
++          PictureInPictureController::Status::kEnabled) {
++    return gfx::Size();
++  }
++  return GetVisualSizeInDIPs(/*intersect_viewport=*/true);
++}
++
++void HTMLVideoElement::RequestAutoPictureInPictureSize(
++    RequestAutoPictureInPictureSizeCallback callback) {
++  std::move(callback).Run(AutoPictureInPictureSize());
++}
++
+ void HTMLVideoElement::RequestMediaRemoting() {
+   GetWebMediaPlayer()->RequestMediaRemoting();
+ }
+diff --git a/third_party/blink/renderer/core/html/media/html_video_element.h b/third_party/blink/renderer/core/html/media/html_video_element.h
+index 867eee4cc8..7b68615739 100644
+--- a/third_party/blink/renderer/core/html/media/html_video_element.h
++++ b/third_party/blink/renderer/core/html/media/html_video_element.h
+@@ -240,6 +240,10 @@ class CORE_EXPORT HTMLVideoElement final
+   // interface, fully implemented in the parent class HTMLMediaElement.
+   void RequestEnterPictureInPicture(
+       const std::optional<gfx::Size>& min_size) final;
++  void RequestEnterAutomaticPictureInPicture(
++      const base::UnguessableToken& ticket, const gfx::Size& min_size) final;
++  void RequestAutoPictureInPictureSize(
++      RequestAutoPictureInPictureSizeCallback callback) final;
+   void RequestMediaRemoting() final;
+   void RequestVisibility(RequestVisibilityCallback request_visibility_cb) final;
+ 
+@@ -267,7 +271,8 @@ class CORE_EXPORT HTMLVideoElement final
+ 
+   // Returns the visual size of the video element in DIPs, taking into account
+   // page zoom and CSS transforms.
+-  gfx::Size GetVisualSizeInDIPs() const;
++  gfx::Size GetVisualSizeInDIPs(bool intersect_viewport = false) const;
++  gfx::Size AutoPictureInPictureSize() const;
+ 
+   // Logs UMA metrics for the size constraint check result, and the blocked
+   // video size on failure.
+diff --git a/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.cc b/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.cc
+index 5df3e4101e..30f203225c 100644
+--- a/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.cc
++++ b/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.cc
+@@ -142,6 +142,32 @@ void PictureInPictureControllerImpl::EnterPictureInPicture(
+                                 resolver);
+ }
+ 
++void PictureInPictureControllerImpl::EnterAutomaticPictureInPicture(
++    HTMLVideoElement* video_element, const base::UnguessableToken& ticket,
++    ScriptPromiseResolver<PictureInPictureWindow>* resolver) {
++  EnterPictureInPictureInternal(video_element, false, resolver, ticket);
++}
++
++void PictureInPictureControllerImpl::SetAutomaticPictureInPictureContext(
++    const base::UnguessableToken& ticket) {
++  automatic_context_ = ticket;
++  auto* frame = GetSupplementable()->GetFrame();
++  automatic_activation_generation_ = frame ? frame->UserActivationGeneration() : 0;
++}
++
++void PictureInPictureControllerImpl::ClearAutomaticPictureInPictureContext() {
++  automatic_context_.reset();
++}
++
++std::optional<base::UnguessableToken>
++PictureInPictureControllerImpl::AutomaticPictureInPictureContext() const {
++  auto* frame = GetSupplementable()->GetFrame();
++  if (frame && LocalFrame::HasTransientUserActivation(frame) &&
++      frame->UserActivationGeneration() > automatic_activation_generation_)
++    return std::nullopt;
++  return automatic_context_;
++}
++
+ void PictureInPictureControllerImpl::EnterPictureInPictureImmersive(
+     HTMLVideoElement& video_element) {
+   EnterPictureInPictureInternal(&video_element, /*request_immersive=*/true,
+@@ -151,7 +177,18 @@ void PictureInPictureControllerImpl::EnterPictureInPictureImmersive(
+ void PictureInPictureControllerImpl::EnterPictureInPictureInternal(
+     HTMLVideoElement* video_element,
+     bool request_immersive,
+-    ScriptPromiseResolver<PictureInPictureWindow>* resolver) {
++    ScriptPromiseResolver<PictureInPictureWindow>* resolver,
++    std::optional<base::UnguessableToken> automatic_ticket) {
++  // An empty ticket retains automatic lineage but cannot cross the required
++  // Mojo token field or fall back to manual entry.
++  if (automatic_ticket && automatic_ticket->is_empty()) {
++    if (resolver) {
++      resolver->RejectWithDOMException(DOMExceptionCode::kNotSupportedError,
++                                       "Picture-in-Picture is not available.");
++    }
++    return;
++  }
++
+   if (!video_element->GetWebMediaPlayer()) {
+     if (resolver) {
+       // TODO(crbug.com/1293949): Add an error message.
+@@ -206,17 +243,32 @@ void PictureInPictureControllerImpl::EnterPictureInPictureInternal(
+     video_bounds = video_element->BoundsInWidget();
+   }
+ 
+-  picture_in_picture_service_->StartSession(
+-      video_element->GetWebMediaPlayer()->GetPlayerId(),
+-      std::move(media_player_remote),
+-      video_element->GetWebMediaPlayer()->GetSurfaceId().value(),
+-      video_element->GetWebMediaPlayer()->NaturalSize(),
+-      ShouldShowPlayPauseButton(*video_element), std::move(session_observer),
+-      video_bounds, request_immersive,
+-      video_element->GetWebMediaPlayer()->GetSpatialFormat(),
+-      BindOnce(&PictureInPictureControllerImpl::OnEnteredPictureInPicture,
+-               WrapPersistent(this), WrapPersistent(video_element),
+-               request_immersive, WrapPersistent(resolver)));
++  if (automatic_ticket) {
++    picture_in_picture_service_->StartAutomaticSession(
++        *automatic_ticket,
++        video_element->GetWebMediaPlayer()->GetPlayerId(),
++        std::move(media_player_remote),
++        video_element->GetWebMediaPlayer()->GetSurfaceId().value(),
++        video_element->GetWebMediaPlayer()->NaturalSize(),
++        ShouldShowPlayPauseButton(*video_element), std::move(session_observer),
++        video_bounds,
++        video_element->GetWebMediaPlayer()->GetSpatialFormat(),
++        BindOnce(&PictureInPictureControllerImpl::OnEnteredPictureInPicture,
++                 WrapPersistent(this), WrapPersistent(video_element),
++                 request_immersive, WrapPersistent(resolver)));
++  } else {
++    picture_in_picture_service_->StartSession(
++        video_element->GetWebMediaPlayer()->GetPlayerId(),
++        std::move(media_player_remote),
++        video_element->GetWebMediaPlayer()->GetSurfaceId().value(),
++        video_element->GetWebMediaPlayer()->NaturalSize(),
++        ShouldShowPlayPauseButton(*video_element), std::move(session_observer),
++        video_bounds, request_immersive,
++        video_element->GetWebMediaPlayer()->GetSpatialFormat(),
++        BindOnce(&PictureInPictureControllerImpl::OnEnteredPictureInPicture,
++                 WrapPersistent(this), WrapPersistent(video_element),
++                 request_immersive, WrapPersistent(resolver)));
++  }
+ }
+ 
+ void PictureInPictureControllerImpl::OnEnteredPictureInPicture(
+@@ -420,7 +472,11 @@ void PictureInPictureControllerImpl::CreateDocumentPictureInPictureWindow(
+   // consumption is done in RenderFrameImpl::CreateNewWindow prior to creating
+   // the actual PiP window. This makes it easier for PiP to be gated by generic
+   // popup blocking protections.
+-  if (!LocalFrame::HasTransientUserActivation(opener.GetFrame())) {
++  // Automatic handler context has no final Document-PiP authority transport.
++  // Preexisting activation cannot relabel that request as manual; a newer
++  // genuine platform activation retains the original manual Document-PiP path.
++  if (AutomaticPictureInPictureContext() ||
++      !LocalFrame::HasTransientUserActivation(opener.GetFrame())) {
+     resolver->RejectWithDOMException(DOMExceptionCode::kNotAllowedError,
+                                      "Document PiP requires user activation");
+     return;
+diff --git a/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.h b/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.h
+index 56c97b54d1..540316bef3 100644
+--- a/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.h
++++ b/third_party/blink/renderer/modules/document_picture_in_picture/picture_in_picture_controller_impl.h
+@@ -5,6 +5,8 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_DOCUMENT_PICTURE_IN_PICTURE_PICTURE_IN_PICTURE_CONTROLLER_IMPL_H_
+ #define THIRD_PARTY_BLINK_RENDERER_MODULES_DOCUMENT_PICTURE_IN_PICTURE_PICTURE_IN_PICTURE_CONTROLLER_IMPL_H_
+ 
++#include <optional>
++
+ #include "build/build_config.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+ #include "third_party/blink/public/mojom/picture_in_picture/picture_in_picture.mojom-blink.h"
+@@ -71,6 +73,12 @@ class MODULES_EXPORT PictureInPictureControllerImpl
+   void EnterPictureInPicture(
+       HTMLVideoElement*,
+       ScriptPromiseResolver<PictureInPictureWindow>*) override;
++  void EnterAutomaticPictureInPicture(
++      HTMLVideoElement*, const base::UnguessableToken&,
++      ScriptPromiseResolver<PictureInPictureWindow>* = nullptr) override;
++  void SetAutomaticPictureInPictureContext(const base::UnguessableToken&) override;
++  void ClearAutomaticPictureInPictureContext() override;
++  std::optional<base::UnguessableToken> AutomaticPictureInPictureContext() const override;
+   void ExitPictureInPicture(HTMLVideoElement*,
+                             ScriptPromiseResolver<IDLUndefined>*) override;
+   void EnterPictureInPictureImmersive(HTMLVideoElement& video_element) override;
+@@ -100,13 +108,16 @@ class MODULES_EXPORT PictureInPictureControllerImpl
+   }
+ 
+  private:
++  std::optional<base::UnguessableToken> automatic_context_;
++  uint64_t automatic_activation_generation_ = 0;
+   Status IsElementAllowedInternal(const HTMLVideoElement&,
+                                   bool is_immersive,
+                                   bool report_failure) const;
+   void EnterPictureInPictureInternal(
+       HTMLVideoElement*,
+       bool request_immersive,
+-      ScriptPromiseResolver<PictureInPictureWindow>*);
++      ScriptPromiseResolver<PictureInPictureWindow>*,
++      std::optional<base::UnguessableToken> automatic_ticket = std::nullopt);
+   void OnEnteredPictureInPicture(
+       HTMLVideoElement*,
+       bool is_immersive,
+diff --git a/third_party/blink/renderer/modules/mediasession/media_session.cc b/third_party/blink/renderer/modules/mediasession/media_session.cc
+index 8c95e017d4..9a5d39020a 100644
+--- a/third_party/blink/renderer/modules/mediasession/media_session.cc
++++ b/third_party/blink/renderer/modules/mediasession/media_session.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include "third_party/blink/renderer/core/frame/picture_in_picture_controller.h"
+ #include "third_party/blink/renderer/modules/mediasession/media_session.h"
+ 
+ #include <memory>
+@@ -427,9 +428,23 @@ void MediaSession::DidReceiveAction(
+   LocalDOMWindow* window = GetSupplementable()->DomWindow();
+   if (!window)
+     return;
+-  LocalFrame::NotifyUserActivation(
+-      window->GetFrame(),
+-      mojom::blink::UserActivationNotificationType::kInteraction);
++  const bool automatic_pip = details && details->is_enter_picture_in_picture() &&
++      details->get_enter_picture_in_picture()->requires_current_authority &&
++      details->get_enter_picture_in_picture()->reason ==
++          mojom::blink::MediaSessionEnterPictureInPictureReason::kContentOccluded;
++  if (automatic_pip) {
++    PictureInPictureController::From(*window->document())
++        .SetAutomaticPictureInPictureContext(
++            details->get_enter_picture_in_picture()->automatic_ticket.value_or(
++                base::UnguessableToken()));
++  } else {
++    LocalFrame::NotifyUserActivation(
++        window->GetFrame(),
++        mojom::blink::UserActivationNotificationType::kInteraction);
++    if (action == MediaSessionAction::kEnterPictureInPicture)
++      PictureInPictureController::From(*window->document())
++          .ClearAutomaticPictureInPictureContext();
++  }
+ 
+   auto v8_action = MojomActionToActionEnum(action);
+ 
+diff --git a/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.cc b/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.cc
+index 9e3a48ce51..bdc9e069ed 100644
+--- a/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.cc
++++ b/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.cc
+@@ -46,7 +46,9 @@ HTMLVideoElementPictureInPicture::requestPictureInPicture(
+     ScriptState* script_state,
+     HTMLVideoElement& element,
+     ExceptionState& exception_state) {
+-  CheckIfPictureInPictureIsAllowed(element, exception_state);
++  auto& controller = PictureInPictureController::From(element.GetDocument());
++  const auto automatic_ticket = controller.AutomaticPictureInPictureContext();
++  CheckIfPictureInPictureIsAllowed(element, exception_state, automatic_ticket.has_value());
+   if (exception_state.HadException())
+     return EmptyPromise();
+ 
+@@ -55,8 +57,11 @@ HTMLVideoElementPictureInPicture::requestPictureInPicture(
+           script_state, exception_state.GetContext());
+   auto promise = resolver->Promise();
+ 
+-  PictureInPictureController::From(element.GetDocument())
+-      .EnterPictureInPicture(&element, resolver);
++  if (automatic_ticket) {
++    controller.EnterAutomaticPictureInPicture(&element, *automatic_ticket, resolver);
++  } else {
++    controller.EnterPictureInPicture(&element, resolver);
++  }
+ 
+   return promise;
+ }
+@@ -72,7 +77,7 @@ bool HTMLVideoElementPictureInPicture::FastHasAttribute(
+ // static
+ void HTMLVideoElementPictureInPicture::CheckIfPictureInPictureIsAllowed(
+     HTMLVideoElement& element,
+-    ExceptionState& exception_state) {
++    ExceptionState& exception_state, bool automatic_request) {
+   Document& document = element.GetDocument();
+   PictureInPictureController& controller =
+       PictureInPictureController::From(document);
+@@ -117,7 +122,7 @@ void HTMLVideoElementPictureInPicture::CheckIfPictureInPictureIsAllowed(
+   // `kFrameDetached`.
+   LocalFrame* frame = document.GetFrame();
+   DCHECK(frame);
+-  if (!controller.PictureInPictureElement() &&
++  if (!automatic_request && !controller.PictureInPictureElement() &&
+       !LocalFrame::ConsumeTransientUserActivation(frame)) {
+     exception_state.ThrowDOMException(DOMExceptionCode::kNotAllowedError,
+                                       kUserGestureRequired);
+diff --git a/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.h b/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.h
+index 9e359493e8..484fab18d5 100644
+--- a/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.h
++++ b/third_party/blink/renderer/modules/picture_in_picture/html_video_element_picture_in_picture.h
+@@ -26,7 +26,8 @@ class HTMLVideoElementPictureInPicture {
+   static bool FastHasAttribute(const HTMLVideoElement&, const QualifiedName&);
+ 
+   static void CheckIfPictureInPictureIsAllowed(HTMLVideoElement&,
+-                                               ExceptionState&);
++                                               ExceptionState&,
++                                               bool automatic_request = false);
+ 
+   DEFINE_STATIC_ATTRIBUTE_EVENT_LISTENER(enterpictureinpicture,
+                                          kEnterpictureinpicture)
+diff --git a/third_party/blink/renderer/modules/webaudio/audio_context.h b/third_party/blink/renderer/modules/webaudio/audio_context.h
+index 2ef3cc50d7..5a85c5c14a 100644
+--- a/third_party/blink/renderer/modules/webaudio/audio_context.h
++++ b/third_party/blink/renderer/modules/webaudio/audio_context.h
+@@ -5,6 +5,7 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_AUDIO_CONTEXT_H_
+ #define THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_AUDIO_CONTEXT_H_
+ 
++#include <utility>
+ #include <atomic>
+ #include <optional>
+ 
+@@ -35,6 +36,7 @@
+ #include "third_party/blink/renderer/platform/mojo/heap_mojo_receiver.h"
+ #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
+ #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
++#include "ui/gfx/geometry/size.h"
+ 
+ namespace gfx {
+ class Size;
+@@ -186,6 +188,13 @@ class MODULES_EXPORT AudioContext final
+   void RequestSeekForward(base::TimeDelta seek_time) override {}
+   void RequestSeekBackward(base::TimeDelta seek_time) override {}
+   void RequestSeekTo(base::TimeDelta seek_time) override {}
++  void RequestAutoPictureInPictureSize(
++      RequestAutoPictureInPictureSizeCallback callback) override {
++    std::move(callback).Run(gfx::Size());
++  }
++  void RequestEnterAutomaticPictureInPicture(
++      const base::UnguessableToken& /*ticket*/,
++      const gfx::Size& /*min_size*/) override {}
+   void RequestEnterPictureInPicture(
+       const std::optional<gfx::Size>& min_size) override {}
+   void RequestMute(bool mute) override {}

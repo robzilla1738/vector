@@ -1,0 +1,123 @@
+diff --git a/chrome/browser/aux_sparkle_updater.h b/chrome/browser/aux_sparkle_updater.h
+new file mode 100644
+index 0000000000..2674cba89e
+--- /dev/null
++++ b/chrome/browser/aux_sparkle_updater.h
+@@ -0,0 +1,20 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#ifndef CHROME_BROWSER_AUX_SPARKLE_UPDATER_H_
++#define CHROME_BROWSER_AUX_SPARKLE_UPDATER_H_
++
++#import <AppKit/AppKit.h>
++
++// Main-thread owner for Sparkle's standard updater and Aux's channel choice.
++@interface AuxSparkleUpdater : NSObject
++
++@property(nonatomic, readonly) BOOL available;
++@property(nonatomic, readonly) BOOL automaticallyChecksForUpdates;
++@property(nonatomic, readonly) BOOL betaChannelEnabled;
++
++- (void)checkForUpdates:(id)sender;
++- (void)toggleAutomaticChecks;
++- (void)setBetaChannelEnabled:(BOOL)enabled;
++
++@end
++
++#endif  // CHROME_BROWSER_AUX_SPARKLE_UPDATER_H_
+diff --git a/chrome/browser/aux_sparkle_updater.mm b/chrome/browser/aux_sparkle_updater.mm
+new file mode 100644
+index 0000000000..37e2e0ee6d
+--- /dev/null
++++ b/chrome/browser/aux_sparkle_updater.mm
+@@ -0,0 +1,81 @@
++// Copyright 2026 Aux Authors. All rights reserved.
++#import "chrome/browser/aux_sparkle_updater.h"
++
++#import <Sparkle/SPUStandardUpdaterController.h>
++#import <Sparkle/SPUUpdater.h>
++#import <Sparkle/SPUUpdaterDelegate.h>
++
++namespace {
++NSString* const kAuxUpdateChannelKey = @"AuxUpdateChannel";
++}  // namespace
++
++@interface AuxSparkleUpdater () <SPUUpdaterDelegate>
++@property(nonatomic, strong) SPUStandardUpdaterController* controller;
++@end
++
++@implementation AuxSparkleUpdater
++
++- (instancetype)init {
++  self = [super init];
++  if (!self) {
++    return nil;
++  }
++  NSDictionary* info = NSBundle.mainBundle.infoDictionary;
++  NSString* feed = info[@"SUFeedURL"];
++  NSString* key = info[@"SUPublicEDKey"];
++  if (![feed isKindOfClass:NSString.class] || feed.length == 0 ||
++      ![key isKindOfClass:NSString.class] || key.length == 0) {
++    return self;
++  }
++  NSString* frameworkPath =
++      [NSBundle.mainBundle.privateFrameworksPath stringByAppendingPathComponent:
++                                                   @"Sparkle.framework"];
++  NSBundle* framework = [NSBundle bundleWithPath:frameworkPath];
++  if (![framework load]) {
++    return self;
++  }
++  Class controllerClass = NSClassFromString(@"SPUStandardUpdaterController");
++  if (!controllerClass) {
++    return self;
++  }
++  self.controller = [[controllerClass alloc] initWithStartingUpdater:YES
++                                                     updaterDelegate:self
++                                                  userDriverDelegate:nil];
++  return self;
++}
++
++- (BOOL)available {
++  return self.controller != nil;
++}
++
++- (BOOL)automaticallyChecksForUpdates {
++  return self.controller.updater.automaticallyChecksForUpdates;
++}
++
++- (BOOL)betaChannelEnabled {
++  NSString* channel =
++      [[NSUserDefaults standardUserDefaults] stringForKey:kAuxUpdateChannelKey];
++  return [channel isEqualToString:@"beta"];
++}
++
++- (NSSet<NSString*>*)allowedChannelsForUpdater:(SPUUpdater*)updater {
++  return self.betaChannelEnabled ? [NSSet setWithObject:@"beta"] : [NSSet set];
++}
++
++- (void)checkForUpdates:(id)sender {
++  [self.controller checkForUpdates:sender];
++}
++
++- (void)toggleAutomaticChecks {
++  SPUUpdater* updater = self.controller.updater;
++  updater.automaticallyChecksForUpdates = !updater.automaticallyChecksForUpdates;
++}
++
++- (void)setBetaChannelEnabled:(BOOL)enabled {
++  [[NSUserDefaults standardUserDefaults]
++      setObject:(enabled ? @"beta" : @"stable")
++         forKey:kAuxUpdateChannelKey];
++  [self.controller.updater resetUpdateCycle];
++}
++
++@end
+diff --git a/third_party/aux_sparkle/.gitignore b/third_party/aux_sparkle/.gitignore
+new file mode 100644
+index 0000000000..8a66c659c1
+--- /dev/null
++++ b/third_party/aux_sparkle/.gitignore
+@@ -0,0 +1,4 @@
++/Sparkle.framework/
++/bin/
++/LICENSE
++/.fetch-*/
