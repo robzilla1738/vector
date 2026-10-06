@@ -31,6 +31,8 @@
     padding-top: 0;
   }
   .stage-card {
+    display: flex;
+    flex-direction: column;
     flex: 1;
     border-radius: 0;
     box-shadow: none;
@@ -46,8 +48,9 @@
     background: var(--stage-bg);
   }
   #stage {
-    position: absolute;
-    inset: 0;
+    position: relative;
+    flex: 1;
+    min-height: 0;
   }
   .stage-progress {
     position: absolute;

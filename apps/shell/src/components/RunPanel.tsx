@@ -308,13 +308,13 @@ export const RunPanel = memo(function RunPanel({
   latest,
   onCitationOpen,
   sources,
-  questionInComposer = false,
+  suspensionInComposer = false,
   controlsInComposer = false,
   composerRef,
 }: {
   savedAnswerIds?: readonly string[];
   controlsInComposer?: boolean;
-  questionInComposer?: boolean;
+  suspensionInComposer?: boolean;
   sources?: ConversationSource[];
   runId: string;
   conversation?: boolean;
@@ -562,7 +562,7 @@ export const RunPanel = memo(function RunPanel({
         run={run}
         question={question}
         readOnly={readOnly}
-        answerInComposer={questionInComposer}
+        suspensionInComposer={suspensionInComposer}
       />
 
       {(calls != null || stats || !conversation) && (
@@ -661,7 +661,7 @@ export const RunPanel = memo(function RunPanel({
               run={run}
               {...smallButtonProps}
               invoke={() => {
-                useStore.setState({ settingsCategory: "Agent permissions" });
+                useStore.setState({ settingsCategory: "Permissions" });
                 useStore.getState().setOverlay("settings");
               }}
             >

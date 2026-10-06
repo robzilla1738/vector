@@ -1,6 +1,10 @@
-import type { ConfirmationLevel, EffectCategory } from "@aux/contracts";
+import type { AgentPolicyCategory, ConfirmationLevel, EffectCategory } from "@aux/contracts";
 export interface TrustConfirmation {
   approvalId?: string;
+  kind: "approval" | "touch-id" | "handoff";
+  policyCategory: AgentPolicyCategory;
+  site: string;
+  amount?: number;
   turnId: string;
   threadId: string;
   instruction: string;

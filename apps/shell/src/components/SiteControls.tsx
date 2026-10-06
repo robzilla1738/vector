@@ -312,7 +312,7 @@ export function SiteControls() {
             )}
           </section>
           {agentPermissions && !bridge.privateMode && /^https?:\/\//.test(info.origin) && (
-            <SiteAgentAccess origin={`${new URL(info.origin).origin}/`} />
+            <SiteAgentAccess origin={new URL(info.origin).origin} />
           )}
           {!bridge.privateMode && page?.backend !== "chrome" && /^https?:\/\//.test(info.origin) && (
             <section className="site-controls-group" aria-label="Page customization">

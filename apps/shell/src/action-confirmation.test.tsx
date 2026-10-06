@@ -1,181 +1,190 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { expect, it, vi } from "vitest";
-import { ActionConfirmation } from "./components/ActionConfirmation";
+import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { SuspensionPrompt } from "./features/permissions/SuspensionPrompt";
 import { bridge } from "./bridge";
 import { reduceRunEvent } from "./store/events";
 import { useStore } from "./store";
-import type { Workspace } from "./store/types";
-
-vi.mock("./bridge", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./bridge")>()),
-  inMock: true,
-}));
-
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-it("shows one Allow once button for a confirmation event and decides the approval once", async () => {
-  const original = useStore.getState();
-  const event = {
-    seq: 1,
-    streamId: "test",
-    ts: 1,
-    type: "safety.confirmation",
-    payload: {
-      approvalId: "ap-1",
-      turnId: "turn-1",
-      instruction: "Allow this action before it runs.",
-      category: "interact",
-      confirmation: "action",
-      threadId: "thread-1",
-      action: "click",
-      origin: "http://127.0.0.1:9",
-    },
-  };
-  const next = reduceRunEvent({ runs: [] } as unknown as Workspace, event);
-  expect(next?.confirmation).toMatchObject({ approvalId: "ap-1", turnId: "turn-1" });
-  useStore.setState({ confirmation: next!.confirmation });
-  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ ok: true });
-  vi.spyOn(bridge, "overlay").mockResolvedValue(false);
-  vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
-  const host = document.createElement("div");
-  const root = createRoot(host);
+import type { TrustConfirmation } from "./features/trust/confirmation";
+const request: TrustConfirmation = {
+  approvalId: "ap-1",
+  turnId: "turn-1",
+  threadId: "thread-1",
+  instruction: "Send the requested message.",
+  action: "send",
+  origin: "https://fixture.test",
+  site: "https://fixture.test",
+  category: "send",
+  policyCategory: "send",
+  kind: "approval",
+  confirmation: "action",
+};
+let initial: ReturnType<typeof useStore.getState>, host: HTMLDivElement, root: ReturnType<typeof createRoot>;
+beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  initial = useStore.getState();
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  useStore.setState({ confirmation: { ...request } });
+});
+afterEach(async () => {
+  await act(async () => root.unmount());
+  host.remove();
+  useStore.setState(initial, true);
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+const button = (label: string) =>
+  [...host.querySelectorAll<HTMLButtonElement>("button")].find((value) =>
+    value.textContent?.startsWith(label),
+  )!;
+it("shares one pending decision between composer card and page pill without moving focus", async () => {
+  let resolve!: () => void;
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(
+    () =>
+      new Promise((done) => {
+        resolve = () => done({ ok: true });
+      }),
+  );
+  const input = document.createElement("textarea");
+  document.body.append(input);
+  input.focus();
   try {
+    await act(async () =>
+      root.render(
+        <>
+          <SuspensionPrompt />
+          <SuspensionPrompt pill />
+        </>,
+      ),
+    );
+    expect(host.querySelector("dialog")).toBeNull();
+    expect(document.activeElement).toBe(input);
     await act(async () => {
-      root.render(<ActionConfirmation />);
+      button("Allow once").click();
+      button("Always allow").click();
     });
-    const allow = document.body.querySelector<HTMLButtonElement>('[aria-label="Allow once"]');
-    expect(allow?.textContent).toBe("Allow once");
-    expect(document.activeElement?.textContent).toBe("Deny");
-    expect(document.body.textContent).toContain("Allow this action before it runs.");
-    await act(async () => {
-      allow!.click();
-      allow!.click();
+    expect(invoke).toHaveBeenCalledExactlyOnceWith("safety.approvals.decide", {
+      decision: { decision: "accept", approvalId: request.approvalId },
+      expectedTurnId: request.turnId,
     });
-    expect(invoke).toHaveBeenCalledTimes(1);
-    expect(invoke).toHaveBeenCalledWith("safety.approvals.decide", {
-      decision: { decision: "accept", approvalId: "ap-1" },
-      expectedTurnId: "turn-1",
-    });
+    expect([...host.querySelectorAll("button")].every((value) => value.disabled)).toBe(true);
+    await act(async () => resolve());
     expect(useStore.getState().confirmation).toBeNull();
   } finally {
-    await act(async () => {
-      root.unmount();
-    });
-    invoke.mockRestore();
-    useStore.setState(original, true);
+    input.remove();
   }
 });
-
-it("treats native dialog cancellation as a declined approval", async () => {
-  const original = useStore.getState();
-  useStore.setState({
-    confirmation: {
-      approvalId: "ap-cancel",
-      turnId: "turn-cancel",
-      instruction: "Confirm fixture action",
-      category: "interact",
-      confirmation: "action",
-      threadId: "thread-1",
-      action: "click",
-      origin: "http://127.0.0.1:9",
-    },
+it("declines the exact request on Escape", async () => {
+  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ ok: true });
+  await act(async () => root.render(<SuspensionPrompt />));
+  await act(async () =>
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
+  );
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("safety.approvals.decide", {
+    decision: { decision: "decline", approvalId: request.approvalId },
+    expectedTurnId: request.turnId,
   });
-  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ ok: true });
-  vi.spyOn(bridge, "overlay").mockResolvedValue(false);
-  vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
-  const root = createRoot(document.createElement("div"));
-  try {
-    await act(async () => root.render(<ActionConfirmation />));
-    const dialog = document.body.querySelector('dialog[aria-label="Allow this action"]')!;
-    await act(async () => dialog.dispatchEvent(new Event("cancel", { bubbles: false, cancelable: true })));
-    expect(invoke).toHaveBeenCalledWith("safety.approvals.decide", {
-      decision: { decision: "decline", approvalId: "ap-cancel" },
-      expectedTurnId: "turn-cancel",
-    });
-  } finally {
-    await act(async () => root.unmount());
-    useStore.setState(original, true);
-    vi.restoreAllMocks();
-  }
 });
-
-it("offers durable origin consent only for the final preapprovable tier", async () => {
-  const original = useStore.getState();
-  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ ok: true });
-  vi.spyOn(bridge, "overlay").mockResolvedValue(false);
-  vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
-  const root = createRoot(document.createElement("div"));
-  const base = {
-    approvalId: "ap-login",
-    turnId: "turn-login",
-    threadId: "thread-login",
-    instruction: "Allow fixture login",
-    action: "submit",
-    origin: "http://127.0.0.1:9",
-    category: "login" as const,
-    confirmation: "preapprovable" as const,
-  };
-  try {
-    useStore.setState({ confirmation: base });
-    await act(async () => root.render(<ActionConfirmation />));
-    const always = document.body.querySelector<HTMLButtonElement>(
-      '[data-command-id="allow-agent-action-for-origin"]',
-    );
-    expect(always?.textContent).toBe("Always allow on 127.0.0.1:9");
-    await act(async () => always!.click());
-    expect(invoke).toHaveBeenCalledWith("safety.approvals.decide", {
-      decision: { decision: "acceptForOrigin", approvalId: "ap-login" },
-      expectedTurnId: "turn-login",
-    });
-    await act(async () =>
-      useStore.setState({ confirmation: { ...base, approvalId: "ap-sensitive", confirmation: "action" } }),
-    );
-    expect(document.body.querySelector('[data-command-id="allow-agent-action-for-origin"]')).toBeNull();
-    expect(document.body.querySelector('[aria-label="Allow once"]')).not.toBeNull();
-  } finally {
-    await act(async () => root.unmount());
-    useStore.setState(original, true);
-    vi.restoreAllMocks();
-  }
-});
-
-it("hands off the actual requested page even when another tab is selected", async () => {
-  const original = useStore.getState();
-  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ ok: true });
-  vi.spyOn(bridge, "overlay").mockResolvedValue(false);
-  vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
-  const activate = vi.fn(async () => {});
-  const root = createRoot(document.createElement("div"));
+it("uses native device authentication rather than an ordinary acceptance", async () => {
+  const auth = vi
+    .spyOn(bridge, "auth.confirm")
+    .mockResolvedValue({ ok: true, approvalId: request.approvalId!, turnId: request.turnId });
+  const invoke = vi.spyOn(bridge, "invoke");
   useStore.setState({
-    activePageId: "unrelated-tab",
+    confirmation: { ...request, kind: "touch-id", category: "payment", policyCategory: "money" },
+  });
+  await act(async () => root.render(<SuspensionPrompt />));
+  await act(async () =>
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(auth).toHaveBeenCalledExactlyOnceWith({
+    reason: request.instruction,
+    approvalId: request.approvalId,
+    expectedTurnId: request.turnId,
+  });
+  expect(invoke).not.toHaveBeenCalled();
+  expect(useStore.getState().confirmation).toBeNull();
+});
+it("saves a touch-authenticated site rule only after native acknowledgement", async () => {
+  let acknowledge!: () => void;
+  vi.spyOn(bridge, "auth.confirm").mockImplementation(
+    () =>
+      new Promise((done) => {
+        acknowledge = () => done({ ok: true, approvalId: request.approvalId!, turnId: request.turnId });
+      }),
+  );
+  const invoke = vi
+    .spyOn(bridge, "invoke")
+    .mockImplementation(async (method) =>
+      method === "settings.get"
+        ? { agentMode: "auto", agentPolicyRevision: 3, agentPolicies: [] }
+        : { ok: true },
+    );
+  useStore.setState({
+    confirmation: { ...request, kind: "touch-id", category: "payment", policyCategory: "money" },
+  });
+  await act(async () => root.render(<SuspensionPrompt />));
+  await act(async () => button("Always allow").click());
+  expect(invoke).not.toHaveBeenCalled();
+  await act(async () => {
+    acknowledge();
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith("settings.set", expect.anything()));
+  });
+  expect(invoke).toHaveBeenCalledWith("settings.set", {
+    agentPolicyRevision: 3,
+    agentPolicies: [{ category: "money", site: request.site, access: "allow" }],
+  });
+  expect(invoke.mock.calls.some(([method]) => method === "safety.approvals.decide")).toBe(false);
+});
+it("keeps canceled native authentication pending and does not write a rule", async () => {
+  vi.spyOn(bridge, "auth.confirm").mockRejectedValue(new Error("Device authentication canceled"));
+  const invoke = vi.spyOn(bridge, "invoke");
+  useStore.setState({
+    confirmation: { ...request, kind: "touch-id", category: "payment", policyCategory: "money" },
+  });
+  await act(async () => root.render(<SuspensionPrompt />));
+  await act(async () => button("Always allow").click());
+  expect(invoke).not.toHaveBeenCalled();
+  expect(useStore.getState().confirmation?.approvalId).toBe(request.approvalId);
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain("canceled");
+});
+it("uses the exact requested page for handoff even when another tab is selected", async () => {
+  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ ok: true }),
+    activate = vi.fn();
+  useStore.setState({
+    activePageId: "other",
     activate,
     confirmation: {
-      turnId: "turn-handoff",
-      threadId: "thread-handoff",
-      instruction: "Complete this directly in the site.",
-      action: "submit",
-      category: "password_change",
+      ...request,
+      approvalId: undefined,
+      kind: "handoff",
       confirmation: "handoff",
-      pageId: "requested-tab",
-      origin: "http://127.0.0.1:9",
+      pageId: "requested",
     },
   });
-  try {
-    await act(async () => root.render(<ActionConfirmation />));
-    expect(document.body.querySelector('[data-command-id="allow-agent-action-for-origin"]')).toBeNull();
-    expect(document.body.querySelector('[aria-label="Allow once"]')).toBeNull();
-    await act(async () =>
-      document.body.querySelector<HTMLButtonElement>('[aria-label="Take over"]')!.click(),
-    );
-    expect(invoke).toHaveBeenCalledWith("pages.takeover", { pageId: "requested-tab" });
-    expect(activate).toHaveBeenCalledWith("requested-tab");
-    expect(invoke).not.toHaveBeenCalledWith("pages.resume", expect.anything());
-    expect(useStore.getState().confirmation).toBeNull();
-  } finally {
-    await act(async () => root.unmount());
-    useStore.setState(original, true);
-    vi.restoreAllMocks();
-  }
+  await act(async () => root.render(<SuspensionPrompt />));
+  await act(async () => button("Take over").click());
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("pages.takeover", { pageId: "requested" });
+  expect(activate).toHaveBeenCalledExactlyOnceWith("requested");
+});
+it("requires explicit suspension metadata and rejects malformed policy sites", () => {
+  const event = { seq: 1, ts: 1, streamId: "test", type: "safety.confirmation", payload: { ...request } };
+  expect(reduceRunEvent(useStore.getState(), event)?.confirmation).toMatchObject({
+    kind: "approval",
+    policyCategory: "send",
+  });
+  expect(reduceRunEvent(useStore.getState(), { ...event, payload: { ...request, kind: undefined } })).toEqual(
+    {},
+  );
+  expect(
+    reduceRunEvent(useStore.getState(), {
+      ...event,
+      payload: { ...request, site: "https://fixture.test/path" },
+    }),
+  ).toEqual({});
 });

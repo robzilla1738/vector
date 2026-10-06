@@ -1,3 +1,4 @@
+import { SuspensionPrompt } from "../features/permissions/SuspensionPrompt";
 import { staticFieldErrorProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { errorMessage } from "../error-message";
@@ -10,24 +11,23 @@ const TITLE: Record<Suspension["kind"], string> = {
   "ask-user-question": "Aux needs your answer",
   approval: "Approval needed",
   "action-confirmation": "Action confirmation needed",
+  "touch-id": "Device confirmation needed",
   handoff: "Your turn in the browser",
 };
 
-/** Typed, durable interruption. Approval decisions stay in ActionConfirmation. */
+/** Standalone run views share the same approval controller as the composer. */
 export function SuspensionPanel({
   run,
   suspension,
   hydrated,
   question,
   readOnly = false,
-  answerInComposer = false,
 }: {
   run: Run;
   suspension: Suspension | null;
   hydrated: boolean;
   question?: string;
   readOnly?: boolean;
-  answerInComposer?: boolean;
 }) {
   const draft = useStore((state) => state.runAnswerDrafts[run.runId]);
   const answerPending = useStore((state) => !!state.runAnswerPending[run.runId]);
@@ -91,6 +91,9 @@ export function SuspensionPanel({
     }
   }
 
+  if (typed && !readOnly && ["approval", "action-confirmation", "touch-id"].includes(typed.kind))
+    return <SuspensionPrompt runId={run.runId} />;
+
   return (
     <section className="needs-input" aria-label="Run suspension" data-suspension-kind={kind ?? "unavailable"}>
       <header className="ni-head">
@@ -113,7 +116,7 @@ export function SuspensionPanel({
       {kind === "handoff" && (
         <p {...staticHintProps}>Use the page, return control, then tell Aux when you’re done.</p>
       )}
-      {canAnswer && !answerInComposer && (
+      {canAnswer && (
         <div className="ni-row">
           {kind === "ask-user-question" && (
             <textarea

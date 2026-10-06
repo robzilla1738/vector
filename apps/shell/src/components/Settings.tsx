@@ -46,7 +46,9 @@ const ReviewedConnectors = lazySection(async () => (await import("./ReviewedConn
 const AppearanceSettings = lazySection(
   async () => (await import("../settings/sections/Appearance")).AppearanceSettings,
 );
-const AgentsSettings = lazySection(async () => (await import("../settings/sections/Agents")).AgentsSettings);
+const PermissionsSettings = lazySection(
+  async () => (await import("../settings/sections/Permissions")).PermissionsSettings,
+);
 const PrivacySecuritySettings = lazySection(
   async () => (await import("../settings/sections/PrivacySecurity")).PrivacySecuritySettings,
 );
@@ -96,7 +98,7 @@ const categoryDescriptions: Record<string, string> = {
   "Selection & Capture": "Review selections, capture shortcuts, and writing assistance.",
   "Archived chats": "Find and restore archived conversations.",
   "Site permissions": "Choose what websites can access.",
-  "Agent permissions": "Control what Aux can do on your behalf.",
+  Permissions: "Control what Aux can do on your behalf.",
   Extensions: "Manage browser extensions.",
   Labs: "Choose which features appear in Aux.",
 };
@@ -241,8 +243,8 @@ export function Settings() {
         )[connectionTab]
       : category === "Site permissions"
         ? "Privacy & Security"
-        : category === "Agent permissions"
-          ? "Agents"
+        : category === "Permissions"
+          ? "Permissions"
           : category;
   const [indexedFields, setIndexedFields] = useState<SettingsDestination[]>([]);
   const searching = !!query.trim();
@@ -624,7 +626,7 @@ export function Settings() {
             <ProfilesSettings active={visible("Profiles")} />
           </section>
         )}
-        <AgentsSettings active={visible("Agent permissions")} settings={settings} onSave={set} />
+        <PermissionsSettings active={visible("Permissions")} settings={settings} onSave={set} />
         <PasswordsAutofillSettings
           active={visible("Passwords & Autofill")}
           settings={settings}

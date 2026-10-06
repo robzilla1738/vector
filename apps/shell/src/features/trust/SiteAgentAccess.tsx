@@ -1,170 +1,68 @@
-import { staticHintProps } from "../../ui/class-props";
-import { smallButtonProps } from "../../ui/button-props";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AgentPolicySettingsSchema } from "@aux/contracts/agent-policy";
+import type { AgentPolicySettings } from "@aux/contracts";
+import { useStore, call } from "../../store";
+import { PolicyTable } from "../permissions/PolicyTable";
 import { errorMessage } from "../../error-message";
-import { useEffect, useRef, useState } from "react";
-import type { Effect, MethodResult, StandingGrant } from "@aux/contracts";
-import { executeCommand } from "../../commands";
 import { bridge } from "../../bridge";
-import { DEFAULT_SITE_ACCESS } from "./actions";
-import { call } from "../../store";
-import { nativeAlertRoleProps } from "../../ui/native-attribute-props";
+import "../../settings/sections/Permissions.css";
 
-const effects: readonly [Effect, string][] = [
-  ["read", "Read"],
-  ["write", "Interact"],
-  ["egress", "Navigate"],
-  ["credential", "Credentials"],
-  ["external_tool", "External tools"],
-  ["destructive", "Evaluate"],
-];
-export interface SitePermissionData {
-  snapshot: MethodResult<"safety.originPolicies.list">;
-  grants: StandingGrant[];
-}
-export function SiteAgentAccess({
-  origin,
-  showRemove = false,
-  data,
-  onChanged,
-}: {
-  origin: string;
-  showRemove?: boolean;
-  data?: SitePermissionData;
-  onChanged?: () => void;
-}) {
-  const [loaded, setLoaded] = useState<(SitePermissionData & { origin: string; revision: number }) | null>(
-    null,
+/** Page controls and Settings use the same policy, never an independent grant system. */
+export function SiteAgentAccess({ origin }: { origin: string }) {
+  const site = new URL(origin).origin;
+  const settings = useStore((state) => state.settings);
+  const policy = useMemo(
+    () =>
+      AgentPolicySettingsSchema.parse({
+        agentMode: settings.agentMode,
+        agentPolicies: settings.agentPolicies,
+        agentPolicyRevision: settings.agentPolicyRevision,
+      }),
+    [settings.agentMode, settings.agentPolicies, settings.agentPolicyRevision],
   );
-  const [failure, setFailure] = useState<{ origin: string; message: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const serial = useRef(0),
-    pending = useRef(false);
-  const [revision, refresh] = useState(0);
-  const current = data ?? (loaded?.origin === origin && loaded.revision === revision ? loaded : undefined);
-  const snapshot = current?.snapshot;
-  const grants = current?.grants.filter((grant) => grant.origin === origin && !grant.revokedAt) ?? [];
-  const error = failure?.origin === origin ? failure.message : "";
-  useEffect(() => {
-    const request = ++serial.current;
-    let live = true;
-    if (!data)
-      void (async () => {
-        const [rules, profiles] = await Promise.all([
-          call("safety.originPolicies.list", {}),
-          bridge.browserProfiles(),
-        ]);
-        const profile = profiles.find((value) => value.current);
-        if (!profile) throw new Error("This Profile's permissions are unavailable.");
-        const saved = await call("safety.grants.list", { profileId: profile.id });
-        if (!live || serial.current !== request) return;
-        setLoaded({ origin, revision, snapshot: rules, grants: saved });
-        setFailure(null);
-      })().catch((reason) => {
-        if (live && serial.current === request) setFailure({ origin, message: errorMessage(reason) });
-      });
+  const windowId = bridge.windowId,
+    kind = bridge.windowKind,
+    privateMode = bridge.privateMode;
+  const owner = useMemo(() => ({ site, windowId, kind, privateMode }), [site, windowId, kind, privateMode]);
+  const ownerRef = useRef<typeof owner | null>(null);
+  useLayoutEffect(() => {
+    ownerRef.current = owner;
     return () => {
-      live = false;
+      if (ownerRef.current === owner) ownerRef.current = null;
     };
-  }, [origin, revision, data]);
-  async function change(work: () => Promise<unknown>) {
-    if (pending.current) return;
-    pending.current = true;
-    setBusy(true);
+  }, [owner]);
+  const pending = useRef(new Set<typeof owner>());
+  const [busyOwner, setBusyOwner] = useState<typeof owner | null>(null);
+  const [failure, setFailure] = useState<{ owner: typeof owner; message: string } | null>(null);
+  const busy = busyOwner === owner,
+    error = failure?.owner === owner ? failure.message : "";
+  async function save(rules: AgentPolicySettings["agentPolicies"]) {
+    if (pending.current.has(owner)) return;
+    const original = owner;
+    const current = () =>
+      ownerRef.current === original &&
+      bridge.windowId === original.windowId &&
+      bridge.windowKind === original.kind &&
+      bridge.privateMode === original.privateMode;
+    if (!current()) return;
+    pending.current.add(owner);
+    setBusyOwner(owner);
     setFailure(null);
-    const request = serial.current;
     try {
-      await work();
+      await call("settings.set", { agentPolicies: rules, agentPolicyRevision: policy.agentPolicyRevision });
     } catch (reason) {
-      if (serial.current === request) setFailure({ origin, message: errorMessage(reason) });
+      if (current()) setFailure({ owner, message: errorMessage(reason) });
     } finally {
-      pending.current = false;
-      setBusy(false);
-      if (serial.current === request) {
-        refresh((value) => value + 1);
-        onChanged?.();
-      }
+      pending.current.delete(owner);
+      setBusyOwner((value) => (value === owner ? null : value));
     }
   }
-  const rule = snapshot?.rules.find((value) => value.origin === origin);
   return (
-    <section className="site-controls-group agent-site-access" aria-label={`Agent access on ${origin}`}>
-      <div className="site-group-heading">
-        <div>
-          <strong>Agent access</strong>
-          <span>Saved in this Profile. Consequential actions still ask.</span>
-        </div>
-        {showRemove && rule && (
-          <button
-            {...smallButtonProps}
-            disabled={busy}
-            data-command-id="delete-site-agent-rule"
-            onClick={() =>
-              void change(() =>
-                executeCommand("delete-site-agent-rule", {
-                  payload: { origin, expectedRevision: snapshot!.revision },
-                }),
-              )
-            }
-          >
-            Remove rule
-          </button>
-        )}
-      </div>
-      {error && <p {...nativeAlertRoleProps}>{error}</p>}
-      {!snapshot && !error && <output>Loading agent access…</output>}
-      {snapshot &&
-        effects.map(([effect, label]) => (
-          <label className="site-permission-compact" key={effect}>
-            <span>{label}</span>
-            <select
-              aria-label={`Agent ${label.toLowerCase()} access on ${origin}`}
-              disabled={busy}
-              data-command-id="set-site-agent-access"
-              value={rule?.effects?.[effect] ?? rule?.access ?? DEFAULT_SITE_ACCESS[effect]}
-              onChange={(event) => {
-                const access = event.target.value;
-                if (access !== "allow" && access !== "ask" && access !== "deny") return;
-                void change(() =>
-                  executeCommand("set-site-agent-access", {
-                    payload: { origin, effect, access, expectedRevision: snapshot.revision },
-                  }),
-                );
-              }}
-            >
-              <option value="allow">Allow</option>
-              <option value="ask">Ask</option>
-              <option value="deny">Block</option>
-            </select>
-          </label>
-        ))}
-      <strong>Always allowed here</strong>
-      {grants.length ? (
-        grants.map((grant) => (
-          <div key={grant.grantId} className="site-permission-compact">
-            <span>
-              {grant.category ?? grant.action}
-              {grant.lifetime === "session" ? " · this session" : ""}
-            </span>
-            <button
-              {...smallButtonProps}
-              disabled={busy}
-              data-command-id="revoke-site-agent-grant"
-              aria-label={`Revoke ${grant.category ?? grant.action} on ${origin}`}
-              onClick={() =>
-                void change(() =>
-                  executeCommand("revoke-site-agent-grant", {
-                    payload: { grantId: grant.grantId, profileId: grant.profileId },
-                  }),
-                )
-              }
-            >
-              Revoke
-            </button>
-          </div>
-        ))
-      ) : (
-        <p {...staticHintProps}>No saved grants for this site.</p>
-      )}
+    <section aria-label={`Aux permissions on ${site}`}>
+      <h3>Aux permissions</h3>
+      <p>Site rules override the current mode and category settings.</p>
+      {error && <p role="alert">{error}</p>}
+      <PolicyTable policy={policy} site={site} busy={busy} save={(rules) => void save(rules)} />
     </section>
   );
 }

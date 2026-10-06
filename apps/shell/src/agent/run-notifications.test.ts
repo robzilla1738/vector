@@ -83,7 +83,7 @@ describe("owner notification gate", () => {
     ).toBe(true);
     expect(
       matchesRunAttentionActivation({ run: parked, suspension: suspension("approval") }, activation),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       matchesRunAttentionActivation(
         { run: parked, suspension: { ...suspension("ask-user-question"), state: "answered" } },
@@ -157,6 +157,30 @@ describe("owner notification gate", () => {
     expect(emit).toHaveBeenCalledTimes(3);
     expect(JSON.stringify(emit.mock.calls)).not.toMatch(/Private|secret/);
   });
+
+  it.each(["approval", "action-confirmation", "touch-id"] as const)(
+    "notifies a pending %s with generic copy and exact activation identity",
+    async (kind) => {
+      const pending = suspension(kind);
+      const emit = vi.fn(async (_notice: OwnerNotice) => {});
+      const gate = new RunNotificationGate({
+        getRun: async () => ({ run: parked, suspension: pending }),
+        emit,
+        now: () => 10_000,
+      });
+      expect(await gate.consider(running, parked, () => context)).toMatchObject({
+        kind: "question",
+        identity: pending.suspensionId,
+      });
+      expect(
+        matchesRunAttentionActivation(
+          { run: parked, suspension: pending },
+          { runId: parked.runId, identity: pending.suspensionId, windowId: "original" },
+        ),
+      ).toBe(true);
+      expect(JSON.stringify(emit.mock.calls)).not.toMatch(/Private|secret/);
+    },
+  );
 
   it("refuses stale status or resolved suspensions and coalesces concurrent events", async () => {
     let current = { run: parked, suspension: suspension("ask-user-question") };

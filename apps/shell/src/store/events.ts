@@ -1,3 +1,4 @@
+import { isAgentPolicyCategory, isPolicySite } from "../features/permissions/categories";
 import { orderedPages, normalizePages, putPage } from "./pages";
 import { EFFECT_CATEGORIES, CONFIRMATION_LEVELS } from "@aux/contracts";
 import type {
@@ -59,9 +60,21 @@ const upsertBy = <T, K extends keyof T>(items: T[], item: T, key: K) =>
 export const reduceRunEvent: Reducer = (state, e) => {
   switch (e.type) {
     case "safety.confirmation": {
-      const { approvalId, turnId, threadId, instruction, action, origin, category, confirmation, pageId } =
-        e.payload;
-      if (state.runs.find((run) => run.runId === turnId)?.config?.nightShiftItemId) return {};
+      const {
+        approvalId,
+        turnId,
+        threadId,
+        instruction,
+        action,
+        origin,
+        category,
+        confirmation,
+        pageId,
+        kind,
+        policyCategory,
+        site,
+        amount,
+      } = e.payload;
       if (
         (approvalId !== undefined && typeof approvalId !== "string") ||
         typeof turnId !== "string" ||
@@ -71,11 +84,23 @@ export const reduceRunEvent: Reducer = (state, e) => {
         return {};
       const parsedCategory = EFFECT_CATEGORIES.find((value) => value === category);
       const parsedConfirmation = CONFIRMATION_LEVELS.find((value) => value === confirmation);
-      if (!parsedCategory || !parsedConfirmation || (!approvalId && parsedConfirmation !== "handoff"))
+      if (
+        !parsedCategory ||
+        !parsedConfirmation ||
+        !isAgentPolicyCategory(policyCategory) ||
+        (kind !== "approval" && kind !== "touch-id" && kind !== "handoff") ||
+        !isPolicySite(site) ||
+        (!approvalId && kind !== "handoff") ||
+        (amount !== undefined && (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0))
+      )
         return {};
       return {
         confirmation: {
           ...(typeof approvalId === "string" ? { approvalId } : {}),
+          kind: kind === "touch-id" ? "touch-id" : kind === "handoff" ? "handoff" : "approval",
+          policyCategory,
+          site,
+          ...(typeof amount === "number" ? { amount } : {}),
           threadId,
           category: parsedCategory,
           confirmation: parsedConfirmation,

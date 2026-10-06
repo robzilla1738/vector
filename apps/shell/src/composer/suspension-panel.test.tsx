@@ -32,6 +32,17 @@ function pending(kind: SuspensionKind, id = "s1"): Suspension {
     kind,
     request: {
       kind,
+      ...(kind !== "ask-user-question"
+        ? {
+            approvalId: "pending-approval",
+            context: {
+              site: "https://fixture.test",
+              policyCategory: "send" as const,
+              category: "send" as const,
+              action: "send",
+            },
+          }
+        : {}),
       instruction: kind === "ask-user-question" ? "Which account?" : `Review ${kind}`,
       guidance: "Aux is waiting.",
     },
@@ -56,6 +67,9 @@ async function mount(kind: SuspensionKind, onGet?: () => Suspension) {
     return {} as never;
   });
   useStore.setState({
+    mode: "conversation",
+    conversationId: run.runId,
+    confirmation: null,
     runs: [run],
     pages: normalizePages([]),
     steps: { [run.runId]: [] },
@@ -117,14 +131,13 @@ it("keeps the draft when a new suspension replaced the one shown", async () => {
   }
 });
 
-it.each(["approval", "action-confirmation"] as const)(
+it.each(["approval", "action-confirmation", "touch-id"] as const)(
   "shows %s without a second decision surface",
   async (kind) => {
     const view = await mount(kind);
     try {
-      expect(view.host.querySelector(`[data-suspension-kind="${kind}"]`)?.textContent).toContain(
-        "Review the approval prompt",
-      );
+      expect(view.host.querySelectorAll('[aria-label="Aux needs your input"]')).toHaveLength(1);
+      expect(view.host.textContent).toContain(`Review ${kind}`);
       expect(view.host.querySelector('[aria-label="Your answer"]')).toBeNull();
       expect(
         view.invoke.mock.calls.some(

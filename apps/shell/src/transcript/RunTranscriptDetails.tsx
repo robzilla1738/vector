@@ -13,6 +13,8 @@ import { call, useStore } from "../store";
 import { RunPanelAction, RunPanelDisclosure } from "../components/RunPanelAction";
 import { shellIconClose } from "../ui/icons";
 import { ViewerFrame } from "../components/ViewerFrame";
+import { confirmationFromSuspension } from "../features/permissions/confirmation";
+import { foregroundRunId } from "../agent/run-notifications";
 import { SuspensionPanel } from "../composer/SuspensionPanel";
 import { TextProposal } from "./TextProposal";
 import { ErrorItem, ToolFold, WaitingItem } from "./TranscriptActivity";
@@ -45,13 +47,13 @@ export function RunTranscriptDetails({
   run,
   question,
   readOnly = false,
-  answerInComposer = false,
+  suspensionInComposer = false,
 }: {
   savedAnswerIds?: readonly string[];
   run: Run;
   question?: string;
   readOnly?: boolean;
-  answerInComposer?: boolean;
+  suspensionInComposer?: boolean;
 }) {
   const [projection, setProjection] = useState<RunTranscriptProjection | null>(null);
   const [suspension, setSuspension] = useState<Suspension | null>(null);
@@ -92,7 +94,13 @@ export function RunTranscriptDetails({
       .then((response) => {
         if (current() && response.run.runId === run.runId && response.run.status === run.status) {
           if (response.transcript?.runId === run.runId) setProjection(response.transcript);
-          setSuspension(response.suspension?.runId === run.runId ? response.suspension : null);
+          const pending = response.suspension?.runId === run.runId ? response.suspension : null;
+          setSuspension(pending);
+          if (pending && !readOnly && foregroundRunId(useStore.getState()) === run.runId) {
+            const confirmation = confirmationFromSuspension(pending);
+            if (confirmation && useStore.getState().confirmation?.turnId !== run.runId)
+              useStore.setState({ confirmation });
+          }
           setHydrated(true);
         }
       })
@@ -103,7 +111,7 @@ export function RunTranscriptDetails({
       active = false;
       ++previewRequest.current;
     };
-  }, [run.runId, run.status, run.statusMessage, refresh, windowId, privateMode, windowKind]);
+  }, [run.runId, run.status, run.statusMessage, refresh, windowId, privateMode, windowKind, readOnly]);
 
   const artifacts = projection?.items.filter((item): item is ArtifactItem => item.kind === "artifact") ?? [];
   const proposals =
@@ -267,14 +275,13 @@ export function RunTranscriptDetails({
   return (
     <section className="run-section transcript-details" aria-label="Run evidence and recovery">
       {waiting && waiting.state !== "needs_input" && <WaitingItem item={waiting} />}
-      {run.status === "needs_input" && (
+      {run.status === "needs_input" && !suspensionInComposer && (
         <SuspensionPanel
           run={run}
           suspension={suspension}
           hydrated={hydrated}
           question={question}
           readOnly={readOnly}
-          answerInComposer={answerInComposer}
         />
       )}
       {run.status === "needs_input" && loadError && (

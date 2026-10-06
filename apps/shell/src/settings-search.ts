@@ -82,7 +82,6 @@ export const settingsDestinations: SettingsDestination[] = [
   entry("Connections", "Plugins", "Review installed and imported browser plugins."),
   entry("Connections", "Vercel token", "Connect deployment health, teams and projects."),
   entry("Connections", "Sentry token", "Connect issue health, organizations and projects."),
-  entry("Agent permissions", "What the agent may do", "Read, write, navigate and evaluate permissions."),
   {
     category: "Memory",
     label: "Memory",

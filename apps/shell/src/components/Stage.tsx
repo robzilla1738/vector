@@ -20,6 +20,11 @@ import { useFeature } from "../use-feature";
 import { isLocal } from "../tab-window-transfer";
 import { staticPrimaryButtonProps as auxClassPrimaryButtonProps } from "../ui/class-props";
 
+const SuspensionPrompt = deferNamedSurface(
+  () => import("../features/permissions/SuspensionPrompt"),
+  "SuspensionPrompt",
+  "Pending action",
+);
 const StartPage = deferNamedSurface(() => import("./StartPage"), "StartPage", "New tab", true);
 const TranslationBar = deferNamedSurface(
   () => import("./TranslationBar"),
@@ -60,7 +65,6 @@ export const Stage = memo(
     const splitting = useFeature("splitView");
     const surfaceState = useSurfaceState();
     const overlay = useStore((s) => s.overlay);
-    const confirming = useStore((s) => !!s.confirmation);
     const translating = useStore(
       (state) =>
         !!page && (state.translation?.pageId === page.pageId || state.translationPending === page.pageId),
@@ -82,7 +86,7 @@ export const Stage = memo(
       splitGroup &&
       splitGroup.panes.every((id) => {
         const item = pages.find((page) => page.pageId === id);
-        return item && nativePageId({ mode, overlay, confirming, activePageId: id, ...item });
+        return item && nativePageId({ mode, overlay, activePageId: id, ...item });
       });
     const splitVisible = !covered && selectedSplit;
     // A scrim or an action confirmation replaces the page so the dialog is the thing that can be clicked.
@@ -91,7 +95,6 @@ export const Stage = memo(
       nativePageId({
         mode,
         overlay,
-        confirming,
         activePageId: page.pageId,
         url: page.url,
         backend: page.backend,
@@ -112,7 +115,6 @@ export const Stage = memo(
     const committedSelection = JSON.stringify([
       mode,
       overlay,
-      confirming,
       organizationCovered,
       selectedSplit
         ? splitGroup!.panes.map((id) => {
@@ -210,6 +212,7 @@ export const Stage = memo(
           {mode === "overview" && <Overview />}
           {mode === "table" && <ResultsTable />}
         </div>
+        {showingPage && !overlay && <SuspensionPrompt pill />}
       </div>
     );
   }),

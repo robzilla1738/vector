@@ -4,7 +4,6 @@ import { smallButtonProps } from "../../ui/button-props";
 import { errorMessage } from "../../error-message";
 import { useEffect, useState } from "react";
 import type {
-  CommandEscalationRequest,
   Workspace,
   WorkspaceFolder,
   WorkspaceFolderAccess,
@@ -19,8 +18,6 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState("");
   const [folders, setFolders] = useState<WorkspaceFolder[]>([]);
-  const [commandRequests, setCommandRequests] = useState<CommandEscalationRequest[]>([]);
-  const [prefixAmendments, setPrefixAmendments] = useState<Record<string, string>>({});
   const [path, setPath] = useState("");
   const [access, setAccess] = useState<WorkspaceFolderAccess>("read");
   const [review, setReview] = useState<WorkspaceFolderReview | null>(null);
@@ -52,25 +49,6 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
     void call("workspaces.folders.list", { workspaceId })
       .then((items) => {
         if (live) setFolders(items);
-      })
-      .catch((reason) => {
-        if (live) setError(String(reason));
-      });
-    return () => {
-      live = false;
-    };
-  }, [active, workspaceId]);
-
-  async function refreshCommands() {
-    if (workspaceId) setCommandRequests(await call("commands.escalations.list", { workspaceId }));
-  }
-
-  useEffect(() => {
-    if (!active || !workspaceId) return;
-    let live = true;
-    void call("commands.escalations.list", { workspaceId })
-      .then((items) => {
-        if (live) setCommandRequests(items);
       })
       .catch((reason) => {
         if (live) setError(String(reason));
@@ -226,132 +204,6 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
               </button>
             </div>
           ))}
-      </SettingsField>
-      <SettingsField
-        label="Command exceptions"
-        hint="Escalated commands run outside the file and network sandbox. Review each literal segment and reason. One-time approvals are consumed at dispatch; reusable prefixes are limited to read-only commands and flag-only variants."
-      >
-        <button
-          {...smallButtonProps}
-          disabled={busy || !workspaceId}
-          onClick={() => void act(refreshCommands)}
-        >
-          Refresh requests
-        </button>
-        {!commandRequests.some((item) => item.state === "pending") && (
-          <p {...staticHintProps}>No command requests awaiting review.</p>
-        )}
-        {commandRequests
-          .filter((item) => item.state === "pending")
-          .map((item) => (
-            <div className="field" role="group" aria-label="Command exception review" key={item.requestId}>
-              <strong>Escalated command request</strong>
-              <p>
-                Run: <code>{item.runId}</code>
-              </p>
-              <p>
-                Command segment: <code>{item.segment}</code>
-              </p>
-              <p>
-                Working folder: <code>{item.workdir}</code>
-              </p>
-              <p>Reason: {item.justification}</p>
-              {item.prefixRule && (
-                <p>
-                  Proposed reusable prefix: <code>{item.prefixRule}</code>
-                </p>
-              )}
-              {item.prefixRule && (
-                <label>
-                  Reviewed prefix{" "}
-                  <input
-                    aria-label={`Reviewed prefix for ${item.requestId}`}
-                    value={prefixAmendments[item.requestId] ?? item.prefixRule}
-                    onChange={(event) =>
-                      setPrefixAmendments((current) => ({ ...current, [item.requestId]: event.target.value }))
-                    }
-                  />
-                </label>
-              )}
-              <div {...staticRowProps}>
-                <button
-                  {...smallButtonProps}
-                  disabled={busy}
-                  onClick={() =>
-                    void act(async () => {
-                      await call("commands.escalations.decide", {
-                        requestId: item.requestId,
-                        decision: "decline",
-                      });
-                      await refreshCommands();
-                    })
-                  }
-                >
-                  Decline command
-                </button>
-                <button
-                  {...smallButtonProps}
-                  disabled={busy}
-                  onClick={() =>
-                    void act(async () => {
-                      await call("commands.escalations.decide", {
-                        requestId: item.requestId,
-                        decision: "once",
-                      });
-                      await refreshCommands();
-                    })
-                  }
-                >
-                  Allow this segment once
-                </button>
-                {item.prefixRule && (
-                  <button
-                    {...smallButtonProps}
-                    disabled={busy}
-                    onClick={() =>
-                      void act(async () => {
-                        await call("commands.escalations.decide", {
-                          requestId: item.requestId,
-                          decision: "prefix",
-                          prefixRule: prefixAmendments[item.requestId] ?? item.prefixRule,
-                        });
-                        await refreshCommands();
-                      })
-                    }
-                  >
-                    Allow reviewed prefix
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        {commandRequests
-          .filter((item) => item.mode === "prefix" && item.grantActive)
-          .map((item) => (
-            <div className="row" key={item.requestId}>
-              <span {...auxClassGrowProps}>
-                Reusable prefix <code>{item.prefixRule}</code> in <code>{item.workdir}</code>
-              </span>
-              <button
-                {...smallButtonProps}
-                disabled={busy}
-                onClick={() =>
-                  void act(async () => {
-                    await call("commands.escalations.revoke", { requestId: item.requestId });
-                    await refreshCommands();
-                  })
-                }
-              >
-                Revoke command prefix
-              </button>
-            </div>
-          ))}
-        {commandRequests.some((item) => item.state === "pending" || item.grantActive) && (
-          <p {...staticHintProps}>
-            After deciding, answer the paused run so the agent can retry the exact command. Approval does not
-            execute it by itself. Changed or archived folder scope invalidates this approval.
-          </p>
-        )}
       </SettingsField>
     </SettingsSection>
   );

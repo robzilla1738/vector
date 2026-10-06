@@ -53,7 +53,6 @@ it("reviews exact folder access and AGENTS.md before grant, then archives it", a
   rpc.mockImplementation(async (method: string, params: Record<string, unknown>) => {
     if (method === "workspaces.list") return [{ workspaceId, name: "Personal" }];
     if (method === "workspaces.folders.list") return folder ? [folder] : [];
-    if (method === "commands.escalations.list") return [];
     if (method === "memory.pipeline.policy") return { workspaceId, enabled: false };
     if (method === "memory.pipeline.overview")
       return { workspaceId, enabled: false, summary: "", claimCount: 0, sourceCount: 0 };
@@ -102,53 +101,6 @@ it("reviews exact folder access and AGENTS.md before grant, then archives it", a
   expect(rpc).toHaveBeenCalledWith("workspaces.folders.archive", { workspaceId, folderId: "folder-1" });
 });
 
-it("reviews the exact command segment, reason and working folder before a local decision", async () => {
-  const request = {
-    requestId: "request-1",
-    runId: "run-1",
-    workspaceId: "space-1",
-    segment: "pwd",
-    workdir: "/private/tmp/fixture",
-    justification: "Need owner-reviewed shell access",
-    prefixRule: "pwd",
-    state: "pending",
-    createdAt: Date.now(),
-  };
-  let state = "pending";
-  rpc.mockImplementation(async (method: string, params: Record<string, unknown>) => {
-    if (method === "workspaces.list") return [{ workspaceId: "space-1", name: "Personal" }];
-    if (method === "workspaces.folders.list") return [];
-    if (method === "commands.escalations.list") return [{ ...request, state }];
-    if (method === "memory.pipeline.policy") return { workspaceId: "space-1", enabled: false };
-    if (method === "memory.pipeline.overview")
-      return { workspaceId: "space-1", enabled: false, summary: "", claimCount: 0, sourceCount: 0 };
-    if (
-      [
-        "memory.pipeline.sources",
-        "memory.pipeline.inbox",
-        "memory.pipeline.claims",
-        "memory.pipeline.history",
-      ].includes(method)
-    )
-      return [];
-    if (method === "commands.escalations.decide") {
-      state = "declined";
-      return { ...request, state };
-    }
-    throw new Error(`Unexpected ${method}: ${JSON.stringify(params)}`);
-  });
-  await act(async () => root.render(<WorkspacesSettings active />));
-  expect(container.textContent).toContain("Need owner-reviewed shell access");
-  expect(container.textContent).toContain("/private/tmp/fixture");
-  expect(container.textContent).toContain("pwd");
-  await act(async () => button("Decline command").click());
-  expect(rpc).toHaveBeenCalledWith("commands.escalations.decide", {
-    requestId: "request-1",
-    decision: "decline",
-  });
-  expect(container.textContent).toContain("No command requests awaiting review");
-});
-
 it("keeps extracted notes pending until the owner accepts or discards them", async () => {
   const workspaceId = "space-1";
   let enabled = false;
@@ -162,7 +114,7 @@ it("keeps extracted notes pending until the owner accepts or discards them", asy
   };
   rpc.mockImplementation(async (method: string, params: Record<string, unknown>) => {
     if (method === "workspaces.list") return [{ workspaceId, name: "Personal" }];
-    if (method === "workspaces.folders.list" || method === "commands.escalations.list") return [];
+    if (method === "workspaces.folders.list") return [];
     if (method === "memory.pipeline.policy") return { workspaceId, enabled };
     if (method === "memory.pipeline.setPolicy") {
       enabled = params.enabled as boolean;

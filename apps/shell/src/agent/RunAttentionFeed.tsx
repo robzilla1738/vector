@@ -20,6 +20,10 @@ const LABELS: Record<Suspension["kind"], { title: string; detail: string }> = {
     title: "Action confirmation needed",
     detail: "Review the action before Aux continues.",
   },
+  "touch-id": {
+    title: "Touch ID needed",
+    detail: "Review and authenticate the requested action in this task.",
+  },
   handoff: { title: "Your turn in the browser", detail: "Complete the browser step, then return to Aux." },
 };
 

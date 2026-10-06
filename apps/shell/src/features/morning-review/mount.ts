@@ -1,3 +1,4 @@
+import { confirmationFromSuspension } from "../permissions/confirmation";
 import { createElement, lazy, Suspense } from "react";
 import type { FeatureMount, ComposerPluginProps } from "../registry";
 import { call, useStore } from "../../store";
@@ -61,38 +62,13 @@ export const mount: FeatureMount = {
         const detail = await call("runs.get", { runId: item.runId });
         if (generation !== nightReviewGeneration()) return;
         if (
-          detail.run.config?.nightShiftItemId ||
           detail.run.status !== "needs_input" ||
-          !detail.suspension?.request.approvalId
+          !detail.suspension ||
+          detail.suspension.runId !== item.runId
         )
           return;
-        const pending = await call("safety.approvals.pending", { threadId: detail.suspension.threadId });
-        const approval = pending.find(
-          (entry) =>
-            entry.approvalId === detail.suspension!.request.approvalId && entry.action.turnId === item.runId,
-        );
-        if (generation !== nightReviewGeneration()) return;
-        if (
-          !approval ||
-          useStore.getState().runs.find((run) => run.runId === item.runId)?.config?.nightShiftItemId
-        )
-          return;
-        if (!approval.action.category || !approval.action.confirmation)
-          throw new Error(
-            "The pending action has no verified confirmation category. Refresh the review before continuing.",
-          );
-        useStore.setState({
-          confirmation: {
-            approvalId: approval.approvalId,
-            turnId: approval.action.turnId,
-            threadId: approval.action.threadId,
-            category: approval.action.category,
-            confirmation: approval.action.confirmation,
-            instruction: detail.suspension.request.instruction,
-            action: approval.action.action,
-            origin: approval.action.origin ?? "",
-          },
-        });
+        const confirmation = confirmationFromSuspension(detail.suspension);
+        if (confirmation) useStore.setState({ confirmation });
       }
     },
     "configure-night-shift": async (_context, invocation) => {

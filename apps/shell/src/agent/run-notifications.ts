@@ -63,7 +63,7 @@ export function matchesRunAttentionActivation(
     suspension.runId === run.runId &&
     suspension.turnId === run.runId &&
     suspension.suspensionId === activation.identity &&
-    (suspension.kind === "ask-user-question" || suspension.kind === "handoff")
+    ["ask-user-question", "approval", "action-confirmation", "touch-id", "handoff"].includes(suspension.kind)
   );
 }
 export type RunView = {
@@ -89,7 +89,7 @@ export function foregroundRunId(view: RunView): string | null {
 
 const COPY: Record<OwnerNoticeKind, Pick<OwnerNotice, "title" | "body">> = {
   completed: { title: "Aux finished a task", body: "Open Aux to review the result." },
-  question: { title: "Aux needs your answer", body: "Open Aux to review a question." },
+  question: { title: "Aux needs your input", body: "Open Aux to review the request." },
   handoff: { title: "Your turn in Aux", body: "Open Aux to finish a browser step." },
 };
 const THROTTLE_MS = 5_000;
@@ -136,7 +136,7 @@ export class RunNotificationGate {
         suspension.state !== "pending"
       )
         return null;
-      if (suspension.kind === "ask-user-question") kind = "question";
+      if (["ask-user-question", "approval", "action-confirmation", "touch-id"].includes(suspension.kind)) kind = "question";
       else if (suspension.kind === "handoff") kind = "handoff";
       else return null;
       identity = suspension.suspensionId;

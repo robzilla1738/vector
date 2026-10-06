@@ -1,10 +1,9 @@
-import { normalizePages, orderedPages } from "./store/pages";
+import { normalizePages } from "./store/pages";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { executeCommand } from "./commands";
-import { ActionConfirmation } from "./components/ActionConfirmation";
 import { bridge } from "./bridge";
 import { useStore } from "./store";
 
@@ -27,7 +26,10 @@ const confirmation = {
   origin: "http://127.0.0.1:9",
   action: "navigate",
   category: "login" as const,
-  confirmation: "preapprovable" as const,
+  confirmation: "action" as const,
+  kind: "approval" as const,
+  policyCategory: "credentials" as const,
+  site: "http://127.0.0.1:9",
 };
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -43,50 +45,20 @@ afterEach(async () => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-for (const stage of ["preview", "off"] as const) {
-  it.each(["accept", "decline"] as const)(
-    `decides one original page-free %s while site permissions are ${stage}`,
-    async (decision) => {
-      stages.trust = stage;
-      const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ ok: true });
-      await act(async () => root.render(<ActionConfirmation />));
-      expect(document.body.querySelector('[data-command-id="allow-agent-action-for-origin"]')).toBeNull();
-      const button = document.body.querySelector<HTMLButtonElement>(
-        decision === "accept" ? '[aria-label="Allow once"]' : '[data-command-id="deny-agent-action"]',
-      )!;
-      await act(async () => {
-        button.click();
-        button.click();
-      });
-      expect(invoke).toHaveBeenCalledExactlyOnceWith("safety.approvals.decide", {
-        decision: { decision, approvalId: confirmation.approvalId },
-        expectedTurnId: confirmation.turnId,
-      });
-      expect(orderedPages(useStore.getState().pages)).toEqual([]);
-      expect(useStore.getState().confirmation).toBeNull();
-    },
-  );
-  it(`refuses changed original approval payloads before RPC while site permissions are ${stage}`, async () => {
-    stages.trust = stage;
-    const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ ok: true });
-    await expect(
-      executeCommand("approve-agent-action", {
-        payload: { approvalId: "retired", turnId: confirmation.turnId },
-      }),
-    ).rejects.toThrow("ended or changed");
-    await expect(
-      executeCommand("deny-agent-action", {
-        payload: { approvalId: confirmation.approvalId, turnId: "retired" },
-      }),
-    ).rejects.toThrow("ended or changed");
-    await expect(
-      executeCommand("allow-agent-action-for-origin", {
-        payload: { approvalId: confirmation.approvalId, turnId: confirmation.turnId },
-      }),
-    ).rejects.toThrow("unavailable");
-    expect(invoke).not.toHaveBeenCalled();
-  });
-}
+it("refuses changed original approval payloads before RPC", async () => {
+  const invoke = vi.spyOn(bridge, "invoke");
+  await expect(
+    executeCommand("approve-agent-action", {
+      payload: { approvalId: "retired", turnId: confirmation.turnId },
+    }),
+  ).rejects.toThrow("ended or changed");
+  await expect(
+    executeCommand("deny-agent-action", {
+      payload: { approvalId: confirmation.approvalId, turnId: "retired" },
+    }),
+  ).rejects.toThrow("ended or changed");
+  expect(invoke).not.toHaveBeenCalled();
+});
 it("retains a newer confirmation while an original acceptance response is held", async () => {
   stages.trust = "off";
   let release!: () => void;
@@ -112,7 +84,13 @@ it("takes over the original requested page through core dispatch with site permi
   useStore.setState({
     activePageId: "other",
     activate,
-    confirmation: { ...confirmation, approvalId: undefined, confirmation: "handoff", pageId: "requested" },
+    confirmation: {
+      ...confirmation,
+      approvalId: undefined,
+      kind: "handoff",
+      confirmation: "handoff",
+      pageId: "requested",
+    },
   });
   await executeCommand("take-over-agent-action", {
     payload: { pageId: "requested", turnId: confirmation.turnId },

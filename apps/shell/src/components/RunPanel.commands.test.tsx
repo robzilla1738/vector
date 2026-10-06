@@ -171,7 +171,7 @@ it("opens the exact original permission settings and work-history disclosure", a
   }));
   await act(async () => root.render(<RunPanel runId="turn" latest controlsInComposer />));
   await act(async () => button("review-run-permissions").click());
-  expect(useStore.getState().settingsCategory).toBe("Agent permissions");
+  expect(useStore.getState().settingsCategory).toBe("Permissions");
   expect(useStore.getState().overlay).toBe("settings");
   expect(button("toggle-run-steps").getAttribute("aria-expanded")).toBe("false");
   await act(async () => button("toggle-run-steps").click());

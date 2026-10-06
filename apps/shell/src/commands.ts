@@ -121,11 +121,7 @@ export const COMMAND_ACTIONS = {
     ]),
   ) as Record<(typeof RUN_CONTROL_COMMANDS)[number], CommandAction>),
   ...featureCommands(
-    "set-site-agent-access",
-    "delete-site-agent-rule",
-    "revoke-site-agent-grant",
     "allow-agent-action-for-origin",
-    "set-agent-effect-grants",
     "mention-insert",
     "mention-remove",
     "export-demonstration",

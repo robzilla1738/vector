@@ -62,7 +62,7 @@ const items: readonly RailItem[] = [
     gate: "permissions",
   },
   { label: "Passwords & Autofill", category: "Passwords & Autofill", group: "Personal", icon: shellIconLock },
-  { label: "Agents", category: "Agent permissions", group: "Agent", icon: shellIconChats },
+  { label: "Permissions", category: "Permissions", group: "Agent", icon: shellIconChats },
   { label: "Models", category: "Connections", group: "Agent", icon: shellIconModel, tab: "Models" },
   { label: "Usage & Budgets", category: "Usage & Budgets", group: "Agent", icon: shellIconModel },
   {

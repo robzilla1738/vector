@@ -8,7 +8,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "../apps/shell/src
 const sections = {
   Labs: "Labs",
   Appearance: "Appearance",
-  Agents: "Agent permissions",
+  Permissions: "Permissions",
   PrivacySecurity: "Site permissions",
   PasswordsAutofill: "Passwords & Autofill",
   Models: "Models",

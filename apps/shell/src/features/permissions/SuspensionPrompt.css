@@ -1,0 +1,40 @@
+@layer components {
+  .suspension-prompt {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--r-xl);
+    background: var(--bg-1);
+  }
+  .suspension-prompt-message {
+    min-width: 0;
+  }
+  .suspension-prompt-message p {
+    margin: var(--space-1) 0;
+    overflow-wrap: anywhere;
+  }
+  .suspension-prompt-message > span {
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+  .suspension-prompt-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .suspension-prompt-pill {
+    margin: var(--space-2);
+    border-radius: var(--r-3xl);
+    flex: 0 0 auto;
+    position: relative;
+  }
+  .suspension-prompt-pill > :not(.glass-material) {
+    position: relative;
+    z-index: 1;
+  }
+  .suspension-prompt [role="alert"] {
+    color: var(--ink-0);
+    margin: 0;
+  }
+}

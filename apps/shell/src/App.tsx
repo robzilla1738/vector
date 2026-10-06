@@ -101,13 +101,7 @@ const HttpAuthPrompt = deferNamedSurface(
   true,
   true,
 );
-const ActionConfirmation = deferNamedSurface(
-  () => import("./components/ActionConfirmation"),
-  "ActionConfirmation",
-  "Action confirmation",
-  true,
-  true,
-);
+
 const VaultOfferBanner = deferNamedSurface(
   () => import("./components/VaultOfferBanner"),
   "VaultOfferBanner",
@@ -192,7 +186,7 @@ export function App() {
     void bridge.overlay(true);
     return () => {
       const state = useStore.getState();
-      void bridge.overlay(isScrimOverlay(state.overlay) || state.overlay === "zap" || !!state.confirmation);
+      void bridge.overlay(isScrimOverlay(state.overlay) || state.overlay === "zap");
     };
   }, [organizationCovered]);
   const railOpen = useStore((s) => s.railOpen);
@@ -241,7 +235,6 @@ export function App() {
     !!nativePageId({
       mode,
       overlay,
-      confirming,
       activePageId,
       url: activePage?.url,
       backend: activePage?.backend,
@@ -438,7 +431,6 @@ export function App() {
         <SiteCustomization key={`${activePageId}:${activePage?.url}:${activePageEpoch}`} />
       )}
       <HttpAuthPrompt />
-      <ActionConfirmation />
       {vaultOffer && <VaultOfferBanner />}
       <FeatureSlots slot="overlays" />
       <Toasts />

@@ -36,7 +36,7 @@ it("keeps unchanged entity identities while replacing changed summaries", async 
   rows = rows.map((row) => (row.chatId === "b" ? { ...row, title: "Renamed" } : row));
   await collection.load("refresh");
   expect(collection.getSnapshot().byId.a).toBe(original.byId.a);
-  expect(collection.getSnapshot().byId.b.title).toBe("Renamed");
+  expect(collection.getSnapshot().byId.b?.title).toBe("Renamed");
 });
 it("rejects retired owner replies and older replies from the same query", async () => {
   const first = deferred<ConversationSummary[]>(),

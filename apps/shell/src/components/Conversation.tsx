@@ -90,6 +90,8 @@ import { bridge, type BrowserProfile } from "../bridge";
 import { previewSplit } from "../workspace";
 import { useStore, call, decodeBase64Json, errToast, isLive, toast } from "../store";
 import { ConversationAction, ConversationDetails, useConversationOwner } from "./ConversationControls";
+import { confirmationFromSuspension } from "../features/permissions/confirmation";
+import { SuspensionPrompt } from "../features/permissions/SuspensionPrompt";
 import { ChatHistory } from "../chat-list/ChatHistory";
 import { cursor, mergeHistory } from "../run-history";
 import { browserLinkUrl as answerUrl } from "../browser-links";
@@ -669,6 +671,7 @@ export function Conversation({
     statusMessage?: string;
     value: Suspension | null;
   } | null>(null);
+  const pendingConfirmation = useStore((state) => state.confirmation);
   const [suspensionRefresh, setSuspensionRefresh] = useState(0);
   useEffect(() => {
     if (!last || last.status !== "needs_input") {
@@ -691,6 +694,11 @@ export function Conversation({
           detail.suspension.turnId === runId
             ? detail.suspension
             : null;
+        if (value) {
+          const confirmation = confirmationFromSuspension(value);
+          if (confirmation && useStore.getState().confirmation?.turnId !== runId)
+            useStore.setState({ confirmation });
+        }
         setCurrentSuspension({ runId, statusMessage, value });
       })
       .catch(() => {
@@ -2183,7 +2191,7 @@ export function Conversation({
                     readOnly={archived}
                     retryPageId={selectedContext?.pageId}
                     latest={run === last}
-                    questionInComposer={run === last && answering}
+                    suspensionInComposer={run === last && run.status === "needs_input"}
                     controlsInComposer={run === last}
                     composerRef={textareaRef}
                     sources={sourcesByRun.get(run.runId) ?? NO_SOURCES}
@@ -2331,34 +2339,39 @@ export function Conversation({
                         <p>{suspension?.request.instruction}</p>
                       </div>
                     )}
-                    {last?.status === "needs_input" && !answering && suspension?.kind !== "handoff" && (
-                      <div className="composer-question" role="status">
-                        <strong>
-                          {suspension
-                            ? "Decision needed"
-                            : suspensionLoaded
-                              ? "Current request unavailable"
-                              : "Loading current request"}
-                        </strong>
-                        <p>
-                          {suspension
-                            ? "Review the approval prompt before Aux continues."
-                            : suspensionLoaded
-                              ? "Refresh the request before continuing."
-                              : "Checking the durable request…"}
-                        </p>
-                        {suspensionLoaded && !suspension && (
-                          <ConversationLiveAction
-                            command="reload-conversation-request"
-                            current={liveControlCurrent}
-                            {...auxReuseSmallButtonProps}
-                            invoke={() => setSuspensionRefresh((value) => value + 1)}
-                          >
-                            Retry loading request
-                          </ConversationLiveAction>
-                        )}
-                      </div>
-                    )}
+                    {last?.status === "needs_input" &&
+                      !answering &&
+                      pendingConfirmation?.turnId === last.runId && <SuspensionPrompt runId={last.runId} />}
+                    {last?.status === "needs_input" &&
+                      !answering &&
+                      pendingConfirmation?.turnId !== last.runId && (
+                        <div className="composer-question" role="status">
+                          <strong>
+                            {suspension
+                              ? "Decision needed"
+                              : suspensionLoaded
+                                ? "Current request unavailable"
+                                : "Loading current request"}
+                          </strong>
+                          <p>
+                            {suspension
+                              ? "Review the approval prompt before Aux continues."
+                              : suspensionLoaded
+                                ? "Refresh the request before continuing."
+                                : "Checking the durable request…"}
+                          </p>
+                          {suspensionLoaded && !suspension && (
+                            <ConversationLiveAction
+                              command="reload-conversation-request"
+                              current={liveControlCurrent}
+                              {...auxReuseSmallButtonProps}
+                              invoke={() => setSuspensionRefresh((value) => value + 1)}
+                            >
+                              Retry loading request
+                            </ConversationLiveAction>
+                          )}
+                        </div>
+                      )}
                   </>
                 }
               >

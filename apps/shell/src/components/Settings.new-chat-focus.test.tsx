@@ -24,7 +24,7 @@ vi.mock("./CalendarConnections", () => ({ CalendarConnections: () => null }));
 vi.mock("./OutboundMcpSettings", () => ({ OutboundMcpSettings: () => null }));
 vi.mock("./ReviewedConnectors", () => ({ ReviewedConnectors: () => null }));
 vi.mock("../settings/sections/Appearance", () => ({ AppearanceSettings: () => null }));
-vi.mock("../settings/sections/Agents", () => ({ AgentsSettings: () => null }));
+vi.mock("../settings/sections/Permissions", () => ({ PermissionsSettings: () => null }));
 vi.mock("../settings/sections/PrivacySecurity", () => ({ PrivacySecuritySettings: () => null }));
 vi.mock("../settings/sections/PasswordsAutofill", () => ({ PasswordsAutofillSettings: () => null }));
 vi.mock("../settings/sections/Models", () => ({ ModelsSettings: () => null }));

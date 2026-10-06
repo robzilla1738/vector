@@ -1,0 +1,58 @@
+@layer components {
+  .permission-categories {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .permission-categories th {
+    text-align: left;
+    font-weight: 500;
+  }
+  .permission-categories th,
+  .permission-categories td {
+    padding: var(--space-2) 0;
+  }
+  .permission-categories select {
+    width: 100%;
+  }
+  .permission-site-rules {
+    display: grid;
+    gap: var(--space-2);
+  }
+  .permission-site-rule {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: space-between;
+  }
+  .permission-site-rule > div {
+    display: grid;
+    gap: var(--space-1);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .permission-site-rule span {
+    color: var(--ink-2);
+    font-size: var(--fs-sm);
+  }
+  .permission-site-form {
+    display: grid;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+  .permission-activity-entry {
+    padding: var(--space-3) 0;
+    border-bottom: var(--hairline) solid var(--line);
+    overflow-wrap: anywhere;
+  }
+  .permission-activity-entry > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    justify-content: space-between;
+  }
+  .permission-activity-entry time,
+  .permission-activity-entry > span {
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+}
