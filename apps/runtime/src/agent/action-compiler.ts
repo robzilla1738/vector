@@ -5,7 +5,7 @@
 import type { ObservationContent, Program, Step } from "@aux/contracts";
 import { queryPage, type PageQuery } from "./page-query.js";
 import type { SkillGuard } from "./skills.js";
-import { authorizeProgram, type EffectClass, type GrantSource } from "./permissions.js";
+import { authorizeProfileProgram, type EffectClass } from "./permissions.js";
 
 export type CompileResult = { program: Program } | { rejected: string };
 export type DispatchPrep =
@@ -76,16 +76,10 @@ export function compileAction(opts: CompileActionOpts): CompileResult {
 }
 
 /** Compiler + privilege check used by streamed and finished dispatch (Gate F). */
-export function compileAndAuthorize(opts: CompileActionOpts & { grants?: GrantSource }): DispatchPrep {
+export function compileAndAuthorize(opts: CompileActionOpts & { readOnly?: boolean }): DispatchPrep {
   const compiled = compileAction(opts);
   if ("rejected" in compiled) return compiled;
-  let origin = "";
-  try {
-    origin = opts.url ? new URL(opts.url).origin : "";
-  } catch {
-    origin = "";
-  }
-  const auth = authorizeProgram(compiled.program.steps ?? [], opts.grants, origin);
+  const auth = authorizeProfileProgram(compiled.program.steps ?? [], opts.readOnly);
   if (!auth.ok) return { denied: auth.denied, effect: auth.effect };
   return compiled;
 }

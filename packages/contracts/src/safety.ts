@@ -1,3 +1,4 @@
+import { AgentPolicyCategorySchema } from "./agent-policy.js";
 import { z } from "zod";
 import { CONFIRMATION_LEVELS, EFFECT_CATEGORIES } from "./safety-vocabulary.js";
 
@@ -50,6 +51,9 @@ export const SafetyActionSchema = z
     action: id,
     category: EffectCategorySchema.optional(),
     confirmation: ConfirmationLevelSchema.optional(),
+    authentication: z.literal("touch_id").optional(),
+    policyRevision: z.number().int().nonnegative().optional(),
+    amount: z.number().finite().nonnegative().optional(),
     invocationDigest: z.string().regex(/^[a-f0-9]{64}$/),
     origin: origin.optional(),
     recipient: id.optional(),
@@ -61,29 +65,9 @@ export const SafetyActionSchema = z
   .refine((value) => !!value.origin || !!value.recipient, "Name an origin or recipient.");
 export type SafetyAction = z.infer<typeof SafetyActionSchema>;
 
-export const StandingGrantSchema = z
-  .object({
-    grantId: id,
-    profileId: id,
-    scope: SafetyActionSchema.shape.scope,
-    effect: EffectSchema,
-    action: id,
-    category: EffectCategorySchema.optional(),
-    origin: origin.optional(),
-    recipient: id.optional(),
-    lifetime: z.enum(["session", "always"]),
-    sessionId: id.optional(),
-    createdAt: z.number().int().nonnegative(),
-    revokedAt: z.number().int().nonnegative().optional(),
-  })
-  .strict()
-  .refine((value) => !!value.origin || !!value.recipient, "Name an origin or recipient.");
-export type StandingGrant = z.infer<typeof StandingGrantSchema>;
-
 export const ApprovalDecisionSchema = z.discriminatedUnion("decision", [
   z.object({ decision: z.literal("accept"), approvalId: id }).strict(),
   z.object({ decision: z.literal("acceptForOrigin"), approvalId: id }).strict(),
-  z.object({ decision: z.literal("acceptForSession"), approvalId: id, sessionId: id }).strict(),
   z
     .object({
       decision: z.literal("acceptWithAmendment"),
@@ -275,6 +259,7 @@ export const EffectRequestSchema = z
     destination: z.string().trim().min(1).max(2048).optional(),
     recipient: id.optional(),
     dataClasses: z.array(DataClassSchema).max(8).default([]),
+    amount: z.number().finite().nonnegative().optional(),
     provenance: EffectProvenanceSchema,
     invocationDigest: z.string().regex(/^[a-f0-9]{64}$/),
     turnId: id,
@@ -290,6 +275,7 @@ export const SuspensionKindSchema = z.enum([
   "ask-user-question",
   "approval",
   "action-confirmation",
+  "touch-id",
   "handoff",
 ]);
 export type SuspensionKind = z.infer<typeof SuspensionKindSchema>;
@@ -297,6 +283,16 @@ export type SuspensionKind = z.infer<typeof SuspensionKindSchema>;
 export const SuspensionRequestSchema = z
   .object({
     kind: SuspensionKindSchema,
+    context: z.object({
+      pageId: id.optional(),
+      site: z.string().refine((value) => {
+        try { return new URL(value).origin === value && ["http:", "https:"].includes(new URL(value).protocol); } catch { return false; }
+      }).optional(),
+      policyCategory: AgentPolicyCategorySchema,
+      category: EffectCategorySchema,
+      action: id,
+      amount: z.number().finite().nonnegative().optional(),
+    }).strict().optional(),
     approvalId: id.optional(),
     instruction: z.string().trim().min(1).max(4000),
     guidance: z.string().trim().min(1).max(4000),

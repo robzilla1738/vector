@@ -1043,7 +1043,11 @@ export class PlaywrightDriverPage implements DriverPage {
   async clickPoint(x: number, y: number, button: "left" | "right" | "middle" = "left") {
     await this.page.mouse.click(x, y, { button });
   }
-  async uploadFiles(target: string, files: string[], timeoutMs = DEFAULT_STEP_TIMEOUT) {
+  async uploadFiles(
+    target: string,
+    files: Array<{ name: string; mimeType: string; buffer: Buffer }>,
+    timeoutMs = DEFAULT_STEP_TIMEOUT,
+  ) {
     const loc = await this.resolveActionable(target);
     await loc.setInputFiles(files, { timeout: timeoutMs });
   }

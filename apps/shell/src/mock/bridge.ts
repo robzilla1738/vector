@@ -684,10 +684,7 @@ export function installMockBridge(q: URLSearchParams) {
     );
   };
   const handlers = {
-    "safety.grants.list": nativeTrustUnavailable,
-    "safety.grants.revoke": nativeTrustUnavailable,
-    "safety.originPolicies.list": nativeTrustUnavailable,
-    "safety.originPolicies.set": nativeTrustUnavailable,
+    "safety.decisions.list": nativeTrustUnavailable,
     "github.connections.list": async () => [...githubAccounts.values()],
     "github.connections.connect": async (p: Record<string, unknown>) => {
       const account = {
@@ -2290,6 +2287,9 @@ export function installMockBridge(q: URLSearchParams) {
       if (omnibox?.queryId !== queryId) return false;
       omnibox = null;
       return true;
+    },
+    "auth.confirm": async () => {
+      throw new Error("Device confirmation requires the native Aux host.");
     },
     preloadNavigation: async ({ pageId, expectedUrl, url }) => {
       const page = pages.find((item) => item.pageId === pageId);

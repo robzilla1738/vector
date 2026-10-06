@@ -1,3 +1,5 @@
+import { ApprovalStore } from "../safety/approval.js";
+import { SuspensionStore } from "../safety/suspensions.js";
 import { closeCreatedPage } from "./close-created-page.js";
 import { browserContextPage } from "./browser-context-page.js";
 import { withRunAuthorityMutation, withRunDispatchMutation } from "./overnight-authority.js";
@@ -47,7 +49,6 @@ import { DurableWriteLedger, PageClaimStore } from "../agent/durable.js";
 import { runMemberAgent } from "../agent/member-agent.js";
 import type { ResearchBudget, ResearchLimits } from "../scheduler/research-budget.js";
 import { modelCallCost } from "../agent/model-client.js";
-import { USER_RUN_GRANTS } from "../agent/permissions.js";
 import { SetRunner } from "../scheduler/set-runner.js";
 import { WorkerPool } from "../scheduler/pool.js";
 import { PageOwnership } from "../scheduler/page-ownership.js";
@@ -995,6 +996,8 @@ export class RunService {
       contentMemory?: import("./content-memory.js").ContentMemoryStore;
       memoryPipeline?: import("./memory-pipeline.js").MemoryPipeline;
       operations?: import("./operations.js").OperationService;
+      approvals?: ApprovalStore;
+      suspensions?: SuspensionStore;
       durableWrites?: DurableWriteLedger;
       pageClaims?: PageClaimStore;
       /** User budgets per run/day/routine (D11) — pre-call gate in the coordinator + loop host. */
@@ -1118,7 +1121,6 @@ export class RunService {
         this.deps.artifacts.save({ runId: run.runId, label: "preview.html", mediaType: "text/html", buffer });
       },
       tracer: deps.tracer,
-      grants: () => deps.settings.effectGrantsForRun(),
       durableWrites,
       vault: deps.vault,
       calendar: deps.calendar,
@@ -1139,7 +1141,6 @@ export class RunService {
         ? (runId, url, sourcePageId, signal) => this.openControlledPage(runId, url, sourcePageId, signal)
         : undefined,
       translateSteps: deps.translateSteps,
-      grants: () => deps.settings.effectGrantsForRun?.() ?? USER_RUN_GRANTS,
       durableWrites,
       getProgram: (id) => {
         const p = deps.repo.getProgram(id);
@@ -1200,7 +1201,6 @@ export class RunService {
           // the set-run's own signal — runs.cancel stops member model calls
           signal: ctx.signal,
           budget: ctx.budget,
-          grants: () => deps.settings.effectGrantsForRun?.() ?? USER_RUN_GRANTS,
           durable: durableWrites,
           beforeModelCall: async () => {
             await checkNightShiftDispatch(deps.repo, ctx.runId);
@@ -1953,6 +1953,7 @@ export class RunService {
   }
 
   async cancel(runId: string, reason?: string): Promise<Run> {
+    this.retirePendingAuthority(runId);
     return withRunDispatchMutation(
       this.deps.repo,
       async () => {
@@ -1974,26 +1975,41 @@ export class RunService {
     );
   }
 
-  async pauseForTakeover(runId: string): Promise<Run> {
+  private retirePendingAuthority(runId: string): void {
     const run = this.deps.repo.getRun(runId);
     if (!run) throw new AuxError("not_found", `no run ${runId}`);
-    if (run.status !== "queued" && run.status !== "running" && run.status !== "planning") return run;
-    const paused = await this.pause(runId);
-    if (paused.status === "paused") {
-      this.coordinator.interruptForTakeover(runId);
+    const approvals = this.deps.approvals ?? new ApprovalStore(this.deps.repo.db);
+    const suspensions = this.deps.suspensions ?? new SuspensionStore(this.deps.repo.db);
+    this.deps.repo.transaction(() => {
+      const pending = suspensions.pending(runId);
+      if (pending) approvals.retireTurn(pending.turnId, pending.threadId);
+      approvals.retireTurn(runId, run.config?.chatId ?? runId);
+      suspensions.resolveRun(runId, "cancelled");
+    });
+  }
+
+  async pauseForTakeover(runId: string): Promise<Run> {
+    const original = this.deps.repo.getRun(runId);
+    if (!original) throw new AuxError("not_found", `no run ${runId}`);
+    if (!["queued", "running", "planning", "needs_input"].includes(original.status)) return original;
+    // The native takeover already happened. Revoke proof authority before any
+    // asynchronous transport retirement can let a pending sheet complete.
+    this.retirePendingAuthority(runId);
+    this.coordinator.interruptForTakeover(runId);
+    this.setRunControls.get(runId)?.pause();
+    return withRunDispatchMutation(this.deps.repo, async () => {
+      const run = this.deps.repo.getRun(runId);
+      if (!run) throw new AuxError("not_found", `no run ${runId}`);
+      if (TERMINAL_RUN_STATUSES.has(run.status)) return run;
+      run.status = "paused";
+      run.statusMessage = "You took control of a page. Active agent input stopped; return control to continue from a fresh page view.";
+      this.deps.repo.saveRun(run);
       this.takeoverPausedRuns.add(runId);
-      paused.statusMessage =
-        "You took control of a page. Active agent input stopped; return control to continue from a fresh page view.";
-      this.deps.repo.saveRun(paused);
-      this.coordinator.persistCheckpoint(paused);
-      this.deps.events.emit(
-        EventTypes.RunStatus,
-        { runId, status: paused.status, message: paused.statusMessage },
-        runId,
-      );
-      this.deps.events.emit(EventTypes.RunUpdated, { run: paused }, runId);
-    }
-    return paused;
+      this.coordinator.persistCheckpoint(run);
+      this.deps.events.emit(EventTypes.RunStatus, { runId, status: run.status, message: run.statusMessage }, runId);
+      this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+      return run;
+    }, runId);
   }
 
   /** Saved programs cannot safely replay their remaining steps after owner input. */

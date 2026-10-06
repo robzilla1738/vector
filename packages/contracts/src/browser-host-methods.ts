@@ -531,6 +531,16 @@ export const BrowserHostMethods = {
     ]),
     bool,
   ),
+  "auth.confirm": coreShell(
+    tuple([
+      strictObject({
+        reason: str.min(1).max(1000),
+        approvalId: str.min(1).max(160),
+        expectedTurnId: str.min(1).max(160),
+      }),
+    ]),
+    strictObject({ ok: z.literal(true), approvalId: str.min(1).max(160), turnId: str.min(1).max(160) }),
+  ),
   preloadNavigation: coreShell(
     tuple([strictObject({ pageId: str, expectedUrl: str.max(8192), url: str.max(8192) })]),
     bool,

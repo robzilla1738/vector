@@ -1,3 +1,4 @@
+import { modelStream } from "../fixtures/model-stream.js";
 import { describe, expect, it } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -102,7 +103,7 @@ describe("runtime failover", () => {
       model: (id) => {
         resolved.push(id);
         return new MockLanguageModelV4({
-          doGenerate: async () => {
+          doStream: async () => {
             throw apiError(429);
           },
         });
@@ -131,7 +132,7 @@ describe("runtime failover", () => {
       model: (id) => {
         resolved.push(id);
         return new MockLanguageModelV4({
-          doGenerate: async () => {
+          doStream: async () => {
             throw apiError(429);
           },
         });
@@ -153,7 +154,7 @@ describe("runtime failover", () => {
     const client = new GatewayModelClient("fixture", {
       model: (id) => {
         resolved.push(id);
-        return new MockLanguageModelV4({ doGenerate: textResult("unreached") });
+        return new MockLanguageModelV4({ doStream: () => modelStream(textResult("unreached")) });
       },
       allowedModelId: MUSE,
     });
@@ -176,11 +177,11 @@ describe("runtime failover", () => {
   it("429 on the primary candidate serves from the next candidate with its model id", async () => {
     const resolved: string[] = [];
     const primary = new MockLanguageModelV4({
-      doGenerate: async () => {
+      doStream: async () => {
         throw apiError(429);
       },
     });
-    const secondary = new MockLanguageModelV4({ doGenerate: textResult("from backup") });
+    const secondary = new MockLanguageModelV4({ doStream: () => modelStream(textResult("from backup")) });
     const client = new GatewayModelClient("fixture", {
       model: (id) => {
         resolved.push(id);
@@ -205,11 +206,11 @@ describe("runtime failover", () => {
   it("a non-retriable status does not advance the chain", async () => {
     const resolved: string[] = [];
     const primary = new MockLanguageModelV4({
-      doGenerate: async () => {
+      doStream: async () => {
         throw apiError(400);
       },
     });
-    const secondary = new MockLanguageModelV4({ doGenerate: textResult("unreached") });
+    const secondary = new MockLanguageModelV4({ doStream: () => modelStream(textResult("unreached")) });
     const client = new GatewayModelClient("fixture", {
       model: (id) => {
         resolved.push(id);
@@ -230,7 +231,7 @@ describe("runtime failover", () => {
     const resolved: string[] = [];
     const mk = () =>
       new MockLanguageModelV4({
-        doGenerate: async () => {
+        doStream: async () => {
           throw apiError(503);
         },
       });
@@ -254,11 +255,11 @@ describe("runtime failover", () => {
   it("structured calls fail over with prior attempts merged into retries", async () => {
     const resolved: string[] = [];
     const primary = new MockLanguageModelV4({
-      doGenerate: async () => {
+      doStream: async () => {
         throw apiError(429);
       },
     });
-    const secondary = new MockLanguageModelV4({ doGenerate: textResult('{"ok":true}') });
+    const secondary = new MockLanguageModelV4({ doStream: () => modelStream(textResult('{"ok":true}')) });
     const client = new GatewayModelClient("fixture", {
       model: (id) => {
         resolved.push(id);
@@ -284,7 +285,7 @@ describe("runtime failover", () => {
 
   it("no chain configured → the requested model is the only candidate", async () => {
     const resolved: string[] = [];
-    const model = new MockLanguageModelV4({ doGenerate: textResult("solo") });
+    const model = new MockLanguageModelV4({ doStream: () => modelStream(textResult("solo")) });
     const client = new GatewayModelClient("fixture", {
       model: (id) => {
         resolved.push(id);

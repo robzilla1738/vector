@@ -1,8 +1,8 @@
 import { AuxError, TaskReadProvenanceSchema, type ValidatedTaskRead } from "@aux/contracts";
 /**
  * One effect decision function (S3/D4): every actor's consequential call flows
- * through `decide`, which composes managed policy, user rules, the origin
- * resolver, standing grants, single-use approvals and the guardian judge —
+ * through `decide`, which composes managed restrictions, mode/category/site
+ * policy, device authentication and exceptional single-use approvals —
  * returning a typed Decision instead of throwing. The dispatch gate adapts
  * non-allow decisions to the existing AuxError contract at the boundary.
  */
@@ -21,28 +21,12 @@ import {
   type Step,
 } from "@aux/contracts";
 import { observedCategory, type ObservedActionTarget } from "./observed-target.js";
+import { classifyStep, isConsequential } from "../agent/permissions.js";
+import { ApprovalStore } from "./approval.js";
+import { agentPolicyCategoryFor, policyFor, type AgentPolicySettings } from "@aux/contracts";
 import {
-  classifyStep,
-  grantAllows,
-  isConsequential,
-  parseGrant,
-  resolveGrants,
-  type EffectClass,
-  type GrantInput,
-} from "../agent/permissions.js";
-import { ApprovalStore, type LocalCeiling } from "./approval.js";
-import {
-  confirmationLevelForAction,
-  confirmationTierFor,
-  stricterConfirmation,
-  decideConfirmation,
-} from "./confirmation.js";
-import { reviewGuardian, type GuardianJudge, type UntrustedOutput } from "./guardian.js";
-import {
-  evaluateOriginPolicy,
   exactOrigin,
   type OriginPolicyAudit,
-  type OriginPolicyDecision,
 } from "./origin-policy.js";
 
 /** Refusal ids are registered in packages/contracts/src/refusals.ts. */
@@ -61,6 +45,7 @@ export type DecisionSource =
   | "standing_grant"
   | "approval"
   | "guardian"
+  | "task_resource"
   | "trusted_source"
   | "default";
 
@@ -118,12 +103,8 @@ export interface DecideDeps {
   approvals: ApprovalStore;
   journal: DecisionJournal;
   managedRules: () => readonly OriginRule[];
-  userRules: () => readonly OriginRule[];
-  localCeiling: (action: SafetyAction) => LocalCeiling;
-  /** Session-level effect grants (settings.permission sheet) — standing grants by another name. */
-  settingsGrants?: () => readonly GrantInput[];
+  agentPolicy: () => AgentPolicySettings;
   audit: (decision: OriginPolicyAudit | Record<string, unknown>) => void;
-  judge?: GuardianJudge;
   now?: () => number;
 }
 
@@ -136,11 +117,8 @@ export interface DecideContext {
   turnToolCallCount?: number;
   sensitiveData?: boolean;
   restrictedRetry?: boolean;
-  untrusted?: readonly UntrustedOutput[];
-  /** No UI is attached: any `ask` collapses to a deny-with-refusal. */
+  /** Headless callers retain the same durable suspension as interactive runs. */
   headless?: boolean;
-  /** Actual Night Shift producer: confirmation may use durable category grants only. */
-  standingOnly?: boolean;
   /** The program came from a trusted source (runtime-authored). Only this
    * unlocks `evaluate` — model and MCP callers can never reach page JS. */
   trustedEval?: boolean;
@@ -249,6 +227,7 @@ export function actionFor(request: EffectRequest, normalizedOrigin?: string): Sa
     turnId: request.turnId,
     threadId: request.threadId,
     requestedAt: request.requestedAt,
+    ...(request.amount !== undefined ? { amount: request.amount } : {}),
   });
 }
 
@@ -283,7 +262,7 @@ function ask(
   suspension: Decision & { status: "ask" } extends never
     ? never
     : {
-        kind: "approval" | "action-confirmation" | "handoff" | "ask-user-question";
+        kind: "approval" | "action-confirmation" | "touch-id" | "handoff" | "ask-user-question";
         approvalId?: string;
         instruction: string;
         guidance: string;
@@ -301,425 +280,59 @@ const DENIED_GUIDANCE =
 const ASK_GUIDANCE =
   "Pause this action and request approval from the user. Do not dispatch or retry while approval is pending.";
 
-/**
- * Compose one decision. The order is fixed: managed policy and user rules
- * resolve through the origin policy (deny < ask < allow), standing grants and
- * single-use approvals authorize, and the guardian judges at dispatch.
- */
-export async function decide(
-  request: EffectRequest,
-  deps: DecideDeps,
-  context: DecideContext,
-): Promise<Decision> {
-  let at = deps.now?.() ?? Date.now();
+/** Shared mode policy leads; a fresh decision is made at the actual dispatch boundary. */
+export async function decide(request: EffectRequest, deps: DecideDeps, context: DecideContext): Promise<Decision> {
+  const at = deps.now?.() ?? Date.now();
   const parsed = EffectRequestSchema.parse(request);
-  const finish = (decision: Decision): Decision => {
-    if (context.headless && decision.status === "ask") {
-      return deny(
-        deps.journal,
-        parsed,
-        "headless_no_ui",
-        "origin_resolver",
-        "No interface is attached to answer this request. Choose an action that does not need confirmation.",
-        at,
-      );
-    }
-    return decision;
-  };
-
   const exact = parsed.origin ? exactOrigin(parsed.origin) : null;
-  if (parsed.origin && !exact) {
-    return finish(
-      deny(
-        deps.journal,
-        parsed,
-        REFUSAL.untrustedOrigin,
-        "origin_resolver",
-        "This action has no trustworthy http(s) origin.",
-        at,
-      ),
-    );
-  }
-  let action = actionFor(parsed, exact ?? undefined);
+  if (parsed.origin && !exact)
+    return deny(deps.journal, parsed, REFUSAL.untrustedOrigin, "origin_resolver", "This action has no trustworthy HTTP(S) origin.", at);
+  if (parsed.category === "evaluate" && context.trustedEval !== true)
+    return deny(deps.journal, parsed, REFUSAL.evaluateUnreachable, "origin_resolver", "Page JavaScript is not available to agent callers.", at);
+  if (parsed.actor !== "user" && /^(settings\.|safety\.(?:policies|grants)|agent\.policy)/.test(parsed.action))
+    return deny(deps.journal, parsed, REFUSAL.authorizationDenied, "managed_policy", "Agent permissions must be changed in Aux Settings.", at);
+  const managed = exact ? deps.managedRules().filter((rule) => exactOrigin(rule.origin) === exact) : [];
+  if (managed.some((rule) => rule.access === "deny" || rule.effects?.[parsed.effect] === "deny"))
+    return deny(deps.journal, parsed, REFUSAL.originPolicyDenied, "managed_policy", DENIED_GUIDANCE, at);
+  if (parsed.category === "evaluate")
+    return allow(deps.journal, parsed, { authorizedBy: "policy", policySource: "managed" }, "trusted_source", at);
 
-  // Recipient-scoped effects (external tools addressed to a service, not a page
-  // origin) bypass origin rules and always confirm.
-  const recipientPolicy: OriginPolicyDecision = {
-    access: "ask",
-    confirmation: "action",
-    approvalLifetime: "turn",
-    grantLifetime: "session",
-    source: "default",
-    reason: "recipient_scoped",
-    origin: "recipient",
-    effect: parsed.effect,
-  };
-  const evaluate = () =>
-    exact
-      ? evaluateOriginPolicy({
-          url: `${exact}/`,
-          effect: parsed.effect,
-          action: parsed.action,
-          managed: deps.managedRules(),
-          user: deps.userRules(),
-          audit: deps.audit,
-          now: at,
-        })
-      : recipientPolicy;
-  let suppliedApprovalId = context.standingOnly ? undefined : context.approvalId;
-  const authorize = (
-    policy: OriginPolicyDecision,
-    consume: boolean,
-    requiresApproval: boolean,
-    approvalOnly: boolean,
-  ) => {
-    const result = deps.approvals.authorize({
-      action,
-      policy,
-      // A permissive local ceiling never substitutes for action-time consent.
-      ceiling: requiresApproval && deps.localCeiling(action) === "always" ? "ask" : deps.localCeiling(action),
-      approvalOnly,
-      standingOnly: context.standingOnly,
-      sessionId: context.sessionId,
-      approvalId: suppliedApprovalId,
-      consume,
-      now: at,
-    });
-    if (
-      result.status === "ask" &&
-      context.taskRead &&
-      parsed.effect === "read" &&
-      parsed.category === "read" &&
-      action.confirmation === "none" &&
-      !requiresApproval &&
-      !approvalOnly &&
-      policy.access === "allow" &&
-      deps.localCeiling(action) !== "never"
-    ) {
-      const source = TaskReadProvenanceSchema.parse(context.taskRead.provenance);
-      if (action.scope.kind !== "task" || action.scope.id !== source.taskId)
-        throw new AuxError("permission_denied", "The read action belongs to another task source.");
-      context.taskRead.check();
-      return { status: "authorized" as const, provenance: source };
-    }
-    // Session-level effect grants are standing consent: they authorize only
-    // what ApprovalStore could not, and never substitute for action-time
-    // confirmation (approvalOnly stays exclusive to review artifacts).
-    if (
-      result.status === "ask" &&
-      !context.standingOnly &&
-      !requiresApproval &&
-      !approvalOnly &&
-      exact &&
-      deps.settingsGrants
-    ) {
-      const needed = ["read", "write", "destructive", "egress"].includes(parsed.effect)
-        ? (parsed.effect as EffectClass)
-        : null;
-      const granted =
-        needed &&
-        resolveGrants(deps.settingsGrants())
-          .map(parseGrant)
-          .some((grant) => grant != null && grantAllows(grant, needed, exact, at));
-      if (granted)
-        return {
-          status: "authorized" as const,
-          provenance: { authorizedBy: "standing" as const, grantId: `settings:${needed}` },
-        };
-    }
-    return result;
-  };
-  const policySource = (policy: OriginPolicyDecision): DecisionSource =>
-    policy.source === "managed" ? "managed_policy" : policy.source === "user" ? "user_rule" : "default";
-
-  // Page JS is never reachable by model or MCP callers. Runtime-authored
-  // programs (allowEval) still honor explicit deny rules before running.
-  if (parsed.category === "evaluate") {
-    if (context.trustedEval !== true) {
-      return finish(
-        deny(
-          deps.journal,
-          parsed,
-          REFUSAL.evaluateUnreachable,
-          "origin_resolver",
-          "Page JavaScript is not available to agent callers. Use page, extraction, or operation tools instead.",
-          at,
-        ),
-      );
-    }
-    const evalPolicy = evaluate();
-    // Only an explicit rule stops trusted runtime eval — the unruled default
-    // deny exists for model callers, which never reach this branch.
-    if (evalPolicy.reason === "explicit_deny") {
-      return finish(
-        deny(
-          deps.journal,
-          parsed,
-          REFUSAL.originPolicyDenied,
-          policySource(evalPolicy),
-          "Origin policy denied this action. " + DENIED_GUIDANCE,
-          at,
-        ),
-      );
-    }
-    return finish(
-      allow(
-        deps.journal,
-        parsed,
-        {
-          authorizedBy: "policy",
-          policySource:
-            evalPolicy.source === "managed" ? "managed" : evalPolicy.source === "user" ? "user" : "default",
-        },
-        "trusted_source",
-        at,
-      ),
-    );
-  }
-
-  const policy = evaluate();
-  if (policy.access === "deny") {
-    return finish(
-      deny(
-        deps.journal,
-        parsed,
-        REFUSAL.originPolicyDenied,
-        policySource(policy),
-        "Origin policy denied this action. " + DENIED_GUIDANCE,
-        at,
-      ),
-    );
-  }
-
-  // With no matching rule the default is derived from the category; a matched
-  // rule's confirmation level wins, escalated by sensitive data or handoff.
-  const floor = confirmationTierFor(parsed);
-  const policyLevel = policy.source === "default" ? floor : stricterConfirmation(floor, policy.confirmation);
-  const level = confirmationLevelForAction({
-    policyLevel,
-    sensitiveData: context.sensitiveData || parsed.dataClasses.includes("sensitive"),
+  const settings = deps.agentPolicy();
+  const category = parsed.dataClasses.includes("credential") ? "credentials" : agentPolicyCategoryFor(parsed.category, parsed.action);
+  const modePolicy = policyFor({ mode: settings.agentMode, category, site: exact ?? undefined, amount: parsed.amount, overrides: settings.agentPolicies });
+  const source = modePolicy.source === "user" ? "user_rule" : "default";
+  if (modePolicy.disposition === "block") return deny(deps.journal, parsed, REFUSAL.authorizationDenied, source, DENIED_GUIDANCE, at);
+  if (modePolicy.disposition === "handoff" || managed.some((rule) => rule.confirmation === "handoff"))
+    return ask(deps.journal, parsed, { kind: "handoff", instruction: "Complete this action directly in the site, then return to Aux.", guidance: ASK_GUIDANCE }, source, at);
+  const action = SafetyActionSchema.parse({
+    ...actionFor(parsed, exact ?? undefined),
+    policyRevision: settings.agentPolicyRevision,
+    category: category === "credentials" ? "credential" : parsed.category,
+    confirmation: modePolicy.disposition === "allow" ? "none" : "action",
+    ...(modePolicy.disposition === "touch_id" ? { authentication: "touch_id" } : {}),
   });
-  action = SafetyActionSchema.parse({ ...action, confirmation: level });
-  if (level === "handoff") {
-    return finish(
-      ask(
-        deps.journal,
-        parsed,
-        {
-          kind: "handoff",
-          instruction: "Complete this action directly in the site, then return to Aux.",
-          guidance: ASK_GUIDANCE,
-        },
-        policySource(policy),
-        at,
-      ),
-    );
+  const approvalId = context.approvalId ?? deps.approvals.acceptedFor(action, "turn", at);
+  const authorization = deps.approvals.authorize({ action, settings, approvalId, consume: context.phase === "dispatch", now: at });
+  if (authorization.status === "denied") return deny(deps.journal, parsed, REFUSAL.authorizationDenied, source, authorization.guidance, at);
+  if (authorization.status === "handoff")
+    return ask(deps.journal, parsed, { kind: "handoff", instruction: authorization.guidance, guidance: ASK_GUIDANCE }, source, at);
+  if (authorization.status === "ask" || authorization.status === "touch_id") {
+    const pendingId = deps.approvals.issue(action, "turn", at);
+    return ask(deps.journal, parsed, {
+      kind: authorization.status === "touch_id" ? "touch-id" : "approval",
+      approvalId: pendingId,
+      instruction: authorization.guidance,
+      guidance: ASK_GUIDANCE,
+    }, "approval", at);
   }
-
-  // Direct programs resume only the exact saved acceptance. Policy and the
-  // confirmation floor above remain authoritative; final dispatch consumes it.
-  if (
-    !suppliedApprovalId &&
-    !context.headless &&
-    !context.standingOnly &&
-    context.turnToolCallCount === undefined
-  ) {
-    suppliedApprovalId = deps.approvals.acceptedFor(action, policy.approvalLifetime, at);
+  context.taskRead?.check();
+  if (context.taskRead && parsed.effect === "read" && category === "read") {
+    const provenance = TaskReadProvenanceSchema.parse(context.taskRead.provenance);
+    if (action.scope.kind !== "task" || action.scope.id !== provenance.taskId)
+      throw new AuxError("permission_denied", "The read action belongs to another task source.");
+    return allow(deps.journal, parsed, provenance, "task_resource", at);
   }
-  const requiresApproval = level === "action" || level === "preapprovable";
-  if (
-    requiresApproval &&
-    !suppliedApprovalId &&
-    !(level === "preapprovable" && authorize(policy, false, true, false).status === "authorized")
-  ) {
-    const confirmation = decideConfirmation({
-      level,
-      action,
-      review: context.review,
-      turnToolCallCount: context.turnToolCallCount ?? 0,
-    });
-    if (confirmation.status === "invalid") {
-      // A direct page program has no model turn to attach a review artifact.
-      // The person confirms it. The same action can then run once on that acceptance.
-      if (context.turnToolCallCount === undefined) {
-        if (!suppliedApprovalId) {
-          const approvalId = deps.approvals.issue(action, policy.approvalLifetime, at);
-          return finish(
-            ask(
-              deps.journal,
-              parsed,
-              {
-                kind: "approval",
-                approvalId,
-                instruction: "Allow this action before it runs.",
-                guidance: ASK_GUIDANCE,
-              },
-              "approval",
-              at,
-            ),
-          );
-        }
-      } else {
-        return finish(
-          ask(
-            deps.journal,
-            parsed,
-            {
-              kind: "action-confirmation",
-              instruction: `Produce a final confirmation turn with a review artifact (${confirmation.reason}).`,
-              guidance:
-                "End the turn after calling exactly one tool that carries a typed review artifact for this action.",
-            },
-            "default",
-            at,
-          ),
-        );
-      }
-    }
-  }
-
-  const authorization = authorize(policy, false, requiresApproval, level === "action");
-  if (authorization.status === "denied") {
-    return finish(
-      deny(
-        deps.journal,
-        parsed,
-        REFUSAL.authorizationDenied,
-        policySource(policy),
-        authorization.guidance,
-        at,
-      ),
-    );
-  }
-  if (authorization.status === "ask") {
-    const approvalId = deps.approvals.issue(action, policy.approvalLifetime, at);
-    return finish(
-      ask(
-        deps.journal,
-        parsed,
-        {
-          kind: "approval",
-          approvalId,
-          instruction: authorization.guidance,
-          guidance: ASK_GUIDANCE,
-        },
-        "approval",
-        at,
-      ),
-    );
-  }
-  if (context.phase === "preflight") {
-    return finish(
-      allow(
-        deps.journal,
-        parsed,
-        authorization.provenance,
-        sourceForProvenance(authorization.provenance),
-        at,
-      ),
-    );
-  }
-
-  // The judge sees only typed, bounded untrusted envelopes; it cannot change policy or provenance.
-  const review = await reviewGuardian({
-    runId: parsed.runId,
-    action,
-    authorization: authorization.provenance.authorizedBy === "approval" ? "high" : "medium",
-    restrictedRetry: context.restrictedRetry,
-    untrusted: context.untrusted,
-    judge: deps.judge,
-  });
-  deps.audit({
-    kind: "guardian_decision",
-    at,
-    status: review.status,
-    action: action.action,
-    effect: action.effect,
-    findings: review.findings.map((finding) => ({
-      category: finding.category,
-      severity: finding.severity,
-      reason: finding.reason,
-    })),
-  });
-  if (review.status === "deny") {
-    return finish(deny(deps.journal, parsed, REFUSAL.guardianDenied, "guardian", review.guidance, at));
-  }
-  if (review.status === "authorization_required") {
-    return finish(
-      ask(
-        deps.journal,
-        parsed,
-        {
-          kind: "approval",
-          instruction: review.guidance,
-          guidance: ASK_GUIDANCE,
-        },
-        "guardian",
-        at,
-      ),
-    );
-  }
-
-  // Policy and grants may have changed during the guardian await; decide again
-  // at the dispatch boundary and consume the single-use approval only now.
-  at = deps.now?.() ?? Date.now();
-  const finalPolicy = evaluate();
-  if (finalPolicy.access === "deny") {
-    return finish(
-      deny(
-        deps.journal,
-        parsed,
-        REFUSAL.originPolicyDenied,
-        policySource(finalPolicy),
-        "Origin policy denied this action. " + DENIED_GUIDANCE,
-        at,
-      ),
-    );
-  }
-  const finalLevel = confirmationLevelForAction({
-    policyLevel:
-      finalPolicy.source === "default" ? floor : stricterConfirmation(floor, finalPolicy.confirmation),
-    sensitiveData: context.sensitiveData || parsed.dataClasses.includes("sensitive"),
-  });
-  action = SafetyActionSchema.parse({ ...action, confirmation: finalLevel });
-  if (finalLevel === "handoff")
-    return finish(
-      ask(
-        deps.journal,
-        parsed,
-        {
-          kind: "handoff",
-          instruction: "Complete this action directly in the site, then return to Aux.",
-          guidance: ASK_GUIDANCE,
-        },
-        policySource(finalPolicy),
-        at,
-      ),
-    );
-  const final = authorize(finalPolicy, true, finalLevel !== "none", finalLevel === "action");
-  if (final.status === "denied") {
-    return finish(
-      deny(deps.journal, parsed, REFUSAL.authorizationDenied, policySource(finalPolicy), final.guidance, at),
-    );
-  }
-  if (final.status === "ask") {
-    const approvalId = deps.approvals.issue(action, finalPolicy.approvalLifetime, at);
-    return finish(
-      ask(
-        deps.journal,
-        parsed,
-        {
-          kind: "approval",
-          approvalId,
-          instruction: final.guidance,
-          guidance: ASK_GUIDANCE,
-        },
-        "approval",
-        at,
-      ),
-    );
-  }
-  return finish(allow(deps.journal, parsed, final.provenance, sourceForProvenance(final.provenance), at));
+  return allow(deps.journal, parsed, authorization.provenance, sourceForProvenance(authorization.provenance), at);
 }
 
 function sourceForProvenance(provenance: AuthorizationProvenance): DecisionSource {

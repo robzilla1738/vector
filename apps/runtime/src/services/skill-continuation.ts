@@ -253,7 +253,7 @@ export async function resumeSkillApproval(
     decision.expires_at <= Date.now() ||
     (approved
       ? !["accepted", "consumed"].includes(decision.state) ||
-        !["accept", "acceptForSession", "acceptForOrigin"].includes(decision.decision)
+        !["accept", "acceptForOrigin", "device"].includes(decision.decision)
       : !["declined", "cancelled"].includes(decision.state))
   )
     throw new AuxError("permission_denied", "This Skill lacks a current owner decision for its exact turn.");

@@ -1,4 +1,3 @@
-import { overnightRoot } from "../run-lineage.js";
 import { checkNightShiftDispatch } from "../../features/overnight-review/service.js";
 import {
   AuxError,
@@ -14,7 +13,7 @@ import {
   newStepId,
 } from "@aux/contracts";
 import { beginConsequentialWrite, settleWrite } from "../../agent/durable.js";
-import { DEFAULT_GRANTS, authorizeProgram, classifyStep } from "../../agent/permissions.js";
+import { isReadOnlyProfile, authorizeProfileProgram, classifyStep } from "../../agent/permissions.js";
 import { type ExecContext, executeProgram } from "../../execution/executor.js";
 import { secureCredentialHandoff } from "../../safety/credential-handoff.js";
 import type { ControlAuthority } from "./control.js";
@@ -104,7 +103,9 @@ export class ProgramExecutor {
         let admittedDriver = lp.driver;
         let admittedSession = lp.target.sessionId;
         const expectedEpoch = lp.target.controllerEpoch;
+        const checkPolicy = this.pages.deps.safetyGate?.policyFence();
         const checkIncarnation = () => {
+          checkPolicy?.();
           if (
             this.pages.live.get(pageId) !== lp ||
             lp.driver !== admittedDriver ||
@@ -119,9 +120,6 @@ export class ProgramExecutor {
             throw new AuxError("conflict", `page ${pageId} changed controller mid-run (takeover)`);
         };
         const allSteps = collectProgramSteps(program);
-        const grants = ctx.runId
-          ? (this.pages.deps.grantsForRun ?? this.pages.deps.grants ?? DEFAULT_GRANTS)
-          : (this.pages.deps.grants ?? DEFAULT_GRANTS);
         let origin = "";
         try {
           origin = new URL(lp.driver.url()).origin;
@@ -175,7 +173,7 @@ export class ProgramExecutor {
           checkIncarnation();
           let authorized: Awaited<ReturnType<NonNullable<ExecContext["authorizeStep"]>>> = undefined;
           for (const actionOrigin of origins) {
-            const auth = authorizeProgram([step], grants, actionOrigin);
+            const auth = authorizeProfileProgram([step], isReadOnlyProfile(run?.config?.subagentProfile));
             if (!auth.ok) throw new AuxError("permission_denied", auth.denied);
             if (this.pages.deps.safetyGate && (ctx.runId || classifyStep(step.op) !== "read")) {
               const destination =
@@ -215,7 +213,6 @@ export class ProgramExecutor {
                   turnId: ctx.runId ?? ctx.safety?.turnId ?? `direct:${pageId}`,
                   threadId: run?.config?.chatId ?? ctx.safety?.threadId ?? `page:${pageId}`,
                   sessionId: lp.target.sessionId ?? undefined,
-                  standingOnly: !!(ctx.runId && overnightRoot(this.pages.deps.repo, ctx.runId)),
                   approvalId: metadata?.approvalId,
                   review: metadata?.review,
                   turnToolCallCount: ctx.safety?.turnToolCallCount,
@@ -366,13 +363,17 @@ export class ProgramExecutor {
               taskId:
                 ctx.taskId ??
                 (ctx.runId ? this.pages.deps.repo.getRun(ctx.runId)?.config?.taskId : undefined),
-              uploadRoots:
-                ctx.uploadRoots ??
-                this.pages.deps.uploadRoots?.({
-                  taskId: ctx.taskId ?? this.pages.deps.repo.getRun(ctx.runId ?? "")?.config?.taskId,
-                  runId: ctx.runId,
-                  pageId,
-                }),
+              uploadRead:
+                ctx.uploadRead ??
+                (this.pages.deps.uploadRead
+                  ? (path) =>
+                      this.pages.deps.uploadRead!(path, {
+                        taskId: ctx.taskId ?? this.pages.deps.repo.getRun(ctx.runId ?? "")?.config?.taskId,
+                        runId: ctx.runId,
+                        pageId,
+                        signal: ctx.signal,
+                      })
+                  : undefined),
               fillSavedPassword:
                 this.pages.deps.nativePasswordFillEnabled && this.pages.deps.native.fillSavedPassword
                   ? (request) =>

@@ -24,18 +24,70 @@ import {
   type ToolCallStepResult,
 } from "./model-client.js";
 import { estimatedPromptTokens, projectedModelCostUsd, SpendLedger } from "../store/spend-ledger.js";
-import { ANTHROPIC_CACHE_CONTROL, anthropicCachedHistory, openAiSessionCache, stampAnthropicCache } from "./prompt-cache.js";
+import {
+  ANTHROPIC_CACHE_CONTROL,
+  anthropicCachedHistory,
+  openAiSessionCache,
+  stampAnthropicCache,
+} from "./prompt-cache.js";
 
-/** Per-call ceiling — a hung gateway must not stall a run until runs.cancel. */
-export const DEFAULT_MODEL_CALL_TIMEOUT_MS = 90_000;
+/** Stop only when the model stream has made no progress for one minute. */
+export const DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS = 60_000;
 
-/**
- * Combine the caller's signal with a per-call timeout. Either aborting
- * aborts the SDK call; the timer never keeps the process alive.
- */
-export function withCallTimeout(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
-  const timeout = AbortSignal.timeout(timeoutMs);
-  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+async function withStreamIdle<T>(
+  signal: AbortSignal | undefined,
+  idleMs: number,
+  call: (signal: AbortSignal, progress: () => void) => Promise<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  const combined = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let disposed = false;
+  const progress = () => {
+    if (disposed) return;
+    clearTimeout(timer);
+    timer = setTimeout(
+      () => controller.abort(new DOMException("Model stream stopped responding", "TimeoutError")),
+      idleMs,
+    );
+    timer.unref();
+  };
+  let rejectAbort!: (reason: unknown) => void;
+  const aborted = new Promise<never>((_, reject) => {
+    rejectAbort = reject;
+  });
+  const onAbort = () => rejectAbort(combined.reason);
+  combined.addEventListener("abort", onAbort, { once: true });
+  progress();
+  try {
+    if (combined.aborted) throw combined.reason;
+    return await Promise.race([call(combined, progress), aborted]);
+  } finally {
+    disposed = true;
+    clearTimeout(timer);
+    combined.removeEventListener("abort", onAbort);
+  }
+}
+
+async function consumeModelStream(
+  stream: AsyncIterable<{ type: string; error?: unknown; text?: string; delta?: string }>,
+  signal: AbortSignal,
+  progress: () => void,
+  onText?: (text: string) => void,
+): Promise<void> {
+  for await (const part of stream) {
+    if (signal.aborted) throw signal.reason;
+    if (part.type === "error") throw part.error;
+    if (part.type === "abort")
+      throw signal.reason ?? new AuxError("cancelled", "Model stream was cancelled.");
+    if (
+      ((part.type === "text-delta" || part.type === "reasoning-delta") && part.text?.length) ||
+      (part.type === "tool-input-delta" && part.delta?.length) ||
+      ["file", "reasoning-file", "tool-call"].includes(part.type)
+    )
+      progress();
+    if (part.type === "text-delta" && part.text) onText?.(part.text);
+  }
 }
 
 /**
@@ -264,7 +316,7 @@ export class GatewayModelClient implements ModelClient {
   private readonly apiKey: string;
   private readonly directModel: boolean;
   private resolveModel: (id: string) => LanguageModel;
-  private readonly callTimeoutMs: number;
+  private readonly streamIdleTimeoutMs: number;
   private readonly only: string[] | undefined;
   private readonly spendLedger: SpendLedger | undefined;
   /** Live-catalog-fed capability list (S5.9); falls back to the bundled snapshot. */
@@ -277,7 +329,7 @@ export class GatewayModelClient implements ModelClient {
   constructor(
     apiKey: string,
     opts: {
-      callTimeoutMs?: number;
+      streamIdleTimeoutMs?: number;
       only?: string[];
       model?: (id: string) => LanguageModel;
       spendLedger?: SpendLedger;
@@ -290,8 +342,10 @@ export class GatewayModelClient implements ModelClient {
     this.apiKey = apiKey;
     this.directModel = !!opts.model;
     this.resolveModel = opts.model ?? ((id: string) => this.gateway!(id));
-    this.callTimeoutMs =
-      opts.callTimeoutMs && opts.callTimeoutMs > 0 ? opts.callTimeoutMs : DEFAULT_MODEL_CALL_TIMEOUT_MS;
+    this.streamIdleTimeoutMs =
+      opts.streamIdleTimeoutMs && opts.streamIdleTimeoutMs > 0
+        ? opts.streamIdleTimeoutMs
+        : DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS;
     this.only = !this.directModel && opts.only?.length ? opts.only : undefined;
     this.spendLedger = opts.spendLedger ?? (!this.directModel ? new SpendLedger() : undefined);
     this.registryModels = opts.models ?? (() => MODEL_REGISTRY);
@@ -455,13 +509,11 @@ export class GatewayModelClient implements ModelClient {
     const session = provider === "openai" && opts.sessionId ? openAiSessionCache(opts.sessionId) : undefined;
     return {
       model,
-      abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
+      abortSignal: opts.signal,
       maxRetries: 0 as const,
       maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens, this.capabilities()),
       ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? ("medium" as const) } : {}),
-      instructions: anthropic
-        ? stampAnthropicCache({ role: "system", content: opts.system })
-        : opts.system,
+      instructions: anthropic ? stampAnthropicCache({ role: "system", content: opts.system }) : opts.system,
       messages: cachedMessages,
       providerOptions: mergeProviderOptions(gateway, session, opts.providerOptions),
       cacheTools: anthropic,
@@ -476,11 +528,11 @@ export class GatewayModelClient implements ModelClient {
   private async generateStructuredInner<T>(
     opts: CallOpts & { schema: z.ZodType<T> },
   ): Promise<StructuredCallResult<T>> {
-    const { generateObject } = await this.loadSdk();
+    const { streamText, Output } = await this.loadSdk();
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
     const retries: ModelAttempt[] = [];
-    // Skip generateObject when the schema would send oneOf — Cerebras/Qwen
+    // Use JSON-in-text when the schema would send oneOf — Cerebras/Qwen
     // reject it before any tokens. Simple schemas (probe, final decision)
     // still use structured output.
     if (!schemaNeedsJsonFallback(opts.schema)) {
@@ -490,13 +542,24 @@ export class GatewayModelClient implements ModelClient {
           estimatedPromptTokens(opts.system, opts.prompt, z.toJSONSchema(opts.schema)) +
             (opts.imageDataUrls?.length ?? 0) * 8192,
           opts.maxOutputTokens ?? 2000,
-          () => {
-            const { cacheTools: _cacheTools, ...request } = this.directRequest(
-              { ...opts, messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls) },
-              opts.maxOutputTokens ?? 2000,
-            );
-            return generateObject({ ...request, schema: opts.schema });
-          },
+          () =>
+            withStreamIdle(opts.signal, this.streamIdleTimeoutMs, async (signal, progress) => {
+              const { cacheTools: _cacheTools, ...request } = this.directRequest(
+                { ...opts, messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls) },
+                opts.maxOutputTokens ?? 2000,
+              );
+              const stream = streamText({
+                ...request,
+                abortSignal: signal,
+                output: Output.object({ schema: opts.schema }),
+              });
+              await consumeModelStream(stream.fullStream, signal, progress);
+              return {
+                object: await stream.output,
+                usage: await stream.usage,
+                providerMetadata: await stream.providerMetadata,
+              };
+            }),
         );
         return { object: res.object, ...attempt(started, res) };
       } catch (e) {
@@ -543,29 +606,26 @@ export class GatewayModelClient implements ModelClient {
       estimatedPromptTokens(opts.system, opts.prompt, schemaHint(opts.schema)) +
         (opts.imageDataUrls?.length ?? 0) * 8192,
       opts.maxOutputTokens ?? 2000,
-      async () => {
-        let completed: ModelAttempt | undefined;
-        const stream = streamText({
-          ...request,
-          onStepFinish: (result) => {
-            completed = reportedAttempt(started, opts.modelId, result);
-          },
-        });
-        try {
-          for await (const part of stream.fullStream) {
-            if (part.type === "error") throw part.error;
-            if (part.type === "abort")
-              throw request.abortSignal?.reason ?? new AuxError("cancelled", "Model stream was cancelled.");
-            if (part.type === "text-delta") {
-              text += part.text;
-              opts.onText(part.text);
-            }
+      () =>
+        withStreamIdle(opts.signal, this.streamIdleTimeoutMs, async (signal, progress) => {
+          let completed: ModelAttempt | undefined;
+          const stream = streamText({
+            ...request,
+            abortSignal: signal,
+            onStepFinish: (result) => {
+              completed = reportedAttempt(started, opts.modelId, result);
+            },
+          });
+          try {
+            await consumeModelStream(stream.fullStream, signal, progress, (delta) => {
+              text += delta;
+              opts.onText(delta);
+            });
+            return { usage: await stream.usage, providerMetadata: await stream.providerMetadata };
+          } catch (error) {
+            throw completed ? withAttempts(error, [completed]) : error;
           }
-          return { usage: await stream.usage, providerMetadata: await stream.providerMetadata };
-        } catch (error) {
-          throw completed ? withAttempts(error, [completed]) : error;
-        }
-      },
+        }),
     );
     return this.parseOrRetry(opts, text, attempt(started, res), []);
   }
@@ -648,7 +708,7 @@ export class GatewayModelClient implements ModelClient {
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<TextCallResult> {
-    const { generateText } = await this.loadSdk();
+    const { streamText } = await this.loadSdk();
     const started = Date.now();
     const images = [...(opts.imageDataUrls ?? []), ...(opts.imageDataUrl ? [opts.imageDataUrl] : [])];
     this.requireVision(opts.modelId, images);
@@ -656,13 +716,20 @@ export class GatewayModelClient implements ModelClient {
       opts.modelId,
       estimatedPromptTokens(opts.system ?? "", opts.prompt) + images.length * 8192,
       opts.maxOutputTokens ?? 1200,
-      () => {
-        const { cacheTools: _cacheTools, ...request } = this.directRequest(
-          { ...opts, system: opts.system ?? "", messages: imageReferenceMessage(opts.prompt, images) },
-          opts.maxOutputTokens ?? 1200,
-        );
-        return generateText(request);
-      },
+      () =>
+        withStreamIdle(opts.signal, this.streamIdleTimeoutMs, async (signal, progress) => {
+          const { cacheTools: _cacheTools, ...request } = this.directRequest(
+            { ...opts, system: opts.system ?? "", messages: imageReferenceMessage(opts.prompt, images) },
+            opts.maxOutputTokens ?? 1200,
+          );
+          const stream = streamText({ ...request, abortSignal: signal });
+          await consumeModelStream(stream.fullStream, signal, progress);
+          return {
+            text: await stream.text,
+            usage: await stream.usage,
+            providerMetadata: await stream.providerMetadata,
+          };
+        }),
     );
     return { text: res.text, ...attempt(started, res) };
   }
@@ -705,7 +772,7 @@ export class GatewayModelClient implements ModelClient {
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<ToolCallStepResult> {
-    const { generateText, streamText, tool } = await this.loadSdk();
+    const { streamText, tool } = await this.loadSdk();
     const started = Date.now();
     const names = Object.keys(opts.tools);
     const maxOut = clampOutputTokens(opts.modelId, opts.maxOutputTokens ?? 4000, this.capabilities());
@@ -730,41 +797,37 @@ export class GatewayModelClient implements ModelClient {
       opts.modelId,
       estimatedPromptTokens(opts.system, JSON.stringify(opts.messages).slice(0, 120_000)),
       maxOut,
-      async () => {
-        if (!opts.onText) return generateText({ ...request, tools });
-        let completed: ModelAttempt | undefined;
-        const stream = streamText({
-          ...request,
-          tools,
-          onStepFinish: (result) => {
-            completed = reportedAttempt(started, opts.modelId, result);
-          },
-        });
-        let text = "";
-        opts.onText(text);
-        try {
-          for await (const part of stream.fullStream) {
-            if (part.type === "error") throw part.error;
-            if (part.type === "abort")
-              throw request.abortSignal?.reason ?? new AuxError("cancelled", "Model stream was cancelled.");
-            if (part.type === "text-delta") {
-              text += part.text;
-              opts.onText(text);
-            }
+      () =>
+        withStreamIdle(opts.signal, this.streamIdleTimeoutMs, async (signal, progress) => {
+          let completed: ModelAttempt | undefined;
+          const stream = streamText({
+            ...request,
+            abortSignal: signal,
+            tools,
+            onStepFinish: (result) => {
+              completed = reportedAttempt(started, opts.modelId, result);
+            },
+          });
+          let text = "";
+          opts.onText?.(text);
+          try {
+            await consumeModelStream(stream.fullStream, signal, progress, (delta) => {
+              text += delta;
+              opts.onText?.(text);
+            });
+            return {
+              text: await stream.text,
+              steps: await stream.steps,
+              toolCalls: await stream.toolCalls,
+              response: await stream.response,
+              finishReason: await stream.finishReason,
+              usage: await stream.usage,
+              providerMetadata: await stream.providerMetadata,
+            };
+          } catch (error) {
+            throw completed ? withAttempts(error, [completed]) : error;
           }
-          return {
-            text: await stream.text,
-            steps: await stream.steps,
-            toolCalls: await stream.toolCalls,
-            response: await stream.response,
-            finishReason: await stream.finishReason,
-            usage: await stream.usage,
-            providerMetadata: await stream.providerMetadata,
-          };
-        } catch (error) {
-          throw completed ? withAttempts(error, [completed]) : error;
-        }
-      },
+        }),
     );
     const lastStep = res.steps.at(-1);
     const calls = (lastStep?.toolCalls ?? res.toolCalls ?? []).map((call) => ({

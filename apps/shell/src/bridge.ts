@@ -266,6 +266,7 @@ const stub: AuxBridge = {
   "omnibox.stop": async () => false,
   "omnibox.open": async () => false,
   preloadNavigation: async () => false,
+  "auth.confirm": unavailable("Device confirmation"),
   onOmniboxResult: noop,
   resolveSearch: unavailable("Profile search requires the native browser."),
   overlay: async () => true,

@@ -2,6 +2,10 @@ import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   EventBus,
+  ApprovalStore,
+  DecisionJournal,
+  SafetyDispatchGate,
+  SuspensionStore,
   NullNativeBridge,
   openDb,
   Repo,
@@ -14,6 +18,8 @@ import {
 } from "@aux/runtime";
 import { AuxError } from "@aux/contracts";
 import type { AgentPageCreate, EgressLease, Observation, PageTarget, Program } from "@aux/contracts";
+import { NativePermissionController } from "../../apps/runtime/src/safety/native-permission.js";
+import { installBrowserAuthority, installOvernightAuthority } from "../../apps/runtime/dist/services/overnight-authority.js";
 import { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress.js";
 
 const disposers: Array<() => void> = [];
@@ -200,7 +206,7 @@ function harness(url = "https://source.test/") {
     recoveryModel: () => undefined,
     visionModel: () => undefined,
     effectGrants: () => ["effect:read", "effect:write", "effect:egress"],
-    effectGrantsForRun: () => ["effect:read", "effect:write", "effect:egress"],
+    agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
     agentRoute: () => ({ modelId: "fixture", reasoning: "medium" }),
   } as unknown as SettingsService;
   const sets = new SetService(repo, events, pages);
@@ -223,7 +229,7 @@ function harness(url = "https://source.test/") {
     repo.flush();
     db.close();
   });
-  return { repo, runs, pages, native, trace, created, execute, targets, sets, model };
+  return { repo, runs, pages, native, trace, created, execute, targets, sets, model, egress };
 }
 async function until(check: () => boolean) {
   await vi.waitFor(() => expect(check()).toBe(true), { timeout: 3000, interval: 10 });
@@ -597,3 +603,50 @@ it.each([
     expect(f.repo.listRuns(20)).toHaveLength(1);
   },
 );
+
+it("retires pending native authentication and accepted effects when taking over a run awaiting input", async () => {
+  const f = harness();
+  const runId = "takeover-pending", threadId = "takeover-chat";
+  f.repo.saveRun({ runId, goal: "Pending effect", status: "needs_input", pageIds: ["owner"], createdAt: Date.now(), config: { chatId: threadId } });
+  const approvals = new ApprovalStore(f.repo.db);
+  const suspensions = new SuspensionStore(f.repo.db);
+  const base = { profileId: "profile", scope: { kind: "task" as const, id: "task" }, effect: "write" as const, action: "click", origin: "https://source.test/", confirmation: "action" as const, turnId: runId, threadId, requestedAt: Date.now() };
+  const deviceId = approvals.issue({ ...base, category: "purchase", authentication: "touch_id", invocationDigest: "a".repeat(64) }, "turn");
+  const proof = approvals.prepareDevice(deviceId, runId);
+  const acceptedAction = { ...base, category: "post" as const, invocationDigest: "b".repeat(64) };
+  const acceptedId = approvals.issue(acceptedAction, "turn");
+  approvals.decideLocal({ decision: "accept", approvalId: acceptedId }, runId);
+  suspensions.park({ runId, threadId, turnId: runId, kind: "touch-id", request: { kind: "touch-id", approvalId: deviceId, instruction: "Confirm payment", guidance: "Wait for Touch ID" } });
+
+  const gate = new SafetyDispatchGate({ approvals, journal: new DecisionJournal(f.repo.db), managedRules: () => [], agentPolicy: () => ({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] }), audit: () => {} });
+  const controller = new NativePermissionController({
+    profileId: "profile", gate, approvals, egress: f.egress,
+    mentions: fixtureTurnMentions((id) => f.pages.get(id)),
+    run: (id) => f.repo.getRun(id), page: (id) => f.pages.get(id)!,
+    sourceCheck: () => () => {}, standingOnly: () => false,
+    assertDispatch: async () => {}, overnightAuthority: () => null,
+    retireReservation: async () => ({ accepted: true }), requiresTurn: () => false,
+  });
+  installOvernightAuthority(f.repo, controller);
+  installBrowserAuthority(f.repo, f.egress);
+  let release!: () => void, entered!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  const retiring = new Promise<void>((resolve) => { entered = resolve; });
+  const original = f.egress.withAuthorityMutation.bind(f.egress);
+  vi.spyOn(f.egress, "withAuthorityMutation").mockImplementationOnce(async (matches, mutation) => {
+    entered();
+    await held;
+    return original(matches, mutation);
+  });
+  const takeover = f.runs.pauseForTakeover(runId);
+  await retiring;
+  expect(f.repo.getRun(runId)?.status).toBe("needs_input");
+  expect(suspensions.pending(runId)).toBeUndefined();
+  expect(() => approvals.confirmDevice(deviceId, runId, proof.fingerprint)).toThrow(/Expired, replaced/);
+  expect(approvals.authorize({ action: acceptedAction, settings: { agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] }, approvalId: acceptedId }).status).toBe("ask");
+  release();
+  expect((await takeover).status).toBe("paused");
+  expect(() => approvals.confirmDevice(deviceId, runId, proof.fingerprint)).toThrow(/Expired, replaced/);
+  expect(approvals.authorize({ action: acceptedAction, settings: { agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] }, approvalId: acceptedId }).status).toBe("ask");
+  expect(f.repo.getRun(runId)?.statusMessage).toContain("return control");
+});

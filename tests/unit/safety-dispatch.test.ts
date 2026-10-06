@@ -6,14 +6,14 @@ import type { BrowserDriver, DriverPage, DriverPageEvents } from "@aux/chromium-
 import type { Step } from "@aux/contracts";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
 import { DecisionJournal } from "../../apps/runtime/src/safety/decide.js";
-import { SafetyDispatchGate, type SafetyDispatchDeps } from "../../apps/runtime/src/safety/dispatch.js";
+import { SafetyDispatchGate } from "../../apps/runtime/src/safety/dispatch.js";
 
 const databases: ReturnType<typeof openDb>[] = [];
 afterEach(() => {
   for (const db of databases.splice(0)) db.close();
 });
 
-function fixture(judge?: SafetyDispatchDeps["judge"]) {
+function fixture(prepareOrigin?: () => Promise<string>, initialAccess: "allow" | "ask" | "block" = "ask") {
   const db = openDb(":memory:");
   databases.push(db);
   const repo = new Repo(db);
@@ -22,16 +22,14 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
   const calls: string[] = [];
   let current = "https://allowed.test/form";
   let driverEvents: DriverPageEvents = {};
-  let access: "allow" | "deny" = "allow";
+  let access: "allow" | "ask" | "block" = initialAccess;
   const confirmations: string[] = [];
   const gate = new SafetyDispatchGate({
     approvals,
     journal: new DecisionJournal(db),
     managedRules: () => [],
-    userRules: () => [{ origin: "https://allowed.test/", access, confirmation: "none" }],
-    localCeiling: () => "always",
+    agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [{ category: "click", access }] }),
     audit: () => {},
-    judge,
     onConfirmation: (value) => {
       if (!value.approvalId) throw new Error("Expected an actual approval");
       confirmations.push(value.approvalId);
@@ -53,6 +51,7 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
         navigate: async (url: string) => {
           current = url;
         },
+        originForTarget: prepareOrigin,
         click: async () => {
           calls.push("click");
           if (calls.length === 1) current = "https://blocked.test/";
@@ -88,7 +87,6 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
     events,
     native: new NullNativeBridge(),
     drivers: () => ({ aux: driver, chrome: null }),
-    grants: ["effect:read", "effect:write"],
     profileId: "profile-1",
     safetyGate: gate,
   });
@@ -98,7 +96,7 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
     approvals,
     gate,
     confirmations,
-    setAccess: (value: "allow" | "deny") => {
+    setAccess: (value: "allow" | "ask" | "block") => {
       access = value;
     },
     navigateExternally: (url: string, epoch: number) => {
@@ -120,8 +118,7 @@ describe("B5 live dispatch gate", () => {
       approvals,
       journal: new DecisionJournal(db),
       managedRules: () => [],
-      userRules: () => [],
-      localCeiling: () => "ask",
+      agentPolicy: () => ({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [{ category: "click", access: "ask" }] }),
       audit: () => {},
       onConfirmation: (confirmation) => {
         if (!confirmation.approvalId) throw new Error("Expected an actual approval");
@@ -174,8 +171,7 @@ describe("B5 live dispatch gate", () => {
       events: new EventBus(repo),
       native: new NullNativeBridge(),
       drivers: () => ({ aux: driver, chrome: null }),
-      grants: ["effect:read", "effect:write"],
-      profileId: "profile-1",
+        profileId: "profile-1",
       safetyGate: gate,
     });
     const page = await pages.open({ url: "https://shop.test/form", background: true, ownedByRuntime: true });
@@ -196,7 +192,7 @@ describe("B5 live dispatch gate", () => {
     expect(confirmations).toHaveLength(2);
   });
 
-  it("requires a one-time credential approval even when the origin rule says none", async () => {
+  it("requires trusted device proof for a credential fill", async () => {
     const db = openDb(":memory:");
     databases.push(db);
     const approvals = new ApprovalStore(db);
@@ -204,8 +200,7 @@ describe("B5 live dispatch gate", () => {
       approvals,
       journal: new DecisionJournal(db),
       managedRules: () => [],
-      userRules: () => [{ origin: "https://allowed.test/", access: "allow", confirmation: "none" }],
-      localCeiling: () => "always",
+      agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
       audit: () => {},
     });
     const step: Step = { id: "saved-password", op: "fillCredential", passwordSelector: "#password" };
@@ -233,7 +228,8 @@ describe("B5 live dispatch gate", () => {
       .catch((error) => error)) as { detail?: { requestId?: string } };
     const approvalId = request.detail?.requestId;
     expect(approvalId).toBeTruthy();
-    approvals.decideLocal({ decision: "accept", approvalId: approvalId! }, "turn-1");
+    const proof = approvals.prepareDevice(approvalId!, "turn-1");
+    approvals.confirmDevice(approvalId!, "turn-1", proof.fingerprint);
     expect(
       await gate.check({
         step,
@@ -283,219 +279,26 @@ describe("B5 live dispatch gate", () => {
       background: true,
       ownedByRuntime: true,
     });
-    setAccess("deny");
+    setAccess("block");
     await expect(
       pages.execute({ pageId: page.pageId, steps: [{ id: "step-1", op: "click", target: "#save" }] }),
     ).rejects.toMatchObject({ code: "permission_denied" });
     expect(calls).toEqual([]);
   });
 
-  it("rechecks grants after an asynchronous Guardian decision", async () => {
-    const db = openDb(":memory:");
-    databases.push(db);
-    const approvals = new ApprovalStore(db);
-    const step: Step = { id: "step-race", op: "upload", target: "#file", files: ["/tmp/synthetic.txt"] };
-    let release!: () => void;
-    let judging!: () => void;
-    const entered = new Promise<void>((resolve) => {
-      judging = resolve;
-    });
-    const pending = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const gate = new SafetyDispatchGate({
-      approvals,
-      journal: new DecisionJournal(db),
-      managedRules: () => [],
-      userRules: () => [{ origin: "https://allowed.test/", access: "allow", confirmation: "none" }],
-      localCeiling: () => "ask",
-      audit: () => {},
-      judge: async () => {
-        judging();
-        await pending;
-        return [];
-      },
-    });
-    const context = {
-      profileId: "profile-1",
-      scope: { kind: "task" as const, id: "task-1" },
-      turnId: "turn-1",
-      threadId: "thread-1",
-      restrictedRetry: true,
-    };
-    const grant = approvals.grant(
-      {
-        profileId: context.profileId,
-        scope: context.scope,
-        turnId: context.turnId,
-        threadId: context.threadId,
-        effect: "write",
-        action: "upload",
-        category: "upload",
-        confirmation: "preapprovable",
-        invocationDigest: "0".repeat(64),
-        origin: "https://allowed.test/",
-        requestedAt: 1,
-      },
-      "always",
-    );
-    const dispatch = gate.check({ step, origin: "https://allowed.test/form", context, phase: "dispatch" });
-    await entered;
-    approvals.revoke({ profileId: context.profileId, grantId: grant.grantId });
+  it.each(["policy", "document"] as const)("rechecks actual %s authority after asynchronous target-origin preparation", async (change) => {
+    let release!: () => void, entered!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    const preparing = new Promise<void>((resolve) => { entered = resolve; });
+    const f = fixture(async () => { entered(); await pending; return "https://allowed.test"; }, "allow");
+    const page = await f.pages.open({ url: "https://allowed.test/form", background: true, ownedByRuntime: true });
+    const dispatch = f.pages.execute({ pageId: page.pageId, steps: [{ id: "prepared", op: "click", target: "css:#submit" }] });
+    await preparing;
+    if (change === "policy") f.setAccess("block");
+    else f.navigateExternally("https://allowed.test/next-document", (f.pages.get(page.pageId).documentEpoch ?? 0) + 1);
     release();
-    await expect(dispatch).rejects.toMatchObject({ code: "needs_input" });
-  });
-
-  it("does not click a replaced same-origin document after Guardian awaits", async () => {
-    let release!: () => void;
-    let entered!: () => void;
-    const judging = new Promise<void>((resolve) => {
-      entered = resolve;
-    });
-    const pending = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const { pages, calls, approvals, confirmations, navigateExternally } = fixture(async () => {
-      entered();
-      await pending;
-      return [];
-    });
-    const page = await pages.open({
-      url: "https://allowed.test/form",
-      background: true,
-      ownedByRuntime: true,
-    });
-    const program = {
-      pageId: page.pageId,
-      steps: [{ id: "step-stale", op: "click" as const, target: "#submit" }],
-    };
-    const options = { safety: { steps: { "step-stale": { restrictedRetry: true } } } };
-    await expect(pages.execute(program, options)).rejects.toMatchObject({ code: "needs_input" });
-    expect(calls).toEqual([]);
-    expect(confirmations).toHaveLength(1);
-    approvals.decideLocal({ decision: "accept", approvalId: confirmations[0]! }, `direct:${page.pageId}`);
-    const run = pages.execute(program, options);
-    await judging;
-    navigateExternally("https://allowed.test/next-document", (pages.get(page.pageId).documentEpoch ?? 0) + 1);
-    release();
-    const result = await run;
-    expect(calls).toEqual([]);
-    expect(result.steps[0]).toMatchObject({ status: "failed", error: { code: "ref_stale" } });
-  });
-
-  it("requires an exact action approval even with an always ceiling or standing grant", async () => {
-    const db = openDb(":memory:");
-    databases.push(db);
-    const approvals = new ApprovalStore(db);
-    const gate = new SafetyDispatchGate({
-      approvals,
-      journal: new DecisionJournal(db),
-      managedRules: () => [],
-      userRules: () => [{ origin: "https://allowed.test/", access: "allow", confirmation: "action" }],
-      localCeiling: () => "always",
-      audit: () => {},
-    });
-    const step: Step = { id: "step-consent", op: "click", target: "#submit" };
-    const digest = createHash("sha256").update(JSON.stringify(step)).digest("hex");
-    const context = {
-      profileId: "profile-1",
-      scope: { kind: "task" as const, id: "task-1" },
-      turnId: "turn-1",
-      threadId: "thread-1",
-      sessionId: "session-1",
-      turnToolCallCount: 1,
-      review: {
-        artifactId: "review-1",
-        turnId: "turn-1",
-        action: "click",
-        effect: "write" as const,
-        invocationDigest: digest,
-        dataDescription: "Form fields",
-        destination: "allowed.test",
-        consequence: "Submit",
-        createdAt: Date.now(),
-      },
-    };
-    approvals.grant(
-      {
-        profileId: context.profileId,
-        scope: context.scope,
-        turnId: context.turnId,
-        threadId: context.threadId,
-        effect: "write",
-        action: "click",
-        invocationDigest: digest,
-        origin: "https://allowed.test/",
-        requestedAt: 1,
-      },
-      "always",
-    );
-    const input = { step, origin: "https://allowed.test/form", context, phase: "dispatch" as const };
-    const pending = (await gate.check(input).catch((error) => error)) as { detail?: { requestId?: string } };
-    const approvalId = pending.detail?.requestId;
-    expect(approvalId).toBeTruthy();
-    approvals.decideLocal({ decision: "accept", approvalId: approvalId! }, "turn-1");
-    expect(await gate.check({ ...input, context: { ...context, approvalId } })).toMatchObject({
-      authorizedBy: "approval",
-      approvalId,
-    });
-    await expect(gate.check({ ...input, context: { ...context, approvalId } })).rejects.toMatchObject({
-      code: "needs_input",
-    });
-  });
-
-  it("binds an action-time review and one-time approval to the exact invocation", async () => {
-    const db = openDb(":memory:");
-    databases.push(db);
-    const approvals = new ApprovalStore(db);
-    const gate = new SafetyDispatchGate({
-      approvals,
-      journal: new DecisionJournal(db),
-      managedRules: () => [],
-      userRules: () => [{ origin: "https://allowed.test/", access: "allow", confirmation: "action" }],
-      localCeiling: () => "ask",
-      audit: () => {},
-    });
-    const step: Step = { id: "step-review", op: "click", target: "#submit" };
-    const digest = createHash("sha256").update(JSON.stringify(step)).digest("hex");
-    const base = {
-      profileId: "profile-1",
-      scope: { kind: "task" as const, id: "task-1" },
-      turnId: "turn-1",
-      threadId: "thread-1",
-      turnToolCallCount: 1,
-      review: {
-        artifactId: "review-1",
-        turnId: "turn-1",
-        action: "click",
-        effect: "write" as const,
-        invocationDigest: digest,
-        dataDescription: "Form fields",
-        destination: "allowed.test",
-        consequence: "Submit the form",
-        createdAt: Date.now(),
-      },
-    };
-    const input = { step, origin: "https://allowed.test/form", context: base, phase: "preflight" as const };
-    await expect(
-      gate.check({
-        ...input,
-        context: { ...base, review: { ...base.review, invocationDigest: "0".repeat(64) } },
-      }),
-    ).rejects.toMatchObject({ code: "needs_input" });
-    const request = (await gate.check(input).catch((error) => error)) as { detail?: { requestId?: string } };
-    const approvalId = request.detail?.requestId;
-    expect(approvalId).toBeTruthy();
-    expect(approvals.pending("thread-1")).toHaveLength(1);
-    approvals.decideLocal({ decision: "accept", approvalId: approvalId! }, "turn-1");
-    const approved = { ...input, context: { ...base, approvalId } };
-    expect(await gate.check(approved)).toMatchObject({ authorizedBy: "approval", approvalId });
-    expect(await gate.check({ ...approved, phase: "dispatch" })).toMatchObject({
-      authorizedBy: "approval",
-      approvalId,
-    });
-    await expect(gate.check({ ...approved, phase: "dispatch" })).rejects.toMatchObject({
-      code: "needs_input",
-    });
+    const result = await dispatch;
+    expect(f.calls).toEqual([]);
+    expect(result.steps[0]).toMatchObject({ status: "failed", error: { code: change === "policy" ? "permission_denied" : "ref_stale" } });
   });
 });

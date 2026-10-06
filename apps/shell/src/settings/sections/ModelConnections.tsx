@@ -7,6 +7,7 @@ import {
   type ModelProvider,
   type ModelConnectionStatus,
 } from "@aux/contracts";
+import { toast, errToast } from "../../store";
 import { ActionMenu } from "../../ui";
 import { useConfirm } from "../../ui/dialog";
 import { SettingsField } from "../primitives";
@@ -38,6 +39,58 @@ export function ModelConnections({
     JSON.stringify([settings.modelProvider, settings.modelConnections, settings.imageModel]),
   );
   const reviewOwner = useModelControlOwner(active, "key-removal-review");
+  const undoOwner = useModelControlOwner(active, "connection-toggle-undo");
+  const connectionSnapshot = JSON.stringify([
+    settings.modelProvider,
+    parsed.success ? parsed.data : null,
+    settings.imageModel,
+  ]);
+  const currentConnections = useRef(connectionSnapshot);
+  useLayoutEffect(() => {
+    currentConnections.current = connectionSnapshot;
+  }, [connectionSnapshot]);
+  const connectionChanges = useRef(new Map<ModelProvider, object>());
+  async function toggleConnection(connection: ModelConnectionStatus) {
+    if (!parsed.success || !undoOwner.current()) throw new Error("Choose the current provider connection.");
+    const original = undoOwner,
+      token = {};
+    connectionChanges.current.set(connection.provider, token);
+    const enabled = !connection.enabled;
+    const expected = JSON.stringify([
+      settings.modelProvider,
+      parsed.data.map((item) => (item.provider === connection.provider ? { ...item, enabled } : item)),
+      settings.imageModel,
+    ]);
+    const saved = await onSave({ modelConnection: { provider: connection.provider, enabled } });
+    if (!saved || !original.current()) return saved;
+    toast(
+      `${MODEL_PROVIDER_NAMES[connection.provider]} ${enabled ? "reconnected" : "disconnected"}`,
+      "info",
+      {
+        label: "Undo",
+        run: () => {
+          void (async () => {
+            if (
+              !original.current() ||
+              connectionChanges.current.get(connection.provider) !== token ||
+              currentConnections.current !== expected
+            )
+              throw new Error(
+                "This connection changed after the original action. Review its current settings.",
+              );
+            connectionChanges.current.delete(connection.provider);
+            if (
+              !(await onSave({
+                modelConnection: { provider: connection.provider, enabled: connection.enabled },
+              }))
+            )
+              throw new Error("The connection change could not be undone.");
+          })().catch(errToast);
+        },
+      },
+    );
+    return saved;
+  }
   const scopeId = useId();
   const [pending, setPending] = useState<ModelControlOwner | null>(null);
   const [failure, setFailure] = useState<{ owner: ModelControlOwner; message: string } | null>(null);
@@ -154,9 +207,9 @@ export function ModelConnections({
               owner={owner}
               disabled={disabled || busy}
               onEdit={onEdit}
-              onSave={onSave}
               work={work}
               remove={remove}
+              toggleConnection={toggleConnection}
             />
           ))
         )}
@@ -201,17 +254,17 @@ function ProviderConnectionRow({
   owner,
   disabled,
   onEdit,
-  onSave,
   work,
   remove,
+  toggleConnection,
 }: {
   connection: ModelConnectionStatus;
   owner: ModelControlOwner;
   disabled: boolean;
   onEdit(provider: ModelProvider, focus: "model" | "key"): Promise<void>;
-  onSave(patch: Record<string, unknown>): Promise<boolean>;
   work(action: () => Promise<unknown>): Promise<unknown>;
   remove(connection: ModelConnectionStatus): Promise<unknown>;
+  toggleConnection(connection: ModelConnectionStatus): Promise<unknown>;
 }) {
   const scopeId = useId(),
     activate = useRef<(() => void) | null>(null);
@@ -227,7 +280,7 @@ function ProviderConnectionRow({
     work(() => onEdit(connection.provider, "key")),
   );
   const [toggleRef, toggle] = useModelMountedCommand("toggle-model-provider-connection", scopeId, owner, () =>
-    work(() => onSave({ modelConnection: { provider: connection.provider, enabled: !connection.enabled } })),
+    work(() => toggleConnection(connection)),
   );
   const [removeRef, removeKey] = useModelMountedCommand("remove-saved-model-key", scopeId, owner, () =>
     remove(connection),

@@ -132,9 +132,7 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
     setMaxWorkers: (n: number) => {
       maxWorkers = n;
     },
-    effectGrants: () => ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
-    // Lifecycle fixtures explicitly authorize their reload programs.
-    effectGrantsForRun: () => ["effect:read", "effect:write", "effect:egress"],
+    agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
   } as unknown as SettingsService & { setMaxWorkers(n: number): void };
   const removedArtifacts: string[] = [];
   const artifactContents = new Map<string, string | Buffer>();

@@ -1,7 +1,5 @@
-import { OriginPolicyStore } from "../../apps/runtime/src/safety/origin-policy-store.js";
-import { Repo } from "../../apps/runtime/src/store/repo.js";
 import { afterEach, expect, it } from "vitest";
-import { PageTargetSchema, type OriginRule } from "@aux/contracts";
+import { PageTargetSchema, type AgentPolicySettings } from "@aux/contracts";
 import { openDb } from "@aux/runtime";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
 import { DecisionJournal } from "../../apps/runtime/src/safety/decide.js";
@@ -12,16 +10,13 @@ afterEach(() => databases.splice(0).forEach((db) => db.close()));
 function fixture() {
   const db = openDb(":memory:");
   databases.push(db);
-  let rules: OriginRule[] = [];
-  let grants = ["effect:read"];
+  let rules: AgentPolicySettings["agentPolicies"] = [];
   const approvals = new ApprovalStore(db);
   const gate = new SafetyDispatchGate({
     approvals,
     journal: new DecisionJournal(db),
     managedRules: () => [],
-    userRules: () => rules,
-    localCeiling: () => "ask",
-    settingsGrants: () => grants,
+    agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: rules }),
     audit: () => {},
   });
   const page = PageTargetSchema.parse({
@@ -84,17 +79,14 @@ function fixture() {
     gate,
     service,
     ref,
-    revokeRead: () => {
-      grants = [];
-    },
-    setRules: (next: OriginRule[]) => {
+    setRules: (next: AgentPolicySettings["agentPolicies"]) => {
       rules = next;
     },
   };
 }
 it("a site read Block refuses a mentioned capture before the backend runs", async () => {
   const f = fixture();
-  f.setRules([{ origin: "https://read.test/", access: "allow", effects: { read: "deny" } }]);
+  f.setRules([{ category: "read", site: "https://read.test", access: "block" }]);
   await f.service.begin("run", [f.ref], []);
   let captures = 0;
   await expect(
@@ -105,7 +97,7 @@ it("a site read Block refuses a mentioned capture before the backend runs", asyn
   ).rejects.toMatchObject({ code: "permission_denied" });
   expect(captures).toBe(0);
 });
-it("ordinary read permission retains none tier and emits a real read policy journal", async () => {
+it("ordinary Auto read emits a real read policy journal", async () => {
   const f = fixture();
   await f.service.begin("run", [f.ref], []);
   expect(await f.service.use("run", "a", "read", async () => "approved pixels")).toBe("approved pixels");
@@ -122,7 +114,7 @@ it("a read policy change while capture awaits withholds the returned pixels", as
   await f.service.begin("run", [f.ref], []);
   await expect(
     f.service.use("run", "a", "read", async () => {
-      f.setRules([{ origin: "https://read.test/", access: "deny" }]);
+      f.setRules([{ category: "read", site: "https://read.test", access: "block" }]);
       return "withheld pixels";
     }),
   ).rejects.toMatchObject({ code: "permission_denied" });
@@ -130,7 +122,7 @@ it("a read policy change while capture awaits withholds the returned pixels", as
 it("borrowed approved source reads also obey site policy without minting mention grants", async () => {
   const f = fixture();
   await f.service.begin("run", [], []);
-  f.setRules([{ origin: "https://read.test/", access: "deny" }]);
+  f.setRules([{ category: "read", site: "https://read.test", access: "block" }]);
   let reads = 0;
   await expect(
     f.service.useSourcePage(
@@ -150,7 +142,7 @@ it("borrowed approved source reads also obey site policy without minting mention
 
 it("read program steps cannot bypass an explicit site Block", async () => {
   const f = fixture();
-  f.setRules([{ origin: "https://read.test/", access: "deny" }]);
+  f.setRules([{ category: "read", site: "https://read.test", access: "block" }]);
   await expect(
     f.gate.check({
       step: { id: "read", op: "extract", fields: [{ name: "text" }] },
@@ -166,12 +158,12 @@ it("read program steps cannot bypass an explicit site Block", async () => {
   ).rejects.toMatchObject({ code: "permission_denied" });
 });
 
-it("revoking the actual effect read grant while capture awaits withholds its result", async () => {
+it("blocking the read category while capture awaits withholds its result", async () => {
   const f = fixture();
   await f.service.begin("run", [f.ref], []);
   await expect(
     f.service.use("run", "a", "read", async () => {
-      f.revokeRead();
+      f.setRules([{ category: "read", access: "block" }]);
       return "withheld";
     }),
   ).rejects.toMatchObject({ code: "permission_denied" });
@@ -182,9 +174,7 @@ it.each(["https://read.test", "https://READ.TEST/"])(
   async (origin) => {
     const f = fixture();
     await f.service.begin("run", [f.ref], []);
-    const store = new OriginPolicyStore(new Repo(f.db));
-    store.set({ expectedRevision: 0, rules: [{ origin, access: "allow", effects: { read: "deny" } }] });
-    f.setRules(store.list().rules);
+    f.setRules([{ category: "read", site: new URL(origin).origin, access: "block" }]);
     let captures = 0;
     await expect(
       f.service.use("run", "a", "read", async () => {

@@ -1,5 +1,6 @@
+import { SafetyDispatchGate } from "../../safety/dispatch.js";
 import { createServiceContainer, type ServiceContainer } from "../../services/container.js";
-import { TaskReadProvenanceSchema, type ValidatedTaskRead } from "@aux/contracts";
+import { EffectRequestSchema, TaskReadProvenanceSchema, type ValidatedTaskRead } from "@aux/contracts";
 import { AgentCodeMode } from "../../agent/code-mode.js";
 import type { AgentConnectionScope, AuxEvent, AuxFeatureHost, AuxFeatureOverrides } from "@aux/contracts";
 import type { AgentConnectionService } from "../../services/agent-connections.js";
@@ -13,11 +14,10 @@ import type { CalendarConnectionService } from "../../services/calendar-connecti
 import { CommandRankingStore } from "../../services/command-ranking.js";
 import { ConnectorCatalogService } from "../../services/connectors.js";
 import { ContentMemoryStore } from "../../services/content-memory.js";
-import { DecisionJournal, decide } from "../../safety/decide.js";
+import { DecisionJournal } from "../../safety/decide.js";
 import type { DriverSet, PageService } from "../../services/pages.js";
 import type { EventBus } from "../../events.js";
 import { GoalService } from "../../services/goals.js";
-import { CommandEscalationService } from "../../services/command-escalation.js";
 import { HistoryProjection } from "../../services/history-projection.js";
 import { HookService, type HookExecutor } from "../../services/hooks.js";
 import type { McpTransportProvider } from "../../services/outbound-mcp.js";
@@ -57,7 +57,6 @@ import type { McpOAuthService } from "../../services/mcp-oauth.js";
 export interface Services {
   /** Advertise registered optional factories without constructing their services. */
   serviceAvailable?: (name: "responses" | "operations" | "state" | "tracer") => boolean;
-  safetyAuthority: import("../../safety/authority-revocation.js").SafetyAuthorityRevocation;
   turnMentions: import("../../services/turn-mention-service.js").TurnMentionService;
   budgets?: import("../../services/budgets.js").BudgetsService;
   clock?: import("@aux/contracts").Clock;
@@ -66,11 +65,15 @@ export interface Services {
   featureStages?: Promise<AuxFeatureOverrides>;
   nativeIdentity?: Promise<import("@aux/contracts/host-methods").HostCapabilities>;
   runtimeIdentity?: import("../runtime-identity.js").RuntimeIdentity | null;
+  safetyGate?: SafetyDispatchGate;
+  approvals?: ApprovalStore;
+  suspensions?: SuspensionStore;
+  safetyAudit?: SafetyAuditStore;
+  decisions?: DecisionJournal;
   pages: PageService;
   sets: SetService;
   runs: RunService;
   goals?: GoalService;
-  commandEscalations?: CommandEscalationService;
   artifacts: ArtifactStore;
   settings: SettingsService;
   events: EventBus;
@@ -175,13 +178,13 @@ interface MethodCollaborators {
   vault: VaultService;
   translate: TranslateService;
   safetyAudit: SafetyAuditStore;
+  safetyGate: SafetyDispatchGate;
   approvals: ApprovalStore;
   suspensions: SuspensionStore;
   decisions: DecisionJournal;
   routines: RoutineService;
   plugins: PluginService;
   goals: GoalService;
-  commandEscalations: CommandEscalationService;
   hooks: HookService;
   workspaceFolders: WorkspaceFolderService;
   zap: ZapService;
@@ -210,11 +213,18 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     taskEvidence: () => new TaskEvidenceService(s.repo, s.events, s.pages, s.native, s.downloadsDir),
     vault: () => s.vault ?? new VaultService(s.repo, s.native),
     translate: () => new TranslateService(s.settings),
-    safetyAudit: () => new SafetyAuditStore(s.repo.db),
+    safetyAudit: () => s.safetyAudit ?? new SafetyAuditStore(s.repo.db),
     approvals: () =>
-      new ApprovalStore(s.repo.db, (event) => d.safetyAudit.record(event)),
-    suspensions: () => new SuspensionStore(s.repo.db, (event) => d.safetyAudit.record(event)),
-    decisions: () => new DecisionJournal(s.repo.db),
+      s.approvals ?? new ApprovalStore(s.repo.db, (event) => d.safetyAudit.record(event), (action) => s.settings.allowAgentSite(action), () => s.settings.agentPolicy()),
+    suspensions: () => s.suspensions ?? new SuspensionStore(s.repo.db, (event) => d.safetyAudit.record(event)),
+    decisions: () => s.decisions ?? new DecisionJournal(s.repo.db),
+    safetyGate: () => s.safetyGate ?? new SafetyDispatchGate({
+      approvals: d.approvals, journal: d.decisions, suspensions: d.suspensions,
+      managedRules: () => OriginRuleSchema.array().parse(s.repo.getSetting("managedOriginPolicies") ?? []),
+      agentPolicy: () => s.settings.agentPolicy(),
+      audit: (event) => d.safetyAudit.record({ ...event }),
+      onConfirmation: (confirmation) => s.events.emit("safety.confirmation", confirmation),
+    }),
     routines: () =>
       s.routines ??
       new RoutineService(s.repo, s.events, async (routine, parameters, context) => {
@@ -291,7 +301,6 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
       }),
     plugins: () => new PluginService(s.repo, d.routines),
     goals: () => s.goals ?? new GoalService(s.repo, s.runs),
-    commandEscalations: () => s.commandEscalations ?? new CommandEscalationService(s.repo),
     hooks: () => s.hooks ?? new HookService(s.repo),
     workspaceFolders: () => s.workspaceFolders ?? new WorkspaceFolderService(s.repo),
     zap: () => s.zap ?? new ZapService(s.repo, s.native, s.featureProfileId ?? "default"),
@@ -372,8 +381,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     runId?: string;
   }) => {
     const threadId = input.threadId ?? `rpc:${input.connectionId ?? "internal"}`;
-    const decision = await decide(
-      {
+    const request = EffectRequestSchema.parse({
         profileId: s.featureProfileId ?? "default",
         scope: input.taskId
           ? { kind: "task" as const, id: input.taskId }
@@ -398,26 +406,13 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
         threadId,
         ...(input.runId ? { runId: input.runId } : {}),
         requestedAt: Date.now(),
-      },
-      {
-        approvals: d.approvals,
-        journal: d.decisions,
-        managedRules: () => OriginRuleSchema.array().parse(s.repo.getSetting("managedOriginPolicies") ?? []),
-        userRules: () => s.settings.originPolicies(),
-        localCeiling: (action) => s.settings.safetyCeiling(action.effect),
-        settingsGrants: () => s.settings.effectGrants(),
-        audit: (event) => d.safetyAudit.record({ ...event }),
-      },
-      { phase: "dispatch", headless: true },
-    );
-    if (decision.status !== "allow")
-      throw new AuxError(
-        "permission_denied",
-        decision.status === "deny"
-          ? decision.guidance
-          : "Egress requires an approval that must be granted in Aux.",
-      );
-    return decision;
+      });
+    const authorizedBy = await d.safetyGate.checkTrustedEffect(request, {
+      profileId: request.profileId, scope: request.scope, actor: request.actor,
+      turnId: threadId, threadId, ...(input.runId ? { runId: input.runId } : {}),
+    });
+    if (!authorizedBy) throw new AuxError("permission_denied", "This egress has no current policy authorization.");
+    return { status: "allow" as const, authorizedBy };
   };
   const substituteRoutine = (objective: string, parameters: Record<string, string>) =>
     objective.replace(/\{\{([A-Za-z][A-Za-z0-9_]{0,40})\}\}/g, (_, name: string) => parameters[name] ?? "");

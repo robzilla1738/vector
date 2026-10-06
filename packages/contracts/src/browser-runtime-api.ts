@@ -3,7 +3,6 @@ import { LiveFolderItemsSchema } from "./live-folders.js";
 import { DownloadCompletedNativeSchema, DownloadRenameReceiptSchema } from "./download-naming.js";
 import { DemonstrationSchema, RecorderStartSchema, RecorderControlSchema } from "./demonstration.js";
 import { NightShiftQueueSchema, NightShiftItemSchema } from "./night-shift.js";
-import { OriginPoliciesSnapshotSchema, SetOriginPoliciesSchema } from "./agent-site-permissions.js";
 
 const Id = z.string().min(1).max(200);
 const Folder = z.object({ folderId: Id }).strict();
@@ -30,8 +29,6 @@ export const BrowserRuntimeMethodSchemas = {
   "downloads.completedNative": DownloadCompletedNativeSchema,
   "downloads.renameReceipts": z.object({}).strict(),
   "downloads.undoRename": z.object({ receiptId: Id }).strict(),
-  "safety.originPolicies.list": z.object({}).strict(),
-  "safety.originPolicies.set": SetOriginPoliciesSchema,
   "recorder.get": RecorderControlSchema,
   "recorder.start": RecorderStartSchema,
   "recorder.pause": RecorderControlSchema,
@@ -64,8 +61,6 @@ export const BrowserRuntimeResultSchemas = {
   "downloads.undoRename": z
     .object({ status: z.enum(["restored", "conflict", "expired"]), filename: z.string().max(255).optional() })
     .strict(),
-  "safety.originPolicies.list": OriginPoliciesSnapshotSchema,
-  "safety.originPolicies.set": OriginPoliciesSnapshotSchema,
   "recorder.get": DemonstrationSchema,
   "recorder.start": DemonstrationSchema,
   "recorder.pause": DemonstrationSchema,
@@ -98,8 +93,6 @@ export const BrowserRuntimeMethodPolicy = {
   "downloads.completedNative": { feature: "smartDownloadNames", auth: "handler-guarded" },
   "downloads.renameReceipts": { feature: "smartDownloadNames", auth: "aux-webui" },
   "downloads.undoRename": { feature: "smartDownloadNames", auth: "aux-webui" },
-  "safety.originPolicies.list": { feature: "agentSitePermissions", auth: "aux-webui" },
-  "safety.originPolicies.set": { feature: "agentSitePermissions", auth: "aux-webui" },
   "recorder.get": { feature: "demonstrationSkills", auth: "aux-webui" },
   "recorder.start": { feature: "demonstrationSkills", auth: "aux-webui" },
   "recorder.pause": { feature: "demonstrationSkills", auth: "aux-webui" },

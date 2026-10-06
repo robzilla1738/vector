@@ -1,3 +1,4 @@
+import { modelStream } from "../fixtures/model-stream.js";
 import { expect, it } from "vitest";
 import { z } from "zod";
 import { MockLanguageModelV4 } from "../../apps/runtime/node_modules/ai/dist/test/index.js";
@@ -17,7 +18,9 @@ const response = (text: string) => ({
 });
 
 it("retains image references in structured output and JSON repair calls", async () => {
-  const model = new MockLanguageModelV4({ doGenerate: [response("not json"), response('{"ok":true}')] });
+  const model = new MockLanguageModelV4({
+    doStream: [modelStream(response("not json")), modelStream(response('{"ok":true}'))],
+  });
   const client = new GatewayModelClient("local-test", { model: () => model });
   const schema = z.discriminatedUnion("ok", [
     z.object({ ok: z.literal(true) }),
@@ -34,8 +37,8 @@ it("retains image references in structured output and JSON repair calls", async 
       })
     ).object,
   ).toEqual({ ok: true });
-  expect(model.doGenerateCalls).toHaveLength(2);
-  for (const call of model.doGenerateCalls) {
+  expect(model.doStreamCalls).toHaveLength(2);
+  for (const call of model.doStreamCalls) {
     const user = call.prompt.find((message: { role: string; content: unknown }) => message.role === "user")!;
     expect(user.content).toEqual(
       expect.arrayContaining([expect.objectContaining({ type: "file", mediaType: "image/png" })]),
@@ -45,19 +48,7 @@ it("retains image references in structured output and JSON repair calls", async 
 
 it("retains image references through streamed-output repair", async () => {
   const model = new MockLanguageModelV4({
-    doGenerate: response('{"ok":true}'),
-    doStream: {
-      stream: new ReadableStream({
-        start(controller) {
-          controller.enqueue({ type: "stream-start", warnings: [] });
-          controller.enqueue({ type: "text-start", id: "t" });
-          controller.enqueue({ type: "text-delta", id: "t", delta: "invalid" });
-          controller.enqueue({ type: "text-end", id: "t" });
-          controller.enqueue({ type: "finish", finishReason: { unified: "stop", raw: "stop" }, usage });
-          controller.close();
-        },
-      }),
-    },
+    doStream: [modelStream(response("invalid")), modelStream(response('{"ok":true}'))],
   });
   const client = new GatewayModelClient("local-test", { model: () => model });
   await client.streamStructured({
@@ -68,12 +59,11 @@ it("retains image references through streamed-output repair", async () => {
     schema: z.object({ ok: z.boolean() }),
     onText: () => {},
   });
-  for (const call of [...model.doStreamCalls, ...model.doGenerateCalls])
+  for (const call of model.doStreamCalls)
     expect(
       call.prompt.find((message: { role: string; content: unknown }) => message.role === "user")!.content,
     ).toEqual(expect.arrayContaining([expect.objectContaining({ type: "file", mediaType: "image/png" })]));
-  expect(model.doStreamCalls).toHaveLength(1);
-  expect(model.doGenerateCalls).toHaveLength(1);
+  expect(model.doStreamCalls).toHaveLength(2);
 });
 
 it("rejects remote or unsupported image inputs instead of silently sending text only", async () => {

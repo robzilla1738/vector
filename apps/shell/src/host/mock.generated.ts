@@ -316,6 +316,11 @@ const RESULTS: Record<string, unknown> = {
   "omnibox.start": false,
   "omnibox.stop": false,
   "omnibox.open": false,
+  "auth.confirm": {
+    "ok": true,
+    "approvalId": "a",
+    "turnId": "a"
+  },
   "preloadNavigation": false,
   "readArticle": {
     "title": "mock-title",

@@ -2,8 +2,9 @@ import { useShallow } from "zustand/react/shallow";
 import { staticHintProps, staticRowProps } from "../ui/class-props";
 import { smallButtonProps, smallGhostButtonProps } from "../ui/button-props";
 import { ModelDataDisclosure } from "./ModelDataDisclosure";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AgentPolicySettingsSchema,
   DEFAULT_BROWSER_COOLDOWN_MS,
   ONBOARDING_DISCLOSURE_VERSION,
   ONBOARDING_POSTCARDS,
@@ -26,7 +27,7 @@ import { SPACE_COLORS, type SpaceColor } from "../workspace";
 import "./onboarding.css";
 import { PastedMemorySetup } from "./PastedMemorySetup";
 import { SetupReview } from "./SetupReview";
-import { usePreferenceCommand } from "../settings/sections/preference-command";
+import { AgentModeControl } from "../features/permissions/AgentModeControl";
 import {
   staticGhostButtonProps as auxClassGhostButtonProps,
   staticButtonProps as auxClassButtonProps,
@@ -43,7 +44,6 @@ const TITLES = {
   model: "Choose your AI model",
   appearance: "Make Aux feel like yours",
   default: "Open links in Aux",
-  permissions: "You stay in charge",
   postcard: "Start with one useful question",
 };
 export function availableOnboardingPage(page: PageTarget): boolean {
@@ -102,25 +102,14 @@ export function OnboardingFlow({
   const [showMemoryImport, setShowMemoryImport] = useState(false);
   const step = state.step,
     index = ONBOARDING_STEPS.indexOf(step);
-  const permissionScope = useId();
-  const permissionWindow = bridge.windowId;
-  const [permissionDetails, setPermissionDetails] = useState<OnboardingState | null>(null);
-  const togglePermissionDetails = useCallback(() => {
-    if (
-      !connected ||
-      step !== "permissions" ||
-      bridge.privateMode ||
-      bridge.windowKind !== "normal" ||
-      bridge.windowId !== permissionWindow
-    ) {
-      throw new Error("Choose the current setup permission details.");
-    }
-    setPermissionDetails((value) => (value === state ? null : state));
-  }, [connected, step, permissionWindow, state]);
-  const [permissionRef, permissionInput] = usePreferenceCommand<HTMLElement>(
-    "toggle-setup-permission-details",
-    permissionScope,
-    togglePermissionDetails,
+  const agentPolicy = useMemo(
+    () =>
+      AgentPolicySettingsSchema.parse({
+        agentMode: settings.agentMode,
+        agentPolicies: settings.agentPolicies,
+        agentPolicyRevision: settings.agentPolicyRevision,
+      }),
+    [settings.agentMode, settings.agentPolicies, settings.agentPolicyRevision],
   );
   const page = pages.find((item) => item.pageId === pageId);
   const pageReviewed =
@@ -376,6 +365,31 @@ export function OnboardingFlow({
             {step === "model" && (
               <>
                 <ModelDataDisclosure reviewed={state.disclosureVersion === ONBOARDING_DISCLOSURE_VERSION} />
+                <h3>How Aux acts</h3>
+                <p>
+                  Auto lets Aux work freely, with Touch ID for payments and the first credential use on a
+                  site. Ask first pauses consequential actions; Full auto acts without asking. Account
+                  security and CAPTCHA always need you to take over.
+                </p>
+                <AgentModeControl
+                  active={step === "model" && connected}
+                  disabled={busy}
+                  policy={agentPolicy}
+                  onSave={saveSettings}
+                />
+                <p {...staticHintProps}>
+                  Change categories, site rules, and file access later in Settings → Permissions. You can stop
+                  a task or take over at any time.
+                </p>
+                <button
+                  {...auxClassGhostButtonProps}
+                  aria-expanded={showMemoryImport}
+                  onClick={() => setShowMemoryImport(!showMemoryImport)}
+                >
+                  Import notes from another assistant
+                </button>
+                {showMemoryImport && <PastedMemorySetup />}
+
                 {state.disclosureVersion !== ONBOARDING_DISCLOSURE_VERSION ? (
                   <button
                     {...auxClassButtonProps}
@@ -489,60 +503,6 @@ export function OnboardingFlow({
                   </p>
                 )}
                 {!inNativeHost && <p>This choice is available in the native Aux app.</p>}
-              </>
-            )}
-            {step === "permissions" && (
-              <>
-                <p>
-                  Starting a chat gives Aux the question and sources you select. It does not connect accounts
-                  or grant access to folders.
-                </p>
-                <details className="onboarding-details" open={permissionDetails === state}>
-                  <summary
-                    ref={permissionRef}
-                    data-command-id="toggle-setup-permission-details"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      permissionInput(event);
-                    }}
-                  >
-                    How permissions and browsing work
-                  </summary>
-                  <ul>
-                    <li>
-                      Review the source, recipient and action when Aux asks for approval. Never approve a
-                      request you do not recognize.
-                    </li>
-                    <li>
-                      Connected services need their own reviewed grants. A connected account is not permission
-                      to send, change or delete anything.
-                    </li>
-                    <li>
-                      Browser tasks use a separate, temporary browsing session. It starts without your cookies
-                      or saved passwords; sign in separately if needed.
-                    </li>
-                    <li>
-                      You can stop a task, take control of a page, or change permissions in Settings. Stopping
-                      cannot undo an action that already completed.
-                    </li>
-                    <li>
-                      Memory is optional. Review remembered information and pasted assistant notes through the
-                      existing Memory controls before using them.
-                    </li>
-                  </ul>
-                </details>
-                <p>
-                  Setup does not enable Memory, broaden grants, connect services or import credentials
-                  automatically.
-                </p>
-                <button
-                  {...auxClassGhostButtonProps}
-                  aria-expanded={showMemoryImport}
-                  onClick={() => setShowMemoryImport(!showMemoryImport)}
-                >
-                  Import notes from another assistant
-                </button>
-                {showMemoryImport && <PastedMemorySetup />}
               </>
             )}
             {step === "postcard" && (

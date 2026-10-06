@@ -18,7 +18,6 @@ import type { Repo } from "../store/repo.js";
 import type { PageService } from "../services/pages.js";
 import type { ModelClient } from "./model-client.js";
 import type { AgentModelCategory, AgentModelRoute } from "@aux/contracts/model-registry";
-import type { GrantSource } from "./permissions.js";
 import { DurableWriteLedger } from "./durable.js";
 import { SuspensionStore } from "../safety/suspensions.js";
 import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
@@ -101,7 +100,7 @@ export interface CoordinatorDeps {
     };
     incr(name: string, by?: number): void;
   };
-  grants?: GrantSource;
+  readOnly?: boolean;
   durableWrites?: DurableWriteLedger;
   suspensions?: SuspensionStore;
   vault?: import("../services/vault.js").VaultService;
@@ -310,6 +309,7 @@ export class RunCoordinator {
     c.takeoverInterrupted = true;
     c.interruptPlanning?.();
     c.dispatchAbort?.abort();
+    c.answerWaiter?.resolve("Page control changed; the pending action was cancelled.");
     this.deps.browserEgress?.suspendRun(runId);
   }
 
@@ -641,6 +641,10 @@ export class RunCoordinator {
   }
 
   async waitForAnswer(c: RunControl, runId: string): Promise<string> {
+    if (c.takeoverInterrupted) {
+      await this.waitIfPaused(c, runId);
+      return "Page control changed; the pending action was cancelled.";
+    }
     const existing = this.answers.get(runId);
     if (existing !== undefined) {
       this.answers.delete(runId);
@@ -655,7 +659,7 @@ export class RunCoordinator {
         },
       };
     });
-    if (!c.abort.signal.aborted) await this.acquirePages(runId);
+    if (!c.abort.signal.aborted) await this.waitIfPaused(c, runId);
     return answer;
   }
 

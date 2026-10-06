@@ -4,13 +4,12 @@ import type { ExecuteResult, PageService } from "../services/pages.js";
 import { compileAndAuthorize } from "./action-compiler.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "./durable.js";
 import { collectProgramSteps } from "../services/pages/executor.js";
-import type { GrantSource } from "./permissions.js";
 import type { SkillGuard } from "./skills.js";
 
 export type GuardedDispatchDeps = {
   pages: Pick<PageService, "execute">;
   durable?: DurableWriteLedger;
-  grants?: GrantSource;
+  readOnly?: boolean;
 };
 
 export type GuardedDispatchOpts = {
@@ -63,7 +62,7 @@ export async function guardedExecute(
     observation: opts.observation,
     url: opts.url,
     guards: opts.guards,
-    grants: deps.grants,
+    readOnly: deps.readOnly,
   });
   if ("rejected" in prepared) return { kind: "rejected", reason: prepared.rejected };
   if ("denied" in prepared) return { kind: "denied", reason: prepared.denied };

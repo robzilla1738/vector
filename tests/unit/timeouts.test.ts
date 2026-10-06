@@ -6,8 +6,6 @@ import type { ModelClient } from "@aux/runtime";
 import type { Observation } from "@aux/contracts";
 import {
   isStructuredOutputError,
-  withCallTimeout,
-  DEFAULT_MODEL_CALL_TIMEOUT_MS,
 } from "../../apps/runtime/src/agent/gateway-client.js";
 
 const apiErr = (statusCode: number, message = "boom") =>
@@ -50,23 +48,6 @@ describe("gateway fallback guard (P1-2 / retry amplification)", () => {
     expect(await isStructuredOutputError(new TypeError("fetch failed"))).toBe(false);
     expect(await isStructuredOutputError(new DOMException("aborted", "AbortError"))).toBe(false);
     expect(await isStructuredOutputError(new DOMException("timed out", "TimeoutError"))).toBe(false);
-  });
-});
-
-describe("per-call timeout signal", () => {
-  it("aborts on the timer or on the caller's signal, whichever first", async () => {
-    expect(DEFAULT_MODEL_CALL_TIMEOUT_MS).toBe(90_000);
-    const timed = withCallTimeout(undefined, 20);
-    expect(timed.aborted).toBe(false);
-    await new Promise((r) => setTimeout(r, 40));
-    expect(timed.aborted).toBe(true);
-    expect((timed.reason as DOMException).name).toBe("TimeoutError");
-
-    const ctl = new AbortController();
-    const combined = withCallTimeout(ctl.signal, 10_000);
-    expect(combined.aborted).toBe(false);
-    ctl.abort();
-    expect(combined.aborted).toBe(true);
   });
 });
 

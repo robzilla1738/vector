@@ -23,8 +23,6 @@ export const RuntimeMethodFeatures = {
   "downloads.completedNative": feature1,
   "downloads.renameReceipts": feature1,
   "downloads.undoRename": feature1,
-  "safety.originPolicies.list": "agentSitePermissions",
-  "safety.originPolicies.set": "agentSitePermissions",
   "recorder.get": feature2,
   "recorder.start": feature2,
   "recorder.pause": feature2,
@@ -141,6 +139,4 @@ export const RuntimeMethodFeatures = {
   "sets.list": feature11,
   "sets.map": feature11,
   "sets.results": feature11,
-  "safety.grants.list": "safetyCore",
-  "safety.grants.revoke": "safetyCore",
 } as const satisfies Partial<Record<MethodName, AuxFeature>>;

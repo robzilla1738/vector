@@ -5,6 +5,8 @@ import {
   WebmcpCallResultSchema,
   WebmcpToolSchema,
   type EffectActor,
+  type EffectRequest,
+  type SuspensionRequest,
   type WebmcpCallResult,
   type WebmcpTool,
 } from "@aux/contracts";
@@ -41,7 +43,9 @@ export type WebmcpOutcome =
   | { status: "called"; result: string | null; success: true }
   | {
       status: "ask";
-      approvalId: string;
+      approvalId?: string;
+      request: EffectRequest;
+      suspension: SuspensionRequest;
       turnId: string;
       threadId: string;
       instruction: string;
@@ -56,8 +60,7 @@ function requireBridge(native: WebmcpNative | undefined): asserts native is Requ
 }
 
 /**
- * List or call document script tools. Writes go through decide() with no model
- * turn, so the person confirms them once and a repeat of the same call runs once.
+ * Document tools use the same live agent policy and original document fence as browser actions.
  */
 export async function runWebmcp(
   native: WebmcpNative | undefined,
@@ -65,47 +68,50 @@ export async function runWebmcp(
   actor: WebmcpActor,
   deps: DecideDeps,
   origin: string,
+  current: () => void,
 ): Promise<WebmcpOutcome> {
   requireBridge(native);
+  current();
   const tools = WebmcpToolSchema.array().parse((await native.webmcpList(request.pageId)).tools);
+  current();
   if (request.op === "tools") return { status: "tools", tools };
   const tool = tools.find((item) => item.name === request.name);
   if (!tool) throw new AuxError("not_found", `This page has no WebMCP tool named ${request.name}.`);
   const input = request.input || "{}";
   if (webmcpToolIsWrite(tool)) {
     const action = `webmcp:${tool.name}`.slice(0, 200);
-    const decision = await decide(
-      EffectRequestSchema.parse({
-        profileId: actor.profileId,
-        scope: actor.scope,
-        actor: actor.actor,
-        effect: "write",
-        category: "submit",
-        action,
-        origin,
-        dataClasses: [],
-        provenance: "page",
-        invocationDigest: createHash("sha256")
-          .update(JSON.stringify([request.pageId, tool.name, input]))
-          .digest("hex"),
-        turnId: actor.turnId,
-        threadId: actor.threadId,
-        ...(actor.runId ? { runId: actor.runId } : {}),
-        requestedAt: Date.now(),
-      }),
-      deps,
-      { phase: "dispatch" },
-    );
+    const effectRequest = EffectRequestSchema.parse({
+      profileId: actor.profileId,
+      scope: actor.scope,
+      actor: actor.actor,
+      effect: "write",
+      category: "submit",
+      action,
+      origin,
+      dataClasses: [],
+      provenance: "page",
+      invocationDigest: createHash("sha256")
+        .update(JSON.stringify([request.pageId, tool.name, input]))
+        .digest("hex"),
+      turnId: actor.turnId,
+      threadId: actor.threadId,
+      ...(actor.runId ? { runId: actor.runId } : {}),
+      requestedAt: Date.now(),
+    });
+    const policy = JSON.stringify([deps.managedRules(), deps.agentPolicy()]);
+    const decision = await decide(effectRequest, deps, { phase: "dispatch" });
+    current();
+    if (JSON.stringify([deps.managedRules(), deps.agentPolicy()]) !== policy)
+      throw new AuxError("permission_denied", "Agent policy changed before this site tool could run.");
     if (decision.status === "deny") {
       throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
     }
     if (decision.status === "ask") {
-      if (decision.suspension.kind !== "approval" || !decision.suspension.approvalId) {
-        throw new AuxError("needs_input", decision.suspension.instruction);
-      }
       return {
         status: "ask",
         approvalId: decision.suspension.approvalId,
+        request: effectRequest,
+        suspension: decision.suspension,
         turnId: actor.turnId,
         threadId: actor.threadId,
         instruction: decision.suspension.instruction,
@@ -114,9 +120,11 @@ export async function runWebmcp(
       };
     }
   }
+  current();
   const called: WebmcpCallResult = WebmcpCallResultSchema.parse(
     await native.webmcpCall(request.pageId, tool.name, input),
   );
+  current();
   if (!called.success) {
     throw new AuxError("step_failed", called.result || `WebMCP tool ${tool.name} failed.`);
   }

@@ -192,6 +192,12 @@ async function h_pages_webmcp(ctx: MethodCtx): Promise<unknown> {
     }
   }
   const page = s.pages.get(request.pageId);
+  const snapshot = { sessionId: page.sessionId, documentEpoch: page.documentEpoch, url: page.url };
+  const current = () => {
+    const live = s.pages.get(request.pageId);
+    if (live.sessionId !== snapshot.sessionId || live.documentEpoch !== snapshot.documentEpoch || live.url !== snapshot.url || ["detached", "crashed"].includes(live.viewStatus))
+      throw new AuxError("ref_stale", "This page changed while authorizing its site tool. Observe it again.");
+  };
   let origin = "";
   try {
     origin = new URL(page.url).origin;
@@ -215,23 +221,18 @@ async function h_pages_webmcp(ctx: MethodCtx): Promise<unknown> {
         approvals,
         journal: decisions,
         managedRules: () => OriginRuleSchema.array().parse(s.repo.getSetting("managedOriginPolicies") ?? []),
-        userRules: () => s.settings.originPolicies(),
-        localCeiling: (action) => s.settings.safetyCeiling(action.effect),
-        settingsGrants: () => s.settings.effectGrants(),
+        agentPolicy: () => s.settings.agentPolicy(),
         audit: (event) => safetyAudit.record({ ...event }),
       },
       origin,
+      current,
     );
     if (outcome.status === "ask") {
-      s.events.emit("safety.confirmation", {
-        approvalId: outcome.approvalId,
-        turnId: outcome.turnId,
-        threadId: outcome.threadId,
-        instruction: outcome.instruction,
-        action: outcome.action,
-        origin: outcome.origin,
-      });
-      throw new AuxError("needs_input", outcome.instruction);
+      ctx.safetyGate.park(outcome.request, {
+        turnId: outcome.request.turnId, threadId: outcome.request.threadId,
+        ...(outcome.request.runId ? { runId: outcome.request.runId } : {}), pageId: request.pageId,
+      }, outcome.suspension, origin);
+      throw new AuxError("needs_input", outcome.instruction, { suspensionKind: outcome.suspension.kind, requestId: outcome.approvalId });
     }
     if (outcome.status === "tools") return { op: "tools", tools: outcome.tools };
     return { op: "call", result: outcome.result, success: outcome.success };

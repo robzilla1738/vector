@@ -173,10 +173,10 @@ it("does not complete a partial answer after the person cancels the actual strea
     signal: abort.signal,
     onText: (text) => previews.push(text),
   });
-  const rejection = expect(pending).rejects.toThrow("Synthetic person cancellation");
+  const rejection = pending.catch((error: unknown) => error);
   await vi.waitFor(() => expect(previews).toContain("Unfinished answer"));
   abort.abort(new Error("Synthetic person cancellation"));
-  await rejection;
+  expect(await rejection).toMatchObject({ message: "Synthetic person cancellation" });
   expect(model.doGenerateCalls).toHaveLength(0);
 });
 
@@ -253,7 +253,7 @@ it("retains known usage on structured cancellation without corrective retry or f
     providerMetadata: { gateway: { cost: "0.02" } },
   });
   const model = new MockLanguageModelV4({
-    doGenerate: async () => {
+    doStream: async () => {
       abort.abort(failure);
       throw failure;
     },
@@ -278,6 +278,6 @@ it("retains known usage on structured cancellation without corrective retry or f
   expect(attemptsOf(failure)).toEqual([
     expect.objectContaining({ modelId: "test", inputTokens: 12, outputTokens: 4 }),
   ]);
-  expect(model.doGenerateCalls).toHaveLength(1);
-  expect(model.doStreamCalls).toHaveLength(0);
+  expect(model.doStreamCalls).toHaveLength(1);
+  expect(model.doGenerateCalls).toHaveLength(0);
 });

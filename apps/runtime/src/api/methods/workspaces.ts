@@ -27,20 +27,6 @@ async function h_workspaces_folders(ctx: MethodCtx): Promise<unknown> {
   if (method === "workspaces.folders.list") return workspaceFolders.list(params.workspaceId);
   return workspaceFolders.archive(params.workspaceId, params.folderId);
 }
-async function h_command_escalations(ctx: MethodCtx): Promise<unknown> {
-  if (ctx.client.external || ctx.client.codeMode)
-    throw new AuxError("permission_denied", "Command exceptions require review in local Aux Settings.");
-  if (["commands.escalations.revoke"].includes(ctx.method))
-    return withRunAuthorityMutation(ctx.s.repo, () => retired_h_command_escalations(ctx));
-  return retired_h_command_escalations(ctx);
-}
-
-async function retired_h_command_escalations(ctx: MethodCtx): Promise<unknown> {
-  const { method, params, commandEscalations } = ctx;
-  if (method === "commands.escalations.list") return commandEscalations.list(params.workspaceId);
-  if (method === "commands.escalations.revoke") return commandEscalations.revoke(params.requestId);
-  return commandEscalations.decide(params.requestId, params.decision, params.prefixRule);
-}
 async function h_workspaces_memory_search(ctx: MethodCtx): Promise<unknown> {
   const { client, params, tasks } = ctx;
   if (client.external) throw new AuxError("permission_denied", "Search Space memory in Aux.");
@@ -273,9 +259,6 @@ export const workspacesMethods: Partial<Record<MethodName, MethodHandler>> = {
   "workspaces.folders.add": h_workspaces_folders,
   "workspaces.folders.list": h_workspaces_folders,
   "workspaces.folders.archive": h_workspaces_folders,
-  "commands.escalations.list": h_command_escalations,
-  "commands.escalations.decide": h_command_escalations,
-  "commands.escalations.revoke": h_command_escalations,
   "workspaces.memory.search": h_workspaces_memory_search,
   "workspaces.browsingMemory.get": h_workspaces_browsingMemory_get,
   "workspaces.browsingMemory.set": h_workspaces_browsingMemory_get,

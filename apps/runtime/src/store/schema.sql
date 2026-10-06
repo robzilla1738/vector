@@ -160,12 +160,6 @@ CREATE TABLE safety_approval_requests(
   state TEXT NOT NULL CHECK(state IN ('pending','accepted','declined','cancelled','consumed')),
   decision TEXT, created_at INTEGER NOT NULL, decided_at INTEGER);
 CREATE INDEX idx_safety_approvals_turn ON safety_approval_requests(turn_id,state);
-CREATE TABLE safety_standing_grants(
-  grant_id TEXT PRIMARY KEY, profile_id TEXT NOT NULL, scope_kind TEXT NOT NULL, scope_id TEXT NOT NULL,
-  effect TEXT NOT NULL, action TEXT NOT NULL, category TEXT, origin TEXT, recipient TEXT,
-  lifetime TEXT NOT NULL CHECK(lifetime IN ('session','always')), session_id TEXT,
-  created_at INTEGER NOT NULL, revoked_at INTEGER);
-CREATE INDEX idx_safety_grants_lookup ON safety_standing_grants(profile_id,scope_kind,scope_id,effect,action,origin,recipient,revoked_at);
 CREATE TABLE safety_send_journal(
   nonce TEXT PRIMARY KEY, thread_id TEXT NOT NULL, turn_id TEXT NOT NULL, text TEXT NOT NULL,
   digest TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','offline','sending','accepted','acknowledged','parked','failed','cancelled')),
@@ -176,13 +170,6 @@ CREATE TABLE safety_challenge_recovery(
   run_id TEXT NOT NULL, origin TEXT NOT NULL, attempts INTEGER NOT NULL, updated_at INTEGER NOT NULL,
   PRIMARY KEY(run_id,origin));
 CREATE TABLE safety_audit(seq INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, payload TEXT NOT NULL, recorded_at INTEGER NOT NULL);
-CREATE TABLE command_escalation_requests(
-  request_id TEXT PRIMARY KEY, body TEXT NOT NULL,
-  state TEXT NOT NULL CHECK(state IN ('pending','approved','declined')), decided_at INTEGER);
-CREATE TABLE command_escalation_grants(
-  request_id TEXT PRIMARY KEY REFERENCES command_escalation_requests(request_id),
-  body TEXT NOT NULL, mode TEXT NOT NULL CHECK(mode IN ('once','prefix')), consumed_at INTEGER);
-CREATE INDEX idx_command_escalation_state ON command_escalation_requests(state);
 CREATE TABLE workspaces(workspace_id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at INTEGER NOT NULL);
 CREATE TABLE tasks(task_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id), revision INTEGER NOT NULL,
   state TEXT NOT NULL CHECK(state IN ('open','archived')), updated_at INTEGER NOT NULL, json TEXT NOT NULL);
@@ -356,11 +343,12 @@ CREATE TABLE safety_decisions(
       origin TEXT, destination TEXT, status TEXT NOT NULL, source TEXT NOT NULL,
       authorized_by TEXT, refusal_id TEXT, suspension_kind TEXT, request_json TEXT NOT NULL, decision_json TEXT NOT NULL);
       CREATE INDEX idx_safety_decisions_run ON safety_decisions(profile_id, action, at);
+      CREATE INDEX idx_safety_decisions_activity ON safety_decisions(profile_id, at DESC, decision_id DESC);
 
 -- safety/suspensions.ts
 CREATE TABLE safety_suspensions(
       suspension_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, thread_id TEXT NOT NULL, turn_id TEXT NOT NULL,
-      kind TEXT NOT NULL CHECK(kind IN ('ask-user-question','approval','action-confirmation','handoff')),
+      kind TEXT NOT NULL CHECK(kind IN ('ask-user-question','approval','action-confirmation','touch-id','handoff')),
       request_json TEXT NOT NULL, approval_id TEXT,
       state TEXT NOT NULL CHECK(state IN ('pending','answered','cancelled','expired')),
       created_at INTEGER NOT NULL, resolved_at INTEGER);

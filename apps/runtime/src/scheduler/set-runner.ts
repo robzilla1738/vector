@@ -15,7 +15,6 @@ import type { SetService } from "../services/sets.js";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
 import { beginConsequentialWrite, DurableWriteLedger, settleWrite } from "../agent/durable.js";
 import { collectProgramSteps } from "../services/pages/executor.js";
-import type { GrantSource } from "../agent/permissions.js";
 import { WorkerPool } from "./pool.js";
 import { ResearchBudget, type ResearchLimits } from "./research-budget.js";
 
@@ -60,7 +59,7 @@ export interface SetRunnerDeps {
     signal: AbortSignal,
   ) => Promise<{ pageId: string; release: () => void }>;
   /** Privilege-independent grants for learned replay (Finding 5 / Gate F). */
-  grants?: GrantSource;
+  readOnly?: boolean;
   /** Shared persist-before-dispatch ledger (Gate D). */
   durableWrites?: DurableWriteLedger;
 }
@@ -484,7 +483,7 @@ export class SetRunner {
       steps: learned.steps ?? [],
       observation: obs.content,
       url: href,
-      grants: this.deps.grants,
+      readOnly: this.deps.readOnly,
     });
     if ("rejected" in prepared) return { blocked: prepared.rejected };
     if ("denied" in prepared) return { blocked: prepared.denied };

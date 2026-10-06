@@ -1,7 +1,7 @@
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
-import { authorizeProgram } from "../../agent/permissions.js";
+import { policyFor } from "@aux/contracts";
 import { siteExportUrl } from "../../agent/site-adapters.js";
 
 async function h_sites_read(ctx: MethodCtx): Promise<unknown> {
@@ -10,40 +10,17 @@ async function h_sites_read(ctx: MethodCtx): Promise<unknown> {
     !!client.connectionId && turnTabs.owns(client.connectionId, params.taskId, params.pageId);
   tasks.preparePageAccess(params.taskId, params.expectedRevision, params.pageId, false, previewGranted);
   const exportUrl = siteExportUrl(params);
-  const grants = s.settings.effectGrants();
-  if (
-    !authorizeProgram(
-      [{ id: "site-read", op: "extract", fields: [{ name: "content" }] }],
-      grants,
-      exportUrl.origin,
-    ).ok ||
-    !authorizeProgram([{ id: "site-egress", op: "navigate", url: exportUrl.href }], grants).ok
-  )
-    throw new AuxError(
-      "permission_denied",
-      `Site export needs read and egress grants for ${exportUrl.origin}.`,
-    );
-  const result = await s.pages.readSiteContent(params, (url) => {
-    const current = s.settings.effectGrants();
-    return (
-      authorizeProgram(
-        [{ id: "site-read", op: "extract", fields: [{ name: "content" }] }],
-        current,
-        url.origin,
-      ).ok && authorizeProgram([{ id: "site-egress", op: "navigate", url: url.href }], current).ok
-    );
-  });
+  const revision = s.settings.agentPolicy().agentPolicyRevision;
+  const allowed = (url: URL) => {
+    const policy = s.settings.agentPolicy();
+    return policy.agentPolicyRevision === revision && ["read", "navigate"].every((category) =>
+      policyFor({ mode: policy.agentMode, category: category as "read" | "navigate", site: url.origin, overrides: policy.agentPolicies }).disposition === "allow");
+  };
+  await ctx.decideEgress({ url: exportUrl, action: "sites.read", taskId: params.taskId, connectionId: client.connectionId, runId: ctx.externalRunId });
+  if (!allowed(exportUrl)) throw new AuxError("permission_denied", "Site policy does not allow this export.");
+  const result = await s.pages.readSiteContent(params, allowed);
   tasks.preparePageAccess(params.taskId, params.expectedRevision, params.pageId, false, previewGranted);
-  if (
-    !authorizeProgram(
-      [{ id: "site-read", op: "extract", fields: [{ name: "content" }] }],
-      s.settings.effectGrants(),
-      exportUrl.origin,
-    ).ok ||
-    !authorizeProgram([{ id: "site-egress", op: "navigate", url: exportUrl.href }], s.settings.effectGrants())
-      .ok
-  )
-    throw new AuxError("permission_denied", "The site read grant changed during extraction.");
+  if (!allowed(exportUrl)) throw new AuxError("permission_denied", "Site policy changed during extraction.");
   return result;
 }
 

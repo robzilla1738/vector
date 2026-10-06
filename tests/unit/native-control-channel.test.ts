@@ -154,8 +154,11 @@ async function fixture() {
       approvals,
       journal: new DecisionJournal(repo.db),
       managedRules: () => [],
-      userRules: () => [],
-      localCeiling: () => "ask",
+      agentPolicy: () => ({
+        agentMode: "ask",
+        agentPolicyRevision: 0,
+        agentPolicies: [{ category: "click", access: "ask" }],
+      }),
       audit: () => {},
     }),
     mentions: fixtureTurnMentions((id) => registry.get(id)),

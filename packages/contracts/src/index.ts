@@ -28,7 +28,6 @@ export * from "./tracker-hosts.js";
 export * from "./vault.js";
 export * from "./routines.js";
 export * from "./goals.js";
-export * from "./command-escalation.js";
 export * from "./hooks.js";
 export * from "./workspace-folders.js";
 export * from "./outbound-mcp.js";
@@ -43,7 +42,6 @@ export * from "./link-routing.js";
 export * from "./mentions.js";
 export * from "./download-naming.js";
 export * from "./night-shift.js";
-export * from "./agent-site-permissions.js";
 export * from "./demonstration.js";
 export * from "./command-ranking-query.js";
 export * from "./memory-pipeline.js";
@@ -88,3 +86,5 @@ export { createClock, type Clock } from "./clock.js";
 export * from "./native-recorder.js";
 
 export * from "./native-cdp.js";
+
+export * from "./agent-policy.js";

@@ -133,7 +133,7 @@ it("resyncs a scoped replay gap without widening scope or killing an unverifiabl
     events,
     agentConnections: connections,
     pages: { list: () => [], get: () => ({ controller: "none" }) },
-    settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
+    settings: { agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }) },
   } as unknown as Services) as Gate;
   cleanup.push(() => void gate.dispose());
 
@@ -682,7 +682,7 @@ it("reopens a crashed runtime without widening a scoped replay gap", async () =>
     events,
     agentConnections: connections,
     pages: { list: () => [], get: () => ({ controller: "none" }) },
-    settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
+    settings: { agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }) },
   } as unknown as Services) as Gate;
   const anchor = events.emit("task.updated", {
     task: { taskId: task.taskId, workspaceId: workspace.workspaceId },
@@ -711,7 +711,7 @@ it("reopens a crashed runtime without widening a scoped replay gap", async () =>
     events: restartedEvents,
     agentConnections: restartedConnections,
     pages: { list: () => [], get: () => ({ controller: "none" }) },
-    settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
+    settings: { agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }) },
   } as unknown as Services) as Gate;
   cleanup.push(() => void restarted.dispose());
   expect(restartedEvents.streamId).toBe(streamId);
@@ -774,9 +774,7 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
       approvals: new ApprovalStore(db),
       journal: new DecisionJournal(db),
       managedRules: () => [],
-      userRules: () => [],
-      localCeiling: () => "ask",
-      settingsGrants: () => [],
+      agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
       audit: () => {},
     }),
     repo,
@@ -801,7 +799,7 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
     events,
     pages,
     runs: { pageOwnership: { tryAcquire: () => () => undefined } },
-    settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
+    settings: { agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }) },
     agentConnections: connections,
     externalSessions: sessions,
     turnMentions: pagesTurnMentions,
@@ -945,9 +943,7 @@ it("lets the unscoped loopback owner navigate while an external program holds th
       approvals: new ApprovalStore(db),
       journal: new DecisionJournal(db),
       managedRules: () => [],
-      userRules: () => [],
-      localCeiling: () => "ask",
-      settingsGrants: () => [],
+      agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
       audit: () => {},
     }),
     repo,
@@ -973,7 +969,7 @@ it("lets the unscoped loopback owner navigate while an external program holds th
     events,
     pages,
     runs: { pageOwnership },
-    settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
+    settings: { agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }) },
     agentConnections: connections,
     externalSessions: sessions,
     turnMentions: pagesTurnMentions,
@@ -1124,9 +1120,7 @@ it("loads an owner address through the native tab command instead of page.goto",
       approvals: new ApprovalStore(db),
       journal: new DecisionJournal(db),
       managedRules: () => [],
-      userRules: () => [],
-      localCeiling: () => "ask",
-      settingsGrants: () => [],
+      agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
       audit: () => {},
     }),
     repo,

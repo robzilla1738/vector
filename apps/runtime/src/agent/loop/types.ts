@@ -114,16 +114,13 @@ export interface LoopToolDeps {
   /** Confined file tools (read_file/write_file/edit_file) — the host enforces the root guard. */
   fileRead?: (path: string) => Promise<string>;
   fileWrite?: (path: string, content: string) => Promise<void>;
-  /** `bash` under the seatbelt — network off by default; `{park}` propagates a gate ask. */
+  /** `bash` under current permissions; `{park}` propagates an Ask-mode network request. */
   bash?: (
     input: {
       command: string;
       timeoutMs?: number;
       workdir?: string;
       network?: boolean;
-      requireEscalated?: boolean;
-      justification?: string;
-      prefixRule?: string;
     },
     ctx: { runId: string; threadId: string; turnId: string },
   ) => Promise<LoopToolResult>;

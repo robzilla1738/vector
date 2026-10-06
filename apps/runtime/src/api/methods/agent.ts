@@ -10,7 +10,7 @@ import {
   InlineAssistTextSchema,
 } from "@aux/contracts";
 import { SpendLedger } from "../../store/spend-ledger.js";
-import { authorizeProgram } from "../../agent/permissions.js";
+import { policyFor } from "@aux/contracts";
 import { proposeTabTidy } from "../../agent/tidy.js";
 import { suggestTabName } from "../../agent/tab-name.js";
 import { evaluateOriginPolicy } from "../../safety/origin-policy.js";
@@ -79,10 +79,10 @@ function inlineAssistGuard(ctx: MethodCtx) {
         effect,
         action: `inline_assist_${effect}`,
         managed: OriginRuleSchema.array().parse(ctx.s.repo.getSetting("managedOriginPolicies") ?? []),
-        user: ctx.s.settings.originPolicies(),
+        user: [],
         audit: (decision) => ctx.safetyAudit.record({ ...decision }),
       });
-      if (policy.access !== "allow" || ctx.s.settings.safetyCeiling(effect) === "never")
+      if (policy.reason === "explicit_deny" || policyFor({ mode: ctx.s.settings.agentPolicy().agentMode, category: effect === "write" ? "input" : effect === "egress" ? "navigate" : "read", site: new URL(url).origin, overrides: ctx.s.settings.agentPolicy().agentPolicies }).disposition !== "allow")
         throw new AuxError(
           "permission_denied",
           policy.access === "ask"
@@ -156,8 +156,7 @@ async function h_agent_web_fetch(ctx: MethodCtx): Promise<unknown> {
       threadId,
       runId: ctx.externalRunId,
     });
-    return authorizeProgram([{ id: "web-egress", op: "navigate", url: url.href }], s.settings.effectGrants())
-      .ok;
+    return true;
   });
   if (method === "agent.web.fetch") return web.fetch(params.url);
   const engine =
@@ -189,12 +188,6 @@ async function h_agent_images_generate(ctx: MethodCtx): Promise<unknown> {
     connectionId: client.connectionId,
     runId: ctx.externalRunId,
   });
-  const permitted = authorizeProgram(
-    [{ id: "image-egress", op: "navigate", url: "https://ai-gateway.vercel.sh" }],
-    s.settings.effectGrants(),
-  );
-  if (!permitted.ok)
-    throw new AuxError("permission_denied", "AI Gateway egress is not granted for image generation.");
   if (configuredImage() !== imageModel)
     throw new AuxError("conflict", "The image model changed during approval. Review the request again.");
   const key = s.settings.gatewayKey();
@@ -224,8 +217,6 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
     threadId: task.conversationId ?? `task:${params.taskId}`,
     runId: ctx.externalRunId,
   });
-  if (!authorizeProgram([{ id: "turn-egress", op: "navigate", url: url.href }], s.settings.effectGrants()).ok)
-    throw new AuxError("permission_denied", `Web egress is not granted for ${url.origin}.`);
   let release: (() => void) | undefined;
   let revoke: (() => void) | undefined;
   try {

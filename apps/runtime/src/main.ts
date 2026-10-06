@@ -7,10 +7,8 @@ import { registerNativeSubagentWorkload } from "./services/native-subagent-workl
 import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
 import { withRunAuthorityMutation } from "./services/overnight-authority.js";
 import { overnightRoot, runAncestry } from "./services/run-lineage.js";
-import { saveAuthorizedModelCall } from "./services/model-call-authority.js";
 import { installBrowserAuthority, installOvernightAuthority } from "./services/overnight-authority.js";
 import { checkNightShiftDispatch, nightShiftEffectAuthority } from "./features/overnight-review/service.js";
-import { SafetyAuthorityRevocation } from "./safety/authority-revocation.js";
 import { z } from "zod";
 import { createClock } from "@aux/contracts";
 import { bootRuntimeFeatures } from "./features/registry.js";
@@ -26,9 +24,14 @@ import { OutboundMcpService } from "./services/outbound-mcp.js";
 import { HookService, type HookExecutor } from "./services/hooks.js";
 import { installRunEndHooks } from "./services/hook-dispatch.js";
 import { WorkspaceFolderService } from "./services/workspace-folders.js";
+import { FilesystemAccessService } from "./services/filesystem-access.js";
+import { requireFilesystemPath } from "./services/filesystem-policy.js";
+import { resolveNativeUserDataDir } from "@aux/contracts/installation";
 import { BrowserBookmarkLedger } from "./services/browser-bookmark-ledger.js";
 import { CommandRankingStore } from "./services/command-ranking.js";
 import { registerNativeCommandRanking } from "./services/command-ranking-native.js";
+import { registerNativeDeviceConfirmation } from "./services/native-device-confirmation.js";
+import { resumeApproval } from "./services/approval-continuation.js";
 import { registerNativeReceiptChannel } from "./services/native-receipt-channel.js";
 import { BrowserEgress } from "./safety/browser-egress.js";
 import { browserEgressApproval } from "./safety/browser-egress-approval.js";
@@ -39,7 +42,7 @@ import { browserEgressApproval } from "./safety/browser-egress-approval.js";
  * The same runtime and versioned agent API also support external-only use.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { chmodSync, mkdirSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -84,7 +87,6 @@ import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
 import { TaskService } from "./services/tasks.js";
 import { GoalService } from "./services/goals.js";
-import { CommandEscalationService } from "./services/command-escalation.js";
 import { SubagentService } from "./services/subagents.js";
 import { BudgetsService } from "./services/budgets.js";
 import { handlePageTakeover } from "./services/page-takeover.js";
@@ -118,13 +120,11 @@ import { runWebmcp, webmcpTurn } from "./agent/webmcp.js";
 import { attachBidiRuntime } from "./services/bidi.js";
 import { VaultService } from "./services/vault.js";
 import { DurableWriteLedger, PageClaimStore } from "./agent/durable.js";
-import { modelCallCost } from "./agent/model-client.js";
 import { ApprovalStore } from "./safety/approval.js";
 import { SafetyAuditStore } from "./safety/audit.js";
 import { decide, DecisionJournal, type DecideDeps } from "./safety/decide.js";
 import { SafetyDispatchGate } from "./safety/dispatch.js";
 import { SuspensionStore } from "./safety/suspensions.js";
-import { createGuardianJudge } from "./safety/guardian-model.js";
 import { connectHostSocket, type HostSocketTransport } from "./host-socket.js";
 import { registerDownloadNamingChannel, startupHostChannel } from "./startup-host-channel.js";
 
@@ -194,6 +194,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const env =
     configured.AUX_LOAD_DOTENV === "0" ? configured : loadDotEnv(processEnv, dotEnvCandidates(processEnv));
   const config = loadConfig(env);
+  const bashScratch = join(config.artifactsDir, "bash-tmp");
+  mkdirSync(bashScratch, { recursive: true });
   const developmentIdentity = developmentPeerIdentity();
   // Port 0 asks the kernel for a free port, so there is no incumbent to review.
   if (config.apiPort !== 0 && (await loopbackPortTaken(config.apiPort))) {
@@ -226,12 +228,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   bootPhase("protection");
   const repo = new Repo(db, columnCipher);
   let closed = false;
+  let stopNativeDeviceConfirmation: (() => void) | undefined;
   let stopRunEndHooks: (() => void) | undefined;
   type RuntimeServices = Services & {
     workspaceFolders: WorkspaceFolderService;
+    filesystem: FilesystemAccessService;
     settings: SettingsService;
     durableWrites: DurableWriteLedger;
     safetyAudit: SafetyAuditStore;
+    decisions: DecisionJournal;
     approvals: ApprovalStore;
     suspensions: SuspensionStore;
     pageClaims: PageClaimStore;
@@ -256,10 +261,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     mentionRoutines: RoutineService;
     mentionConnectors: ConnectorCatalogService;
     turnMentions: TurnMentionService;
-    safetyAuthority: SafetyAuthorityRevocation;
     runs: RunService;
     goals: GoalService;
-    commandEscalations: CommandEscalationService;
     subagents: SubagentService;
     bashSeatbelt: BashSeatbelt;
     cookies: CookieService;
@@ -273,10 +276,35 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   };
   const serviceContainer: ServiceContainer<RuntimeServices> = createServiceContainer<RuntimeServices>({
     workspaceFolders: () => new WorkspaceFolderService(repo, () => [config.dataDir]),
+    filesystem: () =>
+      new FilesystemAccessService({
+        internalRoots: [config.artifactsDir, config.downloadsDir, config.previewsDir],
+        scratchDir: bashScratch,
+        protectedRoots: [config.dataDir, resolveNativeUserDataDir(env)],
+        settings: () => runtimeServices.settings.fileAccess(),
+        reviewedRoots: (runId) => {
+          const read = folderRootsForRun(runId, "read");
+          const taskId = runId ? repo.getRun(runId)?.config?.taskId : undefined;
+          const task = taskId
+            ? repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId)
+            : undefined;
+          if (task && typeof task.json === "string")
+            for (const resource of TaskSchema.parse(JSON.parse(task.json)).resources ?? [])
+              if (resource.kind === "file" || resource.kind === "repository") read.push(resource.locator);
+          return { read, write: folderRootsForRun(runId, "write") };
+        },
+      }),
     settings: () => new SettingsService(repo, config.settingsPath, env),
     durableWrites: () => new DurableWriteLedger(repo.db),
     safetyAudit: () => new SafetyAuditStore(repo.db),
-    approvals: () => new ApprovalStore(repo.db, (event) => runtimeServices.safetyAudit.record(event)),
+    decisions: () => new DecisionJournal(repo.db),
+    approvals: () =>
+      new ApprovalStore(
+        repo.db,
+        (event) => runtimeServices.safetyAudit.record(event),
+        (action) => runtimeServices.settings.allowAgentSite(action),
+        () => runtimeServices.settings.agentPolicy(),
+      ),
     suspensions: () => new SuspensionStore(repo.db, (event) => runtimeServices.safetyAudit.record(event)),
     pageClaims: () => new PageClaimStore(repo.db),
     safetyGate: () =>
@@ -284,34 +312,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         ...decideDeps,
         suspensions: runtimeServices.suspensions,
         onConfirmation: (confirmation) => events.emit("safety.confirmation", confirmation),
-        ...(env.AUX_HOST_SOCKET
-          ? {
-              judge: createGuardianJudge({
-                model: () => runtimeServices.settings.model(),
-                modelId: () => runtimeServices.settings.plannerModel(),
-                beforeCall: async (runId) => {
-                  if (runId) {
-                    await checkNightShiftDispatch(repo, runId);
-                    runtimeServices.budgets.assertWithin({ runId });
-                  }
-                },
-                recordAttempt: async (attempt, modelId, error, runId) =>
-                  saveAuthorizedModelCall(repo, {
-                    ...(runId ? { runId } : {}),
-                    callId: randomUUID(),
-                    role: "guardian",
-                    modelId,
-                    durationMs: attempt.durationMs,
-                    inputTokens: attempt.inputTokens,
-                    outputTokens: attempt.outputTokens,
-                    providerMetadata: attempt.providerMetadata,
-                    ...modelCallCost(modelId, attempt),
-                    ...(error ? { error } : {}),
-                    createdAt: Date.now(),
-                  }),
-              }),
-            }
-          : {}),
       }),
     artifacts: () => new ArtifactStore(config.artifactsDir, repo, events),
     zap: () => new ZapService(repo, native, env.AUX_BROWSER_PROFILE_ID ?? "default"),
@@ -372,25 +372,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         // unified step ledger — every execution records steps with pageId so
         // operations.compile can rebuild the trace (§10.3)
         recordStep: (s) => repo.saveStep(s),
-        grants: () => runtimeServices.settings.effectGrants(),
-        grantsForRun: () => runtimeServices.settings.effectGrantsForRun(),
-        // Upload reads are confined to runtime-owned storage plus paths the user
-        // attached to the task (file/repository resource locators).
-        uploadRoots: ({ taskId }) => {
-          const roots = [config.artifactsDir, config.downloadsDir, config.previewsDir];
-          if (taskId) {
-            try {
-              const row = repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId) as
-                { json: string } | undefined;
-              const task = row ? TaskSchema.parse(JSON.parse(row.json)) : undefined;
-              for (const resource of task?.resources ?? [])
-                if (resource.kind === "file" || resource.kind === "repository") roots.push(resource.locator);
-            } catch {
-              /* task deleted — session roots still apply */
-            }
-          }
-          return roots;
-        },
+        uploadRead: (path, input) => runtimeServices.filesystem.readUpload(path, input.runId, input.signal),
         callOperation: async (name, args, pageId) => {
           const slash = name.indexOf("/");
           const siteKey =
@@ -409,45 +391,45 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           const claim = runtimeServices.pageClaims.activeForPage(pageId);
           if (!claim) return undefined;
           const run = repo.getRun(claim.runId);
-          const decision = await decide(
-            EffectRequestSchema.parse({
-              profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-              scope: run?.config?.taskId
-                ? { kind: "task", id: run.config.taskId }
-                : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
-              actor: "builtin_agent",
-              effect: "write",
-              category: "dialog",
-              action: `dialog.${type}`,
-              origin: (() => {
-                try {
-                  return new URL(runtimeServices.pages.get(pageId).url).origin;
-                } catch {
-                  return claim.pageId;
-                }
-              })(),
-              dataClasses: [],
-              provenance: "page",
-              invocationDigest: createHash("sha256")
-                .update(JSON.stringify(["dialog", pageId, type, message]))
-                .digest("hex"),
-              turnId: claim.runId,
-              threadId: run?.config?.chatId ?? claim.runId,
-              runId: claim.runId,
-              requestedAt: Date.now(),
-            }),
-            decideDeps,
-            { phase: "dispatch" },
-          );
+          const page = runtimeServices.pages.get(pageId);
+          const request = EffectRequestSchema.parse({
+            profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+            scope: run?.config?.taskId
+              ? { kind: "task", id: run.config.taskId }
+              : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+            actor: "builtin_agent",
+            effect: "write",
+            category: "dialog",
+            action: `dialog.${type}`,
+            origin: (() => {
+              try {
+                return new URL(runtimeServices.pages.get(pageId).url).origin;
+              } catch {
+                return claim.pageId;
+              }
+            })(),
+            dataClasses: [],
+            provenance: "page",
+            invocationDigest: createHash("sha256")
+              .update(JSON.stringify(["dialog", pageId, type, message]))
+              .digest("hex"),
+            turnId: claim.runId,
+            threadId: run?.config?.chatId ?? claim.runId,
+            runId: claim.runId,
+            requestedAt: Date.now(),
+          });
+          const decision = await decide(request, decideDeps, { phase: "dispatch" });
+          const current = runtimeServices.pages.get(pageId);
+          if (
+            runtimeServices.pageClaims.activeForPage(pageId)?.claimId !== claim.claimId ||
+            current.documentEpoch !== page.documentEpoch ||
+            current.url !== page.url ||
+            current.controller !== page.controller
+          )
+            return "dismiss";
           if (decision.status === "deny") return "dismiss";
           if (decision.status === "ask") {
-            runtimeServices.suspensions.park({
-              runId: claim.runId,
-              threadId: run?.config?.chatId ?? claim.runId,
-              turnId: claim.runId,
-              kind: decision.suspension.kind,
-              request: decision.suspension,
-            });
+            runtimeServices.safetyGate.park(request, { ...request, pageId }, decision.suspension);
             return "leave";
           }
           return undefined;
@@ -460,7 +442,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     hooks: () =>
       new HookService(repo, (handler, workspaceId) => {
         if (handler.type === "command") {
-          authorizeHookCommand(handler.workdir, workspaceId);
+          requireFilesystemPath(hookFilesystemPolicy(workspaceId), handler.workdir, "read");
           return;
         }
         if (handler.type !== "mcp_tool")
@@ -512,7 +494,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         authorizeConnector: (runId, connectorId, tool, dispatch) =>
           runtimeServices.turnMentions.useConnector(runId, connectorId, tool, dispatch),
         decideEgress,
-        grants: () => runtimeServices.settings.effectGrants(),
         egressAllowlist: () =>
           (env.AUX_EGRESS_ALLOWLIST ?? "")
             .split(",")
@@ -567,23 +548,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           });
         },
       }),
-    safetyAuthority: () =>
-      new SafetyAuthorityRevocation({
-        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-        runScope: (runId) => {
-          const run = repo.getRun(runId);
-          if (!run) return undefined;
-          return run.config?.taskId
-            ? { kind: "task", id: run.config.taskId }
-            : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" };
-        },
-        invalidate: (matches) => {
-          nativePermissions?.invalidateAuthority(matches);
-          return browserEgress ? browserEgress.invalidateAuthority(matches) : Promise.resolve();
-        },
-      }),
     runs: () => {
       const runs = new RunService({
+        approvals: runtimeServices.approvals,
+        suspensions: runtimeServices.suspensions,
         turnMentions: runtimeServices.turnMentions,
         taskSource: (taskId) => {
           const task = runtimeServices.tasks.get(taskId);
@@ -614,56 +582,18 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     },
     goals: () =>
       new GoalService(repo, runtimeServices.runs, async () => runtimeServices.settings.registryModels()),
-    commandEscalations: () =>
-      new CommandEscalationService(repo, (workspaceId, workdir) =>
-        runtimeServices.workspaceFolders.scopeDigest(workspaceId, workdir),
-      ),
     subagents: () => new SubagentService(repo, events, runtimeServices.runs),
     bashSeatbelt: () =>
       new BashSeatbelt({
-        writableRoots: (ctx) => [
-          config.artifactsDir,
-          config.downloadsDir,
-          config.previewsDir,
-          ...folderRootsForRun(ctx?.runId, "write"),
-        ],
-        readableRoots: (ctx) => folderRootsForRun(ctx?.runId, "read"),
+        filesystemPolicy: (ctx) => runtimeServices.filesystem.snapshot(ctx?.runId),
+        networkDefault: () => runtimeServices.settings.agentPolicy().agentMode !== "ask",
         scratchDir: bashScratch,
-        // Reads stay broad for tool usability, minus the runtime data dir (API
-        // token, cookies, history DBs) and OS credential stores; /Users is denied
-        // by the profile itself and the session roots are re-allowed after it.
-        extraDenyRead: () => [
-          config.dataDir,
-          join(config.dataDir, "runtime.json"),
-          "/private/var/db/dslocal",
-          "/private/var/db/shadow",
-          "/private/etc/sudoers",
-        ],
         networkGate: (command, ctx) =>
           recipientGate(ctx, {
             action: "agent.bash.network",
             recipient: "process:network",
             digestParts: ["agent.bash.network", command],
           }),
-        escalationGate: async (input, ctx) => {
-          const run = repo.getRun(ctx.runId);
-          if (!run) throw new AuxError("not_found", "Escalated run does not exist.");
-          return runtimeServices.commandEscalations.authorize({
-            ...input,
-            runId: ctx.runId,
-            workspaceId: run.config?.contextWorkspaceId ?? "default",
-          });
-        },
-        escalationRecheck: ({ workdir, scopeDigest, requestIds }, ctx) => {
-          const run = repo.getRun(ctx.runId);
-          if (!run) throw new AuxError("not_found", "Escalated run does not exist.");
-          runtimeServices.commandEscalations.assertDispatch(
-            run.config?.contextWorkspaceId ?? "default",
-            workdir,
-            scopeDigest,
-            requestIds,
-          );
-        },
       }),
     blocking: () =>
       env.AUX_HOST_SOCKET
@@ -796,18 +726,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   const decideDeps: DecideDeps = {
     approvals: runtimeServices.approvals,
-    journal: new DecisionJournal(repo.db),
+    journal: runtimeServices.decisions,
     managedRules: () => OriginRuleSchema.array().parse(repo.getSetting("managedOriginPolicies") ?? []),
-    userRules: () => runtimeServices.settings.originPolicies(),
-    localCeiling: (action) => runtimeServices.settings.safetyCeiling(action.effect),
-    settingsGrants: () => runtimeServices.settings.effectGrants(),
+    agentPolicy: () => runtimeServices.settings.agentPolicy(),
     audit: (event) => runtimeServices.safetyAudit.record({ ...event }),
   };
 
   /**
-   * Runtime-side egress (operation session requests) goes through the same
-   * decide() boundary as page effects. There is no approval UI mid-request,
-   * so asks collapse to deny-with-refusal; grants and rules are the consent.
+   * Operation requests use the same live agent policy as page effects.
+   * A request awaiting consent is parked before any transport dispatch.
    */
   const decideEgress = async (input: { url: URL; method: string; runId?: string }) => {
     const run = input.runId ? repo.getRun(input.runId) : undefined;
@@ -818,39 +745,42 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       : upper === "DELETE"
         ? "delete"
         : "send";
-    const decision = await decide(
-      EffectRequestSchema.parse({
-        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-        scope: taskId
-          ? { kind: "task", id: taskId }
-          : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
-        actor: "builtin_agent",
-        effect: "egress",
-        category,
-        action: `operation.request.${upper}`,
-        origin: input.url.origin,
-        destination: input.url.href.slice(0, 2048),
-        dataClasses: [],
-        provenance: "template",
-        invocationDigest: createHash("sha256")
-          .update(JSON.stringify(["operation.request", input.url.href, upper]))
-          .digest("hex"),
-        turnId: input.runId ?? "runtime",
-        threadId: run?.config?.chatId ?? "runtime",
-        ...(input.runId ? { runId: input.runId } : {}),
-        requestedAt: Date.now(),
-      }),
-      decideDeps,
-      { phase: "dispatch", headless: true },
-    );
-    if (decision.status !== "allow")
-      throw new AuxError(
-        "permission_denied",
-        decision.status === "deny"
-          ? decision.guidance
-          : "Egress requires an approval that must be granted in Aux.",
-        decision.status === "deny" ? { refusalId: decision.refusalId } : undefined,
+    const request = EffectRequestSchema.parse({
+      profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+      scope: taskId
+        ? { kind: "task", id: taskId }
+        : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+      actor: "builtin_agent",
+      effect: "egress",
+      category,
+      action: `operation.request.${upper}`,
+      origin: input.url.origin,
+      destination: input.url.href.slice(0, 2048),
+      dataClasses: [],
+      provenance: "template",
+      invocationDigest: createHash("sha256")
+        .update(JSON.stringify(["operation.request", input.url.href, upper]))
+        .digest("hex"),
+      turnId: input.runId ?? "runtime",
+      threadId: run?.config?.chatId ?? "runtime",
+      ...(input.runId ? { runId: input.runId } : {}),
+      requestedAt: Date.now(),
+    });
+    const decision = await decide(request, decideDeps, { phase: "dispatch", headless: true });
+    if (decision.status === "ask") {
+      runtimeServices.safetyGate.park(
+        request,
+        {
+          turnId: request.turnId,
+          threadId: request.threadId,
+          ...(input.runId ? { runId: input.runId } : {}),
+        },
+        decision.suspension,
       );
+      throw new AuxError("needs_input", decision.suspension.instruction);
+    }
+    if (decision.status === "deny")
+      throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
   };
 
   // ---- authenticated channel to the native browser host ----
@@ -1024,7 +954,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           steps,
           observation: obs.content,
           url: live.url ?? obs.content.url,
-          grants: () => runtimeServices.settings.effectGrants(),
         });
         if ("program" in prepared)
           await runtimeServices.pages.execute(prepared.program, { allowEval: false });
@@ -1052,35 +981,26 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   const hookScratch = join(config.artifactsDir, "hook-tmp");
   mkdirSync(hookScratch, { recursive: true });
-  const authorizeHookCommand = (workdir: string, workspaceId: string) => {
-    let actual: string;
-    try {
-      actual = realpathSync(workdir);
-    } catch {
-      throw new AuxError("permission_denied", "Hook working folder is unavailable.");
-    }
-    if (!runtimeServices.workspaceFolders.roots(workspaceId).write.includes(actual))
-      throw new AuxError(
-        "permission_denied",
-        "Bind this exact writable folder to the Space before approving a command Hook.",
-      );
-    return actual;
+  const hookFilesystemPolicy = (workspaceId: string, runId?: string) => {
+    const policy = runtimeServices.filesystem.snapshot(runId);
+    const reviewed = runtimeServices.workspaceFolders.roots(workspaceId);
+    return {
+      ...policy,
+      readRoots: [...new Set([...policy.readRoots, ...reviewed.read, ...reviewed.write])],
+      writeRoots: [
+        ...new Set([...policy.writeRoots, ...(policy.mode === "read-only" ? [] : reviewed.write)]),
+      ],
+    };
   };
 
   const hookExecutor: HookExecutor = async (handler, context, signal) => {
     if (signal.aborted) throw new AuxError("permission_denied", "Hook was revoked.");
     if (handler.type === "command") {
-      const workdir = authorizeHookCommand(handler.workdir, context.workspaceId);
+      const workdir = handler.workdir;
       const seatbelt = new BashSeatbelt({
-        writableRoots: () => [config.artifactsDir, workdir],
-        readableRoots: () => [workdir],
+        filesystemPolicy: () => hookFilesystemPolicy(context.workspaceId, context.runId),
+        networkDefault: () => runtimeServices.settings.agentPolicy().agentMode !== "ask",
         scratchDir: hookScratch,
-        extraDenyRead: () => [
-          config.dataDir,
-          "/private/var/db/dslocal",
-          "/private/var/db/shadow",
-          "/private/etc/sudoers",
-        ],
       });
       const result = await seatbelt.run(
         { command: handler.command, workdir, signal },
@@ -1167,10 +1087,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return permittedWebUrl(url);
   };
   /**
-   * Recipient-scoped decide() (06-X): effects addressed at a local service, not
-   * a page origin — `routine_update` and `bash network`. Recipient requests
-   * always confirm at action time; an `ask` parks the run's suspension and the
-   * loop resumes into the answer like any gated tool.
+   * Local service effects use the same agent mode and category policy.
+   * Required consent parks the run until its exact suspension is answered.
    */
   const decideLoopRecipient = async (
     ctx: { runId: string; threadId: string; turnId: string },
@@ -1324,6 +1242,26 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       },
       webmcp: async (pageId, action, ctx) => {
         const page = runtimeServices.pages.get(pageId);
+        const identityKeys = [
+          "sessionId",
+          "documentEpoch",
+          "url",
+          "controller",
+          "backend",
+          "ownedByRuntime",
+          "windowKind",
+          "workspaceId",
+        ] as const;
+        const originalDocument = identityKeys.map((key) => page[key]);
+        const current = () => {
+          const target = runtimeServices.pages.get(pageId);
+          if (
+            ["detached", "crashed"].includes(target.viewStatus) ||
+            identityKeys.some((key, index) => target[key] !== originalDocument[index]) ||
+            !["running", "planning"].includes(repo.getRun(ctx.runId)?.status ?? "")
+          )
+            throw new AuxError("ref_stale", "The original site-tool document changed.");
+        };
         let origin = "";
         try {
           origin = new URL(page.url).origin;
@@ -1348,38 +1286,19 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           },
           decideDeps,
           origin,
+          current,
         );
-        if (outcome.status === "ask") {
-          events.emit("safety.confirmation", {
-            approvalId: outcome.approvalId,
-            turnId: outcome.turnId,
-            threadId: outcome.threadId,
-            instruction: outcome.instruction,
-            action: outcome.action,
-            origin: outcome.origin,
-          });
-          runtimeServices.suspensions.park({
-            runId: ctx.runId,
-            threadId: outcome.threadId,
-            turnId: outcome.turnId,
-            kind: "approval",
-            request: {
-              kind: "approval",
-              approvalId: outcome.approvalId,
-              instruction: outcome.instruction,
-              guidance:
-                "Pause this action and request approval from the user. Do not dispatch or retry while approval is pending.",
-            },
-          });
-        }
+        if (outcome.status === "ask")
+          runtimeServices.safetyGate.park(
+            outcome.request,
+            { ...outcome.request, runId: ctx.runId, pageId },
+            outcome.suspension,
+          );
         return outcome;
       },
-      fsRoots: (runId, access) => [
-        config.artifactsDir,
-        config.downloadsDir,
-        config.previewsDir,
-        ...folderRootsForRun(runId, access),
-      ],
+      get filesystem() {
+        return runtimeServices.filesystem;
+      },
       outputDir: config.artifactsDir,
     },
   };
@@ -1589,12 +1508,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     cancelCell: (cellId) => runtimeServices.subagents.cellControls().cancelCell(cellId),
   };
 
-  // 06-X bash under the macOS seatbelt: writes confined to the same session
-  // roots the REPL fs uses, network off by default — `network: true` takes the
-  // recipient-scoped decide() (always confirms, can park).
-  const bashScratch = join(config.artifactsDir, "bash-tmp");
-  mkdirSync(bashScratch, { recursive: true });
-
   agentLoop.bash = async (input, ctx) => {
     const result = await runtimeServices.bashSeatbelt.run(input, ctx);
     return "park" in result ? result : { output: result };
@@ -1724,6 +1637,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     invoke("history.projectDelta", params, { external: false }),
   );
   if (channel) {
+    stopNativeDeviceConfirmation = registerNativeDeviceConfirmation(channel, {
+      get approvals() {
+        return runtimeServices.approvals;
+      },
+      profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+      current: () => !closed,
+      policyRevision: () => runtimeServices.settings.agentPolicy().agentPolicyRevision,
+      confirmed: (action, approvalId) => resumeApproval(runtimeServices, action, approvalId),
+    });
     registerNativeReceiptChannel(channel, repo, () => runtimeServices.pages.list());
     registerNativeSubagentWorkload(channel, {
       repo,
@@ -2001,6 +1923,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     quiesce: () => {
       shutdownAdmission.beginShutdown();
       closed = true;
+      stopNativeDeviceConfirmation?.();
       stopDeferred();
       clearInterval(filterTimer);
       clearInterval(memoryExpiry);
@@ -2142,6 +2065,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // The native host owns this helper. A closed authenticated socket means its
   // owner has exited; finish the journal and release the Profile database.
   hostSocket?.onClose?.(() => {
+    stopNativeDeviceConfirmation?.();
     if (!closed)
       void shutdown().then(
         () => process.exit(0),

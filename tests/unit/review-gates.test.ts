@@ -7,7 +7,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  authorizeProgram,
+  authorizeProfileProgram,
+  ApprovalStore,
+  DecisionJournal,
+  SafetyDispatchGate,
   compileAction,
   beginConsequentialWrite,
   compileAndAuthorize,
@@ -26,7 +29,7 @@ import {
   stepSignature,
   tryReuseSkill,
 } from "@aux/runtime";
-import type { ObservationContent, Program, SetMember, Step } from "@aux/contracts";
+import type { ObservationContent, SetMember, Step } from "@aux/contracts";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
 
 const memberAuthorities = new WeakMap<PageService, ReturnType<typeof fixtureTurnMentions>>();
@@ -107,7 +110,7 @@ describe("Gate F page query and action compiler", () => {
       steps: [{ id: "c", op: "click", target: "r9" }],
       observation: obs(),
       url: "https://app.test/form",
-      grants: ["effect:read", "effect:write"],
+      readOnly: false,
     });
     expect("rejected" in stale).toBe(true);
     const denied = compileAndAuthorize({
@@ -116,7 +119,7 @@ describe("Gate F page query and action compiler", () => {
       steps: [{ id: "c", op: "click", target: "r9" }],
       observation: obs(),
       url: "https://app.test/form",
-      grants: ["effect:read"],
+      readOnly: true,
     });
     expect("denied" in denied).toBe(true);
     const ok = compileAndAuthorize({
@@ -125,7 +128,7 @@ describe("Gate F page query and action compiler", () => {
       steps: [{ id: "c", op: "click", target: "r9" }],
       observation: obs(),
       url: "https://app.test/form",
-      grants: ["effect:read", "effect:write"],
+      readOnly: false,
     });
     expect("program" in ok).toBe(true);
   });
@@ -154,10 +157,10 @@ describe("Gate F page query and action compiler", () => {
       model,
       modelId: "mock",
       signal: new AbortController().signal,
-      grants: ["effect:read"],
+      readOnly: true,
     });
     expect(denied.result.status).toBe("partial");
-    expect(denied.result.error).toMatch(/permission denied/i);
+    expect(denied.result.error).toMatch(/read-only/i);
     expect(denied.executedSteps).toEqual([]);
 
     const stalePages = {
@@ -177,7 +180,7 @@ describe("Gate F page query and action compiler", () => {
       model,
       modelId: "mock",
       signal: new AbortController().signal,
-      grants: ["effect:read", "effect:write"],
+      readOnly: false,
     });
     expect(stale.result.status).toBe("partial");
     expect(stale.result.error).toMatch(/epoch/i);
@@ -210,7 +213,7 @@ describe("Gate F page query and action compiler", () => {
       model,
       modelId: "mock",
       signal: new AbortController().signal,
-      grants: ["effect:read", "effect:write"],
+      readOnly: false,
       durable: ledger,
     });
     expect(first.result.status).toBe("ok");
@@ -229,7 +232,7 @@ describe("Gate F page query and action compiler", () => {
       model: replayModel,
       modelId: "mock",
       signal: new AbortController().signal,
-      grants: ["effect:read", "effect:write"],
+      readOnly: false,
       durable: ledger,
     });
     expect(replay.result.status).toBe("partial");
@@ -256,59 +259,12 @@ describe("Gate F page query and action compiler", () => {
 });
 
 describe("Gate D permissions and durable writes", () => {
-  it("denies a write when effect:write is not granted", () => {
-    const auth = authorizeProgram([{ id: "c", op: "click", target: "r1" }], ["effect:read"]);
-    expect(auth.ok).toBe(false);
-    expect(auth).toMatchObject({ ok: false, effect: "write" });
+  it("keeps user-selected read-only profiles from dispatching writes", () => {
+    expect(authorizeProfileProgram([{ id: "c", op: "click", target: "r1" }], true)).toMatchObject({ ok: false, effect: "write" });
+    expect(authorizeProfileProgram([{ id: "n", op: "navigate", url: "https://site.test" }], false).ok).toBe(true);
   });
 
-  it("authorizes absolute destinations from opaque pages without bypassing scoped grants", () => {
-    const steps = [{ id: "nav", op: "navigate", url: "https://github.com" }] satisfies Program["steps"];
-    const grants = [{ effect: "egress" as const, origin: "https://github.com", scope: "*", expiresAt: 0 }];
-    expect(authorizeProgram(steps, grants, "null").ok).toBe(true);
-    expect(authorizeProgram(steps, ["effect:read"], "null")).toMatchObject({
-      ok: false,
-      effect: "egress",
-      denied: "permission denied for navigate (effect:egress)",
-    });
-    expect(authorizeProgram([{ id: "nav", op: "navigate", url: "/relative" }], grants, "null").ok).toBe(
-      false,
-    );
-    expect(
-      authorizeProgram([{ id: "nav", op: "navigate", url: "https://elsewhere.test" }], grants, "null").ok,
-    ).toBe(false);
-  });
-
-  it("allows same-origin navigate on a user run and still denies a different origin", () => {
-    const grants = ["effect:read", "effect:write"];
-    expect(
-      authorizeProgram(
-        [{ id: "nav", op: "navigate", url: "http://127.0.0.1:4810/records/rec-11" }],
-        grants,
-        "http://127.0.0.1:4810",
-      ).ok,
-    ).toBe(true);
-    expect(
-      authorizeProgram(
-        [{ id: "nav", op: "navigate", url: "https://elsewhere.test/records" }],
-        grants,
-        "http://127.0.0.1:4810",
-      ),
-    ).toMatchObject({ ok: false, effect: "egress" });
-    expect(authorizeProgram([{ id: "b", op: "back" }], grants, "http://127.0.0.1:4810").ok).toBe(true);
-  });
-
-  it("honours origin and expiresAt on structured grants (H2-C4)", () => {
-    const click = [{ id: "c", op: "click", target: "r1" }] satisfies Program["steps"];
-    const scoped = [{ effect: "write" as const, origin: "https://app.test", scope: "*", expiresAt: 0 }];
-    expect(authorizeProgram(click, scoped, "https://app.test").ok).toBe(true);
-    expect(authorizeProgram(click, scoped, "https://evil.test").ok).toBe(false);
-    const expired = [{ effect: "write" as const, origin: "*", scope: "*", expiresAt: 1 }];
-    expect(authorizeProgram(click, expired, "https://app.test", 2).ok).toBe(false);
-    expect(authorizeProgram(click, ["effect:write"], "https://anywhere.test").ok).toBe(true);
-  });
-
-  it("pages.execute is the permission chokepoint; RPC grants cannot expand it", async () => {
+  it("pages.execute honours actual category policy and RPC parameters cannot expand it", async () => {
     const makePage = (pageId: string, url: string): DriverPage => ({
       identity: { pageId, targetId: "engine-perm", backend: "aux" },
       url: () => url,
@@ -364,7 +320,7 @@ describe("Gate D permissions and durable writes", () => {
       repo,
       events: new EventBus(repo),
       native: new NullNativeBridge(),
-      grants: ["effect:read"],
+      safetyGate: new SafetyDispatchGate({ approvals: new ApprovalStore(repo.db), journal: new DecisionJournal(repo.db), managedRules: () => [], agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [{ category: "click", access: "block" }] }), audit: () => {} }),
       drivers: () => ({ aux: driver, chrome: null }),
     });
     const opened = await pages.open({ url: "https://app.test/form", background: true, ownedByRuntime: true });
@@ -379,16 +335,16 @@ describe("Gate D permissions and durable writes", () => {
         steps: [{ id: "c", op: "click", target: "r9" }],
         grants: ["effect:write", "effect:*"],
       } as never),
-    ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
+    ).rejects.toMatchObject({ code: "permission_denied", message: /denied/i });
     await expect(
       pages.execute(
         { pageId: opened.pageId, steps: [{ id: "c", op: "click", target: "r9" }] },
         { runId: "run_unsolicited_does_not_expand_page_grants" },
       ),
-    ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
+    ).rejects.toMatchObject({ code: "permission_denied", message: /denied/i });
   });
 
-  it("runs.start grants write; unsolicited pages.execute stays read-only", async () => {
+  it("Auto applies the same policy to direct actions and user-started runs", async () => {
     let clicked = 0;
     const makePage = (pageId: string, url: string): DriverPage => ({
       identity: { pageId, targetId: "engine-run-grant", backend: "aux" },
@@ -445,8 +401,7 @@ describe("Gate D permissions and durable writes", () => {
       repo,
       events: new EventBus(repo),
       native: new NullNativeBridge(),
-      grants: ["effect:read"],
-      grantsForRun: ["effect:read", "effect:write", "effect:egress"],
+      safetyGate: new SafetyDispatchGate({ approvals: new ApprovalStore(repo.db), journal: new DecisionJournal(repo.db), managedRules: () => [], agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }), audit: () => {} }),
       drivers: () => ({ aux: driver, chrome: null }),
     });
     const opened = await pages.open({
@@ -454,12 +409,10 @@ describe("Gate D permissions and durable writes", () => {
       background: true,
       ownedByRuntime: true,
     });
-    await expect(
-      pages.execute({
-        pageId: opened.pageId,
-        steps: [{ id: "c", op: "click", target: "r9" }],
-      }),
-    ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
+    expect((await pages.execute({
+      pageId: opened.pageId,
+      steps: [{ id: "direct", op: "click", target: "r9" }],
+    })).status).toBe("completed");
     await pagesTurnMentions.begin(
       "run_user_started",
       [
@@ -480,7 +433,7 @@ describe("Gate D permissions and durable writes", () => {
       { runId: "run_user_started" },
     );
     expect(run.status).toBe("completed");
-    expect(clicked).toBe(1);
+    expect(clicked).toBe(2);
   });
 
   it("does not dispatch a second write with the same idempotency key", () => {

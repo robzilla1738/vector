@@ -1,7 +1,6 @@
 import { onboardingMethods } from "./onboarding.js";
 import { liveFolderMethods } from "./live-folders.js";
 import { downloadNamingMethods } from "./download-naming.js";
-import { agentSitePermissionMethods } from "./agent-site-permissions.js";
 import { demonstrationMethods } from "./demonstration.js";
 import { nightShiftMethods } from "./night-shift.js";
 import { zapMethods } from "./zap.js";
@@ -56,7 +55,6 @@ import type { MethodName } from "@aux/contracts";
 export const METHODS: Record<MethodName, MethodHandler> = {
   ...liveFolderMethods,
   ...downloadNamingMethods,
-  ...agentSitePermissionMethods,
   ...demonstrationMethods,
   ...nightShiftMethods,
   ...zapMethods,

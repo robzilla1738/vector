@@ -7,6 +7,8 @@ import { ModelsSettings } from "./Models";
 import { collectSettingsFields } from "../search";
 
 const call = vi.hoisted(() => vi.fn());
+const toast = vi.hoisted(() => vi.fn());
+const errToast = vi.hoisted(() => vi.fn());
 
 vi.mock("../../bridge", () => ({
   bridge: { windowId: "models-fixture", windowKind: "normal", privateMode: false },
@@ -25,7 +27,7 @@ vi.mock("../../commands", async () => {
     },
   };
 });
-vi.mock("../../store", () => ({ call }));
+vi.mock("../../store", () => ({ call, toast, errToast }));
 let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
 const save = vi.fn();
 const status = ModelProviderSchema.options.map((provider) => ({
@@ -74,6 +76,8 @@ function Fixture({ patch = {} }: { patch?: Record<string, unknown> }) {
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+  toast.mockReset();
+  errToast.mockReset();
   save.mockReset().mockResolvedValue(true);
   call.mockReset().mockResolvedValue({ models: [] });
   host = document.createElement("div");
@@ -217,4 +221,33 @@ it("clears an unsaved credential and stale readiness when another window changes
   expect(host.textContent).not.toContain("is ready.");
   expect(button("Save key").disabled).toBe(true);
   expect(save).not.toHaveBeenCalled();
+});
+
+it("undoes an acknowledged disconnect once without deleting its saved credential", async () => {
+  await act(async () => root.render(<Fixture />));
+  await menu();
+  await chooseAction("Disconnect");
+  const undo = toast.mock.calls.at(-1)![2].run;
+  await act(async () => undo());
+  expect(save).toHaveBeenLastCalledWith({ modelConnection: { provider: "gateway", enabled: true } });
+  expect(save.mock.calls.every(([patch]) => patch.modelCredential === undefined)).toBe(true);
+  const count = save.mock.calls.length;
+  await act(async () => undo());
+  expect(save).toHaveBeenCalledTimes(count);
+  expect(errToast).toHaveBeenCalled();
+});
+it("retires the old Undo after another connection action or section unmount", async () => {
+  await act(async () => root.render(<Fixture />));
+  await menu();
+  await chooseAction("Disconnect");
+  const oldUndo = toast.mock.calls.at(-1)![2].run;
+  await menu();
+  await chooseAction("Reconnect");
+  const currentUndo = toast.mock.calls.at(-1)![2].run;
+  const count = save.mock.calls.length;
+  await act(async () => oldUndo());
+  expect(save).toHaveBeenCalledTimes(count);
+  await act(async () => root.render(null));
+  await act(async () => currentUndo());
+  expect(save).toHaveBeenCalledTimes(count);
 });

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AgentPolicyCategorySchema, AgentPolicySettingsSchema } from "@aux/contracts/agent-policy";
 import { FileAccessSettingsSchema } from "@aux/contracts/api";
-import type { AgentMode, AgentPolicyCategory, AgentPolicySettings, FileAccessSettings } from "@aux/contracts";
+import type { AgentPolicyCategory, AgentPolicySettings, FileAccessSettings } from "@aux/contracts";
 import { SettingsField, SettingsSection } from "../primitives";
 import { Segmented } from "../../ui";
 import { useConfirm } from "../../ui/dialog";
@@ -10,6 +10,7 @@ import { staticHintProps } from "../../ui/class-props";
 import { pushSettingsPath } from "../routes";
 import { useStore } from "../../store";
 import "./Permissions.css";
+import { AgentModeControl } from "../../features/permissions/AgentModeControl";
 import { ActivityLog } from "../../features/permissions/ActivityLog";
 import { PolicyTable, replacementRules } from "../../features/permissions/PolicyTable";
 
@@ -70,7 +71,7 @@ export function PermissionsSettings({
     [category, setCategory] = useState<AgentPolicyCategory>("money");
   const [access, setAccess] = useState<Rule["access"]>("allow"),
     [amount, setAmount] = useState("");
-  async function save(patch: { agentMode?: AgentMode; agentPolicies?: Rule[] }, original = owner) {
+  async function save(patch: { agentPolicies?: Rule[] }, original = owner) {
     if (pending.current || !current(original)) return false;
     pending.current = true;
     setBusy(true);
@@ -111,23 +112,6 @@ export function PermissionsSettings({
       pending.current = false;
       setBusy(false);
     }
-  }
-  async function changeMode(mode: AgentMode) {
-    const original = owner;
-    if (pending.current || !current(original)) return;
-    if (
-      mode === "full" &&
-      policy.agentMode !== "full" &&
-      !(await confirm({
-        title: "Use Full auto?",
-        description:
-          "Aux can make payments and use credentials without asking or Touch ID. Account security and CAPTCHA still require you to take over.",
-        confirmLabel: "Use Full auto",
-        cancelLabel: "Keep current mode",
-      }))
-    )
-      return;
-    await save({ agentMode: mode }, original);
   }
   function replaceRule(rule: Rule) {
     return replacementRules(policy, rule.category, rule.site, rule);
@@ -177,16 +161,7 @@ export function PermissionsSettings({
         hint="Auto lets Aux work freely and uses Touch ID for payments and the first credential use on a site."
         searchTerms={["auto", "ask first", "full auto", "Touch ID"]}
       >
-        <Segmented<AgentMode>
-          label="Agent mode"
-          value={policy.agentMode}
-          onChange={(mode) => void changeMode(mode)}
-          items={[
-            { value: "auto", label: "Auto", disabled: busy },
-            { value: "ask", label: "Ask first", disabled: busy },
-            { value: "full", label: "Full auto", disabled: busy },
-          ]}
-        />
+        <AgentModeControl active={active} disabled={busy} policy={policy} onSave={onSave} />
       </SettingsField>
       {error && <p role="alert">{error}</p>}
       <SettingsField

@@ -101,9 +101,7 @@ function fixture() {
       approvals: new ApprovalStore(db),
       journal: new DecisionJournal(db),
       managedRules: () => [],
-      userRules: () => [],
-      localCeiling: () => "ask",
-      settingsGrants: () => ["effect:read"],
+      agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
       audit: () => {},
     }),
   });
@@ -136,7 +134,7 @@ function fixture() {
     externalSessions,
     agentConnections,
     runs: { pageOwnership: new PageOwnership() },
-    settings: { effectGrants: () => ["effect:read"], originPolicies: () => [], safetyCeiling: () => "ask" },
+    settings: { agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }) },
   } as unknown as Services);
   cleanup.push(() => {
     void invoke.dispose();

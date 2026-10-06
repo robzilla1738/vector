@@ -8,8 +8,7 @@ import {
   type Run,
   type StepOutcome,
 } from "@aux/contracts";
-import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
-import { basename, dirname, resolve, sep } from "node:path";
+import type { FilesystemAccessService } from "../../services/filesystem-access.js";
 import type { CoordinatorLoopHost } from "../coordinator-verify.js";
 import {
   DEFAULT_MAX_MODEL_CALLS,
@@ -18,7 +17,7 @@ import {
   verifyResultCitations,
 } from "../coordinator-verify.js";
 import { attemptsOf, type ModelAttempt } from "../model-client.js";
-import { classifyStep, subagentGrants } from "../permissions.js";
+import { classifyStep, isReadOnlyProfile } from "../permissions.js";
 import { observationLineHash } from "../durable.js";
 import { redactObservation } from "../planner.js";
 import { redactForModel } from "../policy.js";
@@ -67,8 +66,8 @@ export interface AgentLoopHostDeps {
       action: { op: "tools" } | { op: "call"; name: string; input?: unknown },
       ctx: { runId: string; threadId: string; turnId: string },
     ) => Promise<WebmcpOutcome>;
-    /** Session storage roots the guest `fs` is confined to. */
-    fsRoots?: (runId?: string, access?: "read" | "write") => string[];
+    /** Trusted filesystem authority; no guest-supplied root grant. */
+    filesystem?: Pick<FilesystemAccessService, "roots" | "readText" | "writeText">;
     /** Artifact dir for REPL output overflow and captures. */
     outputDir?: string;
   };
@@ -330,7 +329,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         {
           pages: self.deps.pages,
           durable: self.durable,
-          grants: subagentGrants(run.config?.subagentProfile, self.deps.grants),
+          readOnly: isReadOnlyProfile(run.config?.subagentProfile) || self.deps.readOnly,
         },
         {
           runId,
@@ -856,17 +855,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     webSearch: self.deps.agentLoop?.webSearch,
     recall: self.deps.agentLoop?.recall,
     fsRoots: () => fsRoots("write"),
-    fileRead: async (path) => {
-      if (!insideRoots(path, "read"))
-        throw new AuxError("permission_denied", "read_file stays inside reviewed roots.");
-      return readFileSync(path, "utf8");
-    },
-    fileWrite: async (path, content) => {
-      if (!insideRoots(path, "write"))
-        throw new AuxError("permission_denied", "write_file stays inside reviewed writable roots.");
-      mkdirSync(dirname(path), { recursive: true });
-      writeFileSync(path, content);
-    },
+    fileRead: (path) => filesystem().readText(path, runId, signal),
+    fileWrite: (path, content) => filesystem().writeText(path, content, runId, signal),
     bash: self.deps.agentLoop?.bash,
     historySearch: self.deps.agentLoop?.historySearch,
     memorySearch: self.deps.agentLoop?.memorySearch,
@@ -896,29 +886,12 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       owned: openedTabs.has(pageId) || target.ownedByRuntime,
     };
   };
-  const fsRoots = (access: "read" | "write") =>
-    (self.deps.agentLoop?.repl?.fsRoots?.(runId, access) ?? []).map((root) => realpathSync(root));
-  const canonicalTarget = (path: string) => {
-    let current = resolve(path);
-    const missing: string[] = [];
-    while (true) {
-      try {
-        lstatSync(current);
-        break;
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-        missing.unshift(basename(current));
-        const parent = dirname(current);
-        if (parent === current) throw new AuxError("permission_denied", "File path has no existing parent.");
-        current = parent;
-      }
-    }
-    return resolve(realpathSync(current), ...missing);
+  const filesystem = () => {
+    const service = self.deps.agentLoop?.repl?.filesystem;
+    if (!service) throw new AuxError("capability_unsupported", "Supervised file access is unavailable.");
+    return service;
   };
-  const insideRoots = (path: string, access: "read" | "write") => {
-    const resolved = canonicalTarget(path);
-    return fsRoots(access).some((root) => resolved === root || resolved.startsWith(root + sep));
-  };
+  const fsRoots = (access: "read" | "write") => filesystem().roots(runId, access);
   const replDeps: ReplHostDeps = {
     runId,
     signal,
@@ -1065,17 +1038,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         );
       return fetchDep(url, { runId, threadId, turnId: runId });
     },
-    fsRead: async (path) => {
-      if (!insideRoots(path, "read"))
-        throw new AuxError("permission_denied", "fs reads stay inside reviewed roots.");
-      return readFileSync(path, "utf8");
-    },
-    fsWrite: async (path, content) => {
-      if (!insideRoots(path, "write"))
-        throw new AuxError("permission_denied", "fs writes stay inside reviewed writable roots.");
-      mkdirSync(dirname(path), { recursive: true });
-      writeFileSync(path, content);
-    },
+    fsRead: (path) => filesystem().readText(path, runId, signal),
+    fsWrite: (path, content) => filesystem().writeText(path, content, runId, signal),
     submitResult: (input) =>
       deps.submitResult!(input, {
         runId,
@@ -1440,6 +1404,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         const raw = await self.waitForAnswer(c, runId);
         if (signal.aborted || c.abort.signal.aborted) {
           self.suspensions.resolve(suspension.suspensionId, "cancelled");
+          if (!c.abort.signal.aborted && c.takeoverInterrupted) continue;
           return;
         }
         self.suspensions.resolve(suspension.suspensionId, "answered");
@@ -1586,6 +1551,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         const raw = await self.waitForAnswer(c, runId);
         if (signal.aborted || c.abort.signal.aborted) {
           self.suspensions.resolve(suspension.suspensionId, "cancelled");
+          if (!c.abort.signal.aborted && c.takeoverInterrupted) continue;
           return;
         }
         self.suspensions.resolve(suspension.suspensionId, "answered");

@@ -11,7 +11,6 @@ import type { PageService } from "../services/pages.js";
 import type { DurableWriteLedger } from "./durable.js";
 import { guardedExecute } from "./guarded-dispatch.js";
 import { attemptsOf, type ModelClient, type StructuredCallResult } from "./model-client.js";
-import type { GrantSource } from "./permissions.js";
 import { buildPlannerPrompt, PLANNER_SYSTEM } from "./planner.js";
 import type { ResearchBudget } from "../scheduler/research-budget.js";
 
@@ -35,7 +34,7 @@ export async function runMemberAgent(opts: {
   modelId: string;
   signal: AbortSignal;
   /** Privilege-independent grants. Model text cannot expand them. */
-  grants?: GrantSource;
+  readOnly?: boolean;
   /** Persist write intent before dispatch (Gate D). */
   durable?: DurableWriteLedger;
   budget?: ResearchBudget;
@@ -147,7 +146,7 @@ export async function runMemberAgent(opts: {
     const stepsToExecute = plan.steps;
     const g = await opts.turnMentions.useSourcePage(runId, pageId, "act", opts.checkSource, () =>
       guardedExecute(
-        { pages, durable: opts.durable, grants: opts.grants },
+        { pages, durable: opts.durable, readOnly: opts.readOnly },
         {
           runId,
           pageId,

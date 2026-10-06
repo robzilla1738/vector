@@ -5,11 +5,16 @@ import {
   DEFAULT_NIGHT_SHIFT,
   NightShiftSettingsSchema,
   SettingsSetParams,
+  AgentPolicySettingsSchema,
+  FileAccessSettingsSchema,
+  type FileAccessSettings,
+  agentPolicyCategoryFor,
+  type AgentPolicySettings,
+  type SafetyAction,
 } from "@aux/contracts";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
-  EffectSchema,
   AuxError,
   SelectionCaptureSettingsSchema,
   readSelectionCaptureSettings,
@@ -21,11 +26,8 @@ import {
   ImageModelSchema,
   type ModelConnectionStatus,
   type ImageModel,
-  OriginRuleSchema,
   SidebarMaterialSchema,
-  type Effect,
   type ModelProvider,
-  type OriginRule,
   type ShortcutOverrides,
 } from "@aux/contracts";
 import { z } from "zod";
@@ -40,7 +42,6 @@ import {
   type AgentModelRoute,
   type ModelCapability,
 } from "@aux/contracts/model-registry";
-import { DEFAULT_GRANTS, USER_RUN_GRANTS, sanitizeGrants, type GrantInput } from "../agent/permissions.js";
 import {
   DEFAULT_MAX_MODEL_CALLS,
   DEFAULT_PLANNER_MODEL,
@@ -119,13 +120,12 @@ export interface Settings extends Pick<
   selectionCapture?: SelectionCaptureSettings;
   zoomFactor?: number;
   dataDir?: string;
-  /**
-   * Privilege-independent agent effect grants (Gate D / Gate F).
-   * The person sets these. Model text cannot expand them.
-   */
-  effectGrants?: GrantInput[];
-  originPolicies?: OriginRule[];
-  safetyCeilings?: Partial<Record<Effect, "never" | "ask" | "always">>;
+  /** Permissions are written only by the trusted Settings path. */
+  fileAccessMode?: FileAccessSettings["fileAccessMode"];
+  fileAccessRevision?: number;
+  agentMode?: AgentPolicySettings["agentMode"];
+  agentPolicyRevision?: number;
+  agentPolicies?: AgentPolicySettings["agentPolicies"];
   /** Nonsecret result of the latest explicit connection test. */
   modelProbe?: ModelProbeRecord;
 }
@@ -302,34 +302,42 @@ export class SettingsService {
       selectionCapture: this.selectionCapture(),
       autofill: (this.get("autofill") as Settings["autofill"]) ?? {},
       zoomFactor: (this.get("zoomFactor") as number) ?? 1,
-      effectGrants: [...this.effectGrantsForRun()],
-      originPolicies: this.originPolicies(),
-      safetyCeilings: (this.get("safetyCeilings") as Settings["safetyCeilings"]) ?? {},
+      ...this.agentPolicy(),
+      ...this.fileAccess(),
       dataDir: this.settingsPath.replace(/\/settings\.json$/, ""),
     };
   }
 
-  /** Live grant list. settings.set is the only expander. */
-  effectGrants(): readonly GrantInput[] {
-    return sanitizeGrants(this.get("effectGrants") ?? this.fileSettings.effectGrants ?? DEFAULT_GRANTS);
+  fileAccess(): FileAccessSettings {
+    return FileAccessSettingsSchema.parse({
+      fileAccessMode: this.get("fileAccessMode") ?? "guard",
+      fileAccessRevision: this.get("fileAccessRevision") ?? 0,
+    });
   }
 
-  /**
-   * Grants for a user-started run. Starting the run is the write grant.
-   * An explicit settings.effectGrants list still wins (permission sheet).
-   */
-  effectGrantsForRun(): readonly GrantInput[] {
-    const explicit = this.get("effectGrants") ?? this.fileSettings.effectGrants;
-    if (explicit !== undefined) return sanitizeGrants(explicit);
-    return sanitizeGrants([...USER_RUN_GRANTS]);
+  agentPolicy(): AgentPolicySettings {
+    return AgentPolicySettingsSchema.parse({
+      agentMode: this.get("agentMode") ?? "auto",
+      agentPolicyRevision: this.get("agentPolicyRevision") ?? 0,
+      agentPolicies: this.get("agentPolicies") ?? [],
+    });
   }
 
-  originPolicies(): OriginRule[] {
-    return OriginRuleSchema.array().parse(this.get("originPolicies") ?? []);
-  }
-
-  safetyCeiling(effect: Effect): "never" | "ask" | "always" {
-    return (this.get("safetyCeilings") as Settings["safetyCeilings"] | undefined)?.[effect] ?? "ask";
+  /** Trusted approval writer; called inside the same Repo transaction as consuming acceptance. */
+  allowAgentSite(action: SafetyAction): void {
+    if (!action.origin || action.recipient) throw new AuxError("invalid_params", "Choose an exact site for this permission.");
+    const current = this.agentPolicy();
+    if ((action.policyRevision ?? 0) !== current.agentPolicyRevision)
+      throw new AuxError("conflict", "Agent permissions changed. Refresh this approval.");
+    const category = agentPolicyCategoryFor(action.category ?? "external_tool", action.action);
+    if (category === "account_security" || category === "captcha") throw new AuxError("permission_denied", "This action requires a person.");
+    const rule = { category, site: new URL(action.origin).origin, access: "allow" as const };
+    const next = AgentPolicySettingsSchema.parse({
+      ...current, agentPolicyRevision: current.agentPolicyRevision + 1,
+      agentPolicies: [...current.agentPolicies.filter((value) => value.category !== category || value.site !== rule.site), rule],
+    });
+    this.repo.setSetting("agentPolicies", next.agentPolicies);
+    this.repo.setSetting("agentPolicyRevision", next.agentPolicyRevision);
   }
 
   selectionCapture(): SelectionCaptureSettings {
@@ -344,6 +352,32 @@ export class SettingsService {
 
   private async save(patch: Settings): Promise<{ ok: true }> {
     const next: Settings = { ...patch };
+    if (next.fileAccessMode !== undefined) {
+      if (Object.keys(next).some((key) => !["fileAccessMode", "fileAccessRevision"].includes(key)))
+        throw new AuxError("invalid_params", "Save file access separately from other settings.");
+      const current = this.fileAccess();
+      if (next.fileAccessRevision !== current.fileAccessRevision)
+        throw new AuxError("conflict", "File access changed in another window. Reload the current settings.");
+      const policy = FileAccessSettingsSchema.parse({ fileAccessMode: next.fileAccessMode, fileAccessRevision: current.fileAccessRevision + 1 });
+      next.fileAccessMode = policy.fileAccessMode;
+      next.fileAccessRevision = policy.fileAccessRevision;
+    } else if (next.fileAccessRevision !== undefined) {
+      throw new AuxError("invalid_params", "Save a file access change with its current revision.");
+    }
+    if (next.agentMode !== undefined || next.agentPolicies !== undefined) {
+      if (Object.keys(next).some((key) => !["agentMode", "agentPolicies", "agentPolicyRevision"].includes(key)))
+        throw new AuxError("invalid_params", "Save agent permissions separately from other settings.");
+      const current = this.agentPolicy();
+      if (next.agentPolicyRevision !== current.agentPolicyRevision)
+        throw new AuxError("conflict", "Agent permissions changed in another window. Reload the current settings.");
+      const policy = AgentPolicySettingsSchema.parse({ agentMode: next.agentMode ?? current.agentMode, agentPolicies: next.agentPolicies ?? current.agentPolicies, agentPolicyRevision: current.agentPolicyRevision + 1 });
+      next.agentMode = policy.agentMode;
+      next.agentPolicies = policy.agentPolicies;
+      next.agentPolicyRevision = policy.agentPolicyRevision;
+    } else if (next.agentPolicyRevision !== undefined) {
+      throw new AuxError("invalid_params", "Save a policy change with its current revision.");
+    }
+
     if (next.selectionCapture !== undefined) {
       const selection = SelectionCaptureSettingsSchema.parse(next.selectionCapture);
       if (selection.revision !== this.selectionCapture().revision)
@@ -430,13 +464,6 @@ export class SettingsService {
       }
       next.providerModels = { ...this.profiles(), [selectedProvider]: profile };
     }
-    if (next.effectGrants !== undefined) next.effectGrants = sanitizeGrants(next.effectGrants);
-    if (next.originPolicies !== undefined)
-      next.originPolicies = OriginRuleSchema.array().max(500).parse(next.originPolicies);
-    if (next.safetyCeilings !== undefined)
-      next.safetyCeilings = z
-        .partialRecord(EffectSchema, z.enum(["never", "ask", "always"]))
-        .parse(next.safetyCeilings);
     if (next.agentModelRoutes !== undefined)
       next.agentModelRoutes = AgentModelRoutesSettingSchema.parse(next.agentModelRoutes);
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
@@ -445,11 +472,16 @@ export class SettingsService {
       this.repo.setSetting("modelCacheGeneration", randomUUID());
       this.repo.deleteSetting("modelProbe");
     }
-    for (const [k, v] of Object.entries(next)) {
-      if (v === undefined) continue;
-      if (k === "gatewayApiKey") continue;
-      this.repo.setSetting(k, v);
-    }
+    this.repo.transaction(() => {
+      if (next.fileAccessRevision !== undefined && this.fileAccess().fileAccessRevision !== next.fileAccessRevision - 1)
+        throw new AuxError("conflict", "File access changed in another window. Reload the current settings.");
+      if (next.agentPolicyRevision !== undefined && this.agentPolicy().agentPolicyRevision !== next.agentPolicyRevision - 1)
+        throw new AuxError("conflict", "Agent permissions changed in another window. Reload the current settings.");
+      for (const [k, v] of Object.entries(next)) {
+        if (v === undefined || k === "gatewayApiKey") continue;
+        this.repo.setSetting(k, v);
+      }
+    });
     // persist non-secret prefs to settings.json for transparency
     const { gatewayApiKey, ...rest } = next;
     if (Object.keys(rest).length) {
@@ -599,12 +631,12 @@ export class SettingsService {
       return this.gatewayClient;
     }
     if (!this.gatewayClient) {
-      const t = Number(this.env.AUX_MODEL_CALL_TIMEOUT_MS);
+      const t = Number(this.env.AUX_MODEL_STREAM_IDLE_TIMEOUT_MS);
       const only = this.env.AUX_GATEWAY_ONLY?.split(",")
         .map((s) => s.trim())
         .filter(Boolean);
       this.gatewayClient = new GatewayModelClient(key, {
-        callTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined,
+        streamIdleTimeoutMs: Number.isFinite(t) && t > 0 ? t : undefined,
         only: only?.length ? only : undefined,
         models: () => this.mergedCatalog,
         candidatesFor: (id) => this.candidatesForModel(id),

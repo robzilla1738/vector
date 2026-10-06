@@ -1,7 +1,9 @@
+import { exactOrigin } from "@aux/contracts/util/exact-origin";
 import type { ValidatedTaskRead } from "@aux/contracts";
 import { createHash } from "node:crypto";
 import {
   AuxError,
+  agentPolicyCategoryFor,
   EffectRequestSchema,
   type EffectRequest,
   type AuthorizationProvenance,
@@ -14,9 +16,8 @@ import {
   type SuspensionRequest,
 } from "@aux/contracts";
 import type { ObservedActionTarget } from "./observed-target.js";
-import { ApprovalStore, type LocalCeiling } from "./approval.js";
-import { actionFor, decide, DecisionJournal, effectRequestForStep, type DecideDeps } from "./decide.js";
-import type { GuardianJudge, UntrustedOutput } from "./guardian.js";
+import { ApprovalStore } from "./approval.js";
+import { decide, DecisionJournal, effectRequestForStep, type DecideDeps } from "./decide.js";
 import type { OriginPolicyAudit } from "./origin-policy.js";
 import type { SuspensionStore } from "./suspensions.js";
 
@@ -36,10 +37,8 @@ export interface StepSafetyContext {
   turnToolCallCount?: number;
   sensitiveData?: boolean;
   restrictedRetry?: boolean;
-  untrusted?: readonly UntrustedOutput[];
   /** Trusted-source programs (allowEval) may evaluate; the flag travels with the program, not the step. */
   trustedEval?: boolean;
-  standingOnly?: boolean;
 }
 
 export interface SafetyDispatchDeps {
@@ -48,11 +47,8 @@ export interface SafetyDispatchDeps {
   /** Durable parking for ask decisions; without it the run still gets needs_input. */
   suspensions?: SuspensionStore;
   managedRules: () => readonly OriginRule[];
-  userRules: () => readonly OriginRule[];
-  localCeiling: (action: SafetyAction) => LocalCeiling;
-  settingsGrants?: DecideDeps["settingsGrants"];
+  agentPolicy: DecideDeps["agentPolicy"];
   audit: (decision: OriginPolicyAudit | Record<string, unknown>) => void;
-  judge?: GuardianJudge;
   /** User-facing confirmation. Fired when an approval is waiting on the shell. */
   onConfirmation?: (confirmation: {
     approvalId?: string;
@@ -63,6 +59,10 @@ export interface SafetyDispatchDeps {
     origin: string;
     category: EffectCategory;
     confirmation: ConfirmationLevel;
+    kind: "approval" | "touch-id" | "handoff";
+    policyCategory: import("@aux/contracts").AgentPolicyCategory;
+    site: string;
+    amount?: number;
     pageId?: string;
   }) => void;
 }
@@ -143,8 +143,7 @@ export class SafetyDispatchGate {
     )
       throw new AuxError("permission_denied", "The read task source belongs to another attachment.");
     source?.check();
-    const action = actionFor(request, input.origin);
-    const fence = this.policySnapshot(action);
+    const fence = this.policySnapshot();
     await this.checkRequest(
       request,
       { ...input.context, pageId: input.document.pageId },
@@ -153,7 +152,7 @@ export class SafetyDispatchGate {
     );
     return () => {
       source?.check();
-      if (this.policySnapshot(action) !== fence)
+      if (this.policySnapshot() !== fence)
         throw new AuxError(
           "permission_denied",
           "Site agent policy changed while reading this page. Retry against its current rules.",
@@ -168,22 +167,34 @@ export class SafetyDispatchGate {
     suspension: SuspensionRequest,
     origin = request.origin ?? "",
   ): void {
-    if ((suspension.kind === "approval" && suspension.approvalId) || suspension.kind === "handoff") {
-      const saved = suspension.approvalId
-        ? this.deps.approvals
-            .pending(context.threadId)
-            .find((value) => value.approvalId === suspension.approvalId)?.action
-        : undefined;
-      if (suspension.kind === "approval" && (!saved?.category || !saved.confirmation))
+    const site = exactOrigin(origin);
+    const saved = suspension.approvalId
+      ? this.deps.approvals.pending(context.threadId).find((value) => value.approvalId === suspension.approvalId)?.action
+      : undefined;
+    const category = saved?.category ?? request.category;
+    const action = saved?.action ?? request.action;
+    const amount = saved?.amount ?? request.amount;
+    const presented: SuspensionRequest = { ...suspension, context: {
+      ...(context.pageId ? { pageId: context.pageId } : {}),
+      ...(site ? { site } : {}), policyCategory: agentPolicyCategoryFor(category, action),
+      category, action,
+      ...(amount !== undefined ? { amount } : {}),
+    } };
+    if (((suspension.kind === "approval" || suspension.kind === "touch-id") && suspension.approvalId) || suspension.kind === "handoff") {
+      if ((suspension.kind === "approval" || suspension.kind === "touch-id") && (!saved?.category || !saved.confirmation))
         throw new AuxError("needs_input", "This approval must be refreshed.");
       this.deps.onConfirmation?.({
         ...(suspension.approvalId ? { approvalId: suspension.approvalId } : {}),
         turnId: context.turnId,
         threadId: context.threadId,
         instruction: suspension.instruction,
-        action: request.action,
+        kind: suspension.kind === "touch-id" ? "touch-id" : suspension.kind === "handoff" ? "handoff" : "approval",
+        policyCategory: agentPolicyCategoryFor(category, action),
+        site: site ?? "",
+        ...(amount !== undefined ? { amount } : {}),
+        action,
         origin,
-        category: saved?.category ?? request.category,
+        category,
         confirmation: suspension.kind === "handoff" ? "handoff" : (saved?.confirmation ?? "action"),
         ...(context.pageId ? { pageId: context.pageId } : {}),
       });
@@ -194,18 +205,22 @@ export class SafetyDispatchGate {
         threadId: context.threadId,
         turnId: context.turnId,
         kind: suspension.kind,
-        request: suspension,
+        request: presented,
       });
     }
   }
 
-  private policySnapshot(action: Parameters<DecideDeps["localCeiling"]>[0]): string {
-    return JSON.stringify([
-      this.deps.managedRules(),
-      this.deps.userRules(),
-      this.deps.settingsGrants?.(),
-      this.deps.localCeiling(action),
-    ]);
+  private policySnapshot(): string {
+    return JSON.stringify([this.deps.managedRules(), this.deps.agentPolicy()]);
+  }
+
+  /** Synchronous live fence retained through action preparation and the final dispatch. */
+  policyFence(): () => void {
+    const snapshot = this.policySnapshot();
+    return () => {
+      if (this.policySnapshot() !== snapshot)
+        throw new AuxError("permission_denied", "Agent permissions changed while preparing this action. Retry against the current policy.");
+    };
   }
 
   private async checkRequest(
@@ -220,11 +235,8 @@ export class SafetyDispatchGate {
         approvals: this.deps.approvals,
         journal: this.deps.journal,
         managedRules: this.deps.managedRules,
-        userRules: this.deps.userRules,
-        localCeiling: this.deps.localCeiling,
-        settingsGrants: this.deps.settingsGrants,
+        agentPolicy: this.deps.agentPolicy,
         audit: this.deps.audit,
-        ...(this.deps.judge ? { judge: this.deps.judge } : {}),
       },
       {
         phase: phase,
@@ -235,9 +247,7 @@ export class SafetyDispatchGate {
         turnToolCallCount: context.turnToolCallCount,
         sensitiveData: context.sensitiveData,
         restrictedRetry: context.restrictedRetry,
-        untrusted: context.untrusted,
         trustedEval: context.trustedEval === true,
-        standingOnly: context.standingOnly === true,
       },
     );
     if (decision.status === "allow") return decision.authorizedBy;

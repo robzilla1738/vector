@@ -7,7 +7,6 @@ export const ONBOARDING_STEPS = [
   "model",
   "appearance",
   "default",
-  "permissions",
   "postcard",
 ] as const;
 export const OnboardingStepSchema = z.enum(ONBOARDING_STEPS);
@@ -51,8 +50,8 @@ export const OnboardingStateSchema = z
     revision: z.number().int().nonnegative(),
     status: z.enum(["new", "active", "later", "complete"]),
     step: OnboardingStepSchema,
-    visited: z.array(OnboardingStepSchema).max(7),
-    skipped: z.array(OnboardingStepSchema).max(7),
+    visited: z.array(OnboardingStepSchema).max(ONBOARDING_STEPS.length),
+    skipped: z.array(OnboardingStepSchema).max(ONBOARDING_STEPS.length),
     disclosureVersion: z.number().int().nonnegative(),
     defaultBrowserPromptedAt: z.number().int().nonnegative().optional(),
     firstTask: OnboardingFirstTaskSchema.optional(),

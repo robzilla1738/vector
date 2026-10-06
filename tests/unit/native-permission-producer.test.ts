@@ -1,8 +1,18 @@
 import { RuntimeShutdownAdmission } from "../../apps/runtime/src/services/runtime-shutdown.js";
-import { SafetyAuthorityRevocation } from "../../apps/runtime/src/safety/authority-revocation.js";
+import {
+  installBrowserAuthority,
+  installOvernightAuthority,
+  withRunDispatchMutation,
+} from "../../apps/runtime/src/services/overnight-authority.js";
 import { afterEach, expect, it, vi } from "vitest";
-import { AuxError, PageTargetSchema, RunSchema, type EgressLease, type OriginRule } from "@aux/contracts";
-import { openDb } from "@aux/runtime";
+import {
+  AuxError,
+  PageTargetSchema,
+  RunSchema,
+  type EgressLease,
+  type AgentPolicySettings,
+} from "@aux/contracts";
+import { openDb, Repo, SettingsService } from "@aux/runtime";
 import { NullNativeBridge } from "../../apps/runtime/src/native.js";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
 import { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress.js";
@@ -29,14 +39,20 @@ async function fixture(
 ) {
   const db = openDb(":memory:");
   cleanup.push(() => db.close());
-  const approvals = new ApprovalStore(db);
-  let rules: OriginRule[] = [];
+  const repo = new Repo(db);
+  repo.setSetting("agentMode", "ask");
+  repo.setSetting("agentPolicies", [{ category: "click", access: "ask" }]);
+  const settings = new SettingsService(repo, "/nonexistent/aux-native-permission-settings.json", {});
+  const approvals = new ApprovalStore(
+    db,
+    () => {},
+    (action) => settings.allowAgentSite(action),
+  );
   const gate = new SafetyDispatchGate({
     approvals,
     journal: new DecisionJournal(db),
     managedRules: () => [],
-    userRules: () => rules,
-    localCeiling: () => "ask",
+    agentPolicy: () => settings.agentPolicy(),
     audit: () => {},
   });
   const page = PageTargetSchema.parse({
@@ -74,6 +90,7 @@ async function fixture(
       messageRevision: 0,
     },
   });
+  repo.saveRun(run);
   const leases: EgressLease[] = [];
   const native = Object.assign(new NullNativeBridge(), {
     egressContext: async () => ({
@@ -156,6 +173,8 @@ async function fixture(
       if (!owns) throw new AuxError("permission_denied", "Lease owner retired.");
     },
   });
+  installBrowserAuthority(repo, egress);
+  installOvernightAuthority(repo, controller);
   const lease = leases[0]!;
   const request = NativePermissionRequestSchema.parse({
     leaseId: lease.leaseId,
@@ -177,6 +196,8 @@ async function fixture(
   return {
     admission,
     db,
+    repo,
+    settings,
     approvals,
     page,
     run,
@@ -191,8 +212,20 @@ async function fixture(
     retire: () => {
       owns = false;
     },
-    block: () => {
-      rules = [{ origin: "https://permission.test/", access: "deny" }];
+    block: () =>
+      mutatePolicy({ repo, settings }, [
+        { category: "click", site: "https://permission.test", access: "block" },
+      ]),
+    refreshRequest: async () => {
+      await egress.acquire(run.runId, page.pageId);
+      const latest = leases.at(-1)!;
+      return {
+        ...request,
+        leaseId: latest.leaseId,
+        isolationId: latest.isolationId,
+        documentToken: latest.documentToken,
+        documentEpoch: latest.documentEpoch,
+      };
     },
   };
 }
@@ -252,7 +285,7 @@ it.each(["attachment", "document", "task", "owner", "turn", "policy", "cancel"])
     if (change === "task") f.run.config = { ...f.run.config, taskRevision: 5 };
     if (change === "owner") f.retire();
     if (change === "turn") await f.mentions.begin("run", [], []);
-    if (change === "policy") f.block();
+    if (change === "policy") await f.block();
     if (change === "cancel") f.controller.invalidate(f.request.batchId);
     expect(await f.controller.request(f.request)).toMatchObject({ decision: "deny" });
   },
@@ -320,12 +353,20 @@ it.each([
   },
 );
 
-it("an overnight native permission cannot consume a foreground one-off approval", async () => {
+it("an overnight native permission uses the same exact approval but still requires its native effect window", async () => {
   const f = await fixture();
   const waiting = await f.controller.request(f.request);
   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
   f.overnight();
-  expect(await f.controller.request(f.request)).toMatchObject({ decision: "pending" });
+  const receipt = await f.controller.request(f.request);
+  expect(receipt).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+  expect(
+    await f.controller.revalidate({
+      batchId: f.request.batchId,
+      reservationId: receipt.reservationId!,
+      nonce: 1,
+    }),
+  ).toMatchObject({ decision: "deny" });
 });
 
 it("an overnight native permission can use the exact current origin permission grant", async () => {
@@ -339,15 +380,13 @@ it("an overnight native permission can use the exact current origin permission g
   });
 });
 
-function revocation(f: Awaited<ReturnType<typeof fixture>>) {
-  return new SafetyAuthorityRevocation({
-    profileId: "profile",
-    runScope: () => ({ kind: "task", id: "task" }),
-    invalidate: (matches) => {
-      f.controller.invalidateAuthority(matches);
-      return f.egress.invalidateAuthority(matches);
-    },
-  });
+function mutatePolicy(
+  f: { repo: Repo; settings: SettingsService },
+  agentPolicies: AgentPolicySettings["agentPolicies"],
+) {
+  return withRunDispatchMutation(f.repo, () =>
+    f.settings.set({ agentPolicies, agentPolicyRevision: f.settings.agentPolicy().agentPolicyRevision }),
+  );
 }
 it("a policy revoked after the allow reply retires the exact effect lease while preserving task ownership", async () => {
   const f = await fixture();
@@ -359,15 +398,13 @@ it("a policy revoked after the allow reply retires the exact effect lease while 
   });
   const nativeFinalCheck = f.egress.permissionAuthority(f.request);
   nativeFinalCheck();
-  f.block();
-  const retirement = revocation(f).policies([], [{ origin: "https://permission.test/", access: "deny" }]);
+  await f.block();
   expect(nativeFinalCheck).toThrow();
-  await retirement;
   expect(await f.controller.request(f.request)).toMatchObject({ decision: "deny" });
   expect(f.run.pageIds).toEqual(["tab"]);
   expect(f.mentions.has("run")).toBe(true);
 });
-it("revoking an origin grant retires a permission lease across scopes and cancels only matching pending consent", async () => {
+it("revoking a site policy retires native permission leases and preserves unrelated pending consent", async () => {
   const f = await fixture();
   await f.controller.request(f.request);
   const currentAction = f.approvals.pending("run")[0]!.action;
@@ -381,7 +418,11 @@ it("revoking an origin grant retires a permission lease across scopes and cancel
     "turn",
   );
   f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: crossScopeId }, "grant-run");
-  const grant = f.approvals.listGrants("profile")[0]!;
+  expect(f.settings.agentPolicy().agentPolicies).toContainEqual({
+    category: "click",
+    site: "https://permission.test",
+    access: "allow",
+  });
   const otherId = f.approvals.issue(
     {
       ...currentAction,
@@ -397,8 +438,7 @@ it("revoking an origin grant retires a permission lease across scopes and cancel
     reservationId: expect.any(String),
   });
   const finalCheck = f.egress.permissionAuthority(f.request);
-  f.approvals.revoke({ profileId: "profile", grantId: grant.grantId });
-  await revocation(f).grants([grant]);
+  await mutatePolicy(f, [{ category: "click", access: "ask" }]);
   expect(finalCheck).toThrow();
   expect(f.approvals.pending("other").map((item) => item.approvalId)).toContain(otherId);
 });
@@ -558,12 +598,16 @@ it("a real closed overnight window denies a standing native permission before sc
     expect(await actual.controller.revalidate({ ...ticket, nonce: 2 })).toMatchObject({ decision: "deny" });
     expect(await actual.controller.request(next)).toEqual({ batchId: next.batchId, decision: "deny" });
     expect(actual.approvals.pending(actual.run.runId)).toEqual([]);
-    expect(actual.approvals.listGrants("profile")).toHaveLength(1);
+    expect(actual.settings.agentPolicy().agentPolicies).toContainEqual({
+      category: "click",
+      site: "https://permission.test",
+      access: "allow",
+    });
     // An unanswered exact batch may still report its actual pending approval;
     // it does not dispatch an effect or consume overnight foreground consent.
-    actual.approvals.revoke({ profileId: "profile" });
+    await mutatePolicy(actual, [{ category: "click", access: "ask" }]);
     now = new Date(2026, 9, 1, 1).getTime();
-    const unanswered = { ...actual.request, batchId: "parked-pending" };
+    const unanswered = { ...(await actual.refreshRequest()), batchId: "parked-pending" };
     const waiting = await actual.controller.request(unanswered);
     expect(waiting.decision).toBe("pending");
     repo.saveRun({ ...actual.run, status: "needs_input" });
@@ -627,8 +671,7 @@ it("a real origin-policy retirement cancels an authorized reservation before fre
   f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: pending.approvalId! }, "run");
   const authorized = await f.controller.request(f.request);
   const ticket = { batchId: f.request.batchId, reservationId: authorized.reservationId! };
-  f.block();
-  await revocation(f).policies([], [{ origin: "https://permission.test/", access: "deny" }]);
+  await f.block();
   expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toMatchObject({ decision: "deny" });
   expect(f.controller.finalize(ticket)).toEqual({ retired: false });
 });
@@ -1173,7 +1216,6 @@ it("unauthorized policy and out-of-scope task mutations cannot retire a real for
     "workspaces.browsingMemory.forget",
     "workspaces.contentMemory.setPolicy",
     "workspaces.contentMemory.forget",
-    "commands.escalations.revoke",
   ] as const)
     await expect(
       workspacesMethods[method]!({ ...base, method } as unknown as Parameters<

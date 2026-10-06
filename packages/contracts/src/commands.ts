@@ -527,7 +527,6 @@ export const COMMANDS = [
     ["toggle", "-page", "Toggle this turn’s page snapshot"],
     ["retry", "-page-observation", "Retry this turn’s page snapshot"],
   ]),
-  S("toggle-setup-permission-details", "Toggle setup permission details", memoryControl),
   ...singleScopedRows(memoryControl, "-runtime-backup", "Task data backup", [
     ["create-local", "", "Create local ", ""],
     ["set", "-retention", "Set ", " retention"],
@@ -649,9 +648,6 @@ export const COMMANDS = [
   ...G(memoryControl, "-memory-", [["select", "space", "Select Space memory"]]),
   ...GL(memoryControl, "-memory-", "memory ", [["retry", "search", "Retry ", "search"]]),
   ...G(memoryControl, "-memory-", [["retry", "load", "Retry saved notes load"]]),
-  C("set-site-agent-access", "Change site agent access", sitePermissionControl),
-  C("delete-site-agent-rule", "Remove site agent access rule", sitePermissionControl),
-  C("revoke-site-agent-grant", "Revoke site agent grant", sitePermissionControl),
   C("approve-agent-action", "Allow agent action once", focusedAgentControl),
   C("allow-agent-action-for-origin", "Always allow agent action on this site", sitePermissionControl),
   C("deny-agent-action", "Deny agent action", focusedAgentControl),
@@ -664,7 +660,6 @@ export const COMMANDS = [
   C("open-run-tab", "Open this run’s temporary tab", runControl),
   C("take-page-control", "Take control of this page", runControl),
   C("return-agent-control", "Return control to agent", runControl),
-  C("set-agent-effect-grants", "Change agent effect grants", sitePermissionControl),
   ...GL(browserContextControl, "-browser-", " browser ", [
     ["remove", "source", "Remove selected", "source"],
     ["toggle", "source", "Select additional", "source"],

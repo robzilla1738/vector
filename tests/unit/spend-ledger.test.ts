@@ -1,3 +1,4 @@
+import { modelStream } from "../fixtures/model-stream.js";
 import { describe, expect, it } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -55,15 +56,16 @@ describe("AI Gateway program spend", () => {
     const ledger = new SpendLedger(path, cap);
     ledger.reserve("other-run", "meta/muse-spark-1.3-contributor", 49.99999);
     const model = new MockLanguageModelV4({
-      doGenerate: {
-        content: [{ type: "text", text: "hello" }],
-        finishReason: { unified: "stop", raw: "stop" },
-        usage: {
-          inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
-          outputTokens: { total: 2, text: 2, reasoning: 0 },
-        },
-        warnings: [],
-      },
+      doStream: () =>
+        modelStream({
+          content: [{ type: "text", text: "hello" }],
+          finishReason: { unified: "stop", raw: "stop" },
+          usage: {
+            inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 2, text: 2, reasoning: 0 },
+          },
+          warnings: [],
+        }),
     });
     const client = new GatewayModelClient("fixture-only", { model: () => model, spendLedger: ledger });
     await expect(
@@ -73,7 +75,7 @@ describe("AI Gateway program spend", () => {
         maxOutputTokens: 32,
       }),
     ).rejects.toThrow(/program cap/);
-    expect(model.doGenerateCalls).toHaveLength(0);
+    expect(model.doStreamCalls).toHaveLength(0);
     ledger.close();
   });
 });

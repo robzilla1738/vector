@@ -3,46 +3,68 @@ import { z } from "zod";
 import { directModelClient, isLoopbackCompatibleEndpoint, normalizeCompatibleEndpoint } from "@aux/runtime";
 
 afterEach(() => vi.unstubAllEnvs());
-const outputs = {
-  openai: {
-    id: "resp_fixture",
-    created_at: 1,
-    model: "fixture-model",
-    object: "response",
-    status: "completed",
-    error: null,
-    incomplete_details: null,
-    output: [
+const sse = (events: unknown[]) =>
+  new Response(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(""), {
+    headers: { "content-type": "text/event-stream" },
+  });
+const streamedResponse = (provider: "openai" | "anthropic" | "google", jsonToolName?: string) => {
+  const text = '{"ok":true}';
+  if (provider === "openai")
+    return sse([
+      { type: "response.created", response: { id: "resp_fixture", created_at: 1, model: "fixture-model" } },
+      { type: "response.output_item.added", output_index: 0, item: { type: "message", id: "msg_fixture" } },
+      { type: "response.output_text.delta", item_id: "msg_fixture", output_index: 0, delta: text },
       {
-        type: "message",
-        id: "msg_fixture",
-        role: "assistant",
-        content: [{ type: "output_text", text: '{"ok":true}', annotations: [] }],
+        type: "response.output_item.done",
+        output_index: 0,
+        item: {
+          type: "message",
+          id: "msg_fixture",
+          role: "assistant",
+          content: [{ type: "output_text", text, annotations: [] }],
+        },
       },
-    ],
-    usage: {
-      input_tokens: 4,
-      output_tokens: 5,
-      input_tokens_details: { cached_tokens: 0 },
-      output_tokens_details: { reasoning_tokens: 0 },
+      {
+        type: "response.completed",
+        response: {
+          incomplete_details: null,
+          usage: {
+            input_tokens: 4,
+            output_tokens: 5,
+            input_tokens_details: { cached_tokens: 0 },
+            output_tokens_details: { reasoning_tokens: 0 },
+          },
+        },
+      },
+    ]);
+  if (provider === "anthropic")
+    return sse([
+      {
+        type: "message_start",
+        message: {
+          id: "msg_fixture",
+          role: "assistant",
+          model: "fixture-model",
+          content: [],
+          usage: { input_tokens: 4 },
+        },
+      },
+      {
+        type: "content_block_start",
+        index: 0,
+        content_block: { type: "tool_use", id: "tool_fixture", name: jsonToolName, input: {} },
+      },
+      { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: text } },
+      { type: "content_block_stop", index: 0 },
+      { type: "message_delta", delta: { stop_reason: "tool_use" }, usage: { output_tokens: 5 } },
+      { type: "message_stop" },
+    ]);
+  return sse([
+    {
+      candidates: [{ content: { role: "model", parts: [{ text }] }, finishReason: "STOP", index: 0 }],
+      usageMetadata: { promptTokenCount: 4, candidatesTokenCount: 5, totalTokenCount: 9 },
     },
-  },
-  anthropic: {
-    id: "msg_fixture",
-    type: "message",
-    role: "assistant",
-    model: "fixture-model",
-    content: [{ type: "tool_use", id: "tool_fixture", name: "json", input: { ok: true } }],
-    stop_reason: "tool_use",
-    stop_sequence: null,
-    usage: { input_tokens: 4, output_tokens: 5 },
-  },
-  google: {
-    candidates: [
-      { content: { role: "model", parts: [{ text: '{"ok":true}' }] }, finishReason: "STOP", index: 0 },
-    ],
-    usageMetadata: { promptTokenCount: 4, candidatesTokenCount: 5, totalTokenCount: 9 },
-  },
+  ]);
 };
 
 for (const provider of ["openai", "anthropic", "google"] as const) {
@@ -51,10 +73,15 @@ for (const provider of ["openai", "anthropic", "google"] as const) {
     const calls: { url: string; headers: Headers }[] = [];
     const fakeFetch: typeof fetch = async (input, init) => {
       calls.push({ url: String(input), headers: new Headers(init?.headers) });
-      return new Response(JSON.stringify(outputs[provider]), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
+      const body = JSON.parse(String(init?.body));
+      expect(body.stream ?? new URL(String(input)).searchParams.get("alt")).toBe(
+        provider === "google" ? "sse" : true,
+      );
+      expect(body.tool_choice?.type).toBe(provider === "anthropic" ? "any" : undefined);
+      expect(body.tools?.map((tool: { name: string }) => tool.name)).toEqual(
+        provider === "anthropic" ? ["json"] : undefined,
+      );
+      return streamedResponse(provider, body.tools?.[0]?.name);
     };
     const model = directModelClient(provider, `synthetic-${provider}`, fakeFetch);
     const result = await model.generateStructured({
@@ -96,19 +123,24 @@ it("uses an explicitly validated OpenAI-compatible chat endpoint", async () => {
   const calls: { url: string; headers: Headers }[] = [];
   const fakeFetch: typeof fetch = async (input, init) => {
     calls.push({ url: String(input), headers: new Headers(init?.headers) });
-    return new Response(
-      JSON.stringify({
+    expect(JSON.parse(String(init?.body)).stream).toBe(true);
+    return sse([
+      {
         id: "chatcmpl_fixture",
-        object: "chat.completion",
+        object: "chat.completion.chunk",
         created: 1,
         model: "fixture-model",
-        choices: [
-          { index: 0, message: { role: "assistant", content: '{"ok":true}' }, finish_reason: "stop" },
-        ],
+        choices: [{ index: 0, delta: { role: "assistant", content: '{"ok":true}' }, finish_reason: null }],
+      },
+      {
+        id: "chatcmpl_fixture",
+        object: "chat.completion.chunk",
+        created: 1,
+        model: "fixture-model",
+        choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
         usage: { prompt_tokens: 4, completion_tokens: 5, total_tokens: 9 },
-      }),
-      { status: 200, headers: { "content-type": "application/json" } },
-    );
+      },
+    ]);
   };
   const model = directModelClient(
     "openai-compatible",

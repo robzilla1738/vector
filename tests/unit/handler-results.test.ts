@@ -1,4 +1,4 @@
-import { fixtureSafetyAuthority, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -111,7 +111,6 @@ beforeAll(() => {
     { nodeId: string; url: string; title: string; createdAt: number; folderPath: string[] }
   >();
   const services: Services = {
-    safetyAuthority: fixtureSafetyAuthority(repo),
     turnMentions,
     pages,
     sets,

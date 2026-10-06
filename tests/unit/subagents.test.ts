@@ -6,12 +6,12 @@ import {
 } from "../../apps/runtime/src/services/run-lineage.js";
 import { expect, it, vi } from "vitest";
 import {
-  authorizeProgram,
+  authorizeProfileProgram,
+  isReadOnlyProfile,
   EventBus,
   openDb,
   Repo,
   SubagentService,
-  subagentGrants,
   TaskService,
 } from "@aux/runtime";
 import { EventTypes, type Run } from "@aux/contracts";
@@ -222,14 +222,11 @@ it("releases unused reservations after completion and forks the exact saved cont
   }
 });
 
-it("enforces read-only child profiles even when ambient page writes are allowed", () => {
+it("enforces explicit read-only child profiles independently of the parent mode", () => {
   const click = [{ id: "click", op: "click" as const, target: "button" }];
-  expect(authorizeProgram(click, ["effect:read", "effect:write"]).ok).toBe(true);
-  expect(authorizeProgram(click, subagentGrants("read_only", ["effect:read", "effect:write"])).ok).toBe(
-    false,
-  );
-  expect(authorizeProgram(click, subagentGrants("explorer", ["effect:read", "effect:write"])).ok).toBe(false);
-  expect(authorizeProgram(click, subagentGrants("default", ["effect:read", "effect:write"])).ok).toBe(true);
+  for (const profile of ["read_only", "explorer", "default"] as const)
+    expect(authorizeProfileProgram(click, isReadOnlyProfile(profile)).ok).toBe(profile === "default");
+  expect(authorizeProfileProgram([{ id: "read", op: "extract", fields: [{ name: "text", selector: "h1" }] }], true).ok).toBe(true);
 });
 
 it("cancels child work when the parent settles or a child exceeds its allocation", async () => {

@@ -3,7 +3,6 @@ import type { PageTarget, Run } from "@aux/contracts";
 import { AskCircuitBreaker, type Intent } from "../../intent";
 import { bridge, inNativeHost } from "../../bridge";
 import { useStore } from "../../store";
-import { errorMessage } from "../../error-message";
 import { auxShellPathFromUrl } from "../../settings/routes";
 import { openCommandSurface, type CommandSurfaceMode } from "../../command-surface-state";
 import type { useNativeOmnibox } from "./use-native-omnibox";

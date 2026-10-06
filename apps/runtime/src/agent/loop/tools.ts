@@ -438,10 +438,8 @@ export function buildToolManifest(): LoopToolManifest {
 
   const bash: LoopTool = {
     description:
-      "Run a shell command under the macOS seatbelt: writes stay inside the session roots, user files and " +
-      "credential stores cannot be read, and the network is off by default (network: true asks the user first). " +
-      "For a needed exception, set requireEscalated with a justification and optional prefixRule proposal. Each literal shell segment must be reviewed in Settings → Workspaces; no command executes while review is pending. The owner can allow once, amend a safe prefix, or decline. After review, retry the command. stdout/stderr are capped at 64 KB; the command times out after timeoutMs (max 120000).",
-    byline: "Aux seatbelt — confined fs, no cookies, network off by default",
+      "Run a shell command inside the current file permissions. Auto and Full allow outbound network by default; Ask can request it with network:true. Commands always stay sandboxed. stdout/stderr are bounded to 64 KB and timeoutMs to 120000.",
+    byline: "Aux sandbox — current file and network permissions",
     inputSchema: z.object({
       command: z
         .string()
@@ -453,24 +451,8 @@ export function buildToolManifest(): LoopToolManifest {
         .string()
         .max(4_096)
         .optional()
-        .describe("Working directory — must be inside the session roots."),
-      network: z.boolean().optional().describe("Allow outbound network — requires user approval first."),
-      requireEscalated: z
-        .boolean()
-        .optional()
-        .describe("Request an owner-reviewed exception outside the file/network seatbelt."),
-      justification: z
-        .string()
-        .min(8)
-        .max(2_000)
-        .optional()
-        .describe("Required with requireEscalated: why the seatbelt cannot perform this command."),
-      prefixRule: z
-        .string()
-        .min(1)
-        .max(200)
-        .optional()
-        .describe("Optional proposal for a narrowly reusable command prefix; owner decides."),
+        .describe("Working directory inside any granted read or write root."),
+      network: z.boolean().optional().describe("Override outbound network; Ask mode requires permission."),
     }),
     execute: async (raw, ctx) => {
       const input = z
@@ -479,9 +461,6 @@ export function buildToolManifest(): LoopToolManifest {
           timeoutMs: z.number().int().positive().optional(),
           workdir: z.string().max(4_096).optional(),
           network: z.boolean().optional(),
-          requireEscalated: z.boolean().optional(),
-          justification: z.string().min(8).max(2_000).optional(),
-          prefixRule: z.string().min(1).max(200).optional(),
         })
         .parse(raw);
       return need(ctx.deps.bash, "bash")(input, {

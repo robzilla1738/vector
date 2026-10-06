@@ -1,7 +1,6 @@
 import type { BrowserDriver, DriverPage, DriverPageEvents } from "@aux/chromium-driver";
 import type { Observation, ObservationRequest, PageTarget, ProgramResult, StepRecord } from "@aux/contracts";
 import type { DurableWriteLedger } from "../../agent/durable.js";
-import type { GrantSource } from "../../agent/permissions.js";
 import type { EventBus } from "../../events.js";
 import type { NativeBridge } from "../../native.js";
 import type { Repo } from "../../store/repo.js";
@@ -89,17 +88,6 @@ export interface PageServiceDeps {
   };
   /** fallback `call` node dispatch when the caller didn't supply one */
   callOperation?: (name: string, args: Record<string, unknown>, pageId: string) => Promise<unknown>;
-  /**
-   * Privilege-independent effect grants (Gate D / Gate F). Model text and
-   * RPC params cannot expand these. A function re-reads after settings.set.
-   * Used for unsolicited `pages.execute` (no runId).
-   */
-  grants?: GrantSource;
-  /**
-   * Grants for a user-started `runs.start` (`ctx.runId` set). Starting the
-   * run is the write grant. Falls back to `grants` when omitted.
-   */
-  grantsForRun?: GrantSource;
   /** Shared write journal. Direct execute journals here when `ctx.journaled` is unset. */
   durableWrites?: DurableWriteLedger;
   safetyGate?: SafetyDispatchGate;
@@ -130,8 +118,11 @@ export interface PageServiceDeps {
     type: string;
     message: string;
   }) => Promise<"accept" | "dismiss" | "leave" | undefined>;
-  /** Session storage, attachment, and workspace roots an `upload` step may read from. */
-  uploadRoots?: (input: { taskId?: string; runId?: string; pageId?: string }) => string[];
+  /** Supervised file bytes from the live file permission policy. */
+  uploadRead?: (
+    path: string,
+    input: { taskId?: string; runId?: string; pageId?: string; signal?: AbortSignal },
+  ) => Promise<Buffer>;
   /** Session storage dir downloads save into (S4) — waiters resolve a real path. */
   downloadsDir?: string;
 }

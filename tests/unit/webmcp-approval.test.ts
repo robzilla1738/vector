@@ -24,9 +24,7 @@ function harness() {
     approvals,
     journal: new DecisionJournal(db),
     managedRules: () => [],
-    userRules: () => [],
-    localCeiling: () => "ask",
-    settingsGrants: () => ["effect:write"],
+    agentPolicy: () => ({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] }),
     audit: () => {},
   };
   const calls: { name: string; input: string }[] = [];
@@ -50,6 +48,7 @@ function harness() {
       { ...actor, ...webmcpTurn("page-1", name) },
       deps,
       "http://127.0.0.1:9",
+      () => {},
     );
   return { approvals, calls, call };
 }

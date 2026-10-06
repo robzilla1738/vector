@@ -215,8 +215,6 @@ function rebindProfile(db: DatabaseSync, source: string, destination: string) {
     "UPDATE safety_send_journal SET state='cancelled' WHERE state IN ('queued','offline','sending')",
   ).run();
   db.prepare("UPDATE hooks SET trust='revoked' WHERE trust='approved'").run();
-  db.prepare("UPDATE command_escalation_grants SET consumed_at=? WHERE consumed_at IS NULL").run(at);
-  db.prepare("UPDATE command_escalation_requests SET state='declined' WHERE state='pending'").run();
   db.prepare("UPDATE routines SET paused=1 WHERE paused=0").run();
   db.prepare(
     "UPDATE routine_runs SET status='needs_review' WHERE status IN ('queued','running','waiting_input')",
@@ -549,10 +547,9 @@ export async function stageRecoveryPackage(
     };
   } catch (error) {
     await Promise.all(
-      [
-        "pending-runtime-restore.sqlite",
-        "pending-runtime-restore-artifacts",
-          ].map((name) => rm(join(dataDir, name), { recursive: true, force: true })),
+      ["pending-runtime-restore.sqlite", "pending-runtime-restore-artifacts"].map((name) =>
+        rm(join(dataDir, name), { recursive: true, force: true }),
+      ),
     );
     throw error;
   } finally {

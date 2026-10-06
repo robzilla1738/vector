@@ -1,4 +1,4 @@
-import { withRunAuthorityMutation } from "../../services/overnight-authority.js";
+import { withRunAuthorityMutation, withRunDispatchMutation } from "../../services/overnight-authority.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError, EventTypes, MethodSchemas } from "@aux/contracts";
@@ -20,14 +20,9 @@ async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
   const patch = { ...params };
   if ((ctx.client.external || ctx.client.codeMode) && "downloadNaming" in patch)
     throw new AuxError("permission_denied", "Download naming must be changed in Aux Settings.");
-  if ("originPolicies" in patch)
-    throw new AuxError(
-      "permission_denied",
-      "Save agent site rules through the revision-checked Agent access controls.",
-    );
   if (
     (ctx.client.external || ctx.client.codeMode) &&
-    ["originPolicies", "effectGrants", "safetyCeilings", "nightShift"].some((key) => key in patch)
+    ["agentMode", "agentPolicies", "agentPolicyRevision", "fileAccessMode", "fileAccessRevision", "nightShift"].some((key) => key in patch)
   )
     throw new AuxError("permission_denied", "Agent permissions must be changed in Aux Settings.");
   let searchEngine: string | undefined;
@@ -56,7 +51,7 @@ async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
     }
   }
   const r = Object.keys(patch).length
-    ? await withRunAuthorityMutation(s.repo, () => s.settings.set(patch as never))
+    ? await (patch.agentMode !== undefined || patch.agentPolicies !== undefined || patch.fileAccessMode !== undefined ? withRunDispatchMutation : withRunAuthorityMutation)(s.repo, () => s.settings.set(patch as never))
     : { ok: true as const };
   // worker limits apply live — no restart needed
   s.runs.refreshPool();

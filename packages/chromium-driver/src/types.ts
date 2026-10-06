@@ -130,7 +130,11 @@ export interface DriverPage {
   }): Promise<void>;
   dragTo(target: string, to: string, timeoutMs?: number): Promise<void>;
   clickPoint(x: number, y: number, button?: "left" | "right" | "middle"): Promise<void>;
-  uploadFiles(target: string, files: string[], timeoutMs?: number): Promise<void>;
+  uploadFiles(
+    target: string,
+    files: Array<{ name: string; mimeType: string; buffer: Buffer }>,
+    timeoutMs?: number,
+  ): Promise<void>;
 
   waitFor(condition: Condition): Promise<WaitOutcome>;
   waitForDownload(

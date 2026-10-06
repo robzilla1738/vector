@@ -239,30 +239,29 @@ describe("executeProgram", () => {
     expect(writeOutcome(res).outcome).toBe("confirmed");
   });
 
-  it("denies uploads outside session, attachment, and workspace roots", async () => {
+  it("requires supervised upload bytes and never forwards pathname strings", async () => {
     const { page, calls } = fakePage();
-    const upload = (files: string[], uploadRoots?: string[]) =>
-      executeProgram(
-        page,
-        { pageId: "p1", steps: [{ id: "u1", op: "upload", target: "r1", files }] },
-        { uploadRoots },
-      );
-    for (const [files, roots] of [
-      [["/etc/passwd"], ["/tmp/aux-session"]],
-      [["/tmp/aux-session/../secrets.txt"], ["/tmp/aux-session"]],
-      [["/tmp/aux-session/note.txt"], undefined],
-    ] as [string[], string[] | undefined][]) {
-      const res = await upload(files, roots);
-      expect(res.status).toBe("failed");
-      expect(res.steps[0]?.error?.code).toBe("permission_denied");
-    }
+    const program: Program = {
+      pageId: "p1",
+      steps: [{ id: "u1", op: "upload", target: "r1", files: ["/granted/note.txt"] }],
+    };
+    const refused = await executeProgram(page, program);
+    expect(refused.steps[0]?.error?.code).toBe("permission_denied");
+    const denied = await executeProgram(page, program, {
+      uploadRead: async () => {
+        throw new AuxError("permission_denied", "Revoked");
+      },
+    });
+    expect(denied.steps[0]?.error?.code).toBe("permission_denied");
     expect(calls).toHaveLength(0);
-    const res = await upload(
-      ["/tmp/aux-session/note.txt", "/tmp/aux-session/deep/file.pdf"],
-      ["/tmp/aux-session"],
-    );
-    expect(res.status).toBe("completed");
-    expect(calls).toEqual(["upload:r1:2"]);
+    const payloads: Parameters<DriverPage["uploadFiles"]>[1][] = [];
+    page.uploadFiles = async (_target, files) => {
+      payloads.push(files);
+    };
+    const bytes = Buffer.from("held file content");
+    const result = await executeProgram(page, program, { uploadRead: async () => bytes });
+    expect(result.status).toBe("completed");
+    expect(payloads).toEqual([[{ name: "note.txt", mimeType: "application/octet-stream", buffer: bytes }]]);
   });
 
   it("runs steps in order and reports outcomes", async () => {

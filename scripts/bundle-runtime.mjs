@@ -77,6 +77,7 @@ export async function bundleRuntime(rtOut, target) {
     entryPoints: {
       main: join(root, "apps/runtime/dist/main.js"),
       mcp: join(root, "packages/mcp/dist/main.js"),
+      "filesystem-worker": join(root, "apps/runtime/dist/services/filesystem-worker.js"),
       "privacy-checkpoint-worker": join(root, "apps/runtime/dist/store/privacy-checkpoint-worker.js"),
     },
     outdir: join(rtOut, "dist"),

@@ -105,6 +105,8 @@ it("shows confirmed import counts and authority explanations using only the exis
   expect(host.textContent).not.toContain("never-render-this-secret");
   await act(async () => button("Review browser import").click());
   expect(visit).toHaveBeenCalledWith("import");
+  await act(async () => button("Review agent mode").click());
+  expect(visit).toHaveBeenLastCalledWith("model");
   expect(rpc).toHaveBeenCalledOnce();
 });
 

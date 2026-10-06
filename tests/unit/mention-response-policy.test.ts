@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from "vitest";
-import { PageTargetSchema, RunSchema, type OriginRule } from "@aux/contracts";
+import { PageTargetSchema, RunSchema, type AgentPolicySettings } from "@aux/contracts";
 import { EventBus, openDb, Repo } from "@aux/runtime";
 import { PageService } from "../../apps/runtime/src/services/pages.js";
 import { NullNativeBridge } from "../../apps/runtime/src/native.js";
@@ -44,7 +44,7 @@ function fixture() {
       config: { implementation: "external-agent" },
     }),
   );
-  let rules: OriginRule[] = [];
+  let rules: AgentPolicySettings["agentPolicies"] = [];
   const turnMentions = new TurnMentionService({
     page: (id) => repo.getPage(id),
     organization: async () => ({ revision: 0, shared: null }),
@@ -61,9 +61,7 @@ function fixture() {
       approvals: new ApprovalStore(db),
       journal: new DecisionJournal(db),
       managedRules: () => [],
-      userRules: () => rules,
-      localCeiling: () => "ask",
-      settingsGrants: () => ["effect:read"],
+      agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: rules }),
       audit: () => {},
     }),
   });
@@ -83,7 +81,7 @@ function fixture() {
     repo,
     page,
     block: (origin: string) => {
-      rules = [{ origin, access: "deny" }];
+      rules = [{ category: "read", site: new URL(origin).origin, access: "block" }];
     },
   };
 }

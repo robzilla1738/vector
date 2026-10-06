@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AuxEvent, OriginRule, Run } from "@aux/contracts";
+import type { AuxEvent, Run } from "@aux/contracts";
 import type { EventBus } from "../../apps/runtime/src/events.js";
 import { openDb } from "../../apps/runtime/src/store/db.js";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
@@ -41,7 +41,6 @@ function fixture(statusBoundary?: () => Promise<void>) {
     pageIds: ["tab"],
     createdAt: Date.now(),
   };
-  const rules: OriginRule[] = [];
   const approve = browserEgressApproval({
     profileId: "profile",
     events,
@@ -57,8 +56,7 @@ function fixture(statusBoundary?: () => Promise<void>) {
       approvals,
       journal: new DecisionJournal(db),
       managedRules: () => [],
-      userRules: () => rules,
-      localCeiling: () => "always",
+      agentPolicy: () => ({ agentMode: "ask", agentPolicyRevision: 0, agentPolicies: [] }),
       audit: () => {},
     },
   });
@@ -80,7 +78,7 @@ function fixture(statusBoundary?: () => Promise<void>) {
     run.status = "running";
     events.emit("run.status", { status: "running" }, "run");
   };
-  return { approve, input, answer, abort, approvals, suspensions, emitted, rules, listeners, run, events };
+  return { approve, input, answer, abort, approvals, suspensions, emitted, listeners, run, events };
 }
 
 describe("browser transmission approval", () => {

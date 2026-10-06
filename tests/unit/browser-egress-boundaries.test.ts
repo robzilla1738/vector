@@ -320,9 +320,7 @@ function scopedDispatch() {
       approvals: new ApprovalStore(repo.db),
       journal: new DecisionJournal(repo.db),
       managedRules: () => [],
-      userRules: () => [],
-      localCeiling: () => "ask",
-      settingsGrants: () => [],
+      agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
       audit: () => {},
     }),
   });
@@ -354,7 +352,7 @@ function scopedDispatch() {
         return revoke;
       },
     },
-    settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
+    settings: { agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }) },
   } as unknown as Services);
   const client = { external: true as const, connectionId: connection.connectionId, scope: connection.scope };
   return { repo, invoke, trace, pageOwnership, task, client, boundRun: () => boundRun };

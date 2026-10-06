@@ -1,3 +1,4 @@
+import { fixtureFilesystemPolicy } from "../fixtures/filesystem-policy.js";
 import { expect, it } from "vitest";
 import {
   BashSeatbelt,
@@ -332,7 +333,7 @@ it("executes an exactly approved command Hook inside the confined folder and sto
     });
     const launches: string[] = [];
     const seatbelt = new BashSeatbelt({
-      writableRoots: () => [root],
+      filesystemPolicy: () => fixtureFilesystemPolicy([root]),
       scratchDir: root,
       platform: "darwin",
       runner: async (file, args) => {

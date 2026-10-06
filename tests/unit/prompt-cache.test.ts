@@ -1,3 +1,4 @@
+import { modelStream, modelSse } from "../fixtures/model-stream.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -35,7 +36,10 @@ it("keeps gateway caching on auto", () => {
 });
 
 it("puts Anthropic cache breakpoints on the system, the last tool, and the history prefix", async () => {
-  const model = new MockLanguageModelV4({ provider: "anthropic", doGenerate: textResult("ok") });
+  const model = new MockLanguageModelV4({
+    provider: "anthropic",
+    doStream: () => modelStream(textResult("ok")),
+  });
   const client = new GatewayModelClient("fixture", { model: () => model });
   await client.toolCallStep({
     modelId: "claude-test",
@@ -52,7 +56,7 @@ it("puts Anthropic cache breakpoints on the system, the last tool, and the histo
     },
     maxOutputTokens: 32,
   });
-  const call = model.doGenerateCalls[0]!;
+  const call = model.doStreamCalls[0]!;
   const prompt = call.prompt as Array<{
     role: string;
     providerOptions?: { anthropic?: { cacheControl?: { type?: string } } };
@@ -68,7 +72,10 @@ it("puts Anthropic cache breakpoints on the system, the last tool, and the histo
 });
 
 it("sets the OpenAI prompt cache key to the session id", async () => {
-  const model = new MockLanguageModelV4({ provider: "openai", doGenerate: textResult("ok") });
+  const model = new MockLanguageModelV4({
+    provider: "openai",
+    doStream: () => modelStream(textResult("ok")),
+  });
   const client = new GatewayModelClient("fixture", { model: () => model });
   await client.toolCallStep({
     modelId: "gpt-test",
@@ -79,8 +86,10 @@ it("sets the OpenAI prompt cache key to the session id", async () => {
     tools: { alpha: { description: "a", inputSchema: z.object({}) } },
     maxOutputTokens: 32,
   });
-  expect(model.doGenerateCalls[0]?.providerOptions).toMatchObject({ openai: { promptCacheKey: "chat-9", user: "fixture-user" } });
-  const prompt = model.doGenerateCalls[0]?.prompt as Array<{ providerOptions?: { anthropic?: unknown } }>;
+  expect(model.doStreamCalls[0]?.providerOptions).toMatchObject({
+    openai: { promptCacheKey: "chat-9", user: "fixture-user" },
+  });
+  const prompt = model.doStreamCalls[0]?.prompt as Array<{ providerOptions?: { anthropic?: unknown } }>;
   expect(prompt.some((message) => message.providerOptions?.anthropic)).toBe(false);
 });
 
@@ -88,14 +97,14 @@ it("preserves Gateway Anthropic cache breakpoints and usage through the real SDK
   let body: Record<string, unknown> | undefined;
   vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
     body = JSON.parse(String(init?.body));
-    return new Response(JSON.stringify({
+    return modelSse({
       ...textResult("ok"),
       usage: {
         inputTokens: { total: 10, noCache: 3, cacheRead: 7, cacheWrite: 0 },
         outputTokens: { total: 2, text: 2, reasoning: 0 },
       },
       providerMetadata: { gateway: { cost: "0.00001" } },
-    }), { headers: { "content-type": "application/json" } });
+    });
   });
   const directory = mkdtempSync(join(tmpdir(), "aux-gateway-cache-"));
   cleanup.push(() => rmSync(directory, { recursive: true, force: true }));
@@ -103,27 +112,43 @@ it("preserves Gateway Anthropic cache breakpoints and usage through the real SDK
   cleanup.push(() => ledger.close());
   const client = new GatewayModelClient("fixture", {
     spendLedger: ledger,
-    models: () => [{
-      id: "anthropic/cache-fixture", provider: "anthropic", source: "configured", contextTokens: 10000,
-      inputUsdPerMTok: 1, outputUsdPerMTok: 1,
-    }],
+    models: () => [
+      {
+        id: "anthropic/cache-fixture",
+        provider: "anthropic",
+        source: "configured",
+        contextTokens: 10000,
+        inputUsdPerMTok: 1,
+        outputUsdPerMTok: 1,
+      },
+    ],
   });
   const result = await client.toolCallStep({
     modelId: "anthropic/cache-fixture",
     system: "Stable instructions",
-    messages: [{ role: "user", content: "first" }, { role: "user", content: "newest" }],
+    messages: [
+      { role: "user", content: "first" },
+      { role: "user", content: "newest" },
+    ],
     tools: { alpha: { inputSchema: z.object({}) } },
     providerOptions: { gateway: { tags: ["cache-test"] }, anthropic: { thinking: { type: "disabled" } } },
     maxOutputTokens: 32,
   });
-  const prompt = body?.prompt as Array<{ role: string; providerOptions?: { anthropic?: { cacheControl?: { type?: string } } } }>;
+  const prompt = body?.prompt as Array<{
+    role: string;
+    providerOptions?: { anthropic?: { cacheControl?: { type?: string } } };
+  }>;
   expect(prompt.map((message) => message.role)).toEqual(["system", "user", "user"]);
   expect(prompt.map(hasAnthropicCache)).toEqual([true, true, false]);
   expect(body?.providerOptions).toMatchObject({
     gateway: { caching: "auto", sort: "ttft", tags: ["cache-test"] },
     anthropic: { thinking: { type: "disabled" } },
   });
-  expect((body?.tools as Array<{ providerOptions?: { anthropic?: { cacheControl?: { type?: string } } } }>).map(hasAnthropicCache)).toEqual([true]);
+  expect(
+    (
+      (body?.tools ?? []) as Array<{ providerOptions?: { anthropic?: { cacheControl?: { type?: string } } } }>
+    ).map(hasAnthropicCache),
+  ).toEqual([true]);
   expect(ledger.summary().committedUsd).toBe(0.00001);
   expect(result.cachedInputTokens).toBe(7);
   expect(result.providerMetadata).toMatchObject({ gateway: { cost: "0.00001" } });
@@ -136,7 +161,10 @@ it("sends the loop thread id through as the OpenAI session", async () => {
   cleanup.push(() => db.close());
   const transcript = new TranscriptStore(db);
   transcript.append("run-1", [{ role: "user", content: "do the task" }]);
-  const model = new MockLanguageModelV4({ provider: "openai", doGenerate: textResult("done") });
+  const model = new MockLanguageModelV4({
+    provider: "openai",
+    doStream: () => modelStream(textResult("done")),
+  });
   const client = new GatewayModelClient("fixture", { model: () => model });
   const outcome = await runAgentLoop({
     model: client,
@@ -149,7 +177,7 @@ it("sends the loop thread id through as the OpenAI session", async () => {
     maxSteps: 1,
   });
   expect(outcome.kind).toBe("done");
-  expect(model.doGenerateCalls[0]?.providerOptions).toMatchObject({ openai: { promptCacheKey: "chat-1" } });
+  expect(model.doStreamCalls[0]?.providerOptions).toMatchObject({ openai: { promptCacheKey: "chat-1" } });
 });
 
 function hasAnthropicCache(value: {

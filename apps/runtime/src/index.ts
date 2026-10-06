@@ -120,21 +120,11 @@ export {
   type DispatchPrep,
 } from "./agent/action-compiler.js";
 export {
-  authorizeProgram,
+  authorizeProfileProgram,
   classifyStep,
   isConsequential,
-  parseGrant,
-  grantAllows,
-  DEFAULT_GRANTS,
-  USER_RUN_GRANTS,
-  KNOWN_GRANTS,
-  resolveGrants,
-  sanitizeGrants,
-  subagentGrants,
+  isReadOnlyProfile,
   type EffectClass,
-  type GrantSource,
-  type GrantInput,
-  type PermissionGrant,
 } from "./agent/permissions.js";
 export {
   DurableWriteLedger,
@@ -228,26 +218,12 @@ export {
   type OriginPolicyDecision,
   type OriginPolicyAudit,
 } from "./safety/origin-policy.js";
-export { ApprovalStore, type AuthorizationDecision, type LocalCeiling } from "./safety/approval.js";
+export { ApprovalStore, type AuthorizationDecision } from "./safety/approval.js";
 export { GoalService } from "./services/goals.js";
-export { CommandEscalationService, commandSegments } from "./services/command-escalation.js";
 export { HookService, type HookExecutor } from "./services/hooks.js";
 export { WorkspaceFolderService } from "./services/workspace-folders.js";
 export { installRunEndHooks } from "./services/hook-dispatch.js";
-export {
-  decideConfirmation,
-  confirmationLevelForAction,
-  type ConfirmationResult,
-} from "./safety/confirmation.js";
 export { secureCredentialHandoff, type CredentialHost } from "./safety/credential-handoff.js";
-export {
-  reviewGuardian,
-  type GuardianFinding,
-  type GuardianDecision,
-  type GuardianJudge,
-  type UntrustedOutput,
-} from "./safety/guardian.js";
-export { createGuardianJudge } from "./safety/guardian-model.js";
 export { SafetyDispatchGate, type StepSafetyContext } from "./safety/dispatch.js";
 export {
   decide,
@@ -275,3 +251,5 @@ export {
 } from "./agent/direct-providers.js";
 
 export { OnboardingService } from "./services/onboarding.js";
+
+export { listSafetyActivity } from "./services/safety-activity.js";

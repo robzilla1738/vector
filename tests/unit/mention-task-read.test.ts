@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from "vitest";
-import { PageTargetSchema, type OriginRule } from "@aux/contracts";
+import { PageTargetSchema, type AgentPolicySettings } from "@aux/contracts";
 import { makeInvoker } from "../../apps/runtime/src/api/invoke.js";
 import type { Services } from "../../apps/runtime/src/api/methods/context.js";
 import { AgentConnectionService } from "../../apps/runtime/src/services/agent-connections.js";
@@ -53,8 +53,7 @@ function fixture() {
     expiresAt: Date.now() + 60_000,
   }).connection;
   const client = { external: true as const, connectionId: connection.connectionId, scope: connection.scope };
-  let rules: OriginRule[] = [],
-    ceiling: "ask" | "never" = "ask",
+  let rules: AgentPolicySettings["agentPolicies"] = [],
     duringCapture = () => {},
     captures = 0;
   const pages = new PageService({
@@ -67,9 +66,7 @@ function fixture() {
       approvals: new ApprovalStore(db),
       journal: new DecisionJournal(db),
       managedRules: () => [],
-      userRules: () => rules,
-      localCeiling: () => ceiling,
-      settingsGrants: () => [],
+      agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: rules }),
       audit: () => {},
     }),
   });
@@ -117,7 +114,7 @@ function fixture() {
     externalSessions,
     agentConnections,
     runs: { pageOwnership: new PageOwnership() },
-    settings: { effectGrants: () => [], originPolicies: () => rules, safetyCeiling: () => ceiling },
+    settings: { agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: rules }) },
   } as unknown as Services);
   cleanup.push(() => {
     void invoke.dispose();
@@ -137,11 +134,8 @@ function fixture() {
     during: (callback: () => void) => {
       duringCapture = callback;
     },
-    rules: (value: OriginRule[]) => {
+    rules: (value: AgentPolicySettings["agentPolicies"]) => {
       rules = value;
-    },
-    ceiling: () => {
-      ceiling = "never";
     },
   };
 }
@@ -169,7 +163,7 @@ it("a validated external task read uses honest resource provenance with zero amb
   expect(f.turnMentions.has(run.runId)).toBe(false);
   expect(f.turnMentions.ownedPages(run.runId)).toEqual([]);
 });
-it.each(["revision", "resource", "ask", "block", "ceiling", "attachment"])(
+it.each(["revision", "resource", "ask", "block", "attachment"])(
   "a %s change during task capture withholds the result",
   async (change) => {
     const f = fixture();
@@ -180,9 +174,8 @@ it.each(["revision", "resource", "ask", "block", "ceiling", "attachment"])(
         f.tasks.update({ taskId: f.task.taskId, expectedRevision: 1, title: "Revised task" });
       if (change === "resource")
         f.tasks.update({ taskId: f.task.taskId, expectedRevision: 1, resources: [] });
-      if (change === "ask") f.rules([{ origin: "https://source.test/", access: "ask" }]);
-      if (change === "block") f.rules([{ origin: "https://source.test/", access: "deny" }]);
-      if (change === "ceiling") f.ceiling();
+      if (change === "ask") f.rules([{ category: "read", site: "https://source.test", access: "ask" }]);
+      if (change === "block") f.rules([{ category: "read", site: "https://source.test", access: "block" }]);
       if (change === "attachment") f.repo.upsertPage({ ...f.page, sessionId: "replacement" });
     });
     await expect(f.invoke("pages.capture", { pageId: "a" }, f.client)).rejects.toMatchObject({
@@ -191,11 +184,11 @@ it.each(["revision", "resource", "ask", "block", "ceiling", "attachment"])(
     expect(f.captures()).toBe(1);
   },
 );
-it.each(["ask", "deny"] as const)(
+it.each(["ask", "block"] as const)(
   "an explicit %s policy cannot be overridden by an approved task resource",
   async (access) => {
     const f = fixture();
-    f.rules([{ origin: "https://source.test/", access }]);
+    f.rules([{ category: "read", site: "https://source.test", access }]);
     await expect(f.invoke("pages.capture", { pageId: "a" }, f.client)).rejects.toMatchObject({
       code: access === "ask" ? "needs_input" : "permission_denied",
     });
@@ -257,9 +250,7 @@ it.each([
     approvals: new ApprovalStore(f.db),
     journal: new DecisionJournal(f.db),
     managedRules: () => [],
-    userRules: () => [],
-    localCeiling: () => "ask",
-    settingsGrants: () => [],
+    agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }),
     audit: () => {},
   });
   let checked = 0;

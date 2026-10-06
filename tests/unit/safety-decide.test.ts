@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
-import type { OriginRule, Step } from "@aux/contracts";
+import type { AgentPolicySettings, Step } from "@aux/contracts";
 import { openDb } from "../../apps/runtime/src/store/db.js";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
 import {
@@ -21,18 +21,13 @@ afterEach(() => {
 const step: Step = { id: "s1", op: "click", target: "#buy" };
 const digest = createHash("sha256").update(JSON.stringify(step)).digest("hex");
 
-function fixture(userRules: OriginRule[] = [], ceiling: "never" | "ask" | "always" = "ask") {
+function fixture(settings: AgentPolicySettings = { agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] }) {
   const db = openDb(":memory:");
   databases.push(db);
   const approvals = new ApprovalStore(db);
   const journal = new DecisionJournal(db);
   const deps: DecideDeps = {
-    approvals,
-    journal,
-    managedRules: () => [],
-    userRules: () => userRules,
-    localCeiling: () => ceiling,
-    audit: () => {},
+    approvals, journal, managedRules: () => [], agentPolicy: () => settings, audit: () => {},
   };
   const request = effectRequestForStep({
     step,
@@ -63,50 +58,6 @@ describe("S3 decide()", () => {
     expect(categoryForOp("evaluate")).toBe("evaluate");
     expect(categoryForOp("upload")).toBe("upload");
     expect(categoryForOp("screenshot")).toBe("read");
-  });
-
-  it("asks the person to allow a direct page action, then dispatches that approval once", async () => {
-    const { deps, request } = fixture();
-    const pending = await decide(request, deps, { phase: "preflight" });
-    expect(pending).toMatchObject({
-      status: "ask",
-      suspension: { kind: "approval", instruction: "Allow this action before it runs." },
-    });
-    const approvalId = pending.status === "ask" ? pending.suspension.approvalId : undefined;
-    expect(approvalId).toBeTruthy();
-    deps.approvals.decideLocal({ decision: "accept", approvalId: approvalId! }, "turn-1");
-    const allowed = await decide(request, deps, { phase: "dispatch", approvalId });
-    expect(allowed).toMatchObject({
-      status: "allow",
-      authorizedBy: { authorizedBy: "approval", approvalId },
-    });
-    await expect(decide(request, deps, { phase: "dispatch", approvalId })).resolves.toMatchObject({
-      status: "ask",
-    });
-  });
-
-  it("runs a direct page action once after the person allows it, without the caller presenting the approval", async () => {
-    const { deps, request } = fixture();
-    const pending = await decide(request, deps, { phase: "preflight" });
-    const approvalId = pending.status === "ask" ? pending.suspension.approvalId : undefined;
-    expect(approvalId).toBeTruthy();
-    deps.approvals.decideLocal({ decision: "accept", approvalId: approvalId! }, "turn-1");
-    await expect(decide(request, deps, { phase: "preflight" })).resolves.toMatchObject({
-      status: "allow",
-      authorizedBy: { authorizedBy: "approval", approvalId },
-    });
-    await expect(decide(request, deps, { phase: "dispatch" })).resolves.toMatchObject({
-      status: "allow",
-      authorizedBy: { authorizedBy: "approval", approvalId },
-    });
-    await expect(decide(request, deps, { phase: "dispatch" })).resolves.toMatchObject({ status: "ask" });
-  });
-
-  it("asks for action-time confirmation on unruled consequential ops and journals the source", async () => {
-    const { db, deps, request } = fixture();
-    const decision = await decide(request, deps, { phase: "dispatch", turnToolCallCount: 0 });
-    expect(decision).toMatchObject({ status: "ask", suspension: { kind: "action-confirmation" } });
-    expect(decisions(db)).toEqual([{ status: "ask", source: "default" }]);
   });
 
   it("denies untrusted origins and records the refusal", async () => {
@@ -142,7 +93,7 @@ describe("S3 decide()", () => {
       evalRequest(),
       {
         ...deps,
-        userRules: () => [{ origin: "https://shop.test/", effects: { destructive: "deny" }, access: "ask" }],
+        managedRules: () => [{ origin: "https://shop.test/", effects: { destructive: "deny" }, access: "ask" }],
       },
       { phase: "dispatch", trustedEval: true },
     );
@@ -150,113 +101,8 @@ describe("S3 decide()", () => {
     expect(decisions(db)).toEqual([
       { status: "deny", source: "origin_resolver" },
       { status: "allow", source: "trusted_source" },
-      { status: "deny", source: "user_rule" },
+      { status: "deny", source: "managed_policy" },
     ]);
-  });
-
-  it("issues an approval suspension when consent is required and no grant exists", async () => {
-    const { db, deps, request } = fixture([
-      { origin: "https://shop.test/", access: "allow", confirmation: "action" },
-    ]);
-    const decision = await decide(request, deps, {
-      phase: "dispatch",
-      turnToolCallCount: 1,
-      review: {
-        artifactId: "r1",
-        turnId: "turn-1",
-        action: "click",
-        effect: "write",
-        invocationDigest: digest,
-        dataDescription: "Cart",
-        destination: "shop.test",
-        consequence: "Place order",
-        createdAt: 400,
-      },
-    });
-    expect(decision.status).toBe("ask");
-    const suspension = decision.status === "ask" ? decision.suspension : undefined;
-    expect(suspension).toMatchObject({ kind: "approval", approvalId: expect.any(String) });
-    expect(decisions(db)).toEqual([{ status: "ask", source: "approval" }]);
-  });
-
-  it("requires exact one-time approval for credentials and hands off password changes", async () => {
-    const credStep: Step = { id: "c1", op: "fillCredential", passwordSelector: "#pw" };
-    const { db, deps } = fixture();
-    const request = effectRequestForStep({
-      step: credStep,
-      origin: "https://shop.test/login",
-      profileId: "p1",
-      scope: { kind: "task", id: "t1" },
-      turnId: "turn-1",
-      threadId: "thread-1",
-      digest: createHash("sha256").update(JSON.stringify(credStep)).digest("hex"),
-      at: 500,
-    });
-    const review = {
-      artifactId: "credential-review",
-      turnId: "turn-1",
-      action: "fillCredential",
-      effect: "credential" as const,
-      invocationDigest: request.invocationDigest,
-      dataDescription: "Synthetic saved credential",
-      destination: "shop.test",
-      consequence: "Fill the sign-in form",
-      createdAt: 400,
-    };
-    const context = { phase: "dispatch" as const, review, turnToolCallCount: 1 };
-    const decision = await decide(request, deps, context);
-    expect(decision).toMatchObject({ status: "ask", suspension: { kind: "approval" } });
-    if (decision.status !== "ask" || !decision.suspension.approvalId)
-      throw new Error("missing credential approval");
-    const approvalId = decision.suspension.approvalId;
-    deps.approvals.decideLocal({ decision: "accept", approvalId }, "turn-1");
-    await expect(decide(request, deps, { ...context, approvalId })).resolves.toMatchObject({
-      status: "allow",
-      authorizedBy: { authorizedBy: "approval", approvalId },
-    });
-    await expect(decide(request, deps, { ...context, approvalId })).resolves.toMatchObject({ status: "ask" });
-    const handoff = await decide({ ...request, category: "password_change" }, deps, context);
-    expect(handoff).toMatchObject({ status: "ask", suspension: { kind: "handoff" } });
-    expect("approvalId" in (handoff.status === "ask" ? handoff.suspension : {})).toBe(false);
-    expect(decisions(db).map((value) => value.status)).toEqual(["ask", "allow", "ask", "ask"]);
-  });
-
-  it("collapses asks into a deny when no UI is attached", async () => {
-    const { db, deps, request } = fixture();
-    const decision = await decide(request, deps, { phase: "dispatch", turnToolCallCount: 0, headless: true });
-    expect(decision).toMatchObject({ status: "deny", refusalId: "headless_no_ui" });
-    expect(decisions(db)).toEqual([
-      { status: "ask", source: "default" },
-      { status: "deny", source: "origin_resolver" },
-    ]);
-  });
-
-  it("preserves immutable consequence confirmation despite allow rules and an always ceiling", async () => {
-    const { db, deps, request } = fixture(
-      [{ origin: "https://shop.test/", access: "allow", confirmation: "none" }],
-      "always",
-    );
-    const decision = await decide(request, deps, { phase: "dispatch", turnToolCallCount: 0 });
-    expect(decision).toMatchObject({ status: "ask", suspension: { kind: "action-confirmation" } });
-    expect(decisions(db)).toEqual([{ status: "ask", source: "default" }]);
-    await expect(
-      decide({ ...request, category: "read", action: "send" }, deps, {
-        phase: "dispatch",
-        turnToolCallCount: 0,
-      }),
-    ).resolves.toMatchObject({ status: "ask", suspension: { kind: "action-confirmation" } });
-    await expect(
-      decide({ ...request, category: "password_change", action: "delete" }, deps, {
-        phase: "dispatch",
-        turnToolCallCount: 0,
-      }),
-    ).resolves.toMatchObject({ status: "ask", suspension: { kind: "handoff" } });
-  });
-
-  it("denies explicitly denied origins even after the defaults flip", async () => {
-    const { deps, request } = fixture([{ origin: "https://shop.test/", access: "deny" }]);
-    const decision = await decide(request, deps, { phase: "dispatch" });
-    expect(decision).toMatchObject({ status: "deny", refusalId: "origin_policy_denied" });
   });
 
   it("routes runtime web egress through decide() on every redirect hop", async () => {
@@ -290,7 +136,7 @@ describe("S3 decide()", () => {
     const web = new AgentWebTools(async (url) => {
       const decision = await decide(
         egressRequest(url),
-        { ...deps, localCeiling: () => "always" },
+        deps,
         { phase: "dispatch", headless: true },
       );
       return decision.status === "allow";
@@ -314,7 +160,7 @@ describe("S3 decide()", () => {
     const denied = new AgentWebTools(async (url) => {
       const decision = await decide(
         egressRequest(new URL(url.href.replace(url.hostname, "blocked.test"))),
-        { ...deps, userRules: () => [{ origin: "https://blocked.test/", access: "deny" }] },
+        { ...deps, agentPolicy: () => ({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [{ category: "read", site: "https://blocked.test", access: "block" }] }) },
         { phase: "dispatch", headless: true },
       );
       return decision.status === "allow";

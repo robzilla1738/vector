@@ -135,6 +135,15 @@ beforeEach(() => {
       return current;
     }
     if (method === "import.status") throw Object.assign(new Error("No import"), { code: "not_found" });
+    if (method === "settings.set") {
+      workspace.settings = {
+        ...workspace.settings,
+        ...params,
+        agentPolicyRevision: (workspace.settings.agentPolicyRevision ?? 0) + 1,
+      };
+      return { ok: true };
+    }
+    if (method === "settings.get") return workspace.settings;
     if (method === "models.list") return { models: [] };
     if (method === "connectors.catalog") return { entries: [], access: [] };
     if (method === "installation.restoreStatus") return { pending: false };
@@ -179,14 +188,14 @@ it("Cmd+Enter saves Finish later and restore focus without starting work", async
 
 it("moves the step heading without scrolling the rail or footer out of the card", async () => {
   const focus = vi.spyOn(HTMLElement.prototype, "focus");
-  await render(initial("permissions"));
+  await render(initial("model"));
   const scroller = document.querySelector(".onboarding-scroll");
   expect(scroller?.contains(document.querySelector("h1"))).toBe(true);
   expect(scroller?.contains(button("Continue"))).toBe(false);
-  expect(scroller?.contains(button("6"))).toBe(false);
+  expect(scroller?.contains(button("3"))).toBe(false);
   expect(focus.mock.calls.every(([options]) => options?.preventScroll === true)).toBe(true);
   focus.mockClear();
-  await act(async () => button("7").click());
+  await act(async () => button("6").click());
   expect(document.querySelector("h1")?.textContent).toBe("Start with one useful question");
   const tools = document.querySelector('[aria-label="Tools for this question"]');
   expect(tools?.getAttribute("role")).toBe("group");
@@ -286,14 +295,14 @@ it("replays only through an explicit event and stays absent from private or disa
 });
 
 it("Escape leaves any setup step with resumable progress", async () => {
-  await render(initial("permissions"));
+  await render(initial("model"));
   await act(async () =>
     document
       .querySelector("dialog")!
       .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
   );
   expect(rpc).toHaveBeenCalledWith("onboarding.update", { revision: 0, action: "later" });
-  expect(current.step).toBe("permissions");
+  expect(current.step).toBe("model");
   expect(close).toHaveBeenCalledOnce();
 });
 
@@ -338,8 +347,8 @@ it("lets the owner view the selected page before committing its context", async 
   expect(rpc.mock.calls.some(([method]) => method === "onboarding.start")).toBe(false);
 });
 
-it("offers pasted Memory from permissions without automatic capture or ingestion", async () => {
-  await render(initial("permissions"));
+it("offers pasted Memory from the AI step without automatic capture or ingestion", async () => {
+  await render(initial("model"));
   await act(async () => button("Import notes from another assistant").click());
   expect(document.querySelector('section[aria-label="Import pasted assistant notes"]')).toBeTruthy();
   expect(document.querySelector("textarea")?.value).toBe("");
@@ -347,9 +356,9 @@ it("offers pasted Memory from permissions without automatic capture or ingestion
 });
 
 it("replays an already open flow using the new saved revision and welcome step", async () => {
-  current = initial("permissions");
+  current = initial("model");
   await act(async () => root.render(<OnboardingHost />));
-  expect(document.querySelector("h1")?.textContent).toBe("You stay in charge");
+  expect(document.querySelector("h1")?.textContent).toBe("Choose your AI model");
   await act(async () => requestOnboardingReplay());
   expect(document.querySelector("h1")?.textContent).toBe("Welcome to Aux");
   await act(async () => button("Continue").click());
@@ -391,13 +400,13 @@ it("ignores a stale startup response after an explicit replay has opened newer p
   );
   await act(async () => root.render(<OnboardingHost />));
   await act(async () => requestOnboardingReplay());
-  await act(async () => finish(initial("permissions")));
+  await act(async () => finish(initial("model")));
   expect(document.querySelector("h1")?.textContent).toBe("Welcome to Aux");
   expect(current.revision).toBe(1);
 });
 
 it("lets disconnected setup close without mutating saved progress or reopening on reconnect", async () => {
-  current = initial("permissions");
+  current = initial("model");
   await act(async () => root.render(<OnboardingHost />));
   workspace.connected = false;
   await act(async () => root.render(<OnboardingHost />));
@@ -467,47 +476,6 @@ it("offers only idle owner pages in this window for explicit review", async () =
   expect([...select.options].map((option) => option.value)).toEqual(["", source.pageId]);
 });
 
-it("keeps permission essentials visible and all original policy details available without any grant", async () => {
-  await render(initial("permissions"));
-  const fieldset = document.querySelector('[aria-label="Setup choices"]')!;
-  const summary = [...fieldset.querySelectorAll("summary")].find(
-    (item) => item.textContent === "How permissions and browsing work",
-  )!;
-  const details = summary.closest("details")!;
-  expect(summary.getAttribute("data-command-id")).toBe("toggle-setup-permission-details");
-  expect(details.open).toBe(false);
-  expect(details.classList.contains("onboarding-details")).toBe(true);
-  expect(
-    [...fieldset.querySelectorAll(":scope > p")].map((item) => item.textContent?.replace(/\s+/g, " ").trim()),
-  ).toEqual([
-    "Starting a chat gives Aux the question and sources you select. It does not connect accounts or grant access to folders.",
-    "Setup does not enable Memory, broaden grants, connect services or import credentials automatically.",
-  ]);
-  expect(details.querySelectorAll("li")).toHaveLength(5);
-  const policy = details.textContent?.replace(/\s+/g, " ");
-  for (const text of [
-    "source, recipient and action",
-    "separate, temporary browsing session",
-    "cookies or saved passwords",
-    "send, change or delete",
-    "cannot undo an action",
-    "pasted assistant notes",
-  ])
-    expect(policy).toContain(text);
-  const calls = rpc.mock.calls.length;
-  summary.focus();
-  await act(async () => summary.click());
-  expect(details.open).toBe(true);
-  expect(document.activeElement).toBe(summary);
-  await act(async () => summary.click());
-  expect(details.open).toBe(false);
-  expect(rpc.mock.calls).toHaveLength(calls);
-  expect(current.step).toBe("permissions");
-  expect(current.disclosureVersion).toBe(1);
-  expect(openPage).not.toHaveBeenCalled();
-  expect(openConversation).not.toHaveBeenCalled();
-});
-
 it("keeps import confirmation, exclusions, keychain and retry disclosures with concise progress copy", async () => {
   await render(initial("import"));
   const importer = document.querySelector(".import-setting")!;
@@ -535,22 +503,6 @@ it("keeps import confirmation, exclusions, keychain and retry disclosures with c
   expect(rpc.mock.calls.some(([method]) => method === "import.preview" || method === "import.run")).toBe(
     false,
   );
-});
-
-it("remaps permission details only through its original focused setup control", async () => {
-  await render(initial("permissions"));
-  const { invokeScopedControl } = await import("../scoped-control-commands");
-  const summary = document.querySelector<HTMLElement>('[data-command-id="toggle-setup-permission-details"]')!;
-  const details = summary.closest("details")!;
-  button("Continue").focus();
-  expect(() => invokeScopedControl("toggle-setup-permission-details")).toThrow();
-  summary.focus();
-  await act(async () => invokeScopedControl("toggle-setup-permission-details"));
-  expect(details.open).toBe(true);
-  native.privateMode = true;
-  expect(() => invokeScopedControl("toggle-setup-permission-details")).toThrow("current setup");
-  expect(details.open).toBe(true);
-  expect(rpc.mock.calls.some(([method]) => /grant|permission|chat|page/.test(method))).toBe(false);
 });
 
 it("wraps the complete original diagnostic while keeping setup recovery usable", async () => {
@@ -596,4 +548,26 @@ it("wraps the complete original diagnostic while keeping setup recovery usable",
   } finally {
     style.remove();
   }
+});
+
+it("offers the real Auto mode in the AI step and saves only the original policy revision", async () => {
+  workspace.settings = {
+    ...workspace.settings,
+    agentMode: "auto",
+    agentPolicyRevision: 8,
+    agentPolicies: [],
+  };
+  await render(initial("model"));
+  expect(document.querySelector('[aria-label="Agent mode"] [aria-checked="true"]')!.textContent).toBe("Auto");
+  expect(document.body.textContent).toContain("Touch ID for payments");
+  expect(document.querySelector('button[aria-label*="permissions"]')).toBeNull();
+  await act(async () =>
+    [...document.querySelectorAll<HTMLButtonElement>('[aria-label="Agent mode"] [role="radio"]')]
+      .find((button) => button.textContent === "Ask first")!
+      .click(),
+  );
+  expect(rpc).toHaveBeenCalledWith("settings.set", { agentMode: "ask", agentPolicyRevision: 8 });
+  expect(rpc.mock.calls.some(([method]) => method === "models.probe" || method === "onboarding.start")).toBe(
+    false,
+  );
 });

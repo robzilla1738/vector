@@ -1,4 +1,4 @@
-import { fixtureSafetyAuthority, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 /**
  * H2-C7: pages.extract / waitFor / console / dialog / network are real RPCs.
  */
@@ -225,7 +225,6 @@ describe("H2-C7 pages inspect RPCs", () => {
     const { pages, repo, events, responses, turnMentions } = harness();
     const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
     const invoke = makeInvoker({
-      safetyAuthority: fixtureSafetyAuthority(repo),
       turnMentions,
       pages,
       sets: {

@@ -79,7 +79,7 @@ it("runs representative form, popup, upload, download and rich-text steps withou
     },
     {
       pageOrigin: "https://app.test",
-      uploadRoots: ["/tmp/aux-session"],
+      uploadRead: async () => Buffer.from("fixture note"),
       fillSavedPassword: async (request) => {
         calls.push(`native-fill:${request.passwordSelector}`);
         return { status: "filled" };

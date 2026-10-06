@@ -10,13 +10,6 @@ import {
 } from "@aux/contracts";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
-import {
-  DEFAULT_GRANTS,
-  grantAllows,
-  parseGrant,
-  resolveGrants,
-  type GrantSource,
-} from "../agent/permissions.js";
 import { agentMayEgress } from "../agent/policy.js";
 import { evalPredicate } from "../execution/interpreter.js";
 import type { Repo } from "../store/repo.js";
@@ -109,8 +102,8 @@ export class OperationService {
       egressAllowlist?: () => string[];
       /** decide() at the request boundary — deny/ask stops the transport, allow is journaled. */
       decideEgress?: (input: { url: URL; method: string; runId?: string }) => Promise<void>;
-      /** User-started invokes; defaults to USER_RUN_GRANTS like runs.start. */
-      grants?: GrantSource;
+      /** Explicit read-only child profile capability. */
+      readOnly?: boolean;
       durableWrites?: DurableWriteLedger;
       calendar?: CalendarConnectionService;
       authorizeConnector?<T>(
@@ -884,7 +877,7 @@ export class OperationService {
         steps: saved.steps ?? [],
         observation: obs.content,
         url: live.url ?? obs.content.url,
-        grants: this.deps.grants ?? DEFAULT_GRANTS,
+        readOnly: this.deps.readOnly,
       });
       if ("rejected" in prepared) throw new AuxError("conflict", prepared.rejected);
       if ("denied" in prepared) throw new AuxError("permission_denied", prepared.denied);
@@ -943,19 +936,8 @@ export class OperationService {
     if (!["http:", "https:"].includes(destination.protocol))
       throw new AuxError("permission_denied", "request protocol denied");
     await this.deps.decideEgress?.({ url: destination, method: req.method, runId });
-    const grants = resolveGrants(this.deps.grants)
-      .map(parseGrant)
-      .filter((g) => g !== null);
-    const effect = ["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase())
-      ? "read"
-      : req.method.toUpperCase() === "DELETE"
-        ? "destructive"
-        : "write";
-    for (const needed of [effect, "egress"] as const) {
-      if (!grants.some((g) => grantAllows(g, needed, destination.origin, Date.now()))) {
-        throw new AuxError("permission_denied", `agent ${needed} denied for ${url}`);
-      }
-    }
+    if (this.deps.readOnly && !["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase()))
+      throw new AuxError("permission_denied", "The selected read-only profile cannot change this service.");
     let pageOrigin: string | undefined;
     if (pageId) {
       try {

@@ -240,7 +240,6 @@ export class NativePermissionController {
             pageId: input.tabId,
             sessionId: page.sessionId,
             approvalId: current.approvalId,
-            standingOnly: this.deps.standingOnly(input.runId),
           },
         );
         await this.deps.assertDispatch(input.runId);

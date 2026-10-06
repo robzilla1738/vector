@@ -1,3 +1,4 @@
+import { fixtureFilesystemPolicy } from "../fixtures/filesystem-policy.js";
 import { afterEach, expect, it } from "vitest";
 import {
   mkdtempSync,
@@ -87,8 +88,7 @@ it("keeps read-only folders outside bash write permissions", () => {
   mkdirSync(read);
   mkdirSync(write);
   const sandbox = new BashSeatbelt({
-    writableRoots: () => [write],
-    readableRoots: () => [read],
+    filesystemPolicy: () => fixtureFilesystemPolicy([write, read], [write]),
     scratchDir: write,
     runner: async () => ({ stdout: "", stderr: "", exitCode: 0, timedOut: false }),
     platform: "darwin",
@@ -113,8 +113,7 @@ it.skipIf(process.platform !== "darwin")(
     mkdirSync(write);
     writeFileSync(join(read, "context.txt"), "reviewed context");
     const sandbox = new BashSeatbelt({
-      writableRoots: () => [write],
-      readableRoots: () => [read],
+      filesystemPolicy: () => fixtureFilesystemPolicy([write, read], [write]),
       scratchDir: write,
       platform: "darwin",
     });

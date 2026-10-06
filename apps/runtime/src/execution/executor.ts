@@ -13,7 +13,7 @@ import {
 } from "@aux/contracts";
 import type { DriverPage } from "@aux/chromium-driver";
 import { readFile, stat } from "node:fs/promises";
-import { resolve, sep } from "node:path";
+import { basename } from "node:path";
 import { isConsequential } from "../agent/permissions.js";
 
 /** Driver implementations expose the document epoch as either a value or method. */
@@ -60,8 +60,8 @@ export interface ExecContext {
   /** Private native navigation producer: returns only after original receipt,
    * retirement and fresh native attachment/install ACKs. Never tool input. */
   navigateAndReadmit?: (url: string, timeoutMs?: number) => Promise<DriverPage>;
-  /** Roots an `upload` step may read files from — session storage, attachments, workspace roots. */
-  uploadRoots?: string[];
+  /** Trusted supervised reader returns held bytes; the driver never reopens a pathname. */
+  uploadRead?: (path: string) => Promise<Buffer>;
   safety?: {
     turnId?: string;
     threadId?: string;
@@ -198,21 +198,16 @@ async function runStep(
     case "clickPoint":
       return void (await page.clickPoint(s.x, s.y, s.button));
     case "upload": {
-      // Files leave the machine toward a page — only session storage,
-      // attachments, and task workspace roots are readable.
-      const roots = (ctx.uploadRoots ?? []).map((root) => resolve(root));
-      for (const file of s.files) {
-        const path = resolve(file);
-        const inside = roots.some(
-          (root) => path === root || path.startsWith(root.endsWith(sep) ? root : root + sep),
-        );
-        if (!inside)
-          throw new AuxError(
-            "permission_denied",
-            `Uploads are limited to session storage, attachments, and workspace roots: ${file}`,
-          );
+      if (!ctx.uploadRead)
+        throw new AuxError("permission_denied", "Supervised upload access is unavailable.");
+      const files = [];
+      for (const path of s.files) {
+        const buffer = await ctx.uploadRead(path);
+        files.push({ name: basename(path), mimeType: "application/octet-stream", buffer });
       }
-      return void (await page.uploadFiles(s.target, s.files, s.timeoutMs));
+      ctx.checkValid?.();
+      ctx.beforeJournal?.();
+      return void (await page.uploadFiles(s.target, files, s.timeoutMs));
     }
     case "waitFor": {
       const res = await page.waitFor(s.condition);

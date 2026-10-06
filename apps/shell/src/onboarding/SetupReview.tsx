@@ -76,7 +76,7 @@ export function SetupReview({
   state: OnboardingState;
   recovery: "checking" | "ready" | "pending" | "unavailable";
   source: PageContextRef | null;
-  onVisit(step: "import" | "model" | "welcome" | "permissions"): void;
+  onVisit(step: "import" | "model" | "welcome"): void;
   onCheckRecovery(): void;
 }) {
   const [receipt, setReceipt] = useState<Receipt>({ state: "loading" });
@@ -254,8 +254,8 @@ export function SetupReview({
       </div>
       <p>
         Setup does not import credentials, enable Memory or grant service/folder access.{" "}
-        <button {...smallGhostButtonProps} disabled={!connected} onClick={() => onVisit("permissions")}>
-          Review permissions
+        <button {...smallGhostButtonProps} disabled={!connected} onClick={() => onVisit("model")}>
+          Review agent mode
         </button>
       </p>
     </section>

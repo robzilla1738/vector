@@ -9,8 +9,6 @@ import {
   openDb,
   Repo,
   SettingsService,
-  USER_RUN_GRANTS,
-  authorizeProgram,
 } from "@aux/runtime";
 
 function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}) {
@@ -228,44 +226,20 @@ describe("settings defaults for a real test pass", () => {
     }
   });
 
-  it("defaults effect grants to read-only and sanitizes settings.set", async () => {
-    const { dir, settings } = harness();
+  it("defaults to Auto and Guard and persists each permission with its own revision", async () => {
+    const { dir, repo, settings } = harness();
     try {
-      expect(settings.effectGrants()).toEqual(["effect:read"]);
-      expect(settings.effectGrantsForRun()).toEqual(["effect:read", "effect:write"]);
-      expect(settings.all().effectGrants).toEqual(settings.effectGrantsForRun());
-      await settings.set({ effectGrants: ["effect:write", "grant-from-model", "effect:*"] });
-      expect(settings.effectGrants()).toEqual(["effect:write", "effect:*"]);
-      expect(settings.effectGrantsForRun()).toEqual(["effect:write", "effect:*"]);
-      await settings.set({ effectGrants: ["effect:read"] });
-      expect(settings.effectGrants()).toEqual(["effect:read"]);
-      expect(settings.effectGrantsForRun()).toEqual(["effect:read"]);
-      const parsed = MethodSchemas["settings.set"].parse({
-        effectGrants: ["effect:read", "effect:write", "effect:egress"],
-      });
-      expect(parsed.effectGrants).toEqual(["effect:read", "effect:write", "effect:egress"]);
-      expect(authorizeProgram([{ id: "c", op: "click", target: "r1" }], USER_RUN_GRANTS).ok).toBe(true);
-      expect(authorizeProgram([{ id: "c", op: "click", target: "r1" }], settings.effectGrants()).ok).toBe(
-        false,
-      );
-      const scopedEgress = [
-        { effect: "egress" as const, origin: "https://allowed.test", scope: "page", expiresAt: 0 },
-      ];
-      expect(
-        authorizeProgram(
-          [{ id: "n", op: "navigate", url: "https://allowed.test/path" }],
-          scopedEgress,
-          "https://current.test",
-        ).ok,
-      ).toBe(true);
-      expect(
-        authorizeProgram(
-          [{ id: "n", op: "navigate", url: "https://other.test/path" }],
-          scopedEgress,
-          "https://allowed.test",
-        ).ok,
-      ).toBe(false);
+      expect(settings.agentPolicy()).toEqual({ agentMode: "auto", agentPolicyRevision: 0, agentPolicies: [] });
+      expect(settings.fileAccess()).toEqual({ fileAccessMode: "guard", fileAccessRevision: 0 });
+      await settings.set(MethodSchemas["settings.set"].parse({ fileAccessMode: "read-only", fileAccessRevision: 0 }));
+      expect(settings.fileAccess()).toEqual({ fileAccessMode: "read-only", fileAccessRevision: 1 });
+      await expect(settings.set({ fileAccessMode: "full", fileAccessRevision: 0 })).rejects.toMatchObject({ code: "conflict" });
+      await expect(settings.set({ fileAccessMode: "full", fileAccessRevision: 1, agentMode: "full", agentPolicyRevision: 0 })).rejects.toMatchObject({ code: "invalid_params" });
+      await expect(settings.set({ fileAccessRevision: 1 })).rejects.toMatchObject({ code: "invalid_params" });
+      expect(new SettingsService(repo, join(dir, "settings.json"), {}).fileAccess()).toEqual(settings.fileAccess());
+      expect(settings.agentPolicy().agentPolicyRevision).toBe(0);
     } finally {
+      repo.db.close();
       rmSync(dir, { recursive: true, force: true });
     }
   });
