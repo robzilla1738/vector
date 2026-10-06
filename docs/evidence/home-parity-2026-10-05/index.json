@@ -1,0 +1,24 @@
+{
+  "implementationCommit": "3c4379bc3",
+  "precedingVisualCommit": "4d7bef5b5",
+  "nativeRuntimeBase": "eda022bb8e19ec59d473c4438fb5f625b13c6034",
+  "rendererManifest": "b13d8d5b27dc99d3bba53bc55834991646107558eda5778a087ccabb40e23ac0",
+  "bytes": {
+    "startupJs": 500722,
+    "startupCss": 179825,
+    "totalJs": 1842400
+  },
+  "limits": {
+    "startupJs": 501760,
+    "startupCss": 184320,
+    "totalJs": 1843200
+  },
+  "verification": "Existing focused Home/entry and chat-filter checks, shell typecheck/format/lint, renderer budget, cached native resource build and actual CUA collapse/expand/Search/Ask observations passed. No full qualification repeated.",
+  "previewSessionAtLaunch": 61610,
+  "fullQualificationPassed": false,
+  "files": {
+    "home.png": "2c2cadfbb95489a31db96b620b187c08187c15ae0d46b10fb567f15d2cea7558",
+    "renderer-manifest.json": "cbf417cd13b6d1d360055993f025f56fba74044553bde0d865f7d770eb22e793",
+    "native-build.log": "b267e20f07efbd5f9658d9ab2245b015e8f35af34689cdc1b3ac88dd0f5e21d3"
+  }
+}

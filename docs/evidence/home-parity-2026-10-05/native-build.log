@@ -1,0 +1,85 @@
+Installed 175 verified WebUI assets at /Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux/assets
+offline mode
+ninja: Entering directory `out/AuxDev'
+
+
+disable fast local for non-interactive: fastlocal=1->0
+ use `--fast_local` to enable fast local with non-interactive mode
+schedule pending:1+ready:0 (node:80884 edge:2)
+build start: Ready 1 Pending 1
+[0/2] 1.08s S Regenerating ninja files
+[0/2] 37.44s F Regenerating ninja files
+rebuild manifest finished
+37.18s Regenerating ninja files
+
+
+
+loading build.ninja... done 1.324915083s
+load siso config done 395.443834ms
+schedule pending:1+ready:0 (node:414051 edge:2)
+build start: Ready 1 Pending 1
+rebuild manifest finished
+schedule pending:1+ready:0 (node:414051 edge:9)
+build start: Ready 7344 Pending 78181
+[0/78268] 41.27s S ACTION //chrome/browser/resources/aux:build_grd(//build/toolchain/mac:clang_arm64)
+[0/15621] 42.04s F ACTION //chrome/browser/resources/aux:build_grd(//build/toolchain/mac:clang_arm64)
+[1/15531] 42.05s S ACTION //chrome/browser/resources/aux:resources_grit(//build/toolchain/mac:clang_arm64)
+[1/4580] 42.93s F ACTION //chrome/browser/resources/aux:resources_grit(//build/toolchain/mac:clang_arm64)
+[2/4352] 42.94s S CXX obj/chrome/browser/resources/aux/resources/aux_resources_map.o
+[2/4058] 42.94s S CXX obj/chrome/browser/ui/webui_browser/impl/extensions_methods.o
+[2/3824] 42.95s S CXX obj/chrome/browser/ui/webui_browser/impl/window_methods.o
+[2/3567] 42.95s S CXX obj/chrome/browser/ui/webui_browser/impl/blocking_methods.o
+[2/3065] 42.96s S CXX obj/chrome/browser/ui/webui_browser/impl/tabs_methods.o
+[2/2315] 42.98s S CXX obj/chrome/browser/ui/webui_browser/impl/page_controls_methods.o
+[2/2010] 42.99s S CXX obj/chrome/browser/ui/webui_browser/impl/migration_methods.o
+[2/1806] 42.99s S CXX obj/chrome/browser/ui/webui_browser/impl/library_methods.o
+[2/1633] 43.00s S CXX obj/chrome/browser/ui/webui_browser/impl/dictation_methods.o
+[2/1405] 43.00s S CXX obj/chrome/browser/ui/webui_browser/impl/content_methods.o
+[2/1054] 43.01s S CXX obj/chrome/browser/ui/webui_browser/impl/webui_browser_ui.o
+[2/788] 43.34s F CXX obj/chrome/browser/resources/aux/resources/aux_resources_map.o
+[3/786] 43.34s S ACTION //chrome:packed_resources_extra__repack(//build/toolchain/mac:clang_arm64)
+[3/522] 44.22s F ACTION //chrome:packed_resources_extra__repack(//build/toolchain/mac:clang_arm64)
+[4/518] 1m16.81s F CXX obj/chrome/browser/ui/webui_browser/impl/migration_methods.o
+[4/518] 1m16.81s F CXX obj/chrome/browser/ui/webui_browser/impl/blocking_methods.o
+[4/518] 1m16.81s F CXX obj/chrome/browser/ui/webui_browser/impl/library_methods.o
+[4/518] 1m16.81s F CXX obj/chrome/browser/ui/webui_browser/impl/extensions_methods.o
+[8/518] 1m17.19s F CXX obj/chrome/browser/ui/webui_browser/impl/page_controls_methods.o
+[9/518] 1m17.31s F CXX obj/chrome/browser/ui/webui_browser/impl/tabs_methods.o
+[10/518] 1m18.30s F CXX obj/chrome/browser/ui/webui_browser/impl/content_methods.o
+[11/518] 1m19.56s F CXX obj/chrome/browser/ui/webui_browser/impl/window_methods.o
+[12/518] 1m25.95s F CXX obj/chrome/browser/ui/webui_browser/impl/dictation_methods.o
+[13/518] 1m27.30s F CXX obj/chrome/browser/ui/webui_browser/impl/webui_browser_ui.o
+[14/431] 1m27.53s S SOLINK libchrome_dll.dylib libchrome_dll.dylib.TOC
+[14/416] 1m44.62s F SOLINK libchrome_dll.dylib libchrome_dll.dylib.TOC	
+stderr:
+ld: warning: ignoring -lto_library '../../third_party/llvm-build/Release+Asserts/lib/libLTO.dylib', file does not exist
+
+
+[15/96] 1m44.62s S COPY_BUNDLE_DATA gen/repack/resources.pak 'Aux Framework.framework/Versions/154.0.8037.58/Resources/resources.pak'
+[15/96] 1m44.64s F COPY_BUNDLE_DATA gen/repack/resources.pak 'Aux Framework.framework/Versions/154.0.8037.58/Resources/resources.pak'
+[16/89] 1m44.64s S CXX obj/chrome/chrome_app_executable/llvm_profile_util.o
+[16/89] 1m44.64s S CXX obj/chrome/chrome_app_executable/chrome_exe_main_mac.o
+[16/89] 1m44.71s F CXX obj/chrome/chrome_app_executable/llvm_profile_util.o
+[17/89] 1m44.72s F CXX obj/chrome/chrome_app_executable/chrome_exe_main_mac.o
+[17/89] 1m44.72s S LINK obj/chrome/chrome_app_executable/Aux
+[18/68] 1m44.81s F LINK obj/chrome/chrome_app_executable/Aux	
+stderr:
+ld: warning: ignoring -lto_library '../../third_party/llvm-build/Release+Asserts/lib/libLTO.dylib', file does not exist
+
+
+[18/47] 1m44.81s S COPY_BUNDLE_DATA obj/chrome/chrome_app_executable/Aux Aux.app/Contents/MacOS/Aux
+[19/43] 1m44.81s S COPY_BUNDLE_DATA 'Aux Framework.framework' 'Aux.app/Contents/Frameworks/Aux Framework.framework'
+[19/24] 1m44.84s F COPY_BUNDLE_DATA obj/chrome/chrome_app_executable/Aux Aux.app/Contents/MacOS/Aux
+[20/24] 1m45.15s F COPY_BUNDLE_DATA 'Aux Framework.framework' 'Aux.app/Contents/Frameworks/Aux Framework.framework'
+build finished
+
+	
+noexec:3 local:18 remote:0 cache:0 skip:85504
+  cache-write:0(err:0) fallback:0 retry:0
+fs: ops: 4618(err:781) / r:611(err:0) 320.39MiB / w:3(err:0) 21.37MiB
+
+
+shutdown cloud logging/monitoring done 9.208µs
+
+1m45.67s Build Succeeded: 21 steps - 0.20/s
+SHELL_PACKAGE_COMPLETE

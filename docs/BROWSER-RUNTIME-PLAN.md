@@ -1,12 +1,10 @@
-## Current delivery status — October 5, 2026 (America/Chicago)
+## Current delivery status — October 5, 2026, evening
 
-The frozen implementation is integrated for local-main delivery. Native352 compiled successfully and its native/runtime/helper pair matched; the focused ownership, permission, generation, mailbox and acknowledgement controls passed. Aux was launched and observed on Home and New chat with Aux branding and optional context. This is an **inspection preview**, not full roadmap or release qualification.
+Local `main` includes the panel correction (`4d7bef5b5`) and reference Home/sidebar batch (`3c4379bc3`). The packaged Aux preview now has the content-area collapse control, functional sidebar chat search, fresh Search/Ask entry, reference logo/entry/card geometry, and consistent panel backing. Aux branding and page-free Ask are retained. Real saved content drives cards; empty Profiles do not fabricate reference content. This closes the demonstrated default-view defects, **not full product parity**.
 
-Start with [the current inspection handoff](INSPECTION-BUILD-HANDOFF.md). It identifies the actual compiled product, retained evidence, launch ownership, known harness issue, completed fixes, and remaining gates. The [copied evidence index](evidence/inspection-build-2026-10-05/index.json) preserves existing results without running new checks.
+See [the current inspection handoff](INSPECTION-BUILD-HANDOFF.md) and [latest retained evidence](evidence/home-parity-2026-10-05/index.json). Renderer manifest `b13d8d5b27dc99d3bba53bc55834991646107558eda5778a087ccabb40e23ac0` is a resource update on the retained Native352 native/runtime base. Exact bytes: startup JS **500722 / 501760**, startup CSS **179825 / 184320**, total JS **1842400 / 1843200**. Focused checks, shell typecheck/format/lint, budgets, cached native build and actual-window collapse/expand/Search/Ask observations passed.
 
-The renderer passes the unchanged budgets: startup JS **500637 / 501760 bytes**, CSS **179504 / 184320**, total JS **1842978 / 1843200**. Total JS has only 222 bytes of reserve. Current functional journeys, exhaustive performance and F21 visual matrices remain deferred. The user owns resize testing; historical full native qualification remains **541 successes and one viewport failure**, with `full542Passed=false` and `safetyPassed=false`. Never convert deferred work into a pass.
-
-Scope remains frozen. No feature/command expansion, repeated unchanged checks, automatic CI runs, push, signing or release is authorized by this checkpoint. Keep the supplied 06 source/capture design authority and Aux name/logo. Earlier progress entries below are historical and do not supersede this status.
+The last launched inspection uses a disposable Profile and local demo model, with original supervisor PTY61610 owning cleanup. The previous launcher wait is historical; the inherited-slot launcher completed setup. The saved-Profile runtime startup issue remains unresolved. Resize remains user-owned; full current journeys, exhaustive performance/design matrices, external-provider qualification and release remain deferred. Historical `full542Passed=false` and `safetyPassed=false` remain unchanged. Work stayed local: no push, GitHub Actions, signing or release.
 
 ---
 

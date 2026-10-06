@@ -1,12 +1,6 @@
-## Current delivery status — October 5, 2026 (America/Chicago)
+## Historical checkpoint — superseded
 
-The frozen implementation is integrated for local-main delivery. Native352 compiled successfully and its native/runtime/helper pair matched; the focused ownership, permission, generation, mailbox and acknowledgement controls passed. Aux was launched and observed on Home and New chat with Aux branding and optional context. This is an **inspection preview**, not full roadmap or release qualification.
-
-Start with [the current inspection handoff](INSPECTION-BUILD-HANDOFF.md). It identifies the actual compiled product, retained evidence, launch ownership, known harness issue, completed fixes, and remaining gates. The [copied evidence index](evidence/inspection-build-2026-10-05/index.json) preserves existing results without running new checks.
-
-The renderer passes the unchanged budgets: startup JS **500637 / 501760 bytes**, CSS **179504 / 184320**, total JS **1842978 / 1843200**. Total JS has only 222 bytes of reserve. Current functional journeys, exhaustive performance and F21 visual matrices remain deferred. The user owns resize testing; historical full native qualification remains **541 successes and one viewport failure**, with `full542Passed=false` and `safetyPassed=false`. Never convert deferred work into a pass.
-
-Scope remains frozen. No feature/command expansion, repeated unchanged checks, automatic CI runs, push, signing or release is authorized by this checkpoint. Keep the supplied 06 source/capture design authority and Aux name/logo. Earlier progress entries below are historical and do not supersede this status.
+For current local-main implementation, package, UI evidence and remaining blockers, use [the inspection handoff](INSPECTION-BUILD-HANDOFF.md). This older checkpoint does not identify the current preview owner or renderer.
 
 ---
 

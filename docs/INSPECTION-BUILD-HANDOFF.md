@@ -1,9 +1,19 @@
 # Aux inspection build — 2026-10-05
 
-Aux is open locally at `/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app`.
-The user is inspecting the New chat surface. Keep the existing original preview owner; do not relaunch, clear its native slot, or signal unrelated processes.
+The inspection package is located at `/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app`.
+Latest implementation: `3c4379bc3` on local main, following `4d7bef5b5`. Read the current status below; older process/preview entries are historical. Preserve the original owner of any live preview and never force-clear its native slot.
 
-## Delivered batch
+## Current delivery status — October 5, 2026, evening
+
+Local `main` includes the panel correction (`4d7bef5b5`) and reference Home/sidebar batch (`3c4379bc3`). The packaged Aux preview now has the content-area collapse control, functional sidebar chat search, fresh Search/Ask entry, reference logo/entry/card geometry, and consistent panel backing. Aux branding and page-free Ask are retained. Real saved content drives cards; empty Profiles do not fabricate reference content. This closes the demonstrated default-view defects, **not full product parity**.
+
+See [the current inspection handoff](HANDOFF.md) and [latest retained evidence](evidence/home-parity-2026-10-05/index.json). Renderer manifest `b13d8d5b27dc99d3bba53bc55834991646107558eda5778a087ccabb40e23ac0` is a resource update on the retained Native352 native/runtime base. Exact bytes: startup JS **500722 / 501760**, startup CSS **179825 / 184320**, total JS **1842400 / 1843200**. Focused checks, shell typecheck/format/lint, budgets, cached native build and actual-window collapse/expand/Search/Ask observations passed.
+
+The last launched inspection uses a disposable Profile and local demo model, with original supervisor PTY61610 owning cleanup. The previous launcher wait is historical; the inherited-slot launcher completed setup. The saved-Profile runtime startup issue remains unresolved. Resize remains user-owned; full current journeys, exhaustive performance/design matrices, external-provider qualification and release remain deferred. Historical `full542Passed=false` and `safetyPassed=false` remain unchanged. Work stayed local: no push, GitHub Actions, signing or release.
+
+---
+
+## Historical initial inspection batch
 
 - Page-free chat home and optional context, retaining Aux name and logo.
 - Command surface scope filtering and qualified routine gating.

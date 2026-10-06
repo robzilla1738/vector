@@ -1,3 +1,7 @@
+## Latest demonstrated reference corrections — October 5, evening
+
+The actual captured new-tab and sidebar bundle now drive Home geometry, content-area collapse placement, sidebar search spacing and Search/Ask entry. Aux branding, real saved data and Tasks semantics are retained. Panel colors use a neutral backing with CSS precedence verified in the real package. See [current handoff](../INSPECTION-BUILD-HANDOFF.md) and [window/build evidence](../evidence/home-parity-2026-10-05/index.json). These demonstrated corrections do not close full F21 or cross-product parity; prior source mappings below remain reference material.
+
 ## Inspection checkpoint — October 5, 2026
 
 The source families below remain the design authority. Reference availability is not proof of complete adoption. Stable chat/start, composer, command filtering and split-drag fixes are in the inspection batch; exhaustive light/dark, layout, material, performance and F21 state matrices remain deferred. Keep Aux name, logo and product identity in every borrowed surface. Preserve explicit safety and accessibility differences. See [current handoff](../INSPECTION-BUILD-HANDOFF.md) for the delivery state.

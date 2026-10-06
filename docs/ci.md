@@ -1,6 +1,6 @@
 ## Current local delivery policy — October 5, 2026
 
-GitHub Actions usage is limited. This delivery ran locally and did not dispatch hosted CI or push changes. Documentation integration does not require another native build, broad unit run, or remote job. Reuse the [retained integrated checks](evidence/inspection-build-2026-10-05/index.json); rerun a relevant check only when relevant implementation changes or a concrete new failure requires it. Release CI, signing and notarization remain deferred.
+GitHub Actions usage is limited. This delivery ran locally and did not dispatch hosted CI or push changes. Documentation integration does not require another native build, broad unit run, or remote job. Reuse the [latest UI checks and package evidence](evidence/home-parity-2026-10-05/index.json) and [retained native safety checks](evidence/inspection-build-2026-10-05/index.json); rerun a relevant check only when relevant implementation changes or a concrete new failure requires it. Release CI, signing and notarization remain deferred.
 
 ---
 
