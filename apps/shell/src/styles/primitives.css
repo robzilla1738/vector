@@ -88,7 +88,7 @@
   @keyframes pop {
     from {
       opacity: 0;
-      transform: translateY(-4px) scale(0.985);
+      transform: translateY(2px) scale(0.95);
     }
   }
   @keyframes rise {
@@ -187,6 +187,7 @@
     color: var(--ink-0);
   }
   .icon-btn:not(:disabled):active {
+    scale: 0.97;
     background: var(--bg-active);
   }
   .icon-btn:disabled {

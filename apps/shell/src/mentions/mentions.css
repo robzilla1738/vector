@@ -8,7 +8,7 @@
   border-radius: 12px;
   background: var(--bg-1);
   color: var(--ink-0);
-  box-shadow: 0 8px 30px #0003;
+  box-shadow: 0 8px 30px var(--shadow-overlay-tint);
   padding: 8px;
 }
 .mention-popup [role="group"] > strong {

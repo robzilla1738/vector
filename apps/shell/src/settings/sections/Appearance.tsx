@@ -177,7 +177,7 @@ export function AppearanceSettings({
         hint="Both layouts use the same tabs, folders, and current selection."
       >
         <LayoutChoice
-          value={String(settings.tabLayout ?? "horizontal")}
+          value={String(settings.tabLayout ?? "vertical")}
           onChange={(tabLayout) => void set({ tabLayout })}
         />
       </SettingsField>

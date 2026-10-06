@@ -68,7 +68,7 @@
     width: 100%;
     height: min(440px, 50vh);
     border: 0;
-    background: white;
+    background: var(--web-page-background);
   }
   .saved-result-content pre {
     max-height: none;

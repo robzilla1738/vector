@@ -157,12 +157,12 @@
 
   /* Local page contrast lets the reveal stay clear instead of painting a dark band. */
   :root {
-    --toolbar-glass: rgb(23 23 23 / 0.18);
-    --toolbar-ink: #f1f1f1;
+    --toolbar-glass: var(--toolbar-glass-dark);
+    --toolbar-ink: var(--toolbar-ink-dark);
   }
   :root[data-toolbar-tone="light"] {
-    --toolbar-glass: rgb(255 255 255 / 0.18);
-    --toolbar-ink: #292929;
+    --toolbar-glass: var(--toolbar-glass-light);
+    --toolbar-ink: var(--toolbar-ink-light);
   }
   .app.native-host.tabs-vertical .main-col.toolbar-revealed.has-page > .toolbar {
     color: var(--toolbar-ink);
@@ -209,8 +209,8 @@
     backdrop-filter: var(--floating-glass-filter, blur(var(--blur-glass-floating)) saturate(1.15));
     -webkit-backdrop-filter: var(--floating-glass-filter, blur(var(--blur-glass-floating)) saturate(1.15));
     box-shadow:
-      0 8px 30px rgb(0 0 0 / 0.16),
-      inset 0 1px rgb(255 255 255 / 0.06);
+      0 8px 30px var(--floating-shadow-tint),
+      inset 0 1px var(--floating-highlight);
     opacity: 0;
     transform: translateX(-12px);
     visibility: hidden;
@@ -323,7 +323,7 @@
    A fully transparent view can otherwise turn page gestures into window hits. */
   .app.native-host.toolbar-stacked .stage-card.has-page {
     -webkit-app-region: no-drag;
-    background: rgb(0 0 0 / 0.004);
+    background: var(--native-material-hit-plane);
   }
   .app.native-host .main-col.toolbar-revealed.has-page > .toolbar :is(.tb-left, .tb-right) {
     -webkit-app-region: drag;
@@ -333,7 +333,7 @@
     flex: 0 0 64px;
     align-self: stretch;
     -webkit-app-region: drag;
-    background: rgb(0 0 0 / 0.012);
+    background: var(--native-material-thin-plane);
   }
 
   /* Native drag regions must not inherit the toolbar's animated transform. */
@@ -343,7 +343,7 @@
     height: var(--toolbar-h);
     z-index: var(--z-panel);
     -webkit-app-region: no-drag;
-    background: rgb(0 0 0 / 0.012);
+    background: var(--native-material-thin-plane);
   }
 
   /* Blank sidebar chrome uses the same captured drag as the revealed toolbar. */

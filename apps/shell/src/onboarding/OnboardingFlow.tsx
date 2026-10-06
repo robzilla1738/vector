@@ -424,7 +424,7 @@ export function OnboardingFlow({
                   ))}
                 </fieldset>
                 <LayoutChoice
-                  value={String(settings.tabLayout ?? "horizontal")}
+                  value={String(settings.tabLayout ?? "vertical")}
                   onChange={(tabLayout) =>
                     void work(async () => {
                       await saveSettings({ tabLayout });

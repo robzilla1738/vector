@@ -298,7 +298,7 @@
     max-height: min(520px, 62vh);
     object-fit: cover;
     object-position: top;
-    background: #fff;
+    background: var(--web-page-background);
   }
   .conversation-preview p {
     margin: 0;
@@ -1955,7 +1955,7 @@
     border: 1px solid var(--line-strong);
     border-radius: var(--r-card);
     background: var(--bg-1);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 12px 40px var(--sidebar-elevation-tint);
     -webkit-app-region: no-drag;
   }
   .sb-more-menu button {
@@ -2283,7 +2283,7 @@
     overflow: hidden;
     border: var(--hairline) solid var(--line);
     border-radius: var(--r-md);
-    background: #151515;
+    background: var(--terminal-background);
   }
   .cloud-terminal-head {
     display: flex;

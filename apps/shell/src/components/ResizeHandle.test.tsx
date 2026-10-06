@@ -8,6 +8,8 @@ it("snaps near the reset width and clamps outside the resize range", () => {
   expect(snapResizeWidth(273, 220, 380, 280)).toBe(280);
   expect(snapResizeWidth(287, 220, 380, 280)).toBe(280);
   expect(snapResizeWidth(270, 220, 380, 280)).toBe(270);
+  expect(snapResizeWidth(294, 126, 400, 280, 15)).toBe(280);
+  expect(snapResizeWidth(295, 126, 400, 280, 15)).toBe(295);
   expect(snapResizeWidth(399, 220, 380, 280)).toBe(380);
 });
 
@@ -74,7 +76,8 @@ it("restores the saved width when a pointer drag is cancelled", () => {
 it.each([
   [110, [], 1, 280],
   [111, [[126]], 0, 126],
-  [265, [], 0, 280],
+  [265, [[265]], 0, 265],
+  [266, [], 0, 280],
   [264, [[264]], 0, 264],
   [415, [[400]], 0, 400],
 ])("commits sidebar drag %i with collapse and snap boundaries", (target, resized, collapses, width) => {
@@ -97,6 +100,8 @@ it.each([
           max={400}
           reset={280}
           onResize={onResize}
+          snapDistance={15}
+          keyboardStep={50}
           onCollapse={onCollapse}
         />,
       ),
@@ -136,6 +141,8 @@ it("announces the sidebar keyboard's 50 pixel step", () => {
           max={400}
           reset={280}
           onResize={onResize}
+          snapDistance={15}
+          keyboardStep={50}
           onCollapse={vi.fn()}
         />,
       ),
@@ -184,6 +191,8 @@ it.each([
             max={400}
             reset={280}
             onResize={onResize}
+            snapDistance={15}
+            keyboardStep={50}
             onCollapse={onCollapse}
           />,
         ),

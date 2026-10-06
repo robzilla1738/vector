@@ -1,4 +1,4 @@
-/* Aside 1.26.921.1617 geometry and semantic palette, with Aux identity.
+/* Aside chrome geometry and alpha palette, with Aux identity.
  * Popover glass remains separate from page material and native sidebar vibrancy.
  */
 
@@ -70,7 +70,7 @@
     --t-layout: 200ms;
     --t-floating-in: 200ms;
     --t-floating-out: 150ms;
-    --sidebar-row-h: 30px;
+    --sidebar-row-h: 32px;
     --sidebar-row-radius: 8px;
     --sidebar-resize-handle: 5px;
     --horizontal-tab-strip-h: 38px;
@@ -96,7 +96,7 @@
     --r-composer: 20px;
 
     /* ---- shell metrics ---- */
-    --toolbar-h: 40px;
+    --toolbar-h: 42px;
     --traffic-inset: 80px;
     --sidebar-w: 280px;
     --sidebar-rail-w: 56px;
@@ -120,13 +120,13 @@
     --row-h-lg: 40px;
 
     /* ---- motion ---- */
-    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
     /* long, soft landing for elements that travel (toolbar reveal, quick ask) */
     --ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
     --t-quick: 100ms;
     --t-fast: 150ms;
-    --t-popup: 82ms;
+    --t-popup: 100ms;
     --t-material-state: 120ms;
     --t-reveal: 180ms;
     --t-slow: 240ms;
@@ -153,116 +153,135 @@
     --z-drawer: 45;
     --z-toast: 60;
 
-    /* ---- dark ---- */
+    /* Native materials, masks and opaque page previews use named shared colors. */
+    --toggle-thumb: #fff;
+    --mask-opaque: #000;
+    --mask-soft: rgb(0 0 0 / 85%);
+    --mask-fade: rgb(0 0 0 / 35%);
+    --shadow-overlay-tint: rgb(0 0 0 / 20%);
+    --shadow-soft-overlay-tint: rgb(0 0 0 / 13%);
+    --confirmation-backdrop: rgb(0 0 0 / 15%);
+    --dialog-backdrop: rgb(0 0 0 / 25%);
+    --toolbar-glass-dark: rgb(23 23 23 / 18%);
+    --toolbar-ink-dark: rgb(255 255 255 / 85%);
+    --toolbar-glass-light: rgb(255 255 255 / 18%);
+    --toolbar-ink-light: rgb(0 0 0 / 95%);
+    --floating-shadow-tint: rgb(0 0 0 / 16%);
+    --floating-highlight: rgb(255 255 255 / 6%);
+    --native-material-hit-plane: rgb(0 0 0 / 0.4%);
+    --native-material-thin-plane: rgb(0 0 0 / 1.2%);
+    --capture-scrim: rgb(0 0 0 / 40%);
+    --glass-rim-highlight: #909090;
+    --glass-rim-transparent: #90909000;
+    --glass-rim-shade: #505050;
+    --glass-rim-half: #90909080;
+    --glass-inset-fill: #44444480;
+    --glass-inset-glow: #e6e6e6;
+    --glass-shade-fill: #00000014;
+    --glass-shade-glow: #ffffff1a;
+    --web-page-background: #fff;
+    --web-page-foreground: #1a1a1e;
+    --web-page-offwhite: #fbfbfc;
+    --web-page-divider: #ececf1;
+    --web-page-placeholder: #e4e4ea;
+    --web-page-placeholder-strong: #d9d9e2;
+    --web-page-muted: #8a8a93;
+    --web-page-code: #ececea;
+    --web-page-card: #e8e8ee;
+    --web-page-selection: #eef0f6;
+    --sidebar-elevation-tint: rgb(0 0 0 / 22%);
+    --terminal-background: #151515;
+    --quick-ask-shadow-tint: rgb(0 0 0 / 55%);
+    --space-editor-hue-0: oklch(60% 0.18 0);
+    --space-editor-hue-60: oklch(60% 0.18 60);
+    --space-editor-hue-120: oklch(60% 0.18 120);
+    --space-editor-hue-180: oklch(60% 0.18 180);
+    --space-editor-hue-240: oklch(60% 0.18 240);
+    --space-editor-hue-300: oklch(60% 0.18 300);
+    --space-editor-hue-359: oklch(60% 0.18 359);
+
+    /* Aside alpha ramps. Window material and opaque web pages are distinct. */
     color-scheme: dark;
-
-    --bg-window: oklch(20.5% 0 0);
-    --bg-0: oklch(20.5% 0 0);
-    --bg-1: oklch(26.9% 0 0);
-    /* Dark popovers sit on the panel step (reference 26.9%); light lifts them to white. */
+    --bg-window: #17171780;
+    --bg-0: #171717;
+    --bg-1: #24272b;
     --bg-2: var(--bg-1);
-    --bg-3: oklch(37.1% 0 0);
-    --bg-hover: oklch(98.5% 0 0 / 0.08);
-    --bg-active: oklch(98.5% 0 0 / 0.1);
+    --bg-3: #3c3c3c;
+    --bg-hover: rgb(255 255 255 / 10%);
+    --bg-active: rgb(255 255 255 / 12.5%);
     --floating-sidebar-surface: #24272b;
-    --glass: oklch(20.5% 0 0 / 0.8);
-    --glass-strong: oklch(26.9% 0 0 / 0.95);
-    /* solid: page views are native layers a CSS blur never reaches */
-    --scrim: oklch(0% 0 0 / 0.32);
+    --location-bar: #171717;
+    --search-field: #3c3c3c;
+    --hover-card: #18181b;
+    --tab-switcher: #171717b3;
+    --frame-inactive: #1f2020;
+    --frame-active: #3c3c3c;
+    --glass: rgb(23 23 23 / 94%);
+    --glass-strong: rgb(36 39 43 / 95%);
+    --scrim: rgb(0 0 0 / 32%);
     --stage-bg: var(--bg-0);
-    --stage-frame: var(--bg-0);
+    --stage-frame: var(--frame-inactive);
 
-    --line: oklch(98.5% 0 0 / 0.15);
-    --line-strong: oklch(98.5% 0 0 / 0.2);
+    --ink-0: rgb(255 255 255 / 85%);
+    --ink-1: rgb(255 255 255 / 75%);
+    --ink-2: rgb(255 255 255 / 55%);
+    --ink-3: rgb(255 255 255 / 25%);
+    --ink-4: rgb(255 255 255 / 20%);
+    --ink-5: rgb(255 255 255 / 5%);
+    --ink-disabled: rgb(255 255 255 / 45%);
+    --ink-active-hint: rgb(255 255 255 / 50%);
+    --ink-inverse: rgb(0 0 0 / 95%);
+    --line: rgb(255 255 255 / 10%);
+    --line-strong: rgb(255 255 255 / 15%);
+    --border-surface: var(--line-strong);
     --line-inset: inset 0 0 0 var(--hairline) var(--line);
-    --glass-border-ring: inset 0 0 0 var(--hairline) var(--line);
+    --glass-border-ring: var(--line-inset);
 
-    --ink-0: oklch(98.5% 0 0);
-    --ink-1: oklch(98.5% 0 0 / 0.85);
-    --ink-2: #c9c9c9;
-    --ink-3: oklch(98.5% 0 0 / 0.3);
-    --ink-4: oklch(98.5% 0 0 / 0.2);
-    --ink-5: oklch(98.5% 0 0 / 0.05);
-    --ink-disabled: oklch(98.5% 0 0 / 0.45);
-    --ink-active-hint: oklch(98.5% 0 0 / 0.5);
-    --ink-inverse: oklch(14.5% 0 0 / 0.85);
+    --brand: #38bdf8;
+    --accent: var(--brand);
+    --accent-ink: #171717;
+    --accent-soft: color-mix(in srgb, var(--brand) 16%, transparent);
+    --accent-line: color-mix(in srgb, var(--brand) 32%, transparent);
+    --ring: color-mix(in srgb, var(--brand) 8%, transparent);
+    --focus-ring: color-mix(in srgb, var(--brand) 80%, transparent);
+    --focus-line: rgb(255 255 255 / 55%);
+    --selection: color-mix(in srgb, var(--brand) 28%, transparent);
+    --link: var(--brand);
+    --accent-blue: var(--brand);
+    --accent-blue-soft: var(--accent-soft);
+    --accent-blue-line: var(--accent-line);
+    --accent-surface: color-mix(in srgb, var(--brand) 10%, transparent);
+    --icon-blue: var(--brand);
 
-    --accent: oklch(98.5% 0 0 / 0.85);
-    --accent-ink: oklch(14.5% 0 0 / 0.85);
-    --accent-soft: oklch(98.5% 0 0 / 0.08);
-    --accent-line: oklch(98.5% 0 0 / 0.2);
-    --ring: oklch(98.5% 0 0 / 0.08);
-    /* keyboard focus: ≥3:1 against every surface, not the decorative glow */
-    --focus-ring: color-mix(in oklch, var(--link) 80%, transparent);
-    --selection: color-mix(in oklch, var(--link) 28%, transparent);
-    --focus-line: oklch(98.5% 0 0 / 0.55);
-    --link: oklch(74.6% 0.16 232.661);
-    --accent-blue: var(--link);
-    --accent-blue-soft: color-mix(in oklch, var(--link) 16%, transparent);
-    --accent-blue-line: color-mix(in oklch, var(--link) 32%, transparent);
-    --accent-surface: color-mix(in oklch, var(--link) 10%, transparent);
-    --icon-blue: var(--link);
-
-    --ok: oklch(76.5% 0.177 163.223);
-    --ok-soft: color-mix(in oklch, var(--ok) 12%, transparent);
-    --warn: #ff8a30;
-    --warn-soft: color-mix(in oklch, var(--warn) 14%, transparent);
-    --warn-line: color-mix(in oklch, var(--warn) 32%, transparent);
-    --err: oklch(70.4% 0.191 22.216);
-    --err-soft: color-mix(in oklch, var(--err) 12%, transparent);
-    --err-line: color-mix(in oklch, var(--err) 32%, transparent);
-    --wait: #fbbf24;
-    --wait-soft: color-mix(in oklch, var(--wait) 10%, transparent);
-    --wait-line: color-mix(in oklch, var(--wait) 25%, transparent);
-    --wait-ink: #000000;
-    --diff-add: color-mix(in oklch, var(--ok) 28%, transparent);
+    --ok: #16a34a;
+    --ok-soft: color-mix(in srgb, var(--ok) 12%, transparent);
+    --warn: #facc15;
+    --warn-soft: color-mix(in srgb, var(--warn) 14%, transparent);
+    --warn-line: color-mix(in srgb, var(--warn) 32%, transparent);
+    --err: #fb7171;
+    --err-soft: color-mix(in srgb, var(--err) 12%, transparent);
+    --err-line: color-mix(in srgb, var(--err) 32%, transparent);
+    --badge: #38b6f6;
+    --wait: var(--warn);
+    --wait-soft: var(--warn-soft);
+    --wait-line: var(--warn-line);
+    --wait-ink: #171717;
+    --diff-add: color-mix(in srgb, var(--ok) 28%, transparent);
     --diff-add-fg: #d2eadc;
-    --diff-remove: color-mix(in oklch, var(--err) 28%, transparent);
+    --diff-remove: color-mix(in srgb, var(--err) 28%, transparent);
     --diff-remove-fg: #f0d4d4;
-    --find-match: #542500;
-    --find-active: #ff8a30;
-    --find-active-ink: #171717;
+    --find-match: color-mix(in srgb, var(--warn) 20%, var(--bg-0));
+    --find-active: var(--warn);
+    --find-active-ink: var(--wait-ink);
     --agent: var(--ink-0);
     --agent-soft: var(--bg-3);
     --agent-line: var(--line-strong);
 
-    --shadow-card:
-      0 0 0 var(--hairline) var(--line), 0 4px 6px -1px var(--shadow-tint), 0 2px 4px -2px var(--shadow-tint);
-    --shadow-pop:
-      0 0 0 var(--hairline) var(--line), 0 20px 25px -5px var(--shadow-tint),
-      0 8px 10px -6px var(--shadow-tint);
-    --shadow-sm: 0 1px 2px var(--shadow-tint);
-    --highlight-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    --img-outline: rgba(255, 255, 255, 0.1);
-
-    --space-color: #8a8a86;
-    --space-l: 72%;
-    --space-c: 0.07;
-
-    /* frozen chrome ink so sidebar remaps don’t leak into menus */
-    --chrome-ink-0: var(--ink-0);
-    --chrome-ink-1: var(--ink-1);
-    --chrome-ink-2: var(--ink-2);
-    --chrome-bg-2: var(--bg-2);
-    --chrome-bg-3: var(--bg-3);
-    --chrome-hover: var(--bg-hover);
-
-    /* sidebar: native material with quiet selection */
-    --sb-bg: var(--bg-window);
-    --sb-ink-0: var(--ink-0);
-    --sb-ink-1: var(--ink-1);
-    --sb-ink-2: var(--ink-2);
-    --sb-ink-3: var(--ink-3);
-    --sb-hover: var(--bg-hover);
-    --sb-field: var(--surface-primary);
-    --sb-line: var(--line);
-    --sb-selected: var(--bg-active);
-    --sb-selected-ink: var(--ink-0);
-    --sb-glow: #000000;
-    --sb-selected-shadow: none;
-    --sb-pin-face: var(--surface-secondary);
-    --sb-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-
+    --surface-primary: rgb(255 255 255 / 8%);
+    --surface-secondary: rgb(255 255 255 / 6%);
+    --surface-tertiary: rgb(255 255 255 / 4%);
+    --muted: rgb(255 255 255 / 15%);
+    --tabs-list: rgb(23 23 23 / 40%);
     --surface-window: var(--bg-window);
     --surface-canvas: var(--bg-0);
     --surface-panel: var(--bg-1);
@@ -271,122 +290,103 @@
     --surface-popover: var(--bg-2);
     --surface-menu: var(--bg-2);
     --surface-input: var(--surface-primary);
-    --surface-primary: oklch(98.5% 0 0 / 0.08);
-    --surface-secondary: oklch(98.5% 0 0 / 0.06);
-    --surface-tertiary: oklch(98.5% 0 0 / 0.04);
-    --muted: oklch(98.5% 0 0 / 0.15);
-    --tabs-list: oklch(20.5% 0 0 / 0.4);
+    --border: var(--line);
+    --panel: var(--surface-panel);
+    --on-accent: var(--accent-ink);
+    --line-1: var(--line);
+    --line-soft: var(--line);
+    --surface: var(--surface-primary);
+    --z-modal: 50;
+
     --shadow-tint: #0000001a;
-    --space-grain-opacity-scale: 0.0005;
-  }
-
-  [data-theme="dark"] {
-    color-scheme: dark;
-    --space-grain-opacity-scale: 0.0009;
-  }
-
-  /* ---------- light ---------- */
-  [data-theme="light"] {
-    color-scheme: light;
-
-    --bg-window: #fff;
-    --bg-0: #fff;
-    --bg-1: #fafafa;
-    --bg-2: #fff;
-    --bg-3: oklch(97% 0 0);
-    --bg-hover: oklch(14.5% 0 0 / 0.05);
-    --bg-active: oklch(14.5% 0 0 / 0.1);
-    --floating-sidebar-surface: #f3f4f6;
-    --glass: oklch(100% 0 0 / 0.8);
-    --glass-strong: oklch(100% 0 0 / 0.95);
-    --scrim: oklch(14.5% 0 0 / 0.18);
-    --stage-bg: var(--bg-0);
-    --stage-frame: var(--bg-0);
-
-    --line: oklch(14.5% 0 0 / 0.1);
-    --line-strong: oklch(14.5% 0 0 / 0.15);
-    --line-inset: inset 0 0 0 var(--hairline) var(--line);
-    --glass-border-ring: inset 0 0 0 var(--hairline) var(--line);
-
-    --ink-0: oklch(14.5% 0 0);
-    --ink-1: oklch(14.5% 0 0 / 0.85);
-    --ink-2: #424242;
-    --ink-3: oklch(14.5% 0 0 / 0.3);
-    --ink-4: oklch(14.5% 0 0 / 0.2);
-    --ink-5: oklch(14.5% 0 0 / 0.05);
-    --ink-disabled: oklch(14.5% 0 0 / 0.45);
-    --ink-active-hint: oklch(14.5% 0 0 / 0.5);
-    --ink-inverse: oklch(98.5% 0 0 / 0.95);
-
-    --accent: oklch(14.5% 0 0 / 0.95);
-    --accent-ink: oklch(98.5% 0 0 / 0.95);
-    --accent-soft: oklch(14.5% 0 0 / 0.08);
-    --accent-line: oklch(14.5% 0 0 / 0.15);
-    --ring: oklch(14.5% 0 0 / 0.08);
-    --selection: color-mix(in oklch, var(--link) 22%, transparent);
-    --focus-line: oklch(14.5% 0 0 / 0.55);
-    --link: oklch(58.8% 0.158 241.966);
-    --accent-blue: var(--link);
-    --accent-blue-soft: color-mix(in oklch, var(--link) 12%, transparent);
-    --accent-blue-line: color-mix(in oklch, var(--link) 28%, transparent);
-    --accent-surface: color-mix(in oklch, var(--link) 10%, transparent);
-    --icon-blue: var(--link);
-
-    --ok: oklch(69.6% 0.17 162.48);
-    --ok-soft: color-mix(in oklch, var(--ok) 10%, transparent);
-    --warn: #e07b00;
-    --warn-soft: color-mix(in oklch, var(--warn) 10%, transparent);
-    --warn-line: color-mix(in oklch, var(--warn) 28%, transparent);
-    --err: oklch(57.7% 0.245 27.325);
-    --err-soft: color-mix(in oklch, var(--err) 10%, transparent);
-    --err-line: color-mix(in oklch, var(--err) 28%, transparent);
-    --wait: #b45309;
-    --wait-soft: color-mix(in oklch, var(--wait) 10%, transparent);
-    --wait-line: color-mix(in oklch, var(--wait) 25%, transparent);
-    --wait-ink: #ffffff;
-    --diff-add: color-mix(in oklch, var(--ok) 16%, transparent);
-    --diff-add-fg: #1a4a2a;
-    --diff-remove: color-mix(in oklch, var(--err) 16%, transparent);
-    --diff-remove-fg: #5a2020;
-    --find-match: #fff4eb;
-    --find-active: #ffb26b;
-    --find-active-ink: #171717;
-    --agent: var(--ink-0);
-    --agent-soft: var(--bg-3);
-    --agent-line: var(--line-strong);
-
     --shadow-card:
-      0 0 0 var(--hairline) var(--line), 0 4px 6px -1px var(--shadow-tint), 0 2px 4px -2px var(--shadow-tint);
+      0 0 0 var(--hairline) var(--border-surface), 0 4px 6px -1px var(--shadow-tint),
+      0 2px 4px -2px var(--shadow-tint);
     --shadow-pop:
-      0 0 0 var(--hairline) var(--line), 0 20px 25px -5px var(--shadow-tint),
+      0 0 0 var(--hairline) var(--border-surface), 0 20px 25px -5px var(--shadow-tint),
       0 8px 10px -6px var(--shadow-tint);
     --shadow-sm: 0 1px 2px var(--shadow-tint);
-    --highlight-inset: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-    --img-outline: rgba(0, 0, 0, 0.08);
+    --highlight-inset: inset 0 1px 0 rgb(255 255 255 / 6%);
+    --img-outline: rgb(255 255 255 / 10%);
 
-    --space-color: #5c5c58;
-    --space-l: 55%;
-    --space-c: 0.09;
-
+    --space-color: #8a8a86;
+    --space-l: 72%;
+    --space-c: 0.07;
+    --space-grain-opacity-scale: 0.0009;
+    --chrome-ink-0: var(--ink-0);
+    --chrome-ink-1: var(--ink-1);
+    --chrome-ink-2: var(--ink-2);
+    --chrome-bg-2: var(--bg-2);
+    --chrome-bg-3: var(--bg-3);
+    --chrome-hover: var(--bg-hover);
     --sb-bg: var(--bg-window);
     --sb-ink-0: var(--ink-0);
-    --sb-ink-1: var(--ink-1);
-    --sb-ink-2: var(--ink-2);
+    --sb-ink-1: rgb(255 255 255 / 65%);
+    --sb-ink-2: rgb(255 255 255 / 45%);
     --sb-ink-3: var(--ink-3);
     --sb-hover: var(--bg-hover);
     --sb-field: var(--surface-primary);
     --sb-line: var(--line);
     --sb-selected: var(--bg-active);
     --sb-selected-ink: var(--ink-0);
-    --sb-glow: rgba(13, 13, 13, 0.18);
+    --sb-glow: #000;
     --sb-selected-shadow: none;
     --sb-pin-face: var(--surface-secondary);
-    --sb-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-    --surface-primary: oklch(100% 0 0);
-    --surface-secondary: oklch(100% 0 0 / 0.85);
-    --surface-tertiary: oklch(100% 0 0 / 0.55);
-    --muted: oklch(14.5% 0 0 / 0.05);
-    --tabs-list: oklch(70.8% 0 0 / 0.2);
+    --sb-highlight: inset 0 1px 0 rgb(255 255 255 / 5%);
+  }
+
+  [data-theme="light"] {
+    color-scheme: light;
+    --bg-window: #ffffff80;
+    --bg-0: #fff;
+    --bg-1: #f3f4f6;
+    --bg-2: #fff;
+    --bg-3: #f3f4f6;
+    --bg-hover: rgb(0 0 0 / 10%);
+    --bg-active: rgb(0 0 0 / 12.5%);
+    --floating-sidebar-surface: #f3f4f6;
+    --location-bar: #fff;
+    --search-field: #f3f4f6;
+    --hover-card: #fff;
+    --tab-switcher: rgb(255 255 255 / 70%);
+    --frame-inactive: #f3f4f6;
+    --frame-active: #fff;
+    --glass: rgb(255 255 255 / 94%);
+    --glass-strong: rgb(255 255 255 / 95%);
+    --scrim: rgb(0 0 0 / 18%);
+    --ink-0: rgb(0 0 0 / 95%);
+    --ink-1: rgb(0 0 0 / 75%);
+    --ink-2: rgb(0 0 0 / 55%);
+    --ink-3: rgb(0 0 0 / 25%);
+    --ink-4: rgb(0 0 0 / 20%);
+    --ink-5: rgb(0 0 0 / 5%);
+    --ink-disabled: rgb(0 0 0 / 45%);
+    --ink-active-hint: rgb(0 0 0 / 50%);
+    --ink-inverse: rgb(255 255 255 / 95%);
+    --line: rgb(0 0 0 / 10%);
+    --line-strong: rgb(0 0 0 / 15%);
+    --brand: #0ea5e9;
+    --focus-line: rgb(0 0 0 / 55%);
+    --selection: color-mix(in srgb, var(--brand) 22%, transparent);
+    --diff-add: color-mix(in srgb, var(--ok) 16%, transparent);
+    --diff-add-fg: #1a4a2a;
+    --diff-remove: color-mix(in srgb, var(--err) 16%, transparent);
+    --diff-remove-fg: #5a2020;
+    --highlight-inset: inset 0 1px 0 rgb(255 255 255 / 70%);
+    --img-outline: rgb(0 0 0 / 8%);
+    --space-color: #5c5c58;
+    --space-l: 55%;
+    --space-c: 0.09;
+    --space-grain-opacity-scale: 0.0005;
+    --sb-ink-1: rgb(0 0 0 / 65%);
+    --sb-ink-2: rgb(0 0 0 / 45%);
+    --sb-glow: rgb(0 0 0 / 18%);
+    --sb-highlight: var(--highlight-inset);
+    --surface-primary: #fff;
+    --surface-secondary: rgb(255 255 255 / 85%);
+    --surface-tertiary: rgb(255 255 255 / 55%);
+    --muted: rgb(0 0 0 / 5%);
+    --tabs-list: rgb(0 0 0 / 20%);
     --shadow-tint: #0000000d;
   }
 
@@ -417,6 +417,14 @@
 } /* @layer tokens */
 
 @layer overrides {
+  :root[data-sidebar-appearance="solid"] {
+    --bg-window: var(--bg-0);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    :root {
+      --bg-window: var(--bg-0);
+    }
+  }
   @media (prefers-contrast: more) {
     :root {
       --hairline: 1px;

@@ -29,16 +29,16 @@
     border: 1px solid var(--line);
     border-radius: var(--r-md);
     background:
-      linear-gradient(to top, #000, transparent 50%, #fff),
+      linear-gradient(to top, var(--mask-opaque), transparent 50%, var(--web-page-background)),
       linear-gradient(
         to right,
-        oklch(60% 0.18 0),
-        oklch(60% 0.18 60),
-        oklch(60% 0.18 120),
-        oklch(60% 0.18 180),
-        oklch(60% 0.18 240),
-        oklch(60% 0.18 300),
-        oklch(60% 0.18 359)
+        var(--space-editor-hue-0),
+        var(--space-editor-hue-60),
+        var(--space-editor-hue-120),
+        var(--space-editor-hue-180),
+        var(--space-editor-hue-240),
+        var(--space-editor-hue-300),
+        var(--space-editor-hue-359)
       );
     cursor: crosshair;
     touch-action: none;
@@ -47,9 +47,9 @@
     position: absolute;
     width: 14px;
     height: 14px;
-    border: 2px solid #fff;
+    border: 2px solid var(--web-page-background);
     border-radius: 50%;
-    box-shadow: 0 0 0 1px #000;
+    box-shadow: 0 0 0 1px var(--mask-opaque);
     transform: translate(-50%, -50%);
   }
   .space-theme-actions {

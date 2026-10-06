@@ -209,7 +209,7 @@ export function App() {
       contentOpacity: s.settings.contentOpacity,
     })),
   );
-  const horizontal = (settings.tabLayout ?? "horizontal") === "horizontal";
+  const horizontal = (settings.tabLayout ?? "vertical") === "horizontal";
   const activePageId = useStore((s) => s.activePageId);
   const activePageEpoch = useStore((s) => s.pages.byId[s.activePageId ?? ""]?.documentEpoch);
   const activePage = useStore(

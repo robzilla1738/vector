@@ -173,7 +173,7 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 0 var(--space-3) var(--space-2);
+    padding: 0 var(--space-2) var(--space-2);
     display: flex;
     flex-direction: column;
     gap: var(--space-0);
@@ -290,7 +290,7 @@
     height: var(--row-h);
     padding: 0 var(--space-1) 0 var(--space-2);
     border-radius: var(--r-lg);
-    color: color-mix(in srgb, var(--ink-0) 92%, var(--ink-1));
+    color: var(--sb-ink-1);
     position: relative;
     width: 100%;
     text-align: left;
@@ -558,7 +558,7 @@
     --bg-2: var(--chrome-bg-2);
     --bg-3: var(--chrome-bg-3);
     --bg-hover: var(--chrome-hover);
-    --line-inset: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    --line-inset: inset 0 0 0 1px var(--line);
     color: var(--chrome-ink-0);
   }
   .ctx-menu {

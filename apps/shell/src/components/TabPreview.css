@@ -17,7 +17,7 @@
   }
   .tab-preview-image {
     height: 158px;
-    background: var(--bg-2);
+    background: var(--hover-card);
     overflow: hidden;
   }
 }

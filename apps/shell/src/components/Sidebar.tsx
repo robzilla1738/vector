@@ -1516,6 +1516,8 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
             min={126}
             max={400}
             reset={280}
+            snapDistance={15}
+            keyboardStep={50}
             onResize={setSidebarWidth}
             onCollapse={() => runCommand("sidebar-hide")}
           />

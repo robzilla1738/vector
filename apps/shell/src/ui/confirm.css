@@ -10,7 +10,7 @@
     box-shadow: var(--shadow-card);
   }
   .ui-alert-dialog::backdrop {
-    background: rgb(0 0 0 / 0.15);
+    background: var(--confirmation-backdrop);
     backdrop-filter: blur(4px);
   }
   .ui-alert-dialog :is(h3, p) {

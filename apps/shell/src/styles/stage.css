@@ -133,13 +133,13 @@
   .mock-page {
     position: absolute;
     inset: 0;
-    background: #fff;
-    color: #1a1a1e;
+    background: var(--web-page-background);
+    color: var(--web-page-foreground);
     overflow: hidden;
     font-family: var(--font-ui);
   }
   [data-theme="dark"] .mock-page {
-    background: #fbfbfc;
+    background: var(--web-page-offwhite);
   }
   .mp-nav {
     display: flex;
@@ -147,18 +147,18 @@
     gap: var(--space-5);
     height: 56px;
     padding: 0 var(--space-8);
-    border-bottom: 1px solid #ececf1;
+    border-bottom: 1px solid var(--web-page-divider);
   }
   .mp-logo {
     width: 26px;
     height: 26px;
     border-radius: var(--r-md);
-    background: #1a1a1e;
+    background: var(--web-page-foreground);
   }
   .mp-navtext {
     height: 10px;
     border-radius: var(--r-sm);
-    background: #e4e4ea;
+    background: var(--web-page-placeholder);
   }
   .mp-sp {
     flex: 1;
@@ -167,7 +167,7 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: #d9d9e2;
+    background: var(--web-page-placeholder-strong);
   }
   .mp-body {
     display: grid;
@@ -179,7 +179,7 @@
   }
   .mp-crumb {
     font-size: var(--fs-xs);
-    color: #8a8a93;
+    color: var(--web-page-muted);
     margin-bottom: var(--space-3-5);
   }
   .mp-h1 {
@@ -188,7 +188,7 @@
     letter-spacing: var(--tracking-tight);
     line-height: 1.15;
     margin-bottom: var(--space-3-5);
-    color: #1a1a1e;
+    color: var(--web-page-foreground);
   }
   .mp-meta {
     display: flex;
@@ -198,18 +198,18 @@
   .mp-meta span {
     height: 10px;
     border-radius: var(--r-sm);
-    background: #ececf1;
+    background: var(--web-page-divider);
   }
   .mp-hero {
     aspect-ratio: 21 / 9;
     border-radius: var(--r-lg);
-    background: #ececea;
+    background: var(--web-page-code);
     margin-bottom: 26px;
   }
   .mp-line {
     height: 11px;
     border-radius: var(--r-sm);
-    background: #e8e8ee;
+    background: var(--web-page-card);
     margin-bottom: var(--space-3);
   }
   .mp-cards {
@@ -218,14 +218,14 @@
     margin-top: 26px;
   }
   .mp-card {
-    border: 1px solid #ececf1;
+    border: 1px solid var(--web-page-divider);
     border-radius: var(--r-lg);
     padding: var(--space-3-5);
   }
   .mp-card-img {
     aspect-ratio: 16 / 10;
     border-radius: var(--r-md);
-    background: #eef0f6;
+    background: var(--web-page-selection);
     margin-bottom: var(--space-3);
   }
   .mp-side {
@@ -234,7 +234,7 @@
   .mp-btn {
     height: 36px;
     border-radius: var(--r-control);
-    background: #1a1a1e;
+    background: var(--web-page-foreground);
     margin-top: var(--space-2);
   }
   @media (max-width: 1100px) {

@@ -424,7 +424,7 @@
     color: var(--ink-0);
   }
   .conversation-main:has(> .conversation-jump) > .conversation-scroll {
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(to bottom, var(--mask-opaque) calc(100% - 24px), transparent);
   }
   @media (prefers-reduced-transparency: reduce) {
     .conversation-jump .icon-btn {

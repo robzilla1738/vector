@@ -10,8 +10,10 @@ const floatingOpacity =
     )?.[1],
   ) / 100;
 assert.ok(floatingOpacity > 0 && floatingOpacity <= 1, "floating glass opacity must be present");
-const dark = tokens.slice(0, tokens.indexOf('[data-theme="light"] {'));
-const light = tokens.slice(tokens.indexOf('[data-theme="light"] {'));
+const palette = tokens.replace(/\/\*[\s\S]*?\*\//g, "");
+const dark = palette.match(/:root\s*\{([^}]*)\}/)?.[1];
+const light = palette.match(/\[data-theme="light"\]\s*\{([^}]*)\}/)?.[1];
+assert.ok(dark && light, "dark and light theme token blocks must be present");
 
 function tokenColor(sheet, name) {
   const hex = sheet.match(new RegExp(`--${name}:\\s*#([\\da-f]{6}|[\\da-f]{3});`, "i"))?.[1];
@@ -20,8 +22,14 @@ function tokenColor(sheet, name) {
     const channels = expanded.match(/.{2}/g).map((channel) => parseInt(channel, 16) / 255);
     return { channels, alpha: 1 };
   }
+  const rgb = sheet.match(new RegExp(`--${name}:\\s*rgb\\((\\d+) (\\d+) (\\d+) / ([\\d.]+)(%)?\\);`));
+  if (rgb)
+    return {
+      channels: rgb.slice(1, 4).map((value) => Number(value) / 255),
+      alpha: Number(rgb[4]) / (rgb[5] ? 100 : 1),
+    };
   const match = sheet.match(new RegExp(`--${name}: oklch\\(([\\d.]+)% 0 0(?: / ([\\d.]+))?\\);`));
-  assert.ok(match, `${name} must be a neutral hex or OKLCH token for this check`);
+  assert.ok(match, `${name} must be a hex, RGB or neutral OKLCH token for this check`);
   return {
     channels: Array(3).fill(srgb((Number(match[1]) / 100) ** 3)),
     alpha: match[2] ? Number(match[2]) : 1,

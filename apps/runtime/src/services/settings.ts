@@ -280,7 +280,7 @@ export class SettingsService {
       contentOpacity: Number(this.get("contentOpacity") ?? 95),
       sidebarBlur: Number(this.get("sidebarBlur") ?? 0),
       sidebarOpacity: Number(this.get("sidebarOpacity") ?? 90),
-      tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "horizontal",
+      tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "vertical",
       toolbarAutoHide: z.boolean().parse(this.get("toolbarAutoHide") ?? true),
       minimalUi: z.boolean().parse(this.get("minimalUi") ?? false),
       minimalUiAcknowledged: z.boolean().parse(this.get("minimalUiAcknowledged") ?? false),

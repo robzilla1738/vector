@@ -1,9 +1,15 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { acquireFloatingSidebarLock } from "../floating-sidebar";
 
-export function snapResizeWidth(width: number, min: number, max: number, reset: number): number {
+export function snapResizeWidth(
+  width: number,
+  min: number,
+  max: number,
+  reset: number,
+  snapDistance = 8,
+): number {
   const clamped = Math.round(Math.min(max, Math.max(min, width)));
-  return Math.abs(clamped - reset) <= 8 ? reset : clamped;
+  return Math.abs(clamped - reset) < snapDistance ? reset : clamped;
 }
 
 function handleAnnouncement(handle: HTMLElement, width: number) {
@@ -28,6 +34,8 @@ export function ResizeHandle({
   reset,
   onResize,
   onCollapse,
+  snapDistance = 8,
+  keyboardStep = 16,
 }: {
   side: "left" | "right";
   value: number;
@@ -37,6 +45,8 @@ export function ResizeHandle({
   reset: number;
   onResize: (w: number) => void;
   onCollapse?: () => void;
+  snapDistance?: number;
+  keyboardStep?: number;
 }) {
   const cleanup = useRef<(() => void) | null>(null);
   useEffect(() => () => cleanup.current?.(), []);
@@ -83,7 +93,7 @@ export function ResizeHandle({
       const d = side === "left" ? clientX - startX : startX - clientX;
       const raw = startW + d;
       collapsed = !!onCollapse && raw < min - 15;
-      width = onCollapse && Math.abs(raw - reset) <= 15 ? reset : snapResizeWidth(raw, min, max, reset);
+      width = snapResizeWidth(raw, min, max, reset, snapDistance);
     };
     const release = (ev: PointerEvent) => {
       if (ev.pointerId !== pointerId) return;
@@ -125,7 +135,7 @@ export function ResizeHandle({
         if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
           e.preventDefault();
           const direction = (e.key === "ArrowRight" ? 1 : -1) * (side === "left" ? 1 : -1);
-          const next = snapResizeWidth(value + direction * (onCollapse ? 50 : 16), min, max, reset);
+          const next = snapResizeWidth(value + direction * keyboardStep, min, max, reset, snapDistance);
           onResize(next);
           if (onCollapse) handleAnnouncement(e.currentTarget, next);
         }

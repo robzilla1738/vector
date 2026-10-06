@@ -508,7 +508,7 @@ export function installMockBridge(q: URLSearchParams) {
   let steps: Record<string, StepRecord[]> = {};
   const settings: Record<string, unknown> = {
     theme,
-    tabLayout: q.get("layout") === "vertical" ? "vertical" : "horizontal",
+    tabLayout: q.get("layout") === "horizontal" ? "horizontal" : "vertical",
     searchEngine: DEFAULT_SEARCH_ENGINE,
     plannerModel: "meta/muse-spark-1.3-contributor",
     maxWorkers: 4,

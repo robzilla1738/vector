@@ -15,7 +15,7 @@
     overflow: hidden;
     box-shadow:
       0 0 0 1px color-mix(in srgb, var(--ink-0) 8%, transparent),
-      0 18px 50px -16px rgb(0 0 0 / 0.55);
+      0 18px 50px -16px var(--quick-ask-shadow-tint);
     animation: quick-ask-in var(--t-enter) var(--ease-emphasized);
   }
   .quick-ask-header {

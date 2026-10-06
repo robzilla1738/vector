@@ -54,13 +54,13 @@
   .ui-scroll-area {
     min-height: 0;
     overflow: auto;
-    --scroll-top: #000;
-    --scroll-bottom: #000;
+    --scroll-top: var(--mask-opaque);
+    --scroll-bottom: var(--mask-opaque);
     mask-image: linear-gradient(
       to bottom,
       var(--scroll-top),
-      #000 12px,
-      #000 calc(100% - 12px),
+      var(--mask-opaque) 12px,
+      var(--mask-opaque) calc(100% - 12px),
       var(--scroll-bottom)
     );
   }
@@ -166,7 +166,7 @@
   }
   input.ui-switch:checked::after {
     transform: translateX(14px);
-    background: white;
+    background: var(--toggle-thumb);
   }
   input.ui-switch:disabled {
     opacity: 0.5;

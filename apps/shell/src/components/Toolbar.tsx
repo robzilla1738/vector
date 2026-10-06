@@ -26,7 +26,7 @@ import {
 export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: boolean }) {
   const key = useShortcutLabels();
   const sidebar = useStore((s) => s.sidebar);
-  const horizontal = useStore((s) => (s.settings.tabLayout ?? "horizontal") === "horizontal");
+  const horizontal = useStore((s) => (s.settings.tabLayout ?? "vertical") === "horizontal");
   const page = useStore((s) => (s.activePageId ? s.pages.byId[s.activePageId ?? ""] : undefined));
   const settingsRoute = useStore((s) => s.overlay === "settings");
   const mode = useStore((s) => s.mode);

@@ -27,6 +27,7 @@
     "smoke:native": "node scripts/dev.mjs --temp-profile",
     "format": "prettier --write apps packages scripts tests chromium/*.mjs *.json *.ts",
     "size": "node scripts/check-budgets.mjs bundle",
+    "colors": "node scripts/check-raw-colors.mjs",
     "bridge:coverage": "node scripts/check-bridge-coverage.mjs",
     "check": "npm run typecheck && npm run lint && npm test",
     "dev:shell": "pnpm --filter @aux/shell dev"

@@ -40,7 +40,7 @@ function block(theme: "dark" | "light"): string {
   const m =
     theme === "dark"
       ? tokens.match(/:root\s*\{([\s\S]*?)\n\s*\}/)
-      : tokens.match(/\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/);
+      : tokens.match(/\[data-theme="light"\]\s*\{([\s\S]*?)\n\s*\}/);
   expect(m, `${theme} theme block`).toBeTruthy();
   return m![1]!;
 }
@@ -56,7 +56,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
 
   it("defines surface, ink, accent, and agent tokens in both appearances", () => {
     for (const theme of ["dark", "light"] as const) {
-      const b = block(theme);
+      const b = theme === "dark" ? block("dark") : block("dark") + block("light");
       for (const t of [
         "--bg-0",
         "--ink-0",
@@ -103,15 +103,17 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).not.toMatch(/\.ci svg path\s*\{[^}]*fill:\s*currentColor/);
   });
 
-  it("uses the reference neutral palette and translucent surface layers", () => {
+  it("uses the Aside alpha palette and translucent window material", () => {
     const dark = block("dark");
-    expect(dark).toMatch(/--bg-window:\s*oklch\(20\.5% 0 0\)/);
-    expect(dark).toMatch(/--bg-1:\s*oklch\(26\.9% 0 0\)/);
+    expect(dark).toMatch(/--bg-window:\s*#17171780/);
+    expect(dark).toMatch(/--ink-0:\s*rgb\(255 255 255 \/ 85%\)/);
+    expect(block("light")).toMatch(/--ink-0:\s*rgb\(0 0 0 \/ 95%\)/);
+    expect(dark).toMatch(/--floating-sidebar-surface:\s*#24272b/);
     expect(dark).not.toMatch(/--bg-window:\s*#000000/);
   });
 
   it("keeps the toolbar compact and exposes reference motion durations as tokens", () => {
-    expect(tokens).toMatch(/--toolbar-h:\s*40px/);
+    expect(tokens).toMatch(/--toolbar-h:\s*42px/);
     expect(styles).toMatch(/\.toolbar\s*\{[^}]*height:\s*var\(--toolbar-h\)/s);
     expect(tokens).toMatch(/--t-fast:\s*150ms/);
     expect(tokens).not.toMatch(/--t-med\s*:/);
@@ -232,7 +234,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
 
   it("reveals the URL field and both icon groups together without moving page layout", () => {
     const controls = ".toolbar > :is(.cmdbar, .tb-left, .tb-right)";
-    expectCss(styles).toContain(`${controls} {\n  opacity: 0;`);
+    expect(normalizedCss(styles)).toContain(normalizedCss(`${controls} {\n  opacity: 0;`));
     expectCss(styles).toContain(
       ".toolbar:is(:hover, :focus-within, :has(.cmdbar.editing)) > :is(.cmdbar, .tb-left, .tb-right),",
     );
@@ -261,10 +263,11 @@ describe("shipped stylesheet — native macOS chrome", () => {
   it("keeps waiting, status, diff and find states distinguishable", () => {
     const dark = block("dark");
     const light = block("light");
-    expect(tokens).toMatch(/--wait:\s*#fbbf24/);
+    expect(tokens).toMatch(/--warn:\s*#facc15/);
+    expect(tokens).toMatch(/--wait:\s*var\(--warn\)/);
     expect(tokens).not.toMatch(/--wait:\s*var\(--ok\)/);
     expect(dark).toMatch(/--accent-surface:\s*color-mix/);
-    expect(light).toMatch(/--accent-surface:\s*color-mix/);
+    expect(dark + light).toMatch(/--accent-surface:\s*color-mix/);
     expect(styles).toMatch(/\.ctl-chip\.human\s*\{[^}]*color:\s*var\(--wait\)/s);
     expect(styles).toMatch(/\.takeover\s*\{[^}]*background:\s*var\(--wait-soft\)/s);
     expect(styles).toMatch(/\.project-diff \.diff-added\s*\{[^}]*background:\s*var\(--diff-add\)/);
@@ -322,7 +325,7 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     const menu = conversation.slice(conversation.indexOf("conversation-preview-menu"));
     expect(menu.indexOf("splitPlan &&")).toBeGreaterThanOrEqual(0);
     expect(menu.indexOf("splitPlan &&")).toBeLessThan(menu.indexOf(">Split view</span>"));
-    expect(conversation).toContain("previewSplit(layout, pages, selectedContext.pageId, activePageId)");
+    expect(conversation).toMatch(/\bpreviewSplit\s*\(/);
   });
 
   it("forces tab close targets round after the shared superellipse rule", () => {

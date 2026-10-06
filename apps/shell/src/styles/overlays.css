@@ -334,7 +334,7 @@
     text-overflow: ellipsis;
   }
   .translation-bar-error {
-    color: var(--err, #e5484d);
+    color: var(--err);
     font-size: var(--fs-xs);
   }
 

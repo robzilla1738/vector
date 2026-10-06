@@ -9,8 +9,9 @@
     display: block;
     height: var(--row-h);
     border-radius: var(--r-md);
-    background: var(--bg-hover);
-    animation: skeleton-pulse var(--t-pulse) var(--ease-in-out) infinite alternate;
+    background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-active) 50%, var(--bg-hover) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer var(--t-sweep) linear infinite;
   }
   .skeleton-rows.tall .skeleton-row {
     height: var(--row-h-lg);
@@ -25,12 +26,12 @@
     width: 40%;
     height: var(--control-h);
   }
-  @keyframes skeleton-pulse {
+  @keyframes skeleton-shimmer {
     from {
-      opacity: 0.45;
+      background-position: 100% 0;
     }
     to {
-      opacity: 1;
+      background-position: -100% 0;
     }
   }
   .boot-status > div,
@@ -83,9 +84,9 @@
   }
   .capture-region {
     position: absolute;
-    border: 2px solid #649bff;
-    background: rgb(60 120 255 / 12%);
-    box-shadow: 0 0 0 1000px rgb(0 0 0 / 40%);
+    border: 2px solid var(--brand);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 1000px var(--capture-scrim);
     pointer-events: none;
   }
   .page-lasso {
@@ -348,7 +349,7 @@
     border: 1px solid var(--line);
     border-radius: var(--r-lg);
     background: var(--bg-1);
-    box-shadow: 0 12px 32px #0002;
+    box-shadow: 0 12px 32px var(--shadow-soft-overlay-tint);
   }
   .reader-contents button {
     display: block;
@@ -728,7 +729,10 @@
     flex: 1;
     max-width: none;
     min-width: 0;
-    background: transparent;
+    height: 34px;
+    border-radius: var(--r-tab);
+    --cb-radius: var(--r-tab);
+    background: var(--location-bar);
     box-shadow: none;
     border: 0;
   }
@@ -780,21 +784,21 @@
     z-index: -1;
     inset: 0 0 -12px;
     pointer-events: none;
-    background: var(--page-toolbar-glass, var(--toolbar-glass, rgb(23 23 23 / 0.18)));
+    background: var(--page-toolbar-glass, var(--toolbar-glass, var(--toolbar-glass-dark)));
     -webkit-mask-image: linear-gradient(
       to bottom,
-      #000 0,
-      #000 26px,
-      rgb(0 0 0 / 0.85) 34px,
-      rgb(0 0 0 / 0.35) 44px,
+      var(--mask-opaque) 0,
+      var(--mask-opaque) 26px,
+      var(--mask-soft) 34px,
+      var(--mask-fade) 44px,
       transparent
     );
     mask-image: linear-gradient(
       to bottom,
-      #000 0,
-      #000 26px,
-      rgb(0 0 0 / 0.85) 34px,
-      rgb(0 0 0 / 0.35) 44px,
+      var(--mask-opaque) 0,
+      var(--mask-opaque) 26px,
+      var(--mask-soft) 34px,
+      var(--mask-fade) 44px,
       transparent
     );
   }
@@ -826,7 +830,7 @@
     .main-col.toolbar-revealed.has-page
     > .toolbar
     :is(.tb-left, .cmdbar:not(.editing), .tb-right) {
-    background-color: rgb(0 0 0 / 0.012);
+    background-color: var(--native-material-thin-plane);
   }
   .app.native-host:is(.layout-hidden, .layout-rail) .main-col.has-page .stage-wrap > .findbar {
     padding-left: var(--traffic-inset);
@@ -860,7 +864,7 @@
     align-items: center;
     justify-content: flex-end;
     height: var(--toolbar-h);
-    padding: 0 var(--space-2);
+    padding: 0 var(--space-1-5);
     flex: none;
     position: relative;
   }
@@ -873,9 +877,9 @@
     gap: var(--space-2);
     align-items: center;
     text-align: left;
-    height: 34px;
+    height: var(--sidebar-row-h);
     min-width: 0;
-    padding: var(--space-1-5) var(--space-2);
+    padding: 0 var(--space-2);
     border-radius: var(--r-lg);
     color: var(--ink-1);
     font-size: var(--fs-md);
@@ -886,7 +890,8 @@
     align-items: center;
     gap: var(--space-0);
     padding: var(--space-1-5);
-    min-height: 44px;
+    height: var(--toolbar-h);
+    min-height: var(--toolbar-h);
     flex-shrink: 0;
     border: 0;
   }
@@ -1062,7 +1067,7 @@
     min-height: 0;
     max-height: none;
     flex: 1;
-    mask-image: linear-gradient(#000 80%, transparent);
+    mask-image: linear-gradient(var(--mask-opaque) 80%, transparent);
   }
   .home-empty {
     grid-column: 1 / -1;
@@ -1253,7 +1258,7 @@
    Apply tint once, on the panel, rather than stacking it on its contents. */
   :root[data-sidebar-appearance="translucent"] {
     --window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);
-    --floating-glass-tint: color-mix(in srgb, var(--floating-sidebar-surface) 80%, transparent);
+    --floating-glass-tint: color-mix(in srgb, var(--floating-sidebar-surface) 95%, transparent);
     --floating-glass-filter: blur(var(--blur-glass-floating)) saturate(1.15);
   }
   :root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek, .chat-sidebar, .rail),
@@ -1341,9 +1346,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 100%;
-    min-height: 34px;
-    padding: var(--space-2) var(--space-4);
+    width: calc(100% - 16px);
+    height: 28px;
+    min-height: 28px;
+    margin-inline: var(--space-2);
+    padding: 0 var(--space-2);
     text-align: left;
     color: var(--ink-2);
     font-size: var(--fs-sm);
@@ -1637,14 +1644,23 @@
       :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .anchored-panel, .tab-preview),
     :root[data-sidebar-appearance="translucent"] .app.tabs-vertical:not(.layout-expanded) .sidebar {
       isolation: isolate;
-      --glass-rim: linear-gradient(#909090, #90909000 25%, #70707000 75%, #505050);
+      --glass-rim: linear-gradient(
+        var(--glass-rim-highlight),
+        var(--glass-rim-transparent) 25%,
+        var(--glass-rim-transparent) 75%,
+        var(--glass-rim-shade)
+      );
     }
     :root[data-sidebar-appearance="translucent"][data-theme="light"]
       :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .anchored-panel, .tab-preview),
     :root[data-sidebar-appearance="translucent"][data-theme="light"]
       .app.tabs-vertical:not(.layout-expanded)
       .sidebar {
-      --glass-rim: linear-gradient(#909090, #90909000 25% 75%, #90909080);
+      --glass-rim: linear-gradient(
+        var(--glass-rim-highlight),
+        var(--glass-rim-transparent) 25% 75%,
+        var(--glass-rim-half)
+      );
     }
     :root[data-sidebar-appearance="translucent"]
       :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .anchored-panel, .tab-preview) {
@@ -1666,18 +1682,18 @@
       border-radius: inherit;
       corner-shape: inherit;
       pointer-events: none;
-      background: #44444480;
+      background: var(--glass-inset-fill);
       mix-blend-mode: plus-lighter;
-      box-shadow: inset 0 40px 30px -40px #e6e6e6;
+      box-shadow: inset 0 40px 30px -40px var(--glass-inset-glow);
     }
     /* Supplied 06 liquid-glass alpha/noTopGlow variant for compact surfaces:
      readable menu content without additive top glare. Floating sidebar keeps
      its original material recipe; rim, blur, focus and hit areas stay. */
     :root[data-sidebar-appearance="translucent"]
       :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .anchored-panel, .tab-preview)::before {
-      background: #00000014;
+      background: var(--glass-shade-fill);
       mix-blend-mode: normal;
-      box-shadow: inset 0 -40px 10px -40px #ffffff1a;
+      box-shadow: inset 0 -40px 10px -40px var(--glass-shade-glow);
     }
     :root[data-sidebar-appearance="translucent"]
       :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .anchored-panel, .tab-preview)::after,
@@ -1693,11 +1709,11 @@
       background: var(--glass-rim);
       mix-blend-mode: color-dodge;
       -webkit-mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
+        linear-gradient(var(--mask-opaque) 0 0) content-box,
+        linear-gradient(var(--mask-opaque) 0 0);
       mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
+        linear-gradient(var(--mask-opaque) 0 0) content-box,
+        linear-gradient(var(--mask-opaque) 0 0);
       -webkit-mask-composite: xor;
       mask-composite: exclude;
     }
