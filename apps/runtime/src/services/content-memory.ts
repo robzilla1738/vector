@@ -1,4 +1,4 @@
-import { createDecipheriv, createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { AuxError, type WorkspaceMemory } from "@aux/contracts";
 import { memoryOrigin, memorySourceExcluded } from "@aux/contracts/memory-context";
 import { memoryContentSensitivityReason, memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
@@ -7,7 +7,6 @@ import type { EventBus } from "../events.js";
 import type { NativeBridge } from "../native.js";
 import { ProtectedStore } from "./protected-store.js";
 
-const KEY_NAME = "pageMemoryKey";
 const DAY = 86_400_000;
 const MAX_TEXT_BYTES = 64 * 1024;
 const MAX_PAGES_PER_SPACE = 500;
@@ -258,6 +257,8 @@ export class ContentMemoryStore {
 
   private async key(): Promise<Buffer> {
     this.keyPromise ??= (async () => {
+      if (this.repo.db.prepare("SELECT 1 FROM content_memory WHERE profile_id=? AND ciphertext NOT LIKE 'v2:%' LIMIT 1").get(this.profileId))
+        throw new Error("Unknown protected page-memory format.");
       const factorName = this.factorName();
       const hasNewRows = !!this.repo.db
         .prepare("SELECT 1 FROM content_memory WHERE profile_id=? AND ciphertext LIKE 'v2:%' LIMIT 1")
@@ -280,7 +281,6 @@ export class ContentMemoryStore {
           "Protected page-memory key is invalid. Restore the original OS credential store or forget this memory.",
         );
       const key = await this.protectedStore.generationKey("page-memory", factor, !hasNewRows && !hasDerivatives);
-      await this.migrateLegacy(key);
       return key;
     })().catch((error) => {
       this.keyPromise = undefined;
@@ -302,7 +302,7 @@ export class ContentMemoryStore {
     compute: () => Promise<T>;
   }): Promise<T> {
     const maxEntryBytes = 1024 * 1024;
-    const maxCacheBytes = 200 * 1024 * 1024;
+    const maxCacheBytes = 200_000_000;
     if (!input.eligible() || Buffer.byteLength(input.signature) > maxEntryBytes) return input.compute();
     const epoch = this.derivativeEpoch;
     const factor = this.factorName();
@@ -350,17 +350,6 @@ export class ContentMemoryStore {
 
   private encrypt(key: Buffer, body: RecordBody): string {
     return `v2:${this.protectedStore.seal(key, "page-memory", body.memoryId, Buffer.from(JSON.stringify(body)))}`;
-  }
-
-  private legacyDecrypt(key: Buffer, ciphertext: string): RecordBody {
-    if (!ciphertext.startsWith("v1:")) throw new Error("Unknown protected page-memory format.");
-    const bytes = Buffer.from(ciphertext.slice(3), "base64");
-    if (bytes.length < 29) throw new Error("Protected page memory is incomplete.");
-    const decipher = createDecipheriv("aes-256-gcm", key, bytes.subarray(0, 12));
-    decipher.setAuthTag(bytes.subarray(12, 28));
-    return JSON.parse(
-      Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString("utf8"),
-    ) as RecordBody;
   }
 
   private decrypt(key: Buffer, row: Row): RecordBody {
@@ -437,48 +426,6 @@ export class ContentMemoryStore {
       }
     });
     this.indexes.clear();
-  }
-
-  private async migrateLegacy(key: Buffer) {
-    const rows = this.repo.db
-      .prepare(
-        `SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext
-      FROM content_memory WHERE profile_id=? AND ciphertext LIKE 'v1:%'`,
-      )
-      .all(this.profileId) as Row[];
-    if (!rows.length) return;
-    const saved = (await this.native.readSecret(KEY_NAME)).value;
-    const legacyKey = saved ? Buffer.from(saved, "base64") : Buffer.alloc(0);
-    if (legacyKey.length !== 32 || legacyKey.toString("base64") !== saved)
-      throw new Error(
-        "Legacy page-memory key is missing. Restore the original OS credential store before migration.",
-      );
-    this.repo.transaction(() => {
-      for (const row of rows) {
-        const body = this.legacyDecrypt(legacyKey, row.ciphertext);
-        const oldSourceKey = createHmac("sha256", legacyKey)
-          .update(`${this.profileId}\0${body.workspaceId}\0${body.url}`)
-          .digest("hex");
-        if (
-          body.memoryId !== row.memory_id ||
-          body.profileId !== this.profileId ||
-          new URL(body.url).origin !== row.origin ||
-          body.capturedAt !== row.captured_at ||
-          oldSourceKey !== row.source_key
-        )
-          throw new Error("Legacy page-memory provenance does not match its storage record.");
-        const sourceKey = createHmac("sha256", key)
-          .update(`${this.profileId}\0${body.workspaceId}\0${body.url}`)
-          .digest("hex");
-        this.repo.db
-          .prepare("UPDATE content_memory SET source_key=?,ciphertext=? WHERE memory_id=?")
-          .run(sourceKey, this.encrypt(key, body), row.memory_id);
-      }
-    });
-    if (!this.repo.db.prepare("SELECT 1 FROM content_memory WHERE ciphertext LIKE 'v1:%' LIMIT 1").get()) {
-      const pending = this.repo.getSetting<string[]>(this.retiredSetting()) ?? [];
-      this.repo.setSetting(this.retiredSetting(), [...new Set([...pending, KEY_NAME])]);
-    }
   }
 
   /** Caller must establish foreground/document eligibility before supplying page text. */

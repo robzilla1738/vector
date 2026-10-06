@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from "vitest";
-import { createCipheriv, createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { EventBus, openDb, Repo, TaskService } from "@aux/runtime";
 import { ContentMemoryStore } from "../../apps/runtime/src/services/content-memory.js";
 
@@ -93,67 +93,17 @@ it("keeps page text and source paths encrypted while rebuilding search after a r
   f.secrets.set(factorName, key);
 });
 
-it("migrates legacy page text atomically and preserves the original on tamper", async () => {
+it("rejects unsupported page-memory formats without rewriting rows or touching native factors", async () => {
   const f = fixture();
   const workspaceId = f.workspace.workspaceId;
   await f.memory.setPolicy(workspaceId, {
-    enabled: true,
-    retentionDays: 30,
-    allowedOrigins: ["https://example.test"],
+    enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"],
   });
-  const oldKey = randomBytes(32);
-  const body = {
-    memoryId: randomUUID(),
-    profileId: "profile-one",
-    workspaceId,
-    pageId: "legacy-page",
-    documentEpoch: 1,
-    url: "https://example.test/legacy",
-    title: "Legacy article",
-    text: "A recoverable legacy article remains readable.",
-    capturedAt: f.now(),
-  };
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", oldKey, iv);
-  const encrypted = Buffer.concat([cipher.update(JSON.stringify(body)), cipher.final()]);
-  const legacy = `v1:${Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64")}`;
-  const sourceKey = createHmac("sha256", oldKey)
-    .update(`profile-one\0${workspaceId}\0${body.url}`)
-    .digest("hex");
-  f.db
-    .prepare(
-      `INSERT INTO content_memory(memory_id,profile_id,workspace_id,source_key,origin,captured_at,expires_at,ciphertext)
-    VALUES(?,?,?,?,?,?,?,?)`,
-    )
-    .run(
-      body.memoryId,
-      body.profileId,
-      workspaceId,
-      sourceKey,
-      "https://example.test",
-      body.capturedAt,
-      body.capturedAt + 30 * 86_400_000,
-      legacy,
-    );
-  await f.native.storeSecret("pageMemoryKey", oldKey.toString("base64"));
-  f.db.prepare("UPDATE content_memory SET ciphertext='v1:AAAA' WHERE memory_id=?").run(body.memoryId);
-  await expect(
-    new ContentMemoryStore(f.repo, f.native, "profile-one", f.now).search(workspaceId, "legacy"),
-  ).rejects.toThrow(/incomplete/);
-  expect(
-    f.db.prepare("SELECT ciphertext FROM content_memory WHERE memory_id=?").get(body.memoryId),
-  ).toMatchObject({ ciphertext: "v1:AAAA" });
-  expect(f.secrets.get("pageMemoryKey")).toBe(oldKey.toString("base64"));
-  f.db.prepare("UPDATE content_memory SET ciphertext=? WHERE memory_id=?").run(legacy, body.memoryId);
-  const migrated = new ContentMemoryStore(f.repo, f.native, "profile-one", f.now);
-  expect(await migrated.search(workspaceId, "legacy article")).toHaveLength(1);
-  const row = f.db
-    .prepare("SELECT ciphertext,source_key FROM content_memory WHERE memory_id=?")
-    .get(body.memoryId) as { ciphertext: string; source_key: string };
-  expect(row.ciphertext).toMatch(/^v2:/);
-  expect(row.ciphertext).not.toContain(body.text);
-  expect(row.source_key).not.toBe(sourceKey);
-  expect(f.secrets.get("pageMemoryKey")).toBe("");
+  f.db.prepare(`INSERT INTO content_memory(memory_id,profile_id,workspace_id,source_key,origin,captured_at,expires_at,ciphertext)
+    VALUES(?,?,?,?,?,?,?,?)`).run("unsupported", "profile-one", workspaceId, "source", "https://example.test", f.now(), f.now() + 86400000, "v1:AAAA");
+  await expect(f.memory.search(workspaceId, "article")).rejects.toThrow("Unknown protected page-memory format");
+  expect(f.db.prepare("SELECT ciphertext FROM content_memory WHERE memory_id='unsupported'").get()).toMatchObject({ ciphertext: "v1:AAAA" });
+  expect(f.secrets.size).toBe(0);
 });
 
 it("rotates the page-memory factor on Forget while preserving other Spaces", async () => {

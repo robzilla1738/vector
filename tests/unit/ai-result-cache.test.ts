@@ -254,3 +254,28 @@ it("does not publish translation derivatives served by a fallback model", async 
   expect(f.generateStructured).toHaveBeenCalledTimes(2);
   expect(f.db.prepare("SELECT COUNT(*) AS n FROM ai_result_cache").get()).toMatchObject({ n: 0 });
 });
+
+it("reuses pure naming content after a reload while rebuilding its live envelope, and misses changed content", async () => {
+  const f = await fixture();
+  const name = () => {
+    const page = f.pages.get("p1")!;
+    return suggestTabName(
+      { pageId: page.pageId, expectedUrl: page.url, expectedDocumentEpoch: page.documentEpoch },
+      page,
+      f.model,
+      route,
+      pageDerivativeCache(f.s, [page.pageId]),
+    );
+  };
+  await name();
+  const page = f.pages.get("p1")!;
+  page.documentEpoch++;
+  page.sessionId = "reloaded-session";
+  page.controllerEpoch++;
+  expect((await name()).documentEpoch).toBe(4);
+  expect(f.generateStructured).toHaveBeenCalledTimes(1);
+  page.title = "Browser science";
+  f.setObject({ name: "Browser science" });
+  expect((await name()).name).toBe("Browser science");
+  expect(f.generateStructured).toHaveBeenCalledTimes(2);
+});

@@ -113,7 +113,7 @@ export function pageDerivativeCache(
       }
       const result = await store.cachedDerivative({
         workspaceId,
-        signature: JSON.stringify({ version: 1, connection, identities, request: input.signature }),
+        signature: JSON.stringify({ version: 2, connection, request: input.signature }),
         eligible: () => admitted && eligible(input.text),
         parse: input.parse,
         cacheable: (value) => !sensitive(JSON.stringify(value)) && input.cacheable?.(value) !== false,
