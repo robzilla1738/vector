@@ -36,10 +36,10 @@ async function render(hero = true) {
 }
 function modeButton(label: string) { return [...host.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === label)!; }
 
-it("opens fresh regular Home directly in the existing Ask composer", async () => {
+it("opens fresh regular Home in the reference Search entry", async () => {
   await render();
-  expect(host.querySelector(".home-ask textarea")).not.toBeNull();
-  expect(modeButton("Ask").getAttribute("aria-pressed")).toBe("true");
+  expect(host.querySelector(".cmdbar input")).not.toBeNull();
+  expect(modeButton("Search").getAttribute("aria-pressed")).toBe("true");
   expect(bridge.invoke).not.toHaveBeenCalledWith("settings.set", expect.anything());
 });
 it.each([{ mode: "search", selector: ".cmdbar input", other: "ask" }, { mode: "ask", selector: ".home-ask textarea", other: "search" }] as const)(
@@ -59,7 +59,8 @@ it.each([{ mode: "search", selector: ".cmdbar input" }, { mode: "ask", selector:
     expect(values.get(legacyKey)).toBe(mode);
     await act(async () => resolve({})); expect(values.has(legacyKey)).toBe(false);
   });
-it("restores fresh effective Ask after switching to Search fails", async () => {
+it("restores explicit Ask after switching to Search fails", async () => {
+  useStore.setState({ settings: { homeEntryMode: "ask" } });
   await render();
   vi.mocked(bridge.invoke).mockRejectedValueOnce(new Error("Preference save failed"));
   await act(async () => modeButton("Search").click());
@@ -78,9 +79,9 @@ it("retains legacy Search when its migration save rejects", async () => {
   vi.mocked(bridge.invoke).mockRejectedValueOnce(new Error("Migration failed")); await render();
   expect(host.querySelector(".cmdbar input")).not.toBeNull(); expect(values.get(legacyKey)).toBe("search");
 });
-it("uses fresh Ask even when optional legacy storage is unavailable", async () => {
+it("uses fresh Search even when optional legacy storage is unavailable", async () => {
   vi.stubGlobal("localStorage", { getItem: () => { throw new Error("Storage unavailable"); }, removeItem: () => {} });
-  await render(); expect(host.querySelector(".home-ask textarea")).not.toBeNull();
+  await render(); expect(host.querySelector(".cmdbar input")).not.toBeNull();
 });
 it.each([{ name: "private Home", hero: true, privateMode: true }, { name: "address", hero: false, privateMode: false }] as const)(
   "keeps $name on existing Search policy without migrating legacy Ask", async ({ hero, privateMode }) => {

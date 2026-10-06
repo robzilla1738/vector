@@ -87,3 +87,31 @@ it("bounds recent chats, exposes organization in one menu, and requires confirma
     expect(document.activeElement?.classList.contains("session-open")).toBe(true);
   } finally { await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); }
 });
+
+it("searches all saved chats and reveals matches inside collapsed projects without changing their state", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.useFakeTimers();
+  const storage = new Map<string, string>();
+  vi.stubGlobal("localStorage", { get length() { return storage.size; }, key: (index: number) => [...storage.keys()][index] ?? null, getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value) });
+  const { writeChatFolder, moveChatToFolder, readChatFolders } = await import("../chat-folders");
+  writeChatFolder(localStorage, { id: "project", name: "Research", collapsed: true });
+  moveChatToFolder(localStorage, "match", "project");
+  const rows = ["Other chat", "Budget review"].map((title, i) => ({ chatId: i ? "match" : "other", title, archived: false, updatedAt: i, createdAt: i, turnCount: 1, latestRun: makeRun({ runId: `search-${i}` }) }));
+  vi.spyOn(bridge, "onEvent").mockReturnValue(() => {});
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async method => method === "conversations.list" ? rows : undefined);
+  const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+  try {
+    await act(async () => root.render(<ChatSessions query="  BUDGET  " />));
+    await act(async () => vi.advanceTimersByTimeAsync(110));
+    expect(Array.from(host.querySelectorAll(".session-open"), row => row.textContent)).toEqual(["Budget review"]);
+    expect(host.querySelector(".session-folder-toggle")?.getAttribute("aria-expanded")).toBe("true");
+    expect(readChatFolders(localStorage).folders[0]?.collapsed).toBe(true);
+    await act(async () => root.render(<ChatSessions query="missing" />));
+    expect(host.textContent).toContain("No matching chats.");
+    expect(host.querySelector(".session-folder")).toBeNull();
+    await act(async () => root.render(<ChatSessions />));
+    expect(host.querySelector(".session-folder-toggle")?.getAttribute("aria-expanded")).toBe("false");
+    expect(Array.from(host.querySelectorAll(".session-open"), row => row.textContent)).toEqual(["Other chat"]);
+    expect(invoke.mock.calls.filter(([method]) => method === "conversations.list")).toHaveLength(1);
+  } finally { await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); }
+});

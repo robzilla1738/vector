@@ -16,7 +16,7 @@ import { staticGhostButtonProps as auxClassGhostButtonProps, staticButtonProps a
 import { nativeAlertRoleProps } from "../ui/native-attribute-props";
 
 /** Shared session organization for both sidebar layouts. Folder entries belong to this browser profile. */
-export function ChatSessions({ compact = false }: { compact?: boolean }) {
+export function ChatSessions({ compact = false, query = "" }: { compact?: boolean; query?: string }) {
   const active = useStore(s => s.mode === "conversation" ? s.conversationId : null);
   const runRevision = useStore(s => s.runs.map(run => `${run.runId}:${run.status}:${run.endedAt ?? ""}`).join("|"));
   const [loading, setLoading] = useState(true);
@@ -107,7 +107,9 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
   }
   function finishEdit() { focusReturn.current = editingOrigin.current; setEditing(null); }
   const showHistory = () => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); };
-  const visibleRows = compact ? rows.slice(0, 3) : rows;
+  const term = query.trim().toLocaleLowerCase();
+  const matches = term ? rows.filter(row => row.title.toLocaleLowerCase().includes(term)) : rows;
+  const visibleRows = compact ? matches.slice(0, 3) : matches;
   async function rename(item: ConversationSummary) {
     if (!chatName.trim() || pending.current) return;
     pending.current = true; setBusy(true);
@@ -152,19 +154,20 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
     </form>}
     {organization.folders.map(folder => {
       const children = visibleRows.filter(row => organization.members[row.chatId] === folder.id);
+      if (term && !children.length) return null;
       return <div className="session-folder" key={folder.id}>
-        <div className="session-row"><button className="session-folder-toggle" aria-expanded={!folder.collapsed} onClick={() => organize(() => writeChatFolder(localStorage, { ...folder, collapsed: !folder.collapsed }))}>{folder.collapsed ? shellIconRight : shellIconDown}<span>{folder.name}</span><small>{rows.filter(row => organization.members[row.chatId] === folder.id).length}</small></button><div className="session-actions"><ActionMenu label={`Actions for project ${folder.name}`} triggerRef={node => { if (node) folderTriggers.current.set(folder.id, node); else folderTriggers.current.delete(folder.id); }} actions={[
+        <div className="session-row"><button className="session-folder-toggle" aria-expanded={!!term || !folder.collapsed} onClick={() => organize(() => writeChatFolder(localStorage, { ...folder, collapsed: !folder.collapsed }))}>{folder.collapsed ? shellIconRight : shellIconDown}<span>{folder.name}</span><small>{rows.filter(row => organization.members[row.chatId] === folder.id).length}</small></button><div className="session-actions"><ActionMenu label={`Actions for project ${folder.name}`} triggerRef={node => { if (node) folderTriggers.current.set(folder.id, node); else folderTriggers.current.delete(folder.id); }} actions={[
           { label: "Rename project", icon: shellIconPencil, onSelect: () => edit(folder) },
           { label: "Remove folder; keep chats", icon: shellIconClose, onSelect: () => organize(() => removeChatFolder(localStorage, folder.id)) },
         ]}/></div></div>
-        {!folder.collapsed && <div className="session-folder-chats">{children.map(renderChat)}{!children.length && !compact && <p className="session-empty">Use a chat’s menu to move it here.</p>}</div>}
+        {(term || !folder.collapsed) && <div className="session-folder-chats">{children.map(renderChat)}{!children.length && !compact && <p className="session-empty">Use a chat’s menu to move it here.</p>}</div>}
       </div>;
     })}
 
     {visibleRows.filter(row => !organization.folders.some(folder => folder.id === organization.members[row.chatId])).map(renderChat)}
-    {compact && rows.length > 3 && <button className="sb-link sb-show-all" onClick={showHistory}>All chats {shellIconRight}</button>}
+    {compact && matches.length > 3 && <button className="sb-link sb-show-all" onClick={showHistory}>All chats {shellIconRight}</button>}
     {loading && !rows.length && <output className="session-empty" data-block>Loading chats…</output>}
-    {!loading && !error && !rows.length && <p className="session-empty">{archived ? "No archived chats." : "Your sessions will appear here."}</p>}
+    {!loading && !error && !matches.length && <p className="session-empty">{term ? "No matching chats." : archived ? "No archived chats." : "Your sessions will appear here."}</p>}
     {error && <p className="session-empty" {...nativeAlertRoleProps}>{error}<button {...auxClassGhostButtonProps} onClick={() => setRevision(value => value + 1)}>Retry</button></p>}
   </div>;
 }

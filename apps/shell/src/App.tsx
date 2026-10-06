@@ -478,6 +478,7 @@ export function App() {
   if (inNativeHost && (organizationCovered || toolbarReveal.covering || tabPreviewOpen || sidebarCovering || surfaceCovering) && !toolbarHole) setToolbarHole(true);
   if (bridge.windowKind === "little") return <LittleWindow />;
   if (quickAsk) return <QuickAsk onExpand={expandQuickAsk}/>;
+  const sidebarToggle = <button className="chat-sidebar-toggle icon-btn" aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{shellIconSidebarOpen}</button>;
   return (
     <div
       className={`app ${layoutMotion ? "layout-motion" : ""} ${minimal ? "minimal-ui" : ""} ${!hideToolbar ? "toolbar-persistent" : ""} ${toolbarReveal.revealed ? "layout-toolbar-revealed" : ""} tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${toolbarHole ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
@@ -506,11 +507,12 @@ export function App() {
           <span>Runtime reconnecting — tabs keep working</span>
         </output>
       )}
-      {horizontal && <div className="horizontal-chrome" inert={minimal && !toolbarReveal.revealed} aria-hidden={minimal && !toolbarReveal.revealed}><button className="chat-sidebar-toggle icon-btn" aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{shellIconSidebarOpen}</button><HorizontalTabs /><Toolbar /></div>}
+      {horizontal && <div className="horizontal-chrome" inert={minimal && !toolbarReveal.revealed} aria-hidden={minimal && !toolbarReveal.revealed}>{nativeShowing && sidebarToggle}<HorizontalTabs /><Toolbar /></div>}
       <SidebarReveal minimal={minimal} horizontal={horizontal} hidden={sidebar === "hidden"} toolbarHidden={toolbarHidden} peek={sidebarPeek} />
       <div className="app-body">
         {horizontal ? <ChatSidebar minimal={minimal} /> : <Sidebar minimal={minimal} />}
         <div className={`main-col${nativeShowing ? " has-page" : ""}${mode === "conversation" ? " conversation-open" : ""}${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}>
+          {horizontal && !nativeShowing && sidebarToggle}
           {!horizontal && <Toolbar hidden={toolbarHidden} />}
           <div className="main">
             <div className="stage-wrap">

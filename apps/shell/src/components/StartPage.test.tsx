@@ -18,8 +18,7 @@ vi.mock("../store", () => ({useStore:Object.assign(
   {setState:fixture.setState,getState:()=>({openConversation:vi.fn()})}
 )}));
 vi.mock("../commands",()=>({runCommand:fixture.command}));
-vi.mock("./HomeAsk",()=>({default:({onSearch}:{onSearch?:()=>void})=><div data-durable-home-composer data-has-search-switch={String(!!onSearch)}><textarea aria-label="Write to Aux" /></div>}));
-vi.mock("./CommandBar",()=>({CommandBar:()=> <input aria-label="Browser search"/>}));
+vi.mock("./CommandBar",()=>({CommandBar:({hero}:{hero?:boolean})=> <input aria-label="Browser search" data-home-entry={String(!!hero)}/>}));
 vi.mock("./AuxMark",()=>({AuxMark:()=> <span aria-hidden="true">Aux</span>}));
 vi.mock("./SessionRecovery",()=>({SessionRecovery:()=> null}));
 vi.mock("./RecentWork",()=>({RecentWork:()=> <section aria-label="Recent work"/>}));
@@ -35,11 +34,10 @@ beforeEach(()=>{
 });
 afterEach(async()=>{await act(async()=>root.unmount());host.remove();vi.unstubAllGlobals();});
 
-it("opens the existing composer without a mode switch or implicit browser focus",async()=>{
+it("uses the shared Search/Ask hero without dispatching an action on mount",async()=>{
   await act(async()=>root.render(<StartPage/>));
-  await vi.waitFor(()=>expect(host.querySelector('[data-durable-home-composer]')).not.toBeNull());
-  expect(host.querySelector('[data-has-search-switch="false"]')).not.toBeNull();
-  expect(host.querySelector('[aria-label="Browser search"]')).toBeNull();
+  expect(host.querySelector('[data-home-entry="true"]')).not.toBeNull();
+  expect(host.querySelector('[aria-label="Browser search"]')).not.toBeNull();
   expect(host.querySelector('[aria-label="Recent work"]')).not.toBeNull();
   expect(fixture.focus).not.toHaveBeenCalled();
   expect(fixture.command).not.toHaveBeenCalled();

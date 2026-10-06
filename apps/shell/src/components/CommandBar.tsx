@@ -222,9 +222,9 @@ export function CommandBar({
       return settings.homeEntryMode;
     try {
       const legacy = localStorage.getItem("aux.home.entry-mode.v1");
-      return legacy === "search" || legacy === "ask" ? legacy : "ask";
+      return legacy === "search" || legacy === "ask" ? legacy : "search";
     } catch {
-      return "ask";
+      return "search";
     }
   });
   useEffect(() => {
@@ -246,7 +246,7 @@ export function CommandBar({
           .catch(errToast);
       } else if (legacy !== null) localStorage.removeItem("aux.home.entry-mode.v1");
     } catch {
-      /* Optional legacy storage cannot block the fresh Ask entry. */
+      /* Optional legacy storage cannot block the fresh Search entry. */
     }
   }, [hero, settings.dataDir, settings.homeEntryMode]);
   const setEntryMode = (next: "search" | "ask") => {

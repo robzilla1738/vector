@@ -3,7 +3,7 @@ import { FeatureSlots } from "../features/registry";
 import "./StartPage.css";
 import { SessionRecovery } from "./SessionRecovery";
 import { AuxMark } from "./AuxMark";
-import { lazy, Suspense, useEffect } from "react";
+import { useEffect } from "react";
 import { useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
 import { CommandBar } from "./CommandBar";
@@ -11,15 +11,12 @@ import { runCommand } from "../commands";
 import { bridge } from "../bridge";
 import { RecentWork } from "./RecentWork";
 import { RunAttentionFeed, selectAttentionRuns } from "../agent/RunAttentionFeed";
-import { RunNoticePreference } from "../agent/RunNoticeControls";
 import {
   nativeButtonTypeProps as auxNativeButtonTypeProps,
 } from "../ui/native-attribute-props";
 import { nativeStatusRoleProps } from "../ui/native-attribute-props";
 
-const HomeAsk = lazy(() => import("./HomeAsk"));
-
-/** Home starts with the existing durable chat composer. Browsing stays in chrome. */
+/** Home shares the Search/Ask entry; Ask retains the durable page-free composer. */
 export function StartPage() {
   const focus = useStore(s => s.focusCommandBar);
   const connected = useStore(s => s.connected);
@@ -33,12 +30,11 @@ export function StartPage() {
     </section></> : <>
       <header className="home-welcome" aria-label="Aux"><AuxMark /></header>
       {needsModel && <div className="home-model-setup"><p>Connect an AI model to start chatting. Your draft stays here.</p><button {...auxNativeButtonTypeProps} {...smallButtonProps} data-command-id="settings" onClick={() => { useStore.setState({ settingsCategory: "Models" }); runCommand("settings"); }}>Connect an AI model</button></div>}
-      <Suspense fallback={<output className="home-ask-loading" {...nativeStatusRoleProps}>Opening chat…</output>}><HomeAsk /></Suspense>
+      <CommandBar hero />
       <SessionRecovery compact />
       {connected && <RunAttentionFeed runs={runs} onOpenRun={(runId) => useStore.getState().openConversation(runId)} />}
       <FeatureSlots slot="startItems" />
       {connected ? <RecentWork /> : <output className="hint home-connection" {...nativeStatusRoleProps}>Connecting to Aux… You can keep writing or browse.</output>}
-      <div className="home-preferences"><RunNoticePreference /></div>
     </>}
   </div></div>;
 }
