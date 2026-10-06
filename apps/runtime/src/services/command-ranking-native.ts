@@ -16,7 +16,7 @@ const LinkPick = z
 export function registerNativeCommandRanking(
   channel: RpcChannel,
   pages: Pick<PageService, "get" | "livePageIds">,
-  ranking: CommandRankingStore,
+  ranking: Pick<CommandRankingStore, "record">,
 ): void {
   const seen = new Set<string>();
   channel.onMethod("command.ranking.link", (raw) => {

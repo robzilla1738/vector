@@ -1887,7 +1887,6 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     const h = harness({ execMs: 5 });
     const set = await h.sets.create({ name: "nested", source: "urls", urls: urls(1) });
     // "then" is a declarative branch in the program schema, not a Promise method.
-    // oxlint-disable-next-line unicorn/no-thenable
     const { runId } = await h.runs.mapSet({
       setId: set.setId,
       program: {
@@ -1895,6 +1894,8 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
           {
             kind: "if",
             when: { op: "truthy", a: true },
+            // This is the program branch field, not a Promise-like object.
+            // oxlint-disable-next-line unicorn/no-thenable
             then: [{ kind: "step", step: { id: "act", op: "click", target: "css:#act" } }],
           },
         ],

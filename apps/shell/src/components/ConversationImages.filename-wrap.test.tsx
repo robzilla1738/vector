@@ -35,7 +35,7 @@ beforeEach(() => {
   root = createRoot(host);
   style = document.createElement("style");
   const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../styles/workspace.css"), "utf8");
-  style.textContent = css.match(/^\.conversation-document b \{[^}]+\}/m)![0];
+  style.textContent = css.match(/^\s*\.conversation-document b \{[^}]+\}/m)![0];
   document.head.append(style);
 });
 afterEach(async () => {

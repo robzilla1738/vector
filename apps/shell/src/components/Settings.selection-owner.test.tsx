@@ -72,6 +72,7 @@ const button = (name: string) =>
 const template = () => host.querySelector<HTMLTextAreaElement>('[aria-label="Action 1 template"]')!;
 async function render() {
   await act(async () => root.render(<Settings />));
+  await act(async () => vi.dynamicImportSettled());
 }
 async function write(value: string) {
   await act(async () => {

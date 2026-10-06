@@ -3,10 +3,10 @@ import { locatorAttempts, selectUniqueLocator, type FrameLike, type LocatorLike 
 import { AuxError } from "@aux/contracts";
 
 /** Fake locator: a fixed match count plus a visible-filtered count; records count() calls. */
-// oxlint-disable-next-line oxc/only-used-in-recursion — visibleCount is threaded to the fake's recursive filter()
 function fakeLocator(
   label: string,
   count: number,
+  // oxlint-disable-next-line oxc/only-used-in-recursion — fake filter carries the visible match count
   visibleCount = count,
   log: string[] = [],
 ): LocatorLike & { label: string } {

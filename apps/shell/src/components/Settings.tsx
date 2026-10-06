@@ -1,36 +1,18 @@
-import { LabsSettings } from "../settings/sections/Labs";
+import { lazySection } from "../settings/LazySettingsSection";
 import { staticIconButtonProps } from "../ui/class-props";
 import { staticHintProps } from "../ui/class-props";
 import { FeatureSettings, featureSettingsAvailable } from "../features/registry";
 import "./Settings.css";
-import { MemorySettings } from "./MemorySettings";
+
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStore, call, errToast } from "../store";
 
 import { shellIconBack, shellIconCheck, shellIconClose } from "./icons";
-import { ExternalAgents } from "./ExternalAgents";
-import { PluginsPanel } from "./PluginsPanel";
-import { Extensions } from "./Extensions";
-import { VaultSettings } from "./VaultSettings";
-import { CalendarConnections } from "./CalendarConnections";
-import { OutboundMcpSettings } from "./OutboundMcpSettings";
-import { ReviewedConnectors } from "./ReviewedConnectors";
+
 import { searchSettings, type SettingsDestination } from "../settings-search";
 import { collectSettingsFields } from "../settings/search";
 import { focusSettingsDestination } from "../settings/search-focus";
-import { AppearanceSettings } from "../settings/sections/Appearance";
-import { AgentsSettings } from "../settings/sections/Agents";
-import { PrivacySecuritySettings } from "../settings/sections/PrivacySecurity";
-import { PasswordsAutofillSettings } from "../settings/sections/PasswordsAutofill";
-import { ModelsSettings } from "../settings/sections/Models";
-import { UsageBudgetsSettings } from "../settings/sections/UsageBudgets";
-import { AutomationsSettings } from "../settings/sections/Automations";
-import { WorkspacesSettings } from "../settings/sections/Workspaces";
-import { QuickAskSettings } from "../settings/sections/QuickAsk";
-import { SelectionCaptureSettings } from "../settings/sections/SelectionCapture";
-import { ArchivedChatsSettings } from "../settings/sections/ArchivedChats";
-import { GeneralSettings } from "../settings/sections/General";
-import { ProfilesSettings } from "../settings/sections/Profiles";
+
 import { bridge, inNativeHost } from "../bridge";
 import { SettingsNav } from "../settings/SettingsNav";
 import { SettingsShell } from "../settings/SettingsShell";
@@ -44,7 +26,57 @@ import {
 import { availableForFocus, ownsFocus } from "../ui/focus";
 import { moveListFocus } from "../keyboard-list";
 import { useFeature } from "../use-feature";
+import { featureAvailable } from "../feature-availability";
 import { staticSpacerProps as auxClassSpacerProps } from "../ui/class-props";
+
+const LabsSettings = lazySection(async () => (await import("../settings/sections/Labs")).LabsSettings);
+const MemorySettings = lazySection(async () => (await import("./MemorySettings")).MemorySettings);
+const ExternalAgents = lazySection(async () => (await import("./ExternalAgents")).ExternalAgents);
+const PluginsPanel = lazySection(async () => (await import("./PluginsPanel")).PluginsPanel);
+const Extensions = lazySection(async () => (await import("./Extensions")).Extensions);
+const VaultSettings = lazySection(async () => (await import("./VaultSettings")).VaultSettings);
+const CalendarConnections = lazySection(
+  async () => (await import("./CalendarConnections")).CalendarConnections,
+);
+const OutboundMcpSettings = lazySection(
+  async () => (await import("./OutboundMcpSettings")).OutboundMcpSettings,
+);
+const ReviewedConnectors = lazySection(async () => (await import("./ReviewedConnectors")).ReviewedConnectors);
+const AppearanceSettings = lazySection(
+  async () => (await import("../settings/sections/Appearance")).AppearanceSettings,
+);
+const AgentsSettings = lazySection(async () => (await import("../settings/sections/Agents")).AgentsSettings);
+const PrivacySecuritySettings = lazySection(
+  async () => (await import("../settings/sections/PrivacySecurity")).PrivacySecuritySettings,
+);
+const PasswordsAutofillSettings = lazySection(
+  async () => (await import("../settings/sections/PasswordsAutofill")).PasswordsAutofillSettings,
+);
+const ModelsSettings = lazySection(async () => (await import("../settings/sections/Models")).ModelsSettings);
+const UsageBudgetsSettings = lazySection(
+  async () => (await import("../settings/sections/UsageBudgets")).UsageBudgetsSettings,
+);
+const AutomationsSettings = lazySection(
+  async () => (await import("../settings/sections/Automations")).AutomationsSettings,
+);
+const WorkspacesSettings = lazySection(
+  async () => (await import("../settings/sections/Workspaces")).WorkspacesSettings,
+);
+const QuickAskSettings = lazySection(
+  async () => (await import("../settings/sections/QuickAsk")).QuickAskSettings,
+);
+const SelectionCaptureSettings = lazySection(
+  async () => (await import("../settings/sections/SelectionCapture")).SelectionCaptureSettings,
+);
+const ArchivedChatsSettings = lazySection(
+  async () => (await import("../settings/sections/ArchivedChats")).ArchivedChatsSettings,
+);
+const GeneralSettings = lazySection(
+  async () => (await import("../settings/sections/General")).GeneralSettings,
+);
+const ProfilesSettings = lazySection(
+  async () => (await import("../settings/sections/Profiles")).ProfilesSettings,
+);
 
 const categoryDescriptions: Record<string, string> = {
   Downloads: "File names, exclusions and smart downloads.",
@@ -215,6 +247,7 @@ export function Settings() {
   const searching = !!query.trim();
   const results = searchSettings(query, indexedFields).filter(
     (result) =>
+      (!result.feature || featureAvailable(result.feature as import("@aux/contracts").AuxFeature)) &&
       (memoryAvailable || result.category !== "Memory") &&
       (downloadNamingAvailable || result.category !== "Downloads") &&
       (profilesAvailable || result.category !== "Profiles") &&
@@ -470,10 +503,11 @@ export function Settings() {
                     );
                     setQuery("");
                     setSubview(
-                      result.category === "General" &&
+                      result.subview ??
+                        (result.category === "General" &&
                         ["Keyword engines", "Task data backup"].includes(result.target ?? "")
-                        ? result.target!
-                        : null,
+                          ? result.target!
+                          : null),
                     );
                     setDestination(result);
                   }}
@@ -491,9 +525,9 @@ export function Settings() {
           </div>
         )}
 
-        {visible("Memory") && (
-          <section tabIndex={-1}>
-            <MemorySettings />
+        {memoryAvailable && (
+          <section tabIndex={-1} hidden={!visible("Memory")}>
+            <MemorySettings active={visible("Memory")} />
           </section>
         )}
         {permissionsAvailable && <PrivacySecuritySettings active={visible("Site permissions")} />}
@@ -513,7 +547,7 @@ export function Settings() {
           >
             {connectorsAvailable && (
               <>
-                <ReviewedConnectors onManage={manageConnector} />
+                <ReviewedConnectors active={visible("Connections")} onManage={manageConnector} />
                 <div
                   id="connection-calendar"
                   data-setting="Google Calendar"
@@ -523,7 +557,7 @@ export function Settings() {
                   }}
                   tabIndex={-1}
                 >
-                  <CalendarConnections />
+                  <CalendarConnections active={visible("Connections")} />
                 </div>
               </>
             )}
@@ -536,7 +570,7 @@ export function Settings() {
                 }}
                 tabIndex={-1}
               >
-                <OutboundMcpSettings />
+                <OutboundMcpSettings active={visible("Connections")} />
               </div>
             )}
           </section>
@@ -549,7 +583,7 @@ export function Settings() {
             aria-labelledby="connection-tab-Vault"
             hidden={!visible("Vault")}
           >
-            <VaultSettings />
+            <VaultSettings active={visible("Vault")} />
           </section>
         )}
         <section
@@ -559,7 +593,7 @@ export function Settings() {
           aria-labelledby="connection-tab-Agents"
           hidden={!visible("External agents")}
         >
-          <ExternalAgents />
+          <ExternalAgents active={visible("External agents")} />
         </section>
         {skillsAvailable && (
           <section
@@ -570,19 +604,25 @@ export function Settings() {
             hidden={!(category === "Connections" && connectionTab === "Plugins")}
           >
             <div data-setting="Plugins" tabIndex={-1}>
-              <PluginsPanel />
+              <PluginsPanel
+                active={!searching && category === "Connections" && connectionTab === "Plugins"}
+              />
             </div>
           </section>
         )}
         {extensionsAvailable && (
           <section tabIndex={-1} hidden={!visible("Extensions")}>
-            <Extensions />
+            <Extensions active={visible("Extensions")} />
           </section>
         )}
 
         <LabsSettings active={visible("Labs")} settings={settings} onSave={set} />
         <AppearanceSettings active={visible("Appearance")} settings={settings} onSave={set} />
-        {profilesAvailable && visible("Profiles") && <ProfilesSettings />}
+        {profilesAvailable && (
+          <section hidden={!visible("Profiles")}>
+            <ProfilesSettings active={visible("Profiles")} />
+          </section>
+        )}
         <AgentsSettings active={visible("Agent permissions")} settings={settings} onSave={set} />
         <PasswordsAutofillSettings
           active={visible("Passwords & Autofill")}

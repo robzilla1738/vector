@@ -1,3 +1,4 @@
+import { generatedSettingsFields } from "./settings/search.generated";
 import { searchSettingsIndex, type SettingsSearchItem } from "./settings/search";
 
 export interface SettingsDestination extends SettingsSearchItem {}
@@ -105,10 +106,20 @@ export const settingsDestinations: SettingsDestination[] = [
   },
 ];
 export function searchSettings(query: string, fields: readonly SettingsDestination[] = []) {
-  const fieldKeys = new Set(fields.map((field) => `${field.category}\u0000${field.label}`));
+  const enrichedFields = fields.map((field) => ({
+    ...generatedSettingsFields.find((item) => item.category === field.category && item.label === field.label),
+    ...field,
+  }));
+  const combinedFields = [
+    ...enrichedFields,
+    ...generatedSettingsFields.filter(
+      (item) => !fields.some((field) => field.category === item.category && field.label === item.label),
+    ),
+  ];
+  const fieldKeys = new Set(combinedFields.map((field) => `${field.category}\u0000${field.label}`));
   return searchSettingsIndex(
     [
-      ...fields,
+      ...combinedFields,
       ...settingsDestinations.filter((item) => !fieldKeys.has(`${item.category}\u0000${item.label}`)),
     ],
     query,

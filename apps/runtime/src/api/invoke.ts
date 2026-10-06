@@ -2,7 +2,7 @@ import type { AgentConnectionScope, AuxEvent, MethodName } from "@aux/contracts"
 import { AuxError, MethodSchemas, ResponseRecordSchema, requireAuxMethod } from "@aux/contracts";
 import { RuntimeAuthorization } from "./authorization.generated.js";
 import { buildMethodDeps } from "./methods/context.js";
-import type { MethodCtx, Services } from "./methods/context.js";
+import type { MethodCtx, MethodDeps, Services } from "./methods/context.js";
 import { pageToolTarget } from "../safety/page-tool-access.js";
 import { METHODS } from "./methods/index.js";
 export type { Services } from "./methods/context.js";
@@ -10,8 +10,7 @@ export type { Services } from "./methods/context.js";
 /** Validates params against MethodSchemas and dispatches to domain handlers. */
 export function makeInvoker(s: Services) {
   const deps = buildMethodDeps(s, invoke);
-  const { codeMode, eventVisible, requireScopedPage, requireScopedTask, scopedPageIds, subagents, turnTabs } =
-    deps;
+
   async function invoke(
     method: string,
     rawParams: unknown,
@@ -71,11 +70,11 @@ export function makeInvoker(s: Services) {
               "permission_denied",
               "This connection cannot create tasks outside its workspace",
             );
-          if (params.parentTaskId) requireScopedTask(scope, params.parentTaskId);
+          if (params.parentTaskId) deps.requireScopedTask(scope, params.parentTaskId);
         } else {
           if (typeof params.parentTaskId !== "string")
             throw new AuxError("permission_denied", "A task-scoped connection can only create a child task");
-          const parent = requireScopedTask(scope, params.parentTaskId);
+          const parent = deps.requireScopedTask(scope, params.parentTaskId);
           if (params.workspaceId !== parent.workspaceId)
             throw new AuxError("permission_denied", "A child task must remain in its parent workspace");
         }
@@ -85,7 +84,7 @@ export function makeInvoker(s: Services) {
             "Attach browser pages and local projects in Aux before using them through this connection",
           );
       } else if (method.startsWith("tasks.") && typeof params.taskId === "string") {
-        requireScopedTask(scope, params.taskId);
+        deps.requireScopedTask(scope, params.taskId);
         if (method === "tasks.update" && params.resources !== undefined)
           throw new AuxError(
             "permission_denied",
@@ -95,7 +94,7 @@ export function makeInvoker(s: Services) {
         (method === "calendar.taskGrants.list" || method === "calendar.taskEvents.list") &&
         typeof params.taskId === "string"
       ) {
-        requireScopedTask(scope, params.taskId);
+        deps.requireScopedTask(scope, params.taskId);
       } else if (
         method === "agent.web.fetch" ||
         method === "agent.web.search" ||
@@ -107,25 +106,25 @@ export function makeInvoker(s: Services) {
       ) {
         if (!params.taskId || !params.expectedRevision)
           throw new AuxError("invalid_params", "Scoped agent tools require a task ID and revision.");
-        const task = requireScopedTask(scope, params.taskId);
+        const task = deps.requireScopedTask(scope, params.taskId);
         if (method !== "agent.turn.end" && task.revision !== params.expectedRevision)
           throw new AuxError("conflict", "Task revision changed; refresh it before using agent tools.");
       } else if (method === "sites.read") {
-        requireScopedTask(scope, params.taskId);
-        requireScopedPage(scope, params.pageId, client.connectionId);
+        deps.requireScopedTask(scope, params.taskId);
+        deps.requireScopedPage(scope, params.pageId, client.connectionId);
       } else if (method.startsWith("pages.") && method !== "pages.list") {
         const pageId = typeof params.pageId === "string" ? params.pageId : params.program?.pageId;
         if (typeof pageId !== "string") throw new AuxError("permission_denied", "A scoped page is required");
-        requireScopedPage(scope, pageId, client.connectionId);
+        deps.requireScopedPage(scope, pageId, client.connectionId);
         if (method === "pages.execute" || method === "pages.cuaExecute") {
           if (typeof params.taskId !== "string" || typeof params.expectedRevision !== "number")
             throw new AuxError("invalid_params", "Scoped page programs require taskId and expectedRevision");
-          requireScopedTask(scope, params.taskId);
+          deps.requireScopedTask(scope, params.taskId);
         }
       } else if (method === "results.generate") {
         if (!params.taskId || !params.expectedRevision)
           throw new AuxError("invalid_params", "Scoped generated results require a task ID and revision.");
-        const task = requireScopedTask(scope, params.taskId);
+        const task = deps.requireScopedTask(scope, params.taskId);
         if (task.revision !== params.expectedRevision)
           throw new AuxError("conflict", "Task revision changed; refresh it before generating a result.");
         if ((task.conversationId ?? `task:${task.taskId}`) !== params.chatId)
@@ -137,26 +136,27 @@ export function makeInvoker(s: Services) {
             "permission_denied",
             "This connection can only access runs belonging to its task scope",
           );
-        requireScopedTask(scope, run.config.taskId);
+        deps.requireScopedTask(scope, run.config.taskId);
       } else if (method.startsWith("subagents.")) {
         const parentRunId =
           method === "subagents.createGroup"
             ? params.parentRunId
-            : subagents.view(params.groupId ?? subagents.groupIdForAgent(params.agentId)).group.parentRunId;
+            : deps.subagents.view(params.groupId ?? deps.subagents.groupIdForAgent(params.agentId)).group
+                .parentRunId;
         const parent = s.repo.getRun(parentRunId);
         if (!parent?.config?.taskId)
           throw new AuxError("permission_denied", "Subagents require a scoped parent task.");
-        requireScopedTask(scope, parent.config.taskId);
+        deps.requireScopedTask(scope, parent.config.taskId);
         if (
           (method === "subagents.spawn" || method === "subagents.forkSelf") &&
-          params.pageIds.some((pageId: string) => !scopedPageIds(scope, client.connectionId).has(pageId))
+          params.pageIds.some((pageId: string) => !deps.scopedPageIds(scope, client.connectionId).has(pageId))
         )
           throw new AuxError("permission_denied", "A subagent page is outside this connection's scope.");
       } else if (method === "mcp.tools.call") {
         if (params.context.workspaceId !== scope.workspaceId)
           throw new AuxError("permission_denied", "MCP tool calls cannot leave this connection's Space.");
         const taskId = params.context.taskId ?? (scope.kind === "task" ? scope.taskId : undefined);
-        const task = taskId ? requireScopedTask(scope, taskId) : undefined;
+        const task = taskId ? deps.requireScopedTask(scope, taskId) : undefined;
         if (params.context.revision !== undefined && params.context.revision !== task?.revision)
           throw new AuxError("conflict", "The MCP task revision changed. Review the current task.");
         params.context = {
@@ -164,7 +164,7 @@ export function makeInvoker(s: Services) {
           ...(task ? { taskId: task.taskId, revision: task.revision } : {}),
         };
       } else if (method === "plugins.skills.read") {
-        const task = requireScopedTask(scope, params.taskId);
+        const task = deps.requireScopedTask(scope, params.taskId);
         if (task.revision !== params.expectedRevision)
           throw new AuxError("conflict", "Task revision changed; refresh it before reading the Skill.");
       } else if (
@@ -182,7 +182,7 @@ export function makeInvoker(s: Services) {
         throw new AuxError("permission_denied", "This method is outside the connection's task scope");
       }
       if (method === "tasks.start" && Array.isArray(params.pageIds))
-        for (const pageId of params.pageIds) requireScopedPage(scope, pageId, client.connectionId);
+        for (const pageId of params.pageIds) deps.requireScopedPage(scope, pageId, client.connectionId);
     }
 
     // S6.7 — a scoped connection's work lands on its first-class session run:
@@ -234,8 +234,7 @@ export function makeInvoker(s: Services) {
       }
     };
 
-    const ctx: MethodCtx = {
-      ...deps,
+    const ctx: MethodCtx = Object.assign(Object.create(deps) as MethodDeps, {
       method: method as MethodName,
       params,
       client,
@@ -244,7 +243,7 @@ export function makeInvoker(s: Services) {
       invoke,
       externalRunId,
       withExternalPage,
-    };
+    });
     const tracked = async <T>(action: () => Promise<T>): Promise<T> => {
       if (!externalRunId || !client.connectionId || !s.externalSessions) return action();
       const startedAt = Date.now();
@@ -336,7 +335,7 @@ export function makeInvoker(s: Services) {
       // Source-task authorization remains the prior person-approved path.
       // A task resource is never relabelled as a run-created page or mention.
       if (!scope) throw new AuxError("permission_denied", "A current task page scope is required.");
-      requireScopedPage(scope, target.pageId, client.connectionId);
+      deps.requireScopedPage(scope, target.pageId, client.connectionId);
       const recheckSource = deps.captureScopedPageSource(scope, target.pageId, client.connectionId);
       const before = s.pages.get(target.pageId);
       const identity = { sessionId: before.sessionId, documentEpoch: before.documentEpoch, url: before.url };
@@ -364,7 +363,7 @@ export function makeInvoker(s: Services) {
       recheckReadPolicy?.();
       const result = await METHODS[ctx.method](ctx);
       recheckReadPolicy?.();
-      requireScopedPage(scope, target.pageId, client.connectionId);
+      deps.requireScopedPage(scope, target.pageId, client.connectionId);
       recheckSource();
       const currentRun = s.repo.getRun(externalRunId);
       if (
@@ -398,11 +397,7 @@ export function makeInvoker(s: Services) {
   }
   return Object.assign(invoke, {
     eventVisible: (scope: AgentConnectionScope, connectionId: string | undefined, event: AuxEvent) =>
-      eventVisible(scope, connectionId, event),
-    dispose: async () => {
-      turnTabs.dispose();
-      await turnTabs.endAll();
-      codeMode.disposeAll();
-    },
+      deps.eventVisible(scope, connectionId, event),
+    dispose: () => deps.dispose(),
   });
 }

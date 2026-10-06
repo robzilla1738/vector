@@ -10,5 +10,5 @@ function ExternalLinks() {
 export const mount: FeatureMount = {
   feature: "littleWindow",
   commands: littleCommands,
-  settingsSections: [{ category: "general", component: ExternalLinks }],
+  settingsSections: [{ category: "General", component: ExternalLinks }],
 };

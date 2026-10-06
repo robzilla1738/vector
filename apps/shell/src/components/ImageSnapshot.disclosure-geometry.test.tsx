@@ -80,9 +80,9 @@ it("keeps the disclosure's source layout target at the original Aux hit minimum 
   const fontOffset = Number(tokens.match(/--fs-xs:\s*calc\(var\(--ui-font-size\)\s*-\s*(\d+)px\)/)![1]);
   const padding = Number(rule.match(/padding:\s*(\d+)px\s+0/)![1]);
   // This is a source layout model, not a DOM/pixel measurement in jsdom.
-  const minimum = rule.includes("min-height:var(--hit)") ? hit : 0;
+  const minimum = /min-height:\s*var\(--hit\)/.test(rule) ? hit : 0;
   expect(
     UI_FONT_SIZES.map((size) => Math.max(minimum, (size - fontOffset) * lineHeight + 2 * padding)),
   ).toEqual(UI_FONT_SIZES.map(() => hit));
-  expect(rule).toContain("cursor:pointer");
+  expect(rule).toMatch(/cursor:\s*pointer/);
 });

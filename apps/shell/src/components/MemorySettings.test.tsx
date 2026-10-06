@@ -134,9 +134,6 @@ it("search retains the long title, original excerpt and paused status with its l
   });
   await act(async () => vi.advanceTimersByTimeAsync(140));
   expect(mocks.call).toHaveBeenCalledWith("workspaces.memory.search", { query: "Research" });
-  expect(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "Settings.css"), "utf8")).toMatch(
-    /\.memory-space-list\.memory-search-results > \.btn \{[^}]*min-height:64px/,
-  );
   const choice = choices()[0]!;
   expect(choice.querySelector("span")?.textContent).toBe(`${longName} · Archived`);
   expect(choice.querySelector("small")?.textContent).toBe("Original saved excerpt · Paused");

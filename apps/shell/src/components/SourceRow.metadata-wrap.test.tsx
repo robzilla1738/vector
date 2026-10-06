@@ -17,7 +17,7 @@ beforeEach(() => {
   root = createRoot(host);
   style = document.createElement("style");
   const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../ui/ui.css"), "utf8");
-  style.textContent = css.match(/^\.ui-list-copy small \{[^}]+\}/m)![0];
+  style.textContent = css.match(/^\s*\.ui-list-copy small\s*\{[^}]+\}/m)![0];
   document.head.append(style);
 });
 afterEach(async () => {

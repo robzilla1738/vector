@@ -38,8 +38,19 @@ beforeEach(() => {
   style = document.createElement("style");
   const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "Conversation.css"), "utf8");
   // Apply the actual narrow-container rules to actual mounted controls; jsdom does not implement container sizing.
-  const narrow = css.match(/@container composer \(max-width:420px\) \{([\s\S]*?)\n\}/)![1];
-  const wrap = css.match(/^\.composer-footer \.conversation-browser-context-controls \{[^}]+\}/m)![0];
+  const container = /@container composer\s*\(max-width:\s*420px\)\s*\{/.exec(css)!;
+  const start = container.index + container[0].length;
+  let depth = 1,
+    end = start;
+  // Unwrap this actual container for jsdom using block nesting, not indentation.
+  while (depth && end < css.length) {
+    if (css[end] === "{") depth++;
+    else if (css[end] === "}") depth--;
+    end++;
+  }
+  if (depth) throw new Error("The composer container CSS block is incomplete.");
+  const narrow = css.slice(start, end - 1);
+  const wrap = css.match(/^\s*\.composer-footer \.conversation-browser-context-controls \{[^}]+\}/m)![0];
   style.textContent = wrap + narrow;
   document.head.append(style);
 });

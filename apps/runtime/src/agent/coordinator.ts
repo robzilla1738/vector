@@ -1,3 +1,4 @@
+import { markInterruptedRuns } from "../services/startup-recovery.js";
 import { closeCreatedPage } from "../services/close-created-page.js";
 import { browserContextPage } from "../services/browser-context-page.js";
 import { withRunAuthorityMutation, withRunDispatchMutation } from "../services/overnight-authority.js";
@@ -853,24 +854,6 @@ export class RunCoordinator {
   }
 
   async markInterrupted() {
-    for (const run of this.deps.repo.listRuns(200)) {
-      if (["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) {
-        await withRunDispatchMutation(
-          this.deps.repo,
-          async () => {
-            const current = this.deps.repo.getRun(run.runId);
-            if (
-              !current ||
-              !["queued", "planning", "running", "paused", "needs_input"].includes(current.status)
-            )
-              return;
-            current.status = "interrupted";
-            current.endedAt = Date.now();
-            this.deps.repo.saveRun(current);
-          },
-          run.runId,
-        );
-      }
-    }
+    await markInterruptedRuns(this.deps.repo);
   }
 }

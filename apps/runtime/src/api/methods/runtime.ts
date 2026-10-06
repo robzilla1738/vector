@@ -54,10 +54,10 @@ async function h_runtime_describe(ctx: MethodCtx): Promise<unknown> {
       observeMaxTextChars: 6000,
     },
     features: {
-      responseCapture: !!s.responses,
-      operationRegistry: !!s.operations,
-      stateIndex: !!s.state,
-      tracing: !!s.tracer,
+      responseCapture: s.serviceAvailable?.("responses") ?? !!s.responses,
+      operationRegistry: s.serviceAvailable?.("operations") ?? !!s.operations,
+      stateIndex: s.serviceAvailable?.("state") ?? !!s.state,
+      tracing: s.serviceAvailable?.("tracer") ?? !!s.tracer,
       chromeAttach: false,
       takeover: true,
       // Runs are crash-safe (the ledger marks them interrupted) but NOT

@@ -32,3 +32,19 @@ it("waits for a routed field, focuses it, and clears its three-flash marker", as
   await vi.advanceTimersByTimeAsync(2250);
   expect(target.classList.contains("settings-search-focus")).toBe(false);
 });
+
+it("focuses a lazily mounted feature field and ignores matching fields in retained hidden sections", async () => {
+  const root = document.createElement("div");
+  root.innerHTML =
+    '<div hidden><section data-settings-section="Downloads"><div data-setting="Filename template"></div></section></div><div><section data-settings-section="Downloads"><div data-setting="Filename template"></div></section></div>';
+  document.body.append(root);
+  const target = root.lastElementChild!.querySelector<HTMLElement>("[data-setting]")!;
+  expect(
+    await focusSettingsDestination(
+      root,
+      { category: "Downloads", label: "Filename template", target: "Filename template", description: "" },
+      new AbortController().signal,
+    ),
+  ).toBe(true);
+  expect(document.activeElement).toBe(target);
+});

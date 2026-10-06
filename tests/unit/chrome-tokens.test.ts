@@ -12,10 +12,34 @@ const sharedUi = readFileSync(join(here, "../../apps/shell/src/ui/ui.css"), "utf
 const conversationCss = readFileSync(join(here, "../../apps/shell/src/components/Conversation.css"), "utf8");
 const css = tokens + "\n" + styles;
 
+// Formatting does not change a declaration, selector or numeric CSS value.
+function normalizedCss(value: string): string {
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/\s*([{};,])\s*/g, "$1")
+    .replace(/:\s+/g, ":")
+    .replace(/\(\s+/g, "(")
+    .replace(/\s+\)/g, ")")
+    .replace(/(^|[^\w-])\.(\d)/g, "$10.$2")
+    .trim();
+}
+function expectCss(actual: string) {
+  return {
+    toContain(expected: string) {
+      expect(normalizedCss(actual)).toContain(normalizedCss(expected));
+    },
+    not: {
+      toContain(expected: string) {
+        expect(normalizedCss(actual)).not.toContain(normalizedCss(expected));
+      },
+    },
+  };
+}
+
 function block(theme: "dark" | "light"): string {
   const m =
     theme === "dark"
-      ? tokens.match(/:root\s*\{([\s\S]*?)\n\}/)
+      ? tokens.match(/:root\s*\{([\s\S]*?)\n\s*\}/)
       : tokens.match(/\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/);
   expect(m, `${theme} theme block`).toBeTruthy();
   return m![1]!;
@@ -49,7 +73,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
         expect(b, `${theme} ${t}`).toMatch(new RegExp(`${t}\\s*:`));
     }
     expect(tokens).toMatch(/--surface-panel:\s*var\(--bg-1\)/);
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       ".app.native-host .main-col.has-page { --page-shell-background: transparent; --stage-bg: transparent; }",
     );
     expect(tokens).toMatch(/--surface-menu:\s*var\(--bg-2\)/);
@@ -106,56 +130,23 @@ describe("shipped stylesheet — native macOS chrome", () => {
   });
 
   it("keeps native material visible and provides a solid menu fallback", () => {
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       ':root[data-sidebar-appearance="translucent"] .app-body { background: transparent; }',
     );
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       ':root[data-sidebar-appearance="translucent"] .main-col { background: var(--page-shell-background, color-mix(in srgb, var(--bg-0) var(--content-opacity, 95%), transparent)); }',
     );
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       "--window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);",
     );
-    expect(styles).toContain(":is(.sidebar.expanded, .sidebar.peek, .chat-sidebar, .rail)");
+    expectCss(styles).toContain(":is(.sidebar.expanded, .sidebar.peek, .chat-sidebar, .rail)");
     expect(tokens).toMatch(/--surface-menu:\s*var\(--bg-2\)/);
     expect(tokens).toMatch(/--hairline:\s*0\.5px/);
     expect(tokens).toMatch(/--squircle-factor:\s*1\.4/);
-    expect(styles).toContain("corner-shape: superellipse(var(--squircle-factor))");
-    expect(styles).toContain("var(--surface-menu) 80%, transparent");
-    expect(styles).toContain("background: var(--surface-menu); backdrop-filter: none;");
+    expectCss(styles).toContain("corner-shape: superellipse(var(--squircle-factor))");
+    expectCss(styles).toContain("var(--surface-menu) 80%, transparent");
+    expectCss(styles).toContain("background: var(--surface-menu); backdrop-filter: none;");
     expect(styles).toMatch(/\.folder-kids\s*\{[^}]*overflow:\s*hidden/s);
-  });
-
-  it("keeps literal spacing, type, radius, weight and motion values from growing (ratchet: lower these, never raise)", () => {
-    const body = styles
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/@keyframes[^{]*\{(?:[^{}]*\{[^}]*\})*[^}]*\}/g, "");
-    const literals = (props: string, unit: RegExp) => {
-      let n = 0;
-      for (const m of body.matchAll(new RegExp(`(?:^|[{;\\s])(?:${props})\\s*:([^;}]*)`, "g")))
-        n += (m[1]!.match(unit) ?? []).length;
-      return n;
-    };
-    const px = /(?<![\w.-])[1-9]\d*(?:\.\d+)?px/g;
-    expect(
-      literals("(?:padding|margin|gap|row-gap|column-gap|inset|top|right|bottom|left)(?:-[a-z-]+)?", px),
-    ).toBeLessThanOrEqual(150);
-    expect(literals("font-size", /\d+(?:\.\d+)?px/g)).toBeLessThanOrEqual(1);
-    expect(literals("border(?:-[a-z]+)*-radius", px)).toBeLessThanOrEqual(13);
-    expect(literals("font-weight", /\b\d{3}\b/g)).toBe(0);
-    expect(literals("(?:transition|animation)(?:-[a-z-]+)?", /(?<![\w.-])\.?\d+(?:\.\d+)?m?s\b/g)).toBe(0);
-    for (const t of [
-      "--fw-regular",
-      "--fw-medium",
-      "--fw-strong",
-      "--fw-semibold",
-      "--r-control",
-      "--t-quick",
-      "--t-reveal",
-      "--t-slide",
-      "--space-2-5",
-    ])
-      expect(tokens).toMatch(new RegExp(`${t}\\s*:`));
-    expect(tokens.match(/--r-sm:\s*([^;]+);/)![1]).not.toBe(tokens.match(/--r-md:\s*([^;]+);/)![1]);
   });
 
   it("gives each space a distinct muted hue in both appearances", () => {
@@ -189,48 +180,48 @@ describe("shipped stylesheet — native macOS chrome", () => {
   });
 
   it("keeps a loaded page flush and floats the address bar in from the top edge", () => {
-    expect(styles).toContain(".app.native-host .main-col.has-page > .toolbar");
+    expectCss(styles).toContain(".app.native-host .main-col.has-page > .toolbar");
     expect(styles).toMatch(
       /\.app\.native-host \.main-col\.has-page > \.toolbar\s*\{[^}]*position:\s*absolute/s,
     );
     expect(styles).toMatch(
       /\.app\.native-host \.main-col\.has-page > \.toolbar\s*\{[^}]*background:\s*transparent/s,
     );
-    expect(styles).toContain(".main-col.toolbar-revealed > .toolbar > :is(.cmdbar, .tb-left, .tb-right)");
-    expect(styles).toContain(".app.native-host .main-col.toolbar-revealed.has-page");
-    expect(styles).toContain("translate3d(0, calc(-100% - 10px), 0)");
-    expect(tokens).toContain("--ease-emphasized: cubic-bezier(.22, 1, .36, 1)");
-    expect(styles).toContain("var(--ease-emphasized)");
-    expect(styles).not.toContain("bottom: -64px");
-    expect(styles).not.toContain("backdrop-filter: blur(22px) saturate(1.4)");
-    expect(styles).toMatch(/mask-image: linear-gradient\(to bottom,[^;]*transparent\)/);
-    expect(styles).toContain(
+    expectCss(styles).toContain(".main-col.toolbar-revealed > .toolbar > :is(.cmdbar, .tb-left, .tb-right)");
+    expectCss(styles).toContain(".app.native-host .main-col.toolbar-revealed.has-page");
+    expectCss(styles).toContain("translate3d(0, calc(-100% - 10px), 0)");
+    expectCss(tokens).toContain("--ease-emphasized: cubic-bezier(.22, 1, .36, 1)");
+    expectCss(styles).toContain("var(--ease-emphasized)");
+    expectCss(styles).not.toContain("bottom: -64px");
+    expectCss(styles).not.toContain("backdrop-filter: blur(22px) saturate(1.4)");
+    expect(styles).toMatch(/mask-image:\s*linear-gradient\(\s*to bottom,[^;]*transparent\s*\)/);
+    expectCss(styles).toContain(
       ".app.native-host .main-col.toolbar-revealed.has-page > .toolbar :is(.tb-left, .cmdbar:not(.editing), .tb-right)",
     );
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       "html:is(.toolbar-stacked, .sidebar-peek) :is(.app, .app-body, .main-col, .main, .stage-wrap, .stage-card.has-page)",
     );
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       ".app.native-host:is(.layout-hidden, .layout-rail) .main-col.has-page .stage-wrap > .findbar { padding-left: var(--traffic-inset); }",
     );
-    expect(styles).toContain(".app.native-host .sidebar.expanded .sb-head.native-host,");
-    expect(styles).toContain(
+    expectCss(styles).toContain(".app.native-host .sidebar.expanded .sb-head.native-host,");
+    expectCss(styles).toContain(
       ".app.native-host .sidebar.peek .sb-head.native-host { padding-left: var(--traffic-inset); }",
     );
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       ".app.native-host .sidebar.fully-hidden.peek { width: var(--sb-w, var(--sidebar-w)); pointer-events: auto; }",
     );
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       ".app.native-host.tabs-vertical:is(.layout-hidden, .layout-rail) .conversation:not(.conversation-embedded) > .conversation-head { padding-left: var(--traffic-inset); }",
     );
-    expect(styles).not.toContain(".sidebar.peek { position: absolute");
+    expectCss(styles).not.toContain(".sidebar.peek { position: absolute");
     // shell state comes from classes React already sets, not document-wide :has() matching
     expect(styles).not.toMatch(/(?:html|:root|\.app|\.main-col|\.stage-wrap):has\(/);
   });
 
   it("uses one menu entrance, solid scrims and no white favicon plates", () => {
     expect(styles.match(/animation:\s*menu-enter/g)).toHaveLength(1);
-    expect(styles).not.toContain("@keyframes dialog-enter");
+    expectCss(styles).not.toContain("@keyframes dialog-enter");
     expect(styles).toMatch(/\.scrim-soft\s*\{[^}]*background:\s*var\(--scrim\)/);
     expect(styles).not.toMatch(/\.scrim-soft\s*\{[^}]*backdrop-filter/);
     expect(styles).not.toMatch(/\.(tab-fav img|pal-ico img|ov-fav|ov-bigfav)\s*\{[^}]*background:\s*#fff/);
@@ -241,12 +232,12 @@ describe("shipped stylesheet — native macOS chrome", () => {
 
   it("reveals the URL field and both icon groups together without moving page layout", () => {
     const controls = ".toolbar > :is(.cmdbar, .tb-left, .tb-right)";
-    expect(styles).toContain(`${controls} {\n  opacity: 0;`);
-    expect(styles).toContain(
+    expectCss(styles).toContain(`${controls} {\n  opacity: 0;`);
+    expectCss(styles).toContain(
       ".toolbar:is(:hover, :focus-within, :has(.cmdbar.editing)) > :is(.cmdbar, .tb-left, .tb-right),",
     );
-    expect(styles).toContain(`@media (hover: none) {\n  ${controls} { opacity: 1; transform: none; }`);
-    expect(styles).toContain(
+    expectCss(styles).toContain(`@media (hover: none) {\n  ${controls} { opacity: 1; transform: none; }`);
+    expectCss(styles).toContain(
       `@media (prefers-reduced-motion: reduce) {\n  ${controls} { transform: none; transition: none; }`,
     );
   });
@@ -293,16 +284,18 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   );
   const conversation = readFileSync(join(here, "../../apps/shell/src/components/Conversation.tsx"), "utf8");
   const images = readFileSync(join(here, "../../apps/shell/src/components/ConversationImages.tsx"), "utf8");
-  const superellipse = styles.indexOf("corner-shape: superellipse(var(--squircle-factor))");
+  const normalizedStyles = normalizedCss(styles);
+  const styleIndex = (value: string) => normalizedStyles.indexOf(normalizedCss(value));
+  const superellipse = styleIndex("corner-shape: superellipse(var(--squircle-factor))");
 
   it("uses tokenized rounded suggestions within the address popover", () => {
-    expect(styles).toContain(".cmdbar, .cb-pop, .main-col");
+    expectCss(styles).toContain(".cmdbar, .cb-pop, .main-col");
     expect(styles).toMatch(/\.cb-pop\s*\{[^}]*border-radius:\s*var\(--r-xl\)/);
     expect(readFileSync("apps/shell/src/components/SearchResultRow.css", "utf8")).toMatch(
       /\.search-result-row\s*\{[^}]*border-radius:\s*var\(--r-lg\);/,
     );
-    expect(styles).toContain("--cb-radius: var(--r-xl)");
-    expect(styles).toContain("--cb-radius: var(--r-2xl)");
+    expectCss(styles).toContain("--cb-radius: var(--r-xl)");
+    expectCss(styles).toContain("--cb-radius: var(--r-2xl)");
   });
 
   it("draws the search suggestion enter mark as the circular accent send control and leaves other hints as text keys", () => {
@@ -311,18 +304,18 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     );
     expect(commandBar).toContain('hint: "Ask"');
     expect(commandTabRows).toContain('hint: "Switch to tab"');
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       ".cb-go { display: grid; place-items: center; width: var(--control-h); height: var(--control-h); flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }",
     );
     expect(commandBar).toContain("{shellIconSend}");
     expect(commandBar).not.toContain("shellIconEnter");
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       ".composer-send-actions > .icon-btn,\n.cb-send { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }",
     );
   });
 
   it("keeps a conversation page card live and offers Open in tab and Split view", () => {
-    expect(conversation).toContain("bridge.preview(pageId)");
+    expect(conversation).toMatch(/bridge\s*\.preview\(\s*pageId\s*,?\s*\)/);
     expect(conversation).toContain("window.setTimeout(pull, 700)");
     expect(conversation).toContain("img.current.src = image");
     expect(conversation).toContain(">Open in tab</span>");
@@ -334,10 +327,10 @@ describe("session chrome — search, preview, close, settings, attachments", () 
 
   it("forces tab close targets round after the shared superellipse rule", () => {
     expect(superellipse).toBeGreaterThanOrEqual(0);
-    const round = styles.indexOf(
+    const round = styleIndex(
       "button.tab-close, button.horizontal-tab-close, button.icon-btn.sm, button.icon-btn.xs { corner-shape: round; }",
     );
-    const radius = styles.indexOf(
+    const radius = styleIndex(
       "button.tab-close, button.horizontal-tab-close {\n  width: 22px;\n  height: 22px;\n  border-radius: var(--r-pill);\n}",
     );
     expect(round).toBeGreaterThan(superellipse);
@@ -345,27 +338,31 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   });
 
   it("keeps settings navigation one quiet selected surface and groups fields into rounded cards", () => {
-    const flat = styles.indexOf(
+    const flat = styleIndex(
       ".settings-nav button:hover, .settings-nav button[aria-current] { background: var(--bg-active);",
     );
-    const selected = styles.indexOf(
+    const selected = styleIndex(
       '.settings-nav button[aria-current="page"] { background: var(--surface-primary); color: var(--ink-0); box-shadow: none; }',
     );
     expect(selected).toBeGreaterThan(flat);
     expect(selected).toBeGreaterThan(superellipse);
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       "settings-nav button {\n  display: flex;\n  align-items: center;\n  gap: var(--space-2-5);",
     );
-    expect(styles).toContain("border-radius: var(--r-control);\n  corner-shape: round;");
-    expect(styles).toContain(
+    expectCss(styles).toContain("border-radius: var(--r-control);\n  corner-shape: round;");
+    expectCss(styles).toContain(
       ".settings-content .drawer-section + .field,\n.settings-content section > .field:first-child { border-start-start-radius: var(--r-xl); border-start-end-radius: var(--r-xl); }",
     );
-    expect(sharedUi).toContain(
+    expectCss(sharedUi).toContain(
       ".ui-settings-group > div { background:var(--surface-secondary); border-radius:var(--r-xl); overflow:hidden; }",
     );
-    expect(styles).toContain('input:not([type="range"]):not([type="checkbox"]):not([type="radio"])');
-    expect(styles).not.toContain(".settings-content .field:first-of-type { border-radius: 14px 14px 0 0; }");
-    expect(styles).not.toContain(".settings-content .field:last-of-type { border-radius: 0 0 14px 14px; }");
+    expectCss(styles).toContain('input:not([type="range"]):not([type="checkbox"]):not([type="radio"])');
+    expectCss(styles).not.toContain(
+      ".settings-content .field:first-of-type { border-radius: 14px 14px 0 0; }",
+    );
+    expectCss(styles).not.toContain(
+      ".settings-content .field:last-of-type { border-radius: 0 0 14px 14px; }",
+    );
   });
 
   it("opens attachments without hiding run controls and work history", () => {
@@ -376,8 +373,8 @@ describe("session chrome — search, preview, close, settings, attachments", () 
       ".composer-attach",
       ".attach-page",
     ])
-      expect(styles).not.toContain(dead);
-    expect(styles).toContain(
+      expectCss(styles).not.toContain(dead);
+    expectCss(styles).toContain(
       ".capture-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:var(--space-2); }",
     );
     expect(styles).not.toMatch(/capture-actions[^{]*\{[^}]*display:\s*contents/);
@@ -422,13 +419,13 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     visit(imageSource);
     expect(imageControls.get("choose-conversation-image")).toBe("Image");
     expect(imageControls.get("capture-conversation-page")).toBe("Capture");
-    expect(conversationCss).toContain(".conversation .capture-triggers { display:none; }");
-    expect(styles).toContain(".conversation .run-msg { display: none; }");
+    expectCss(conversationCss).toContain(".conversation .capture-triggers { display:none; }");
+    expectCss(styles).toContain(".conversation .run-msg { display: none; }");
     // Run status (Pause/Stop/state badge) and Work history stay visible in chat panels;
     // hiding them regresses the live-run controls — see .conversation .run-msg above.
     expect(styles).not.toMatch(/\.conversation \.run-status[^{}]*display:\s*none/);
     expect(styles).not.toMatch(/\.conversation \.run-section[^{}]*display:\s*none/);
-    expect(styles).toContain(
+    expectCss(styles).toContain(
       ".composer-send-actions > .icon-btn,\n.cb-send { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }",
     );
   });

@@ -91,14 +91,14 @@ it("uses the compact minimum hit height at every supported type scale without ch
     tokens = source("tokens.css"),
     reset = source("styles/reset.css");
   const rule = css.match(/\.home-composer-mode button\s*\{([^}]+)\}/)![1]!;
-  expect(rule).toContain("font-size:var(--fs-xs)");
-  expect(rule).toContain("padding:var(--space-1) var(--space-2)");
+  expect(rule).toMatch(/font-size:\s*var\(--fs-xs\)/);
+  expect(rule).toMatch(/padding:\s*var\(--space-1\)\s+var\(--space-2\)/);
   expect(tokens).toContain("--fs-xs: calc(var(--ui-font-size) - 2px)");
   expect(reset).toContain("line-height: var(--lh-normal)");
   const hit = Number(tokens.match(/--hit:\s*(\d+)px/)![1]);
   const padding = Number(tokens.match(/--space-1:\s*(\d+)px/)![1]);
   const line = Number(tokens.match(/--lh-normal:\s*([\d.]+)/)![1]);
-  const minimum = rule.includes("min-height:var(--hit)") ? hit : 0;
+  const minimum = /min-height:\s*var\(--hit\)/.test(rule) ? hit : 0;
   // Source box model only: jsdom does not supply native paint or hit-test geometry.
   expect(UI_FONT_SIZES.map((size) => Math.max(minimum, (size - 2) * line + padding * 2))).toEqual([
     32, 32, 32,

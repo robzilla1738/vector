@@ -1,7 +1,7 @@
 import { StandaloneDriver } from "../support/standalone-driver.js";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { EventEmitter } from "node:events";
-import { CdpAttachedDriver } from "@aux/chromium-driver";
+import { CdpAttachedDriver, ManagedChromiumDriver } from "@aux/chromium-driver";
 
 // playwright-core is not a dependency of the tests workspace; the drivers
 // accept injected connectors, so structural stand-ins are all we need.
@@ -242,4 +242,16 @@ describe("standalone driver", () => {
     expect(reconnected).toHaveBeenCalledTimes(1);
     expect(launch).toHaveBeenCalledTimes(2);
   });
+});
+
+it("managed browser discovery connects on first use and shares concurrent setup", async () => {
+  const { browser } = fakeBrowser([]);
+  const connect = vi.fn(async () => browser);
+  const onConnected = vi.fn();
+  const driver = new ManagedChromiumDriver("http://h", { ...inject(connect), onConnected });
+  expect(connect).not.toHaveBeenCalled();
+  await Promise.all([driver.listTargets(), driver.listTargets()]);
+  expect(connect).toHaveBeenCalledOnce();
+  expect(onConnected).toHaveBeenCalledOnce();
+  await driver.disconnect();
 });

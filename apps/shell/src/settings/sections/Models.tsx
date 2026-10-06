@@ -667,6 +667,7 @@ export function ModelsSettings({
       )}
       <IndexedField
         label={`${providerNames[provider]} API key`}
+        target="Model provider"
         hint={
           <>
             {!connected && <>This provider is disconnected. Saving a key does not reconnect it. </>}

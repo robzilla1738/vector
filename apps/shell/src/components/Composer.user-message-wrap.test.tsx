@@ -79,7 +79,7 @@ it("keeps the complete original pending user question and its narrow wrap rule w
   expect(useStore.getState().pendingTurns[0]?.goal).toBe(question);
   expect(useStore.getState().pages).toEqual([]);
   const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../styles/workspace.css"), "utf8");
-  const rule = css.match(/^\.user-message \{[^}]+\}/m)?.[0];
+  const rule = css.match(/^\s*\.user-message \{[^}]+\}/m)?.[0];
   expect(rule).toContain("max-width: min(78%, 420px)");
   const style = document.createElement("style");
   style.textContent = rule!;

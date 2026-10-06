@@ -17,6 +17,7 @@ export interface TrustedAuxPage {
 export class ManagedChromiumDriver extends CdpAttachedDriver {
   readonly backend = "aux" as const;
 
+  private readonly onConnected?: () => void;
   private readonly trustedPages?: () => Promise<TrustedAuxPage[]>;
 
   constructor(
@@ -24,10 +25,17 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
     deps: {
       connectOverCDP?: (endpoint: string, opts: { timeout: number }) => Promise<Browser>;
       trustedPages?: () => Promise<TrustedAuxPage[]>;
+      onConnected?: () => void;
     } = {},
   ) {
     super(endpoint, deps);
     this.trustedPages = deps.trustedPages;
+    this.onConnected = deps.onConnected;
+  }
+
+  override async connect(): Promise<void> {
+    await super.connect();
+    this.onConnected?.();
   }
 
   private async trusted(pageId: string, marker: string): Promise<TrustedAuxPage | undefined> {
@@ -43,6 +51,7 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
   }
 
   override async listTargets(): Promise<DiscoveredTarget[]> {
+    await this.reconnect();
     const targets = await super.listTargets();
     if (!this.trustedPages) return targets;
     const allowed = new Set((await this.trustedPages()).map((page) => page.marker));
@@ -66,6 +75,7 @@ export class ManagedChromiumDriver extends CdpAttachedDriver {
           : {}),
       };
     }
+    await this.reconnect();
     return super.attach(targetId, pageId, hint);
   }
 

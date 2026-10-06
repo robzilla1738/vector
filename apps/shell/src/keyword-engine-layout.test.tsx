@@ -107,9 +107,9 @@ it("preserves existing focus, disabled, palette and preference recipes without n
   expect(rules).not.toMatch(
     /opacity|color:|background|outline|overflow:\s*(hidden|clip)|animation|transition|white-space:\s*nowrap/,
   );
-  expect(settings).toContain(".settings-content .btn { min-height: 36px;");
-  expect(settings).toContain(
-    ".settings-content :is(input, select, textarea, .btn):focus-visible { outline: 2px solid var(--focus-line);",
+  expect(settings).toMatch(/\.settings-content \.btn\s*\{[^}]*min-height:\s*36px/);
+  expect(settings).toMatch(
+    /\.settings-content :is\(input, select, textarea, \.btn\):focus-visible\s*\{[^}]*outline:\s*2px solid var\(--focus-line\)/,
   );
   expect(settings).toContain("@media (prefers-reduced-motion: reduce)");
   expect(settings).toContain("@container settings-page (max-width: 680px)");

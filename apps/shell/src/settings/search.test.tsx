@@ -57,3 +57,15 @@ it("indexes the rendered field props and uses them in search", async () => {
     vi.unstubAllGlobals();
   }
 });
+
+it("finds unopened sections and routes backup editor fields without mounting them", () => {
+  expect(searchSettings("deep model")).toContainEqual(
+    expect.objectContaining({ category: "Models", target: "Deep model" }),
+  );
+  expect(searchSettings("backup retention")).toContainEqual(
+    expect.objectContaining({ category: "General", target: "Task data backup" }),
+  );
+  expect(searchSettings("OpenAI API key")).toContainEqual(
+    expect.objectContaining({ category: "Models", label: "OpenAI API key", target: "Model provider" }),
+  );
+});

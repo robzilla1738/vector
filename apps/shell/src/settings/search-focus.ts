@@ -7,12 +7,17 @@ export async function focusSettingsDestination(
   signal: AbortSignal,
 ): Promise<boolean> {
   if (!root) return false;
+  const visibleSections = () =>
+    [...root.querySelectorAll<HTMLElement>("[data-settings-section], :scope > section")].filter(
+      (section) => !section.closest("[hidden], [inert]"),
+    );
   for (let attempt = 0; attempt < 40 && !signal.aborted; attempt++) {
-    const section = root.querySelector<HTMLElement>(":scope > section:not([hidden])");
+    const sections = visibleSections();
+    const section = sections[0];
     const target = destination.target
-      ? [...(section?.querySelectorAll<HTMLElement>("[data-setting]") ?? [])].find(
-          (node) => node.dataset.setting === destination.target,
-        )
+      ? sections
+          .flatMap((section) => [...section.querySelectorAll<HTMLElement>("[data-setting]")])
+          .find((node) => node.dataset.setting === destination.target)
       : section;
     if (target) {
       const disclosure = target.closest("details");
@@ -28,7 +33,6 @@ export async function focusSettingsDestination(
     }
     if (attempt < 39) await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
   }
-  if (!signal.aborted)
-    root.querySelector<HTMLElement>(":scope > section:not([hidden])")?.scrollIntoView?.({ block: "start" });
+  if (!signal.aborted) visibleSections()[0]?.scrollIntoView?.({ block: "start" });
   return false;
 }

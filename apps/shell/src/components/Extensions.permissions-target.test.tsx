@@ -49,7 +49,9 @@ it("retains the focused native permission disclosure and complete text inside th
   document.head.append(style);
   const root = createRoot(host);
   const css = readFileSync("apps/shell/src/components/Settings.css", "utf8");
-  const target = css.match(/\.extension-compatibility summary, \.extension-details summary\s*\{[^}]+\}/)?.[0];
+  const target = css.match(
+    /\.extension-compatibility summary,\s*\.extension-details summary\s*\{[^}]+\}/,
+  )?.[0];
   const hit = readFileSync("apps/shell/src/tokens.css", "utf8").match(/--hit:\s*(\d+px)/)?.[1];
   expect(target).toBeTruthy();
   expect(hit).toBe("32px");

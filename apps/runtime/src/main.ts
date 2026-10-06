@@ -1,3 +1,6 @@
+import { deferRuntimeWork, isRuntimeIdle } from "./services/idle.js";
+import { markInterruptedRuns } from "./services/startup-recovery.js";
+import { createServiceContainer, type ServiceContainer } from "./services/container.js";
 import { navigateControlledPage } from "./services/pages/controlled-navigation.js";
 import { registerNativeSubagentPreparation } from "./services/native-subagent-preparation.js";
 import { registerNativeSubagentWorkload } from "./services/native-subagent-workload.js";
@@ -222,10 +225,488 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   }
   bootPhase("protection");
   const repo = new Repo(db, columnCipher);
-  const workspaceFolders = new WorkspaceFolderService(repo, () => [config.dataDir]);
+  let closed = false;
+  let stopRunEndHooks: (() => void) | undefined;
+  type RuntimeServices = Services & {
+    workspaceFolders: WorkspaceFolderService;
+    settings: SettingsService;
+    durableWrites: DurableWriteLedger;
+    safetyAudit: SafetyAuditStore;
+    approvals: ApprovalStore;
+    suspensions: SuspensionStore;
+    pageClaims: PageClaimStore;
+    safetyGate: SafetyDispatchGate;
+    artifacts: ArtifactStore;
+    zap: ZapService;
+    tracer: Tracer;
+    responses: ResponseStore;
+    vault: VaultService;
+    contentMemory: ContentMemoryStore | undefined;
+    memoryPipeline: MemoryPipeline | undefined;
+    pages: PageService;
+    sets: SetService;
+    mcpOAuth: McpOAuthService;
+    mcpTransportProvider: ReturnType<typeof createMcpTransportProvider>;
+    outboundMcp: OutboundMcpService;
+    hooks: HookService;
+    calendar: CalendarConnectionService;
+    operations: OperationService;
+    state: StateService;
+    budgets: BudgetsService;
+    mentionRoutines: RoutineService;
+    mentionConnectors: ConnectorCatalogService;
+    turnMentions: TurnMentionService;
+    safetyAuthority: SafetyAuthorityRevocation;
+    runs: RunService;
+    goals: GoalService;
+    commandEscalations: CommandEscalationService;
+    subagents: SubagentService;
+    bashSeatbelt: BashSeatbelt;
+    cookies: CookieService;
+    agentConnections: AgentConnectionService;
+    externalSessions: ExternalSessionService;
+    pageChangeWatches: RoutineService;
+    browsingMemory: BrowsingMemory;
+    tasks: TaskService;
+    blocking: ContentBlockingService | null;
+    commandRanking: CommandRankingStore;
+  };
+  const serviceContainer: ServiceContainer<RuntimeServices> = createServiceContainer<RuntimeServices>({
+    workspaceFolders: () => new WorkspaceFolderService(repo, () => [config.dataDir]),
+    settings: () => new SettingsService(repo, config.settingsPath, env),
+    durableWrites: () => new DurableWriteLedger(repo.db),
+    safetyAudit: () => new SafetyAuditStore(repo.db, repo.columnCipher),
+    approvals: () =>
+      new ApprovalStore(repo.db, (event) => runtimeServices.safetyAudit.record(event), repo.columnCipher),
+    suspensions: () => new SuspensionStore(repo.db, (event) => runtimeServices.safetyAudit.record(event)),
+    pageClaims: () => new PageClaimStore(repo.db),
+    safetyGate: () =>
+      new SafetyDispatchGate({
+        ...decideDeps,
+        suspensions: runtimeServices.suspensions,
+        onConfirmation: (confirmation) => events.emit("safety.confirmation", confirmation),
+        ...(env.AUX_HOST_SOCKET
+          ? {
+              judge: createGuardianJudge({
+                model: () => runtimeServices.settings.model(),
+                modelId: () => runtimeServices.settings.plannerModel(),
+                beforeCall: async (runId) => {
+                  if (runId) {
+                    await checkNightShiftDispatch(repo, runId);
+                    runtimeServices.budgets.assertWithin({ runId });
+                  }
+                },
+                recordAttempt: async (attempt, modelId, error, runId) =>
+                  saveAuthorizedModelCall(repo, {
+                    ...(runId ? { runId } : {}),
+                    callId: randomUUID(),
+                    role: "guardian",
+                    modelId,
+                    durationMs: attempt.durationMs,
+                    inputTokens: attempt.inputTokens,
+                    outputTokens: attempt.outputTokens,
+                    providerMetadata: attempt.providerMetadata,
+                    ...modelCallCost(modelId, attempt),
+                    ...(error ? { error } : {}),
+                    createdAt: Date.now(),
+                  }),
+              }),
+            }
+          : {}),
+      }),
+    artifacts: () => new ArtifactStore(config.artifactsDir, repo, events),
+    zap: () => new ZapService(repo, native, env.AUX_BROWSER_PROFILE_ID ?? "default"),
+    tracer: () => new Tracer(repo.db, { traceDir: join(config.dataDir, "traces") }),
+    responses: () => new ResponseStore({ repo, events, artifacts: runtimeServices.artifacts }),
+    vault: () => new VaultService(repo, native),
+    contentMemory: () =>
+      native.available() && env.AUX_BROWSER_PROFILE_ID
+        ? new ContentMemoryStore(repo, native, env.AUX_BROWSER_PROFILE_ID, Date.now, events)
+        : undefined,
+    memoryPipeline: () =>
+      native.available() && env.AUX_BROWSER_PROFILE_ID
+        ? new MemoryPipeline(repo, native, join(config.dataDir, "space-memory"), env.AUX_BROWSER_PROFILE_ID)
+        : undefined,
+    pages: () =>
+      new PageService({
+        get turnMentions() {
+          return runtimeServices.turnMentions;
+        },
+        repo,
+        profileId: env.AUX_BROWSER_PROFILE_ID,
+        events,
+        native,
+        nativePasswordFillEnabled: !!env.AUX_HOST_SOCKET,
+        drivers: () => drivers,
+        get artifacts() {
+          return runtimeServices.artifacts;
+        },
+        get responses() {
+          return runtimeServices.responses;
+        },
+        get tracer() {
+          return runtimeServices.tracer;
+        },
+        get durableWrites() {
+          return runtimeServices.durableWrites;
+        },
+        get safetyGate() {
+          return runtimeServices.safetyGate;
+        },
+        prepareAgentEgress: (runId, pageId) => browserEgress?.ensure(runId, pageId) ?? Promise.resolve(),
+        retireCreatedPage: (runId, pageId) => {
+          if (!browserEgress)
+            throw new AuxError("capability_unsupported", "Authenticated native cleanup is unavailable.");
+          return browserEgress.retireCreatorPage(runId, pageId);
+        },
+        navigateControlled: (input, registry) => {
+          if (!browserEgress || !nativeCdp)
+            throw new AuxError("capability_unsupported", "Authenticated native navigation is unavailable.");
+          return navigateControlledPage(input, registry, browserEgress, nativeCdp);
+        },
+        recordAgentObservation: (pageId, url, text) => {
+          const runId = runtimeServices.pageClaims.activeForPage(pageId)?.runId;
+          // Owner/API reads can hold a short page claim without an agent run.
+          // Only a durable run may taint its protected egress context.
+          if (runId && repo.getRun(runId)) browserEgress?.notePageText(runId, pageId, text, url);
+        },
+        // unified step ledger — every execution records steps with pageId so
+        // operations.compile can rebuild the trace (§10.3)
+        recordStep: (s) => repo.saveStep(s),
+        grants: () => runtimeServices.settings.effectGrants(),
+        grantsForRun: () => runtimeServices.settings.effectGrantsForRun(),
+        // Upload reads are confined to runtime-owned storage plus paths the user
+        // attached to the task (file/repository resource locators).
+        uploadRoots: ({ taskId }) => {
+          const roots = [config.artifactsDir, config.downloadsDir, config.previewsDir];
+          if (taskId) {
+            try {
+              const row = repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId) as
+                { json: string } | undefined;
+              const task = row ? TaskSchema.parse(JSON.parse(repo.taskJson(taskId, row.json))) : undefined;
+              for (const resource of task?.resources ?? [])
+                if (resource.kind === "file" || resource.kind === "repository") roots.push(resource.locator);
+            } catch {
+              /* task deleted — session roots still apply */
+            }
+          }
+          return roots;
+        },
+        callOperation: async (name, args, pageId) => {
+          const slash = name.indexOf("/");
+          const siteKey =
+            slash > 0 ? name.slice(0, slash) : new URL(runtimeServices.pages.get(pageId).url).host;
+          const opName = slash > 0 ? name.slice(slash + 1) : name;
+          const r = await runtimeServices.operations.invoke({ siteKey, name: opName, inputs: args, pageId });
+          if (r.status === "failed")
+            throw new AuxError("step_failed", r.error ?? `operation ${opName} failed`);
+          return r.result;
+        },
+        downloadsDir: config.downloadsDir,
+        // Un-armed dialogs are decided by decide() against the page's active
+        // claim (S4): deny dismisses, allow keeps the default handling, ask
+        // parks the run's suspension and leaves the dialog open until it resumes.
+        decideDialog: async ({ pageId, type, message }) => {
+          const claim = runtimeServices.pageClaims.activeForPage(pageId);
+          if (!claim) return undefined;
+          const run = repo.getRun(claim.runId);
+          const decision = await decide(
+            EffectRequestSchema.parse({
+              profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+              scope: run?.config?.taskId
+                ? { kind: "task", id: run.config.taskId }
+                : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+              actor: "builtin_agent",
+              effect: "write",
+              category: "dialog",
+              action: `dialog.${type}`,
+              origin: (() => {
+                try {
+                  return new URL(runtimeServices.pages.get(pageId).url).origin;
+                } catch {
+                  return claim.pageId;
+                }
+              })(),
+              dataClasses: [],
+              provenance: "page",
+              invocationDigest: createHash("sha256")
+                .update(JSON.stringify(["dialog", pageId, type, message]))
+                .digest("hex"),
+              turnId: claim.runId,
+              threadId: run?.config?.chatId ?? claim.runId,
+              runId: claim.runId,
+              requestedAt: Date.now(),
+            }),
+            decideDeps,
+            { phase: "dispatch" },
+          );
+          if (decision.status === "deny") return "dismiss";
+          if (decision.status === "ask") {
+            runtimeServices.suspensions.park({
+              runId: claim.runId,
+              threadId: run?.config?.chatId ?? claim.runId,
+              turnId: claim.runId,
+              kind: decision.suspension.kind,
+              request: decision.suspension,
+            });
+            return "leave";
+          }
+          return undefined;
+        },
+      }),
+    sets: () => new SetService(repo, events, runtimeServices.pages),
+    mcpOAuth: () => new McpOAuthService(native),
+    mcpTransportProvider: () => createMcpTransportProvider(runtimeServices.mcpOAuth),
+    outboundMcp: () => new OutboundMcpService(repo, runtimeServices.mcpTransportProvider),
+    hooks: () =>
+      new HookService(repo, (handler, workspaceId) => {
+        if (handler.type === "command") {
+          authorizeHookCommand(handler.workdir, workspaceId);
+          return;
+        }
+        if (handler.type !== "mcp_tool")
+          throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
+        const server = runtimeServices.outboundMcp.get(handler.serverId);
+        const grant = runtimeServices.outboundMcp.getGrant(handler.grantId);
+        if (
+          server.state !== "approved" ||
+          server.workspaceId !== workspaceId ||
+          grant.serverId !== handler.serverId ||
+          grant.toolName !== handler.toolName ||
+          grant.scope.kind !== "workspace" ||
+          grant.scope.workspaceId !== workspaceId ||
+          grant.mode !== "standing" ||
+          grant.revokedAt ||
+          grant.consumedAt
+        )
+          throw new AuxError(
+            "permission_denied",
+            "Approve a standing Space grant for this exact MCP tool first.",
+          );
+      }),
+    calendar: () =>
+      new CalendarConnectionService({
+        repo,
+        native,
+        clientId: loopbackServicesUrl ? "aux-loopback-calendar-client" : env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
+        ...(loopbackServicesUrl
+          ? {
+              endpoints: {
+                auth: `${loopbackServicesUrl}calendar/auth`,
+                token: `${loopbackServicesUrl}calendar/token`,
+                revoke: `${loopbackServicesUrl}calendar/revoke`,
+                calendar: `${loopbackServicesUrl}calendar/v3`,
+              },
+            }
+          : {}),
+        profileId: env.AUX_BROWSER_PROFILE_ID,
+        onChange: () => events.emit("settings.changed", { category: "calendar" }),
+      }),
+    operations: () =>
+      new OperationService({
+        repo,
+        events,
+        pages: runtimeServices.pages,
+        translateSteps,
+        durableWrites: runtimeServices.durableWrites,
+        calendar: runtimeServices.calendar,
+        authorizeConnector: (runId, connectorId, tool, dispatch) =>
+          runtimeServices.turnMentions.useConnector(runId, connectorId, tool, dispatch),
+        decideEgress,
+        grants: () => runtimeServices.settings.effectGrants(),
+        egressAllowlist: () =>
+          (env.AUX_EGRESS_ALLOWLIST ?? "")
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+      }),
+    state: () =>
+      new StateService({ repo, pages: runtimeServices.pages, operations: runtimeServices.operations }),
+    budgets: () => new BudgetsService(repo.db, () => runtimeServices.settings.budgetLimits()),
+    mentionRoutines: () => new RoutineService(repo, events),
+    mentionConnectors: () =>
+      new ConnectorCatalogService({
+        repo,
+        tasks: runtimeServices.tasks,
+        settings: runtimeServices.settings,
+        calendar: runtimeServices.calendar,
+        mcp: runtimeServices.outboundMcp,
+      }),
+    turnMentions: () =>
+      new TurnMentionService({
+        prepareReadPage: (pageId) => runtimeServices.pages.prepareReadPage(pageId),
+        authorizeRead: (runId, pageId, taskRead) =>
+          runtimeServices.pages.authorizeAgentRead(runId, pageId, "page.read", taskRead),
+        page: (pageId) => {
+          try {
+            return runtimeServices.pages.get(pageId);
+          } catch (error) {
+            if (error instanceof AuxError && error.code === "not_found") return undefined;
+            throw error;
+          }
+        },
+        organization: async () => {
+          if (!native.organizationSnapshot)
+            throw new AuxError("backend_unavailable", "Profile source authority is unavailable.");
+          return native.organizationSnapshot();
+        },
+        routine: (routineId) => {
+          try {
+            return runtimeServices.mentionRoutines.get(routineId).routine;
+          } catch (error) {
+            if (error instanceof AuxError && error.code === "not_found") return undefined;
+            throw error;
+          }
+        },
+        connectors: (context) => {
+          if (!context.workspaceId)
+            throw new AuxError("permission_denied", "Connector mentions require a current Space.");
+          return runtimeServices.mentionConnectors.list({
+            workspaceId: context.workspaceId,
+            taskId: context.taskId,
+            expectedRevision: context.taskRevision,
+          });
+        },
+      }),
+    safetyAuthority: () =>
+      new SafetyAuthorityRevocation({
+        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+        runScope: (runId) => {
+          const run = repo.getRun(runId);
+          if (!run) return undefined;
+          return run.config?.taskId
+            ? { kind: "task", id: run.config.taskId }
+            : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" };
+        },
+        invalidate: (matches) => {
+          nativePermissions?.invalidateAuthority(matches);
+          return browserEgress ? browserEgress.invalidateAuthority(matches) : Promise.resolve();
+        },
+      }),
+    runs: () => {
+      const runs = new RunService({
+        turnMentions: runtimeServices.turnMentions,
+        taskSource: (taskId) => {
+          const task = runtimeServices.tasks.get(taskId);
+          return { revision: task.revision, state: task.state, sourceOrigin: task.sourceOrigin };
+        },
+        repo,
+        events,
+        pages: runtimeServices.pages,
+        sets: runtimeServices.sets,
+        settings: runtimeServices.settings,
+        artifacts: runtimeServices.artifacts,
+        translateSteps,
+        nativeAvailable: () => native.available(),
+        tracer: runtimeServices.tracer,
+        vault: runtimeServices.vault,
+        calendar: runtimeServices.calendar,
+        contentMemory: runtimeServices.contentMemory,
+        memoryPipeline: runtimeServices.memoryPipeline,
+        operations: runtimeServices.operations,
+        durableWrites: runtimeServices.durableWrites,
+        pageClaims: runtimeServices.pageClaims,
+        budgets: runtimeServices.budgets,
+        agentLoop,
+        browserEgress,
+      });
+      stopRunEndHooks = installRunEndHooks(events, runtimeServices.hooks, hookExecutor);
+      return runs;
+    },
+    goals: () =>
+      new GoalService(repo, runtimeServices.runs, async () => runtimeServices.settings.registryModels()),
+    commandEscalations: () =>
+      new CommandEscalationService(repo, (workspaceId, workdir) =>
+        runtimeServices.workspaceFolders.scopeDigest(workspaceId, workdir),
+      ),
+    subagents: () => new SubagentService(repo, events, runtimeServices.runs),
+    bashSeatbelt: () =>
+      new BashSeatbelt({
+        writableRoots: (ctx) => [
+          config.artifactsDir,
+          config.downloadsDir,
+          config.previewsDir,
+          ...folderRootsForRun(ctx?.runId, "write"),
+        ],
+        readableRoots: (ctx) => folderRootsForRun(ctx?.runId, "read"),
+        scratchDir: bashScratch,
+        // Reads stay broad for tool usability, minus the runtime data dir (API
+        // token, cookies, history DBs) and OS credential stores; /Users is denied
+        // by the profile itself and the session roots are re-allowed after it.
+        extraDenyRead: () => [
+          config.dataDir,
+          join(config.dataDir, "runtime.json"),
+          "/private/var/db/dslocal",
+          "/private/var/db/shadow",
+          "/private/etc/sudoers",
+        ],
+        networkGate: (command, ctx) =>
+          recipientGate(ctx, {
+            action: "agent.bash.network",
+            recipient: "process:network",
+            digestParts: ["agent.bash.network", command],
+          }),
+        escalationGate: async (input, ctx) => {
+          const run = repo.getRun(ctx.runId);
+          if (!run) throw new AuxError("not_found", "Escalated run does not exist.");
+          return runtimeServices.commandEscalations.authorize({
+            ...input,
+            runId: ctx.runId,
+            workspaceId: run.config?.contextWorkspaceId ?? "default",
+          });
+        },
+        escalationRecheck: ({ workdir, scopeDigest, requestIds }, ctx) => {
+          const run = repo.getRun(ctx.runId);
+          if (!run) throw new AuxError("not_found", "Escalated run does not exist.");
+          runtimeServices.commandEscalations.assertDispatch(
+            run.config?.contextWorkspaceId ?? "default",
+            workdir,
+            scopeDigest,
+            requestIds,
+          );
+        },
+      }),
+    blocking: () =>
+      env.AUX_HOST_SOCKET
+        ? new ContentBlockingService(config.dataDir, native, env.AUX_BROWSER_PROFILE_ID ?? "default")
+        : null,
+    commandRanking: () => new CommandRankingStore(repo, env.AUX_BROWSER_PROFILE_ID ?? "default"),
+    tasks: () => new TaskService(repo, events),
+    cookies: () => new CookieService({ native }),
+    agentConnections: () => new AgentConnectionService(repo),
+    externalSessions: () => new ExternalSessionService(repo, events, runtimeServices.turnMentions),
+    pageChangeWatches: () => new RoutineService(repo, events),
+    browsingMemory: () => new BrowsingMemory(repo),
+    clock: () => runtimeClock,
+    serviceAvailable: () => (name) => name in runtimeServices,
+    featureHost: () => (env.AUX_HOST_SOCKET ? "chromium-fork" : undefined),
+    featureProfileId: () => env.AUX_BROWSER_PROFILE_ID ?? "default",
+    featureStages: () => featureStages,
+    nativeIdentity: () => nativeIdentity,
+    runtimeIdentity: () => runtimeIdentity,
+    native: () => native,
+    downloadsDir: () => config.downloadsDir,
+    hookExecutor: () => hookExecutor,
+    checkpointDeletedData: () => () => privacyCheckpoint.request(),
+    events: () => events,
+    repo: () => repo,
+    drivers: () => () => drivers,
+    importCookies: () => (o) => runtimeServices.cookies.importCookies(o),
+    benchRun: () => async (task, repeats) =>
+      runBench({
+        pages: runtimeServices.pages,
+        url: task ?? env.AUX_BENCH_URL ?? "http://127.0.0.1:4810/records",
+        repeats: repeats ?? 10,
+        dir: config.benchmarksDir,
+      }),
+    routines: () => undefined,
+    browserImport: () => undefined,
+  });
+  const runtimeServices: RuntimeServices = serviceContainer.services;
+
   const folderRootsForRun = (runId?: string, access: "read" | "write" = "write") => {
     const workspaceId = runId ? repo.getRun(runId)?.config?.contextWorkspaceId : undefined;
-    return workspaceId ? workspaceFolders.roots(workspaceId)[access] : [];
+    return workspaceId ? runtimeServices.workspaceFolders.roots(workspaceId)[access] : [];
   };
   if (env.AUX_HOST_SOCKET && env.AUX_BROWSER_PROFILE_ID) repo.requireChromiumHistory();
   const privacyCheckpoint = new PrivacyCheckpoint(config.dbPath, (error) =>
@@ -251,7 +732,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let resolveInvoker: (fn: InvokeFn) => void;
   const invokerReady = new Promise<InvokeFn>((r) => (resolveInvoker = r));
   let invokeRef: ReturnType<typeof makeInvoker> | undefined;
-  let agentConnections: AgentConnectionService | undefined;
+
   const disarmWatchdog = bootstrapWatchdog();
   const token = config.apiToken || randomUUID();
   const peerIdentity = {
@@ -265,8 +746,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     peerIdentity,
     invoke: (method, params, client) => invokerReady.then((fn) => fn(method, params, client)),
     events,
-    authorizeScopedToken: (scopedToken) => agentConnections?.authorize(scopedToken) ?? null,
-    closedScopedToken: (scopedToken) => agentConnections?.closedClient(scopedToken) ?? null,
+    authorizeScopedToken: (scopedToken) => runtimeServices.agentConnections?.authorize(scopedToken) ?? null,
+    closedScopedToken: (scopedToken) => runtimeServices.agentConnections?.closedClient(scopedToken) ?? null,
     filterEvent: (client, event) =>
       client.scope ? (invokeRef?.eventVisible(client.scope, client.connectionId, event) ?? false) : true,
   });
@@ -311,56 +792,19 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // for that HTTP round trip (06-T).
   await new Promise((resolve) => setTimeout(resolve, 50));
 
-  const settings = new SettingsService(repo, config.settingsPath, env);
-  const durableWrites = new DurableWriteLedger(repo.db);
-  const safetyAudit = new SafetyAuditStore(repo.db, repo.columnCipher);
-  const approvals = new ApprovalStore(repo.db, (event) => safetyAudit.record(event), repo.columnCipher);
-  const suspensions = new SuspensionStore(repo.db, (event) => safetyAudit.record(event));
   // Shared claim ledger — the page dialog decision reads it before `runs`
   // exists, so it lives here and flows into RunService deps.
-  const pageClaims = new PageClaimStore(repo.db);
+
   const decideDeps: DecideDeps = {
-    approvals,
+    approvals: runtimeServices.approvals,
     journal: new DecisionJournal(repo.db),
     managedRules: () => OriginRuleSchema.array().parse(repo.getSetting("managedOriginPolicies") ?? []),
-    userRules: () => settings.originPolicies(),
-    localCeiling: (action) => settings.safetyCeiling(action.effect),
-    settingsGrants: () => settings.effectGrants(),
-    audit: (event) => safetyAudit.record({ ...event }),
+    userRules: () => runtimeServices.settings.originPolicies(),
+    localCeiling: (action) => runtimeServices.settings.safetyCeiling(action.effect),
+    settingsGrants: () => runtimeServices.settings.effectGrants(),
+    audit: (event) => runtimeServices.safetyAudit.record({ ...event }),
   };
-  const safetyGate = new SafetyDispatchGate({
-    ...decideDeps,
-    suspensions,
-    onConfirmation: (confirmation) => events.emit("safety.confirmation", confirmation),
-    ...(env.AUX_HOST_SOCKET
-      ? {
-          judge: createGuardianJudge({
-            model: () => settings.model(),
-            modelId: () => settings.plannerModel(),
-            beforeCall: async (runId) => {
-              if (runId) {
-                await checkNightShiftDispatch(repo, runId);
-                budgets.assertWithin({ runId });
-              }
-            },
-            recordAttempt: async (attempt, modelId, error, runId) =>
-              saveAuthorizedModelCall(repo, {
-                ...(runId ? { runId } : {}),
-                callId: randomUUID(),
-                role: "guardian",
-                modelId,
-                durationMs: attempt.durationMs,
-                inputTokens: attempt.inputTokens,
-                outputTokens: attempt.outputTokens,
-                providerMetadata: attempt.providerMetadata,
-                ...modelCallCost(modelId, attempt),
-                ...(error ? { error } : {}),
-                createdAt: Date.now(),
-              }),
-          }),
-        }
-      : {}),
-  });
+
   /**
    * Runtime-side egress (operation session requests) goes through the same
    * decide() boundary as page effects. There is no approval UI mid-request,
@@ -409,7 +853,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         decision.status === "deny" ? { refusalId: decision.refusalId } : undefined,
       );
   };
-  const artifacts = new ArtifactStore(config.artifactsDir, repo, events);
+
   // ---- authenticated channel to the native browser host ----
   const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
   const runtimeIdentity = readRuntimeIdentity(import.meta.url);
@@ -422,11 +866,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           return featureAvailabilityFor([]);
         })
     : Promise.resolve(featureAvailabilityFor([]));
-  const blocking = env.AUX_HOST_SOCKET
-    ? new ContentBlockingService(config.dataDir, native, env.AUX_BROWSER_PROFILE_ID ?? "default")
-    : null;
-  const blockingBoot = blocking?.boot();
-  if (blocking) {
+  let blockingBoot: Promise<void> | undefined;
+  const ensureBlocking = () => {
+    const blocking = runtimeServices.blocking;
+    return blocking ? (blockingBoot ??= blocking.boot()) : Promise.resolve();
+  };
+  if (env.AUX_HOST_SOCKET) {
     for (const method of [
       "blocking.status",
       "blocking.privacy",
@@ -438,31 +883,20 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       "blocking.setSiteAllowed",
       "blocking.removeAllowedHost",
     ]) {
-      channel?.onMethod(method, (params) => blockingBoot!.then(() => blocking.handle(method, params)));
+      channel?.onMethod(method, (params) =>
+        ensureBlocking().then(() => runtimeServices.blocking!.handle(method, params)),
+      );
     }
-    void blockingBoot
-      ?.then(() => blocking.maintain())
-      .catch((error) => process.stderr.write(`[runtime] content blocking unavailable: ${String(error)}\n`));
-    const filterTimer = setInterval(
-      () => {
-        void blocking
-          .maintain()
-          .catch((error) => process.stderr.write(`[runtime] filter refresh failed: ${String(error)}\n`));
-      },
-      60 * 60 * 1000,
-    );
-    filterTimer.unref?.();
   }
-  const zap = new ZapService(repo, native, env.AUX_BROWSER_PROFILE_ID ?? "default");
   // Register before service boot so the host can preload styles before restoring tabs.
   channel?.onMethod("zap.snapshot", async (params) => {
     const profileId = ZapSnapshotParamsSchema.parse(params).profileId;
     const host = "chromium-fork";
     const stages = await featureStages;
-    const snapshot = zap.snapshot(profileId);
+    const snapshot = runtimeServices.zap.snapshot(profileId);
     return auxFeatureEnabled("zapAndUserCss", host, stages) ? snapshot : [];
   });
-  settings.attachNative(native);
+  runtimeServices.settings.attachNative(native);
 
   // These authenticated host-only methods prepare local files for native save dialogs.
   channel?.onMethod("artifact.exportDescriptor", (params) => {
@@ -515,7 +949,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     );
   });
   if (channel) registerDownloadNamingChannel(channel, invokerReady);
-  await settings.initializeCredentials();
+  await runtimeServices.settings.initializeCredentials();
 
   // ---- drivers ----
   const drivers: DriverSet = {
@@ -551,181 +985,28 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       : null;
   let auxRecovery: ConnectionRecovery | undefined;
   const hostCdp = nativeCdp?.endpoint();
-  let connectAuxDriver: (() => Promise<void>) | undefined;
   if (hostCdp) {
     const d = new ManagedChromiumDriver(hostCdp, {
       trustedPages: native.listPages ? async () => (await native.listPages!()).pages : undefined,
+      onConnected: () =>
+        repo.upsertSession({ sessionId: "aux", backend: "aux", label: "Aux", status: "connected" }),
     });
     watchDriver(d, "aux", "Aux");
-    // Keep the driver available even if the first handshake times out.
     drivers.aux = d;
-    let initialConnectionFailed = false;
     auxRecovery = new ConnectionRecovery({
       reconnect: () => d.reconnect(),
       isConnected: () => d.isConnected(),
-      onReady: () => {
-        // Later drops emit onReconnected from the driver itself.
-        if (initialConnectionFailed) {
-          initialConnectionFailed = false;
-          d.onReconnected?.();
-        }
-      },
     });
     const reportDisconnected = d.onDisconnected;
     d.onDisconnected = () => {
       reportDisconnected?.();
       auxRecovery?.retry();
     };
-    connectAuxDriver = async () => {
-      try {
-        await d.connect();
-        repo.upsertSession({ sessionId: "aux", backend: "aux", label: "Aux", status: "connected" });
-      } catch (e) {
-        repo.upsertSession({
-          sessionId: "aux",
-          backend: "aux",
-          label: "Aux",
-          status: "degraded",
-          detail: `CDP connect failed: ${e instanceof Error ? e.message : e}`,
-        });
-        initialConnectionFailed = true;
-        auxRecovery?.retry();
-      }
-    };
   }
 
-  const tracer = new Tracer(repo.db, { traceDir: join(config.dataDir, "traces") });
-  const responses = new ResponseStore({ repo, events, artifacts });
-  const vault = new VaultService(repo, native);
-  const contentMemory =
-    native.available() && env.AUX_BROWSER_PROFILE_ID
-      ? new ContentMemoryStore(repo, native, env.AUX_BROWSER_PROFILE_ID, Date.now, events)
-      : undefined;
-  const memoryPipeline =
-    native.available() && env.AUX_BROWSER_PROFILE_ID
-      ? new MemoryPipeline(repo, native, join(config.dataDir, "space-memory"), env.AUX_BROWSER_PROFILE_ID)
-      : undefined;
-  // pages↔operations are mutually dependent — late-bind via a lazy ref
-  let operations!: OperationService;
-  let turnMentions!: TurnMentionService;
-
-  const pages = new PageService({
-    get turnMentions() {
-      return turnMentions;
-    },
-    repo,
-    profileId: env.AUX_BROWSER_PROFILE_ID,
-    events,
-    native,
-    nativePasswordFillEnabled: !!env.AUX_HOST_SOCKET,
-    drivers: () => drivers,
-    artifacts,
-    responses,
-    tracer,
-    durableWrites,
-    safetyGate,
-    prepareAgentEgress: (runId, pageId) => browserEgress?.ensure(runId, pageId) ?? Promise.resolve(),
-    retireCreatedPage: (runId, pageId) => {
-      if (!browserEgress)
-        throw new AuxError("capability_unsupported", "Authenticated native cleanup is unavailable.");
-      return browserEgress.retireCreatorPage(runId, pageId);
-    },
-    navigateControlled: (input, registry) => {
-      if (!browserEgress || !nativeCdp)
-        throw new AuxError("capability_unsupported", "Authenticated native navigation is unavailable.");
-      return navigateControlledPage(input, registry, browserEgress, nativeCdp);
-    },
-    recordAgentObservation: (pageId, url, text) => {
-      const runId = pageClaims.activeForPage(pageId)?.runId;
-      // Owner/API reads can hold a short page claim without an agent run.
-      // Only a durable run may taint its protected egress context.
-      if (runId && repo.getRun(runId)) browserEgress?.notePageText(runId, pageId, text, url);
-    },
-    // unified step ledger — every execution records steps with pageId so
-    // operations.compile can rebuild the trace (§10.3)
-    recordStep: (s) => repo.saveStep(s),
-    grants: () => settings.effectGrants(),
-    grantsForRun: () => settings.effectGrantsForRun(),
-    // Upload reads are confined to runtime-owned storage plus paths the user
-    // attached to the task (file/repository resource locators).
-    uploadRoots: ({ taskId }) => {
-      const roots = [config.artifactsDir, config.downloadsDir, config.previewsDir];
-      if (taskId) {
-        try {
-          const row = repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId) as
-            { json: string } | undefined;
-          const task = row ? TaskSchema.parse(JSON.parse(repo.taskJson(taskId, row.json))) : undefined;
-          for (const resource of task?.resources ?? [])
-            if (resource.kind === "file" || resource.kind === "repository") roots.push(resource.locator);
-        } catch {
-          /* task deleted — session roots still apply */
-        }
-      }
-      return roots;
-    },
-    callOperation: async (name, args, pageId) => {
-      const slash = name.indexOf("/");
-      const siteKey = slash > 0 ? name.slice(0, slash) : new URL(pages.get(pageId).url).host;
-      const opName = slash > 0 ? name.slice(slash + 1) : name;
-      const r = await operations.invoke({ siteKey, name: opName, inputs: args, pageId });
-      if (r.status === "failed") throw new AuxError("step_failed", r.error ?? `operation ${opName} failed`);
-      return r.result;
-    },
-    downloadsDir: config.downloadsDir,
-    // Un-armed dialogs are decided by decide() against the page's active
-    // claim (S4): deny dismisses, allow keeps the default handling, ask
-    // parks the run's suspension and leaves the dialog open until it resumes.
-    decideDialog: async ({ pageId, type, message }) => {
-      const claim = pageClaims.activeForPage(pageId);
-      if (!claim) return undefined;
-      const run = repo.getRun(claim.runId);
-      const decision = await decide(
-        EffectRequestSchema.parse({
-          profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-          scope: run?.config?.taskId
-            ? { kind: "task", id: run.config.taskId }
-            : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
-          actor: "builtin_agent",
-          effect: "write",
-          category: "dialog",
-          action: `dialog.${type}`,
-          origin: (() => {
-            try {
-              return new URL(pages.get(pageId).url).origin;
-            } catch {
-              return claim.pageId;
-            }
-          })(),
-          dataClasses: [],
-          provenance: "page",
-          invocationDigest: createHash("sha256")
-            .update(JSON.stringify(["dialog", pageId, type, message]))
-            .digest("hex"),
-          turnId: claim.runId,
-          threadId: run?.config?.chatId ?? claim.runId,
-          runId: claim.runId,
-          requestedAt: Date.now(),
-        }),
-        decideDeps,
-        { phase: "dispatch" },
-      );
-      if (decision.status === "deny") return "dismiss";
-      if (decision.status === "ask") {
-        suspensions.park({
-          runId: claim.runId,
-          threadId: run?.config?.chatId ?? claim.runId,
-          turnId: claim.runId,
-          kind: decision.suspension.kind,
-          request: decision.suspension,
-        });
-        return "leave";
-      }
-      return undefined;
-    },
-  });
   attachBidiRuntime({
     navigate: (context, url) => {
-      void pages.navigate(context, url);
+      void runtimeServices.pages.navigate(context, url);
       return { url, pageId: context };
     },
     performActions: (actions) => {
@@ -735,8 +1016,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       if (!pageId || !first?.steps?.length) return { accepted: false };
       const steps = first.steps;
       void (async () => {
-        const obs = await pages.observe(pageId, {});
-        const live = pages.get(pageId);
+        const obs = await runtimeServices.pages.observe(pageId, {});
+        const live = runtimeServices.pages.get(pageId);
         const prepared = compileAndAuthorize({
           pageId,
           documentEpoch: live.documentEpoch ?? obs.documentEpoch,
@@ -744,14 +1025,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           steps,
           observation: obs.content,
           url: live.url ?? obs.content.url,
-          grants: () => settings.effectGrants(),
+          grants: () => runtimeServices.settings.effectGrants(),
         });
-        if ("program" in prepared) await pages.execute(prepared.program, { allowEval: false });
+        if ("program" in prepared)
+          await runtimeServices.pages.execute(prepared.program, { allowEval: false });
       })();
       return { accepted: true };
     },
   });
-  const sets = new SetService(repo, events, pages);
 
   const refLookup = (pageId: string, ref: string) =>
     drivers.aux?.refEntry?.(pageId, ref) ?? drivers.chrome?.refEntry?.(pageId, ref);
@@ -770,9 +1051,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         return s;
       });
 
-  const mcpOAuth = new McpOAuthService(native);
-  const mcpTransportProvider = createMcpTransportProvider(mcpOAuth);
-  const outboundMcp = new OutboundMcpService(repo, mcpTransportProvider);
   const hookScratch = join(config.artifactsDir, "hook-tmp");
   mkdirSync(hookScratch, { recursive: true });
   const authorizeHookCommand = (workdir: string, workspaceId: string) => {
@@ -782,38 +1060,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     } catch {
       throw new AuxError("permission_denied", "Hook working folder is unavailable.");
     }
-    if (!workspaceFolders.roots(workspaceId).write.includes(actual))
+    if (!runtimeServices.workspaceFolders.roots(workspaceId).write.includes(actual))
       throw new AuxError(
         "permission_denied",
         "Bind this exact writable folder to the Space before approving a command Hook.",
       );
     return actual;
   };
-  const hooks = new HookService(repo, (handler, workspaceId) => {
-    if (handler.type === "command") {
-      authorizeHookCommand(handler.workdir, workspaceId);
-      return;
-    }
-    if (handler.type !== "mcp_tool")
-      throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
-    const server = outboundMcp.get(handler.serverId);
-    const grant = outboundMcp.getGrant(handler.grantId);
-    if (
-      server.state !== "approved" ||
-      server.workspaceId !== workspaceId ||
-      grant.serverId !== handler.serverId ||
-      grant.toolName !== handler.toolName ||
-      grant.scope.kind !== "workspace" ||
-      grant.scope.workspaceId !== workspaceId ||
-      grant.mode !== "standing" ||
-      grant.revokedAt ||
-      grant.consumedAt
-    )
-      throw new AuxError(
-        "permission_denied",
-        "Approve a standing Space grant for this exact MCP tool first.",
-      );
-  });
+
   const hookExecutor: HookExecutor = async (handler, context, signal) => {
     if (signal.aborted) throw new AuxError("permission_denied", "Hook was revoked.");
     if (handler.type === "command") {
@@ -843,7 +1097,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     }
     if (handler.type !== "mcp_tool")
       throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
-    const result = await outboundMcp.callTool(
+    const result = await runtimeServices.outboundMcp.callTool(
       handler.grantId,
       handler.arguments ?? {},
       { workspaceId: context.workspaceId },
@@ -852,43 +1106,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     if (signal.aborted || result.status !== "completed" || result.isError)
       throw new AuxError("step_failed", "MCP hook tool did not complete successfully.");
   };
-  const stopRunEndHooks = installRunEndHooks(events, hooks, hookExecutor);
+
   const loopbackServicesUrl = (await nativeIdentity?.catch(() => undefined))?.loopbackServicesUrl;
-  const calendar = new CalendarConnectionService({
-    repo,
-    native,
-    clientId: loopbackServicesUrl ? "aux-loopback-calendar-client" : env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
-    ...(loopbackServicesUrl
-      ? {
-          endpoints: {
-            auth: `${loopbackServicesUrl}calendar/auth`,
-            token: `${loopbackServicesUrl}calendar/token`,
-            revoke: `${loopbackServicesUrl}calendar/revoke`,
-            calendar: `${loopbackServicesUrl}calendar/v3`,
-          },
-        }
-      : {}),
-    profileId: env.AUX_BROWSER_PROFILE_ID,
-    onChange: () => events.emit("settings.changed", { category: "calendar" }),
-  });
-  operations = new OperationService({
-    repo,
-    events,
-    pages,
-    translateSteps,
-    durableWrites,
-    calendar,
-    authorizeConnector: (runId, connectorId, tool, dispatch) =>
-      turnMentions.useConnector(runId, connectorId, tool, dispatch),
-    decideEgress,
-    grants: () => settings.effectGrants(),
-    egressAllowlist: () =>
-      (env.AUX_EGRESS_ALLOWLIST ?? "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-  });
-  const state = new StateService({ repo, pages, operations });
 
   /**
    * Built-in loop web tools (S5): every destination goes through decide() as
@@ -925,7 +1144,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       requestedAt: Date.now(),
     });
     const decision = await decide(request, decideDeps, { phase: "dispatch", headless });
-    if (decision.status === "ask") safetyGate.park(request, request, decision.suspension);
+    if (decision.status === "ask") runtimeServices.safetyGate.park(request, request, decision.suspension);
     return decision;
   };
   const loopEgressGate = async (
@@ -978,7 +1197,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       requestedAt: Date.now(),
     });
     const decision = await decide(request, decideDeps, { phase: "dispatch" });
-    if (decision.status === "ask") safetyGate.park(request, request, decision.suspension);
+    if (decision.status === "ask") runtimeServices.safetyGate.park(request, request, decision.suspension);
     return decision;
   };
   const recipientGate = async (
@@ -1000,7 +1219,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return "allow";
   };
   const agentLoop: AgentLoopHostDeps = {
-    workspaceContext: (workspaceId) => workspaceFolders.context(workspaceId),
+    workspaceContext: (workspaceId) => runtimeServices.workspaceFolders.context(workspaceId),
     webFetch: async (url, ctx) => {
       const gated = await loopEgressGate(ctx, url, "agent.web.fetch");
       if ("park" in gated) return { park: gated.park };
@@ -1010,7 +1229,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       return { output: await web.fetch(gated.href) };
     },
     webSearch: async (query, ctx) => {
-      const engine = settings.searchEngine();
+      const engine = runtimeServices.settings.searchEngine();
       if (!engine) throw new AuxError("backend_unavailable", "Profile search engine is unavailable.");
       const gated = await loopEgressGate(
         ctx,
@@ -1026,8 +1245,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     // Auto-recall (06-Z): search protected page memory under the run's workspace policy.
     recall: async (query, ctx) => {
       const ws = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
-      if (!ws || !contentMemory) return [];
-      const hits = await contentMemory.search(ws, query, 5);
+      if (!ws || !runtimeServices.contentMemory) return [];
+      const hits = await runtimeServices.contentMemory.search(ws, query, 5);
       for (const hit of hits) browserEgress?.protect(ctx.runId, hit.snippet, "memory");
       return hits.map((hit) => ({ title: hit.title, url: hit.url, text: hit.snippet }));
     },
@@ -1036,8 +1255,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       repo.listHistory(query, Math.min(Math.max(1, Math.floor(limit)), 50)),
     memorySearch: async (query, ctx) => {
       const ws = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
-      if (!ws || !contentMemory) return [];
-      const hits = await contentMemory.search(ws, query, 8);
+      if (!ws || !runtimeServices.contentMemory) return [];
+      const hits = await runtimeServices.contentMemory.search(ws, query, 8);
       for (const hit of hits) browserEgress?.protect(ctx.runId, hit.snippet, "memory");
       return hits.map((hit) => ({
         title: hit.title,
@@ -1052,7 +1271,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     },
     repl: {
       bookmark: async (pageId, ctx) => {
-        const page = pages.get(pageId);
+        const page = runtimeServices.pages.get(pageId);
         const url = permittedWebUrl(page.url);
         const run = repo.getRun(ctx.runId);
         const request = EffectRequestSchema.parse({
@@ -1079,7 +1298,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         if (decision.status === "deny")
           throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
         if (decision.status === "ask") {
-          safetyGate.park(request, request, decision.suspension);
+          runtimeServices.safetyGate.park(request, request, decision.suspension);
           return {
             park: {
               kind: decision.suspension.kind,
@@ -1105,7 +1324,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         return { output: { url: gated.href } };
       },
       webmcp: async (pageId, action, ctx) => {
-        const page = pages.get(pageId);
+        const page = runtimeServices.pages.get(pageId);
         let origin = "";
         try {
           origin = new URL(page.url).origin;
@@ -1140,7 +1359,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             action: outcome.action,
             origin: outcome.origin,
           });
-          suspensions.park({
+          runtimeServices.suspensions.park({
             runId: ctx.runId,
             threadId: outcome.threadId,
             turnId: outcome.turnId,
@@ -1169,7 +1388,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // User budgets per run/day/routine (D11): limits from settings, actuals
   // from the model_calls ledger — the coordinator and loop host gate each
   // model call through this before spending.
-  const budgets = new BudgetsService(repo.db, () => settings.budgetLimits());
 
   if (env.AUX_HOST_SOCKET && env.AUX_BROWSER_PROFILE_ID) {
     browserEgress = new BrowserEgress({
@@ -1181,7 +1399,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         if (!run || !["queued", "running", "planning", "needs_input"].includes(run.status)) return null;
         if (run.config?.taskId) {
           try {
-            if (new TaskService(repo, events).get(run.config.taskId).revision !== run.config.taskRevision)
+            if (runtimeServices.tasks.get(run.config.taskId).revision !== run.config.taskRevision)
               return null;
           } catch {
             return null;
@@ -1193,10 +1411,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           threadId: run.config?.chatId ?? run.runId,
         };
       },
-      page: (pageId) => pages.get(pageId),
-      ownsPage: (runId, pageId) => pageClaims.activeForPage(pageId)?.runId === runId,
+      page: (pageId) => runtimeServices.pages.get(pageId),
+      ownsPage: (runId, pageId) => runtimeServices.pageClaims.activeForPage(pageId)?.runId === runId,
       audit: (decision, evidence) =>
-        safetyAudit.record({
+        runtimeServices.safetyAudit.record({
           ...decision,
           ...evidence,
           kind: "browser_egress",
@@ -1206,10 +1424,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       approve: browserEgressApproval({
         profileId: env.AUX_BROWSER_PROFILE_ID,
         decide: decideDeps,
-        suspensions,
+        suspensions: runtimeServices.suspensions,
         events,
         run: (runId) => repo.getRun(runId),
-        setStatus: (runId, status, message) => runs.coordinator.setStatus(runId, status, message),
+        setStatus: (runId, status, message) =>
+          runtimeServices.runs.coordinator.setStatus(runId, status, message),
       }),
     });
     installBrowserAuthority(repo, browserEgress);
@@ -1229,7 +1448,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         typeof event.payload.documentEpoch === "number"
       ) {
         browserEgress!.revokePage(pageId);
-        const runId = pageClaims.activeForPage(pageId)?.runId;
+        const runId = runtimeServices.pageClaims.activeForPage(pageId)?.runId;
         if (runId) void browserEgress!.ensure(runId, pageId).catch(() => {});
       }
       const changedRun =
@@ -1249,81 +1468,39 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       }
     });
   }
-  const mentionRoutines = new RoutineService(repo, events);
-  const mentionConnectors = new ConnectorCatalogService({
-    repo,
-    tasks: new TaskService(repo, events),
-    settings,
-    calendar,
-    mcp: outboundMcp,
-  });
-  turnMentions = new TurnMentionService({
-    prepareReadPage: (pageId) => pages.prepareReadPage(pageId),
-    authorizeRead: (runId, pageId, taskRead) =>
-      pages.authorizeAgentRead(runId, pageId, "page.read", taskRead),
-    page: (pageId) => {
-      try {
-        return pages.get(pageId);
-      } catch (error) {
-        if (error instanceof AuxError && error.code === "not_found") return undefined;
-        throw error;
-      }
-    },
-    organization: async () => {
-      if (!native.organizationSnapshot)
-        throw new AuxError("backend_unavailable", "Profile source authority is unavailable.");
-      return native.organizationSnapshot();
-    },
-    routine: (routineId) => {
-      try {
-        return mentionRoutines.get(routineId).routine;
-      } catch (error) {
-        if (error instanceof AuxError && error.code === "not_found") return undefined;
-        throw error;
-      }
-    },
-    connectors: (context) => {
-      if (!context.workspaceId)
-        throw new AuxError("permission_denied", "Connector mentions require a current Space.");
-      return mentionConnectors.list({
-        workspaceId: context.workspaceId,
-        taskId: context.taskId,
-        expectedRevision: context.taskRevision,
-      });
-    },
-  });
+
   let nativePermissions: NativePermissionController | undefined;
   if (channel && browserEgress && env.AUX_BROWSER_PROFILE_ID) {
     nativePermissions = new NativePermissionController({
       profileId: env.AUX_BROWSER_PROFILE_ID,
-      gate: safetyGate,
-      approvals,
+      gate: runtimeServices.safetyGate,
+      approvals: runtimeServices.approvals,
       egress: browserEgress,
-      mentions: turnMentions,
+      mentions: runtimeServices.turnMentions,
       run: (runId) => repo.getRun(runId),
-      page: (pageId) => pages.get(pageId),
+      page: (pageId) => runtimeServices.pages.get(pageId),
       standingOnly: (runId) => !!overnightRoot(repo, runId),
       assertDispatch: async (runId) => {
         await checkNightShiftDispatch(repo, runId);
-        budgets.assertWithin({ runId });
+        runtimeServices.budgets.assertWithin({ runId });
       },
       overnightAuthority: (runId) => nightShiftEffectAuthority(repo, runId),
       retireReservation: (input) => native.permissionRetire(input),
       requiresTurn: (run, pageId) =>
         run.config?.implementation !== "external-agent" ||
         !!run.config?.mentions?.length ||
-        turnMentions.ownedPages(run.runId).includes(pageId),
+        runtimeServices.turnMentions.ownedPages(run.runId).includes(pageId),
       sourceCheck: (runId, pageId) => {
         shutdownAdmission.assertOpen();
         const before = repo.getRun(runId);
-        const claim = pageClaims.activeForPage(pageId);
+        const claim = runtimeServices.pageClaims.activeForPage(pageId);
         const taskId = before?.config?.taskId;
         const taskRevision = before?.config?.taskRevision;
-        const task = taskId ? new TaskService(repo, events).get(taskId) : undefined;
+        const task = taskId ? runtimeServices.tasks.get(taskId) : undefined;
         const check = () => {
           shutdownAdmission.assertOpen();
           const current = repo.getRun(runId);
-          const currentClaim = pageClaims.activeForPage(pageId);
+          const currentClaim = runtimeServices.pageClaims.activeForPage(pageId);
           if (
             !before ||
             !current ||
@@ -1338,7 +1515,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           )
             throw new AuxError("permission_denied", "This browser permission source claim changed.");
           if (taskId) {
-            const currentTask = new TaskService(repo, events).get(taskId);
+            const currentTask = runtimeServices.tasks.get(taskId);
             if (
               !task ||
               task.revision !== taskRevision ||
@@ -1366,60 +1543,18 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       return { batchId: input.batchId, decision: "deny" };
     });
   }
-  const safetyAuthority = new SafetyAuthorityRevocation({
-    profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-    runScope: (runId) => {
-      const run = repo.getRun(runId);
-      if (!run) return undefined;
-      return run.config?.taskId
-        ? { kind: "task", id: run.config.taskId }
-        : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" };
-    },
-    invalidate: (matches) => {
-      nativePermissions?.invalidateAuthority(matches);
-      return browserEgress ? browserEgress.invalidateAuthority(matches) : Promise.resolve();
-    },
-  });
-  const runs = new RunService({
-    turnMentions,
-    taskSource: (taskId) => {
-      const task = new TaskService(repo, events).get(taskId);
-      return { revision: task.revision, state: task.state, sourceOrigin: task.sourceOrigin };
-    },
-    repo,
-    events,
-    pages,
-    sets,
-    settings,
-    artifacts,
-    translateSteps,
-    nativeAvailable: () => native.available(),
-    tracer,
-    vault,
-    calendar,
-    contentMemory,
-    memoryPipeline,
-    operations,
-    durableWrites,
-    pageClaims,
-    budgets,
-    agentLoop,
-    browserEgress,
-  });
-  const goals = new GoalService(repo, runs, async () => settings.registryModels());
-  const commandEscalations = new CommandEscalationService(repo, (workspaceId, workdir) =>
-    workspaceFolders.scopeDigest(workspaceId, workdir),
-  );
+
   agentLoop.goalUpdate = async (input, ctx) =>
-    goals.report(ctx.runId, input.status, input.blocker, ctx.goalTurn);
+    runtimeServices.goals.report(ctx.runId, input.status, input.blocker, ctx.goalTurn);
   agentLoop.goalBudget = {
-    reserve: (runId, request) => goals.reserveModelCall(runId, request),
-    settle: (runId, reservationId, attempts) => goals.settleModelCall(runId, reservationId, attempts),
+    reserve: (runId, request) => runtimeServices.goals.reserveModelCall(runId, request),
+    settle: (runId, reservationId, attempts) =>
+      runtimeServices.goals.settleModelCall(runId, reservationId, attempts),
   };
 
   // Subagent cells (06-Y): the service is shared with the RPC invoker; the
   // REPL spawns cells under a lazily created group per parent run.
-  const subagents = new SubagentService(repo, events, runs);
+
   const replGroups = new Map<string, string>();
   agentLoop.subagents = {
     spawnCell: async (input, ctx) => {
@@ -1427,7 +1562,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       if (!run) throw new AuxError("not_found", "The parent run does not exist.");
       let groupId = replGroups.get(ctx.runId);
       if (!groupId) {
-        const group = subagents.createGroup({
+        const group = runtimeServices.subagents.createGroup({
           parentRunId: ctx.runId,
           tokenBudget: Math.min(Math.max(1_000, run.config?.maxTokens ?? 200_000), 1_000_000),
           costBudgetUsd: Math.min(run.config?.maxCostUsd ?? 5, 50),
@@ -1439,7 +1574,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const profile = SubagentProfileSchema.safeParse(input.profile ?? "default");
       if (!profile.success)
         throw new AuxError("invalid_params", "profile must be explorer, read_only or default.");
-      const agent = await subagents.spawn({
+      const agent = await runtimeServices.subagents.spawn({
         groupId,
         goal: input.goal,
         profile: profile.data,
@@ -1450,7 +1585,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       });
       return { cellId: agent.agentId };
     },
-    ...subagents.cellControls(),
+    waitCell: (cellId, timeoutMs) => runtimeServices.subagents.cellControls().waitCell(cellId, timeoutMs),
+    sendCell: (cellId, text) => runtimeServices.subagents.cellControls().sendCell(cellId, text),
+    cancelCell: (cellId) => runtimeServices.subagents.cellControls().cancelCell(cellId),
   };
 
   // 06-X bash under the macOS seatbelt: writes confined to the same session
@@ -1458,53 +1595,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // recipient-scoped decide() (always confirms, can park).
   const bashScratch = join(config.artifactsDir, "bash-tmp");
   mkdirSync(bashScratch, { recursive: true });
-  const bashSeatbelt = new BashSeatbelt({
-    writableRoots: (ctx) => [
-      config.artifactsDir,
-      config.downloadsDir,
-      config.previewsDir,
-      ...folderRootsForRun(ctx?.runId, "write"),
-    ],
-    readableRoots: (ctx) => folderRootsForRun(ctx?.runId, "read"),
-    scratchDir: bashScratch,
-    // Reads stay broad for tool usability, minus the runtime data dir (API
-    // token, cookies, history DBs) and OS credential stores; /Users is denied
-    // by the profile itself and the session roots are re-allowed after it.
-    extraDenyRead: () => [
-      config.dataDir,
-      join(config.dataDir, "runtime.json"),
-      "/private/var/db/dslocal",
-      "/private/var/db/shadow",
-      "/private/etc/sudoers",
-    ],
-    networkGate: (command, ctx) =>
-      recipientGate(ctx, {
-        action: "agent.bash.network",
-        recipient: "process:network",
-        digestParts: ["agent.bash.network", command],
-      }),
-    escalationGate: async (input, ctx) => {
-      const run = repo.getRun(ctx.runId);
-      if (!run) throw new AuxError("not_found", "Escalated run does not exist.");
-      return commandEscalations.authorize({
-        ...input,
-        runId: ctx.runId,
-        workspaceId: run.config?.contextWorkspaceId ?? "default",
-      });
-    },
-    escalationRecheck: ({ workdir, scopeDigest, requestIds }, ctx) => {
-      const run = repo.getRun(ctx.runId);
-      if (!run) throw new AuxError("not_found", "Escalated run does not exist.");
-      commandEscalations.assertDispatch(
-        run.config?.contextWorkspaceId ?? "default",
-        workdir,
-        scopeDigest,
-        requestIds,
-      );
-    },
-  });
+
   agentLoop.bash = async (input, ctx) => {
-    const result = await bashSeatbelt.run(input, ctx);
+    const result = await runtimeServices.bashSeatbelt.run(input, ctx);
     return "park" in result ? result : { output: result };
   };
   // 06-X routine_update: a model-proposed automation change confirms with the
@@ -1512,12 +1605,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // workspace-scoped to the run and optimistic-concurrency protected.
   agentLoop.routineUpdate = async (input, ctx) => {
     const requireMentionedSkill = () => {
-      const result = turnMentions.requireSkill(ctx.runId, input.routineId);
+      const result = runtimeServices.turnMentions.requireSkill(ctx.runId, input.routineId);
       if (result.status === "unavailable") throw new AuxError("permission_denied", result.reason);
     };
     const run = repo.getRun(ctx.runId);
     const messageRevision = run?.config?.messageRevision;
-    const mentionTurn = run?.config?.mentions?.length ? turnMentions.capture(ctx.runId) : undefined;
+    const mentionTurn = run?.config?.mentions?.length
+      ? runtimeServices.turnMentions.capture(ctx.runId)
+      : undefined;
     if (mentionTurn) requireMentionedSkill();
     const current = (await invoke("routines.get", { routineId: input.routineId }, { external: false })) as {
       workspaceId: string;
@@ -1541,7 +1636,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     if (gated !== "allow") return gated;
     if (
       repo.getRun(ctx.runId)?.config?.messageRevision !== messageRevision ||
-      (mentionTurn && turnMentions.capture(ctx.runId) !== mentionTurn)
+      (mentionTurn && runtimeServices.turnMentions.capture(ctx.runId) !== mentionTurn)
     )
       throw new AuxError("permission_denied", "This routine update belongs to a replaced person turn.");
     if (mentionTurn) requireMentionedSkill();
@@ -1555,7 +1650,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   const extractingRuns = new Set<string>();
   events.subscribe((event) => {
-    if (event.type !== EventTypes.RunUpdated || !memoryPipeline) return;
+    if (closed || event.type !== EventTypes.RunUpdated) return;
     const run = event.payload.run;
     if (
       !run ||
@@ -1571,10 +1666,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       "config" in run && run.config && typeof run.config === "object" && "contextWorkspaceId" in run.config
         ? run.config.contextWorkspaceId
         : undefined;
-    if (typeof workspaceId !== "string" || !memoryPipeline.policy(workspaceId).enabled) return;
+    if (
+      typeof workspaceId !== "string" ||
+      !runtimeServices.memoryPipeline ||
+      !runtimeServices.memoryPipeline.policy(workspaceId).enabled
+    )
+      return;
     const runId = run.runId;
     extractingRuns.add(runId);
-    void memoryPipeline
+    void runtimeServices.memoryPipeline
       .extractRun(workspaceId, runId)
       .then((result) => {
         if (result.extracted) events.emit("workspace.memory.updated", { workspaceId, runId });
@@ -1583,80 +1683,37 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       .finally(() => extractingRuns.delete(runId));
   });
 
+  const takeoverRuns: Parameters<typeof handlePageTakeover>[3] = {
+    cancel: (...args) => runtimeServices.runs.cancel(...args),
+    pauseForTakeover: (...args) => runtimeServices.runs.pauseForTakeover(...args),
+    resumeAfterTakeover: (...args) => runtimeServices.runs.resumeAfterTakeover(...args),
+    interruptProgramForTakeover: (...args) => runtimeServices.runs.interruptProgramForTakeover(...args),
+  };
   events.subscribe((e) => {
-    if (e.type !== EventTypes.PageTakeover || typeof e.payload.nativeRunId === "string") return;
+    if (closed || e.type !== EventTypes.PageTakeover || typeof e.payload.nativeRunId === "string") return;
     const pageId = e.payload.pageId;
     const controller = e.payload.controller;
     if (typeof pageId !== "string" || typeof controller !== "string") return;
-    void handlePageTakeover(pageId, controller, repo, runs).catch((error) =>
+    void handlePageTakeover(pageId, controller, repo, takeoverRuns).catch((error) =>
       console.error("[aux-runtime] page takeover retirement failed", error),
     );
   });
 
-  const cookies = new CookieService({ native });
-  agentConnections = new AgentConnectionService(repo);
-  const externalSessions = new ExternalSessionService(repo, events, turnMentions);
-  channel?.onMethod("agent.connections", () => agentConnections!.list());
+  channel?.onMethod("agent.connections", () => runtimeServices.agentConnections!.list());
   channel?.onMethod("agent.clients", () => nativeAgentClients());
-  channel?.onMethod("agent.config", (params) => nativeAgentConfig(agentConnections!, params, config.dataDir));
+  channel?.onMethod("agent.config", (params) =>
+    nativeAgentConfig(runtimeServices.agentConnections!, params, config.dataDir),
+  );
   channel?.onMethod("agent.revoke", (params) => {
     const connectionId = (params as { connectionId?: unknown })?.connectionId;
     if (typeof connectionId !== "string") throw new Error("Invalid connection identity");
-    const revoked = agentConnections!.revoke(connectionId);
-    externalSessions.end(connectionId, "cancelled", "Connection revoked");
+    const revoked = runtimeServices.agentConnections!.revoke(connectionId);
+    runtimeServices.externalSessions.end(connectionId, "cancelled", "Connection revoked");
     return revoked;
   });
 
-  const services: Services = {
-    budgets,
-    clock: createClock((await nativeIdentity?.catch(() => undefined))?.testClockScale),
-    featureHost: env.AUX_HOST_SOCKET ? "chromium-fork" : undefined,
-    featureProfileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-    featureStages,
-    nativeIdentity,
-    runtimeIdentity,
-    native,
-    downloadsDir: config.downloadsDir,
-    zap,
-    contentMemory,
-    memoryPipeline,
-    mcpTransportProvider,
-    outboundMcp,
-    hooks,
-    hookExecutor,
-    workspaceFolders,
-    mcpOAuth,
-    checkpointDeletedData: () => privacyCheckpoint.request(),
-    safetyAuthority,
-    turnMentions,
-    pages,
-    sets,
-    runs,
-    goals,
-    commandEscalations,
-    artifacts,
-    settings,
-    events,
-    repo,
-    agentConnections,
-    externalSessions,
-    subagents,
-    calendar,
-    responses,
-    operations,
-    state,
-    tracer,
-    vault,
-    drivers: () => drivers,
-    importCookies: (o) => cookies.importCookies(o),
-    benchRun: async (task, repeats) =>
-      runBench({
-        pages,
-        url: task ?? env.AUX_BENCH_URL ?? "http://127.0.0.1:4810/records",
-        repeats: repeats ?? 10,
-        dir: config.benchmarksDir,
-      }),
-  };
+  const runtimeClock = createClock((await nativeIdentity?.catch(() => undefined))?.testClockScale);
+  const services: Services = runtimeServices;
   const invoke = makeInvoker(services);
   const stopFeatures = await bootRuntimeFeatures(services, invoke);
   // Authenticated Chromium host messages are internal; the loopback API still
@@ -1668,19 +1725,38 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     invoke("history.projectDelta", params, { external: false }),
   );
   if (channel) {
-    registerNativeReceiptChannel(channel, repo, () => pages.list());
+    registerNativeReceiptChannel(channel, repo, () => runtimeServices.pages.list());
     registerNativeSubagentWorkload(channel, {
       repo,
-      runs,
-      subagents,
-      pages,
-      tasks: new TaskService(repo, events),
+      get runs() {
+        return runtimeServices.runs;
+      },
+      get subagents() {
+        return runtimeServices.subagents;
+      },
+      get pages() {
+        return runtimeServices.pages;
+      },
+      get tasks() {
+        return runtimeServices.tasks;
+      },
     });
-    registerNativeSubagentPreparation(channel, { repo, runs, pages, tasks: new TaskService(repo, events) });
+    registerNativeSubagentPreparation(channel, {
+      repo,
+      get runs() {
+        return runtimeServices.runs;
+      },
+      get pages() {
+        return runtimeServices.pages;
+      },
+      get tasks() {
+        return runtimeServices.tasks;
+      },
+    });
     registerNativeCommandRanking(
       channel,
-      pages,
-      new CommandRankingStore(repo, services.featureProfileId ?? "default"),
+      { get: (id) => runtimeServices.pages.get(id), livePageIds: () => runtimeServices.pages.livePageIds() },
+      { record: (...args) => runtimeServices.commandRanking.record(...args) },
     );
   }
   // Native notification/page-change/Calendar adapters submit provenance here;
@@ -1688,10 +1764,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   channel?.onMethod("routines.ingestEvent", (params) =>
     invoke("routines.ingestEvent", params, { external: false }),
   );
-  const pageChangeWatches = new RoutineService(repo, events);
+
   channel?.onMethod("routines.pageChangeTarget", (params) => {
     const { pageId, url } = RoutinePageChangeTargetParamsSchema.parse(params);
-    return pageChangeWatches.pageChangeTarget(pageId, url);
+    return runtimeServices.pageChangeWatches.pageChangeTarget(pageId, url);
   });
 
   // ---- channel surface for the shell ----
@@ -1701,12 +1777,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   resolveInvoker!(invoke);
   const sweepExternalSessions = () => {
     try {
-      externalSessions.sweepIdle();
+      runtimeServices.externalSessions.sweepIdle();
     } catch (error) {
       console.error("External session sweep failed", error);
     }
   };
-  sweepExternalSessions();
   const calendarAutomationAvailable = !featureStages || (await featureStages).connectors === "on";
   const calendarScanAbort = new AbortController();
   let calendarScan: Promise<void> | undefined;
@@ -1715,14 +1790,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       !calendarAutomationAvailable ||
       calendarScan ||
       calendarScanAbort.signal.aborted ||
-      !calendar.list().available
+      !runtimeServices.calendar.list().available
     )
       return;
-    const watches = pageChangeWatches.calendarWatches();
+    const watches = runtimeServices.pageChangeWatches.calendarWatches();
     if (!watches.length) return;
     calendarScan = pollCalendarRoutines(
       watches,
-      calendar,
+      runtimeServices.calendar,
       (event) => invoke("routines.ingestEvent", event, { external: false }),
       Date.now(),
       calendarScanAbort.signal,
@@ -1734,13 +1809,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         calendarScan = undefined;
       });
   };
-  void scanCalendar();
-  const dueTimer = setInterval(() => {
-    sweepExternalSessions();
-    void invoke("routines.due", {}, { external: false }).catch(() => undefined);
-    void scanCalendar();
-  }, 60_000);
-  dueTimer.unref?.();
+  let dueTimer: NodeJS.Timeout | undefined;
   // forward the event stream so the shell renderer can subscribe over IPC
   events.subscribe((e) => channel?.notify("event", e));
   if (channel)
@@ -1752,9 +1821,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         return applyNativePageTakeover(input, {
           egress: browserEgress,
           permissions: nativePermissions,
-          page: (pageId) => pages.get(pageId),
-          takeover: (pageId, runId) => pages.takeoverFromNative(pageId, runId),
-          interrupt: (pageId, runId) => handlePageTakeover(pageId, "human", repo, runs, runId),
+          page: (pageId) => runtimeServices.pages.get(pageId),
+          takeover: (pageId, runId) => runtimeServices.pages.takeoverFromNative(pageId, runId),
+          interrupt: (pageId, runId) => handlePageTakeover(pageId, "human", repo, takeoverRuns, runId),
         });
       },
       (code) => console.error("Native takeover notification failed", code),
@@ -1765,26 +1834,30 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     const truthy = (v: unknown) => v === true || v === "true";
     switch (type) {
       case "view.navigated":
-        return pages.onNativeNavigated(str(pl.pageId)!, str(pl.url)!);
+        return runtimeServices.pages.onNativeNavigated(str(pl.pageId)!, str(pl.url)!);
       case "view.titleChanged":
-        return pages.onNativeTitle(str(pl.pageId)!, str(pl.title) ?? "");
+        return runtimeServices.pages.onNativeTitle(str(pl.pageId)!, str(pl.title) ?? "");
       case "view.faviconChanged":
-        return pages.onNativeFavicon(str(pl.pageId)!, str(pl.favicon) ?? "");
+        return runtimeServices.pages.onNativeFavicon(str(pl.pageId)!, str(pl.favicon) ?? "");
       case "view.windowFocused":
-        return pages.onNativeWindowFocused(str(pl.pageId)!, str(pl.windowId)!);
+        return runtimeServices.pages.onNativeWindowFocused(str(pl.pageId)!, str(pl.windowId)!);
       case "view.navState":
-        return pages.onNativeNavState(str(pl.pageId)!, truthy(pl.canGoBack), truthy(pl.canGoForward));
+        return runtimeServices.pages.onNativeNavState(
+          str(pl.pageId)!,
+          truthy(pl.canGoBack),
+          truthy(pl.canGoForward),
+        );
       case "view.loading":
-        return pages.onNativeLoading(str(pl.pageId)!, truthy(pl.loading));
+        return runtimeServices.pages.onNativeLoading(str(pl.pageId)!, truthy(pl.loading));
       case "view.navigationError":
-        return pages.onNativeNavigationError(
+        return runtimeServices.pages.onNativeNavigationError(
           str(pl.pageId)!,
           pl.error as { url: string; code: number; message: string; upgradedFrom?: string } | null,
         );
       case "view.crashed":
-        return pages.onNativeCrashed(str(pl.pageId)!);
+        return runtimeServices.pages.onNativeCrashed(str(pl.pageId)!);
       case "view.downloadStarted":
-        return pages.onNativeDownloadStarted(str(pl.pageId), {
+        return runtimeServices.pages.onNativeDownloadStarted(str(pl.pageId), {
           id: str(pl.id) ?? `dl_${Date.now()}`,
           sourceUrl: str(pl.sourceUrl),
           filename: str(pl.filename) ?? "download",
@@ -1794,7 +1867,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           startedAt: Number(pl.startedAt ?? Date.now()),
         });
       case "view.downloadFinished":
-        return pages.onNativeDownload(str(pl.pageId), {
+        return runtimeServices.pages.onNativeDownload(str(pl.pageId), {
           id: str(pl.id) ?? `dl_${Date.now()}`,
           sourceUrl: str(pl.sourceUrl),
           filename: str(pl.filename) ?? "download",
@@ -1807,7 +1880,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         });
       case "view.popup":
         // a native window/tab appeared outside pages.open (window.open allowed)
-        void pages
+        void runtimeServices.pages
           .registerExternal({
             pageId: str(pl.pageId),
             windowId: str(pl.windowId),
@@ -1818,15 +1891,17 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
             active: pl.activate === true,
             showBlankDocument: pl.showBlankDocument === true,
           })
-          .then((page) => (pl.activate === true ? pages.activate(page.pageId) : undefined))
+          .then((page) => (pl.activate === true ? runtimeServices.pages.activate(page.pageId) : undefined))
           .catch(() => {});
         return;
       case "view.removed":
-        return pages.onNativeRemoved(str(pl.pageId)!, true, pl.discarded === true);
+        return runtimeServices.pages.onNativeRemoved(str(pl.pageId)!, true, pl.discarded === true);
       // Main-owned tab catalog patches — presence/focus/placement truth for
       // human tabs; field convergence still rides view.* above (§7.1/§7.2).
       case "tabs.catalog":
-        return pages.syncCatalog(payload as Parameters<typeof pages.syncCatalog>[0]);
+        return runtimeServices.pages.syncCatalog(
+          payload as Parameters<typeof runtimeServices.pages.syncCatalog>[0],
+        );
       case "native.bookmarksChanged": {
         void invoke("bookmarks.list", {}, { external: false })
           .then((bookmarks) => {
@@ -1836,7 +1911,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         return;
       }
       case "app.closing":
-        return pages.shuttingDown();
+        return runtimeServices.pages.shuttingDown();
     }
   });
 
@@ -1846,69 +1921,95 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   bootPhase("ready");
   channel?.notify("runtime.ready", { port });
 
-  let closed = false;
-  // Retention waits until startup has settled and no run is active.
-  let retentionTimer: NodeJS.Timeout;
-  const retainWhenIdle = () => {
-    if (closed) return;
-    if (
-      repo.db
-        .prepare(
-          "SELECT 1 FROM runs WHERE status IN ('queued','planning','running','paused','needs_input') LIMIT 1",
-        )
-        .get()
-    ) {
-      retentionTimer = setTimeout(retainWhenIdle, 5_000);
-      retentionTimer.unref();
-      return;
-    }
-    try {
-      repo.pruneEvents();
-      repo.pruneRetention();
+  let filterTimer: NodeJS.Timeout | undefined;
+  let memoryExpiry: NodeJS.Timeout | undefined;
+  let contentExpiry: NodeJS.Timeout | undefined;
+  let contentPruning: Promise<void> | undefined;
+  const pruneContent = () => {
+    if (closed || contentPruning) return contentPruning;
+    contentPruning = (async () => {
+      try {
+        const pruned = await runtimeServices.contentMemory?.prune();
+        if (closed) return;
+        for (const workspaceId of pruned?.workspaceIds ?? []) {
+          if (closed) return;
+          await runtimeServices.runs.redactForgottenArticleOutputs(workspaceId);
+        }
+        if (pruned?.workspaceIds.length) privacyCheckpoint.request();
+      } catch {
+        console.error("Page-content memory cleanup failed");
+      } finally {
+        contentPruning = undefined;
+      }
+    })();
+    return contentPruning;
+  };
+  const stopDeferred = deferRuntimeWork(
+    () => !closed && isRuntimeIdle(repo),
+    async () => {
+      if (env.AUX_HOST_SOCKET) {
+        void ensureBlocking()
+          .then(() => {
+            if (!closed) return runtimeServices.blocking?.maintain();
+          })
+          .catch(() => process.stderr.write("[runtime] content blocking unavailable\n"));
+        filterTimer = setInterval(
+          () => {
+            if (closed || !isRuntimeIdle(repo)) return;
+            void runtimeServices.blocking
+              ?.maintain()
+              .catch(() => process.stderr.write("[runtime] filter refresh failed\n"));
+          },
+          60 * 60 * 1000,
+        );
+        filterTimer.unref();
+      }
+      sweepExternalSessions();
+      void invoke("routines.due", {}, { external: false }).catch(() => undefined);
+      void scanCalendar();
+      dueTimer = setInterval(() => {
+        if (closed || !isRuntimeIdle(repo)) return;
+        sweepExternalSessions();
+        void invoke("routines.due", {}, { external: false }).catch(() => undefined);
+        void scanCalendar();
+      }, 60_000);
+      dueTimer.unref();
+      try {
+        repo.pruneEvents();
+        repo.pruneRetention();
+        runtimeServices.browsingMemory.prune();
+      } catch {
+        console.error("Retention cleanup failed");
+      }
       void pruneContent();
-    } catch (error) {
-      console.error("Retention cleanup failed", error);
-    }
-  };
-  retentionTimer = setTimeout(retainWhenIdle, 5_000);
-  retentionTimer.unref();
-  const browsingMemory = new BrowsingMemory(repo);
-  const memoryExpiry = setInterval(() => {
-    try {
-      browsingMemory.prune();
-    } catch (error) {
-      console.error("Browsing memory cleanup failed", error);
-    }
-  }, 60_000);
-  let contentPruning = false;
-  const pruneContent = async () => {
-    if (contentPruning) return;
-    contentPruning = true;
-    try {
-      const pruned = await contentMemory?.prune();
-      for (const workspaceId of pruned?.workspaceIds ?? [])
-        await runs.redactForgottenArticleOutputs(workspaceId);
-      if (pruned?.workspaceIds.length) privacyCheckpoint.request();
-    } catch (error) {
-      console.error("Page-content memory cleanup failed", error);
-    } finally {
-      contentPruning = false;
-    }
-  };
-  const contentExpiry = setInterval(() => {
-    void pruneContent();
-  }, 60_000);
-  memoryExpiry.unref();
-  contentExpiry.unref();
+      memoryExpiry = setInterval(() => {
+        if (closed || !isRuntimeIdle(repo)) return;
+        try {
+          runtimeServices.browsingMemory.prune();
+        } catch {
+          console.error("Browsing memory cleanup failed");
+        }
+      }, 60_000);
+      contentExpiry = setInterval(() => {
+        if (!closed && isRuntimeIdle(repo)) void pruneContent();
+      }, 60_000);
+      memoryExpiry.unref();
+      contentExpiry.unref();
+      if (repo.pendingRunMessageChats().length) runtimeServices.runs.messages.resumePending();
+    },
+  );
   const shutdown = runtimeShutdown({
     quiesce: () => {
       shutdownAdmission.beginShutdown();
       closed = true;
-      clearTimeout(retentionTimer);
+      stopDeferred();
+      clearInterval(filterTimer);
       clearInterval(memoryExpiry);
       clearInterval(contentExpiry);
       clearInterval(dueTimer);
       calendarScanAbort.abort();
+      process.off("SIGTERM", onTerminationSignal);
+      process.off("SIGINT", onTerminationSignal);
       process.off("unhandledRejection", onUnhandledRejection);
       process.off("uncaughtException", onUncaughtException);
     },
@@ -1919,12 +2020,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     disconnectAuthority: () => {
       hostSocket?.close();
     },
-    stopMessages: () => runs.messages.stop(),
-    markInterrupted: () => runs.coordinator.markInterrupted(),
+    stopMessages: async () => {
+      await serviceContainer.peek("runs")?.messages.stop();
+    },
+    markInterrupted: () => markInterruptedRuns(repo),
     stopFeatures,
     reportFailure: (stage, error) => {
       console.error(`[aux-runtime] shutdown ${stage} failed:`, error);
-      safetyAudit.record({
+      runtimeServices.safetyAudit.record({
         kind: "runtime_shutdown",
         action: stage,
         status: "refused",
@@ -1934,10 +2037,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     },
     cleanup: [
       { stage: "calendar-scan", run: () => calendarScan },
+      { stage: "content-pruning", run: () => contentPruning },
       {
         stage: "content-memory",
         run: () => {
-          contentMemory?.close();
+          serviceContainer.peek("contentMemory")?.close();
         },
       },
       { stage: "api", run: () => api.close() },
@@ -1966,14 +2070,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           await nativeCdp?.close();
         },
       },
-      { stage: "calendar", run: () => calendar.close() },
+      { stage: "calendar", run: () => serviceContainer.peek("calendar")?.close() },
       {
         stage: "mcp-oauth",
         run: () => {
-          mcpOAuth.close();
+          serviceContainer.peek("mcpOAuth")?.close();
         },
       },
-      { stage: "run-hooks", run: stopRunEndHooks },
+      { stage: "run-hooks", run: () => stopRunEndHooks?.() },
       {
         stage: "host-socket",
         run: () => {
@@ -1983,29 +2087,20 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       {
         stage: "tracer",
         run: () => {
-          tracer.close();
+          serviceContainer.peek("tracer")?.close();
         },
       },
       { stage: "privacy-checkpoint", run: () => privacyCheckpoint.close() },
       { stage: "repository", run: () => repo.close() },
     ],
   });
-  process.on(
-    "SIGTERM",
-    () =>
-      void shutdown().then(
-        () => process.exit(0),
-        () => process.exit(1),
-      ),
-  );
-  process.on(
-    "SIGINT",
-    () =>
-      void shutdown().then(
-        () => process.exit(0),
-        () => process.exit(1),
-      ),
-  );
+  const onTerminationSignal = () =>
+    void shutdown().then(
+      () => process.exit(0),
+      () => process.exit(1),
+    );
+  process.on("SIGTERM", onTerminationSignal);
+  process.on("SIGINT", onTerminationSignal);
 
   // Process-level faults (P1-10). Node would otherwise exit on an unhandled
   // rejection, taking every tab and run with it and leaving runs 'running'
@@ -2020,10 +2115,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       reason instanceof Error ? (reason.stack ?? reason.message) : reason,
     );
     try {
-      const failed = await runs.coordinator.failActive(
-        `runtime fault — unhandled rejection: ${describeFault(reason)}`,
-      );
-      if (failed.length) console.error(`[aux-runtime] marked ${failed.length} active run(s) failed`);
+      const failed = await serviceContainer
+        .peek("runs")
+        ?.coordinator.failActive(`runtime fault — unhandled rejection: ${describeFault(reason)}`);
+      if (failed?.length) console.error(`[aux-runtime] marked ${failed.length} active run(s) failed`);
     } catch {
       /* the ledger itself may be the thing that failed */
     }
@@ -2032,7 +2127,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     if (closed) return;
     console.error("[aux-runtime] uncaught exception:", err.stack ?? err.message);
     try {
-      await runs.coordinator.failActive(`runtime fault — uncaught exception: ${describeFault(err)}`);
+      await serviceContainer
+        .peek("runs")
+        ?.coordinator.failActive(`runtime fault — uncaught exception: ${describeFault(err)}`);
     } catch {
       /* best effort */
     }
@@ -2056,7 +2153,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // recover from an unclean stop: anything still "live" never completed.
   // Invocation rows persisted 'running' before dispatch (§13.3) reconcile
   // to 'interrupted' with unknown effect — never assumed applied or not.
-  await runs.coordinator.markInterrupted();
+  await markInterruptedRuns(repo);
   repo.markRunningInvocationsInterrupted();
   // Suspensions parked by runs that did not survive the restart expire; a
   // still-parked suspension belongs to a resumable run and resurfaces for UI.
@@ -2066,16 +2163,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       .filter((run) => ["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
       .map((run) => run.runId),
   );
-  suspensions.expireOrphans(liveRunIds);
+  runtimeServices.suspensions.expireOrphans(liveRunIds);
   // The same for durable page claims: a dead run cannot still own a tab.
-  runs.pageClaims.releaseOrphans(liveRunIds);
-
-  await connectAuxDriver?.();
-  bootPhase("driver");
+  runtimeServices.pageClaims.releaseOrphans(liveRunIds);
 
   // bring back the tabs that were open when the app last quit
-  await pages.restoreTabs().catch(() => {});
-  runs.messages.resumePending();
+  await runtimeServices.pages.restoreTabs().catch(() => {});
 
   bootPhase("restored-tabs");
   return {

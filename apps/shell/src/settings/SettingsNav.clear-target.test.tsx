@@ -25,7 +25,7 @@ it("keeps a 32px clear target, 14px glyph and 36px field while clearing the exac
   // jsdom does not resolve CSS variables; retain actual shipped rules and substitute
   // only this pinned source token for the source geometry control, not native pixels.
   style.textContent = css
-    .match(/^\.settings-search-box(?: input| \.icon-btn) \{[^}]+\}/gm)!
+    .match(/^\s*\.settings-search-box(?: input| \.icon-btn) \{[^}]+\}/gm)!
     .join("\n")
     .replaceAll("var(--hit)", hit);
   style.textContent +=

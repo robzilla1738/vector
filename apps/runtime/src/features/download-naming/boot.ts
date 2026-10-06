@@ -1,3 +1,4 @@
+import { deferRuntimeWork, isRuntimeIdle } from "../../services/idle.js";
 import { AuxError } from "@aux/contracts";
 import type { Services } from "../../api/methods/context.js";
 import { DownloadNamingService } from "../../services/download-naming.js";
@@ -30,7 +31,19 @@ export function downloadNaming(services: Services): DownloadNamingService {
   return service;
 }
 export const feature = "smartDownloadNames" as const;
-export const boot = async (services: Services) => {
+export const boot = (services: Services) => {
   if (services.featureHost !== "chromium-fork") return;
-  await downloadNaming(services).receipts();
+  return deferRuntimeWork(
+    () => isRuntimeIdle(services.repo),
+    async () => {
+      await downloadNaming(services)
+        .receipts()
+        .catch((error) =>
+          console.error(
+            "Download receipt recovery failed",
+            error instanceof AuxError ? error.code : "internal",
+          ),
+        );
+    },
+  );
 };

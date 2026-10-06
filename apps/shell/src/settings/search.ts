@@ -3,6 +3,8 @@ export interface SettingsSearchItem {
   label: string;
   description: string;
   target?: string;
+  subview?: string;
+  feature?: string;
   searchTerms?: readonly string[];
 }
 

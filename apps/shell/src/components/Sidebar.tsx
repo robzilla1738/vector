@@ -82,7 +82,7 @@ import {
   shellIconSidebarCloseSm,
   shellIconTrash,
 } from "./icons";
-import { useWindowedRows } from "../use-windowed-rows";
+import { VirtualList } from "./VirtualList";
 import { acquireFloatingSidebarLock, useFloatingSidebar } from "../floating-sidebar";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { useTabMembership, type TabMembership } from "../use-tab-membership";
@@ -1070,15 +1070,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   // Long unfiled lists render only the rows near the viewport; a drag in
   // flight renders everything so its source row never unmounts.
   const tabScroller = useRef<HTMLDivElement>(null);
-  const looseRows = useRef<HTMLDivElement>(null);
   const virtual = loose.length > VIRTUAL_TABS && !drag.pageId;
-  const rows = useWindowedRows(
-    tabScroller,
-    looseRows,
-    loose.length,
-    virtual,
-    loose.findIndex((p) => p.pageId === activePageId),
-  );
 
   const renderRow = (p: TabMembership, index: number, folderId: string | null, groupLen: number) => (
     <TabRow
@@ -1279,25 +1271,20 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                 Clear
               </button>
             </div>
-            {virtual ? (
-              <div
-                className="tab-window"
-                ref={looseRows}
-                style={{ paddingTop: rows.padTop, paddingBottom: rows.padBottom }}
-              >
-                {loose.slice(rows.start, rows.end).map((p, i) => (
-                  <div key={p.pageId} className="tab-slot">
-                    {renderRow(p, rows.start + i, null, loose.length)}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              loose.map((p, i) => (
-                <div key={p.pageId} className="tab-slot">
-                  {renderRow(p, i, null, loose.length)}
-                </div>
-              ))
-            )}
+            <VirtualList
+              items={loose}
+              rowHeight={32}
+              overscan={10}
+              className="tab-window"
+              rowClassName="tab-slot"
+              scroller={tabScroller}
+              enabled={virtual}
+              measureRows
+              rowGap={2}
+              activeIndex={loose.findIndex((p) => p.pageId === activePageId)}
+              keyOf={(p) => p.pageId}
+              renderRow={(p, i) => renderRow(p, i, null, loose.length)}
+            />
 
             {tabs.length === 0 && folders.length === 0 && (
               <div className="sb-empty">No tabs in {space.name}</div>

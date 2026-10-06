@@ -31,9 +31,9 @@ function mockMethods() {
   const fixtures = readFileSync(join(renderer, "mock/work.ts"), "utf8");
   const connectors = readFileSync(join(renderer, "mock/connectors.ts"), "utf8");
   return new Set([
-    ...[...table.matchAll(/^ {4}"([\w.]+)":/gm)].map((match) => match[1]!),
-    ...[...fixtures.matchAll(/^ {4}'([\w.]+)':/gm)].map((match) => match[1]!),
-    ...[...connectors.matchAll(/^ {4}"([\w.]+)":/gm)].map((match) => match[1]!),
+    ...[...table.matchAll(/^\s*["']([\w.]+)["']\s*:/gm)].map((match) => match[1]!),
+    ...[...fixtures.matchAll(/^\s*["']([\w.]+)["']\s*:/gm)].map((match) => match[1]!),
+    ...[...connectors.matchAll(/^\s*["']([\w.]+)["']\s*:/gm)].map((match) => match[1]!),
   ]);
 }
 

@@ -1,3 +1,4 @@
+import { deferRuntimeWork, isRuntimeIdle } from "../../services/idle.js";
 import { AuxError, createClock } from "@aux/contracts";
 import type { Services } from "../../api/methods/context.js";
 import { NightShiftService } from "../../services/night-shift.js";
@@ -39,10 +40,17 @@ export function boot(s: Services) {
         console.error("Night shift failed", error instanceof AuxError ? error.code : "internal"),
       );
   };
-  const timer = setInterval(tick, (s.clock ?? createClock()).delayMs(60_000));
-  timer.unref();
-  tick();
+  let timer: ReturnType<typeof setInterval> | undefined;
+  const cancelIdle = deferRuntimeWork(
+    () => isRuntimeIdle(s.repo),
+    () => {
+      timer = setInterval(tick, (s.clock ?? createClock()).delayMs(60_000));
+      timer.unref();
+      tick();
+    },
+  );
   return async () => {
+    cancelIdle();
     clearInterval(timer);
     removeBudget();
     await remove();

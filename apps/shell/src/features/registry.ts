@@ -1,3 +1,4 @@
+import { VisitedSection } from "../settings/visited-section";
 import { COMMANDS, type AuxFeature, type ShellCommandId, type FeatureOverride } from "@aux/contracts";
 import { createElement, type ComponentType, type RefObject, useSyncExternalStore } from "react";
 import { bridge } from "../bridge";
@@ -187,7 +188,10 @@ export function FeatureSettings({ category }: { category: string | null }) {
         createElement(
           "div",
           { key: `${mount.feature}:${index}`, hidden: section.category !== category },
-          createElement(section.component),
+          createElement(VisitedSection, {
+            active: section.category === category,
+            children: createElement(section.component),
+          }),
         ),
       ),
     );

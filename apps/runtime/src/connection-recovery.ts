@@ -9,7 +9,7 @@ export class ConnectionRecovery {
     private readonly connection: {
       reconnect(): Promise<void>;
       isConnected(): boolean;
-      onReady(): void;
+      onReady?(): void;
     },
   ) {}
 
@@ -31,7 +31,7 @@ export class ConnectionRecovery {
       await this.connection.reconnect();
       if (!this.stopped && this.connection.isConnected()) {
         this.failures = 0;
-        this.connection.onReady();
+        this.connection.onReady?.();
       } else {
         this.failures++;
       }

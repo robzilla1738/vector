@@ -1,3 +1,4 @@
+import { createServiceContainer, type ServiceContainer } from "../../services/container.js";
 import { TaskReadProvenanceSchema, type ValidatedTaskRead } from "@aux/contracts";
 import { AgentCodeMode } from "../../agent/code-mode.js";
 import type { AgentConnectionScope, AuxEvent, AuxFeatureHost, AuxFeatureOverrides } from "@aux/contracts";
@@ -54,6 +55,8 @@ import type { MethodName } from "@aux/contracts";
 import type { McpOAuthService } from "../../services/mcp-oauth.js";
 
 export interface Services {
+  /** Advertise registered optional factories without constructing their services. */
+  serviceAvailable?: (name: "responses" | "operations" | "state" | "tracer") => boolean;
   safetyAuthority: import("../../safety/authority-revocation.js").SafetyAuthorityRevocation;
   turnMentions: import("../../services/turn-mention-service.js").TurnMentionService;
   budgets?: import("../../services/budgets.js").BudgetsService;
@@ -102,10 +105,14 @@ export interface Services {
   benchRun: (task?: string, repeats?: number) => Promise<unknown>;
 }
 
+const browserImporters = new WeakMap<Services, BrowserImporter>();
+
 /** Lazily build the shared importer — it needs live driver/page handles, not config. */
 export function browserImporter(s: Services): BrowserImporter {
   if (s.browserImport) return s.browserImport;
-  s.browserImport = new BrowserImporter({
+  const existing = browserImporters.get(s);
+  if (existing) return existing;
+  const importer = new BrowserImporter({
     repo: s.repo,
     native: s.native,
     emit: (type, payload) => s.events.emit(type, payload),
@@ -113,7 +120,8 @@ export function browserImporter(s: Services): BrowserImporter {
       await s.pages.open({ url, background: true, ownedByRuntime: false });
     },
   });
-  return s.browserImport;
+  browserImporters.set(s, importer);
+  return importer;
 }
 
 export interface ClientCtx {
@@ -129,7 +137,7 @@ export interface ClientCtx {
 
 export type InvokeFn = (method: string, params: unknown, client?: ClientCtx) => Promise<unknown>;
 
-export type MethodDeps = ReturnType<typeof buildMethodDeps>;
+export type MethodDeps = Omit<ReturnType<typeof buildMethodDeps>, "dispose">;
 
 export interface MethodCtx extends MethodDeps {
   taskRead?: ValidatedTaskRead;
@@ -154,21 +162,162 @@ export interface MethodCtx extends MethodDeps {
 export type MethodHandler = (ctx: MethodCtx) => Promise<unknown>;
 
 /** Per-invoker collaborators shared by every domain handler. */
+interface MethodCollaborators {
+  outboundMcp: OutboundMcpService;
+  subagents: SubagentService;
+  customization: SiteCustomization;
+  commandRanking: CommandRankingStore;
+  tasks: TaskService;
+  connectorCatalog: ConnectorCatalogService;
+  browsingMemory: BrowsingMemory;
+  spaces: SpaceService;
+  taskEvidence: TaskEvidenceService;
+  vault: VaultService;
+  translate: TranslateService;
+  safetyAudit: SafetyAuditStore;
+  approvals: ApprovalStore;
+  suspensions: SuspensionStore;
+  decisions: DecisionJournal;
+  routines: RoutineService;
+  plugins: PluginService;
+  goals: GoalService;
+  commandEscalations: CommandEscalationService;
+  hooks: HookService;
+  workspaceFolders: WorkspaceFolderService;
+  zap: ZapService;
+  turnTabs: AgentTurnTabs;
+  codeMode: AgentCodeMode;
+  historyProjection: HistoryProjection;
+}
+
 export function buildMethodDeps(s: Services, invoke: InvokeFn) {
-  const outboundMcp = s.outboundMcp ?? new OutboundMcpService(s.repo, s.mcpTransportProvider);
-  const subagents = s.subagents ?? new SubagentService(s.repo, s.events, s.runs);
-  const customization = new SiteCustomization(s.repo.db, s.featureProfileId ?? "default");
-  const commandRanking = new CommandRankingStore(s.repo, s.featureProfileId ?? "default");
-  const tasks = new TaskService(s.repo, s.events);
-  const connectorCatalog = new ConnectorCatalogService({
-    repo: s.repo,
-    tasks,
-    settings: s.settings,
-    calendar: s.calendar,
-    mcp: outboundMcp,
+  const container: ServiceContainer<MethodCollaborators> = createServiceContainer<MethodCollaborators>({
+    outboundMcp: () => s.outboundMcp ?? new OutboundMcpService(s.repo, s.mcpTransportProvider),
+    subagents: () => s.subagents ?? new SubagentService(s.repo, s.events, s.runs),
+    customization: () => new SiteCustomization(s.repo.db, s.featureProfileId ?? "default"),
+    commandRanking: () => new CommandRankingStore(s.repo, s.featureProfileId ?? "default"),
+    tasks: () => new TaskService(s.repo, s.events),
+    connectorCatalog: () =>
+      new ConnectorCatalogService({
+        repo: s.repo,
+        tasks: d.tasks,
+        settings: s.settings,
+        calendar: s.calendar,
+        mcp: d.outboundMcp,
+      }),
+    browsingMemory: () => new BrowsingMemory(s.repo),
+    spaces: () => new SpaceService(s.repo, s.events),
+    taskEvidence: () => new TaskEvidenceService(s.repo, s.events, s.pages, s.native, s.downloadsDir),
+    vault: () => s.vault ?? new VaultService(s.repo, s.native),
+    translate: () => new TranslateService(s.settings),
+    safetyAudit: () => new SafetyAuditStore(s.repo.db, s.repo.columnCipher),
+    approvals: () =>
+      new ApprovalStore(s.repo.db, (event) => d.safetyAudit.record(event), s.repo.columnCipher),
+    suspensions: () => new SuspensionStore(s.repo.db, (event) => d.safetyAudit.record(event)),
+    decisions: () => new DecisionJournal(s.repo.db),
+    routines: () =>
+      s.routines ??
+      new RoutineService(s.repo, s.events, async (routine, parameters, context) => {
+        if (!routine.sourceTaskId)
+          throw new AuxError(
+            "conflict",
+            "This routine has no saved task. Run it from a conversation in Aux.",
+          );
+        const details = d.tasks.details(routine.sourceTaskId);
+        const pageIds = details.task.resources
+          .filter((resource) => resource.kind === "page")
+          .map((resource) => resource.locator)
+          .filter((pageId) => {
+            try {
+              return s.pages.isAttached(pageId);
+            } catch {
+              return false;
+            }
+          });
+        if (context?.triggerPageId) {
+          if (routine.trigger.kind !== "page_change" || context.triggerDocumentEpoch === undefined)
+            throw new AuxError("conflict", "The page-change occurrence lost its exact document binding.");
+          const triggerUrl = routine.trigger.url;
+          const inTask = details.task.resources.some(
+            (resource) =>
+              (resource.kind === "page" && resource.locator === context.triggerPageId) ||
+              (resource.kind === "url" && resource.locator === triggerUrl),
+          );
+          if (!inTask)
+            throw new AuxError("conflict", "The watched tab left the source task's reviewed scope.");
+          pageIds.splice(
+            0,
+            pageIds.length,
+            requireRoutineTriggerPage(
+              s.pages,
+              context.triggerPageId,
+              triggerUrl,
+              context.triggerDocumentEpoch,
+            ),
+          );
+        }
+        if (!pageIds.length)
+          throw new AuxError(
+            "conflict",
+            "Attach an open browser tab to the source task before this routine can run.",
+          );
+        if (routine.replay) {
+          const pageId = selectSkillReplayPage(s.pages, pageIds, routine.replay.siteOrigin);
+          const started = startSkillReplay({
+            repo: s.repo,
+            pages: s.pages,
+            events: s.events,
+            routine,
+            pageId,
+            parameters,
+            expectedDocumentEpoch: context?.triggerDocumentEpoch,
+          });
+          return { chatId: details.task.conversationId, runId: started.runId };
+        }
+        const prepared = d.tasks.prepareRun(routine.sourceTaskId, details.task.revision);
+        const run = await s.runs.start({
+          ...prepared,
+          goal: [
+            substituteRoutine(routine.objective, parameters),
+            routine.outputHint ? `Expected output: ${routine.outputHint}` : undefined,
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
+          pageIds,
+          accountLabels: routine.accountLabels.length ? routine.accountLabels : undefined,
+          calendarGrantIds: routine.calendarGrantIds,
+        });
+        return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
+      }),
+    plugins: () => new PluginService(s.repo, d.routines),
+    goals: () => s.goals ?? new GoalService(s.repo, s.runs),
+    commandEscalations: () => s.commandEscalations ?? new CommandEscalationService(s.repo),
+    hooks: () => s.hooks ?? new HookService(s.repo),
+    workspaceFolders: () => s.workspaceFolders ?? new WorkspaceFolderService(s.repo),
+    zap: () => s.zap ?? new ZapService(s.repo, s.native, s.featureProfileId ?? "default"),
+    turnTabs: () =>
+      new AgentTurnTabs(s.pages, (page) => {
+        s.repo.upsertPage({ ...page, ownedByRuntime: false });
+        page.ownedByRuntime = false;
+        void s.pages.activate(page.pageId).catch(() => {});
+      }),
+    codeMode: () =>
+      new AgentCodeMode((method, params, client) =>
+        invoke(
+          method,
+          params,
+          client as {
+            external: boolean;
+            connectionId?: string;
+            scope?: AgentConnectionScope;
+            codeMode?: true;
+          },
+        ),
+      ),
+    historyProjection: () => new HistoryProjection(s.repo, s.featureProfileId ?? "default"),
   });
-  const browsingMemory = new BrowsingMemory(s.repo);
-  browsingMemory.prune();
+  const d: MethodCollaborators = container.services;
+
   const revokeWorkspaceContext = async (workspaceId: string, browsingOnly: boolean) => {
     const rows = s.repo.db
       .prepare(
@@ -208,14 +357,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
         );
     }
   };
-  const spaces = new SpaceService(s.repo, s.events);
-  const taskEvidence = new TaskEvidenceService(s.repo, s.events, s.pages, s.native, s.downloadsDir);
-  const vault = s.vault ?? new VaultService(s.repo, s.native);
-  const translate = new TranslateService(s.settings);
-  const safetyAudit = new SafetyAuditStore(s.repo.db, s.repo.columnCipher);
-  const approvals = new ApprovalStore(s.repo.db, (event) => safetyAudit.record(event), s.repo.columnCipher);
-  const suspensions = new SuspensionStore(s.repo.db, (event) => safetyAudit.record(event));
-  const decisions = new DecisionJournal(s.repo.db);
+
   /**
    * RPC-callable egress goes through decide() like page effects. RPC callers
    * have no approval UI, so asks collapse to a deny-with-refusal; standing
@@ -258,13 +400,13 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
         requestedAt: Date.now(),
       },
       {
-        approvals,
-        journal: decisions,
+        approvals: d.approvals,
+        journal: d.decisions,
         managedRules: () => OriginRuleSchema.array().parse(s.repo.getSetting("managedOriginPolicies") ?? []),
         userRules: () => s.settings.originPolicies(),
         localCeiling: (action) => s.settings.safetyCeiling(action.effect),
         settingsGrants: () => s.settings.effectGrants(),
-        audit: (event) => safetyAudit.record({ ...event }),
+        audit: (event) => d.safetyAudit.record({ ...event }),
       },
       { phase: "dispatch", headless: true },
     );
@@ -279,81 +421,11 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
   };
   const substituteRoutine = (objective: string, parameters: Record<string, string>) =>
     objective.replace(/\{\{([A-Za-z][A-Za-z0-9_]{0,40})\}\}/g, (_, name: string) => parameters[name] ?? "");
-  const routines =
-    s.routines ??
-    new RoutineService(s.repo, s.events, async (routine, parameters, context) => {
-      if (!routine.sourceTaskId)
-        throw new AuxError("conflict", "This routine has no saved task. Run it from a conversation in Aux.");
-      const details = tasks.details(routine.sourceTaskId);
-      const pageIds = details.task.resources
-        .filter((resource) => resource.kind === "page")
-        .map((resource) => resource.locator)
-        .filter((pageId) => {
-          try {
-            return s.pages.isAttached(pageId);
-          } catch {
-            return false;
-          }
-        });
-      if (context?.triggerPageId) {
-        if (routine.trigger.kind !== "page_change" || context.triggerDocumentEpoch === undefined)
-          throw new AuxError("conflict", "The page-change occurrence lost its exact document binding.");
-        const triggerUrl = routine.trigger.url;
-        const inTask = details.task.resources.some(
-          (resource) =>
-            (resource.kind === "page" && resource.locator === context.triggerPageId) ||
-            (resource.kind === "url" && resource.locator === triggerUrl),
-        );
-        if (!inTask) throw new AuxError("conflict", "The watched tab left the source task's reviewed scope.");
-        pageIds.splice(
-          0,
-          pageIds.length,
-          requireRoutineTriggerPage(s.pages, context.triggerPageId, triggerUrl, context.triggerDocumentEpoch),
-        );
-      }
-      if (!pageIds.length)
-        throw new AuxError(
-          "conflict",
-          "Attach an open browser tab to the source task before this routine can run.",
-        );
-      if (routine.replay) {
-        const pageId = selectSkillReplayPage(s.pages, pageIds, routine.replay.siteOrigin);
-        const started = startSkillReplay({
-          repo: s.repo,
-          pages: s.pages,
-          events: s.events,
-          routine,
-          pageId,
-          parameters,
-          expectedDocumentEpoch: context?.triggerDocumentEpoch,
-        });
-        return { chatId: details.task.conversationId, runId: started.runId };
-      }
-      const prepared = tasks.prepareRun(routine.sourceTaskId, details.task.revision);
-      const run = await s.runs.start({
-        ...prepared,
-        goal: [
-          substituteRoutine(routine.objective, parameters),
-          routine.outputHint ? `Expected output: ${routine.outputHint}` : undefined,
-        ]
-          .filter(Boolean)
-          .join("\n\n"),
-        pageIds,
-        accountLabels: routine.accountLabels.length ? routine.accountLabels : undefined,
-        calendarGrantIds: routine.calendarGrantIds,
-      });
-      return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
-    });
-  const plugins = new PluginService(s.repo, routines);
-  const goals = s.goals ?? new GoalService(s.repo, s.runs);
-  const commandEscalations = s.commandEscalations ?? new CommandEscalationService(s.repo);
-  const hooks = s.hooks ?? new HookService(s.repo);
-  const workspaceFolders = s.workspaceFolders ?? new WorkspaceFolderService(s.repo);
-  const zap = s.zap ?? new ZapService(s.repo, s.native, s.featureProfileId ?? "default");
+
   const scopedTasks = (scope: AgentConnectionScope) =>
     scope.kind === "task"
-      ? tasks.descendants(scope.taskId)
-      : tasks.list({ workspaceId: scope.workspaceId, includeArchived: true, limit: 500 });
+      ? d.tasks.descendants(scope.taskId)
+      : d.tasks.list({ workspaceId: scope.workspaceId, includeArchived: true, limit: 500 });
   const sessionPageIds = (sessionId: string): Set<string> =>
     new Set(
       s.pages
@@ -362,7 +434,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
         .map((page) => page.pageId),
     );
   const requireScopedTask = (scope: AgentConnectionScope, taskId: string) => {
-    const task = tasks.get(taskId);
+    const task = d.tasks.get(taskId);
     const allowed =
       scope.kind === "task"
         ? scopedTasks(scope).some((candidate) => candidate.taskId === task.taskId)
@@ -374,15 +446,11 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
   // details, so it is cached per scope: dropped on any task or run event and
   // rebuilt at most once a second otherwise. Preview grants are read live.
   const taskPages = new Map<string, { at: number; taskIds: Set<string>; pages: Set<string> }>();
-  s.events.subscribe((event) => {
+  const stopTracking = s.events.subscribe((event) => {
     if (event.type.startsWith("task.") || event.type.startsWith("run.") || event.type.startsWith("page."))
       taskPages.clear();
   });
-  const turnTabs = new AgentTurnTabs(s.pages, (page) => {
-    s.repo.upsertPage({ ...page, ownedByRuntime: false });
-    page.ownedByRuntime = false;
-    void s.pages.activate(page.pageId).catch(() => {});
-  });
+
   const scopedPageIds = (scope: AgentConnectionScope, connectionId?: string): Set<string> => {
     const key = JSON.stringify(scope);
     let cached = taskPages.get(key);
@@ -402,7 +470,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
                   const resources = task.resources
                     .filter((resource) => resource.kind === "page")
                     .map((resource) => resource.locator);
-                  const runs = tasks
+                  const runs = d.tasks
                     .details(task.taskId)
                     .runs.filter((item) => item.currentRevision)
                     .flatMap((item) => item.run.pageIds);
@@ -412,7 +480,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
             };
       taskPages.set(key, cached);
     }
-    return connectionId ? new Set([...cached.pages, ...turnTabs.pageIds(connectionId)]) : cached.pages;
+    return connectionId ? new Set([...cached.pages, ...d.turnTabs.pageIds(connectionId)]) : cached.pages;
   };
   /** Task ids a scope covers (workspace/session → workspace tasks; task → subtree). */
   const scopedTaskIds = (scope: AgentConnectionScope): Set<string> => {
@@ -494,10 +562,10 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     const sources = scopedTasks(scope)
       .filter((task) => task.state === "open")
       .flatMap((task) => {
-        const preview = !!connectionId && turnTabs.owns(connectionId, task.taskId, pageId);
+        const preview = !!connectionId && d.turnTabs.owns(connectionId, task.taskId, pageId);
         const attached =
           task.resources.some((resource) => resource.kind === "page" && resource.locator === pageId) ||
-          tasks
+          d.tasks
             .details(task.taskId)
             .runs.some((item) => item.currentRevision && item.run.pageIds.includes(pageId));
         return attached || preview
@@ -511,16 +579,17 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
       requireScopedPage(scope, pageId, connectionId);
       if (session && scope.kind === "session" && sessionPageIds(scope.sessionId).has(pageId)) return;
       const current = sources.some((source) => {
-        const task = tasks.get(source.taskId);
+        const task = d.tasks.get(source.taskId);
         if (
           task.revision !== source.revision ||
           task.sourceOrigin !== source.sourceOrigin ||
           task.state !== "open"
         )
           return false;
-        const preview = source.preview && !!connectionId && turnTabs.owns(connectionId, task.taskId, pageId);
+        const preview =
+          source.preview && !!connectionId && d.turnTabs.owns(connectionId, task.taskId, pageId);
         try {
-          tasks.preparePageAccess(task.taskId, source.revision, pageId, false, preview);
+          d.tasks.preparePageAccess(task.taskId, source.revision, pageId, false, preview);
           return true;
         } catch (error) {
           if (error instanceof AuxError && (error.code === "permission_denied" || error.code === "conflict"))
@@ -544,15 +613,17 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     const run = s.repo.getRun(runId);
     const taskId = run?.config?.taskId;
     if (!taskId || run.config?.implementation !== "external-agent") return undefined;
-    const task = tasks.get(taskId);
+    const task = d.tasks.get(taskId);
     if (task.state !== "open" || task.revision !== run.config.taskRevision) return undefined;
     const page = s.pages.get(pageId);
     if (!page.sessionId) throw new AuxError("target_detached", "The task read attachment is unavailable.");
     const resource = task.resources.find((item) => item.kind === "page" && item.locator === pageId);
-    const preview = !!connectionId && turnTabs.owns(connectionId, taskId, pageId);
+    const preview = !!connectionId && d.turnTabs.owns(connectionId, taskId, pageId);
     const taskRun =
       !resource && !preview
-        ? tasks.details(taskId).runs.find((item) => item.currentRevision && item.run.pageIds.includes(pageId))
+        ? d.tasks
+            .details(taskId)
+            .runs.find((item) => item.currentRevision && item.run.pageIds.includes(pageId))
         : undefined;
     if (!resource && !preview && !taskRun) return undefined;
     const provenance = TaskReadProvenanceSchema.parse({
@@ -572,7 +643,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     const sourceCheck = captureScopedPageSource(scope, pageId, connectionId);
     const check = () => {
       sourceCheck();
-      const current = tasks.get(taskId),
+      const current = d.tasks.get(taskId),
         currentRun = s.repo.getRun(runId),
         currentPage = s.pages.get(pageId);
       if (
@@ -596,8 +667,8 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
                 item.resourceId === source.resourceId && item.kind === "page" && item.locator === pageId,
             )
           : source.kind === "preview"
-            ? turnTabs.owns(source.connectionId, taskId, pageId)
-            : tasks
+            ? d.turnTabs.owns(source.connectionId, taskId, pageId)
+            : d.tasks
                 .details(taskId)
                 .runs.some(
                   (item) =>
@@ -610,42 +681,14 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     check();
     return { provenance, check };
   };
-  const codeMode = new AgentCodeMode((method, params, client) =>
-    invoke(
-      method,
-      params,
-      client as { external: boolean; connectionId?: string; scope?: AgentConnectionScope; codeMode?: true },
-    ),
-  );
-  const historyProjection = new HistoryProjection(s.repo, s.featureProfileId ?? "default");
-  return {
+
+  let disposal: Promise<void> | undefined;
+  const helpers = {
     s,
-    outboundMcp,
-    subagents,
-    customization,
-    commandRanking,
-    tasks,
-    connectorCatalog,
-    browsingMemory,
     revokeWorkspaceContext,
     revokeArticleRuns,
-    spaces,
-    taskEvidence,
-    vault,
-    translate,
-    safetyAudit,
-    approvals,
-    suspensions,
-    decisions,
     decideEgress,
     substituteRoutine,
-    routines,
-    plugins,
-    goals,
-    commandEscalations,
-    hooks,
-    workspaceFolders,
-    zap,
     scopedTasks,
     sessionPageIds,
     requireScopedTask,
@@ -657,8 +700,17 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     requireScopedPage,
     captureScopedPageSource,
     captureScopedTaskRead,
-    turnTabs,
-    codeMode,
-    historyProjection,
+    dispose: () =>
+      (disposal ??= (async () => {
+        stopTracking();
+        const turnTabs = container.peek("turnTabs");
+        if (turnTabs) {
+          turnTabs.dispose();
+          await turnTabs.endAll();
+        }
+        container.peek("codeMode")?.disposeAll();
+      })()),
   };
+  return Object.defineProperties(helpers, Object.getOwnPropertyDescriptors(d)) as typeof helpers &
+    MethodCollaborators;
 }

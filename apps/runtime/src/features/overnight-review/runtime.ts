@@ -1,3 +1,4 @@
+import { createServiceContainer, type ServiceContainer } from "../../services/container.js";
 import { withOvernightAuthorityMutation } from "../../services/overnight-authority.js";
 import { AuxError } from "@aux/contracts";
 import type { Services } from "../../api/methods/context.js";
@@ -25,45 +26,52 @@ export function resolveNightGoalTask(s: Services, goalId: string) {
   return task;
 }
 export function overnightRuntime(s: Services, power: NightPower): NightShiftRuntime {
-  const tasks = new TaskService(s.repo, s.events);
+  const container: ServiceContainer<{ tasks: TaskService; routineService: RoutineService }> =
+    createServiceContainer<{ tasks: TaskService; routineService: RoutineService }>({
+      tasks: () => new TaskService(s.repo, s.events),
+      routineService: () =>
+        new RoutineService(s.repo, s.events, async (routine, parameters) => {
+          const authority = pending.get(routine.routineId);
+          if (!authority || !routine.sourceTaskId)
+            throw new AuxError("permission_denied", "This Skill has no person-queued overnight authority.");
+          const details = d.tasks.details(routine.sourceTaskId);
+          if (details.task.revision !== routine.sourceTaskRevision)
+            throw new AuxError("conflict", "The Skill task changed before overnight launch.");
+          const prepared = d.tasks.prepareRun(details.task.taskId, details.task.revision);
+          const pageIds = details.task.resources
+            .filter((resource) => resource.kind === "page")
+            .map((resource) => resource.locator)
+            .filter((id) => s.pages.isAttached(id));
+          if (!pageIds.length)
+            throw new AuxError("conflict", "Attach this Skill's reviewed task tabs before tonight.");
+          if (routine.replay) {
+            const pageId = selectSkillReplayPage(s.pages, pageIds, routine.replay.siteOrigin);
+            return startSkillReplay({
+              repo: s.repo,
+              pages: s.pages,
+              events: s.events,
+              routine,
+              pageId,
+              parameters,
+              deliveryRunId: authority.runId,
+              nightShiftItemId: authority.itemId,
+            });
+          }
+          const run = await s.runs.start({
+            ...prepared,
+            deliveryRunId: authority.runId,
+            nightShiftItemId: authority.itemId,
+            goal: substituteParameters(routine.objective, parameters),
+            pageIds,
+          });
+          return { runId: run.runId, chatId: run.config?.chatId };
+        }),
+    });
+  const d: { tasks: TaskService; routineService: RoutineService } = container.services;
+
   const pending = new Map<string, { runId: string; itemId: string }>();
   let backgroundEnabled = false;
-  const routineService = new RoutineService(s.repo, s.events, async (routine, parameters) => {
-    const authority = pending.get(routine.routineId);
-    if (!authority || !routine.sourceTaskId)
-      throw new AuxError("permission_denied", "This Skill has no person-queued overnight authority.");
-    const details = tasks.details(routine.sourceTaskId);
-    if (details.task.revision !== routine.sourceTaskRevision)
-      throw new AuxError("conflict", "The Skill task changed before overnight launch.");
-    const prepared = tasks.prepareRun(details.task.taskId, details.task.revision);
-    const pageIds = details.task.resources
-      .filter((resource) => resource.kind === "page")
-      .map((resource) => resource.locator)
-      .filter((id) => s.pages.isAttached(id));
-    if (!pageIds.length)
-      throw new AuxError("conflict", "Attach this Skill's reviewed task tabs before tonight.");
-    if (routine.replay) {
-      const pageId = selectSkillReplayPage(s.pages, pageIds, routine.replay.siteOrigin);
-      return startSkillReplay({
-        repo: s.repo,
-        pages: s.pages,
-        events: s.events,
-        routine,
-        pageId,
-        parameters,
-        deliveryRunId: authority.runId,
-        nightShiftItemId: authority.itemId,
-      });
-    }
-    const run = await s.runs.start({
-      ...prepared,
-      deliveryRunId: authority.runId,
-      nightShiftItemId: authority.itemId,
-      goal: substituteParameters(routine.objective, parameters),
-      pageIds,
-    });
-    return { runId: run.runId, chatId: run.config?.chatId };
-  });
+
   return {
     backgroundEnabled: () => backgroundEnabled,
     onAC: async () => {
@@ -97,7 +105,7 @@ export function overnightRuntime(s: Services, power: NightPower): NightShiftRunt
         throw new AuxError("invalid_params", "Memory work must use its leased pipeline.");
       pending.set(payload.routineId, { runId, itemId: item.id });
       try {
-        const record = await routineService.run({
+        const record = await d.routineService.run({
           routineId: payload.routineId,
           expectedRevision: payload.revision,
           parameters: payload.parameters,
