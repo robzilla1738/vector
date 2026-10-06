@@ -1,11 +1,12 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { MockLanguageModelV4 } from "../../apps/runtime/node_modules/ai/dist/test/index.js";
 import {
   GatewayModelClient,
+  SpendLedger,
   TranscriptStore,
   buildToolManifest,
   gatewayProviderOptions,
@@ -15,6 +16,7 @@ import {
 
 const cleanup: Array<() => void> = [];
 afterEach(() => {
+  vi.restoreAllMocks();
   for (const dispose of cleanup.splice(0).reverse()) dispose();
 });
 
@@ -72,13 +74,59 @@ it("sets the OpenAI prompt cache key to the session id", async () => {
     modelId: "gpt-test",
     system: "Be brief",
     sessionId: "chat-9",
+    providerOptions: { openai: { user: "fixture-user" } },
     messages: [{ role: "user", content: "hi" }],
     tools: { alpha: { description: "a", inputSchema: z.object({}) } },
     maxOutputTokens: 32,
   });
-  expect(model.doGenerateCalls[0]?.providerOptions).toMatchObject({ openai: { promptCacheKey: "chat-9" } });
+  expect(model.doGenerateCalls[0]?.providerOptions).toMatchObject({ openai: { promptCacheKey: "chat-9", user: "fixture-user" } });
   const prompt = model.doGenerateCalls[0]?.prompt as Array<{ providerOptions?: { anthropic?: unknown } }>;
   expect(prompt.some((message) => message.providerOptions?.anthropic)).toBe(false);
+});
+
+it("preserves Gateway Anthropic cache breakpoints and usage through the real SDK transport", async () => {
+  let body: Record<string, unknown> | undefined;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+    body = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({
+      ...textResult("ok"),
+      usage: {
+        inputTokens: { total: 10, noCache: 3, cacheRead: 7, cacheWrite: 0 },
+        outputTokens: { total: 2, text: 2, reasoning: 0 },
+      },
+      providerMetadata: { gateway: { cost: "0.00001" } },
+    }), { headers: { "content-type": "application/json" } });
+  });
+  const directory = mkdtempSync(join(tmpdir(), "aux-gateway-cache-"));
+  cleanup.push(() => rmSync(directory, { recursive: true, force: true }));
+  const ledger = new SpendLedger(join(directory, "spend.sqlite"));
+  cleanup.push(() => ledger.close());
+  const client = new GatewayModelClient("fixture", {
+    spendLedger: ledger,
+    models: () => [{
+      id: "anthropic/cache-fixture", provider: "anthropic", source: "configured", contextTokens: 10000,
+      inputUsdPerMTok: 1, outputUsdPerMTok: 1,
+    }],
+  });
+  const result = await client.toolCallStep({
+    modelId: "anthropic/cache-fixture",
+    system: "Stable instructions",
+    messages: [{ role: "user", content: "first" }, { role: "user", content: "newest" }],
+    tools: { alpha: { inputSchema: z.object({}) } },
+    providerOptions: { gateway: { tags: ["cache-test"] }, anthropic: { thinking: { type: "disabled" } } },
+    maxOutputTokens: 32,
+  });
+  const prompt = body?.prompt as Array<{ role: string; providerOptions?: { anthropic?: { cacheControl?: { type?: string } } } }>;
+  expect(prompt.map((message) => message.role)).toEqual(["system", "user", "user"]);
+  expect(prompt.map(hasAnthropicCache)).toEqual([true, true, false]);
+  expect(body?.providerOptions).toMatchObject({
+    gateway: { caching: "auto", sort: "ttft", tags: ["cache-test"] },
+    anthropic: { thinking: { type: "disabled" } },
+  });
+  expect((body?.tools as Array<{ providerOptions?: { anthropic?: { cacheControl?: { type?: string } } } }>).map(hasAnthropicCache)).toEqual([true]);
+  expect(ledger.summary().committedUsd).toBe(0.00001);
+  expect(result.cachedInputTokens).toBe(7);
+  expect(result.providerMetadata).toMatchObject({ gateway: { cost: "0.00001" } });
 });
 
 it("sends the loop thread id through as the OpenAI session", async () => {

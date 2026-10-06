@@ -24,7 +24,7 @@ import {
   type ToolCallStepResult,
 } from "./model-client.js";
 import { estimatedPromptTokens, projectedModelCostUsd, SpendLedger } from "../store/spend-ledger.js";
-import { ANTHROPIC_CACHE_CONTROL, anthropicCachedMessages, openAiSessionCache } from "./prompt-cache.js";
+import { ANTHROPIC_CACHE_CONTROL, anthropicCachedHistory, openAiSessionCache, stampAnthropicCache } from "./prompt-cache.js";
 
 /** Per-call ceiling — a hung gateway must not stall a run until runs.cancel. */
 export const DEFAULT_MODEL_CALL_TIMEOUT_MS = 90_000;
@@ -230,6 +230,18 @@ export function gatewayProviderOptions(
   };
 }
 
+/** Merge namespaces independently so caller options do not erase routing or cache keys. */
+function mergeProviderOptions(
+  ...sources: Array<Record<string, Record<string, unknown>> | undefined>
+): Parameters<typeof import("ai").generateText>[0]["providerOptions"] {
+  const result: Record<string, Record<string, unknown>> = {};
+  for (const source of sources) {
+    for (const [provider, options] of Object.entries(source ?? {}))
+      result[provider] = { ...result[provider], ...options };
+  }
+  return result as Parameters<typeof import("ai").generateText>[0]["providerOptions"];
+}
+
 type CallOpts = {
   modelId: string;
   system: string;
@@ -421,15 +433,17 @@ export class GatewayModelClient implements ModelClient {
       );
   }
 
-  /** Gateway keeps `caching: "auto"`. Direct Anthropic and OpenAI get their own cache markers. */
+  /** Preserve stable prompt breakpoints on both direct and Gateway provider routes. */
   private directRequest(
     opts: Omit<CallOpts, "prompt"> & { messages: ModelMessage[] },
     maxOutputTokens: number,
   ) {
     const model = this.resolveModel(opts.modelId);
-    const provider = this.gateway ? undefined : (model as { provider?: string }).provider;
+    const provider = this.gateway
+      ? modelCapabilities(opts.modelId, this.capabilities())?.provider
+      : (model as { provider?: string }).provider;
     const anthropic = provider === "anthropic";
-    const cachedMessages = anthropic ? anthropicCachedMessages(opts.system, opts.messages) : opts.messages;
+    const cachedMessages = anthropic ? anthropicCachedHistory(opts.messages) : opts.messages;
     const gateway = this.gateway
       ? gatewayProviderOptions(
           this.only,
@@ -445,18 +459,11 @@ export class GatewayModelClient implements ModelClient {
       maxRetries: 0 as const,
       maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens, this.capabilities()),
       ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? ("medium" as const) } : {}),
-      // Gateway rejects a `system` message. `instructions` is the supported channel.
-      // Direct Anthropic still needs a system message so the cache breakpoint can sit on it.
-      ...(anthropic ? { allowSystemInMessages: true as const } : { instructions: opts.system }),
+      instructions: anthropic
+        ? stampAnthropicCache({ role: "system", content: opts.system })
+        : opts.system,
       messages: cachedMessages,
-      providerOptions: {
-        ...gateway,
-        ...session,
-        ...opts.providerOptions,
-        ...(gateway?.openai || session?.openai || opts.providerOptions?.openai
-          ? { openai: { ...gateway?.openai, ...session?.openai, ...opts.providerOptions?.openai } }
-          : {}),
-      } as Parameters<typeof import("ai").generateText>[0]["providerOptions"],
+      providerOptions: mergeProviderOptions(gateway, session, opts.providerOptions),
       cacheTools: anthropic,
     };
   }
