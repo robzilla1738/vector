@@ -1,0 +1,62 @@
+import { useEffect, useRef, type RefObject } from "react";
+import type { ShortcutOverrides } from "@aux/contracts";
+import { effectiveShortcuts, matchShortcut } from "@aux/contracts/shortcut-defs";
+import { bridge } from "../bridge";
+import { useStore } from "../store";
+import { dispatchShortcut as dispatchCommandShortcut } from "../commands";
+import { createTabSwitcher } from "../tab-switcher";
+
+type Shortcut = {
+  key: string;
+  meta: boolean;
+  shift: boolean;
+  alt: boolean;
+  ctrl?: boolean;
+  commandId?: string;
+};
+
+export function useShellShortcuts(findInput: RefObject<HTMLInputElement | null>) {
+  const tabSwitcher = useRef(createTabSwitcher());
+  const setOverlay = useStore((state) => state.setOverlay);
+  const dispatchShortcut = (shortcut: Shortcut) =>
+    dispatchCommandShortcut(shortcut, { findInput, tabSwitcher: tabSwitcher.current });
+
+  useEffect(() => bridge.onShortcut(dispatchShortcut), []);
+
+  // renderer-side keys (when the shell itself has focus)
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing) return;
+      if (e.metaKey || e.ctrlKey) {
+        const st = useStore.getState();
+        const def = matchShortcut(
+          effectiveShortcuts(st.settings?.shortcutOverrides as ShortcutOverrides | undefined),
+          {
+            key: e.key,
+            meta: e.metaKey,
+            ctrl: e.ctrlKey,
+            shift: e.shiftKey,
+            alt: e.altKey,
+          },
+          { platform: bridge.platform },
+        );
+        if (def) {
+          e.preventDefault();
+          dispatchShortcut({
+            key: e.key,
+            meta: e.metaKey,
+            shift: e.shiftKey,
+            alt: e.altKey,
+            ctrl: e.ctrlKey,
+            commandId: def.id,
+          });
+        }
+        return;
+      }
+      if (e.key === "Escape" && !e.defaultPrevented && useStore.getState().overlay) setOverlay(null);
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
